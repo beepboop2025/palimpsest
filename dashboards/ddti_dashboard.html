@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PALIMPSEST · DDTI — Censor Attention Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0b0b0d; --ink-2:#111115; --ink-3:#16161c;
+    --bone:#e9e4d8; --bone-dim:#8c8678; --bone-faint:#56524a;
+    --signal:#ff2f2f; --signal-deep:#b21414; --ember:#ff7a3c;
+    --jade:#3ad6a0; --gold:#d8a657;
+    --line:rgba(233,228,216,.10); --line-strong:rgba(233,228,216,.22);
+    --redact:#1b1b22;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink); color:var(--bone);
+    font-family:'JetBrains Mono',ui-monospace,monospace;
+    min-height:100vh; overflow-x:hidden; position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* atmosphere: grain + faint red survey grid + vignette */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      linear-gradient(transparent 0 96%, rgba(255,47,47,.045) 96% 100%) 0 0/100% 46px,
+      linear-gradient(90deg, transparent 0 96%, rgba(255,47,47,.04) 96% 100%) 0 0/46px 100%,
+      radial-gradient(120% 90% at 50% -10%, rgba(255,47,47,.07), transparent 60%),
+      radial-gradient(140% 120% at 50% 120%, rgba(0,0,0,.6), transparent 55%);
+  }
+  .wrap{position:relative; z-index:2; max-width:1320px; margin:0 auto; padding:28px clamp(16px,4vw,52px) 80px}
+
+  /* ── command bar ── */
+  header.bar{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:24px;
+    flex-wrap:wrap; padding-bottom:18px; border-bottom:1px solid var(--line-strong);
+  }
+  .brand{display:flex; flex-direction:column; gap:4px}
+  .codename{
+    font-family:'Anton',sans-serif; font-size:clamp(34px,6vw,68px); line-height:.86;
+    letter-spacing:.01em; text-transform:uppercase;
+    color:var(--bone); position:relative;
+  }
+  .codename b{color:var(--signal); -webkit-text-stroke:0}
+  .subtitle{
+    font-size:11px; letter-spacing:.42em; text-transform:uppercase; color:var(--bone-dim);
+    padding-left:3px;
+  }
+  .statuses{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+  .chip{
+    font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+    border:1px solid var(--line-strong); padding:7px 11px; display:flex; align-items:center; gap:8px;
+    color:var(--bone-dim); background:rgba(255,255,255,.012);
+  }
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--bone-faint)}
+  .chip.go .dot{background:var(--jade); box-shadow:0 0 10px var(--jade)}
+  .chip.block .dot{background:var(--signal); box-shadow:0 0 10px var(--signal)}
+  .chip.go{color:var(--jade); border-color:rgba(58,214,160,.32)}
+  .chip.block{color:var(--signal); border-color:rgba(255,47,47,.32)}
+  .chip .dot.live{animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  /* ── source badge (LIVE / SAMPLE) ── */
+  .feed-state{
+    margin:22px 0 6px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--bone-dim);
+  }
+  .feed-tag{padding:5px 12px; border:1px solid; font-weight:700; letter-spacing:.22em}
+  .feed-tag.sample{color:var(--gold); border-color:rgba(216,166,87,.45); background:rgba(216,166,87,.06)}
+  .feed-tag.live{color:var(--jade); border-color:rgba(58,214,160,.45); background:rgba(58,214,160,.06)}
+  .feed-tag.snapshot{color:var(--ember); border-color:rgba(255,122,60,.5); background:rgba(255,122,60,.07)}
+  .feed-tag.err{color:var(--signal); border-color:rgba(255,47,47,.45)}
+
+  /* ── stat strip ── */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+    background:var(--line); border:1px solid var(--line); margin:14px 0 30px}
+  .stat{background:var(--ink-2); padding:18px 20px}
+  .stat .k{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--bone-faint)}
+  .stat .v{font-family:'Anton',sans-serif; font-size:38px; line-height:1; margin-top:8px; color:var(--bone)}
+  .stat .v small{font-family:'JetBrains Mono'; font-size:12px; color:var(--bone-dim); letter-spacing:.05em}
+  .stat.accent .v{color:var(--signal)}
+
+  /* ── layout ── */
+  .grid{display:grid; grid-template-columns:1fr 320px; gap:28px; align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .section-h{
+    display:flex; align-items:baseline; gap:14px; margin:0 0 16px;
+    font-size:12px; letter-spacing:.3em; text-transform:uppercase; color:var(--bone-dim);
+  }
+  .section-h .num{font-family:'Anton'; font-size:13px; color:var(--signal); letter-spacing:.1em}
+  .section-h::after{content:""; flex:1; height:1px; background:var(--line); align-self:center}
+
+  /* ── threat rows ── */
+  .board{display:flex; flex-direction:column; gap:12px}
+  .row{
+    position:relative; background:var(--ink-2); border:1px solid var(--line);
+    padding:18px 20px 18px 64px; overflow:hidden;
+    opacity:0; transform:translateY(14px); animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  @keyframes rise{to{opacity:1;transform:none}}
+  .row:hover{border-color:var(--line-strong); background:var(--ink-3)}
+  .row .rank{
+    position:absolute; left:0; top:0; bottom:0; width:48px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Anton'; font-size:24px; color:var(--bone-faint);
+    border-right:1px solid var(--line); background:rgba(0,0,0,.25);
+  }
+  .row.t1 .rank{color:var(--signal)} .row.t2 .rank{color:var(--ember)} .row.t3 .rank{color:var(--gold)}
+  .row-top{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .term{
+    font-family:'Noto Serif SC',serif; font-weight:900; font-size:30px; line-height:1.05;
+    color:var(--bone); letter-spacing:.01em;
+  }
+  .stamp{
+    font-family:'Anton'; font-size:11px; letter-spacing:.2em; color:var(--signal);
+    border:1.5px solid var(--signal); padding:3px 8px; transform:rotate(-5deg);
+    text-transform:uppercase; box-shadow:0 0 0 2px rgba(255,47,47,.08) inset; white-space:nowrap;
+  }
+  .stamp .cn{font-family:'Noto Serif SC'; margin-right:5px}
+  .dchip{
+    font-size:9px; letter-spacing:.18em; text-transform:uppercase; padding:3px 8px;
+    border:1px solid currentColor; border-radius:1px; white-space:nowrap; opacity:.92;
+  }
+  .spacer{flex:1}
+  .threatnum{text-align:right}
+  .threatnum .v{font-family:'Anton'; font-size:30px; color:var(--bone)}
+  .row.t1 .threatnum .v{color:var(--signal)}
+  .threatnum .l{font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:var(--bone-faint)}
+
+  /* threat meter */
+  .meter{height:6px; background:rgba(255,255,255,.05); margin:14px 0 12px; position:relative; overflow:hidden}
+  .meter i{
+    position:absolute; left:0; top:0; bottom:0; width:0;
+    background:linear-gradient(90deg,var(--signal-deep),var(--signal),var(--ember));
+    animation:fill 1.1s cubic-bezier(.2,.7,.2,1) forwards; animation-delay:.25s;
+  }
+  @keyframes fill{to{width:var(--w,40%)}}
+
+  .metrics{display:flex; gap:22px; flex-wrap:wrap; font-size:11px; color:var(--bone-dim); letter-spacing:.05em}
+  .metrics b{color:var(--bone); font-weight:500}
+  .metrics .jade{color:var(--jade)} .metrics .sig{color:var(--signal)}
+
+  /* redacted headlines — the signature motif */
+  .leaks{margin-top:14px; display:flex; flex-direction:column; gap:6px}
+  .leak{
+    position:relative; font-size:11.5px; color:var(--bone); padding:5px 9px;
+    background:var(--redact); border-left:2px solid var(--signal-deep);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:default;
+  }
+  .leak::after{
+    content:""; position:absolute; inset:0; background:var(--redact);
+    transition:transform .45s cubic-bezier(.7,0,.3,1); transform-origin:left;
+  }
+  .row:hover .leak::after{transform:scaleX(0)}
+  .leak::before{
+    content:"REDACTED"; position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    font-size:8px; letter-spacing:.3em; color:var(--signal); opacity:.7; transition:opacity .2s;
+  }
+  .row:hover .leak::before{opacity:0}
+
+  /* ── side column ── */
+  aside{position:sticky; top:24px; display:flex; flex-direction:column; gap:24px}
+  .panel{border:1px solid var(--line); background:var(--ink-2)}
+  .panel .ph{padding:13px 16px; border-bottom:1px solid var(--line);
+    font-size:10.5px; letter-spacing:.28em; text-transform:uppercase; color:var(--bone-dim);
+    display:flex; align-items:center; gap:8px}
+  .panel .ph .dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:pulse 1.6s infinite}
+  .alert{padding:12px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:11px}
+  .alert:last-child{border-bottom:0}
+  .alert .at{font-family:'Noto Serif SC'; font-weight:700; font-size:16px; color:var(--bone)}
+  .alert .meta{margin-left:auto; text-align:right; font-size:9px; letter-spacing:.1em; color:var(--bone-faint)}
+  .alert .new{font-family:'Anton'; font-size:9px; color:var(--gold); border:1px solid rgba(216,166,87,.4); padding:2px 5px; letter-spacing:.15em}
+  .legend{padding:16px; font-size:11px; line-height:1.7; color:var(--bone-dim)}
+  .legend b{color:var(--bone)} .legend .sig{color:var(--signal)} .legend .jade{color:var(--jade)} .legend .gold{color:var(--gold)}
+
+  footer{margin-top:42px; padding-top:18px; border-top:1px solid var(--line);
+    font-size:10.5px; line-height:1.8; color:var(--bone-faint); letter-spacing:.04em}
+  footer .scope{color:var(--bone-dim)}
+  a.refresh{color:var(--jade); text-decoration:none; border-bottom:1px dotted var(--jade); cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="brand">
+      <div class="codename">PALIMPSEST<b>.</b>DDTI</div>
+      <div class="subtitle">Deletion-Differential Threat Index · Censor Attention Monitor</div>
+    </div>
+    <div class="statuses">
+      <div class="chip go"><span class="dot live"></span>Selectivity · GO</div>
+      <div class="chip block"><span class="dot"></span>Velocity · Blocked (egress)</div>
+      <div class="chip"><span class="dot live" style="background:var(--jade)"></span><span id="clock">—</span> UTC</div>
+    </div>
+  </header>
+
+  <div class="feed-state">
+    <span class="feed-tag sample" id="feedTag">SAMPLE DATA</span>
+    <span id="feedNote">demonstration feed — connect the API for live signal</span>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="grid">
+    <main>
+      <div class="section-h"><span class="num">01</span>Threat Board — ranked by censor attention × novelty</div>
+      <div class="board" id="board"></div>
+    </main>
+    <aside>
+      <div class="panel">
+        <div class="ph"><span class="dot"></span>Newly Sensitive</div>
+        <div id="alerts"></div>
+      </div>
+      <div class="panel">
+        <div class="ph">Reading the index</div>
+        <div class="legend">
+          <p><span class="sig">Threat</span> = attention × (1 + novelty). What the apparatus is spending capacity on, right now.</p>
+          <p style="margin-top:10px"><span class="gold">NEW 新</span> = term never censored in the baseline window — the sharpest fear signal.</p>
+          <p style="margin-top:10px"><span class="jade">Burst</span> = how far current deletion rate exceeds its own history.</p>
+          <p style="margin-top:10px;color:var(--bone-faint)">Hover any <b style="color:var(--bone)">▮ redacted</b> line to reveal the leaked headline.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="scope" id="scope">SCOPE — censor attention allocation (numerator-only; not a true deletion rate).</div>
+    <div style="margin-top:8px">SOURCE: China Digital Times 404 archive + Minitrue · velocity sub-signal pending in-China egress · <a class="refresh" onclick="boot()">↻ refresh</a></div>
+  </footer>
+</div>
+
+<!--DDTI_EMBED--><script>window.__DDTI_EMBED__={"generated_at": "2026-06-18T13:28:18.606747+00:00", "window": {"current_days": 45, "history_days": 180, "half_life_days": 2.0, "novelty_weight": 1.5}, "scope": "censor_attention_allocation (numerator-only; not a true deletion rate)", "n_observations_used": 15, "n_terms": 202, "ranked": [{"term": "Internet censorship", "domain": "INFORMATION", "threat": 1.3463, "attention": 0.5385, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 7, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "“What Does ‘It’s My Duty’ Mean?” ByteDance Chatbot: “This Content is in Suspected Violation of Terms of Use.”", "url": "https://chinadigitaltimes.net/2026/06/what-does-its-my-duty-mean-bytedance-chatbot-this-content-is-in-suspected-violation-of-terms-of-use/"}, {"title": "Sensitive Words: Search Censorship, Tiananmen, “8 Squared,” and “64 + Division”", "url": "https://chinadigitaltimes.net/2026/06/sensitive-words-search-censorship-tiananmen-8-squared-and-64-division/"}]}, {"term": "online censorship", "domain": "INFORMATION", "threat": 1.3463, "attention": 0.5385, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 7, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "“What Does ‘It’s My Duty’ Mean?” ByteDance Chatbot: “This Content is in Suspected Violation of Terms of Use.”", "url": "https://chinadigitaltimes.net/2026/06/what-does-its-my-duty-mean-bytedance-chatbot-this-content-is-in-suspected-violation-of-terms-of-use/"}, {"title": "Sensitive Words: Search Censorship, Tiananmen, “8 Squared,” and “64 + Division”", "url": "https://chinadigitaltimes.net/2026/06/sensitive-words-search-censorship-tiananmen-8-squared-and-64-division/"}]}, {"term": "social media censorship", "domain": "INFORMATION", "threat": 1.3234, "attention": 0.5294, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 6, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "“What Does ‘It’s My Duty’ Mean?” ByteDance Chatbot: “This Content is in Suspected Violation of Terms of Use.”", "url": "https://chinadigitaltimes.net/2026/06/what-does-its-my-duty-mean-bytedance-chatbot-this-content-is-in-suspected-violation-of-terms-of-use/"}, {"title": "Translations: On the Coal Mine Explosion in Liushenyu, Shanxi, That Killed 82 Miners and Injured 128", "url": "https://chinadigitaltimes.net/2026/05/translations-on-the-coal-mine-explosion-in-liushenyu-shanxi-that-killed-82-miners-and-injured-128/"}]}, {"term": "food safety", "domain": "SAFETY", "threat": 1.1267, "attention": 0.4507, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-06-09T00:09:35+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Translation: Foreign Forces, Fake Patriots, and Adulterated Berries", "url": "https://chinadigitaltimes.net/2026/06/translation-foreign-forces-fake-patriots-and-adulterated-berries/"}]}, {"term": "foreign hostile forces", "domain": "FOREIGN", "threat": 1.1267, "attention": 0.4507, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 3, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Translation: Foreign Forces, Fake Patriots, and Adulterated Berries", "url": "https://chinadigitaltimes.net/2026/06/translation-foreign-forces-fake-patriots-and-adulterated-berries/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "censorship", "domain": "INFORMATION", "threat": 1.112, "attention": 0.4448, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 6, "hist_count": 0, "first_seen": "2026-05-09T03:18:56+00:00", "samples": [{"title": "Siri AI’s Future in China Unclear Under “One Apple, Two Systems”", "url": "https://chinadigitaltimes.net/2026/06/siri-ais-future-in-china-unclear-under-one-apple-two-systems/"}, {"title": "“What Does ‘It’s My Duty’ Mean?” ByteDance Chatbot: “This Content is in Suspected Violation of Terms of Use.”", "url": "https://chinadigitaltimes.net/2026/06/what-does-its-my-duty-mean-bytedance-chatbot-this-content-is-in-suspected-violation-of-terms-of-use/"}, {"title": "Sensitive Words: Search Censorship, Tiananmen, “8 Squared,” and “64 + Division”", "url": "https://chinadigitaltimes.net/2026/06/sensitive-words-search-censorship-tiananmen-8-squared-and-64-division/"}]}, {"term": "AI", "domain": "TECHNOLOGY", "threat": 1.098, "attention": 0.4392, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 4, "hist_count": 0, "first_seen": "2026-06-01T06:46:06+00:00", "samples": [{"title": "Siri AI’s Future in China Unclear Under “One Apple, Two Systems”", "url": "https://chinadigitaltimes.net/2026/06/siri-ais-future-in-china-unclear-under-one-apple-two-systems/"}, {"title": "“What Does ‘It’s My Duty’ Mean?” ByteDance Chatbot: “This Content is in Suspected Violation of Terms of Use.”", "url": "https://chinadigitaltimes.net/2026/06/what-does-its-my-duty-mean-bytedance-chatbot-this-content-is-in-suspected-violation-of-terms-of-use/"}, {"title": "Translation: The Decade-long Death of a Campus Media Outlet, Part 2: The Decline of Student Journalism and the Rise of AI", "url": "https://chinadigitaltimes.net/2026/05/translation-the-decade-long-death-of-a-campus-media-outlet-part-2-the-decline-of-student-journalism-and-the-rise-of-ai/"}]}, {"term": "artificial intelligence", "domain": "TECHNOLOGY", "threat": 1.098, "attention": 0.4392, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 4, "hist_count": 0, "first_seen": "2026-06-01T06:46:06+00:00", "samples": [{"title": "Siri AI’s Future in China Unclear Under “One Apple, Two Systems”", "url": "https://chinadigitaltimes.net/2026/06/siri-ais-future-in-china-unclear-under-one-apple-two-systems/"}, {"title": "“What Does ‘It’s My Duty’ Mean?” ByteDance Chatbot: “This Content is in Suspected Violation of Terms of Use.”", "url": "https://chinadigitaltimes.net/2026/06/what-does-its-my-duty-mean-bytedance-chatbot-this-content-is-in-suspected-violation-of-terms-of-use/"}, {"title": "Translation: The Decade-long Death of a Campus Media Outlet, Part 2: The Decline of Student Journalism and the Rise of AI", "url": "https://chinadigitaltimes.net/2026/05/translation-the-decade-long-death-of-a-campus-media-outlet-part-2-the-decline-of-student-journalism-and-the-rise-of-ai/"}]}, {"term": "online public opinion", "domain": "INFORMATION", "threat": 1.0451, "attention": 0.418, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 5, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Netizen Voices: “Money Can’t Get Out, and Neither Can People”", "url": "https://chinadigitaltimes.net/2026/05/netizen-voices-money-cant-get-out-and-neither-can-people/"}, {"title": "Translations: On the Coal Mine Explosion in Liushenyu, Shanxi, That Killed 82 Miners and Injured 128", "url": "https://chinadigitaltimes.net/2026/05/translations-on-the-coal-mine-explosion-in-liushenyu-shanxi-that-killed-82-miners-and-injured-128/"}]}, {"term": "WeChat", "domain": "TECHNOLOGY", "threat": 1.0418, "attention": 0.4167, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 4, "hist_count": 0, "first_seen": "2026-05-06T01:33:59+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Translation: The Decade-long Death of a Campus Media Outlet, Part 2: The Decline of Student Journalism and the Rise of AI", "url": "https://chinadigitaltimes.net/2026/05/translation-the-decade-long-death-of-a-campus-media-outlet-part-2-the-decline-of-student-journalism-and-the-rise-of-ai/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "chinese abroad", "domain": "SOCIETY", "threat": 1.0418, "attention": 0.4167, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-06-01T06:46:06+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Netizen Voices: “Money Can’t Get Out, and Neither Can People”", "url": "https://chinadigitaltimes.net/2026/05/netizen-voices-money-cant-get-out-and-neither-can-people/"}]}, {"term": "Shanxi", "domain": "SAFETY", "threat": 1.0386, "attention": 0.4155, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-30T06:36:38+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Translations: On the Coal Mine Explosion in Liushenyu, Shanxi, That Killed 82 Miners and Injured 128", "url": "https://chinadigitaltimes.net/2026/05/translations-on-the-coal-mine-explosion-in-liushenyu-shanxi-that-killed-82-miners-and-injured-128/"}]}, {"term": "mining accidents", "domain": "SAFETY", "threat": 1.0386, "attention": 0.4155, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-30T06:36:38+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Translations: On the Coal Mine Explosion in Liushenyu, Shanxi, That Killed 82 Miners and Injured 128", "url": "https://chinadigitaltimes.net/2026/05/translations-on-the-coal-mine-explosion-in-liushenyu-shanxi-that-killed-82-miners-and-injured-128/"}]}, {"term": "Douyin", "domain": "TECHNOLOGY", "threat": 1.0358, "attention": 0.4143, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 3, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Netizen Voices: Is Xi Jinping on Top of the World, or a Tortoise on a Utility Pole?", "url": "https://chinadigitaltimes.net/2026/05/netizen-voices-is-xi-jinping-on-top-of-the-world-or-a-tortoise-on-a-utility-pole/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "Russia relations", "domain": "FOREIGN", "threat": 1.0357, "attention": 0.4143, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-21T17:22:46+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "Translations: Censored Articles Decry Chinese Schoolchildren Being Used as “Props” in Vladivostok’s Victory Day Celebrations", "url": "https://chinadigitaltimes.net/2026/05/translations-censored-articles-decry-chinese-schoolchildren-being-used-as-props-in-vladivostoks-victory-day-celebrations/"}]}, {"term": "404", "domain": "INFORMATION", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "404 Deleted Content Archive", "domain": "INFORMATION", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "Censorship Vault", "domain": "INFORMATION", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "Germany", "domain": "FOREIGN", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "LGBT rights", "domain": "SOCIETY", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "LGBTQ+", "domain": "SOCIETY", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "RSDL", "domain": "POLITICS", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "Weibo", "domain": "TECHNOLOGY", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-05-14T04:58:26+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}, {"title": "CDT’s “404 Deleted Content Archive” Summary for April 2026", "url": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"}]}, {"term": "academic corruption", "domain": "POLITICS", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "academic fraud", "domain": "POLITICS", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "account bombing", "domain": "INFORMATION", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "activists", "domain": "SOCIETY", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "advertising", "domain": "ECONOMY", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "bloggers", "domain": "INFORMATION", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}, {"term": "courts", "domain": "POLITICS", "threat": 1.0355, "attention": 0.4142, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "CDT’s “404 Deleted Content Archive” Summary for May 2026", "url": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"}]}], "source_feeds": {"cdt_english": 200, "cdt_404": 301, "cdt_minitrue": 301, "cdt_economy": 301}};window.__DDTI_EMBED_AT__="2026-06-18T13:28Z";</script>
+<script>
+// Honest fallback: render immediately with representative SAMPLE data, but try
+// the live API and clearly badge which one is on screen.
+const SAMPLE = {
+  status:"sample",
+  scope:"censor attention allocation (numerator-only; not a true deletion rate)",
+  n_observations_used:142, n_terms:18,
+  window:{current_days:3, history_days:30, half_life_days:2, novelty_weight:1.5},
+  ranked:[
+    {term:"某省银行挤兑", threat:7.69, attention:3.08, novelty:1.0, burst_ratio:null, is_new:true, recent_count:9, hist_count:0,
+     samples:[{title:"Depositors line up overnight at rural bank branches in Henan"},{title:"'My savings are frozen' — viral thread scrubbed within minutes"},{title:"Local police disperse crowd outside bank HQ"}]},
+    {term:"青年失业率", threat:6.50, attention:2.64, novelty:0.97, burst_ratio:36.0, is_new:false, recent_count:11, hist_count:1,
+     samples:[{title:"Youth jobless figure suspended again after record print"},{title:"Graduates post '蹲族' lying-flat photos en masse"}]},
+    {term:"房地产税", threat:5.50, attention:2.40, novelty:0.86, burst_ratio:7.2, is_new:false, recent_count:8, hist_count:5,
+     samples:[{title:"Property-tax pilot expansion rumor triggers selloff chatter"},{title:"Developers' offshore bond prices crater"}]},
+    {term:"人民币贬值", threat:4.12, attention:2.02, novelty:0.71, burst_ratio:4.4, is_new:false, recent_count:7, hist_count:6,
+     samples:[{title:"Onshore yuan tests 7.3 as outflows accelerate"},{title:"State banks spotted selling dollars to slow the slide"}]},
+    {term:"烂尾楼", threat:3.38, attention:1.81, novelty:0.61, burst_ratio:3.6, is_new:false, recent_count:6, hist_count:7,
+     samples:[{title:"Unfinished-tower mortgage strike spreads to 90+ projects"}]},
+    {term:"李某某", threat:2.94, attention:1.21, novelty:1.0, burst_ratio:null, is_new:true, recent_count:4, hist_count:0,
+     samples:[{title:"Senior official's name vanishes from People's Daily byline list"},{title:"Inspection-tour appearances stop abruptly"}]},
+    {term:"社保亏空", threat:2.10, attention:1.40, novelty:0.33, burst_ratio:1.9, is_new:false, recent_count:5, hist_count:11,
+     samples:[{title:"Provincial pension shortfall report deleted from finance forums"}]},
+    {term:"出口下滑", threat:1.62, attention:1.28, novelty:0.18, burst_ratio:1.4, is_new:false, recent_count:4, hist_count:14,
+     samples:[{title:"Customs data shows third straight monthly export decline"}]}
+  ]
+};
+
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const $=id=>document.getElementById(id);
+// XSS defense: feed data (term, headlines) is untrusted scraped content. Escape
+// EVERY interpolated string; coerce every numeric field so a string payload in a
+// number slot can't break out of the markup.
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(x,d=2)=>{const n=Number(x);return Number.isFinite(n)?n.toFixed(d):"—";};
+const intg=x=>{const n=Number(x);return Number.isFinite(n)?Math.trunc(n):0;};
+
+function setFeed(state){
+  const tag=$("feedTag"), note=$("feedNote");
+  tag.className="feed-tag "+state;
+  if(state==="live"){tag.textContent="● LIVE"; note.textContent="streaming from ddti:index:latest";}
+  else if(state==="snapshot"){tag.textContent="● SNAPSHOT"; note.textContent="real CDT pull "+(window.__DDTI_EMBED_AT__||"")+" — start the API for live updates";}
+  else if(state==="err"){tag.textContent="API UNREACHABLE"; note.textContent="showing last snapshot — start the backend for live signal";}
+  else{tag.textContent="SAMPLE DATA"; note.textContent="demonstration feed — connect the API for live signal";}
+}
+
+function renderStats(d){
+  const w=d.window||{};
+  const cells=[
+    {k:"Terms tracked", v:d.n_terms ?? d.ranked.length, accent:false},
+    {k:"Deletions observed", v:d.n_observations_used ?? "—", accent:true},
+    {k:"New this window", v:d.ranked.filter(r=>r.is_new).length, accent:true},
+    {k:"Window", v:(w.current_days??3), s:"d / "+(w.history_days??30)+"d base"},
+  ];
+  $("stats").innerHTML=cells.map(c=>`
+    <div class="stat ${c.accent?'accent':''}">
+      <div class="k">${esc(c.k)}</div>
+      <div class="v">${esc(c.v)}${c.s?`<small> ${esc(c.s)}</small>`:""}</div>
+    </div>`).join("");
+}
+
+// Domain palette (mirrors config/ddti_threat_categories.json). Whitelisted lookup
+// → an attacker-controlled domain string can only ever resolve to a fixed color.
+const DOMAIN_COLORS={ECONOMY:"#3ad6a0",POLITICS:"#ff7a3c",SOCIETY:"#d8a657",
+  TECHNOLOGY:"#5aa2ff",FOREIGN:"#b07cff",INFORMATION:"#ff2f2f",SAFETY:"#e0c64a",OTHER:"#8c8678"};
+function domainChip(dom){
+  const key=DOMAIN_COLORS[dom]?dom:"OTHER";
+  return `<span class="dchip" style="color:${DOMAIN_COLORS[key]}">${esc(key)}</span>`;
+}
+
+function renderBoard(d){
+  const max=Math.max(...d.ranked.map(r=>r.threat),0.001);
+  $("board").innerHTML=d.ranked.map((r,i)=>{
+    const w=clamp(Number(r.threat)/max*100,3,100);
+    const tcls=i===0?"t1":i===1?"t2":i===2?"t3":"";
+    const stamp=r.is_new?`<span class="stamp"><span class="cn">新</span>NEW</span>`:"";
+    const burst=r.burst_ratio==null?"new":num(r.burst_ratio,1)+"×";
+    const leaks=(r.samples||[]).map(s=>`<div class="leak">${esc(s.title||"")}</div>`).join("");
+    return `<div class="row ${tcls}" style="animation-delay:${i*70}ms">
+      <div class="rank">${String(i+1).padStart(2,"0")}</div>
+      <div class="row-top">
+        <div class="term">${esc(r.term)}</div>${stamp}${domainChip(r.domain)}
+        <div class="spacer"></div>
+        <div class="threatnum"><div class="v">${num(r.threat)}</div><div class="l">threat</div></div>
+      </div>
+      <div class="meter"><i style="--w:${clamp(w,3,100)}%"></i></div>
+      <div class="metrics">
+        <span>attention <b>${num(r.attention)}</b></span>
+        <span>novelty <b class="${Number(r.novelty)>=0.8?'sig':''}">${num(r.novelty)}</b></span>
+        <span>burst <b class="jade">${esc(burst)}</b></span>
+        <span>deletions <b>${intg(r.recent_count)}</b> <span style="color:var(--bone-faint)">/ ${intg(r.hist_count)} hist</span></span>
+      </div>
+      ${leaks?`<div class="leaks">${leaks}</div>`:""}
+    </div>`;
+  }).join("");
+}
+
+function renderAlerts(list){
+  const el=$("alerts");
+  if(!list || !list.length){
+    el.innerHTML=`<div class="alert" style="color:var(--bone-faint)">No alerts in window.</div>`; return;
+  }
+  el.innerHTML=list.slice(0,8).map(a=>`
+    <div class="alert">
+      <span class="at">${esc(a.term)}</span>
+      ${a.is_new?`<span class="new">新 NEW</span>`:""}
+      <span class="meta">threat ${num(a.threat)}<br>${esc((a.at||"").slice(11,16))}</span>
+    </div>`).join("");
+}
+
+function alertsFromIndex(d){
+  return d.ranked.filter(r=>r.is_new || r.threat>=3.0)
+    .map(r=>({term:r.term, threat:r.threat, is_new:r.is_new, at:d.generated_at||""}));
+}
+
+async function boot(){
+  $("clock").textContent=new Date().toISOString().slice(11,19);
+  // Fallback chain: live API → real embedded snapshot → demonstration sample.
+  const EMBED=window.__DDTI_EMBED__;
+  let d = (EMBED && EMBED.ranked && EMBED.ranked.length) ? EMBED : SAMPLE;
+  let feed = (EMBED && EMBED.ranked && EMBED.ranked.length) ? "snapshot" : "sample";
+  try{
+    const res=await fetch("/api/v4/ddti/index",{cache:"no-store"});
+    if(res.ok){
+      const live=await res.json();
+      if(live && Array.isArray(live.ranked) && live.ranked.length){ d=live; feed="live"; }
+      else if(feed!=="snapshot"){ feed="sample"; } // API up but empty → keep embed/sample, stay honest
+    } else if(feed!=="snapshot"){ feed="err"; }
+  }catch(e){ if(feed!=="snapshot") feed="err"; }
+
+  setFeed(feed);
+  if(d.scope) $("scope").textContent="SCOPE — "+d.scope;
+  renderStats(d); renderBoard(d);
+
+  let alerts=alertsFromIndex(d);
+  if(feed==="live"){
+    try{ const ar=await fetch("/api/v4/ddti/alerts",{cache:"no-store"});
+      if(ar.ok){ const j=await ar.json(); if(j.alerts && j.alerts.length) alerts=j.alerts; } }catch(e){}
+  }
+  renderAlerts(alerts);
+}
+boot();
+setInterval(()=>{ $("clock").textContent=new Date().toISOString().slice(11,19); },1000);
+</script>
+</body>
+</html>

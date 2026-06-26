@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>censorwatch — deletion velocity</title>
+<style>
+  :root{--bg:#0b0d10;--panel:#14181d;--line:#232a31;--ink:#e7ecf0;--dim:#8b97a3;
+        --red:#e2444b;--amber:#e0a13c;--ok:#3fb27f;--mono:'JetBrains Mono',ui-monospace,Menlo,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.5}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline}
+  h1{font-size:16px;margin:0;letter-spacing:.04em}
+  h1 .red{background:var(--red);color:#000;padding:0 6px}
+  .sub{color:var(--dim);font-size:11px}
+  .wrap{padding:18px 22px;max-width:1100px;margin:0 auto}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--line);padding:14px}
+  .card .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  .card .v{font-size:24px;margin-top:6px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px;margin:26px 0 12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--dim);font-weight:400;font-size:11px;text-transform:uppercase}
+  .term{font-size:14px}
+  .bar{height:6px;background:var(--red);opacity:.85;margin-top:4px;min-width:2px}
+  .spike{background:var(--red);color:#000;padding:0 5px;font-size:11px}
+  .quiet{color:var(--dim)}
+  .chip{display:inline-block;background:#1d242b;border:1px solid var(--line);padding:0 6px;margin:1px 2px;font-size:11px}
+  .dom{font-size:10px;color:var(--dim)}
+  .lat{color:var(--amber)}
+  footer{color:var(--dim);font-size:11px;padding:14px 22px;border-top:1px solid var(--line);margin-top:20px}
+  .empty{color:var(--dim);padding:24px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="red">CENSOR</span>WATCH · deletion velocity</h1>
+  <div class="sub" id="stamp">loading…</div>
+</header>
+<div class="wrap">
+  <div class="cards">
+    <div class="card"><div class="k">deletions / window</div><div class="v" id="c-del">–</div></div>
+    <div class="card"><div class="k">terms scrubbed</div><div class="v" id="c-terms">–</div></div>
+    <div class="card"><div class="k">active spikes</div><div class="v" id="c-spikes">–</div></div>
+    <div class="card"><div class="k">top scrubbed</div><div class="v term" id="c-top">–</div></div>
+  </div>
+
+  <h2>Being scrubbed right now</h2>
+  <table id="rank"><thead><tr>
+    <th style="width:34%">term</th><th>count</th><th>vel/hr</th><th>z-score</th><th>status</th>
+  </tr></thead><tbody id="rank-body"></tbody></table>
+
+  <h2>Recent confirmed deletions</h2>
+  <table id="del"><thead><tr>
+    <th>source</th><th>post</th><th>deleted (UTC)</th><th>latency</th><th>terms</th>
+  </tr></thead><tbody id="del-body"></tbody></table>
+</div>
+<footer>
+  Confirmed deletions only · ambiguous/blocked fetches excluded · degraded cycles suppressed.
+  Auto-refresh 30s. <span id="src-health" class="quiet"></span>
+</footer>
+
+<script>
+// All feed-derived strings pass through esc(): the post text is untrusted.
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>(
+  {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function num(v){const n=Number(v);return Number.isFinite(n)?n:0;}
+function fmtLat(s){if(s==null)return '–';s=num(s);
+  if(s<3600)return Math.round(s/60)+'m';
+  if(s<86400)return (s/3600).toFixed(1)+'h';return (s/86400).toFixed(1)+'d';}
+
+async function load(){
+  let vel={ranked:[],n_deletions:0,n_terms:0,top_term:null},dels=[];
+  try{vel=await (await fetch('velocity')).json();}catch(e){}
+  try{dels=await (await fetch('deletions?limit=50')).json();}catch(e){}
+
+  const ranked=Array.isArray(vel.ranked)?vel.ranked:[];
+  const spikes=ranked.filter(r=>r&&r.spike).length;
+  document.getElementById('c-del').textContent=num(vel.n_deletions);
+  document.getElementById('c-terms').textContent=num(vel.n_terms);
+  document.getElementById('c-spikes').textContent=spikes;
+  document.getElementById('c-top').innerHTML=vel.top_term?esc(vel.top_term):'<span class="quiet">none</span>';
+  document.getElementById('stamp').textContent=vel.generated_at?('updated '+esc(vel.generated_at)):'no data yet';
+
+  const maxZ=Math.max(1,...ranked.map(r=>num(r.z)));
+  const rb=document.getElementById('rank-body');
+  rb.innerHTML = ranked.length ? ranked.map(r=>{
+    const w=Math.max(2,Math.round(num(r.z)/maxZ*100));
+    const status=r.spike?'<span class="spike">SPIKE</span>':'<span class="quiet">—</span>';
+    const dom=r.domain?(' <span class="dom">'+esc(r.domain)+'</span>'):'';
+    return `<tr><td><span class="term">${esc(r.term)}</span>${dom}<div class="bar" style="width:${w}%"></div></td>`
+         +`<td>${num(r.count)}</td><td>${num(r.velocity_per_hour)}</td>`
+         +`<td>${num(r.z).toFixed(2)}</td><td>${status}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty">No deletions in the current window yet.</td></tr>';
+
+  const db=document.getElementById('del-body');
+  db.innerHTML = (Array.isArray(dels)&&dels.length) ? dels.map(d=>{
+    const kw=(Array.isArray(d.keywords)?d.keywords:[]).map(k=>'<span class="chip">'+esc(k)+'</span>').join('');
+    return `<tr><td>${esc(d.source)}</td><td class="quiet">${esc(d.post_id)}</td>`
+         +`<td>${esc((d.deleted_at||'').replace('T',' ').slice(0,19))}</td>`
+         +`<td class="lat">${fmtLat(d.latency_seconds)}</td><td>${kw||'<span class="quiet">—</span>'}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty">No confirmed deletions recorded yet.</td></tr>';
+}
+load();setInterval(load,30000);
+</script>
+</body>
+</html>

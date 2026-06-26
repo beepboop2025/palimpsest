@@ -1,0 +1,85 @@
+{
+  "_meta": {
+    "purpose": "Chinese censorship euphemisms & deletion-trigger vocabulary for DDTI term extraction on Chinese-language deletion feeds.",
+    "note": "Publicly documented evasion terms (cf. CDT Grass-Mud Horse Lexicon). Used DEFENSIVELY to DETECT censored content. Authored by Claude: the China-hosted Kimi model rejected this task as high-risk — route politically sensitive China work off the in-jurisdiction model.",
+    "usage": "extract_terms() substring-matches the zh fields against Chinese text; en is the analyst gloss."
+  },
+  "categories": {
+    "june4_tiananmen": [
+      {"zh": "六四", "en": "June 4 (Tiananmen)"},
+      {"zh": "八九", "en": "'89 (1989 movement)"},
+      {"zh": "8964", "en": "1989-06-04 numeric"},
+      {"zh": "五月三十五日", "en": "May 35th = June 4 (date evasion)"},
+      {"zh": "八平方", "en": "8 squared = 8²=64 -> June 4"},
+      {"zh": "坦克人", "en": "Tank Man"},
+      {"zh": "VIIV", "en": "Roman 64 evasion"},
+      {"zh": "烛光", "en": "candlelight (vigil)"},
+      {"zh": "广场", "en": "the Square (Tiananmen)"}
+    ],
+    "leadership_xi": [
+      {"zh": "维尼", "en": "Winnie the Pooh = Xi Jinping"},
+      {"zh": "小熊维尼", "en": "Winnie the Pooh = Xi"},
+      {"zh": "包子", "en": "Baozi/steamed bun = Xi"},
+      {"zh": "习包子", "en": "Xi-baozi"},
+      {"zh": "总加速师", "en": "Accelerator-in-Chief (sarcastic, Xi)"},
+      {"zh": "一尊", "en": "the Venerated One (Xi)"},
+      {"zh": "庆丰帝", "en": "Qingfeng Emperor (Xi)"},
+      {"zh": "登基", "en": "enthronement (re leadership term)"},
+      {"zh": "称帝", "en": "declaring emperor"}
+    ],
+    "protest_dissent": [
+      {"zh": "白纸", "en": "blank paper (A4 protest)"},
+      {"zh": "白纸革命", "en": "White Paper / A4 Revolution"},
+      {"zh": "散步", "en": "taking a walk = protest evasion"},
+      {"zh": "围观", "en": "onlooking/gathering"},
+      {"zh": "上访", "en": "petitioning authorities"},
+      {"zh": "维权", "en": "rights defense"},
+      {"zh": "群体性事件", "en": "mass incident (official euphemism for protest)"},
+      {"zh": "罢工", "en": "strike"},
+      {"zh": "声援", "en": "voicing support/solidarity"}
+    ],
+    "economic_distress": [
+      {"zh": "躺平", "en": "lying flat (work refusal)"},
+      {"zh": "内卷", "en": "involution (ruinous competition)"},
+      {"zh": "鬼城", "en": "ghost city"},
+      {"zh": "烂尾楼", "en": "unfinished/abandoned buildings"},
+      {"zh": "断供", "en": "mortgage payment halt / strike"},
+      {"zh": "暴雷", "en": "financial blowup / default"},
+      {"zh": "挤兑", "en": "bank run"},
+      {"zh": "提款难", "en": "withdrawal difficulty (frozen deposits)"},
+      {"zh": "失业潮", "en": "wave of unemployment"},
+      {"zh": "经济下行", "en": "economic downturn"}
+    ],
+    "emigration_run": [
+      {"zh": "润", "en": "run = emigrate (pun on run/rùn)"},
+      {"zh": "润学", "en": "runology (study of emigrating)"},
+      {"zh": "走线", "en": "'the route' = irregular migration (often via Latin America)"},
+      {"zh": "走线客", "en": "route-takers (irregular migrants)"},
+      {"zh": "肉身翻墙", "en": "physically scaling the wall (fleeing)"},
+      {"zh": "偷渡", "en": "clandestine border crossing"},
+      {"zh": "移民潮", "en": "emigration wave"}
+    ],
+    "censorship_meta": [
+      {"zh": "河蟹", "en": "river crab = 'harmony' = censored"},
+      {"zh": "和谐", "en": "to harmonize = to censor"},
+      {"zh": "翻墙", "en": "scale the wall = use a VPN"},
+      {"zh": "删帖", "en": "delete posts"},
+      {"zh": "屏蔽", "en": "block/shield"},
+      {"zh": "敏感词", "en": "sensitive word"},
+      {"zh": "404", "en": "deleted / not found"},
+      {"zh": "五毛", "en": "50-cent army (paid commenters)"},
+      {"zh": "境外势力", "en": "foreign forces (deflection trope)"}
+    ],
+    "repression_triggers": [
+      {"zh": "维稳", "en": "stability maintenance"},
+      {"zh": "寻衅滋事", "en": "'picking quarrels' (catch-all charge)"},
+      {"zh": "颜色革命", "en": "color revolution (regime threat framing)"},
+      {"zh": "煽动颠覆", "en": "inciting subversion"},
+      {"zh": "跨省", "en": "cross-province (police pursuit)"},
+      {"zh": "喝茶", "en": "'drink tea' = police summons/interrogation"},
+      {"zh": "失联", "en": "lost contact = disappeared"},
+      {"zh": "被自杀", "en": "'suicided' (suspicious death)"},
+      {"zh": "双规", "en": "shuanggui (Party detention)"}
+    ]
+  }
+}

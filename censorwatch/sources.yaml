@@ -1,0 +1,31 @@
+# Censorwatch source registry — DELIBERATELY SEPARATE from the platform's
+# config/sources.yaml. Entries there are auto-swept into the production Celery
+# beat by core.scheduler.build_beat_schedule(); putting censorwatch sources there
+# would leak ungated collect-* jobs into production. The censorwatch beat
+# (beat.py) is hand-authored and flag-gated instead.
+#
+# Adding a new source = one entry here + one file in collectors/. No core changes.
+
+sources:
+  eastmoney_guba:
+    enabled: true
+    collector_class: censorwatch.collectors.eastmoney_guba.EastmoneyGubaCollector
+    config:
+      # Stock bars (股吧) to monitor. Codes are exchange tickers.
+      stock_codes: ["600519", "300750", "601318"]   # Moutai, CATL, Ping An
+      rate_limit: 3.0        # seconds between requests (BaseCollector knob)
+
+  xueqiu:
+    enabled: false           # Aliyun WAF — needs Playwright + residential proxy
+    collector_class: censorwatch.collectors.xueqiu.XueqiuCollector
+    config:
+      symbols: ["SH600519", "SZ300750", "SH601318"]   # Moutai, CATL, Ping An
+      count: 20
+
+  weibo_search:
+    enabled: false           # login-walled / 403 — needs Playwright + in-China residential proxy
+    collector_class: censorwatch.collectors.weibo_search.WeiboSearchCollector
+    config:
+      keywords: ["经济", "失业", "维权", "房地产"]   # tune to monitored topics
+      # control_posts REQUIRED for a meaningful liveness probe (known-live permalinks):
+      control_posts: []
