@@ -81,14 +81,16 @@ The full method, its math, and its honest limits are documented in
  (CDT, GreatFire,     vantages,           novelty, velocity)   gazetteer           open dataset
   Weibo, GDELT)       confirm deletion    + cross-signal       (human-ratified)
   + UNDERTEXT         + divergence            ↑___________________________|
-   active probing                          GOVERNANCE: kill-switch · rate ceiling · hash-chained audit
+  + Airport Carto.    + airport diffs      GOVERNANCE: kill-switch · rate ceiling · hash-chained audit
+   active probing
 ```
 
 **Collection — multi-source public OSINT** (`collectors/`)
 - **China Digital Times** deletion + directive feeds (`collectors/ddti_probe.py`) — runs today from open infrastructure.
 - **GreatFire / FreeWeibo** confirmed-deletion archives.
 - **GDELT global media cross-signal** (`collectors/gdelt_cross_signal.py`) — triangulates the domestic deletion signal against worldwide coverage to separate *containment* ("loud abroad, censored at home") from *blackout* ("loud abroad, conspicuously absent at home"). Standard-library, key-less.
-- **UNDERTEXT — active differential tomography** (`collectors/undertext.py`) — fires the same query at China's public surfaces from many vantage points and treats the *divergence* (across vantage and time) as the signal: deletions, quiet mutations, geo-forks, and shadowban tells, each evidentiary because it is content-addressed and replayable. OONI / Citizen Lab lineage; public-reads-only and governance-gated. See [docs/UNDERTEXT.md](docs/UNDERTEXT.md).
+- **UNDERTEXT — active differential tomography** (`collectors/undertext.py`) — fires the same query at China's public surfaces from many vantage points and treats the *divergence* (across vantage and time) as the signal: deletions, quiet mutations, geo-forks, shadowban tells, and **platform forks** (Douyin vs TikTok narrative divergence), each evidentiary because it is content-addressed and replayable. OONI / Citizen Lab lineage; public-reads-only and governance-gated. See [docs/UNDERTEXT.md](docs/UNDERTEXT.md).
+- **Airport Cartography — the censor of censors** (`collectors/airport.py`) — China's commercial circumvention proxies ("机场" / airports) self-censor and *publish* their blocklists, so each operator's filtering is an independent census of what is dangerous to host commercially inside China. Palimpsest reads only those **published** rules (never subscribing to or routing through any airport) and diffs them across time and operators — newly-blocked targets, inconsistent enforcement, and operator takedowns all feed the DDTI index. Grounded in Habib et al. 2026; see [docs/PAPER-INTEGRATIONS.md](docs/PAPER-INTEGRATIONS.md).
 - **CensorWatch velocity leg** (`censorwatch/`) — archives public posts on first sight and re-fetches to detect deletions it observes directly. Feature-flagged and isolated.
 
 **Measurement — the DDTI index** (`processors/`)
@@ -108,6 +110,9 @@ The full method, its math, and its honest limits are documented in
 | DDTI index (selectivity + novelty) | Running |
 | GDELT cross-signal (containment vs blackout) | Built, tested |
 | UNDERTEXT differential tomography (divergence detector + DDTI integration) | Built, tested |
+| Airport Cartography (censor-of-censors; blocklist diffs → DDTI) | Built, tested |
+| Platform-fork detection (Douyin/TikTok narrative divergence) | Built, tested |
+| Structured item extraction (stdlib `html.parser`, item-set fingerprint) | Built, tested |
 | Self-evolving euphemism gazetteer (human-ratified) | Built, tested |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
 | Chinese-language layer (62-term censorship gazetteer) | Built |
@@ -148,6 +153,7 @@ pip install -r requirements.txt
 PYTHONPATH=. python3 -c "from processors.ddti_index import load_censorship_terms; print(len(load_censorship_terms()), 'sensitive terms loaded')"
 PYTHONPATH=. python3 processors/gazetteer_evolution.py   # discovers 散步 from sample deletions
 PYTHONPATH=. python3 collectors/undertext.py             # divergence tomography (deletion + geo-fork)
+PYTHONPATH=. python3 collectors/airport.py               # airport cartography (block-added + operator-fork)
 PYTHONPATH=. python3 core/governance.py                  # kill-switch + audit-chain demo
 
 # Tests (pure/offline cores):
@@ -165,6 +171,7 @@ need PostgreSQL and Redis, plus in-country egress for live velocity. See
 | --- | --- |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/UNDERTEXT.md](docs/UNDERTEXT.md) | Active differential tomography — many-vantage divergence as signal |
+| [docs/PAPER-INTEGRATIONS.md](docs/PAPER-INTEGRATIONS.md) | How four 2026 research papers were folded in (Airport Cartography, platform forks, MT-aware matching, item extraction) — taxonomy/method only, posture preserved |
 | [docs/OSINT_SOURCES.md](docs/OSINT_SOURCES.md) | Every public source, how it's accessed, what it yields, and its limits |
 | [docs/ETHICS.md](docs/ETHICS.md) | Threat model, do-no-harm rules, and why the platform is OSINT-only |
 | [docs/FUNDING.md](docs/FUNDING.md) | The public-good model, the velocity gap, and the planned work |

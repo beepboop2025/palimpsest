@@ -77,6 +77,9 @@ _EN_GAZETTEER = [
     "Hong Kong", "Xinjiang", "Tibet", "Taiwan", "PBOC", "Sino-American Summit",
     "capital controls", "youth unemployment", "coal mine", "bank run",
     "property", "censorship", "sensitive words", "404",
+    # airport self-censorship targets + China-US framing (Habib et al. / Wei et al. 2026)
+    "Falun Gong", "Epoch Times", "Radio Free Asia", "great power rivalry",
+    "American decline", "values dialogue",
 ]
 
 # Generic CDT/CMS taxonomy that carries no threat signal — dropped from terms.

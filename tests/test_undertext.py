@@ -144,6 +144,47 @@ def test_divergence_flows_into_ddti_index():
     assert any(r["term"] == "某地 挤兑" for r in index["ranked"])
 
 
+# ── AutoScraper: stdlib item extraction (item-set fingerprint) ───────────────────────
+
+def test_extract_items_and_fingerprint():
+    from collectors.undertext import extract_items, items_fingerprint_text
+    html = ('<div class="r result"><a>烂尾楼</a></div>'
+            '<div class="result"><a>白纸</a></div><div class="ad">x</div>')
+    items = extract_items(html, {"tag": "div", "class": "result"})
+    assert items == ["烂尾楼", "白纸"]                       # ads excluded, order preserved
+    assert extract_items(html, None) == []                   # bad selector -> safe []
+    # reorder => same fp (low signal); set membership change => different fp (high signal)
+    assert items_fingerprint_text(["b", "a"]) == items_fingerprint_text(["a", "b"])
+    assert items_fingerprint_text(["a"]) != items_fingerprint_text(["a", "c"])
+
+
+def test_item_selector_vantage_fingerprints_items_not_chrome():
+    """With an item_selector, a changing view-count (chrome) must NOT change content_fp;
+    only a changing result item should."""
+    sel = [{"name": "weibo", "url": "https://x/{query}",
+            "item_selector": {"tag": "li", "class": "card"}}]
+    page = '<div>views 12345</div><li class="card">挤兑 rumor</li>'
+    page2 = '<div>views 99999</div><li class="card">挤兑 rumor</li>'   # only chrome changed
+    fp = WebVantagePoint("GLOBAL", "anon-web", surfaces=sel, fetch=lambda u: page).observe(Probe("挤兑"))[0]
+    fp2 = WebVantagePoint("GLOBAL", "anon-web", surfaces=sel, fetch=lambda u: page2).observe(Probe("挤兑"))[0]
+    assert fp.present and fp.content_fp == fp2.content_fp     # chrome ignored
+
+
+# ── Douyin/TikTok: feature-based platform fork ───────────────────────────────────────
+
+def test_narrative_divergence_platform_fork():
+    from collectors.undertext import (narrative_divergence, PLATFORM_FORK, derive_features)
+    pr = Probe(query="china-us", domain="FOREIGN")
+    douyin = Observation(pr, Vantage("CN", "anon", "douyin"), present=True, content_fp="x",
+                         features=derive_features("霸权 great power rivalry 中国威胁"))
+    tiktok = Observation(pr, Vantage("US", "anon", "tiktok"), present=True, content_fp="y",
+                         features=derive_features("values culture 合作 friendship"))
+    bare = Observation(pr, Vantage("US", "anon", "tiktok"), present=True, content_fp="y")
+    d = narrative_divergence(douyin, tiktok)
+    assert d is not None and d.kind == PLATFORM_FORK
+    assert narrative_divergence(douyin, bare) is None        # no features -> inert
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(__import__("pytest").main([__file__, "-q"]))

@@ -181,6 +181,40 @@ def mine_candidates(observations: list[dict],
     return candidates
 
 
+# ── evasion-phenomenon taxonomy (CSM-MTBench, Zhao et al. 2026) ────────────────────────
+# The MT benchmark shows these classes fail machine translation differently — which is
+# also why this project matches euphemisms in Chinese DIRECTLY (extract_terms substring-
+# matches zh) and never translates zh→en first: translation destroys the coinage before
+# it can be detected. Tagging a candidate by phenomenon lets a curator triage faster.
+_PHENOMENON_BY_CATEGORY = {
+    "june4_tiananmen": "numeronym", "leadership_xi": "homophone", "censorship_meta": "homophone",
+}
+
+
+def classify_phenomenon(term: str, category: str = "") -> str:
+    """Tag a term numeronym / homophone / affective / lexical. Seed categories carry a
+    curated default; evolved terms fall back to a heuristic (digits→numeronym,
+    emoji→affective, else lexical)."""
+    if any(ch.isdigit() for ch in term):
+        return "numeronym"
+    if category in _PHENOMENON_BY_CATEGORY:
+        return _PHENOMENON_BY_CATEGORY[category]
+    if any(ord(ch) > 0x1F000 for ch in term):
+        return "affective"
+    return "lexical"
+
+
+def slang_recall(found_terms, truth_terms) -> dict:
+    """Validation seam (CSM-MTBench): score discovered/known terms against a labeled slang
+    set (e.g. the benchmark's source-side inventory) to tune MIN_EVIDENCE / PROMOTE_SCORE.
+    Pure set math — stdlib only."""
+    found, truth = set(found_terms), set(truth_terms)
+    hit = found & truth
+    return {"recall": round(len(hit) / len(truth), 3) if truth else 0.0,
+            "hits": sorted(hit), "missed": sorted(truth - found),
+            "n_truth": len(truth), "n_found": len(found)}
+
+
 def build_proposal_ledger(candidates: list[Candidate]) -> dict:
     """Render a human-review ledger: the proposals a curator should ratify, plus the
     watch list, with full provenance. This is the ONLY output that touches the

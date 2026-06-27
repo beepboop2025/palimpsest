@@ -86,6 +86,17 @@ def test_propose_glosses_is_offline_by_default():
     assert out[0]["ratified"] is False
 
 
+def test_phenomenon_taxonomy_and_slang_recall():
+    """CSM-MTBench (Zhao et al. 2026): evasion-phenomenon split + validation seam."""
+    from processors.gazetteer_evolution import classify_phenomenon, slang_recall
+    assert classify_phenomenon("8964", "june4_tiananmen") == "numeronym"
+    assert classify_phenomenon("维尼", "leadership_xi") == "homophone"
+    assert classify_phenomenon("润", "emigration_run") == "lexical"
+    assert classify_phenomenon("🙄") == "affective"
+    r = slang_recall(["润", "白纸"], ["润", "白纸", "躺平"])
+    assert r["recall"] == 0.667 and r["missed"] == ["躺平"]
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(__import__("pytest").main([__file__, "-q"]))

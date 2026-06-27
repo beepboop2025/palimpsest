@@ -75,6 +75,103 @@ def normalize_body(text: str) -> str:
     return s[:20000]
 
 
+# ── structured item extraction (AutoScraper, runtime/stdlib half) ──────────────────────
+# Paper: "AutoScraper: A Progressive Understanding Web Agent for Web Scraper Generation"
+# (2026). Its LLM-driven selector GENERATION is a dev-time, out-of-tree concern (needs an
+# LLM + a real HTML stack, and assumes server-rendered pages). The cheap half — EXECUTING
+# a selector — is stdlib-feasible, and it fixes a real weakness: normalize_body
+# fingerprints the WHOLE page, so any chrome change (timestamp, view count, an ad) flips
+# the fp and fakes a MUTATION. Fingerprinting the SET OF RESULT ITEMS instead means an fp
+# change reflects the actual result list. Stdlib `html.parser` only.
+
+from html.parser import HTMLParser  # noqa: E402  (kept beside its only users)
+
+
+class _ItemParser(HTMLParser):
+    """Collect inner text of every element matching (tag, class-token); same-tag nesting
+    handled with a depth counter so a card containing inner tags is captured as one item."""
+
+    def __init__(self, tag: str, cls: str):
+        super().__init__(convert_charrefs=True)
+        self._tag, self._cls = tag.lower(), cls.lower()
+        self.items: list = []
+        self._depth, self._buf, self._cap = 0, [], False
+
+    def _matches(self, attrs) -> bool:
+        if not self._cls:
+            return True
+        for k, v in attrs:
+            if k == "class" and v and self._cls in v.lower().split():
+                return True
+        return False
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+        if not self._cap:
+            if tag == self._tag and self._matches(attrs):
+                self._cap, self._depth, self._buf = True, 1, []
+        elif tag == self._tag:
+            self._depth += 1
+
+    def handle_endtag(self, tag):
+        if self._cap and tag.lower() == self._tag:
+            self._depth -= 1
+            if self._depth == 0:
+                t = " ".join(" ".join(self._buf).split())
+                if t:
+                    self.items.append(t)
+                self._cap = False
+
+    def handle_data(self, data):
+        if self._cap and data.strip():
+            self._buf.append(data)
+
+
+def extract_items(html: str, selector: dict) -> list:
+    """Inner text of every element matching selector {tag, class}, in document order.
+    Tolerant of malformed HTML; returns [] on no match / bad selector (never raises), so
+    a vantage degrades to the whole-body path rather than crashing a cycle."""
+    tag = (selector or {}).get("tag")
+    if not tag:
+        return []
+    try:
+        p = _ItemParser(tag, (selector or {}).get("class", ""))
+        p.feed(html or "")
+        p.close()
+        return p.items
+    except Exception:
+        return []
+
+
+def items_fingerprint_text(items: list) -> str:
+    """Order-independent text view of the item SET for content-addressing: reordering a
+    result list (low signal) is ignored; an item appearing/disappearing (high signal) is
+    not. Feed to content_key exactly as a normalized body would be."""
+    return "\n".join(sorted(set(i for i in items if i)))
+
+
+# small bilingual lexicons for the narrative-fork feature (stdlib; no ML, unlike the
+# Douyin/TikTok paper's BERTopic + LLM sentiment — we keep only its taxonomy/findings).
+_POS = {"cooperation", "dialogue", "friendship", "exchange", "合作", "交流", "友好"}
+_NEG = {"rivalry", "hegemony", "threat", "containment", "decline", "霸权", "威胁", "遏制"}
+_TOPIC_KEYS = {
+    "power_rivalry": ("great power", "rivalry", "霸权", "大国", "中国威胁", "american decline"),
+    "values_culture": ("values", "culture", "education", "文化", "教育", "价值观"),
+    "economy_tech": ("economy", "trade", "technology", "经济", "贸易", "科技", "芯片"),
+}
+
+
+def derive_features(text: str) -> dict:
+    """Derived features for narrative/platform forks: a coarse sentiment polarity and the
+    set of China-US framing topics present (Wei et al. 2026 taxonomy). Stdlib, inline."""
+    t = (text or "").lower()
+    pos = sum(1 for w in _POS if w in t)
+    neg = sum(1 for w in _NEG if w in t)
+    sentiment = 0.0 if pos + neg == 0 else round((pos - neg) / (pos + neg), 3)
+    topics = sorted({name for name, keys in _TOPIC_KEYS.items() if any(k in t for k in keys)})
+    return {"sentiment": sentiment, "topics": topics}
+
+
 # ── the vantage tensor: observation = f(query × geo × cohort × surface × time) ───────
 
 @dataclass(frozen=True)
@@ -105,6 +202,7 @@ class Observation:
     rank: int = -1                # position in a result list, -1 if n/a
     observed_at: float = field(default_factory=time.time)
     raw_excerpt: str = ""         # short preview for the analyst / audit trail
+    features: dict = field(default_factory=dict)  # derived feats (sentiment, topics) for narrative forks
 
     def observation_key(self) -> str:
         """Identity of the *logical query at this vantage* — excludes time and content.
@@ -121,6 +219,7 @@ DELETION = "deletion"        # was present, now absent
 MUTATION = "mutation"        # present both times, content_fp changed (quiet edit)
 GEO_FORK = "geo_fork"        # same query+time, two geos disagree (localized block)
 COHORT_FORK = "cohort_fork"  # same query+time, two cohorts disagree (shadowban tell)
+PLATFORM_FORK = "platform_fork"  # same topic, two platforms, narrative diverges (Douyin/TikTok)
 
 
 @dataclass
@@ -201,6 +300,32 @@ class DivergenceDetector:
                     out.append(Divergence(kind, a.probe, a, b,
                                           detail=f"{a.vantage.tag()} vs {b.vantage.tag()}"))
         return out
+
+
+def narrative_divergence(a: Observation, b: Observation, *,
+                         sentiment_eps: float = 0.4,
+                         topic_jaccard_max: float = 0.5):
+    """Feature-based fork for a PLATFORM PAIR (e.g. surface="douyin" vs "tiktok").
+
+    Validation: Wei et al. 2026, "Cross-Platform Short-Video Diplomacy", found Douyin and
+    TikTok serve structurally different narratives of China-US relations (≈4× sentiment
+    asymmetry; power/economy vs culture/values framing) from one parent company — a
+    narrative-control signal. cross_vantage() can't capture it: two platforms ALWAYS
+    differ in content_fp (different bytes/language), so it would flag every pair trivially
+    and mislabel it GEO_FORK. The payload is divergence in DERIVED features — sentiment
+    delta and topic dissimilarity — set by derive_features upstream. Returns None when
+    features are absent, so it stays inert until a platform pair is wired."""
+    fa, fb = a.features or {}, b.features or {}
+    if "sentiment" not in fa or "sentiment" not in fb:
+        return None
+    sent_delta = abs(float(fa["sentiment"]) - float(fb["sentiment"]))
+    ta, tb = set(fa.get("topics", [])), set(fb.get("topics", []))
+    union = ta | tb
+    jaccard = (len(ta & tb) / len(union)) if union else 1.0
+    if sent_delta >= sentiment_eps or jaccard <= topic_jaccard_max:
+        return Divergence(PLATFORM_FORK, a.probe, a, b,
+                          detail=f"sentiment_delta={sent_delta:.2f} topic_jaccard={jaccard:.2f}")
+    return None
 
 
 # ── persistence ──────────────────────────────────────────────────────────────────────
@@ -302,11 +427,19 @@ class WebVantagePoint:
                             v.tag(), probe.query, type(e).__name__)
                 out.append(Observation(probe, v, present=False, content_fp=""))
                 continue
-            norm = normalize_body(body)
-            present = len(norm) >= _MIN_PRESENT_LEN
+            # AutoScraper path: if the surface declares an item_selector, fingerprint the
+            # SET OF RESULT ITEMS rather than the chrome-laden whole body (far fewer false
+            # MUTATIONs). Falls back to the body when extraction yields nothing.
+            items = extract_items(body, s.get("item_selector")) if s.get("item_selector") else []
+            if items:
+                fp_text, present, excerpt = items_fingerprint_text(items), True, " | ".join(items[:3])[:200]
+            else:
+                fp_text = normalize_body(body)
+                present, excerpt = len(fp_text) >= _MIN_PRESENT_LEN, fp_text[:200]
             out.append(Observation(probe, v, present=present,
-                                   content_fp=content_key(norm) if present else "",
-                                   raw_excerpt=norm[:200]))
+                                   content_fp=content_key(fp_text) if present else "",
+                                   raw_excerpt=excerpt,
+                                   features=derive_features(" ".join(items) if items else fp_text)))
         return out
 
 
