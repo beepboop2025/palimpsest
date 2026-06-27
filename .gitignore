@@ -1,20 +1,15 @@
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
 .venv/
 venv/
+*.egg-info/
 .pytest_cache/
-.mypy_cache/
 
-# Data / runtime artifacts (never commit captured content)
-data/
-*.sqlite
-*.db
+# Demo-generated artifacts (regenerated on every run)
+demo/report.html
+demo/data/
+
+# Local env / secrets
 .env
-.env.*
-
-# OS / editor
-.DS_Store
-.idea/
-.vscode/
+*.sqlite3
