@@ -394,38 +394,88 @@ DOMAIN_COLOR = {"LEADERSHIP": "#ff5470", "INFORMATION": "#4dd0e1", "ECONOMY": "#
 VERDICT_COLOR = {"censorship": "#ff5470", "ambiguous": "#ffb454", "user deletion": "#5c6b7a"}
 
 _CSS = """
-:root{--bg:#0b0b0d;--panel:#15151b;--line:#23232c;--txt:#e9e4d8;--mut:#8a8472;--accent:#4dd0e1;}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);
-font:14px/1.5 'JetBrains Mono',ui-monospace,Menlo,monospace}
-header{padding:20px 30px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-header h1{margin:0;font-size:19px;letter-spacing:1px}header h1 .p{color:var(--accent)}
-header .tag{color:var(--mut);font-size:12px}header .live{margin-left:auto;font-size:12px}
-header .ok{color:#3ad6a0}header .blk{color:#ff2f2f}
-.kpis{display:flex;gap:14px;padding:20px 30px;flex-wrap:wrap}
+:root{--bg:#0b0b0d;--panel:#131319;--line:#23232c;--txt:#e9e4d8;--mut:#8a8472;
+--accent:#4dd0e1;--red:#ff2f2f;--green:#3ad6a0;}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(120% 80% at 80% -10%,#1a0f12 0%,var(--bg) 55%);
+color:var(--txt);font:14px/1.5 'JetBrains Mono',ui-monospace,Menlo,monospace;min-height:100vh}
+a{color:inherit;text-decoration:none}
+/* ---- masthead ---- */
+header{padding:26px 34px 18px;display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;gap:5px}
+.brand h1{margin:0;font-size:40px;font-weight:800;letter-spacing:2px;line-height:1}
+.brand h1 .p{color:var(--red)}
+.brand .sub{color:var(--mut);font-size:11px;letter-spacing:3px;text-transform:uppercase}
+.chips{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.chip-stat{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:6px;
+padding:7px 11px;font-size:11px;letter-spacing:1px;color:var(--mut);text-transform:uppercase;background:#0e0e13}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.g{background:var(--green);box-shadow:0 0 7px var(--green)}.dot.r{background:var(--red);box-shadow:0 0 7px var(--red)}
+.dot.t{background:var(--accent);box-shadow:0 0 7px var(--accent)}
+/* old header (sample mode) kept */
+header h1.legacy{font-size:19px;letter-spacing:1px}header .tag{color:var(--mut);font-size:12px}
+header .live{margin-left:auto;font-size:12px}.ok{color:var(--green)}.blk{color:var(--red)}
+/* ---- KPIs (sample mode) ---- */
+.kpis{display:flex;gap:14px;padding:20px 34px;flex-wrap:wrap}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 18px;min-width:140px;flex:1}
 .kpi .n{font-size:28px;font-weight:600}.kpi .l{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
-.kpi.alert .n{color:#ff2f2f}
-.grid{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;padding:4px 30px 36px}
+.kpi.alert .n{color:var(--red)}
+/* ---- tabs (CSS-only) ---- */
+.tabwrap input{position:absolute;opacity:0;pointer-events:none}
+.tabnav{display:flex;gap:0;padding:18px 34px 0;align-items:center}
+.tabnav label{cursor:pointer;border:1px solid var(--line);border-bottom:none;padding:11px 20px;font-size:12px;
+letter-spacing:1px;color:var(--mut);background:#0e0e13;border-radius:7px 7px 0 0;margin-right:4px}
+.tabnav .mode{margin-left:auto;font-size:11px;color:var(--mut);letter-spacing:1px;display:flex;align-items:center;gap:7px}
+#t-ov:checked~.tabnav label[for=t-ov],#t-ddti:checked~.tabnav label[for=t-ddti],
+#t-sig:checked~.tabnav label[for=t-sig]{background:var(--txt);color:#0b0b0d;font-weight:700;border-color:var(--txt)}
+.pane{display:none;padding:18px 34px 40px}
+#t-ov:checked~#p-ov,#t-ddti:checked~#p-ddti,#t-sig:checked~#p-sig{display:block}
+/* ---- panels / grid ---- */
+.grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
 @media(max-width:900px){.grid{grid-template-columns:1fr}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.panel h2{margin:0;padding:13px 18px;font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);border-bottom:1px solid var(--line)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:18px}
+.panel h2{margin:0;padding:13px 18px;font-size:11.5px;text-transform:uppercase;letter-spacing:1.4px;color:var(--txt);
+border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;background:#0e0e13}
+.stateread{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:8px;
+padding:15px 20px;margin-bottom:18px;font-size:14px;color:var(--mut)}
+.stateread b{color:var(--txt)}.stateread .hl{color:var(--accent)}.stateread .hr{color:var(--red)}
+/* ---- ranked threat rows ---- */
+.rank{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line)}
+.rank:last-child{border-bottom:none}
+.ri{color:var(--mut);font-size:13px;width:22px}
+.rname{flex:1;min-width:0}
+.term{font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:600;letter-spacing:.2px}
+.new{color:var(--red);font-size:9px;border:1px solid #ff2f2f55;border-radius:3px;padding:1px 4px;margin-left:8px;vertical-align:middle;letter-spacing:1px}
+.snippet{color:var(--mut);font-size:11px;display:block;margin-top:3px;font-family:'JetBrains Mono',monospace}
+.chip{font-size:9.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;letter-spacing:1px;text-transform:uppercase}
+.rscore{font-weight:700;font-size:18px;color:var(--red);min-width:48px;text-align:right}
+.rmeter{height:4px;background:#0b0b0d;border-radius:3px;overflow:hidden;margin-top:6px}
+.rmeter>span{display:block;height:100%;background:linear-gradient(90deg,var(--red),#ffb454)}
+/* ---- gauges (right panel) ---- */
+.gauge{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--line)}
+.gauge:last-child{border-bottom:none}
+.gl{width:150px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gt{flex:1;height:6px;background:#0b0b0d;border-radius:4px;overflow:hidden}
+.gf{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--green))}
+.gv{width:46px;text-align:right;color:var(--green);font-weight:700;font-size:15px}
+.bignum{padding:16px 18px 6px;display:flex;align-items:baseline;gap:10px}
+.bignum .pct{font-size:34px;font-weight:700;color:var(--red)}.bignum .cap{color:var(--mut);font-size:12px}
+.note{color:var(--mut);font-size:11px;padding:8px 18px 15px}
+/* ---- full DDTI table ---- */
 table{width:100%;border-collapse:collapse}td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:13px}
 tr:last-child td{border-bottom:none}
-.term{font-size:17px;font-weight:600}.new{color:#ff2f2f;font-size:10px;border:1px solid #ff2f2f55;border-radius:3px;padding:1px 4px;margin-left:7px;vertical-align:middle}
-.chip{font-size:10px;padding:2px 7px;border-radius:20px;white-space:nowrap}
-.snippet{color:var(--mut);font-size:11px;display:block;margin-top:3px}
 .meter{height:7px;background:#0b0b0d;border-radius:4px;overflow:hidden;margin-top:7px}
-.meter>span{display:block;height:100%;background:linear-gradient(90deg,#ff2f2f,#ffb454)}
+.meter>span{display:block;height:100%;background:linear-gradient(90deg,var(--red),#ffb454)}
 .metricrow{color:var(--mut);font-size:11px;margin-top:5px}
+/* ---- signal bars ---- */
 .stack{display:flex;flex-direction:column;gap:18px}
-.bar-row{display:flex;align-items:center;gap:10px;padding:7px 18px}
-.bar-label{width:140px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row{display:flex;align-items:center;gap:10px;padding:8px 18px}
+.bar-label{width:150px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar-track{flex:1;height:8px;background:#0b0b0d;border-radius:4px;overflow:hidden}
-.bar-fill{display:block;height:100%;background:linear-gradient(90deg,#ff2f2f,#ffb454)}
-.bar-num{width:30px;text-align:right;color:var(--mut);font-size:12px}
+.bar-fill{display:block;height:100%;background:linear-gradient(90deg,var(--red),#ffb454)}
+.bar-num{width:34px;text-align:right;color:var(--mut);font-size:12px}
 .pill{padding:3px 9px;border-radius:20px;font-size:11px;white-space:nowrap}
-footer{color:var(--mut);font-size:11px;padding:0 30px 28px}
-a{color:inherit;text-decoration:none}
+footer{color:var(--mut);font-size:11px;padding:16px 34px 30px;border-top:1px solid var(--line)}
+footer .rl{color:var(--accent)}
 """
 
 
@@ -435,78 +485,146 @@ def _page(title, header_html, body_html, footer):
             f"<footer>{footer}</footer></body></html>")
 
 
+def _chip(text, dot=""):
+    d = f"<span class='dot {dot}'></span>" if dot else ""
+    return f"<span class=chip-stat>{d}{text}</span>"
+
+
+def _domain_chip(domain):
+    col = DOMAIN_COLOR.get(domain, "#6b7785")
+    return f"<span class=chip style='background:{col}22;color:{col};border:1px solid {col}55'>{domain}</span>"
+
+
 def render_live(ranked, n_articles, n_feeds, out, econ=None):
     econ = econ or {"pct": 0, "ranked": [], "n_econ_articles": 0}
     new_terms = sum(1 for r in ranked if r["is_new"])
-    hi = sum(1 for r in ranked if r["threat"] >= 2.0)
-    head = (f"<header><h1><span class=p>PALIMPSEST·CN</span> — censorship-attention monitor</h1>"
-            f"<span class=tag>source: China Digital Times · attention × novelty</span>"
-            f"<span class='live ok'>● live feed</span></header>")
-    kpis = (f"<div class=kpis>"
-            f"<div class=kpi><div class=n>{n_articles}</div><div class=l>articles ingested</div></div>"
-            f"<div class=kpi><div class=n>{len(ranked)}</div><div class=l>topics tracked</div></div>"
-            f"<div class=kpi alert><div class=n>{hi}</div><div class=l>high-attention topics</div></div>"
-            f"<div class=kpi><div class=n>{new_terms}</div><div class=l>new this window</div></div>"
-            f"<div class=kpi alert><div class=n>{econ['pct']}%</div><div class=l>econ-stress index</div></div></div>")
+    clock = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-    rows = ""
+    # ---- masthead with status chips ----
+    head = (
+        "<header><div class=brand>"
+        "<h1>PALIMPSEST<span class=p>·</span>CN</h1>"
+        "<span class=sub>China censorship monitor — the censor as a sensor</span>"
+        "</div><div class=chips>"
+        + _chip("DDTI · SELECTIVITY", "g")
+        + _chip("NOVELTY · LIVE", "t")
+        + _chip(f"{clock} UTC")
+        + "</div></header>"
+    )
+
+    # ---- state read (auto narrative) ----
+    top = ranked[0] if ranked else None
+    surging = sorted([r for r in ranked if r["novelty"] > 0], key=lambda r: r["novelty"], reverse=True)
+    surge = next((r for r in surging if r["is_new"]), surging[0] if surging else None)
+    if top:
+        sr = (f"<div class=stateread><b>State read.</b> Censors are most active on "
+              f"<span class=hr>{html.escape(top['term'])}</span> ({top['domain']}). ")
+        if surge:
+            sr += f"Surging now: <span class=hl>{html.escape(surge['term'])}</span>"
+            sr += " <b>(newly sensitive)</b>. " if surge["is_new"] else ". "
+        sr += (f"Economic stress: <b>{econ['pct']}%</b> of censored attention is economic. "
+               f"<span style='color:var(--mut)'>{n_articles} articles · {len(ranked)} topics · "
+               f"{new_terms} new this window.</span></div>")
+    else:
+        sr = "<div class=stateread>No articles reachable this window.</div>"
+
+    # ---- overview LEFT: numbered top threats ----
     maxt = max((r["threat"] for r in ranked), default=1.0)
-    for r in ranked[:16]:
-        col = DOMAIN_COLOR.get(r["domain"], "#6b7785")
+    rank_rows = ""
+    for i, r in enumerate(ranked[:8], 1):
+        new = "<span class=new>NEW</span>" if r["is_new"] else ""
+        w = int(100 * r["threat"] / maxt)
+        rank_rows += (
+            f"<div class=rank><span class=ri>{i:02d}</span>"
+            f"<span class=rname><span class=term>{html.escape(r['term'])}</span>{new}"
+            f"<div class=rmeter><span style='width:{w}%'></span></div></span>"
+            f"{_domain_chip(r['domain'])}"
+            f"<span class=rscore>{r['threat']:.2f}</span></div>"
+        )
+    left = (f"<div class=panel><h2><span class='dot r'></span>Censor attention — top threats</h2>"
+            f"{rank_rows}</div>")
+
+    # ---- overview RIGHT: censorship-derived economic stress, by theme ----
+    emax = max((r["weight"] for r in econ["ranked"]), default=1.0)
+    gauges = "".join(
+        f"<div class=gauge><span class=gl>{html.escape(r['term'])}</span>"
+        f"<span class=gt><span class=gf style='width:{int(100*r['weight']/emax)}%'></span></span>"
+        f"<span class=gv>{r['weight']:.1f}</span></div>" for r in econ["ranked"][:9]) or \
+        "<div class=gauge><span class=gl style='color:var(--mut)'>no economic themes flagged this window</span></div>"
+    right = (f"<div class=panel><h2><span class='dot t'></span>Economic stress — censorship-derived, by theme</h2>"
+             f"<div class=bignum><span class=pct>{econ['pct']}%</span>"
+             f"<span class=cap>of censored attention is economic · {econ['n_econ_articles']} articles</span></div>"
+             f"{gauges}<div class=note>Transparency reading: what the censor scrubs about the economy, "
+             f"ahead of official statistics. Not a market signal.</div></div>")
+
+    overview = f"{sr}<div class=grid>{left}{right}</div>"
+
+    # ---- DDTI tab: full ranked table with sample articles ----
+    rows = ""
+    for r in ranked[:18]:
         w = int(100 * r["threat"] / maxt)
         new = "<span class=new>NEW</span>" if r["is_new"] else ""
-        samp = "".join(f"<a href='{html.escape(s['url'])}'><span class=snippet>“{html.escape(s['title'][:88])}”</span></a>"
+        samp = "".join(f"<a href='{html.escape(s['url'])}'><span class=snippet>“{html.escape(s['title'][:90])}”</span></a>"
                        for s in r["samples"])
         rows += (f"<tr><td><span class=term>{html.escape(r['term'])}</span>{new}{samp}</td>"
-                 f"<td><span class=chip style='background:{col}22;color:{col};border:1px solid {col}55'>{r['domain']}</span></td>"
-                 f"<td style='text-align:right'><b>{r['threat']:.2f}</b>"
+                 f"<td>{_domain_chip(r['domain'])}</td>"
+                 f"<td style='text-align:right'><b style='color:var(--red);font-size:16px'>{r['threat']:.2f}</b>"
                  f"<div class=meter><span style='width:{w}%'></span></div>"
                  f"<div class=metricrow>att {r['attention']:.2f} · nov {r['novelty']:.2f} · n={r['total']}</div></td></tr>")
-    table = (f"<div class=panel><h2>DDTI · topics ranked by attention × novelty</h2>"
-             f"<table><tr><td style='color:var(--mut)'>topic / sample flagged articles</td>"
-             f"<td style='color:var(--mut)'>domain</td><td style='color:var(--mut);text-align:right'>threat</td></tr>"
-             f"{rows}</table></div>")
+    ddti = (f"<div class=panel><h2><span class='dot r'></span>DDTI — every topic ranked by attention × novelty</h2>"
+            f"<table><tr><td style='color:var(--mut)'>topic / sample flagged articles</td>"
+            f"<td style='color:var(--mut)'>domain</td><td style='color:var(--mut);text-align:right'>threat</td></tr>"
+            f"{rows}</table></div>")
 
-    surging = sorted([r for r in ranked if r["novelty"] > 0], key=lambda r: r["novelty"], reverse=True)[:8]
+    # ---- SIGNALS tab: surging novelty + attention by domain ----
     bars = "".join(f"<div class=bar-row><span class=bar-label>{html.escape(r['term'])}</span>"
                    f"<span class=bar-track><span class=bar-fill style='width:{int(100*r['novelty'])}%'></span></span>"
-                   f"<span class=bar-num>{r['novelty']:.2f}</span></div>" for r in surging) or \
+                   f"<span class=bar-num>{r['novelty']:.2f}</span></div>" for r in surging[:10]) or \
            "<div class=bar-row>no surge this window</div>"
     by_dom = Counter(r["domain"] for r in ranked)
     dom_rows = "".join(f"<div class=bar-row><span class=bar-label>{d}</span>"
                        f"<span class=bar-track><span class=bar-fill style='width:{int(100*c/max(by_dom.values()))}%'></span></span>"
                        f"<span class=bar-num>{c}</span></div>" for d, c in by_dom.most_common())
-    emax = max((r["weight"] for r in econ["ranked"]), default=1.0)
-    econ_bars = "".join(
-        f"<div class=bar-row><span class=bar-label>{html.escape(r['term'])}</span>"
-        f"<span class=bar-track><span class=bar-fill style='width:{int(100*r['weight']/emax)}%'></span></span>"
-        f"<span class=bar-num>{r['weight']:.1f}</span></div>" for r in econ["ranked"][:8]) or \
-        "<div class=bar-row>no economic themes flagged this window</div>"
-    econ_panel = (f"<div class=panel><h2>China economic stress — censorship-derived</h2>"
-                  f"<div style='padding:14px 18px 4px'><span style='font-size:34px;font-weight:600;color:#ff2f2f'>"
-                  f"{econ['pct']}%</span><span style='color:var(--mut);font-size:12px'> of censored "
-                  f"attention is economic · {econ['n_econ_articles']} articles</span></div>{econ_bars}"
-                  f"<div style='color:var(--mut);font-size:11px;padding:8px 18px 14px'>transparency signal: "
-                  f"what the censor scrubs about the economy, ahead of official statistics</div></div>")
-    side = (f"<div class=stack>{econ_panel}"
-            f"<div class=panel><h2>Surging topics (novelty)</h2>{bars}</div>"
-            f"<div class=panel><h2>Attention by domain</h2>{dom_rows}</div></div>")
+    signals = (f"<div class=panel><h2><span class='dot t'></span>Surging topics — novelty (newly / bursting sensitive)</h2>{bars}</div>"
+               f"<div class=panel><h2><span class='dot g'></span>Attention by domain</h2>{dom_rows}</div>")
 
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    foot = (f"Live pull from China Digital Times · {n_articles} articles · {stamp} · "
-            f"novelty/NEW computed against persisted history (data/cdt_history.json). "
-            f"Open-source build; CDT is an independent censorship-tracking outlet.")
+    # ---- tabs shell ----
+    body = (
+        "<div class=tabwrap>"
+        "<input type=radio id=t-ov name=tab checked>"
+        "<input type=radio id=t-ddti name=tab>"
+        "<input type=radio id=t-sig name=tab>"
+        "<nav class=tabnav>"
+        "<label for=t-ov>OVERVIEW</label>"
+        "<label for=t-ddti>CENSORSHIP · DDTI</label>"
+        "<label for=t-sig>SIGNALS</label>"
+        "<span class=mode><span class='dot g'></span>LIVE · CHINA DIGITAL TIMES</span>"
+        "</nav>"
+        f"<section class=pane id=p-ov>{overview}</section>"
+        f"<section class=pane id=p-ddti>{ddti}</section>"
+        f"<section class=pane id=p-sig>{signals}</section>"
+        "</div>"
+    )
+
+    foot = (f"PALIMPSEST · the censor as a sensor · source: China Digital Times ({n_feeds} feed"
+            f"{'s' if n_feeds != 1 else ''} reachable) · {stamp} · novelty/NEW vs persisted history "
+            f"(data/cdt_history.json) · open-source build. <span class=rl>↻ re-run "
+            f"`python3 demo/palimpsest_demo.py` to refresh</span>")
     with open(out, "w", encoding="utf-8") as f:
-        f.write(_page("Palimpsest · CDT live", head, kpis + "<div class=grid>" + table + side + "</div>", foot))
+        f.write(_page("Palimpsest · CN", head, body, foot))
 
 
 def render_sample(monitored, deleted, out):
     censor = [d for d in deleted if d.verdict != "user deletion"]
     n_c = sum(1 for d in deleted if d.verdict == "censorship")
     n_a = sum(1 for d in deleted if d.verdict == "ambiguous")
-    head = (f"<header><h1><span class=p>PALIMPSEST</span> — deletion detection (velocity leg)</h1>"
-            f"<span class=tag>snapshot Δ · synthetic data</span>"
-            f"<span class='live blk'>● sample mode</span></header>")
+    head = ("<header><div class=brand>"
+            "<h1>PALIMPSEST<span class=p>·</span>Δ</h1>"
+            "<span class=sub>Deletion detection — the velocity leg</span>"
+            "</div><div class=chips>"
+            + _chip("SNAPSHOT Δ", "t") + _chip("SYNTHETIC DATA", "r")
+            + "</div></header>")
     kpis = (f"<div class=kpis>"
             f"<div class=kpi><div class=n>{monitored:,}</div><div class=l>posts monitored</div></div>"
             f"<div class=kpi><div class=n>{len(deleted)}</div><div class=l>deletions detected</div></div>"
