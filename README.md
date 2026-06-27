@@ -76,18 +76,19 @@ The full method, its math, and its honest limits are documented in
 
 ```
  COLLECT          →   DETECT          →   MEASURE         →   DISCOVER        →   PUBLISH
- multi-source         archive on          DDTI index           self-evolving       dashboard
- public OSINT         first sight,        (selectivity,        euphemism           open API
- (CDT, GreatFire,     re-fetch,           novelty, velocity)   gazetteer           open dataset
+ multi-source         archive / probe     DDTI index           self-evolving       dashboard
+ public OSINT         from many           (selectivity,        euphemism           open API
+ (CDT, GreatFire,     vantages,           novelty, velocity)   gazetteer           open dataset
   Weibo, GDELT)       confirm deletion    + cross-signal       (human-ratified)
-                                          |
-                            GOVERNANCE: kill-switch · rate ceiling · hash-chained audit
+  + UNDERTEXT         + divergence            ↑___________________________|
+   active probing                          GOVERNANCE: kill-switch · rate ceiling · hash-chained audit
 ```
 
 **Collection — multi-source public OSINT** (`collectors/`)
 - **China Digital Times** deletion + directive feeds (`collectors/ddti_probe.py`) — runs today from open infrastructure.
 - **GreatFire / FreeWeibo** confirmed-deletion archives.
 - **GDELT global media cross-signal** (`collectors/gdelt_cross_signal.py`) — triangulates the domestic deletion signal against worldwide coverage to separate *containment* ("loud abroad, censored at home") from *blackout* ("loud abroad, conspicuously absent at home"). Standard-library, key-less.
+- **UNDERTEXT — active differential tomography** (`collectors/undertext.py`) — fires the same query at China's public surfaces from many vantage points and treats the *divergence* (across vantage and time) as the signal: deletions, quiet mutations, geo-forks, and shadowban tells, each evidentiary because it is content-addressed and replayable. OONI / Citizen Lab lineage; public-reads-only and governance-gated. See [docs/UNDERTEXT.md](docs/UNDERTEXT.md).
 - **CensorWatch velocity leg** (`censorwatch/`) — archives public posts on first sight and re-fetches to detect deletions it observes directly. Feature-flagged and isolated.
 
 **Measurement — the DDTI index** (`processors/`)
@@ -106,6 +107,7 @@ The full method, its math, and its honest limits are documented in
 | CDT deletion ingestion | Running |
 | DDTI index (selectivity + novelty) | Running |
 | GDELT cross-signal (containment vs blackout) | Built, tested |
+| UNDERTEXT differential tomography (divergence detector + DDTI integration) | Built, tested |
 | Self-evolving euphemism gazetteer (human-ratified) | Built, tested |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
 | Chinese-language layer (62-term censorship gazetteer) | Built |
@@ -114,10 +116,12 @@ The full method, its math, and its honest limits are documented in
 | Real-time velocity at minute resolution | Needs in-country measurement |
 
 The honest blocker: selectivity and novelty work today, while velocity is blocked from
-outside China because the relevant feeds are walled to foreign traffic. Closing that gap —
-including via a planned **many-vantage differential observation** design (UNDERTEXT), where
-disagreement between vantage points *is* the censorship signal — is the core of the funded
-work. See [docs/FUNDING.md](docs/FUNDING.md).
+outside China because the relevant feeds are walled to foreign traffic. The measurement
+method that closes it — **UNDERTEXT** many-vantage differential observation, where
+disagreement between vantage points *is* the censorship signal — is built and tested in this
+repo (`collectors/undertext.py`); what the funded work adds is the in-country *vantage
+backends* that let it run at scale. See [docs/UNDERTEXT.md](docs/UNDERTEXT.md) and
+[docs/FUNDING.md](docs/FUNDING.md).
 
 ## Safety is the architecture
 
@@ -143,6 +147,7 @@ pip install -r requirements.txt
 # The scoring/discovery/governance cores run with NO database:
 PYTHONPATH=. python3 -c "from processors.ddti_index import load_censorship_terms; print(len(load_censorship_terms()), 'sensitive terms loaded')"
 PYTHONPATH=. python3 processors/gazetteer_evolution.py   # discovers 散步 from sample deletions
+PYTHONPATH=. python3 collectors/undertext.py             # divergence tomography (deletion + geo-fork)
 PYTHONPATH=. python3 core/governance.py                  # kill-switch + audit-chain demo
 
 # Tests (pure/offline cores):
@@ -159,6 +164,7 @@ need PostgreSQL and Redis, plus in-country egress for live velocity. See
 | Document | What it covers |
 | --- | --- |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
+| [docs/UNDERTEXT.md](docs/UNDERTEXT.md) | Active differential tomography — many-vantage divergence as signal |
 | [docs/OSINT_SOURCES.md](docs/OSINT_SOURCES.md) | Every public source, how it's accessed, what it yields, and its limits |
 | [docs/ETHICS.md](docs/ETHICS.md) | Threat model, do-no-harm rules, and why the platform is OSINT-only |
 | [docs/FUNDING.md](docs/FUNDING.md) | The public-good model, the velocity gap, and the planned work |
