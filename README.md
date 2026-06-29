@@ -18,6 +18,12 @@ censored.**
 > right now, and opens a dashboard. (`--source sample` runs an offline, deterministic
 > deletion-detection demo.) See [`demo/`](demo/).
 
+> **Or open the full observatory** (no install, no key): open
+> [`dashboards/ddti_observatory.html`](dashboards/ddti_observatory.html) in a browser. It renders
+> the live DDTI signals (selectivity and novelty), the topic network with censorship-shock
+> propagation, a temporal index with a forward projection, and the velocity signal shown
+> fail-loud where real-time in-China measurement is still required.
+
 ---
 
 ## Why this exists
