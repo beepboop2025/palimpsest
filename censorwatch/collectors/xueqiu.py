@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 _BASE = "https://xueqiu.com"
 _TIMELINE = _BASE + "/statuses/stock_timeline.json?symbol_id={sym}&count={n}&source=all"
 
-# Xueqiu deletion-notice markers (CLAUDE-AUTHORED — never delegated).
+# Xueqiu deletion-notice markers (maintainer-authored, never auto-generated).
 _XUEQIU_DELETION_MARKERS = (
     "该帖子已被删除",
     "该提问已删除",

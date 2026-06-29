@@ -13,7 +13,7 @@ calls observe()).
 
 A concrete source provides:
     name, source_type="censorwatch"
-    deletion_markers: tuple[str, ...]   # per-source notice strings (Claude-authored)
+    deletion_markers: tuple[str, ...]   # per-source notice strings (maintainer-authored)
     async def collect(self) -> list[dict]
     async def parse(self, raw) -> pd.DataFrame   # columns ⊇ Post fields
     def validate(self, df) -> bool

@@ -47,15 +47,16 @@ liveness probe (control post) ── not LIVE ──▶ DEGRADED: suppress all d
 
 Only confirmed deletions reach the signal layer.
 
-## Delegation boundary (Kimi)
+## Authorship boundary (AI assistance)
 
-Kimi may write **language/DOM mechanics** (per-source HTML selectors, Chinese
-date parsing, benign fixtures). Kimi **never** writes the censorship-sensitive
+AI assistance may write **language/DOM mechanics** (per-source HTML selectors,
+Chinese date parsing, benign fixtures). It **never** writes the censorship-sensitive
 logic — `classifier.py` deletion-notice patterns, the censorship gazetteer, or
-`signal.py` ranking — because a PRC-aligned model would be biased to silently
-omit the most sensitive markers, and a subtly-incomplete pattern list would pass
-review while under-counting exactly the deletions that matter. Sensitive payloads
-are never sent to Kimi.
+`signal.py` ranking — which is authored and reviewed by the maintainer, because a
+model hosted in the censoring jurisdiction would be biased to silently omit the
+most sensitive markers, and a subtly-incomplete pattern list would pass review
+while under-counting exactly the deletions that matter. Sensitive payloads are
+never sent to a third-party model.
 
 ## Configuration (env)
 

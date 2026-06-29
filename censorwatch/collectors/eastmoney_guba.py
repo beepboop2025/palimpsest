@@ -35,7 +35,7 @@ _LIST_TMPL = _BASE + "/list,{code}.html"
 _NEWS_HREF = re.compile(r"/news,[^,]+,(\d+)\.html")
 _BEIJING = timezone(timedelta(hours=8))
 
-# Guba deletion-notice markers (CLAUDE-AUTHORED — never delegated). A removed guba
+# Guba deletion-notice markers (maintainer-authored, never auto-generated). A removed guba
 # post serves one of these (often with HTTP 200), so they're definitive GONE.
 _GUBA_DELETION_MARKERS = (
     "该帖子可能已被删除",

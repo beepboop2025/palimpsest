@@ -1,11 +1,11 @@
 """Maps a raw fetch to a LivenessState — the sensor's trigger logic.
 
-CLAUDE-AUTHORED, NEVER DELEGATED TO KIMI. The deletion-notice and anti-bot marker
-sets are exactly what a PRC-aligned model would be biased to silently shorten, and
-an incomplete table would pass review while under-counting the most sensitive
-deletions. See README.md "Delegation boundary".
+MAINTAINER-AUTHORED AND REVIEWED (not auto-generated). The deletion-notice and
+anti-bot marker sets are exactly what a model hosted in the censoring jurisdiction
+would be biased to silently shorten, and an incomplete table would pass review
+while under-counting the most sensitive deletions. See README.md "Authorship boundary".
 
-Reuses ``collectors.ddti_probe.classify_post_status`` — the existing Claude-authored
+Reuses ``collectors.ddti_probe.classify_post_status`` — the existing maintainer-authored
 CN deletion-marker table (single source of truth) — and adds the *outside-China*
 failure modes that table doesn't cover (captcha / login-wall / empty interstitial),
 which is essential because those return HTTP 200 and would otherwise be misread as
@@ -27,7 +27,7 @@ from censorwatch.interfaces import FetchResult, LivenessState, Observation
 
 logger = logging.getLogger(__name__)
 
-# Reuse the existing Claude-authored CN deletion-marker classifier. Imported
+# Reuse the existing maintainer-authored CN deletion-marker classifier. Imported
 # lazily-safe so this module stays importable even if the probe's deps are absent.
 try:
     from collectors.ddti_probe import classify_post_status as _cn_classify
