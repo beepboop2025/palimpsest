@@ -1,0 +1,294 @@
+/* ============================================================================
+   TIKTÓ — a temporal-spatial interface system for heavy money & infra products
+   ----------------------------------------------------------------------------
+   Reusable across products. Namespaced --tk-* so it never collides.
+   Two themes: default (terminal-premium dark) and [data-tk-theme="light"]
+   (institutional). Drop in <link rel="stylesheet" href="tikto.css"> and go.
+
+   Design law (inherited from high-stakes UX: IEC 62366 / EEMUA 191 / Endsley /
+   Tufte): restraint is a safety feature. One accent for "act here". Numbers are
+   tabular. Motion is signal, never decoration. Fail loud, never silent.
+   ========================================================================== */
+
+/* ---- Fonts: a geometric display + a tabular mono (numbers are first-class) -- */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ============================ TOKENS ====================================== */
+:root {
+  /* voids & surfaces — true black, premium depth */
+  --tk-void:      #000000;
+  --tk-surface-1: #080808;
+  --tk-surface-2: #0e0e0e;
+  --tk-surface-3: #151515;
+  --tk-surface-4: #1d1d1d;
+  --tk-hover:     #262626;
+
+  /* hairlines */
+  --tk-line-1: #1a1a1a;
+  --tk-line-2: #272727;
+  --tk-line-3: #383838;
+
+  /* text ramp — white down to muted slate */
+  --tk-text-0: #ffffff;
+  --tk-text-1: #e2e8f0;
+  --tk-text-2: #94a3b8;
+  --tk-text-3: #64748b;
+  --tk-text-4: #475569;
+
+  /* THE accent — "live / act here". Used with discipline so it always means something. */
+  --tk-live:      #06d6e0;
+  --tk-live-dim:  #0891a2;
+  --tk-live-glow: rgba(6, 214, 224, 0.35);
+
+  /* semantic status — every status pairs with an icon + text in markup, never colour alone */
+  --tk-critical: #ff5b52;  --tk-critical-bg: rgba(239,68,68,0.13);  --tk-critical-line: rgba(239,68,68,0.50);
+  --tk-warning:  #ffb020;  --tk-warning-bg:  rgba(245,158,11,0.13); --tk-warning-line:  rgba(245,158,11,0.45);
+  --tk-watch:    #4aa3ff;  --tk-watch-bg:    rgba(59,130,246,0.13); --tk-watch-line:    rgba(59,130,246,0.42);
+  --tk-ok:       #19c393;  --tk-ok-bg:       rgba(16,185,129,0.13); --tk-ok-line:       rgba(16,185,129,0.42);
+  --tk-stale:    #8593a8;  --tk-stale-bg:    rgba(100,116,139,0.16);--tk-stale-line:    rgba(100,116,139,0.45);
+
+  /* type */
+  --tk-font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+  --tk-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --tk-hero-size: clamp(40px, 5.4vw, 60px);
+  --tk-hero-weight: 800;
+  --tk-hero-tracking: -0.02em;
+  --tk-metric-size: 26px;
+  --tk-label-size: 10px;
+  --tk-label-tracking: 0.08em;
+
+  /* geometry */
+  --tk-radius-sm: 8px; --tk-radius-md: 11px; --tk-radius-lg: 14px; --tk-radius-xl: 18px;
+
+  /* motion — fast, purposeful */
+  --tk-dur-fast: 0.15s; --tk-dur: 0.25s; --tk-dur-slow: 0.45s;
+  --tk-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --tk-ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --tk-shadow-md: 0 6px 20px rgba(0,0,0,0.6);
+  --tk-shadow-lg: 0 14px 36px rgba(0,0,0,0.7);
+
+  color-scheme: dark;
+}
+
+/* ---- Institutional light theme (opt-in): trust, daylight, regulatory ------- */
+[data-tk-theme="light"] {
+  --tk-void:      #f7f8fa;
+  --tk-surface-1: #ffffff;
+  --tk-surface-2: #f3f5f8;
+  --tk-surface-3: #ecf0f4;
+  --tk-surface-4: #e2e8f0;
+  --tk-hover:     #dbe2ea;
+  --tk-line-1: #e6eaef;
+  --tk-line-2: #d5dce4;
+  --tk-line-3: #c2cbd6;
+  --tk-text-0: #0a1322;
+  --tk-text-1: #1c2738;
+  --tk-text-2: #45556b;
+  --tk-text-3: #66758c;
+  --tk-text-4: #8a98ac;
+  --tk-live:      #0892b8;
+  --tk-live-dim:  #0b6e8c;
+  --tk-live-glow: rgba(8, 146, 184, 0.22);
+  --tk-shadow-md: 0 6px 20px rgba(20,30,50,0.10);
+  --tk-shadow-lg: 0 14px 36px rgba(20,30,50,0.14);
+  color-scheme: light;
+}
+
+/* ============================ BASE ======================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+.tk, .tk * { margin: 0; }
+.tk {
+  background: var(--tk-void);
+  color: var(--tk-text-1);
+  font-family: var(--tk-font-display);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01";
+}
+.tk-mono { font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums; }
+/* every number in a money product is tabular — no jitter when values update */
+.tk-num { font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums lining-nums; }
+
+.tk-label {
+  font-size: var(--tk-label-size); font-weight: 700; text-transform: uppercase;
+  letter-spacing: var(--tk-label-tracking); color: var(--tk-text-4);
+}
+
+/* ============================ TRUST STRIP (Law: auditability) ============== */
+/* Persistent provenance bar — as-of, source, model version, environment. */
+.tk-trust {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+  padding: 9px 16px; border-radius: var(--tk-radius-md);
+  background: var(--tk-surface-2); border: 1px solid var(--tk-line-1);
+  font-size: 11px; font-family: var(--tk-font-mono);
+}
+.tk-trust__item { display: flex; align-items: center; gap: 6px; color: var(--tk-text-3); }
+.tk-trust__item b { color: var(--tk-text-1); font-weight: 600; }
+.tk-trust__dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 8px currentColor; }
+.tk-trust__sep { width: 1px; height: 13px; background: var(--tk-line-2); }
+
+/* ============================ CHIPS ======================================= */
+.tk-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  border: 1px solid transparent; white-space: nowrap; font-family: var(--tk-font-mono);
+}
+.tk-chip--ok       { color: var(--tk-ok);       background: var(--tk-ok-bg);       border-color: var(--tk-ok-line); }
+.tk-chip--watch    { color: var(--tk-watch);    background: var(--tk-watch-bg);    border-color: var(--tk-watch-line); }
+.tk-chip--warning  { color: var(--tk-warning);  background: var(--tk-warning-bg);  border-color: var(--tk-warning-line); }
+.tk-chip--critical { color: var(--tk-critical); background: var(--tk-critical-bg); border-color: var(--tk-critical-line); }
+.tk-chip--stale    { color: var(--tk-stale);    background: var(--tk-stale-bg);    border-color: var(--tk-stale-line); }
+
+/* ============================ DECISION CARD =============================== */
+/* The standard layout: hero number + comprehension + projection + action. */
+.tk-card {
+  position: relative;
+  background: linear-gradient(180deg, var(--tk-surface-1), var(--tk-void));
+  border: 1px solid var(--tk-line-2);
+  border-left: 3px solid var(--tk-line-3);
+  border-radius: var(--tk-radius-lg);
+  padding: 20px 22px;
+  transition: border-color var(--tk-dur) var(--tk-ease);
+}
+.tk-card--ok       { border-left-color: var(--tk-ok); }
+.tk-card--watch    { border-left-color: var(--tk-watch); }
+.tk-card--warning  { border-left-color: var(--tk-warning); }
+.tk-card--critical { border-left-color: var(--tk-critical); }
+.tk-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.tk-card__title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--tk-text-2); }
+
+/* hero number — out-weighs everything */
+.tk-hero { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tk-hero__value {
+  font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--tk-hero-size); font-weight: var(--tk-hero-weight);
+  letter-spacing: var(--tk-hero-tracking); line-height: 0.95; color: var(--tk-text-0);
+}
+.tk-hero__unit { font-family: var(--tk-font-mono); font-size: 22px; font-weight: 600; color: var(--tk-text-3); }
+.tk-hero__delta { font-family: var(--tk-font-mono); font-size: 14px; font-weight: 700; }
+.tk-hero__delta--up   { color: var(--tk-ok); }
+.tk-hero__delta--down { color: var(--tk-critical); }
+/* fail-loud: a degraded / untrusted number is struck through, never shown clean */
+.tk-hero__value--degraded { color: var(--tk-text-3); text-decoration: line-through; text-decoration-thickness: 3px; }
+
+.tk-comprehend { font-size: 13.5px; font-weight: 600; color: var(--tk-text-1); margin-top: 12px; }
+.tk-project { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--tk-text-2); margin-top: 6px; }
+.tk-action {
+  display: flex; align-items: center; gap: 9px; margin-top: 16px;
+  padding: 11px 13px; border-radius: var(--tk-radius-md);
+  background: var(--tk-surface-3); border: 1px dashed var(--tk-line-3);
+  font-size: 12.5px; font-weight: 600; color: var(--tk-text-1);
+}
+
+/* ============================ CONFIDENCE METER =========================== */
+.tk-conf { display: flex; align-items: center; gap: 9px; }
+.tk-conf__track { width: 92px; height: 6px; border-radius: 999px; background: var(--tk-surface-4); overflow: hidden; }
+.tk-conf__fill { height: 100%; border-radius: 999px; transition: width var(--tk-dur-slow) var(--tk-ease); }
+.tk-conf__label { font-size: 10px; font-weight: 700; font-family: var(--tk-font-mono); }
+
+/* ============================ FAIL-CLOSED BANNER ========================= */
+.tk-degraded {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 13px; padding: 10px 13px; border-radius: var(--tk-radius-md);
+  background: var(--tk-critical-bg); border: 1px solid var(--tk-critical-line);
+  color: var(--tk-critical); font-size: 12px; font-weight: 700;
+}
+
+/* ============================ ALARM STACK (tiered) ====================== */
+.tk-alarms { display: flex; flex-direction: column; gap: 9px; }
+.tk-alarm {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--tk-radius-md);
+  border: 1px solid; border-left-width: 3px; background: var(--tk-surface-2);
+}
+.tk-alarm__msg { font-size: 12.5px; font-weight: 600; color: var(--tk-text-1); line-height: 1.35; }
+.tk-alarm__meta { font-size: 10.5px; color: var(--tk-text-3); margin-top: 2px; font-family: var(--tk-font-mono); }
+.tk-alarm--critical { border-color: var(--tk-critical-line); animation: tk-pulse 2.4s ease-in-out infinite; }
+.tk-alarm--warning  { border-color: var(--tk-warning-line); }
+.tk-alarm--watch    { border-color: var(--tk-watch-line); }
+@keyframes tk-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 50% { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); } }
+
+/* ============================ THE TICK (signature: navigable time) ======= */
+/* A temporal spine: past = solid actuals, NOW = glowing line, future = cone. */
+.tk-tick {
+  position: relative;
+  background: linear-gradient(180deg, var(--tk-surface-1), var(--tk-void));
+  border: 1px solid var(--tk-line-2); border-radius: var(--tk-radius-lg);
+  padding: 14px 18px 10px;
+}
+.tk-tick__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tk-tick__canvas { display: block; width: 100%; height: 132px; cursor: ew-resize; touch-action: none; }
+.tk-tick__axis { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--tk-font-mono); font-size: 10px; color: var(--tk-text-4); }
+.tk-tick__readout {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--tk-font-mono);
+  font-size: 11px; color: var(--tk-text-2);
+}
+.tk-tick__readout b { color: var(--tk-live); }
+
+/* ============================ LIVING MAP (signature: navigable space) ===== */
+.tk-map {
+  position: relative; border-radius: var(--tk-radius-lg);
+  border: 1px solid var(--tk-line-2); overflow: hidden;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(6,214,224,0.05), transparent 60%),
+    var(--tk-void);
+}
+.tk-map__canvas { display: block; width: 100%; height: 100%; }
+.tk-map__overlay { position: absolute; inset: 0; pointer-events: none; }
+.tk-map__legend {
+  position: absolute; left: 14px; bottom: 12px; display: flex; gap: 14px;
+  font-family: var(--tk-font-mono); font-size: 10px; color: var(--tk-text-3);
+  pointer-events: none;
+}
+.tk-map__legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tk-map__zoom {
+  position: absolute; right: 14px; top: 12px; font-family: var(--tk-font-mono);
+  font-size: 10px; color: var(--tk-text-3); letter-spacing: 0.05em;
+}
+
+/* ============================ PROVENANCE (signature: pull a number's "why") */
+.tk-pull {
+  cursor: help; border-bottom: 1px dashed var(--tk-line-3);
+  transition: border-color var(--tk-dur-fast) var(--tk-ease);
+}
+.tk-pull:hover { border-bottom-color: var(--tk-live); }
+.tk-prov {
+  margin-top: 12px; padding: 13px 15px; border-radius: var(--tk-radius-md);
+  background: var(--tk-surface-2); border: 1px solid var(--tk-line-2);
+  font-family: var(--tk-font-mono); font-size: 11.5px;
+}
+.tk-prov__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 0; }
+.tk-prov__row + .tk-prov__row { border-top: 1px solid var(--tk-line-1); }
+.tk-prov__k { color: var(--tk-text-3); }
+.tk-prov__v { color: var(--tk-text-1); }
+.tk-prov__bar { height: 5px; border-radius: 999px; background: var(--tk-live); opacity: 0.85; }
+
+/* ============================ BUTTONS / COMMAND HINT ===================== */
+.tk-btn {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 9px 15px; border-radius: var(--tk-radius-md);
+  background: var(--tk-surface-3); border: 1px solid var(--tk-line-3);
+  color: var(--tk-text-1); font-family: var(--tk-font-display); font-weight: 600; font-size: 12.5px;
+  transition: all var(--tk-dur-fast) var(--tk-ease);
+}
+.tk-btn:hover { background: var(--tk-hover); border-color: var(--tk-line-3); }
+.tk-btn--live { background: var(--tk-live); border-color: var(--tk-live); color: #00141a; }
+.tk-btn--live:hover { box-shadow: 0 0 0 3px var(--tk-live-glow); }
+.tk-kbd {
+  font-family: var(--tk-font-mono); font-size: 10px; padding: 1px 6px; border-radius: 5px;
+  background: var(--tk-surface-3); border: 1px solid var(--tk-line-3); color: var(--tk-text-3);
+}
+
+/* ============================ MOTION SAFETY ============================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  .tk-alarm--critical { animation: none; }
+}
+
+/* visible keyboard focus everywhere (quality floor) */
+.tk :where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--tk-live); outline-offset: 2px; border-radius: 4px;
+}

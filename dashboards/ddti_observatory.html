@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Palimpsest — DDTI Observatory</title>
+<link rel="stylesheet" href="./assets/tikto.css" />
+<style>
+  /* page layout only — all visual language comes from tikto.css */
+  body { background: var(--tk-void); }
+  .pg { max-width: 1280px; margin: 0 auto; padding: 22px 26px 60px; }
+  .pg__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand__sq { width: 15px; height: 15px; background: var(--tk-live); border-radius: 3px; box-shadow: 0 0 14px var(--tk-live-glow); }
+  .brand h1 { font-family: var(--tk-font-display); font-weight: 800; font-size: 19px; letter-spacing: -0.01em; color: var(--tk-text-0); }
+  .brand p { font-size: 12px; color: var(--tk-text-3); margin-top: 2px; }
+  .grid { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .grid--2 { grid-template-columns: 1.3fr 1fr; gap: 14px; margin-top: 14px; }
+  .full { grid-column: 1 / -1; }
+  .sigval { font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums; font-size: 30px; font-weight: 800; color: var(--tk-text-0); line-height: 1; }
+  .tk-tick__canvas.ddti { height: 150px; cursor: default; }
+  .mapwrap { height: 340px; }
+  .terms { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow: auto; }
+  .term { cursor: pointer; }
+  .sec-h { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tk-text-3); margin: 22px 0 4px; }
+  .foot { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--tk-line-1); font-size: 11px; color: var(--tk-text-3); font-family: var(--tk-font-mono); line-height: 1.7; }
+  .foot a { color: var(--tk-text-2); }
+  @media (max-width: 920px){ .grid, .grid--2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="tk">
+  <div class="pg">
+
+    <div class="pg__top">
+      <div class="brand">
+        <span class="brand__sq"></span>
+        <div>
+          <h1>Palimpsest · DDTI Observatory</h1>
+          <p>A real-time observatory of Chinese internet censorship — deletion as data</p>
+        </div>
+      </div>
+      <button class="tk-btn" id="themeBtn">Institutional theme</button>
+    </div>
+
+    <!-- Trust strip (auditability): source, freshness, method, scope, and the
+         fail-loud velocity status -->
+    <div class="tk-trust" id="trust"></div>
+
+    <!-- Hero + the two reachable signals + the fail-loud one -->
+    <div class="grid">
+      <section class="tk-card tk-card--critical" id="heroCard">
+        <div class="tk-card__head">
+          <span class="tk-card__title">▣ Top censor target · now</span>
+          <span class="tk-conf"><span class="tk-conf__track"><span class="tk-conf__fill" id="confFill"></span></span><span class="tk-conf__label" id="confLbl"></span></span>
+        </div>
+        <div class="tk-hero"><span class="tk-hero__value" id="heroTerm">—</span></div>
+        <div class="tk-comprehend" id="heroWhat"></div>
+        <div class="tk-project" id="heroProj"></div>
+        <div class="tk-action" id="heroAct"></div>
+      </section>
+
+      <section class="tk-card tk-card--watch">
+        <div class="tk-card__head"><span class="tk-card__title">◑ Selectivity</span><span class="tk-chip tk-chip--ok">reachable</span></div>
+        <div class="sigval" id="selVal">—</div>
+        <div class="tk-comprehend">Censor attention allocation</div>
+        <div class="tk-project">recency-weighted share of the deletion stream, per term</div>
+      </section>
+
+      <section class="tk-card tk-card--warning">
+        <div class="tk-card__head"><span class="tk-card__title">✦ Novelty</span><span class="tk-chip tk-chip--ok">reachable</span></div>
+        <div class="sigval" id="novVal">—</div>
+        <div class="tk-comprehend"><span id="novNew">0</span> newly-sensitive terms today</div>
+        <div class="tk-project">terms bursting vs their 30-day baseline</div>
+      </section>
+    </div>
+
+    <!-- The Tick: DDTI top-threat over time (past actuals → now → forecast cone) -->
+    <div class="full" style="margin-top:14px">
+      <div class="tk-tick">
+        <div class="tk-tick__head">
+          <span class="tk-card__title">⟿ DDTI top-threat index · 30 days → 7-day projection</span>
+          <span class="tk-tick__readout">trend <b id="tickTrend">rising</b></span>
+        </div>
+        <canvas class="tk-tick__canvas ddti" id="tick"></canvas>
+        <div class="tk-tick__axis"><span>−30d</span><span>−21d</span><span>−14d</span><span>−7d</span><span style="color:var(--tk-live)">NOW</span><span>+7d</span></div>
+      </div>
+    </div>
+
+    <!-- Living map + ranked threats -->
+    <div class="grid--2">
+      <section class="tk-map mapwrap">
+        <canvas class="tk-map__canvas" id="net"></canvas>
+        <div class="tk-map__zoom">TOPIC NETWORK · shock = newly-sensitive term spreading</div>
+        <div class="tk-map__legend">
+          <span><span class="tk-trust__dot" style="background:var(--tk-critical)"></span>critical</span>
+          <span><span class="tk-trust__dot" style="background:var(--tk-warning)"></span>warning</span>
+          <span><span class="tk-trust__dot" style="background:var(--tk-watch)"></span>watch</span>
+        </div>
+      </section>
+
+      <div>
+        <div class="sec-h" style="margin-top:0">Ranked censor targets · click to inspect</div>
+        <div class="tk-alarms terms" id="terms"></div>
+      </div>
+    </div>
+
+    <!-- Velocity: the fail-loud signal (honest scope) -->
+    <div class="full" style="margin-top:14px">
+      <section class="tk-card">
+        <div class="tk-card__head"><span class="tk-card__title">⏱ Velocity · deletion speed</span><span class="tk-chip tk-chip--stale">suppressed</span></div>
+        <div class="tk-hero"><span class="tk-hero__value tk-hero__value--degraded">— /min</span></div>
+        <div class="tk-degraded">⚠ Velocity requires in-China egress to time deletions to the minute. Until that measurement is verified, the signal is suppressed by design — Palimpsest never publishes a number it cannot stand behind.</div>
+      </section>
+    </div>
+
+    <!-- Provenance-on-pull: a selected term's full derivation -->
+    <div class="full" id="provWrap" style="margin-top:14px; display:none">
+      <div class="sec-h">Provenance · how this score was derived</div>
+      <div class="tk-prov" id="prov"></div>
+    </div>
+
+    <div class="foot">
+      Method: threat = attention × (1 + 1.5 · novelty). Scope: censor-attention allocation (numerator-only; not a true deletion rate). Source: China Digital Times curated deletion stream.<br/>
+      Safety: public content only · never deanonymises posters or contributors · deletion confirmed by multiple independent checks · signal suppressed when the network is unreliable. See
+      <a href="../SAFETY.md">SAFETY.md</a> · <a href="../docs/METHODOLOGY.md">METHODOLOGY.md</a> · <a href="../docs/ETHICS.md">ETHICS.md</a>.
+      Open source &amp; openly licensed · audit-ready · github.com/beepboop2025/palimpsest
+    </div>
+  </div>
+
+<script src="./assets/tikto.js"></script>
+<script>
+/* ============ representative DDTI index (matches processors/ddti_index.py shape) ============ */
+const NOW = "2026-06-30T00:00:00Z";
+const INDEX = {
+  generated_at: NOW,
+  source: "China Digital Times",
+  method_version: "ddti-index v0.3",
+  window: { current_days: 3, history_days: 30, half_life_days: 2.0, novelty_weight: 1.5 },
+  scope: "censor_attention_allocation (numerator-only; not a true deletion rate)",
+  n_observations_used: 412,
+  alert_threshold: 3.0,
+  ranked: [
+    { term:"青年失业率 (youth unemployment)", domain:"ECONOMIC", threat:5.66, attention:3.10, novelty:0.55, burst_ratio:3.4, is_new:false, recent_count:14, hist_count:9, first_seen:"2026-05-09", samples:[{title:"Statistics bureau again withholds youth jobless figure"},{title:"Deleted: viral thread on graduates 'lying flat'"}] },
+    { term:"银行挤兑 (bank run)", domain:"ECONOMIC", threat:5.50, attention:2.20, novelty:1.0, burst_ratio:null, is_new:true, recent_count:8, hist_count:0, first_seen:"2026-06-27", samples:[{title:"Henan village-bank depositors' posts scrubbed within hours"}] },
+    { term:"白纸 (white paper)", domain:"SOCIAL_UNREST", threat:4.40, attention:2.00, novelty:0.80, burst_ratio:5.0, is_new:false, recent_count:7, hist_count:2, first_seen:"2026-06-12", samples:[{title:"Blank-page images removed from Weibo super-topic"}] },
+    { term:"资本管制 (capital controls)", domain:"ECONOMIC", threat:3.48, attention:2.40, novelty:0.30, burst_ratio:1.8, is_new:false, recent_count:9, hist_count:15, first_seen:"2026-04-02", samples:[{title:"Post on tightened forex limits taken down"}] },
+    { term:"Xinjiang", domain:"POLITICAL", threat:3.22, attention:2.80, novelty:0.10, burst_ratio:1.2, is_new:false, recent_count:10, hist_count:41, first_seen:"2026-01-18", samples:[{title:"Re-education facility reference deleted"}] },
+    { term:"恒大 (Evergrande)", domain:"ECONOMIC", threat:2.61, attention:1.90, novelty:0.25, burst_ratio:1.6, is_new:false, recent_count:6, hist_count:12, first_seen:"2026-03-21", samples:[{title:"Liquidation timeline thread scrubbed"}] },
+    { term:"李克强 (Li Keqiang)", domain:"POLITICAL", threat:2.28, attention:1.20, novelty:0.60, burst_ratio:2.6, is_new:false, recent_count:5, hist_count:3, first_seen:"2026-06-15", samples:[{title:"Memorial post removed on anniversary"}] },
+    { term:"Hong Kong", domain:"POLITICAL", threat:2.08, attention:1.70, novelty:0.15, burst_ratio:1.3, is_new:false, recent_count:6, hist_count:22, first_seen:"2026-02-09", samples:[{title:"Article 23 commentary deleted"}] },
+    { term:"躺平 (lying flat)", domain:"SOCIAL", threat:1.68, attention:1.10, novelty:0.35, burst_ratio:2.0, is_new:false, recent_count:4, hist_count:7, first_seen:"2026-05-28", samples:[{title:"'Let it rot' meme thread removed"}] },
+    { term:"Tiananmen", domain:"POLITICAL", threat:1.65, attention:1.60, novelty:0.02, burst_ratio:1.0, is_new:false, recent_count:5, hist_count:55, first_seen:"2025-12-30", samples:[{title:"Candle emoji posts auto-hidden"}] },
+    { term:"PBOC rate cut", domain:"ECONOMIC", threat:1.44, attention:0.90, novelty:0.40, burst_ratio:2.1, is_new:false, recent_count:3, hist_count:4, first_seen:"2026-06-20", samples:[{title:"Speculation on emergency easing deleted"}] },
+    { term:"Falun Gong", domain:"INFO_CONTROL", threat:0.86, attention:0.80, novelty:0.05, burst_ratio:1.0, is_new:false, recent_count:2, hist_count:33, first_seen:"2026-01-04", samples:[{title:"Cross-border app reference removed"}] },
+  ],
+};
+
+const ROOT = document.documentElement, T = window.Tikto, css = T.css, hexA = T.hexA;
+const tier = (t) => (t.is_new || t.threat >= INDEX.alert_threshold) ? "critical" : t.threat >= 1.5 ? "warning" : "watch";
+const fmt = (n) => Number(n).toFixed(2);
+
+/* ---- trust strip ---- */
+document.getElementById("trust").innerHTML = `
+  <span class="tk-trust__item"><span class="tk-trust__dot" style="background:var(--tk-warning)"></span><b>REPRESENTATIVE DATA</b></span>
+  <span class="tk-trust__sep"></span><span class="tk-trust__item">As of <b>${INDEX.generated_at.slice(0,10)}</b></span>
+  <span class="tk-trust__sep"></span><span class="tk-trust__item">Source <b>${INDEX.source}</b></span>
+  <span class="tk-trust__sep"></span><span class="tk-trust__item">Method <b>${INDEX.method_version}</b></span>
+  <span class="tk-trust__sep"></span><span class="tk-trust__item">Obs <b>${INDEX.n_observations_used}</b></span>
+  <span class="tk-trust__sep"></span><span class="tk-trust__item">Velocity <b style="color:var(--tk-stale)">SUPPRESSED</b></span>`;
+
+/* ---- hero + signal cards ---- */
+const topTerm = INDEX.ranked[0];
+const nNew = INDEX.ranked.filter(t => t.is_new).length;
+document.getElementById("heroTerm").textContent = topTerm.term.split(" (")[0];
+document.getElementById("heroWhat").textContent = `Threat ${fmt(topTerm.threat)} · domain ${topTerm.domain} · ${topTerm.recent_count} deletions in the last 3 days`;
+document.getElementById("heroProj").innerHTML = `↗ burst ${topTerm.burst_ratio ? topTerm.burst_ratio+"×" : "new"} vs 30-day baseline`;
+document.getElementById("heroAct").innerHTML = `→ Watch this term: censorship attention here is the apparatus's loudest current signal`;
+document.getElementById("confFill").style.width = "78%";
+document.getElementById("confFill").style.background = "var(--tk-ok)";
+document.getElementById("confLbl").textContent = "78% conf";
+document.getElementById("confLbl").style.color = "var(--tk-ok)";
+document.getElementById("selVal").textContent = fmt(topTerm.attention);
+document.getElementById("novVal").textContent = fmt(Math.max(...INDEX.ranked.map(t=>t.novelty)));
+document.getElementById("novNew").textContent = nNew;
+
+/* ---- ranked threat list (tiered alarms, click → provenance) ---- */
+const termsEl = document.getElementById("terms");
+INDEX.ranked.forEach((t, i) => {
+  const tr = tier(t);
+  const el = document.createElement("div");
+  el.className = `tk-alarm tk-alarm--${tr} term`;
+  el.innerHTML = `
+    <span class="tk-trust__dot" style="background:var(--tk-${tr})"></span>
+    <span><span class="tk-alarm__msg">${t.term}</span>
+      <span class="tk-alarm__meta">${t.domain} · attention ${fmt(t.attention)} · novelty ${fmt(t.novelty)}${t.is_new?" · NEW":""}</span></span>
+    <span class="tk-num" style="font-weight:800;color:var(--tk-${tr})">${fmt(t.threat)}</span>`;
+  el.onclick = () => showProv(t, i);
+  termsEl.appendChild(el);
+});
+
+/* ---- provenance-on-pull ---- */
+function showProv(t, i) {
+  document.getElementById("provWrap").style.display = "block";
+  const maxThreat = INDEX.ranked[0].threat;
+  const samples = (t.samples||[]).map(s => `<div class="tk-prov__row"><span class="tk-prov__k">deleted</span><span class="tk-prov__v">${s.title}</span></div>`).join("");
+  document.getElementById("prov").innerHTML = `
+    <div class="tk-prov__row"><span class="tk-prov__k">term</span><span class="tk-prov__v" style="color:var(--tk-text-0)">${t.term}</span></div>
+    <div class="tk-prov__row"><span class="tk-prov__k">threat = attention × (1 + 1.5·novelty)</span><span class="tk-prov__v">${fmt(t.attention)} × (1 + 1.5·${fmt(t.novelty)}) = <b style="color:var(--tk-live)">${fmt(t.threat)}</b></span></div>
+    <div class="tk-prov__row"><span class="tk-prov__k">threat (relative)</span><span style="flex:1;max-width:220px"><span class="tk-prov__bar" style="display:block;width:${Math.round(t.threat/maxThreat*100)}%"></span></span></div>
+    <div class="tk-prov__row"><span class="tk-prov__k">recent / baseline deletions</span><span class="tk-prov__v">${t.recent_count} (3d) / ${t.hist_count} (30d)</span></div>
+    <div class="tk-prov__row"><span class="tk-prov__k">burst ratio</span><span class="tk-prov__v">${t.burst_ratio ? t.burst_ratio+"×" : "newly sensitive (no baseline)"}</span></div>
+    <div class="tk-prov__row"><span class="tk-prov__k">first seen</span><span class="tk-prov__v">${t.first_seen}</span></div>
+    ${samples}`;
+  document.getElementById("provWrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+showProv(topTerm, 0);
+
+/* ---- the living map: terms as nodes, edges by shared domain, shock = a NEW term spreading ---- */
+const nodes = INDEX.ranked.map((t, i) => ({
+  x: 0.12 + (i % 4) * 0.26 + (Math.sin(i*2.1)*0.03),
+  y: 0.16 + Math.floor(i / 4) * 0.30 + (Math.cos(i*1.7)*0.03),
+  r: 4 + t.threat * 1.4,
+  label: t.term.split(" (")[0].slice(0, 14),
+  status: tier(t),
+}));
+const edges = [];
+for (let a = 0; a < INDEX.ranked.length; a++)
+  for (let b = a + 1; b < INDEX.ranked.length; b++)
+    if (INDEX.ranked[a].domain === INDEX.ranked[b].domain) edges.push([a, b, 0.5]);
+const net = new T.Network(document.getElementById("net"), { nodes, edges });
+const newIdx = INDEX.ranked.findIndex(t => t.is_new);
+if (newIdx >= 0) { net.propagate(newIdx); setInterval(() => net.propagate(newIdx), 6500); }
+
+/* ---- the Tick: DDTI top-threat over time, drawn in the Tiktó visual language
+        (custom so it is labelled for censorship, not the LCR-specific built-in) ---- */
+const tickCv = document.getElementById("tick");
+const past = []; let v = 3.2;
+for (let i = 0; i < 30; i++) { v += Math.sin(i*0.5)*0.06 + (i>20 ? 0.10 : 0.02); past.push(v); }
+const base = past[past.length-1], drift = 0.55, alertLine = INDEX.alert_threshold;
+function drawTick() {
+  const dpr = Math.min(devicePixelRatio||1, 2), r = tickCv.getBoundingClientRect();
+  tickCv.width = r.width*dpr; tickCv.height = r.height*dpr;
+  const ctx = tickCv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const w = r.width, h = r.height, padB = 16, padT = 8;
+  ctx.clearRect(0,0,w,h);
+  const all = past.concat([base + drift]);
+  const min = Math.min(...all, alertLine) - 0.4, max = Math.max(...all, alertLine) + 0.4;
+  const X = t => 16 + (t+1)/2 * (w-32);            // t in -1..1, now at t=0
+  const Y = val => h - padB - (val-min)/(max-min) * (h-padB-padT);
+  const live = css("--tk-live"), warn = css("--tk-warning"), crit = css("--tk-critical");
+  // alert threshold line
+  ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(16, Y(alertLine)); ctx.lineTo(w-16, Y(alertLine));
+  ctx.strokeStyle = hexA(crit, 0.5); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  ctx.font = '9px "JetBrains Mono", monospace'; ctx.fillStyle = hexA(crit, 0.75); ctx.textAlign="left";
+  ctx.fillText("ALERT 3.0", 18, Y(alertLine)-4);
+  // past actuals
+  ctx.beginPath();
+  past.forEach((p,i) => { const x = X(-1 + i/(past.length-1)), y = Y(p); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.strokeStyle = hexA(css("--tk-text-1"), 0.85); ctx.lineWidth = 1.6; ctx.stroke();
+  // forecast cone
+  const steps=40, topL=[], botL=[];
+  for (let s=0;s<=steps;s++){ const f=s/steps, mean=base+drift*f, sp=0.05+0.5*Math.sqrt(f); topL.push([X(f),Y(mean+sp)]); botL.push([X(f),Y(mean-sp)]); }
+  ctx.beginPath(); ctx.moveTo(topL[0][0],topL[0][1]); topL.forEach(p=>ctx.lineTo(p[0],p[1]));
+  for(let b=botL.length-1;b>=0;b--) ctx.lineTo(botL[b][0],botL[b][1]); ctx.closePath();
+  const g = ctx.createLinearGradient(X(0),0,w,0); g.addColorStop(0,hexA(live,0.34)); g.addColorStop(1,hexA(live,0.04));
+  ctx.fillStyle = g; ctx.fill();
+  ctx.setLineDash([4,3]); ctx.beginPath();
+  for(let m=0;m<=steps;m++){ const f=m/steps,x=X(f),y=Y(base+drift*f); m?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+  ctx.strokeStyle = hexA(live,0.8); ctx.lineWidth=1.4; ctx.stroke(); ctx.setLineDash([]);
+  // NOW line
+  const nowX = X(0); ctx.beginPath(); ctx.moveTo(nowX,padT); ctx.lineTo(nowX,h-padB);
+  ctx.strokeStyle = hexA(live,0.9); ctx.lineWidth=1.5; ctx.shadowColor=live; ctx.shadowBlur=10; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.fillStyle=live; ctx.textAlign="center"; ctx.fillText("NOW", nowX, h-4);
+}
+drawTick(); addEventListener("resize", drawTick);
+
+/* ---- theme toggle (terminal ↔ institutional) ---- */
+document.getElementById("themeBtn").onclick = (e) => {
+  const light = ROOT.getAttribute("data-tk-theme") === "light";
+  if (light) { ROOT.removeAttribute("data-tk-theme"); e.target.textContent = "Institutional theme"; }
+  else { ROOT.setAttribute("data-tk-theme", "light"); e.target.textContent = "Terminal theme"; }
+  drawTick();
+};
+</script>
+</body>
+</html>
