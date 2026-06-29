@@ -1,0 +1,64 @@
+{
+  "_meta": {
+    "purpose": "Ground-truth labels for retrodiction backtesting of the DDTI scorer.",
+    "method": "Each event reconstructs the PUBLIC deletion record (the same stream a live deployment ingests from CDT / WeiboScope / GreatFire). The unmodified processors.ddti_index scorer is run over it; we check whether the event's signature terms rank as top threats (selectivity) and whether terms born in the event are flagged is_new (novelty). See docs/VALIDATION.md.",
+    "honest_scope": "This validates the SCORING method against labelled events, not end-to-end live collection. Velocity (deletion speed) still needs in-country measurement.",
+    "sources": "China Digital Times (deletion + directive archive); WeiboScope (Fu et al., HKU); GreatFire/FreeWeibo; Citizen Lab WeChat keyword testing; contemporaneous reporting (AP, Reuters, BBC)."
+  },
+  "events": [
+    {
+      "id": "li_wenliang_2020",
+      "name": "Death of whistleblower doctor Li Wenliang",
+      "date": "2020-02-07",
+      "signature_terms": ["李文亮", "吹哨人"],
+      "born_terms": ["我要言论自由"],
+      "expected": "Mass mourning scrubbed overnight; selectivity spike on 李文亮; the hashtag #我要言论自由 (I want freedom of speech) surfaces and is deleted within hours — a textbook novelty event.",
+      "sources": ["CDT", "WeiboScope", "contemporaneous reporting"]
+    },
+    {
+      "id": "peng_shuai_2021",
+      "name": "Peng Shuai #MeToo allegation against Zhang Gaoli",
+      "date": "2021-11-02",
+      "signature_terms": ["彭帅", "张高丽"],
+      "born_terms": ["彭帅"],
+      "expected": "Post scrubbed in ~20-30 minutes; near-total blackout of 彭帅 and 张高丽 — a velocity+selectivity event the index should rank #1 from a handful of deletions.",
+      "sources": ["CDT", "AP/Reuters reporting"]
+    },
+    {
+      "id": "xuzhou_chained_woman_2022",
+      "name": "Xuzhou / Feng County chained woman",
+      "date": "2022-01-28",
+      "signature_terms": ["铁链女", "丰县", "徐州八孩"],
+      "born_terms": ["铁链女"],
+      "expected": "A coded label (铁链女) is born to evade deletion of the place name; novelty should flag the coinage while selectivity tracks 丰县.",
+      "sources": ["CDT", "WeiboScope"]
+    },
+    {
+      "id": "sitong_bridge_2022",
+      "name": "Sitong Bridge lone-banner protest",
+      "date": "2022-10-13",
+      "signature_terms": ["四通桥", "彭载舟", "勇士"],
+      "born_terms": ["四通桥", "彭载舟", "勇士"],
+      "expected": "Even oblique references (勇士 'warrior', 北京 'Beijing', 桥 'bridge') were filtered on WeChat within hours. Three terms born simultaneously => a sharp novelty cluster.",
+      "sources": ["CDT", "Citizen Lab WeChat testing", "contemporaneous reporting"]
+    },
+    {
+      "id": "white_paper_2022",
+      "name": "Urumqi fire and the White Paper protests",
+      "date": "2022-11-27",
+      "signature_terms": ["乌鲁木齐", "白纸", "不要核酸要吃饭"],
+      "born_terms": ["白纸革命", "A4"],
+      "expected": "A nationwide wave; the blank sheet (白纸) becomes the symbol and spawns 白纸革命 / A4 — novelty should catch the new coinages while selectivity tracks 乌鲁木齐.",
+      "sources": ["CDT", "GreatFire", "contemporaneous reporting"]
+    },
+    {
+      "id": "youth_unemployment_2023",
+      "name": "Suspension of youth-unemployment statistics",
+      "date": "2023-08-15",
+      "signature_terms": ["青年失业率"],
+      "born_terms": [],
+      "expected": "A WITHHOLDING, not a deletion: the series stops being published. Included to mark the boundary of the deletion-as-data method — the index sees rising attention on 青年失业率 but the disappearance is of data, not posts.",
+      "sources": ["National Bureau of Statistics announcement", "contemporaneous reporting"]
+    }
+  ]
+}
