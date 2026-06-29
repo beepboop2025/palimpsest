@@ -1,85 +1,900 @@
 {
   "_meta": {
     "purpose": "Chinese censorship euphemisms & deletion-trigger vocabulary for DDTI term extraction on Chinese-language deletion feeds.",
-    "note": "Publicly documented evasion terms (cf. CDT Grass-Mud Horse Lexicon). Used DEFENSIVELY to DETECT censored content. Authored and reviewed by the maintainer; politically sensitive China work is deliberately not routed to any model hosted in the censoring jurisdiction.",
-    "usage": "extract_terms() substring-matches the zh fields against Chinese text; en is the analyst gloss."
+    "note": "Evidence-grounded: terms are bound to documented censorship events. Human-authored; never delegated to a PRC-aligned model. Loader reads `zh` only.",
+    "usage": "extract_terms() substring-matches the zh fields against Chinese text; en is the analyst gloss.",
+    "schema": "zh, en, type(evasion-mechanism), evidence(event+date+source), mutation_of(phylogeny), first_seen, domain",
+    "term_count": 154,
+    "category_count": 15,
+    "version": "2.0"
   },
   "categories": {
     "june4_tiananmen": [
-      {"zh": "六四", "en": "June 4 (Tiananmen)"},
-      {"zh": "八九", "en": "'89 (1989 movement)"},
-      {"zh": "8964", "en": "1989-06-04 numeric"},
-      {"zh": "五月三十五日", "en": "May 35th = June 4 (date evasion)"},
-      {"zh": "八平方", "en": "8 squared = 8²=64 -> June 4"},
-      {"zh": "坦克人", "en": "Tank Man"},
-      {"zh": "VIIV", "en": "Roman 64 evasion"},
-      {"zh": "烛光", "en": "candlelight (vigil)"},
-      {"zh": "广场", "en": "the Square (Tiananmen)"}
+      {
+        "zh": "六四",
+        "en": "June 4 (Tiananmen)"
+      },
+      {
+        "zh": "八九",
+        "en": "'89 (1989 movement)"
+      },
+      {
+        "zh": "8964",
+        "en": "1989-06-04 numeric"
+      },
+      {
+        "zh": "五月三十五日",
+        "en": "May 35th = June 4 (date evasion)"
+      },
+      {
+        "zh": "八平方",
+        "en": "8 squared = 8²=64 -> June 4"
+      },
+      {
+        "zh": "坦克人",
+        "en": "Tank Man"
+      },
+      {
+        "zh": "VIIV",
+        "en": "Roman 64 evasion"
+      },
+      {
+        "zh": "烛光",
+        "en": "candlelight (vigil)"
+      },
+      {
+        "zh": "广场",
+        "en": "the Square (Tiananmen)"
+      },
+      {
+        "zh": "天安门",
+        "en": "Tiananmen Square",
+        "type": "direct",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "王维林",
+        "en": "Wang Weilin (presumed Tank Man)",
+        "type": "direct",
+        "evidence": "1989-06-05 Tank Man photo",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "民主女神",
+        "en": "Goddess of Democracy statue",
+        "type": "direct",
+        "first_seen": "1989-05",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "平反",
+        "en": "rehabilitate / redress the verdict",
+        "type": "circumlocution",
+        "mutation_of": "六四",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "维园",
+        "en": "Victoria Park (HK vigil site)",
+        "type": "circumlocution",
+        "evidence": "HK candlelight vigil banned 2020",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "支联会",
+        "en": "HK Alliance (vigil organiser)",
+        "type": "direct",
+        "evidence": "forcibly disbanded 2021-09",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "535",
+        "en": "May 35th, numeric",
+        "type": "numeric",
+        "mutation_of": "五月三十五日",
+        "domain": "POLITICS"
+      }
     ],
     "leadership_xi": [
-      {"zh": "维尼", "en": "Winnie the Pooh = Xi Jinping"},
-      {"zh": "小熊维尼", "en": "Winnie the Pooh = Xi"},
-      {"zh": "包子", "en": "Baozi/steamed bun = Xi"},
-      {"zh": "习包子", "en": "Xi-baozi"},
-      {"zh": "总加速师", "en": "Accelerator-in-Chief (sarcastic, Xi)"},
-      {"zh": "一尊", "en": "the Venerated One (Xi)"},
-      {"zh": "庆丰帝", "en": "Qingfeng Emperor (Xi)"},
-      {"zh": "登基", "en": "enthronement (re leadership term)"},
-      {"zh": "称帝", "en": "declaring emperor"}
+      {
+        "zh": "维尼",
+        "en": "Winnie the Pooh = Xi Jinping"
+      },
+      {
+        "zh": "小熊维尼",
+        "en": "Winnie the Pooh = Xi"
+      },
+      {
+        "zh": "包子",
+        "en": "Baozi/steamed bun = Xi"
+      },
+      {
+        "zh": "习包子",
+        "en": "Xi-baozi"
+      },
+      {
+        "zh": "总加速师",
+        "en": "Accelerator-in-Chief (sarcastic, Xi)"
+      },
+      {
+        "zh": "一尊",
+        "en": "the Venerated One (Xi)"
+      },
+      {
+        "zh": "庆丰帝",
+        "en": "Qingfeng Emperor (Xi)"
+      },
+      {
+        "zh": "登基",
+        "en": "enthronement (re leadership term)"
+      },
+      {
+        "zh": "称帝",
+        "en": "declaring emperor"
+      },
+      {
+        "zh": "加速主义",
+        "en": "accelerationism (collapse-hastening)",
+        "type": "coded",
+        "mutation_of": "总加速师",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "修宪",
+        "en": "constitutional amendment (term limits)",
+        "type": "direct",
+        "evidence": "2018-03 term limits abolished",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "连任",
+        "en": "re-election / third term",
+        "type": "direct",
+        "evidence": "2022-10 20th Party Congress",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "终身制",
+        "en": "lifelong rule",
+        "type": "direct",
+        "evidence": "2018-03",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "1984",
+        "en": "Orwell, 1984",
+        "type": "transliteration",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "刁近平",
+        "en": "homophonic insult of Xi",
+        "type": "homophone",
+        "domain": "POLITICS"
+      }
     ],
     "protest_dissent": [
-      {"zh": "白纸", "en": "blank paper (A4 protest)"},
-      {"zh": "白纸革命", "en": "White Paper / A4 Revolution"},
-      {"zh": "散步", "en": "taking a walk = protest evasion"},
-      {"zh": "围观", "en": "onlooking/gathering"},
-      {"zh": "上访", "en": "petitioning authorities"},
-      {"zh": "维权", "en": "rights defense"},
-      {"zh": "群体性事件", "en": "mass incident (official euphemism for protest)"},
-      {"zh": "罢工", "en": "strike"},
-      {"zh": "声援", "en": "voicing support/solidarity"}
+      {
+        "zh": "白纸",
+        "en": "blank paper (A4 protest)"
+      },
+      {
+        "zh": "白纸革命",
+        "en": "White Paper / A4 Revolution"
+      },
+      {
+        "zh": "散步",
+        "en": "taking a walk = protest evasion"
+      },
+      {
+        "zh": "围观",
+        "en": "onlooking/gathering"
+      },
+      {
+        "zh": "上访",
+        "en": "petitioning authorities"
+      },
+      {
+        "zh": "维权",
+        "en": "rights defense"
+      },
+      {
+        "zh": "群体性事件",
+        "en": "mass incident (official euphemism for protest)"
+      },
+      {
+        "zh": "罢工",
+        "en": "strike"
+      },
+      {
+        "zh": "声援",
+        "en": "voicing support/solidarity"
+      },
+      {
+        "zh": "A4",
+        "en": "A4 (blank sheet)",
+        "type": "transliteration",
+        "mutation_of": "白纸",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "四通桥",
+        "en": "Sitong Bridge",
+        "type": "direct",
+        "evidence": "2022-10-13 lone banner protest; filtered within hours",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "彭载舟",
+        "en": "'Bridge Man' (alias)",
+        "type": "direct",
+        "mutation_of": "四通桥",
+        "evidence": "2022-10-13",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "勇士",
+        "en": "'warrior' (oblique ref to Bridge Man)",
+        "type": "coded",
+        "mutation_of": "四通桥",
+        "evidence": "filtered on WeChat after 2022-10-13",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "乌鲁木齐",
+        "en": "Urumqi (fire that sparked protests)",
+        "type": "direct",
+        "evidence": "2022-11-24 apartment fire",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "罢免",
+        "en": "recall / remove (from office)",
+        "type": "direct",
+        "domain": "POLITICS"
+      }
     ],
     "economic_distress": [
-      {"zh": "躺平", "en": "lying flat (work refusal)"},
-      {"zh": "内卷", "en": "involution (ruinous competition)"},
-      {"zh": "鬼城", "en": "ghost city"},
-      {"zh": "烂尾楼", "en": "unfinished/abandoned buildings"},
-      {"zh": "断供", "en": "mortgage payment halt / strike"},
-      {"zh": "暴雷", "en": "financial blowup / default"},
-      {"zh": "挤兑", "en": "bank run"},
-      {"zh": "提款难", "en": "withdrawal difficulty (frozen deposits)"},
-      {"zh": "失业潮", "en": "wave of unemployment"},
-      {"zh": "经济下行", "en": "economic downturn"}
+      {
+        "zh": "躺平",
+        "en": "lying flat (work refusal)"
+      },
+      {
+        "zh": "内卷",
+        "en": "involution (ruinous competition)"
+      },
+      {
+        "zh": "鬼城",
+        "en": "ghost city"
+      },
+      {
+        "zh": "烂尾楼",
+        "en": "unfinished/abandoned buildings"
+      },
+      {
+        "zh": "断供",
+        "en": "mortgage payment halt / strike"
+      },
+      {
+        "zh": "暴雷",
+        "en": "financial blowup / default"
+      },
+      {
+        "zh": "挤兑",
+        "en": "bank run"
+      },
+      {
+        "zh": "提款难",
+        "en": "withdrawal difficulty (frozen deposits)"
+      },
+      {
+        "zh": "失业潮",
+        "en": "wave of unemployment"
+      },
+      {
+        "zh": "经济下行",
+        "en": "economic downturn"
+      },
+      {
+        "zh": "停贷",
+        "en": "mortgage-payment boycott",
+        "type": "direct",
+        "mutation_of": "烂尾楼",
+        "evidence": "2022-07",
+        "domain": "ECONOMY"
+      },
+      {
+        "zh": "村镇银行",
+        "en": "rural/village banks (Henan)",
+        "type": "direct",
+        "evidence": "2022-06 deposit-freeze protests",
+        "domain": "ECONOMY"
+      },
+      {
+        "zh": "青年失业率",
+        "en": "youth unemployment rate",
+        "type": "direct",
+        "evidence": "publication suspended 2023-08",
+        "domain": "ECONOMY"
+      },
+      {
+        "zh": "摆烂",
+        "en": "'let it rot'",
+        "type": "coded",
+        "mutation_of": "躺平",
+        "domain": "ECONOMY"
+      },
+      {
+        "zh": "恒大",
+        "en": "Evergrande",
+        "type": "direct",
+        "evidence": "2021 default",
+        "domain": "ECONOMY"
+      }
     ],
     "emigration_run": [
-      {"zh": "润", "en": "run = emigrate (pun on run/rùn)"},
-      {"zh": "润学", "en": "runology (study of emigrating)"},
-      {"zh": "走线", "en": "'the route' = irregular migration (often via Latin America)"},
-      {"zh": "走线客", "en": "route-takers (irregular migrants)"},
-      {"zh": "肉身翻墙", "en": "physically scaling the wall (fleeing)"},
-      {"zh": "偷渡", "en": "clandestine border crossing"},
-      {"zh": "移民潮", "en": "emigration wave"}
+      {
+        "zh": "润",
+        "en": "run = emigrate (pun on run/rùn)"
+      },
+      {
+        "zh": "润学",
+        "en": "runology (study of emigrating)"
+      },
+      {
+        "zh": "走线",
+        "en": "'the route' = irregular migration (often via Latin America)"
+      },
+      {
+        "zh": "走线客",
+        "en": "route-takers (irregular migrants)"
+      },
+      {
+        "zh": "肉身翻墙",
+        "en": "physically scaling the wall (fleeing)"
+      },
+      {
+        "zh": "偷渡",
+        "en": "clandestine border crossing"
+      },
+      {
+        "zh": "移民潮",
+        "en": "emigration wave"
+      },
+      {
+        "zh": "跑路",
+        "en": "run away / abscond",
+        "type": "coded",
+        "domain": "SOCIETY"
+      }
     ],
     "censorship_meta": [
-      {"zh": "河蟹", "en": "river crab = 'harmony' = censored"},
-      {"zh": "和谐", "en": "to harmonize = to censor"},
-      {"zh": "翻墙", "en": "scale the wall = use a VPN"},
-      {"zh": "删帖", "en": "delete posts"},
-      {"zh": "屏蔽", "en": "block/shield"},
-      {"zh": "敏感词", "en": "sensitive word"},
-      {"zh": "404", "en": "deleted / not found"},
-      {"zh": "五毛", "en": "50-cent army (paid commenters)"},
-      {"zh": "境外势力", "en": "foreign forces (deflection trope)"}
+      {
+        "zh": "河蟹",
+        "en": "river crab = 'harmony' = censored"
+      },
+      {
+        "zh": "和谐",
+        "en": "to harmonize = to censor"
+      },
+      {
+        "zh": "翻墙",
+        "en": "scale the wall = use a VPN"
+      },
+      {
+        "zh": "删帖",
+        "en": "delete posts"
+      },
+      {
+        "zh": "屏蔽",
+        "en": "block/shield"
+      },
+      {
+        "zh": "敏感词",
+        "en": "sensitive word"
+      },
+      {
+        "zh": "404",
+        "en": "deleted / not found"
+      },
+      {
+        "zh": "五毛",
+        "en": "50-cent army (paid commenters)"
+      },
+      {
+        "zh": "境外势力",
+        "en": "foreign forces (deflection trope)"
+      },
+      {
+        "zh": "草泥马",
+        "en": "'grass-mud horse'",
+        "type": "homophone",
+        "evidence": "2009 Grass-Mud Horse Lexicon (CDT)",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "防火长城",
+        "en": "Great Firewall",
+        "type": "direct",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "真理部",
+        "en": "'Ministry of Truth'",
+        "type": "circumlocution",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "小粉红",
+        "en": "'little pinks' (young nationalists)",
+        "type": "coded",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "你懂的",
+        "en": "'you-know-what'",
+        "type": "circumlocution",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "内容已删除",
+        "en": "'this content has been deleted'",
+        "type": "coded",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "评论已关闭",
+        "en": "'comments are closed'",
+        "type": "coded",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "水军",
+        "en": "'water army' (astroturfers)",
+        "type": "coded",
+        "domain": "INFORMATION"
+      },
+      {
+        "zh": "带节奏",
+        "en": "'steering the rhythm' (manipulating opinion)",
+        "type": "coded",
+        "domain": "INFORMATION"
+      }
     ],
     "repression_triggers": [
-      {"zh": "维稳", "en": "stability maintenance"},
-      {"zh": "寻衅滋事", "en": "'picking quarrels' (catch-all charge)"},
-      {"zh": "颜色革命", "en": "color revolution (regime threat framing)"},
-      {"zh": "煽动颠覆", "en": "inciting subversion"},
-      {"zh": "跨省", "en": "cross-province (police pursuit)"},
-      {"zh": "喝茶", "en": "'drink tea' = police summons/interrogation"},
-      {"zh": "失联", "en": "lost contact = disappeared"},
-      {"zh": "被自杀", "en": "'suicided' (suspicious death)"},
-      {"zh": "双规", "en": "shuanggui (Party detention)"}
+      {
+        "zh": "维稳",
+        "en": "stability maintenance"
+      },
+      {
+        "zh": "寻衅滋事",
+        "en": "'picking quarrels' (catch-all charge)"
+      },
+      {
+        "zh": "颜色革命",
+        "en": "color revolution (regime threat framing)"
+      },
+      {
+        "zh": "煽动颠覆",
+        "en": "inciting subversion"
+      },
+      {
+        "zh": "跨省",
+        "en": "cross-province (police pursuit)"
+      },
+      {
+        "zh": "喝茶",
+        "en": "'drink tea' = police summons/interrogation"
+      },
+      {
+        "zh": "失联",
+        "en": "lost contact = disappeared"
+      },
+      {
+        "zh": "被自杀",
+        "en": "'suicided' (suspicious death)"
+      },
+      {
+        "zh": "双规",
+        "en": "shuanggui (Party detention)"
+      },
+      {
+        "zh": "709",
+        "en": "709 crackdown (on rights lawyers)",
+        "type": "numeric",
+        "evidence": "2015-07-09",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "截访",
+        "en": "intercepting petitioners",
+        "type": "direct",
+        "mutation_of": "上访",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "颠覆国家政权",
+        "en": "subverting state power",
+        "type": "direct",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "煽动",
+        "en": "incitement",
+        "type": "direct",
+        "domain": "POLITICS"
+      }
+    ],
+    "leadership_jiang": [
+      {
+        "zh": "蛤蟆",
+        "en": "toad = Jiang Zemin",
+        "type": "coded",
+        "first_seen": "2014",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "膜蛤",
+        "en": "toad-worship (mock reverence)",
+        "type": "coded",
+        "mutation_of": "蛤蟆",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "长者",
+        "en": "'the Elder' = Jiang",
+        "type": "circumlocution",
+        "mutation_of": "蛤蟆",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "续一秒",
+        "en": "'extend one second' (toad-worship meme)",
+        "type": "coded",
+        "mutation_of": "膜蛤",
+        "domain": "POLITICS"
+      }
+    ],
+    "hongkong": [
+      {
+        "zh": "光复香港时代革命",
+        "en": "'Liberate HK, Revolution of Our Times'",
+        "type": "slogan",
+        "evidence": "2019 protests; ruled illegal under NSL 2020",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "五大诉求缺一不可",
+        "en": "'Five demands, not one less'",
+        "type": "slogan",
+        "first_seen": "2019-06",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "反送中",
+        "en": "anti-extradition movement",
+        "type": "direct",
+        "first_seen": "2019-06",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "国安法",
+        "en": "National Security Law",
+        "type": "direct",
+        "evidence": "imposed 2020-06-30",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "占中",
+        "en": "Occupy Central",
+        "type": "direct",
+        "first_seen": "2014",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "雨伞运动",
+        "en": "Umbrella Movement",
+        "type": "direct",
+        "first_seen": "2014",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "苹果日报",
+        "en": "Apple Daily",
+        "type": "direct",
+        "evidence": "forced closure 2021-06",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "立场新闻",
+        "en": "Stand News",
+        "type": "direct",
+        "evidence": "raided/closed 2021-12",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "黎智英",
+        "en": "Jimmy Lai",
+        "type": "direct",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "黄之锋",
+        "en": "Joshua Wong",
+        "type": "direct",
+        "domain": "POLITICS"
+      },
+      {
+        "zh": "47人",
+        "en": "the HK 47 (democrats charged)",
+        "type": "numeric",
+        "evidence": "2021-02 mass arrest",
+        "domain": "POLITICS"
+      }
+    ],
+    "xinjiang_uyghur": [
+      {
+        "zh": "维吾尔",
+        "en": "Uyghur",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "再教育营",
+        "en": "re-education camp",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "集中营",
+        "en": "concentration camp",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "职业技能教育培训中心",
+        "en": "'Vocational Skills Education Training Center' (official euphemism)",
+        "type": "official-euphemism",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "种族灭绝",
+        "en": "genocide",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "强迫劳动",
+        "en": "forced labour",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "新疆棉",
+        "en": "Xinjiang cotton",
+        "type": "direct",
+        "evidence": "2021-03 boycott controversy",
+        "domain": "SOCIETY"
+      }
+    ],
+    "covid_zero_liwenliang": [
+      {
+        "zh": "李文亮",
+        "en": "Li Wenliang (whistleblower doctor)",
+        "type": "direct",
+        "evidence": "2020-02-07 death; mass censorship of mourning",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "吹哨人",
+        "en": "whistleblower",
+        "type": "coded",
+        "mutation_of": "李文亮",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "我要言论自由",
+        "en": "'I want freedom of speech'",
+        "type": "slogan",
+        "evidence": "night of 2020-02-07, Weibo",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "方方",
+        "en": "Fang Fang (Wuhan Diary)",
+        "type": "direct",
+        "first_seen": "2020-03",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "动态清零",
+        "en": "dynamic zero-COVID",
+        "type": "direct",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "清零",
+        "en": "zero-COVID",
+        "type": "direct",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "封城",
+        "en": "city lockdown",
+        "type": "direct",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "核酸",
+        "en": "PCR test",
+        "type": "direct",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "健康码",
+        "en": "health code",
+        "type": "direct",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "红码",
+        "en": "red (health) code",
+        "type": "coded",
+        "evidence": "2022-06 Henan depositors given red codes",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "大白",
+        "en": "'big whites' (hazmat enforcers)",
+        "type": "coded",
+        "domain": "SAFETY"
+      },
+      {
+        "zh": "不要核酸要吃饭",
+        "en": "'we want food, not PCR tests'",
+        "type": "slogan",
+        "evidence": "White Paper protests 2022-11",
+        "domain": "SAFETY"
+      }
+    ],
+    "specific_incidents": [
+      {
+        "zh": "铁链女",
+        "en": "'chained woman'",
+        "type": "coded",
+        "evidence": "Xuzhou/Feng County, 2022-01",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "丰县",
+        "en": "Feng County",
+        "type": "direct",
+        "mutation_of": "铁链女",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "徐州八孩",
+        "en": "'Xuzhou eight-children' mother",
+        "type": "circumlocution",
+        "mutation_of": "铁链女",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "唐山打人",
+        "en": "Tangshan restaurant attack",
+        "type": "direct",
+        "evidence": "2022-06-10",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "胡鑫宇",
+        "en": "Hu Xinyu (disappearance case)",
+        "type": "direct",
+        "evidence": "2022-10 to 2023-01",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "彭帅",
+        "en": "Peng Shuai",
+        "type": "direct",
+        "evidence": "2021-11-02 #MeToo post scrubbed in ~20 min",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "张高丽",
+        "en": "Zhang Gaoli (ex-vice-premier)",
+        "type": "direct",
+        "mutation_of": "彭帅",
+        "evidence": "2021-11",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "鼠头鸭脖",
+        "en": "'rat head vs duck neck' (canteen scandal)",
+        "type": "coded",
+        "evidence": "2023-06",
+        "domain": "SOCIETY"
+      }
+    ],
+    "religion": [
+      {
+        "zh": "法轮功",
+        "en": "Falun Gong",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "真善忍",
+        "en": "Truth-Compassion-Forbearance",
+        "type": "direct",
+        "mutation_of": "法轮功",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "李洪志",
+        "en": "Li Hongzhi",
+        "type": "direct",
+        "mutation_of": "法轮功",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "活摘",
+        "en": "live organ harvesting",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "全能神",
+        "en": "Church of Almighty God",
+        "type": "direct",
+        "domain": "SOCIETY"
+      },
+      {
+        "zh": "地下教会",
+        "en": "underground church",
+        "type": "direct",
+        "domain": "SOCIETY"
+      }
+    ],
+    "taiwan": [
+      {
+        "zh": "台独",
+        "en": "Taiwan independence",
+        "type": "direct",
+        "domain": "FOREIGN"
+      },
+      {
+        "zh": "一边一国",
+        "en": "'one country on each side'",
+        "type": "direct",
+        "domain": "FOREIGN"
+      },
+      {
+        "zh": "中华民国",
+        "en": "Republic of China",
+        "type": "direct",
+        "domain": "FOREIGN"
+      },
+      {
+        "zh": "蔡英文",
+        "en": "Tsai Ing-wen",
+        "type": "direct",
+        "domain": "FOREIGN"
+      },
+      {
+        "zh": "武统",
+        "en": "unification by force",
+        "type": "direct",
+        "domain": "FOREIGN"
+      }
+    ],
+    "coded_actions": [
+      {
+        "zh": "被旅游",
+        "en": "'be touristed' (forced out of town)",
+        "type": "coded",
+        "domain": "INFORMATION"
+      }
     ]
   }
 }
