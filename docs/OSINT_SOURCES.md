@@ -34,7 +34,7 @@ private accounts, or asks anyone inside China to act.
 
 | Source | Access | What it yields | Limits |
 | --- | --- | --- | --- |
-| **Public Chinese discussion posts** | First-sight archive + scheduled re-fetch | Directly observed deletions → minute-resolution **velocity** | Many endpoints are walled to foreign traffic; full real-time operation needs in-country measurement capacity (see [FUNDING.md](FUNDING.md)) |
+| **Public Chinese discussion posts** | First-sight archive + scheduled re-fetch | Directly observed deletions → minute-resolution **velocity** | Many endpoints are walled to foreign traffic; full real-time operation needs in-country measurement capacity |
 
 The velocity leg is **feature-flagged** (`CENSORWATCH_ENABLED`) and writes to isolated tables.
 With the flag unset it is inert in every respect.

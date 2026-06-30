@@ -1,6 +1,6 @@
 # Validation — does the DDTI method actually catch censorship?
 
-A measurement tool is only worth funding if it measures the right thing. This page
+A measurement tool is only worth trusting if it measures the right thing. This page
 shows the DDTI scorer **retrodicting documented censorship events** — the same way a
 quantitative signal is backtested against market history before anyone trusts it live.
 

@@ -56,8 +56,8 @@ within each time bucket), never a mean or median.
 
 > **The velocity gap.** Minute-resolution velocity requires observing posts *from inside the
 > firewall* — the relevant feeds are walled to foreign traffic. This is the one leg Palimpsest
-> cannot fully run from open egress today, and closing it is the core of the funded work
-> ([docs/FUNDING.md](FUNDING.md)). Until then, velocity ships only where directly observed,
+> cannot fully run from open egress today, and closing it is the core of the planned work.
+> Until then, velocity ships only where directly observed,
 > and the index says so rather than guessing.
 
 ## 2. Combining the legs
