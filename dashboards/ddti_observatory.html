@@ -46,6 +46,28 @@
          fail-loud velocity status -->
     <div class="tk-trust" id="trust"></div>
 
+    <style>
+      .fearbar{position:relative;height:12px;border-radius:999px;background:linear-gradient(90deg,#19c393,#ffb020 52%,#ff5b52)}
+      .fearbar__now{position:absolute;top:-5px;width:3px;height:22px;background:#fff;border-radius:2px;box-shadow:0 0 10px #fff;transform:translateX(-50%)}
+      .fearscale{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tk-text-3,#64748b);margin-top:7px}
+    </style>
+    <div class="full" style="margin-top:14px">
+      <section class="tk-card" id="fearCard" style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+        <div>
+          <div class="tk-card__title" style="margin-bottom:6px">⊘ Censorship Fear Index · now</div>
+          <div style="display:flex;align-items:baseline;gap:14px">
+            <span class="tk-hero__value" id="fearVal" style="font-size:64px;line-height:1">—</span>
+            <span class="tk-chip" id="fearBand" style="border:1px solid">—</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:260px">
+          <div class="fearbar"><span class="fearbar__now" id="fearNow" style="left:0%"></span></div>
+          <div class="fearscale"><span>0 · calm</span><span>25</span><span>50</span><span>75</span><span>severe · 100</span></div>
+          <div class="tk-comprehend" id="fearWhat" style="margin-top:11px"></div>
+        </div>
+      </section>
+    </div>
+
     <!-- Hero + the two reachable signals + the fail-loud one -->
     <div class="grid">
       <section class="tk-card tk-card--critical" id="heroCard">
@@ -182,6 +204,45 @@ document.getElementById("confLbl").style.color = "var(--tk-ok)";
 document.getElementById("selVal").textContent = fmt(topTerm.attention);
 document.getElementById("novVal").textContent = fmt(Math.max(...INDEX.ranked.map(t=>t.novelty)));
 document.getElementById("novNew").textContent = nNew;
+
+/* ---- Censorship Fear Index (faithful port of processors/fear_index.py) ---- */
+function fearIndex(ranked, velocity){
+  if(!ranked || !ranked.length) return {index:0,band:"CALM",shape:"quiet",interp:"No current censor signal."};
+  const th = ranked.map(r=>Math.max(0,r.threat||0));
+  const sum = th.reduce((a,b)=>a+b,0) || 1e-9;
+  const intensity = 1 - Math.pow(2, -(sum/8));                       // saturating in total effort
+  const newT = ranked.reduce((a,r,i)=>a+(r.is_new?th[i]:0),0);
+  const surprise = Math.min(1, newT/sum);                           // share on newly-sensitive terms
+  const n = th.length, hhi = th.reduce((a,t)=>a+(t/sum)*(t/sum),0);
+  let acuteness = n>1 ? (hhi-1/n)/(1-1/n) : 1; acuteness = Math.max(0,Math.min(1,acuteness));
+  const domains = new Set(ranked.filter((r,i)=>th[i]>=0.5).map(r=>r.domain||"OTHER"));
+  const breadth = Math.min(1, domains.size/8);
+  const hasV = velocity!=null;
+  const W = hasV ? {intensity:.30,surprise:.20,acuteness:.20,breadth:.10,velocity:.20}
+                 : {intensity:.35,surprise:.25,acuteness:.25,breadth:.15};
+  const C = {intensity,surprise,acuteness,breadth}; if(hasV) C.velocity=Math.max(0,Math.min(1,velocity));
+  let s=0,w=0; for(const k in W){ s+=W[k]*C[k]; w+=W[k]; }
+  const index = Math.round(100*s/w*10)/10;
+  const band = index>=75?"SEVERE":index>=50?"HIGH":index>=25?"ELEVATED":"CALM";
+  const shape = (acuteness>=.55||surprise>=.6) ? "acute" : (breadth>=.5 ? "systemic" : "diffuse");
+  const top = ranked[0].term.split(" (")[0];
+  const interp = shape==="acute"
+      ? (surprise>=.6 && acuteness<.55 ? `a surge of newly-sensitive terms led by ${top} — something is being contained in real time`
+                                       : `acute containment around ${top} — one topic draws most of the censor's effort`)
+      : shape==="systemic" ? `broad pressure across ${domains.size} domains — a system-wide clampdown, led by ${top}`
+      : `diffuse, chronic pressure; the loudest term is ${top}`;
+  return {index,band,shape,interp};
+}
+const FEAR = fearIndex(INDEX.ranked);
+const fearColor = FEAR.index>=75?"var(--tk-critical)":FEAR.index>=50?"#ff7a18":FEAR.index>=25?"var(--tk-warning)":"var(--tk-ok)";
+document.getElementById("fearVal").textContent = FEAR.index;
+document.getElementById("fearVal").style.color = fearColor;
+const fearBandEl = document.getElementById("fearBand");
+fearBandEl.textContent = FEAR.band; fearBandEl.style.color = fearColor; fearBandEl.style.borderColor = fearColor;
+document.getElementById("fearNow").style.left = FEAR.index + "%";
+document.getElementById("fearWhat").innerHTML =
+  `<b style="color:${fearColor}">${FEAR.band} (${FEAR.index})</b> — ${FEAR.interp}. `
+  + `<span style="color:var(--tk-text-3)">Velocity suppressed; index from the reachable components, never faked.</span>`;
 
 /* ---- ranked threat list (tiered alarms, click → provenance) ---- */
 const termsEl = document.getElementById("terms");
