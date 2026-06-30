@@ -30,6 +30,12 @@ censored.**
 > temporal index with a forward projection, and velocity shown *fail-loud* where in-China
 > measurement is still required.
 
+![Palimpsest DDTI Observatory — the temporal threat index and the live topic network](docs/img/observatory.png)
+
+> *The observatory: the temporal threat index — settled actuals flowing into a forecast
+> confidence cone — above the live topic network, where a censorship shock propagates across
+> newly-sensitive terms. Representative data.*
+
 ---
 
 ## Why this exists
@@ -71,6 +77,8 @@ whether it is still there. From the stream of disappearances it computes the
 | **Velocity** | How fast posts are being deleted. A sudden acceleration signals an event being contained. |
 
 The full method, its math, and its honest limits are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+
+![Ranked censor targets, scored by threat = attention × novelty](docs/img/observatory-targets.png)
 
 ## Validated against real events
 
