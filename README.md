@@ -30,11 +30,11 @@ censored.**
 > temporal index with a forward projection, and velocity shown *fail-loud* where in-China
 > measurement is still required.
 
-![Palimpsest DDTI Observatory — the temporal threat index and the live topic network](docs/img/observatory.png)
+![Palimpsest DDTI Observatory — the Censorship Fear Index and the selectivity / novelty signals](docs/img/observatory.png)
 
-> *The observatory: the temporal threat index — settled actuals flowing into a forecast
-> confidence cone — above the live topic network, where a censorship shock propagates across
-> newly-sensitive terms. Representative data.*
+> *The observatory headline: the Censorship Fear Index (one auditable 0–100 number), the top
+> censor target, and the reachable selectivity and novelty signals. Velocity is shown
+> suppressed, never faked. Representative data.*
 
 ---
 
@@ -78,7 +78,10 @@ whether it is still there. From the stream of disappearances it computes the
 
 The full method, its math, and its honest limits are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
-![Ranked censor targets, scored by threat = attention × novelty](docs/img/observatory-targets.png)
+![The live topic network, with a censorship shock propagating across newly-sensitive terms](docs/img/observatory-network.png)
+
+> *The live topic network: each node a censored topic, sized by threat; the ring is a
+> censorship shock spreading across newly-sensitive terms.*
 
 ## Validated against real events
 
