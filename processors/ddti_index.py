@@ -44,15 +44,18 @@ def load_domain_map() -> tuple:
         return {}, {}
 
 
-@lru_cache(maxsize=1)
-def load_censorship_terms() -> tuple:
-    """Flatten the Chinese censorship gazetteer to a tuple of zh terms. Empty on miss."""
+@lru_cache(maxsize=16)
+def load_censorship_terms(region=None) -> tuple:
+    """Flatten a region's censorship gazetteer to native-language terms. Empty on miss.
+
+    region=None -> the active region (PALIMPSEST_REGION env var, else the registry
+    default, which is 'cn'). China stays the default, so existing callers are unchanged.
+    Palimpsest generalises across authoritarian information spaces; see
+    processors/regions.py and config/regions.json.
+    """
     try:
-        data = json.loads(_GAZETTEER_PATH.read_text(encoding="utf-8"))
-        terms = []
-        for cat in data.get("categories", {}).values():
-            terms += [e["zh"] for e in cat if e.get("zh")]
-        return tuple(dict.fromkeys(terms))  # dedup, preserve order
+        from processors.regions import load_region_terms, default_region
+        return load_region_terms(region or default_region())
     except Exception as e:
         logger.warning(f"[DDTI-Index] censorship gazetteer load failed: {e}")
         return tuple()

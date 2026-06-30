@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "purpose": "Region-pack registry. Palimpsest's method (deletion-as-data, DDTI selectivity/novelty, the Fear Index) is country-agnostic; each authoritarian information space is a CONFIG PACK, not a rewrite. Adding a country = a lexicon + a few public sources.",
+    "schema": "regions.<code> = { name, lang, term_key, gazetteer, sources[], note }"
+  },
+  "default": "cn",
+  "regions": {
+    "cn": {
+      "name": "China",
+      "lang": "zh",
+      "term_key": "zh",
+      "gazetteer": "config/zh_censorship_gazetteer.json",
+      "sources": ["China Digital Times", "WeiboScope", "GreatFire", "Citizen Lab"],
+      "note": "154-term evidence-grounded lexicon. Human-authored; never delegated to a PRC-aligned model."
+    },
+    "ir": {
+      "name": "Iran",
+      "lang": "fa",
+      "term_key": "fa",
+      "gazetteer": "config/regions/ir/gazetteer.json",
+      "sources": ["ASL19", "Article 19", "NetBlocks", "Filterwatch", "contemporaneous reporting"],
+      "note": "Starter lexicon, Woman-Life-Freedom era (2022- ). Proves the abstraction; community-extendable."
+    }
+  }
+}
