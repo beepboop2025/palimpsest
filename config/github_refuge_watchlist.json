@@ -1,0 +1,47 @@
+{
+  "_meta": {
+    "purpose": "Human-curated watchlist of GitHub 'refuge' repos (mirrors of censored material) plus GitHub's own transparency repos, for collectors/github_refuge.py. Evidence-bound, like zh_censorship_gazetteer.json.",
+    "note": "PUBLIC events / public sources ONLY. We watch the PRESSURE metadata (takedown notices, status changes, fork/star bursts), never the censored content itself and never personal data about a maintainer. Human-authored; never delegated to a model.",
+    "safety": "INERT BY DEFAULT. `active_watchlist` is intentionally EMPTY so the collector makes zero network calls out of the box. A deployer copies entries from `documented_repos` into `active_watchlist` to activate, and injects a read-only fetch + governance (kill switch + rate ceiling under 60 req/hr/IP).",
+    "schema": "full_name, terms(evidence bindings -> DDTI terms), evidence(event+date+source), pressure_history",
+    "transparency_repos": [
+      {"full_name": "github/dmca", "role": "primary DMCA takedown feed (Markdown, by date)"},
+      {"full_name": "github/gov-takedowns", "role": "government takedown notices; renamed after a China request 2016-06-09"}
+    ],
+    "complainants_note": "Known censor-aligned complainant names are matched lexically in notice text; see collectors/github_refuge.DEFAULT_COMPLAINANTS.",
+    "version": "1.0"
+  },
+  "active_watchlist": [],
+  "documented_repos": [
+    {
+      "full_name": "996ICU/996.ICU",
+      "terms": ["996", "996.ICU", "overtime", "劳动法", "加班"],
+      "evidence": {"event": "anti-996 overwork protest; most-starred repo on GitHub within ~72h; domain blocked in-app by Tencent/Qihoo 360/Alipay/WeChat while the repo stayed up", "date": "2019-03", "source": "contemporaneous reporting; GitHub star history"},
+      "pressure_history": ["client-side in-app domain blocking", "defensive fork-swarm / star-burst preservation reflex"]
+    },
+    {
+      "full_name": "2019nCovMemory/nCovMemory",
+      "terms": ["nCovMemory", "COVID", "方方日记", "疫情", "武汉"],
+      "evidence": {"event": "COVID outbreak reports/diaries archive; maintainers set it private to reduce risk", "date": "2020", "source": "contemporaneous reporting"},
+      "pressure_history": ["visibility-down (set private under pressure)"]
+    },
+    {
+      "full_name": "Terminus2049/Terminus2049",
+      "terms": ["Terminus2049", "404", "审查", "archive", "和谐"],
+      "evidence": {"event": "'resist 404' censored-article archive; three contributors detained April 2020 ('picking quarrels'); reachable abroad but GFW-blocked while github.com stays up", "date": "2018-01 / 2020-04", "source": "contemporaneous reporting; Citizen Lab"},
+      "pressure_history": ["maintainer detention", "selective GFW block of the specific repo"]
+    },
+    {
+      "full_name": "programthink/zhao",
+      "terms": ["programthink", "zhao", "红色家族", "权贵"],
+      "evidence": {"event": "crowd-sourced database of CCP elite family wealth; the pseudonymous author was detained in 2021", "date": "2021-05", "source": "contemporaneous reporting"},
+      "pressure_history": ["maintainer detention"]
+    },
+    {
+      "full_name": "gfw-report/gfw-report",
+      "terms": ["gfw", "censorship", "great firewall", "blocking"],
+      "evidence": {"event": "GFW measurement reports / mirrors", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-62%20passing-brightgreen.svg)
+![tests](https://img.shields.io/badge/tests-233%20passing-brightgreen.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
 
@@ -136,6 +136,12 @@ see [`config/regions/`](config/regions/).
 | **Censorship forecaster** (escalation + euphemism prediction) | Built, tested |
 | Evidence-grounded Chinese gazetteer (154 terms, phylogeny) | Built, tested |
 | GDELT cross-signal · UNDERTEXT tomography · Airport Cartography | Built, tested |
+| **Generative Firewall** — refusal / party-line tomography of state-aligned LLMs | Built, tested (Layer-1 local + deterministic; Layer-2 stream-scrub gated, inert) |
+| **CDN-Edge Differential** — geo-fork of content read off overseas cache POPs | Built, tested (edge-fetch injected, inert) |
+| **Blocklist Archaeology** — newly-added terms in client blocklists as novelty | Built, tested (published lists only; acquisition injected) |
+| **Silence Detection** — the coverage-hole left by a pre-emptive blackout | Built, tested (outside-the-wall domestic-volume feed injected) |
+| **GitHub-as-Refuge** — pressure on censored mirrors, from takedown transparency feeds | Built, tested (GitHub reads injected, inert) |
+| **Baike Redaction-Diff** — state-encyclopedia rewrites vs the open record | Built, tested (fetch injected, inert) |
 | Self-evolving euphemism gazetteer (human-ratified) | Built, tested |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
 | Deletion detector — LIVE / GONE / UNKNOWN / DEGRADED state machine | Built, 34 tests |
@@ -148,6 +154,20 @@ closes it — **UNDERTEXT** many-vantage differential observation, where disagre
 vantage points *is* the censorship signal — is built and tested here
 (`collectors/undertext.py`); what scaling adds is the in-country / seam *vantage backends*.
 See [docs/UNDERTEXT.md](docs/UNDERTEXT.md).
+
+**Six new observation surfaces** extend the same UNDERTEXT tensor — a finding is just a new
+`surface` in `observation = f(query × geo × cohort × surface × time)`, and each maps into the
+*existing* DDTI selectivity/novelty index unchanged. The **Generative Firewall** interrogates
+state-aligned LLMs (a refusal is a deletion; a mid-stream token wipe is the velocity signal the
+web legs cannot reach). The **CDN-Edge Differential** reads geo-forked content off overseas cache
+POPs. **Blocklist Archaeology** diffs the censor's own client-shipped keyword lists (the cleanest
+novelty signal — the term is pre-labelled for us). **Silence Detection** measures the
+coverage-*hole* a pre-emptive blackout leaves when there is no 404 to count. **GitHub-as-Refuge**
+watches takedown-transparency feeds for pressure on censored mirrors. **Baike Redaction-Diff**
+reconstructs a state encyclopedia's hidden rewrites against the open record. Every one holds both
+safety lines (public reads only; no Beijing-aligned model is ever the analyst) and stays inert
+until a deployer injects a live source. Full method write-ups are in
+[docs/NEW-METHODS.md](docs/NEW-METHODS.md).
 
 ## Safety is the architecture
 
@@ -188,6 +208,7 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest — does the method catch documented events? |
 | [docs/VISION.md](docs/VISION.md) | Palimpsest as a measurement commons for content-layer censorship |
 | [docs/UNDERTEXT.md](docs/UNDERTEXT.md) | Active differential tomography — many-vantage divergence as signal |
+| [docs/NEW-METHODS.md](docs/NEW-METHODS.md) | Six new observation surfaces (Generative Firewall, CDN-edge, Blocklist, Silence, GitHub-refuge, Baike) — method, DDTI mapping, safety |
 | [docs/PAPER-OUTLINE.md](docs/PAPER-OUTLINE.md) | "Deletion as Data" — the research write-up plan |
 | [docs/OSINT_SOURCES.md](docs/OSINT_SOURCES.md) | Every public source, how it's accessed, what it yields, its limits |
 | [docs/ETHICS.md](docs/ETHICS.md) | Threat model, do-no-harm rules, and why the platform is OSINT-only |
