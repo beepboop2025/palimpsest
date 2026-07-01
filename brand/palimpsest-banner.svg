@@ -1,36 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 340" width="1320" height="340" role="img" aria-label="Palimpsest — watch the censor, never the censored">
   <defs>
-    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0c1a2b"/><stop offset="1" stop-color="#102c44"/>
-    </linearGradient>
-    <linearGradient id="bg2" x1="0" y1="0" x2="0.9" y2="1">
-      <stop offset="0" stop-color="#0e2035"/><stop offset="1" stop-color="#0a1521"/>
-    </linearGradient>
-    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#a6efe9"/><stop offset="1" stop-color="#39aaa5"/>
+    <radialGradient id="panel" cx="0.16" cy="0.5" r="0.9">
+      <stop offset="0" stop-color="#0c0f13"/><stop offset="1" stop-color="#050506"/>
+    </radialGradient>
+    <radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#0b0d11"/><stop offset="1" stop-color="#050506"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5cf7ea"/><stop offset="1" stop-color="#20d6c6"/>
     </linearGradient>
     <linearGradient id="spine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#a6efe9"/><stop offset="1" stop-color="#3fb1ab"/>
+      <stop offset="0" stop-color="#63f8ec"/><stop offset="1" stop-color="#19c9ba"/>
     </linearGradient>
-    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="bloom" x="-120%" y="-120%" width="340%" height="340%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="node" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="7"/></filter>
   </defs>
-  <rect x="0" y="0" width="1320" height="340" rx="44" fill="url(#panel)"/>
-  <rect x="1.5" y="1.5" width="1317" height="337" rx="42.5" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2"/>
-  <g transform="translate(52,52) scale(0.46)">
-    <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#bg2)"/>
-    <rect x="4" y="4" width="504" height="504" rx="114" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="2"/>
-    <rect x="140" y="150" width="15" height="214" rx="7.5" fill="url(#spine)"/>
-    <g fill="#d6e5f2">
-      <rect x="176" y="156" width="150" height="22" rx="11" opacity="0.55"/>
-      <rect x="176" y="196" width="196" height="22" rx="11" opacity="0.55"/>
-      <rect x="176" y="312" width="176" height="22" rx="11" opacity="0.5"/>
-      <rect x="176" y="352" width="104" height="22" rx="11" opacity="0.32"/>
-    </g>
-    <rect x="160" y="256" width="204" height="46" rx="12" fill="url(#teal)" opacity="0.9" filter="url(#glow)"/>
-    <rect x="164" y="258" width="196" height="44" rx="10" fill="url(#teal)" opacity="0.35"/>
-    <rect x="176" y="240" width="204" height="46" rx="9" fill="#05090f"/>
-    <rect x="176" y="240" width="204" height="46" rx="9" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="1.5"/>
+  <rect x="0" y="0" width="1320" height="340" rx="40" fill="url(#panel)"/>
+  <rect x="1.5" y="1.5" width="1317" height="337" rx="38.5" fill="none" stroke="#2fe6d6" stroke-opacity="0.12" stroke-width="2"/>
+  <g opacity="0.9">
+    <line x1="980" y1="96" x2="1120" y2="150" stroke="#2fe6d6" stroke-opacity="0.10" stroke-width="1"/>
+    <line x1="1120" y1="150" x2="1210" y2="235" stroke="#2fe6d6" stroke-opacity="0.08" stroke-width="1"/>
+    <line x1="980" y1="96" x2="1075" y2="250" stroke="#2fe6d6" stroke-opacity="0.06" stroke-width="1"/>
+    <circle cx="980" cy="96" r="7" fill="#ff5a52" filter="url(#node)" opacity="0.55"/>
+    <circle cx="1120" cy="150" r="6" fill="#ffb02e" filter="url(#node)" opacity="0.5"/>
+    <circle cx="1210" cy="235" r="6" fill="#2fe6d6" filter="url(#node)" opacity="0.5"/>
+    <circle cx="1075" cy="250" r="4" fill="#ff5a52" filter="url(#node)" opacity="0.4"/>
+    <circle cx="1250" cy="110" r="3" fill="#ffb02e" filter="url(#node)" opacity="0.35"/>
   </g>
-  <text x="360" y="182" font-family="'Avenir Next','Futura','Helvetica Neue',Arial,sans-serif" font-weight="600" font-size="98" letter-spacing="3" fill="#f0f6fa">PALIMPSEST</text>
-  <text x="364" y="236" font-family="'Avenir Next','Helvetica Neue',Arial,sans-serif" font-weight="500" font-size="25.5" letter-spacing="3.2" fill="#7fd4d0">WATCH THE CENSOR, NEVER THE CENSORED</text>
+  <g transform="translate(50,50) scale(0.47)">
+    <rect x="0" y="0" width="512" height="512" rx="118" fill="url(#bg)"/>
+    <rect x="3" y="3" width="506" height="506" rx="115" fill="none" stroke="#2fe6d6" stroke-opacity="0.16" stroke-width="2"/>
+    <rect x="140" y="150" width="15" height="214" rx="7.5" fill="url(#spine)" filter="url(#soft)" opacity="0.9"/>
+    <rect x="140" y="150" width="15" height="214" rx="7.5" fill="url(#spine)"/>
+    <g fill="#7f93a1">
+      <rect x="176" y="156" width="150" height="22" rx="11" opacity="0.42"/>
+      <rect x="176" y="196" width="196" height="22" rx="11" opacity="0.42"/>
+      <rect x="176" y="312" width="176" height="22" rx="11" opacity="0.38"/>
+      <rect x="176" y="352" width="104" height="22" rx="11" opacity="0.24"/>
+    </g>
+    <rect x="158" y="252" width="212" height="54" rx="16" fill="#2fe6d6" opacity="0.95" filter="url(#bloom)"/>
+    <rect x="164" y="258" width="196" height="44" rx="10" fill="url(#cyan)" opacity="0.5"/>
+    <rect x="176" y="240" width="204" height="46" rx="9" fill="#141519"/>
+    <rect x="176" y="240" width="204" height="46" rx="9" fill="none" stroke="#5cf7ea" stroke-opacity="0.22" stroke-width="1.5"/>
+    <rect x="180" y="285" width="196" height="4" rx="2" fill="#6cfaee" opacity="0.95" filter="url(#soft)"/>
+  </g>
+  <text x="356" y="178" font-family="'Helvetica Neue',Arial,sans-serif" font-weight="700" font-size="96" letter-spacing="2" fill="#f4f8fa">PALIMPSEST</text>
+  <text x="360" y="232" font-family="'SF Mono','JetBrains Mono','Menlo',monospace" font-weight="500" font-size="22" letter-spacing="3" fill="#2fe6d6" fill-opacity="0.92">WATCH THE CENSOR, NEVER THE CENSORED</text>
 </svg>

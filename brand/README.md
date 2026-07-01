@@ -12,11 +12,12 @@ text that resurfaces when you look closely. It reads, at a glance, as *censorshi
 | `palimpsest-banner.svg` | Vector horizontal lockup (README hero, site header) |
 | `palimpsest-banner.png` | Raster lockup (2640×680) |
 
-## Palette
-- Ground: `#0a1521` → `#102c44` (deep navy)
-- Undertext / accent: `#7fd4d0` teal (bright `#a6efe9`, deep `#3fb1ab`)
-- Redaction: `#05090f` near-black
-- Text on dark: `#f0f6fa`
+## Palette (matches the DDTI Observatory UI)
+- Ground: pure black `#050506` → `#0b0d11`
+- Undertext / accent: luminous cyan `#2fe6d6` (bright `#5cf7ea`, deep `#19c9ba`)
+- Redaction: `#141519` on black
+- Severity accents (constellation): red `#ff5a52`, amber `#ffb02e`
+- Wordmark: `#f4f8fa`; tagline set in monospace
 
 ## Wordmark
 Geometric sans, generous tracking. Avenir Next / Futura / Helvetica Neue, weight 600.
