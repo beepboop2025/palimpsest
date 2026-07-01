@@ -1,0 +1,74 @@
+# Palimpsest — disposable, isolated sandbox for the OUTBOUND recurring reading.
+#
+# This runs the Generative Firewall Index reading as a locked-down, throwaway
+# container: non-root, no capabilities, no privilege escalation, a read-only
+# root filesystem, ephemeral scratch space, and hard resource ceilings. The
+# only thing it can write back to the host is the repo's readings/ directory
+# (where the auditable time series lives); the only thing it can reach on the
+# network is outbound (it publishes NO ports and serves nothing). If the box is
+# compromised by something it fetches, the blast radius is this container.
+#
+# It is an outbound scraper in a box. It is NOT a honeypot and NOT an inbound
+# service — see ops/docker/README.md for the threat-to-flag mapping.
+
+services:
+  gfi-reading:
+    build:
+      # Build context is the repo root so the Dockerfile can COPY the collector
+      # code; the compose file itself lives in ops/docker/.
+      context: ../..
+      dockerfile: ops/docker/Dockerfile
+    image: palimpsest/gfi-reading:local
+    container_name: palimpsest-gfi-reading
+
+    # --- least privilege -----------------------------------------------------
+    user: "10001:10001"                 # non-root; matches the image's palimpsest user
+    cap_drop:
+      - ALL                             # drop every Linux capability
+    security_opt:
+      - no-new-privileges:true          # a child process can never gain more than it starts with
+    read_only: true                     # root filesystem is immutable — no tamper, no persistence
+
+    # --- ephemeral writable space -------------------------------------------
+    # With a read-only root fs the app still needs a little scratch. These live
+    # in RAM and vanish when the container stops. Sizes are capped so a runaway
+    # write cannot exhaust host memory.
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/readings/state:size=16m,mode=0700   # run logs — ephemeral by design
+
+    # --- the ONLY persistent, writable path ---------------------------------
+    # Bind the repo's readings/ so the committed time series + latest dataset +
+    # dashboard survive the container. A bind mount is exempt from read_only:true
+    # above, which is exactly why it is the single, explicit write channel.
+    # Everything else the container sees is read-only or ephemeral.
+    volumes:
+      - ../../readings:/app/readings:rw
+
+    # --- secrets: supplied at RUN time, NEVER baked into the image ----------
+    # The OpenRouter key comes from the same git-ignored env file the launchd
+    # runner uses (~/.config/palimpsest/gfi.env, mode 0600). required:false so
+    # the container still starts when the key is instead exported into the host
+    # shell — in that case the `environment:` passthrough below carries it in.
+    env_file:
+      - path: ${HOME}/.config/palimpsest/gfi.env
+        required: false
+    environment:
+      # Bare names (no `=value`) mean: inherit from the host environment if set.
+      # The image contains none of these values.
+      - OPENROUTER_API_KEY              # the reading fails loud if this is absent
+      - PALIMPSEST_PROXY               # app-level egress seam for in-country collectors
+      - HTTPS_PROXY                    # urllib honors this for the OpenRouter call
+      - HTTP_PROXY
+      - NO_PROXY
+
+    # --- resource-exhaustion / fork-bomb containment ------------------------
+    mem_limit: 512m
+    memswap_limit: 512m                 # == mem_limit disables swap growth
+    pids_limit: 256                     # cap process/thread count (fork-bomb ceiling)
+    cpus: 1.0
+
+    # --- lifecycle -----------------------------------------------------------
+    init: true                          # reap zombies; clean signal handling for a batch job
+    restart: "no"                       # batch collector: run once and exit; the host scheduler recurs it
+    # No `ports:` — outbound only. Nothing listens; nothing is published.
