@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Recurring Generative Firewall Index reading (macOS launchd).
+  __REPO__ is replaced with the absolute repo path by ops/install_schedule.sh.
+  Runs weekly, Monday 09:00 local. Adjust StartCalendarInterval to change cadence.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.palimpsest.gfi</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__REPO__/scripts/run_gfi.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>__REPO__/readings/state/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__REPO__/readings/state/launchd.err.log</string>
+</dict>
+</plist>
