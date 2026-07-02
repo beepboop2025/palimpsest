@@ -11,7 +11,13 @@
 (function (global) {
   'use strict';
 
-  var REDUCED = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var media = global.matchMedia ? global.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var REDUCED = !!(media && media.matches);
+  if (media && media.addEventListener) {
+    media.addEventListener('change', function (e) { REDUCED = e.matches; });
+  } else if (media && media.addListener) {
+    media.addListener(function (e) { REDUCED = e.matches; });
+  }
 
   function css(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#06d6e0';
@@ -38,11 +44,26 @@
     this.canvas = canvas;
     this.nodes = opts.nodes || [];
     this.edges = opts.edges || [];
+    this.onNodeFocus = opts.onNodeFocus || function () {};
     this.t = 0;
+    this.load = 0.45;            // 0..1, tunes animation density for heavy-work moments
     this.wave = null;            // active propagation shock
+    this.focused = -1;
+    this.pinned = -1;
+    this.lastFrame = 0;
     this._raf = null;
     this._resize = this.resize.bind(this);
+    this._onPointerMove = this._pointerMove.bind(this);
+    this._onPointerLeave = this._pointerLeave.bind(this);
+    this._onPointerDown = this._pointerDown.bind(this);
+    this._visibility = this._onVisibility.bind(this);
     global.addEventListener('resize', this._resize);
+    this.canvas.addEventListener('pointermove', this._onPointerMove);
+    this.canvas.addEventListener('pointerleave', this._onPointerLeave);
+    this.canvas.addEventListener('pointerdown', this._onPointerDown);
+    if (global.document && global.document.addEventListener) {
+      global.document.addEventListener('visibilitychange', this._visibility);
+    }
     this.resize();
     this.start();
   }
@@ -51,12 +72,68 @@
   };
   TiktoNetwork.prototype.start = function () {
     var self = this;
-    function loop() { self.t += 0.016; self.draw(); self._raf = requestAnimationFrame(loop); }
-    if (REDUCED) { this.draw(); } else { loop(); }
+    function loop(now) {
+      var target = REDUCED ? 12 : (self.load > 0.75 ? 20 : 30);
+      var minDelta = 1000 / target;
+      if (!self.lastFrame || now - self.lastFrame >= minDelta) {
+        self.t += (now - (self.lastFrame || now)) / 1000;
+        self.draw();
+        self.lastFrame = now;
+      }
+      self._raf = requestAnimationFrame(loop);
+    }
+    if (REDUCED) { this.draw(); } else { this._raf = requestAnimationFrame(loop); }
   };
   TiktoNetwork.prototype.stop = function () {
     if (this._raf) cancelAnimationFrame(this._raf);
     global.removeEventListener('resize', this._resize);
+    this.canvas.removeEventListener('pointermove', this._onPointerMove);
+    this.canvas.removeEventListener('pointerleave', this._onPointerLeave);
+    this.canvas.removeEventListener('pointerdown', this._onPointerDown);
+    if (global.document && global.document.removeEventListener) {
+      global.document.removeEventListener('visibilitychange', this._visibility);
+    }
+  };
+  TiktoNetwork.prototype.setLoad = function (load) {
+    this.load = Math.max(0, Math.min(1, load));
+    this.draw();
+  };
+  TiktoNetwork.prototype._onVisibility = function () {
+    if (!global.document || !('hidden' in global.document)) return;
+    if (global.document.hidden) {
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = null;
+      return;
+    }
+    if (!this._raf) this.start();
+  };
+  TiktoNetwork.prototype._nodeAt = function (x, y) {
+    for (var i = 0; i < this.nodes.length; i++) {
+      var p = this._px(this.nodes[i]);
+      var r = (this.nodes[i].r || 5) + 8;
+      var dx = p.x - x, dy = p.y - y;
+      if (dx * dx + dy * dy <= r * r) return i;
+    }
+    return -1;
+  };
+  TiktoNetwork.prototype._pointerMove = function (e) {
+    var r = this.canvas.getBoundingClientRect();
+    var idx = this._nodeAt(e.clientX - r.left, e.clientY - r.top);
+    if (idx !== this.focused) {
+      this.focused = idx;
+      this.draw();
+      if (idx >= 0) this.onNodeFocus(this.nodes[idx], idx, this.pinned === idx);
+    }
+  };
+  TiktoNetwork.prototype._pointerLeave = function () {
+    if (this.focused !== -1) { this.focused = -1; this.draw(); }
+  };
+  TiktoNetwork.prototype._pointerDown = function (e) {
+    var r = this.canvas.getBoundingClientRect();
+    var idx = this._nodeAt(e.clientX - r.left, e.clientY - r.top);
+    this.pinned = idx === this.pinned ? -1 : idx;
+    if (idx >= 0) this.onNodeFocus(this.nodes[idx], idx, this.pinned === idx);
+    this.draw();
   };
   /* propagate a shock from a node index — travels outward along edges over time */
   TiktoNetwork.prototype.propagate = function (fromIndex) {
@@ -87,18 +164,24 @@
     // wave progress (which hops are currently lit)
     var waveFront = this.wave ? (T - this.wave.t0) * this.wave.speed : -1;
 
+    var focusIdx = this.pinned >= 0 ? this.pinned : this.focused;
+
     // edges
     for (var e = 0; e < this.edges.length; e++) {
-      var a = this._px(this.nodes[this.edges[e][0]]), b = this._px(this.nodes[this.edges[e][1]]);
+      var aIdx = this.edges[e][0], bIdx = this.edges[e][1];
+      var a = this._px(this.nodes[aIdx]), b = this._px(this.nodes[bIdx]);
       var weight = this.edges[e][2] || 0.5;
+      var touched = focusIdx >= 0 && (aIdx === focusIdx || bIdx === focusIdx);
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = hexA(live, 0.05 + weight * 0.10); ctx.lineWidth = 0.6 + weight * 1.1; ctx.stroke();
+      ctx.strokeStyle = hexA(live, (touched ? 0.24 : 0.05) + weight * (touched ? 0.20 : 0.10));
+      ctx.lineWidth = (touched ? 1.3 : 0.6) + weight * 1.1;
+      ctx.stroke();
       // a small packet travelling the edge — "money moving", live
       if (!REDUCED) {
-        var p = (T * (0.18 + weight * 0.12) + e * 0.3) % 1;
+        var p = (T * (0.08 + this.load * 0.35 + weight * 0.12) + e * 0.3) % 1;
         ctx.beginPath();
-        ctx.arc(a.x + (b.x - a.x) * p, a.y + (b.y - a.y) * p, 1.4, 0, 6.2832);
-        ctx.fillStyle = hexA(live, 0.5); ctx.fill();
+        ctx.arc(a.x + (b.x - a.x) * p, a.y + (b.y - a.y) * p, touched ? 2.1 : 1.4, 0, 6.2832);
+        ctx.fillStyle = hexA(live, touched ? 0.9 : 0.5); ctx.fill();
       }
     }
 
@@ -109,7 +192,7 @@
       var lit = this.wave && this.wave.reach[i] !== undefined && this.wave.reach[i] <= waveFront;
       var col = nd.status === 'critical' ? crit : nd.status === 'warning' ? warn : live;
       if (lit) col = crit;
-      var r = (nd.r || 5) + breathe + (lit ? 2 : 0);
+      var r = (nd.r || 5) + breathe + (lit ? 2 : 0) + (focusIdx === i ? 2.2 : 0);
 
       // glow
       var g = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r * 4);
@@ -155,8 +238,10 @@
       this.pastPts = this.pastPts.map(function (p) { return { v: p.v + d }; });
     }
     this.drift = opts.drift != null ? opts.drift : -0.06; // forecast slope over horizon
+    this.volatility = opts.volatility != null ? opts.volatility : 1; // 0.5..2.5
     this.playT = 0;                                 // -1 (oldest) .. 0 (now) .. +1 (max horizon)
     this._resize = this.resize.bind(this);
+    this._keydown = this._onKeyDown.bind(this);
     global.addEventListener('resize', this._resize);
     this._bindDrag();
     this.resize();
@@ -169,6 +254,39 @@
     return pts;
   };
   TiktoTick.prototype.resize = function () { var f = fitCanvas(this.canvas); this.ctx = f.ctx; this.w = f.w; this.h = f.h; this.draw(); };
+  TiktoTick.prototype.setModel = function (opts) {
+    opts = opts || {};
+    if (opts.base != null) this.base = opts.base;
+    if (opts.drift != null) this.drift = opts.drift;
+    if (opts.volatility != null) this.volatility = Math.max(0.5, Math.min(2.5, opts.volatility));
+    this.draw();
+    this.emit();
+  };
+  TiktoTick.prototype.setPlayT = function (playT) {
+    this.playT = Math.max(-1, Math.min(1, playT));
+    this.draw();
+    this.emit();
+  };
+  TiktoTick.prototype.stop = function () {
+    global.removeEventListener('resize', this._resize);
+    this.canvas.removeEventListener('keydown', this._keydown);
+  };
+  TiktoTick.prototype._bounds = function () {
+    var min = 1.0, max = 1.9;
+    for (var i = 0; i < this.pastPts.length; i++) {
+      min = Math.min(min, this.pastPts[i].v);
+      max = Math.max(max, this.pastPts[i].v);
+    }
+    for (var s = 0; s <= 24; s++) {
+      var f = s / 24;
+      var mean = this.base + this.drift * f;
+      var spread = (0.015 + 0.12 * Math.sqrt(f)) * this.volatility;
+      min = Math.min(min, mean - spread);
+      max = Math.max(max, mean + spread);
+    }
+    var pad = Math.max(0.08, (max - min) * 0.12);
+    return { min: min - pad, max: max + pad };
+  };
   /* value & confidence band at the current playhead */
   TiktoTick.prototype.sample = function () {
     if (this.playT <= 0) {
@@ -179,13 +297,14 @@
     }
     var f = this.playT;                                        // 0..1 into horizon
     var mean = this.base + this.drift * f;
-    var spread = (0.015 + 0.12 * Math.sqrt(f));                // uncertainty grows with horizon
+    var spread = (0.015 + 0.12 * Math.sqrt(f)) * this.volatility; // uncertainty grows with horizon
     return { value: mean, lo: mean - spread, hi: mean + spread, future: true };
   };
   TiktoTick.prototype.emit = function () { this.onScrub(this.sample(), this.playT); };
   TiktoTick.prototype._x = function (t) { return 20 + (t + 1) / 2 * (this.w - 40); }; // t in -1..1
   TiktoTick.prototype._y = function (v) {
-    var min = 1.0, max = 1.9; // LCR-ish band for layout
+    var b = this._bounds();
+    var min = b.min, max = b.max;
     return this.h - 24 - (v - min) / (max - min) * (this.h - 44);
   };
   TiktoTick.prototype.draw = function () {
@@ -216,7 +335,7 @@
     for (var s = 0; s <= steps; s++) {
       var f = s / steps;                                       // 0..1
       var mean = this.base + this.drift * f;
-      var spread = (0.015 + 0.12 * Math.sqrt(f));
+      var spread = (0.015 + 0.12 * Math.sqrt(f)) * this.volatility;
       var x2 = this._x(f);
       top.push([x2, this._y(mean + spread)]); bot.push([x2, this._y(mean - spread)]);
     }
@@ -258,10 +377,11 @@
     this.canvas.addEventListener('pointerup', function () { dragging = false; });
     // keyboard: arrow keys scrub time (expert-speed, accessible)
     this.canvas.tabIndex = 0;
-    this.canvas.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowRight') { self.playT = Math.min(1, self.playT + 0.05); self.draw(); self.emit(); e.preventDefault(); }
-      if (e.key === 'ArrowLeft') { self.playT = Math.max(-1, self.playT - 0.05); self.draw(); self.emit(); e.preventDefault(); }
-    });
+    this.canvas.addEventListener('keydown', this._keydown);
+  };
+  TiktoTick.prototype._onKeyDown = function (e) {
+    if (e.key === 'ArrowRight') { this.setPlayT(this.playT + 0.05); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { this.setPlayT(this.playT - 0.05); e.preventDefault(); }
   };
 
   /* ======================= NUMBER ROLL ==================================== */
