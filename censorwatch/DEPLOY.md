@@ -30,6 +30,8 @@ There are two tiers:
    CENSORWATCH_ENABLED=1
    # optional tuning:
    # CENSORWATCH_CONFIRMATIONS=3                 # consecutive GONEs before "deleted"
+   # CENSORWATCH_COLLECT_CONCURRENCY=4           # parallel fetches per source cycle
+   # CENSORWATCH_RECHECK_CONCURRENCY=12          # parallel observe calls per recheck
    ```
 
 2. Bring up the stack:
@@ -54,7 +56,7 @@ There are two tiers:
 
 | Service | Role |
 |---------|------|
-| `beat` | Schedules `cw_collect` (every 10m), tiered `cw_recheck` (15m/2h/12h), `cw_signal` (20m) |
+| `beat` | Schedules `cw_collect` (every 10m per promoted source), tiered `cw_recheck` (15m/2h/12h), `cw_signal` (20m), `cw_emulate` (15m), `cw_fusion` (20m), `cw_cloud_sync` (hourly), `cw_consolidate` (10m) |
 | `censorwatch-worker` | Runs those tasks off the isolated `censorwatch` queue (so it can't starve production collectors) |
 | `api` | Serves the dashboard + JSON API at `/api/v5/censorwatch/*` |
 
@@ -99,6 +101,57 @@ baked into `Dockerfile.censorwatch`).
 
 ---
 
+## Cloud consolidation (24/7 backend, large storage)
+
+The stack now ships an hourly `cw_cloud_sync` task. It exports recent rows from:
+- `censored_posts`
+- `post_deletions`
+- `deletion_velocity_snapshots`
+
+as compressed NDJSON snapshots and uploads them to S3-compatible object storage.
+
+Add to `.env`:
+
+```dotenv
+CENSORWATCH_CLOUD_SYNC_ENABLED=1
+CENSORWATCH_CLOUD_BUCKET=your-bucket-name
+CENSORWATCH_CLOUD_REGION=auto
+# For Cloudflare R2 / Backblaze B2 S3 / MinIO:
+CENSORWATCH_CLOUD_ENDPOINT_URL=https://<s3-compatible-endpoint>
+CENSORWATCH_CLOUD_PREFIX=palimpsest/censorwatch
+CENSORWATCH_CLOUD_LOOKBACK_HOURS=24
+CENSORWATCH_CONSOLIDATE_LOOKBACK_HOURS=24
+CENSORWATCH_CONSOLIDATE_MAX_ROWS=50000
+CENSORWATCH_PROMOTION_GATE_ENABLED=1
+CENSORWATCH_FUSION_LOOKBACK_HOURS=48
+CENSORWATCH_FUSION_ALERT_Z=2.0
+# Optional: mirror full archive corpus (large):
+# CENSORWATCH_CLOUD_INCLUDE_ARCHIVE=1
+
+# Credentials (provider-issued):
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+```
+
+Object layout:
+`palimpsest/censorwatch/snapshots/YYYYMMDDTHHMMSSZ/{censored_posts,post_deletions,deletion_velocity_snapshots}.ndjson.gz`
++ `manifest.json`
+
+---
+
+## Free/low-cost unconventional pattern
+
+For near-zero cost while keeping 24/7 operation:
+1. Run collectors on one always-on free/cheap compute node.
+2. Store canonical truth in Postgres + Redis for live operations.
+3. Use hourly cloud snapshots to object storage (cheap at scale).
+4. Keep a second lightweight worker in another region/provider for outage failover.
+5. Treat object storage as the inter-region consolidation bus (append-only snapshots + manifest pointers).
+
+This gives you a federated observer topology without a heavy control plane.
+
+---
+
 ## Verifying it works
 
 ```bash
@@ -116,6 +169,22 @@ docker compose exec postgres \
 # Confirmed deletions (populates over time):
 docker compose exec postgres \
   psql -U scraper -d econscraper -c "select count(*) from post_deletions;"
+
+# Cloud sync status:
+docker compose exec censorwatch-worker \
+  python -c "from censorwatch.tasks import cw_cloud_sync; print(cw_cloud_sync())"
+
+# Structured consolidation agent status:
+docker compose exec censorwatch-worker \
+  python -c "from censorwatch.tasks import cw_consolidate; print(cw_consolidate())"
+
+# Predeploy emulation gate status:
+docker compose exec censorwatch-worker \
+  python -c "from censorwatch.tasks import cw_emulate; print(cw_emulate())"
+
+# Weighted fusion timeline status:
+docker compose exec censorwatch-worker \
+  python -c "from censorwatch.tasks import cw_fusion; print(cw_fusion())"
 ```
 
 Then watch the dashboard at `/api/v5/censorwatch/`. Flower (task monitor) is at

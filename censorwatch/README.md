@@ -67,10 +67,24 @@ never sent to a third-party model.
 | `CENSORWATCH_CONFIRMATIONS` | `3` | Consecutive GONE observations before marking deleted |
 | `CENSORWATCH_MIN_DELAY_S` / `_MAX_DELAY_S` | `2` / `6` | Randomized inter-request delay |
 | `CENSORWATCH_TIMEOUT_S` | `30` | Per-request timeout |
+| `CENSORWATCH_COLLECT_CONCURRENCY` | `4` | Max in-flight fetches per source collect cycle |
+| `CENSORWATCH_RECHECK_CONCURRENCY` | `12` | Max in-flight observe calls per source recheck cycle |
 | `CENSORWATCH_ARCHIVE_DIR` | `./data/censorwatch/archive` | Snapshot root |
 | `CENSORWATCH_VELOCITY_WINDOW_MIN` | `60` | Velocity bucket width |
 | `CENSORWATCH_BASELINE_WINDOWS` | `24` | Windows forming the spike baseline |
 | `CENSORWATCH_SPIKE_Z` | `3.0` | Z-score that flags a scrub-cluster |
+| `CENSORWATCH_CLOUD_SYNC_ENABLED` | _(unset)_ | Enable hourly cloud consolidation upload task |
+| `CENSORWATCH_CLOUD_BUCKET` | _(unset)_ | Target object-storage bucket/container name |
+| `CENSORWATCH_CLOUD_REGION` | `auto` | Region (or provider-specific value) |
+| `CENSORWATCH_CLOUD_ENDPOINT_URL` | _(unset)_ | S3-compatible endpoint (R2/B2/MinIO) |
+| `CENSORWATCH_CLOUD_PREFIX` | `palimpsest/censorwatch` | Object key prefix for snapshots |
+| `CENSORWATCH_CLOUD_LOOKBACK_HOURS` | `24` | Window exported in each snapshot upload |
+| `CENSORWATCH_CLOUD_INCLUDE_ARCHIVE` | _(unset)_ | Also upload archived page/image corpus |
+| `CENSORWATCH_CONSOLIDATE_LOOKBACK_HOURS` | `24` | Consolidator window for structured dataset generation |
+| `CENSORWATCH_CONSOLIDATE_MAX_ROWS` | `50000` | Max rows included in consolidated snapshot |
+| `CENSORWATCH_PROMOTION_GATE_ENABLED` | `1` | Strict predeploy emulation gate before source scheduling |
+| `CENSORWATCH_FUSION_LOOKBACK_HOURS` | `48` | Window for weighted multi-source fusion timeline |
+| `CENSORWATCH_FUSION_ALERT_Z` | `2.0` | Fusion alert threshold factor |
 
 ## Build order
 

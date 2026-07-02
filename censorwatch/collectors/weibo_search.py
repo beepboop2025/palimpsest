@@ -16,6 +16,7 @@ Deletion detection on a permalink reuses the shared CN marker table
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from datetime import datetime, timezone
@@ -52,15 +53,19 @@ class WeiboSearchCollector(BasePostCollector):
     async def collect(self) -> list[dict]:
         """Render each keyword's search page via Playwright (proxy required)."""
         fetcher = self._get_fetcher()
-        out = []
-        for kw in self.keywords:
+        sem = asyncio.Semaphore(max(1, fetcher.s.collect_concurrency))
+
+        async def _one_keyword(kw: str):
             url = _SEARCH.format(q=quote(kw))
-            res = await fetcher.fetch(url, referer="https://s.weibo.com/", render=True)
+            async with sem:
+                res = await fetcher.fetch(url, referer="https://s.weibo.com/", render=True)
             if not res.text:
                 logger.warning("[weibo] '%s': empty (proxy/anti-bot?) status=%s", kw, res.status)
-                continue
-            out.append({"keyword": kw, "html": res.text})
-        return out
+                return None
+            return {"keyword": kw, "html": res.text}
+
+        results = await asyncio.gather(*[_one_keyword(kw) for kw in self.keywords])
+        return [r for r in results if r]
 
     async def parse(self, raw_data: list[dict]) -> pd.DataFrame:
         rows = []

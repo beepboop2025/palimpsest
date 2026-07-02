@@ -61,6 +61,8 @@ class CensorwatchSettings:
     min_delay_s: float
     max_delay_s: float
     request_timeout_s: float
+    collect_concurrency: int
+    recheck_concurrency: int
 
     # ── Deletion-confirmation policy (the false-positive guard) ───
     # A post is only marked deleted after this many *consecutive* confirmed-GONE
@@ -74,6 +76,18 @@ class CensorwatchSettings:
     velocity_window_min: int      # width of each deletion-velocity bucket
     velocity_baseline_windows: int  # how many prior windows form the baseline
     spike_z_threshold: float      # z-score over baseline that flags a scrub-cluster
+    cloud_sync_enabled: bool
+    cloud_bucket: str | None
+    cloud_region: str
+    cloud_endpoint_url: str | None
+    cloud_prefix: str
+    cloud_lookback_hours: int
+    cloud_include_archive: bool
+    consolidate_lookback_hours: int
+    consolidate_max_rows: int
+    promotion_gate_enabled: bool
+    fusion_lookback_hours: int
+    fusion_alert_z: float
 
     user_agents: tuple[str, ...] = field(default=(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -99,11 +113,26 @@ def get_settings() -> CensorwatchSettings:
         min_delay_s=_float("CENSORWATCH_MIN_DELAY_S", 2.0),
         max_delay_s=_float("CENSORWATCH_MAX_DELAY_S", 6.0),
         request_timeout_s=_float("CENSORWATCH_TIMEOUT_S", 30.0),
+        collect_concurrency=max(1, _int("CENSORWATCH_COLLECT_CONCURRENCY", 4)),
+        recheck_concurrency=max(1, _int("CENSORWATCH_RECHECK_CONCURRENCY", 12)),
         confirmations=_int("CENSORWATCH_CONFIRMATIONS", 3),
         archive_dir=os.getenv("CENSORWATCH_ARCHIVE_DIR", "./data/censorwatch/archive"),
         velocity_window_min=_int("CENSORWATCH_VELOCITY_WINDOW_MIN", 60),
         velocity_baseline_windows=_int("CENSORWATCH_BASELINE_WINDOWS", 24),
         spike_z_threshold=_float("CENSORWATCH_SPIKE_Z", 3.0),
+        cloud_sync_enabled=_flag("CENSORWATCH_CLOUD_SYNC_ENABLED"),
+        cloud_bucket=(os.getenv("CENSORWATCH_CLOUD_BUCKET") or "").strip() or None,
+        cloud_region=(os.getenv("CENSORWATCH_CLOUD_REGION", "auto").strip() or "auto"),
+        cloud_endpoint_url=(os.getenv("CENSORWATCH_CLOUD_ENDPOINT_URL") or "").strip() or None,
+        cloud_prefix=(os.getenv("CENSORWATCH_CLOUD_PREFIX", "palimpsest/censorwatch")
+                      .strip().strip("/")),
+        cloud_lookback_hours=max(1, _int("CENSORWATCH_CLOUD_LOOKBACK_HOURS", 24)),
+        cloud_include_archive=_flag("CENSORWATCH_CLOUD_INCLUDE_ARCHIVE", default=False),
+        consolidate_lookback_hours=max(1, _int("CENSORWATCH_CONSOLIDATE_LOOKBACK_HOURS", 24)),
+        consolidate_max_rows=max(100, _int("CENSORWATCH_CONSOLIDATE_MAX_ROWS", 50000)),
+        promotion_gate_enabled=_flag("CENSORWATCH_PROMOTION_GATE_ENABLED", default=True),
+        fusion_lookback_hours=max(6, _int("CENSORWATCH_FUSION_LOOKBACK_HOURS", 48)),
+        fusion_alert_z=max(1.0, _float("CENSORWATCH_FUSION_ALERT_Z", 2.0)),
     )
 
 

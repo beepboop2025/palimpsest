@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/censorwatch", tags=["censorwatch"])
 
 _DASHBOARD = Path(__file__).parent / "dashboard.html"
+_CONSOLIDATED = Path("./data/censorwatch/consolidated/latest.json")
+_FUSION = Path("./data/censorwatch/fusion/latest.json")
+_EMULATION = Path("./data/censorwatch/emulation/latest.json")
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -128,3 +131,33 @@ def health():
     except Exception as e:
         logger.debug("[censorwatch] health redis miss: %s", e)
     return JSONResponse(out)
+
+
+@router.get("/consolidated")
+def consolidated():
+    if not _CONSOLIDATED.exists():
+        return JSONResponse({"status": "empty"})
+    try:
+        return JSONResponse(json.loads(_CONSOLIDATED.read_text(encoding="utf-8")))
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": str(e)})
+
+
+@router.get("/fusion")
+def fusion():
+    if not _FUSION.exists():
+        return JSONResponse({"status": "empty"})
+    try:
+        return JSONResponse(json.loads(_FUSION.read_text(encoding="utf-8")))
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": str(e)})
+
+
+@router.get("/emulation")
+def emulation():
+    if not _EMULATION.exists():
+        return JSONResponse({"status": "empty"})
+    try:
+        return JSONResponse(json.loads(_EMULATION.read_text(encoding="utf-8")))
+    except Exception as e:
+        return JSONResponse({"status": "error", "error": str(e)})

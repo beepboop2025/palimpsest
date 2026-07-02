@@ -118,3 +118,71 @@ def cw_signal(self):
     except Exception as e:
         logger.error("[censorwatch] cw_signal failed: %s", e)
         return {"task": "cw_signal", "status": "error", "error": str(e)}
+
+
+@app.task(bind=True, name="censorwatch.tasks.cw_cloud_sync")
+def cw_cloud_sync(self):
+    """Export + upload consolidated censorwatch data to cloud object storage."""
+    settings = get_settings()
+    if not settings.enabled:
+        return _disabled_result("cw_cloud_sync")
+    try:
+        from censorwatch.db import create_tables
+        from censorwatch.cloud_sync import run_cloud_sync
+
+        create_tables()
+        out = run_cloud_sync(settings=settings)
+        return {"task": "cw_cloud_sync", **out}
+    except Exception as e:
+        logger.error("[censorwatch] cw_cloud_sync failed: %s", e)
+        return {"task": "cw_cloud_sync", "status": "error", "error": str(e)}
+
+
+@app.task(bind=True, name="censorwatch.tasks.cw_consolidate")
+def cw_consolidate(self):
+    """Continuously consolidate collector outputs into one structured dataset."""
+    settings = get_settings()
+    if not settings.enabled:
+        return _disabled_result("cw_consolidate")
+    try:
+        from censorwatch.db import create_tables
+        from censorwatch.consolidator import run_consolidation
+
+        create_tables()
+        out = run_consolidation(settings=settings)
+        return {"task": "cw_consolidate", **out}
+    except Exception as e:
+        logger.error("[censorwatch] cw_consolidate failed: %s", e)
+        return {"task": "cw_consolidate", "status": "error", "error": str(e)}
+
+
+@app.task(bind=True, name="censorwatch.tasks.cw_emulate")
+def cw_emulate(self):
+    """Run predeploy censorship emulation and promotion gate checks."""
+    settings = get_settings()
+    if not settings.enabled:
+        return _disabled_result("cw_emulate")
+    try:
+        from censorwatch.emulation import run_emulation
+
+        out = run_emulation(settings=settings)
+        return {"task": "cw_emulate", **out}
+    except Exception as e:
+        logger.error("[censorwatch] cw_emulate failed: %s", e)
+        return {"task": "cw_emulate", "status": "error", "error": str(e)}
+
+
+@app.task(bind=True, name="censorwatch.tasks.cw_fusion")
+def cw_fusion(self):
+    """Run weighted multi-source fusion timeline generation."""
+    settings = get_settings()
+    if not settings.enabled:
+        return _disabled_result("cw_fusion")
+    try:
+        from censorwatch.fusion import run_fusion
+
+        out = run_fusion(settings=settings)
+        return {"task": "cw_fusion", **out}
+    except Exception as e:
+        logger.error("[censorwatch] cw_fusion failed: %s", e)
+        return {"task": "cw_fusion", "status": "error", "error": str(e)}

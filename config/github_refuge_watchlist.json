@@ -2,7 +2,7 @@
   "_meta": {
     "purpose": "Human-curated watchlist of GitHub 'refuge' repos (mirrors of censored material) plus GitHub's own transparency repos, for collectors/github_refuge.py. Evidence-bound, like zh_censorship_gazetteer.json.",
     "note": "PUBLIC events / public sources ONLY. We watch the PRESSURE metadata (takedown notices, status changes, fork/star bursts), never the censored content itself and never personal data about a maintainer. Human-authored; never delegated to a model.",
-    "safety": "INERT BY DEFAULT. `active_watchlist` is intentionally EMPTY so the collector makes zero network calls out of the box. A deployer copies entries from `documented_repos` into `active_watchlist` to activate, and injects a read-only fetch + governance (kill switch + rate ceiling under 60 req/hr/IP).",
+    "safety": "INERT BY DEFAULT unless the github_refuge collector is explicitly enabled in deployment and wired with a read-only fetch + governance (kill switch + rate ceiling under 60 req/hr/IP). `active_watchlist` ships with a curated anti-censorship pack and can be trimmed/expanded per deployment.",
     "schema": "full_name, terms(evidence bindings -> DDTI terms), evidence(event+date+source), pressure_history",
     "transparency_repos": [
       {"full_name": "github/dmca", "role": "primary DMCA takedown feed (Markdown, by date)"},
@@ -11,7 +11,56 @@
     "complainants_note": "Known censor-aligned complainant names are matched lexically in notice text; see collectors/github_refuge.DEFAULT_COMPLAINANTS.",
     "version": "1.0"
   },
-  "active_watchlist": [],
+  "active_watchlist": [
+    {
+      "full_name": "ooni/probe-cli",
+      "terms": ["ooni", "probe", "censorship measurement", "blocking"],
+      "evidence": {"event": "Public internet censorship measurement probe stack", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "gfw-report/usenixsecurity25-quic-sni",
+      "terms": ["gfw", "quic", "sni censorship", "circumvention"],
+      "evidence": {"event": "Artifacts for QUIC SNI censorship and circumvention measurements", "date": "2025", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "gfw-report/ndss25-wallbleed",
+      "terms": ["gfw", "wallbleed", "censorship infrastructure"],
+      "evidence": {"event": "Artifacts for Wallbleed Great Firewall vulnerability research", "date": "2025", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "yinghuocho/firefly-proxy",
+      "terms": ["anti censorship", "proxy", "gfw", "circumvention"],
+      "evidence": {"event": "Widely-used anti-censorship proxy project", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "dataabc/weibo-crawler",
+      "terms": ["weibo", "crawler", "deletion tracking"],
+      "evidence": {"event": "Large open-source Weibo collection stack", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "lucasjinreal/weibo_terminater",
+      "terms": ["weibo", "crawler", "comments", "reposts"],
+      "evidence": {"event": "Large-scale Weibo scraping toolkit", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "ultrafunkamsterdam/nodriver",
+      "terms": ["anti-bot", "stealth automation", "scraping"],
+      "evidence": {"event": "Fast-moving anti-detection browser automation framework", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "AtuboDad/playwright_stealth",
+      "terms": ["playwright", "stealth", "fingerprint evasion"],
+      "evidence": {"event": "Stealth patching layer for Playwright", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    }
+  ],
   "documented_repos": [
     {
       "full_name": "996ICU/996.ICU",
@@ -41,6 +90,54 @@
       "full_name": "gfw-report/gfw-report",
       "terms": ["gfw", "censorship", "great firewall", "blocking"],
       "evidence": {"event": "GFW measurement reports / mirrors", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "ooni/probe-cli",
+      "terms": ["ooni", "probe", "censorship measurement", "blocking"],
+      "evidence": {"event": "Public internet censorship measurement probe stack", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "gfw-report/usenixsecurity25-quic-sni",
+      "terms": ["gfw", "quic", "sni censorship", "circumvention"],
+      "evidence": {"event": "Artifacts for QUIC SNI censorship and circumvention measurements", "date": "2025", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "gfw-report/ndss25-wallbleed",
+      "terms": ["gfw", "wallbleed", "censorship infrastructure"],
+      "evidence": {"event": "Artifacts for Wallbleed Great Firewall vulnerability research", "date": "2025", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "yinghuocho/firefly-proxy",
+      "terms": ["anti censorship", "proxy", "gfw", "circumvention"],
+      "evidence": {"event": "Widely-used anti-censorship proxy project", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "dataabc/weibo-crawler",
+      "terms": ["weibo", "crawler", "deletion tracking"],
+      "evidence": {"event": "Large open-source Weibo collection stack", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "lucasjinreal/weibo_terminater",
+      "terms": ["weibo", "crawler", "comments", "reposts"],
+      "evidence": {"event": "Large-scale Weibo scraping toolkit", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "ultrafunkamsterdam/nodriver",
+      "terms": ["anti-bot", "stealth automation", "scraping"],
+      "evidence": {"event": "Fast-moving anti-detection browser automation framework", "date": "ongoing", "source": "public repo"},
+      "pressure_history": []
+    },
+    {
+      "full_name": "AtuboDad/playwright_stealth",
+      "terms": ["playwright", "stealth", "fingerprint evasion"],
+      "evidence": {"event": "Stealth patching layer for Playwright", "date": "ongoing", "source": "public repo"},
       "pressure_history": []
     }
   ]

@@ -20,6 +20,7 @@ orchestration around it.
 from __future__ import annotations
 
 import logging
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -162,19 +163,47 @@ async def recheck_source(
         try:
             pending = (
                 db.query(CensoredPost)
+                .filter(CensoredPost.source == source_name)
                 .filter(CensoredPost.deleted_at.is_(None))
                 .order_by(CensoredPost.posted_at.desc().nullslast())
                 .limit(batch_limit)
                 .all()
             )
+            candidates = []
             for row in pending:
                 age = _age_hours(row, now)
-                if age < min_age_hours or age > max_age_hours:
+                if min_age_hours <= age <= max_age_hours:
+                    candidates.append(row)
+
+            sem = asyncio.Semaphore(max(1, settings.recheck_concurrency))
+
+            async def _observe_row(row):
+                async with sem:
+                    post = Post(
+                        source=row.source,
+                        post_id=row.post_id,
+                        url=row.url or "",
+                        full_text=row.full_text or "",
+                        posted_at=row.posted_at,
+                        first_seen_at=row.first_seen_at,
+                    )
+                    try:
+                        obs = await collector.observe(post)
+                    except Exception as e:
+                        obs = Observation(
+                            state=LivenessState.UNKNOWN,
+                            checked_at=datetime.now(timezone.utc),
+                            reason=f"observe_error:{type(e).__name__}",
+                        )
+                    return row.id, obs
+
+            observed_pairs = await asyncio.gather(*[_observe_row(r) for r in candidates])
+            observed = {row_id: obs for row_id, obs in observed_pairs}
+
+            for row in candidates:
+                obs = observed.get(row.id)
+                if obs is None:
                     continue
-                post = Post(source=row.source, post_id=row.post_id, url=row.url or "",
-                            full_text=row.full_text or "", posted_at=row.posted_at,
-                            first_seen_at=row.first_seen_at)
-                obs = await collector.observe(post)
                 decision = apply_observation(row.gone_streak, row.posted_at, obs,
                                              settings, cohort)
                 checked += 1

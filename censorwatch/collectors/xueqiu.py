@@ -20,6 +20,7 @@ Documented stock-timeline endpoint:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -64,17 +65,21 @@ class XueqiuCollector(BasePostCollector):
         The raw stored is the parsed JSON per symbol so backfill stays possible.
         """
         fetcher = self._get_fetcher()
-        out = []
-        for sym in self.symbols:
+        sem = asyncio.Semaphore(max(1, fetcher.s.collect_concurrency))
+
+        async def _one_symbol(sym: str):
             url = _TIMELINE.format(sym=sym, n=self.count)
-            # render=True → Playwright executes the WAF JS challenge.
-            res = await fetcher.fetch(url, referer=f"{_BASE}/S/{sym}", render=True)
+            async with sem:
+                # render=True → Playwright executes the WAF JS challenge.
+                res = await fetcher.fetch(url, referer=f"{_BASE}/S/{sym}", render=True)
             data = self._extract_json(res.text)
             if data is None:
                 logger.warning("[xueqiu] %s: no JSON (WAF/proxy?) status=%s", sym, res.status)
-                continue
-            out.append({"symbol": sym, "data": data})
-        return out
+                return None
+            return {"symbol": sym, "data": data}
+
+        results = await asyncio.gather(*[_one_symbol(sym) for sym in self.symbols])
+        return [r for r in results if r]
 
     async def parse(self, raw_data: list[dict]) -> pd.DataFrame:
         rows = []

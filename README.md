@@ -145,6 +145,8 @@ see [`config/regions/`](config/regions/).
 | Self-evolving euphemism gazetteer (human-ratified) | Built, tested |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
 | Deletion detector — LIVE / GONE / UNKNOWN / DEGRADED state machine | Built, 34 tests |
+| **Autonomous CensorWatch mesh** — 24/7 multi-source collection + consolidation + cloud snapshots | **Built, tested (always-on scheduler + structured agent output + S3-compatible sync)** |
+| **Research-grade hardening lane** — predeploy emulation gate, weighted fusion timeline, probe-priority planner | **Built, tested (inspired by arXiv:2412.16349, 2502.14945, 2603.28753)** |
 | Zero-dependency public demo | Built |
 | Real-time velocity at minute resolution | Needs in-country / seam measurement |
 
@@ -199,6 +201,18 @@ PYTHONPATH=. python3 -m pytest tests/ -q             # pure/offline cores (62 pa
 
 The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 `censorwatch/DEPLOY.md`. It stays inert unless `CENSORWATCH_ENABLED` is set.
+
+### 24/7 autonomous operations mode
+
+Palimpsest now includes an always-on CensorWatch operations plane:
+
+- **Continuous source scheduling** for all promoted sources (`cw_collect`)
+- **Tiered deletion verification** (`cw_recheck`) and velocity signal refresh (`cw_signal`)
+- **Agent-like structured consolidation** (`cw_consolidate`) into a unified dataset
+- **Hourly cloud consolidation snapshots** (`cw_cloud_sync`) to S3-compatible storage
+- **Predeploy emulation gate + fusion timeline** (`cw_emulate`, `cw_fusion`) for resilient operations
+
+For deployment-level setup and env config, use `censorwatch/DEPLOY.md`.
 
 ## Documentation
 

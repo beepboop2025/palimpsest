@@ -19,8 +19,14 @@ from censorwatch.interfaces import LivenessState, Observation
 def _settings(confirmations=3) -> CensorwatchSettings:
     return CensorwatchSettings(
         enabled=True, proxy_url=None, min_delay_s=0.0, max_delay_s=0.0,
-        request_timeout_s=5.0, confirmations=confirmations, archive_dir="/tmp/cw",
+        request_timeout_s=5.0, collect_concurrency=4, recheck_concurrency=12,
+        confirmations=confirmations, archive_dir="/tmp/cw",
         velocity_window_min=60, velocity_baseline_windows=24, spike_z_threshold=3.0,
+        cloud_sync_enabled=False, cloud_bucket=None, cloud_region="auto",
+        cloud_endpoint_url=None, cloud_prefix="palimpsest/censorwatch",
+        cloud_lookback_hours=24, cloud_include_archive=False,
+        consolidate_lookback_hours=24, consolidate_max_rows=50000,
+        promotion_gate_enabled=True, fusion_lookback_hours=48, fusion_alert_z=2.0,
     )
 
 
