@@ -39,7 +39,11 @@
           <p>A real-time observatory of Chinese internet censorship — deletion as data</p>
         </div>
       </div>
-      <button class="tk-btn" id="themeBtn">Institutional theme</button>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="tk-chip tk-chip--watch" id="loadChip">LOAD 45%</span>
+        <button class="tk-btn" id="themeBtn">Institutional theme</button>
+        <button class="tk-btn" id="autopilotBtn">▶ Autopilot</button>
+      </div>
     </div>
 
     <!-- Trust strip (auditability): source, freshness, method, scope, and the
@@ -112,7 +116,7 @@
     <div class="grid--2">
       <section class="tk-map mapwrap">
         <canvas class="tk-map__canvas" id="net"></canvas>
-        <div class="tk-map__zoom">TOPIC NETWORK · shock = newly-sensitive term spreading</div>
+        <div class="tk-map__zoom" id="zoomLabel">TOPIC NETWORK · shock = newly-sensitive term spreading</div>
         <div class="tk-map__legend">
           <span><span class="tk-trust__dot" style="background:var(--tk-critical)"></span>critical</span>
           <span><span class="tk-trust__dot" style="background:var(--tk-warning)"></span>warning</span>
@@ -125,6 +129,36 @@
         <div class="tk-alarms terms" id="terms"></div>
       </div>
     </div>
+
+    <section class="tk-grid-2">
+      <div class="tk-panel">
+        <div class="tk-panel__title">Scenario cockpit</div>
+        <div class="tk-matrix">
+          <label for="shockRange">Shock spread</label>
+          <input class="tk-slider" id="shockRange" type="range" min="1" max="10" step="1" value="4" />
+          <span class="tk-value" id="shockVal">4</span>
+        </div>
+        <div class="tk-matrix">
+          <label for="driftRange">Forecast drift</label>
+          <input class="tk-slider" id="driftRange" type="range" min="-30" max="120" step="2" value="55" />
+          <span class="tk-value" id="driftVal">0.55</span>
+        </div>
+        <div class="tk-matrix">
+          <label for="volRange">Volatility</label>
+          <input class="tk-slider" id="volRange" type="range" min="60" max="240" step="5" value="100" />
+          <span class="tk-value" id="volVal">1.00×</span>
+        </div>
+        <div class="tk-terminal">
+          <span class="tk-label">/</span>
+          <input id="cmdInput" type="text" aria-label="Command line" placeholder="Try: shock 8 · load 80 · focus bank run · drift 0.7" />
+        </div>
+      </div>
+
+      <div class="tk-panel">
+        <div class="tk-panel__title">Event stream</div>
+        <div class="tk-stream" id="stream"></div>
+      </div>
+    </section>
 
     <!-- Velocity: the fail-loud signal (honest scope) -->
     <div class="full" style="margin-top:14px">
@@ -180,6 +214,20 @@ const INDEX = {
 const ROOT = document.documentElement, T = window.Tikto, css = T.css, hexA = T.hexA;
 const tier = (t) => (t.is_new || t.threat >= INDEX.alert_threshold) ? "critical" : t.threat >= 1.5 ? "warning" : "watch";
 const fmt = (n) => Number(n).toFixed(2);
+const zoomLabel = document.getElementById("zoomLabel");
+const loadChip = document.getElementById("loadChip");
+const stream = document.getElementById("stream");
+
+function pushEvent(level, title, text) {
+  const row = document.createElement("article");
+  row.className = "tk-stream__item";
+  row.dataset.level = level;
+  row.innerHTML =
+    `<div class="tk-stream__head"><b>${title}</b><span>${new Date().toLocaleTimeString("en-IN", { hour12:false })}</span></div>` +
+    `<div class="tk-stream__text">${text}</div>`;
+  stream.prepend(row);
+  while (stream.children.length > 14) stream.removeChild(stream.lastChild);
+}
 
 /* ---- trust strip ---- */
 document.getElementById("trust").innerHTML = `
@@ -284,11 +332,20 @@ const nodes = INDEX.ranked.map((t, i) => ({
   label: t.term.split(" (")[0].slice(0, 14),
   status: tier(t),
 }));
+const nodeByLabel = {};
+INDEX.ranked.forEach((t, i) => { nodeByLabel[t.term.split(" (")[0].toLowerCase()] = i; });
 const edges = [];
 for (let a = 0; a < INDEX.ranked.length; a++)
   for (let b = a + 1; b < INDEX.ranked.length; b++)
     if (INDEX.ranked[a].domain === INDEX.ranked[b].domain) edges.push([a, b, 0.5]);
-const net = new T.Network(document.getElementById("net"), { nodes, edges });
+const net = new T.Network(document.getElementById("net"), {
+  nodes,
+  edges,
+  onNodeFocus: (node, idx, pinned) => {
+    zoomLabel.textContent = `${pinned ? "PINNED" : "FOCUS"} · ${INDEX.ranked[idx].term.split(" (")[0]} · ${INDEX.ranked[idx].domain}`;
+    if (pinned) pushEvent("watch", "Node pinned", `${INDEX.ranked[idx].term.split(" (")[0]} isolated for investigation.`);
+  }
+});
 const newIdx = INDEX.ranked.findIndex(t => t.is_new);
 if (newIdx >= 0) { net.propagate(newIdx); setInterval(() => net.propagate(newIdx), 6500); }
 
@@ -297,7 +354,9 @@ if (newIdx >= 0) { net.propagate(newIdx); setInterval(() => net.propagate(newIdx
 const tickCv = document.getElementById("tick");
 const past = []; let v = 3.2;
 for (let i = 0; i < 30; i++) { v += Math.sin(i*0.5)*0.06 + (i>20 ? 0.10 : 0.02); past.push(v); }
-const base = past[past.length-1], drift = 0.55, alertLine = INDEX.alert_threshold;
+const base = past[past.length-1], alertLine = INDEX.alert_threshold;
+let drift = 0.55;
+let volatility = 1.0;
 function drawTick() {
   const dpr = Math.min(devicePixelRatio||1, 2), r = tickCv.getBoundingClientRect();
   tickCv.width = r.width*dpr; tickCv.height = r.height*dpr;
@@ -320,7 +379,7 @@ function drawTick() {
   ctx.strokeStyle = hexA(css("--tk-text-1"), 0.85); ctx.lineWidth = 1.6; ctx.stroke();
   // forecast cone
   const steps=40, topL=[], botL=[];
-  for (let s=0;s<=steps;s++){ const f=s/steps, mean=base+drift*f, sp=0.05+0.5*Math.sqrt(f); topL.push([X(f),Y(mean+sp)]); botL.push([X(f),Y(mean-sp)]); }
+  for (let s=0;s<=steps;s++){ const f=s/steps, mean=base+drift*f, sp=(0.05+0.5*Math.sqrt(f))*volatility; topL.push([X(f),Y(mean+sp)]); botL.push([X(f),Y(mean-sp)]); }
   ctx.beginPath(); ctx.moveTo(topL[0][0],topL[0][1]); topL.forEach(p=>ctx.lineTo(p[0],p[1]));
   for(let b=botL.length-1;b>=0;b--) ctx.lineTo(botL[b][0],botL[b][1]); ctx.closePath();
   const g = ctx.createLinearGradient(X(0),0,w,0); g.addColorStop(0,hexA(live,0.34)); g.addColorStop(1,hexA(live,0.04));
@@ -334,6 +393,87 @@ function drawTick() {
   ctx.fillStyle=live; ctx.textAlign="center"; ctx.fillText("NOW", nowX, h-4);
 }
 drawTick(); addEventListener("resize", drawTick);
+
+/* ---- scenario cockpit + slash commands ---- */
+const shockRange = document.getElementById("shockRange");
+const driftRange = document.getElementById("driftRange");
+const volRange = document.getElementById("volRange");
+const shockVal = document.getElementById("shockVal");
+const driftVal = document.getElementById("driftVal");
+const volVal = document.getElementById("volVal");
+
+function setLoad(load) {
+  const bounded = Math.max(10, Math.min(100, load));
+  net.setLoad(bounded / 100);
+  loadChip.textContent = `LOAD ${bounded}%`;
+  loadChip.className = bounded >= 70 ? "tk-chip tk-chip--warning" : "tk-chip tk-chip--watch";
+}
+function runShock(level) {
+  const bounded = Math.max(1, Math.min(10, level));
+  net.propagate(newIdx >= 0 ? newIdx : 0);
+  setLoad(Math.round(24 + bounded * 7));
+  pushEvent(bounded >= 7 ? "critical" : "warning", "Stress shock", `Scenario ${bounded}/10 propagated through topic graph.`);
+}
+function syncCockpit() {
+  shockVal.textContent = shockRange.value;
+  drift = Number(driftRange.value) / 100;
+  volatility = Number(volRange.value) / 100;
+  driftVal.textContent = drift.toFixed(2);
+  volVal.textContent = `${volatility.toFixed(2)}×`;
+  drawTick();
+  setLoad(Math.round(24 + Number(shockRange.value) * 7));
+}
+[shockRange, driftRange, volRange].forEach((el) => el.addEventListener("input", syncCockpit));
+syncCockpit();
+
+document.getElementById("cmdInput").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const raw = e.target.value.trim().toLowerCase();
+  if (!raw) return;
+  e.target.value = "";
+  const p = raw.split(/\s+/), cmd = p[0];
+  if (cmd === "shock") { runShock(parseInt(p[1] || shockRange.value, 10)); return; }
+  if (cmd === "load") { setLoad(parseInt(p[1] || "45", 10)); pushEvent("watch", "Load tuned", `Interaction load set to ${loadChip.textContent.replace("LOAD ", "")}.`); return; }
+  if (cmd === "drift") {
+    drift = Math.max(-0.3, Math.min(1.2, Number(p[1] || drift)));
+    driftRange.value = String(Math.round(drift * 100));
+    syncCockpit();
+    pushEvent("watch", "Forecast drift", `Forward slope adjusted to ${drift.toFixed(2)}.`);
+    return;
+  }
+  if (cmd === "focus") {
+    const name = p.slice(1).join(" ");
+    const idx = nodeByLabel[name];
+    if (idx !== undefined) {
+      net.propagate(idx);
+      pushEvent("watch", "Focus shifted", `Scenario centered on ${INDEX.ranked[idx].term.split(" (")[0]}.`);
+    } else {
+      pushEvent("warning", "Unknown term", `No node matched "${name}".`);
+    }
+    return;
+  }
+  pushEvent("warning", "Unknown command", "Use shock, load, drift, or focus.");
+});
+
+/* ---- autopilot ---- */
+let autopilot = false, autoTimer = null;
+document.getElementById("autopilotBtn").onclick = function () {
+  autopilot = !autopilot;
+  this.textContent = autopilot ? "⏸ Autopilot" : "▶ Autopilot";
+  if (!autopilot) { clearInterval(autoTimer); autoTimer = null; return; }
+  clearInterval(autoTimer);
+  autoTimer = setInterval(() => {
+    const target = INDEX.ranked[Math.floor(Math.random() * Math.min(6, INDEX.ranked.length))];
+    const idx = INDEX.ranked.indexOf(target);
+    if (idx >= 0) net.propagate(idx);
+    drift += 0.03 * (Math.random() - 0.5);
+    drift = Math.max(-0.2, Math.min(1.0, drift));
+    driftRange.value = String(Math.round(drift * 100));
+    syncCockpit();
+  }, 1600);
+  pushEvent("watch", "Autopilot", "Continuous scenario sweep enabled.");
+};
+pushEvent("watch", "System live", "Operator stream connected to DDTI observatory.");
 
 /* ---- theme toggle (terminal ↔ institutional) ---- */
 document.getElementById("themeBtn").onclick = (e) => {
