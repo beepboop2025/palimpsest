@@ -80,6 +80,6 @@ never sent to a third-party model.
 - [x] **Step 3** — `archiver.py` (page + images → disk, idempotent first-capture snapshot; wired into `_archive_new`). 3 tests.
 - [x] **Step 4** — `detector.py`: LIVE/GONE/UNKNOWN/DEGRADED machine, liveness-probe gate, pure decision core (6 tests). Ships a default confirmation predicate — **owner may override `is_confirmed_deletion()`**. DB orchestration needs `docker compose up` to verify.
 - [x] **Step 5** — `signal.py`: deletion-velocity per term, rolling-baseline z-score spike flag, ranked output → snapshot + Redis. Reuses DDTI term extraction. 4 tests.
-- [x] **Step 6** — `routes.py` (`/api/v5/censorwatch/*`, graceful degrade) + XSS-hardened `dashboard.html`; guarded mount in `api/main.py`. TestClient-verified.
+- [x] **Step 6** — `routes.py` (`/api/v5/censorwatch/*`, graceful degrade, strict response security headers, bounded Redis timeouts, validated query limits) + XSS-hardened `dashboard.html`; guarded mount in `api/main.py`. TestClient-verified.
 - [ ] **Step 7** — enable flag in staging, dedicated worker _(needs `docker compose up` + proxy — your infra)_
 - [x] **Step 8** — `xueqiu.py` (JSON API; pure parser tested vs documented shape) + `weibo_search.py` (s.weibo.com cards; pure parser tested). Both `enabled: false` — **Aliyun WAF / login-wall block open egress; need Playwright + residential proxy** (confirmed by live probe). 6 tests.
