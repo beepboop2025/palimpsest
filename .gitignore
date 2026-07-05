@@ -1,22 +1,13 @@
-# Python
+# local ops logs (not part of the site)
+logs/
+*.log
+deploy_retry.sh
+
+# python / macOS cruft
 __pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
-.pytest_cache/
-
-# Demo-generated artifacts (regenerated on every run)
-demo/report.html
-demo/data/
-data/
-
-# Local env / secrets
-.env
-*.sqlite3
-
-# macOS
+*.pyc
 .DS_Store
+**/.DS_Store
 
-# Recurring GFI run state (logs) — the time series (history.jsonl) IS committed
-readings/state/
+# local scraped data cache (published output goes to readings/, not here)
+data/
