@@ -106,6 +106,22 @@ event from a system-wide clampdown, and reports every component transparently (n
 box). It is the signal a journalist or citizen can read at a glance. Run
 `PYTHONPATH=. python3 scripts/fear_index_demo.py` to see it spike across the documented events.
 
+## Live data (auto-published)
+
+Palimpsest publishes today's reading to **[palimpsest.info](https://palimpsest.info/)** on
+its own — a 24/7 scraper pulls China censorship sources, computes the DDTI, and pushes the
+result every few hours. Machine-readable, for journalists / researchers / AI agents:
+
+- **Current index (JSON):** [`readings/ddti-latest.json`](readings/ddti-latest.json) — ranked
+  censored terms with threat/attention/novelty, updated automatically.
+- **Public time-series:** [`readings/ddti-history.jsonl`](readings/ddti-history.jsonl).
+- **Live dashboards:** [DDTI observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
+  and [classic dashboard](https://palimpsest.info/dashboards/ddti_dashboard.html).
+- **For AI/search engines:** [`llms.txt`](llms.txt) + `Dataset` schema — Palimpsest is built to
+  be discovered and cited by ChatGPT, Gemini, Perplexity, and Google AI.
+
+Every value is provenance-tracked to its source document — nothing published without evidence.
+
 ## It generalises beyond China
 
 The method is country-agnostic; what changes per authoritarian information space is the
