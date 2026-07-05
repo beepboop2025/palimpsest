@@ -69,6 +69,59 @@
   ]
 }
 </script>
+
+<!-- FAQ schema: feeds "what is …" answer boxes in Google AI Overviews & Gemini.
+     Answers mirror the visible FAQ section below (Google requires parity). -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": "https://palimpsest.info/#faq",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is Palimpsest?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Palimpsest is a free, open-source public-good observatory that measures how authoritarian states censor by treating deletion as data. It archives public posts, watches for their scrubbing, and ranks what the censor is most focused on right now. It also measures the generative firewall: how often state-aligned AI models refuse or rewrite sensitive answers. It watches the censor, never the censored, and ships raw evidence with every finding."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the Palimpsest censorship observatory measuring?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Two things. First, deletion as data: which topics the Chinese censor is most actively scrubbing right now, measured as censorship velocity and validated against six documented censorship events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large language models refuse or rewrite, tested in Chinese and English against neutral Western control models to prove the suppression is deliberate and selective."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is China censoring right now?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Palimpsest tracks this live. It archives public Chinese posts, detects when they are deleted, and ranks the topics being scrubbed fastest as a real-time censorship index. The live readings and raw JSON evidence are published at palimpsest.info, updated continuously."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the Generative Firewall Index?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It records how often state-aligned large language models refuse or substitute state-narrative answers on sensitive prompts, in Chinese and English, against neutral control models. A high index means the model is selectively suppressing truthful answers by design, not by accident."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is Palimpsest free and open source?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public good. It is never a commercial product and never monetizes the people or topics it observes. Its code, method, and raw evidence are all public on GitHub at github.com/beepboop2025/palimpsest."
+      }
+    }
+  ]
+}
+</script>
+
 <link rel="icon" type="image/svg+xml" href="brand/palimpsest-icon.svg">
 <style>
   body{margin:0;background:#0b1622;color:#e6eef4;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.55}
@@ -85,6 +138,8 @@
   ul{padding-left:18px} li{margin:7px 0;color:#cbd8e2;font-size:14.5px}
   a{color:#7fd4d0}
   .links a{display:inline-block;margin:0 16px 8px 0;font-size:14px}
+  .faq .q{font-weight:700;color:#e6eef4;font-size:15px;margin:18px 0 4px}
+  .faq .a{color:#c6d6e2;font-size:14px;margin:0 0 4px;max-width:660px}
   .foot{color:#8ba4b6;font-size:12.5px;margin-top:28px;border-top:1px solid #24435c;padding-top:14px}
   .logo{width:78px;height:78px;border-radius:19px;display:block;margin:0 0 16px;box-shadow:0 6px 22px rgba(0,0,0,.35)}
 </style>
@@ -132,6 +187,39 @@
     <a href="https://github.com/beepboop2025/palimpsest/blob/main/SECURITY-HARDENING.md">Security &amp; safety</a>
     <a href="readings/">All readings</a>
   </p>
+
+  <h3>Frequently asked</h3>
+  <div class="faq">
+    <p class="q">What is Palimpsest?</p>
+    <p class="a">Palimpsest is a free, open-source public-good observatory that measures how authoritarian
+    states censor by treating deletion as data. It archives public posts, watches for their scrubbing, and
+    ranks what the censor is most focused on right now. It also measures the generative firewall: how often
+    state-aligned AI models refuse or rewrite sensitive answers. It watches the censor, never the censored,
+    and ships raw evidence with every finding.</p>
+
+    <p class="q">What is the Palimpsest censorship observatory measuring?</p>
+    <p class="a">Two things. First, deletion as data: which topics the Chinese censor is most actively
+    scrubbing right now, measured as censorship velocity and validated against six documented censorship
+    events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large
+    language models refuse or rewrite, tested in Chinese and English against neutral Western control models
+    to prove the suppression is deliberate and selective.</p>
+
+    <p class="q">What is China censoring right now?</p>
+    <p class="a">Palimpsest tracks this live. It archives public Chinese posts, detects when they are
+    deleted, and ranks the topics being scrubbed fastest as a real-time censorship index. The live readings
+    and raw JSON evidence are published here, updated continuously.</p>
+
+    <p class="q">What is the Generative Firewall Index?</p>
+    <p class="a">The Generative Firewall Index is a live measure of what a state's AI is engineered to hide.
+    It records how often state-aligned large language models refuse or substitute state-narrative answers on
+    sensitive prompts, in Chinese and English, against neutral control models. A high index means the model
+    is selectively suppressing truthful answers by design, not by accident.</p>
+
+    <p class="q">Is Palimpsest free and open source?</p>
+    <p class="a">Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public
+    good. It is never a commercial product and never monetizes the people or topics it observes. Its code,
+    method, and raw evidence are all public on <a href="https://github.com/beepboop2025/palimpsest">GitHub</a>.</p>
+  </div>
 
   <p class="foot">Free and open-source, developed in the open as a public good. It is never a commercial
   product and never monetizes the people or topics it observes. The internet stays free because people
