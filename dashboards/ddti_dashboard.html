@@ -156,16 +156,9 @@
     background:var(--redact); border-left:2px solid var(--signal-deep);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:default;
   }
-  .leak::after{
-    content:""; position:absolute; inset:0; background:var(--redact);
-    transition:transform .45s cubic-bezier(.7,0,.3,1); transform-origin:left;
-  }
-  .row:hover .leak::after{transform:scaleX(0)}
-  .leak::before{
-    content:"REDACTED"; position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    font-size:8px; letter-spacing:.3em; color:var(--signal); opacity:.7; transition:opacity .2s;
-  }
-  .row:hover .leak::before{opacity:0}
+  /* Redaction overlay removed — row content is always visible, no hover needed. */
+  .leak::after{ display:none; }
+  .leak::before{ display:none; }
 
   /* ── side column ── */
   aside{position:sticky; top:24px; display:flex; flex-direction:column; gap:24px}
