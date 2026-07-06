@@ -1,0 +1,56 @@
+name: Refresh GitHub-refuge signal
+
+# Watch the pressure on GitHub repos that shelter censored material (996.ICU,
+# nCovMemory, the Terminus2049 archive) plus GitHub's transparency repos. Records
+# PUBLIC pressure metadata only: 451 legal blocks, 404-after-present takedowns,
+# visibility drops, and defensive fork/star bursts. Never the censored content,
+# never anything about a maintainer.
+#
+# Stateful: readings/github-refuge-baselines.json persists per-repo presence and
+# fork/star history across runs, and is committed each run. This persistence is
+# what lets a later 404 be told apart from a repo never seen alive — so a takedown
+# is only ever recorded against a real prior baseline, never fabricated.
+#
+# Vantage-insensitive: reads GitHub's public API from outside the wall.
+
+on:
+  schedule:
+    - cron: "37 */12 * * *"    # twice a day
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-refuge-refresh
+  cancel-in-progress: false
+
+jobs:
+  refuge:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # built-in; only raises the read rate limit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan the refuge watchlist for pressure
+        run: python -m scripts.github_refuge_pull
+
+      - name: Commit & push readings + persisted baselines
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/github-refuge-latest.json readings/github-refuge-history.jsonl \
+                  readings/github-refuge-baselines.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: GitHub-refuge refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
