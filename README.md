@@ -2,9 +2,14 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-233%20passing-brightgreen.svg)
+![tests](https://img.shields.io/badge/tests-253%20passing-brightgreen.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
+
+[![DDTI refresh](https://github.com/beepboop2025/palimpsest/actions/workflows/ddti-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/ddti-refresh.yml)
+[![Generative Firewall](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml)
+[![GDELT cross-signal](https://github.com/beepboop2025/palimpsest/actions/workflows/gdelt-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gdelt-refresh.yml)
+[![GitHub-refuge](https://github.com/beepboop2025/palimpsest/actions/workflows/github-refuge-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/github-refuge-refresh.yml)
 
 **An open-source observatory that measures Chinese internet censorship by treating
 deletion itself as data.**
@@ -24,11 +29,12 @@ censored.**
 > right now, and writes a dashboard. (`--source sample` runs an offline, deterministic
 > demo.) See [`demo/`](demo/).
 >
-> **Or open the full observatory** (no install): open
-> [`dashboards/ddti_observatory.html`](dashboards/ddti_observatory.html) — the Fear Index,
-> the selectivity/novelty signals, the topic network with censorship-shock propagation, a
-> temporal index with a forward projection, and velocity shown *fail-loud* where in-China
-> measurement is still required.
+> **Or just visit the live observatory:**
+> [palimpsest.info/dashboards/ddti_observatory.html](https://palimpsest.info/dashboards/ddti_observatory.html)
+> — the Fear Index, the selectivity/novelty signals, the topic network with censorship-shock
+> propagation, all four live signals, and velocity shown *fail-loud* where in-China
+> measurement is still required. (The same page works offline from
+> [`dashboards/ddti_observatory.html`](dashboards/ddti_observatory.html).)
 
 ![Palimpsest DDTI Observatory — the Censorship Fear Index and the selectivity / novelty signals](docs/img/observatory.png)
 
@@ -106,21 +112,30 @@ event from a system-wide clampdown, and reports every component transparently (n
 box). It is the signal a journalist or citizen can read at a glance. Run
 `PYTHONPATH=. python3 scripts/fear_index_demo.py` to see it spike across the documented events.
 
-## Live data (auto-published)
+## Live signals (auto-published)
 
-Palimpsest publishes today's reading to **[palimpsest.info](https://palimpsest.info/)** on
-its own — a 24/7 scraper pulls China censorship sources, computes the DDTI, and pushes the
-result every few hours. Machine-readable, for journalists / researchers / AI agents:
+**[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure.** Four
+independent signals refresh on their own schedules via GitHub Actions on this repository, so
+every run, its code, and its output are publicly auditable (the badges above are the live
+run status). No hidden server is involved in publication.
 
-- **Current index (JSON):** [`readings/ddti-latest.json`](readings/ddti-latest.json) — ranked
-  censored terms with threat/attention/novelty, updated automatically.
-- **Public time-series:** [`readings/ddti-history.jsonl`](readings/ddti-history.jsonl).
-- **Live dashboards:** [DDTI observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
-  and [classic dashboard](https://palimpsest.info/dashboards/ddti_dashboard.html).
-- **For AI/search engines:** [`llms.txt`](llms.txt) + `Dataset` schema — Palimpsest is built to
-  be discovered and cited by ChatGPT, Gemini, Perplexity, and Google AI.
+| Signal | What it measures | Cadence | Feed |
+| --- | --- | --- | --- |
+| **DDTI** | Ranked censored terms with threat / attention / novelty, from public deletion streams | Every 3 hours | [`readings/ddti-latest.json`](readings/ddti-latest.json) · [history](readings/ddti-history.jsonl) |
+| **Generative Firewall** | Refusal and state-narrative substitution rates of state-aligned LLMs vs a control | Daily | [`readings/latest.json`](readings/latest.json) · [history](readings/history.jsonl) |
+| **GDELT cross-signal** | "Censored at home, loud abroad": global news volume on the terms China is deleting | Every 6 hours | [`readings/gdelt-latest.json`](readings/gdelt-latest.json) · [history](readings/gdelt-history.jsonl) |
+| **GitHub-as-Refuge** | Takedown pressure on mirrors of censored material (996.ICU, nCovMemory, and more), judged only against persisted prior-presence baselines | Every 12 hours | [`readings/github-refuge-latest.json`](readings/github-refuge-latest.json) · [history](readings/github-refuge-history.jsonl) |
 
-Every value is provenance-tracked to its source document — nothing published without evidence.
+- **Live dashboards:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
+  (all four signals), the [classic monitor](https://palimpsest.info/dashboards/ddti_dashboard.html),
+  and the [Generative Firewall reading](https://palimpsest.info/readings/generative-firewall-index.html).
+- **For researchers:** [palimpsest.info/for-researchers](https://palimpsest.info/for-researchers.html)
+  documents every live feed, its schema, its honest scope, and how to cite it (BibTeX included).
+- **For AI/search engines:** [`llms.txt`](llms.txt) + `Dataset` schema, so the feeds can be
+  discovered and cited by AI assistants and answer engines.
+
+Every value is provenance-tracked to its source document, and a signal abstains rather than
+fabricates when its source returns nothing. Nothing is published without evidence.
 
 ## It generalises beyond China
 
@@ -145,18 +160,19 @@ see [`config/regions/`](config/regions/).
 
 | Component | State |
 | --- | --- |
-| CDT deletion ingestion + DDTI (selectivity + novelty) | Running |
+| CDT deletion ingestion + DDTI (selectivity + novelty) | **Live** — auto-published every 3h |
 | **Censorship Fear Index** (one auditable number) | Built, tested |
 | **Retrodiction validation** (6/6 documented events) | Built, tested |
 | **Cross-region packs** (China + Iran, config-driven) | Built, tested |
 | **Censorship forecaster** (escalation + euphemism prediction) | Built, tested |
 | Evidence-grounded Chinese gazetteer (154 terms, phylogeny) | Built, tested |
-| GDELT cross-signal · UNDERTEXT tomography · Airport Cartography | Built, tested |
-| **Generative Firewall** — refusal / party-line tomography of state-aligned LLMs | Built, tested (Layer-1 local + deterministic; Layer-2 stream-scrub gated, inert) |
+| **GDELT cross-signal** — global coverage of the terms being deleted at home | **Live** — auto-published every 6h (partial term coverage, stated in each reading) |
+| UNDERTEXT tomography · Airport Cartography | Built, tested |
+| **Generative Firewall** — refusal / party-line tomography of state-aligned LLMs | **Live** — auto-published daily (hosted-API layer); local deterministic gold path built; Layer-2 stream-scrub gated, inert |
 | **CDN-Edge Differential** — geo-fork of content read off overseas cache POPs | Built, tested (edge-fetch injected, inert) |
 | **Blocklist Archaeology** — newly-added terms in client blocklists as novelty | Built, tested (published lists only; acquisition injected) |
 | **Silence Detection** — the coverage-hole left by a pre-emptive blackout | Built, tested (outside-the-wall domestic-volume feed injected) |
-| **GitHub-as-Refuge** — pressure on censored mirrors, from takedown transparency feeds | Built, tested (GitHub reads injected, inert) |
+| **GitHub-as-Refuge** — pressure on censored mirrors, from takedown transparency feeds | **Live** — auto-published every 12h against persisted baselines |
 | **Baike Redaction-Diff** — state-encyclopedia rewrites vs the open record | Built, tested (fetch injected, inert) |
 | Self-evolving euphemism gazetteer (human-ratified) | Built, tested |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
@@ -181,8 +197,9 @@ novelty signal — the term is pre-labelled for us). **Silence Detection** measu
 coverage-*hole* a pre-emptive blackout leaves when there is no 404 to count. **GitHub-as-Refuge**
 watches takedown-transparency feeds for pressure on censored mirrors. **Baike Redaction-Diff**
 reconstructs a state encyclopedia's hidden rewrites against the open record. Every one holds both
-safety lines (public reads only; no Beijing-aligned model is ever the analyst) and stays inert
-until a deployer injects a live source. Full method write-ups are in
+safety lines (public reads only; no Beijing-aligned model is ever the analyst). The Generative
+Firewall and GitHub-as-Refuge surfaces now run live on schedule (see the table above); the rest
+stay inert until a deployer injects a live source. Full method write-ups are in
 [docs/NEW-METHODS.md](docs/NEW-METHODS.md).
 
 ## Safety is the architecture
@@ -210,7 +227,7 @@ PYTHONPATH=. python3 core/governance.py              # kill-switch + audit-chain
 
 # Tests:
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-PYTHONPATH=. python3 -m pytest tests/ -q             # pure/offline cores (62 passing)
+PYTHONPATH=. python3 -m pytest tests/ -q             # pure/offline cores (253 passing)
 ```
 
 The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
