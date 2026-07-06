@@ -57,8 +57,9 @@ def main() -> None:
         "scope": "cross-signal: domestic censorship attention vs global coverage volume",
         "ddti_generated_at": ddti.get("generated_at"),
         "n_terms": len(rows),
-        "n_containment": sum(1 for r in rows if r.get("label") == "CONTAINMENT"),
-        "n_blackout": sum(1 for r in rows if r.get("label") == "BLACKOUT"),
+        "n_with_global_data": sum(1 for r in rows if r.get("global_norm") is not None),
+        "n_containment": sum(1 for r in rows if str(r.get("label", "")).lower() == "containment"),
+        "n_blackout": sum(1 for r in rows if str(r.get("label", "")).lower() == "blackout"),
         "ranked": rows,
     }
     os.makedirs(READINGS, exist_ok=True)
