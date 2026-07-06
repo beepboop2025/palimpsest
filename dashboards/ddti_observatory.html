@@ -225,7 +225,8 @@ const INDEX = {
 if (window.__DDTI_EMBED__ && Array.isArray(window.__DDTI_EMBED__.ranked) && window.__DDTI_EMBED__.ranked.length) {
   INDEX.ranked = window.__DDTI_EMBED__.ranked;
   INDEX.generated_at = window.__DDTI_EMBED__.generated_at || INDEX.generated_at;
-  if (window.__DDTI_EMBED__.n_observations) INDEX.n_observations_used = window.__DDTI_EMBED__.n_observations;
+  INDEX.n_observations_used = window.__DDTI_EMBED__.n_observations_used ?? window.__DDTI_EMBED__.n_observations ?? INDEX.n_observations_used;
+  if (window.__DDTI_EMBED__.n_terms != null) INDEX.n_terms = window.__DDTI_EMBED__.n_terms;
 }
 
 const ROOT = document.documentElement, T = window.Tikto, css = T.css, hexA = T.hexA;
