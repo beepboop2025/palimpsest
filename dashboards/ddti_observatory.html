@@ -177,6 +177,47 @@
       </section>
     </div>
 
+    <style>
+      .sig-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--tk-line-1);font-size:13.5px}
+      .sig-row:last-child{border-bottom:none}
+      .sig-row .nm{color:var(--tk-text-0);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .sig-row .nm a{color:var(--tk-text-0);text-decoration:none}
+      .sig-row .nm a:hover{text-decoration:underline}
+      .sig-row .meta{color:var(--tk-text-3);font-family:var(--tk-font-mono);font-size:11.5px;white-space:nowrap}
+      .sig-tag{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+      .sig-tag.containment{color:var(--tk-critical);background:var(--tk-critical-bg);border:1px solid var(--tk-critical-line)}
+      .sig-tag.blackout{color:var(--tk-warning);background:var(--tk-warning-bg);border:1px solid var(--tk-warning-line)}
+      .sig-tag.present{color:var(--tk-ok);background:var(--tk-ok-bg);border:1px solid var(--tk-ok-line)}
+      .sig-tag.pressure{color:var(--tk-critical);background:var(--tk-critical-bg);border:1px solid var(--tk-critical-line)}
+      .sig-tag.unseen{color:var(--tk-text-3);border:1px solid var(--tk-line-2)}
+      .sig-empty{color:var(--tk-text-3);font-size:13px;padding:8px 0}
+      .sig-sum{color:var(--tk-text-2);font-size:12.5px;font-family:var(--tk-font-mono);margin-top:10px}
+    </style>
+
+    <!-- Signal 3: GDELT cross-signal (censored at home, loud abroad) -->
+    <div class="full" style="margin-top:14px">
+      <section class="tk-card" id="gdeltCard">
+        <div class="tk-card__head">
+          <span class="tk-card__title">🌍 Censored at home, loud abroad · GDELT cross-signal</span>
+          <span class="tk-chip" id="gdeltChip">—</span>
+        </div>
+        <div class="tk-comprehend" style="margin-bottom:6px">Which censored topics the world's press is covering heavily. A topic loud abroad but scrubbed at home is <b>containment</b>: the state suppressing a story the world already reports. Cross-referenced against the GDELT global news index.</div>
+        <div id="gdeltBody"><div class="sig-empty">Loading live cross-signal…</div></div>
+      </section>
+    </div>
+
+    <!-- Signal 4: GitHub-refuge (pressure on the mirrors) -->
+    <div class="full" style="margin-top:14px">
+      <section class="tk-card" id="refugeCard">
+        <div class="tk-card__head">
+          <span class="tk-card__title">🛡 Pressure on the mirrors · GitHub-refuge</span>
+          <span class="tk-chip" id="refugeChip">—</span>
+        </div>
+        <div class="tk-comprehend" style="margin-bottom:6px">GitHub shelters censored material (996.ICU, nCovMemory, the Terminus2049 archive). This watches those mirrors for takedowns, legal blocks, and defensive fork or star bursts. Public pressure metadata only, never the content and never a maintainer.</div>
+        <div id="refugeBody"><div class="sig-empty">Loading refuge watch…</div></div>
+      </section>
+    </div>
+
     <!-- Provenance-on-pull: a selected term's full derivation -->
     <div class="full" id="provWrap" style="margin-top:14px; display:none">
       <div class="sec-h">Provenance · how this score was derived</div>
@@ -502,6 +543,67 @@ document.getElementById("themeBtn").onclick = (e) => {
   else { ROOT.setAttribute("data-tk-theme", "light"); e.target.textContent = "Terminal theme"; }
   drawTick();
 };
+
+/* ============ Signals 3 & 4: fetch the live JSON and render their panels ============
+   Same-origin reads of the committed readings/*.json (published by the GDELT and
+   GitHub-refuge GitHub Actions). Fail soft: a missing file shows an honest note,
+   never a broken page. All interpolated strings are escaped — the data is untrusted
+   scraped/remote content. */
+(function () {
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const stamp = (iso) => (iso ? String(iso).replace("T", " ").slice(0, 16) + " UTC" : "");
+  const liveChip = (el, iso) => { if (el) { el.className = "tk-chip tk-chip--ok"; el.textContent = "● LIVE · " + stamp(iso); } };
+  const offChip = (el) => { if (el) { el.className = "tk-chip tk-chip--stale"; el.textContent = "awaiting first run"; } };
+  const getJSON = (path) => fetch(path, { cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
+
+  // ---- GDELT cross-signal ----
+  getJSON("/readings/gdelt-latest.json").then((d) => {
+    liveChip(document.getElementById("gdeltChip"), d.generated_at);
+    const body = document.getElementById("gdeltBody");
+    const withData = (d.ranked || []).filter((r) => r.global_norm != null)
+      .sort((a, b) => (b.cross_score || 0) - (a.cross_score || 0));
+    if (!withData.length) {
+      body.innerHTML = '<div class="sig-empty">GDELT returned no global coverage for the tracked terms this cycle. The signal abstains rather than publish a hollow number.</div>';
+      return;
+    }
+    body.innerHTML = withData.slice(0, 10).map((r) => {
+      const label = String(r.label || "").toLowerCase();
+      const cls = label === "containment" ? "containment" : label === "blackout" ? "blackout" : "unseen";
+      const gv = (Number(r.global_norm) * 100).toFixed(1);
+      return `<div class="sig-row"><span class="nm">${esc(r.term)}</span>`
+        + `<span class="sig-tag ${cls}">${esc(r.label || "—")}</span>`
+        + `<span class="meta">global ${gv}%</span></div>`;
+    }).join("")
+      + `<div class="sig-sum">${d.n_containment || 0} containment · ${d.n_with_global_data || withData.length} of ${d.n_terms || withData.length} terms found in world news · source GDELT DOC 2.0</div>`;
+  }).catch(() => offChip(document.getElementById("gdeltChip")) || (document.getElementById("gdeltBody").innerHTML = '<div class="sig-empty">Cross-signal not published yet — it computes on the next scheduled run.</div>'));
+
+  // ---- GitHub-refuge ----
+  getJSON("/readings/github-refuge-latest.json").then((d) => {
+    liveChip(document.getElementById("refugeChip"), d.generated_at);
+    const body = document.getElementById("refugeBody");
+    const rows = (d.watched || []);
+    if (!rows.length) {
+      body.innerHTML = '<div class="sig-empty">No repositories watched.</div>';
+      return;
+    }
+    // pressure first, then present; each links to its GitHub repo
+    const order = { taken_down: 0, legal_block: 0, visibility_down: 1, present: 2, unseen: 3 };
+    rows.sort((a, b) => (order[a.status] ?? 4) - (order[b.status] ?? 4));
+    body.innerHTML = rows.map((r) => {
+      const st = String(r.status || "");
+      const isPressure = st === "taken_down" || st === "legal_block" || st === "visibility_down";
+      const cls = isPressure ? "pressure" : st === "present" ? "present" : "unseen";
+      const label = st === "taken_down" ? "TAKEN DOWN" : st === "legal_block" ? "LEGAL BLOCK"
+        : st === "visibility_down" ? "VISIBILITY DOWN" : st === "present" ? "present" : "not seen";
+      const fn = esc(r.full_name || "");
+      const burst = (Number(r.fork_novelty) > 0.5 || Number(r.star_novelty) > 0.5) ? "preservation burst" : "";
+      return `<div class="sig-row"><span class="nm"><a href="https://github.com/${fn}" target="_blank" rel="noopener">${fn}</a></span>`
+        + (burst ? `<span class="meta">${burst}</span>` : "")
+        + `<span class="sig-tag ${cls}">${esc(label)}</span></div>`;
+    }).join("")
+      + `<div class="sig-sum">${d.n_watched || rows.length} mirrors watched · ${d.n_present || 0} present · ${d.n_pressure_events || 0} under pressure${d.first_run ? " · baselines just recorded, pressure events begin next cycle" : ""}</div>`;
+  }).catch(() => offChip(document.getElementById("refugeChip")) || (document.getElementById("refugeBody").innerHTML = '<div class="sig-empty">Refuge watch not published yet — it computes on the next scheduled run.</div>'));
+})();
 </script>
 </body>
 </html>
