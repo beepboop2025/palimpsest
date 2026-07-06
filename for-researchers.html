@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palimpsest — Data &amp; Methods for Researchers and Journalists</title>
+<meta name="description" content="How to use, verify, and cite Palimpsest's live censorship data. Open datasets, documented methodology, honest scope, and citation formats for reporters, think tanks, and researchers.">
+<link rel="canonical" href="https://palimpsest.info/for-researchers.html">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Palimpsest — Data &amp; Methods for Researchers and Journalists">
+<meta property="og:description" content="Live, open censorship datasets with documented method and honest scope. Built to be cited.">
+<meta property="og:url" content="https://palimpsest.info/for-researchers.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og.png">
+
+<meta name="theme-color" content="#0b1622">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Palimpsest">
+<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
+
+<style>
+  body{margin:0;background:#0b1622;color:#e6eef4;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto;padding:44px 22px 72px}
+  .kick{letter-spacing:3px;text-transform:uppercase;font-size:11px;color:#7fd4d0;margin:0 0 10px}
+  h1{font-size:34px;line-height:1.1;margin:0 0 12px;font-weight:800}
+  .lede{font-size:16.5px;color:#c6d6e2;margin:0 0 22px;max-width:680px}
+  h2{font-size:15px;color:#bfe0e0;border-bottom:1px solid #24435c;padding-bottom:6px;margin:38px 0 14px;letter-spacing:.02em}
+  p{color:#c6d6e2;font-size:14.5px;max-width:700px}
+  a{color:#7fd4d0}
+  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 26px}
+  .btn{display:inline-block;background:#7fd4d0;color:#0b1622;font-weight:700;text-decoration:none;padding:9px 15px;border-radius:8px;font-size:13.5px}
+  .btn.ghost{background:transparent;color:#bfe6e4;border:1px solid #3a5f74}
+  table{width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #1d3a52;vertical-align:top}
+  th{color:#8fb4c8;font-weight:600;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase}
+  td b{color:#e6eef4}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+  .pill.live{background:rgba(127,212,208,.14);color:#7fd4d0;border:1px solid rgba(127,212,208,.4)}
+  .pill.off{background:rgba(216,166,87,.12);color:#e0b46a;border:1px solid rgba(216,166,87,.4)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .file{background:#11283c;border:1px solid #1d3a52;border-radius:10px;padding:13px 15px}
+  .file a{font-weight:700;font-size:14px;word-break:break-all}
+  .file .d{color:#94aec0;font-size:12.5px;margin-top:3px}
+  code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:#0a1826;border:1px solid #1d3a52;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.5px;color:#cfe0ec;line-height:1.5}
+  ul{padding-left:18px} li{margin:7px 0;color:#c6d6e2;font-size:14px;max-width:700px}
+  .note{background:linear-gradient(135deg,#16304a,#1f5066);border-radius:12px;padding:16px 18px;margin:14px 0;font-size:14px;color:#dbeaf3}
+  .foot{color:#8ba4b6;font-size:12.5px;margin-top:40px;border-top:1px solid #24435c;padding-top:14px;max-width:700px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="kick">For researchers, journalists and analysts</p>
+  <h1>Palimpsest data and methods</h1>
+  <p class="lede">Palimpsest is an open, public-good observatory that measures how authoritarian states, and their state-aligned AI models, censor. It treats deletion as data and watches the censor, never the censored. Everything below is free to use and built to be cited. If a number is here, its raw evidence is here too.</p>
+
+  <div class="nav">
+    <a class="btn" href="dashboards/ddti_observatory.html">Open the observatory</a>
+    <a class="btn ghost" href="readings/">Browse all data</a>
+    <a class="btn ghost" href="https://github.com/beepboop2025/palimpsest">Source code</a>
+  </div>
+
+  <h2>Live signals</h2>
+  <p>Each signal recomputes on a fixed schedule and publishes a machine readable file plus a committed time series. Signals that would need a network vantage inside China are held back on purpose until that measurement can be verified, rather than published as a guess.</p>
+  <table>
+    <tr><th>Signal</th><th>What it measures</th><th>Source</th><th>Updated</th><th>Status</th></tr>
+    <tr>
+      <td><b>DDTI</b><br>deletion-differential threat index</td>
+      <td>Which topics the censor is most actively scrubbing, ranked by attention and novelty.</td>
+      <td>China Digital Times</td>
+      <td>every 3 hours</td>
+      <td><span class="pill live">LIVE</span></td>
+    </tr>
+    <tr>
+      <td><b>Generative Firewall</b><br>state-AI refusal index</td>
+      <td>The share of sensitive prompts that state-aligned LLMs refuse or rewrite, against neutral controls.</td>
+      <td>Public model APIs</td>
+      <td>daily</td>
+      <td><span class="pill live">LIVE</span></td>
+    </tr>
+    <tr>
+      <td><b>GDELT cross-signal</b><br>censored at home, loud abroad</td>
+      <td>Which censored topics the world's press is covering heavily (containment) versus silently absent (blackout).</td>
+      <td>GDELT global news index</td>
+      <td>every 6 hours</td>
+      <td><span class="pill live">LIVE</span></td>
+    </tr>
+    <tr>
+      <td><b>Velocity</b><br>deletion speed</td>
+      <td>How fast a post is deleted after posting, timed to the minute.</td>
+      <td>In-country observation</td>
+      <td>held back</td>
+      <td><span class="pill off">SUPPRESSED</span></td>
+    </tr>
+  </table>
+
+  <h2>Get the data</h2>
+  <p>All files are plain JSON. The <code>*-latest.json</code> files hold the current snapshot; the <code>*-history.jsonl</code> files are append-only time series, one compact record per run, so you can chart a signal over time.</p>
+  <div class="grid">
+    <div class="file"><a href="readings/ddti-latest.json">ddti-latest.json</a><div class="d">DDTI snapshot: ranked terms with threat, attention, novelty, is_new, and source samples with links.</div></div>
+    <div class="file"><a href="readings/ddti-history.jsonl">ddti-history.jsonl</a><div class="d">DDTI time series: generated_at, n_terms, top_term, top_threat per run.</div></div>
+    <div class="file"><a href="readings/latest.json">latest.json</a><div class="d">Generative Firewall raw run: per-model, per-concept refusals, controls, and the GFI value.</div></div>
+    <div class="file"><a href="readings/history.jsonl">history.jsonl</a><div class="d">Generative Firewall time series: date, gfi, censored, total, controls.</div></div>
+    <div class="file"><a href="readings/gdelt-latest.json">gdelt-latest.json</a><div class="d">GDELT cross-signal: each DDTI term with global coverage volume and a containment or blackout label.</div></div>
+    <div class="file"><a href="readings/gdelt-history.jsonl">gdelt-history.jsonl</a><div class="d">GDELT time series: n_terms, containment and blackout counts, top term.</div></div>
+  </div>
+  <p style="margin-top:10px">A machine-readable summary for AI agents lives at <a href="/llms.txt">llms.txt</a>. The full directory is at <a href="readings/">/readings</a>.</p>
+
+  <h2>How it is measured</h2>
+  <ul>
+    <li><b>Deletion as data.</b> Palimpsest reads public censorship records, ranks what is being scrubbed by a recency-weighted attention score, and flags terms that are newly sensitive against their own baseline. The DDTI method and its selectivity and novelty maths are documented in full.</li>
+    <li><b>The generation layer.</b> The Generative Firewall probes state-aligned models on sensitive prompts in Chinese and English, and compares them to neutral Western control models, so a refusal reads as deliberate policy rather than a generic safety filter.</li>
+    <li><b>Validation.</b> The deletion signal has been checked against six documented censorship events. Where a claim cannot be validated, it is labelled as such and not published as fact.</li>
+  </ul>
+  <p class="links" style="margin-top:6px">
+    Method: <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/METHODOLOGY.md">METHODOLOGY.md</a> ·
+    <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md">NEW-METHODS.md</a> ·
+    <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md">VALIDATION.md</a> ·
+    Sources: <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/OSINT_SOURCES.md">OSINT_SOURCES.md</a> ·
+    Ethics: <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md">ETHICS.md</a> ·
+    <a href="https://github.com/beepboop2025/palimpsest/blob/main/SAFETY.md">SAFETY.md</a>
+  </p>
+
+  <h2>Scope and honest limits</h2>
+  <div class="note">Palimpsest publishes only what it can stand behind. It measures censor <b>attention</b>, which topics draw the most suppression effort, not a full deletion rate. The <b>velocity</b> signal, how fast a specific post is removed, needs a network vantage inside China to time deletions to the minute. Until that vantage is in place and verified, velocity stays suppressed by design. Nothing on this site is a modelled guess dressed up as a measurement.</div>
+  <ul>
+    <li>Every data point carries its source and timestamp. The DDTI terms link back to the original public articles.</li>
+    <li>Palimpsest watches the censor, never the censored. It uses public reads only, stores nothing about private individuals, and never asks anyone inside a country to act.</li>
+    <li>State-aligned AI models are subjects of measurement, never the analyst.</li>
+  </ul>
+
+  <h2>How to cite</h2>
+  <p>If you use this data in an article, report, or paper, a citation and a link back are appreciated. Please cite the accessed date, since the signals update continuously.</p>
+  <pre>Palimpsest (2026). Palimpsest Censorship Observatory: DDTI, Generative Firewall
+Index, and GDELT cross-signal [live dataset]. https://palimpsest.info
+(accessed YYYY-MM-DD).</pre>
+  <pre>@misc{palimpsest,
+  title  = {Palimpsest Censorship Observatory},
+  author = {Palimpsest},
+  year   = {2026},
+  url    = {https://palimpsest.info},
+  note   = {Open live dataset: DDTI, Generative Firewall Index, GDELT cross-signal}
+}</pre>
+
+  <h2>Reproducibility and provenance</h2>
+  <p>Palimpsest is fully open source under the MIT licence. The signals recompute inside public, auditable GitHub Actions, and every refresh is a timestamped commit in the repository, so the entire history of what was measured, and when, is public and verifiable. There is no private backend deciding the numbers.</p>
+  <p class="links">
+    <a href="https://github.com/beepboop2025/palimpsest">Repository</a> ·
+    <a href="https://github.com/beepboop2025/palimpsest/commits/main">Commit history (audit trail)</a> ·
+    <a href="https://github.com/beepboop2025/palimpsest/tree/main/.github/workflows">The pipelines</a>
+  </p>
+
+  <h2>Work with us</h2>
+  <p>If you are a reporter, researcher, or think tank and want a specific term tracked, a data extract, or help interpreting a signal, open an issue on <a href="https://github.com/beepboop2025/palimpsest/issues">GitHub</a>. Palimpsest is a public good and collaboration is welcome.</p>
+
+  <p class="foot">Free and open source, developed in the open as a public good. Never a commercial product, and it never monetizes the people or topics it observes. The internet stays free because people keep measuring the dark.</p>
+
+</div>
+</body>
+</html>
