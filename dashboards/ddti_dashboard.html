@@ -17,9 +17,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --ink:#0b0b0d; --ink-2:#111115; --ink-3:#16161c;
+    --ink:#000000; --ink-2:#0d0e12; --ink-3:#14151b;
     --bone:#e9e4d8; --bone-dim:#8c8678; --bone-faint:#56524a;
-    --signal:#ff2f2f; --signal-deep:#b21414; --ember:#ff7a3c;
+    --signal:#06d6e0; --signal-deep:#0891a2; --ember:#ff7a3c;
     --jade:#3ad6a0; --gold:#d8a657;
     --line:rgba(233,228,216,.10); --line-strong:rgba(233,228,216,.22);
     --redact:#1b1b22;
@@ -40,12 +40,19 @@
   body::after{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
-      linear-gradient(transparent 0 96%, rgba(255,47,47,.045) 96% 100%) 0 0/100% 46px,
-      linear-gradient(90deg, transparent 0 96%, rgba(255,47,47,.04) 96% 100%) 0 0/46px 100%,
-      radial-gradient(120% 90% at 50% -10%, rgba(255,47,47,.07), transparent 60%),
+      linear-gradient(transparent 0 96%, rgba(6,214,224,.05) 96% 100%) 0 0/100% 46px,
+      linear-gradient(90deg, transparent 0 96%, rgba(6,214,224,.045) 96% 100%) 0 0/46px 100%,
+      radial-gradient(120% 90% at 50% -10%, rgba(6,214,224,.08), transparent 60%),
       radial-gradient(140% 120% at 50% 120%, rgba(0,0,0,.6), transparent 55%);
   }
   .wrap{position:relative; z-index:2; max-width:1320px; margin:0 auto; padding:28px clamp(16px,4vw,52px) 80px}
+  /* shared site nav (identical on every page) */
+  .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
+  .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
+  .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
+  .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
+  .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
+  .pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
 
   /* ── command bar ── */
   header.bar{
@@ -190,6 +197,16 @@
 </style>
 </head>
 <body>
+<nav class="pnav">
+  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="pnav__links">
+    <a href="/">Home</a>
+    <a href="/dashboards/ddti_observatory.html">Observatory</a>
+    <a href="/dashboards/ddti_dashboard.html" aria-current="page">Monitor</a>
+    <a href="/readings/generative-firewall-index.html">Firewall</a>
+    <a href="/for-researchers.html">Data</a>
+  </div>
+</nav>
 <div class="wrap">
   <header class="bar">
     <div class="brand">
