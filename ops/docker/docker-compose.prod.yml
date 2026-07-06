@@ -1,0 +1,90 @@
+# Palimpsest — production stack for a single Hetzner Cloud VPS.
+#
+# This runs the ALWAYS-ON backend: Postgres, Redis, the Celery beat scheduler,
+# and the default collector worker. The dashboards are static and served from
+# GitHub Pages, so nothing here publishes a port by default — this is an
+# outbound-only measurement node. The only listener is Postgres/Redis on the
+# private compose network, never on the host.
+#
+# Optional pieces are behind compose profiles so the base `up` stays lean:
+#   --profile velocity  adds the CensorWatch (Playwright) worker
+#   --profile api       adds the FastAPI service + published port
+#
+# Usage:
+#   docker compose -f ops/docker/docker-compose.prod.yml up -d --build
+#   docker compose -f ops/docker/docker-compose.prod.yml --profile velocity up -d --build
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: ops/docker/Dockerfile.app
+    args:
+      # Flip to "true" only if you enable the velocity leg (see the velocity
+      # worker below). The lean default keeps the image ~400MB smaller.
+      WITH_BROWSER: ${WITH_BROWSER:-false}
+  image: palimpsest/app:local
+  restart: unless-stopped
+  env_file: [.env]
+  # Bind the repo's readings/ so the committed time series survives container
+  # rebuilds, exactly as the GFI sandbox does. This is the one writable path.
+  volumes:
+    - ../../readings:/app/readings:rw
+    - ../../data:/app/data:rw
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis:    {condition: service_healthy}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-palimpsest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-palimpsest}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No ports: — reachable only on the private compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-palimpsest}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "celery", "-n", "default@%h"]
+
+  beat:
+    <<: *app
+    command: ["celery", "-A", "core.scheduler", "beat", "--pidfile=", "-s", "/app/readings/state/celerybeat-schedule"]
+
+  # --- optional: CensorWatch velocity leg (Playwright) --------------------
+  # Requires WITH_BROWSER=true at build time and CENSORWATCH_ENABLED=1 in .env.
+  worker-velocity:
+    <<: *app
+    profiles: ["velocity"]
+    command: ["celery", "-A", "core.scheduler", "worker", "-c", "1", "-Q", "censorwatch", "-n", "velocity@%h"]
+
+  # --- optional: FastAPI service ------------------------------------------
+  # Only enable if you decide to serve the API from this box rather than keeping
+  # it outbound-only. Binds to localhost so you front it with a reverse proxy.
+  api:
+    <<: *app
+    profiles: ["api"]
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+
+volumes:
+  pgdata:
