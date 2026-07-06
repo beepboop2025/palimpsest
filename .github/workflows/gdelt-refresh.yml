@@ -1,0 +1,47 @@
+name: Refresh GDELT cross-signal
+
+# Triangulate the live DDTI deletion terms against the open global news record
+# (GDELT DOC 2.0 API): which censored topics are loud abroad (CONTAINMENT) vs
+# conspicuously absent (BLACKOUT). Stdlib-only, key-less, vantage-insensitive —
+# GDELT aggregates already-published world news, so it runs correctly anywhere.
+# Reads readings/ddti-latest.json (published by the DDTI signal) as its input.
+
+on:
+  schedule:
+    - cron: "47 */6 * * *"     # every 6 hours, offset from the DDTI run
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gdelt-refresh
+  cancel-in-progress: false
+
+jobs:
+  gdelt:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cross-reference DDTI terms against GDELT
+        run: python -m scripts.gdelt_cross_pull
+
+      - name: Commit & push if the cross-signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/gdelt-latest.json readings/gdelt-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: GDELT cross-signal refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
