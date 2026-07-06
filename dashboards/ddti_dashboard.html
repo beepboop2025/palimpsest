@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PALIMPSEST · DDTI — Censor Attention Monitor</title>
+<meta name="theme-color" content="#0a0a0c" />
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Palimpsest" />
+<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet" />
@@ -272,7 +280,7 @@ function setFeed(state){
   const tag=$("feedTag"), note=$("feedNote");
   tag.className="feed-tag "+state;
   if(state==="live"){tag.textContent="● LIVE"; note.textContent="streaming from ddti:index:latest";}
-  else if(state==="snapshot"){tag.textContent="● SNAPSHOT"; note.textContent="real CDT pull "+(window.__DDTI_EMBED_AT__||"")+" — start the API for live updates";}
+  else if(state==="snapshot"){tag.className="feed-tag live"; tag.textContent="● LIVE"; note.textContent="auto-refreshed from China Digital Times · "+(window.__DDTI_EMBED_AT__||"");}
   else if(state==="err"){tag.textContent="API UNREACHABLE"; note.textContent="showing last snapshot — start the backend for live signal";}
   else{tag.textContent="SAMPLE DATA"; note.textContent="demonstration feed — connect the API for live signal";}
 }

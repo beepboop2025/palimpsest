@@ -1,0 +1,57 @@
+name: Refresh DDTI index
+
+# Recompute the live DDTI censorship index from China Digital Times' public
+# feeds and publish it to palimpsest.info. Runs on a schedule with no secrets:
+# GITHUB_TOKEN (contents: write) authorizes the push, so there is no deploy key
+# and no server to keep online. CDT is a public overseas archive, so this pull
+# is vantage-insensitive — the same reason the DDTI leg is safe to run anywhere.
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # every 3 hours (UTC)
+  workflow_dispatch: {}        # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ddti-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install engine dependencies
+        run: pip install --quiet httpx pandas defusedxml
+
+      - name: Compute live DDTI index from China Digital Times
+        run: python -m scripts.ddti_live_pull
+
+      - name: Inject the latest index into the dashboards + readings
+        run: |
+          IDX=$(ls -t data/ddti/index_*.json 2>/dev/null | head -1)
+          if [ -z "$IDX" ]; then echo "no index produced (feeds unreachable?) — skipping"; exit 0; fi
+          echo "injecting $IDX"
+          python inject_ddti.py --index "$IDX" --repo .
+
+      - name: Commit & push only if the published data changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add dashboards/ddti_dashboard.html dashboards/ddti_observatory.html \
+                  readings/ddti-latest.json readings/ddti-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no data change — nothing to publish"
+          else
+            git commit -m "data: live DDTI refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git push
+          fi

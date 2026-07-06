@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "purpose": "Chinese financial lexicon for Weibo hot-search relevance filtering and sentiment enrichment.",
+    "generated_by": "Kimi Code (Moonshot kimi-for-coding) — delegated for native Chinese-language domain knowledge",
+    "consumed_by": [
+      "collectors/weibo_hotsearch.py :: _is_financially_relevant",
+      "processors/sentiment.py :: Chinese hawkish/dovish/sector detection (pending)"
+    ],
+    "note": "denylist OVERRIDES finance_keywords (excludes false positives like 经济适用男)."
+  },
+  "finance_keywords": ["A股", "港股", "美股", "央行", "降准", "降息", "加息", "人民币", "楼市", "通胀", "牛市", "熊市", "股灾", "IPO", "沪指", "深指", "创业板", "科创板", "北交所", "港股通", "美联储", "汇率", "黄金", "原油", "比特币", "区块链", "基金", "理财", "保险", "银行", "房地产", "国债", "地方债", "社融", "M2", "CPI", "PPI", "GDP", "上市公司", "财报", "券商", "证监会", "金融监管"],
+  "denylist": ["经济适用男", "经济适用女", "房车", "房车生活", "房车旅行", "房车改装", "零花钱", "压岁钱", "钱包", "省钱攻略", "钱多多", "富二代", "房奴"],
+  "hawkish_keywords": ["加息", "加息周期", "收紧", "紧缩", "缩表", "上调利率", "提高利率", "收紧货币", "货币紧缩", "流动性收紧", "鹰派", "利率上行", "控制通胀"],
+  "dovish_keywords": ["降息", "降准", "宽松", "量化宽松", "刺激", "放水", "释放流动性", "下调利率", "降低利率", "货币宽松", "鸽派", "降准降息", "扩张性政策"],
+  "sector_keywords": {
+    "banking": ["银行", "银行股", "商业银行", "国有银行", "不良贷款", "净息差", "存款", "贷款", "信用卡"],
+    "markets": ["股市", "大盘", "指数", "上证指数", "深证成指", "创业板", "科创板", "恒生指数", "纳斯达克", "标普500", "成交量", "涨停", "跌停"],
+    "real_estate": ["房地产", "楼市", "房价", "房企", "商品房", "二手房", "限购", "房贷", "土地市场", "房产税"],
+    "commodities": ["黄金", "原油", "铜", "铁矿石", "大宗商品", "农产品", "有色金属", "白银", "天然气", "油价"],
+    "forex": ["人民币", "美元", "欧元", "日元", "汇率", "人民币兑美元", "外汇储备", "离岸人民币", "美元指数", "汇市"],
+    "tech": ["科技", "科技股", "半导体", "芯片", "人工智能", "AI", "新能源", "电动车", "互联网", "中概股", "华为", "宁德时代", "腾讯", "阿里巴巴"]
+  }
+}
