@@ -1,7 +1,7 @@
 /* Palimpsest service worker — network-first so the observatory always shows the
    freshest censorship data when online, and falls back to the last cached copy
    only when offline. Never serve stale data to a connected user. */
-const CACHE = "palimpsest-v1";
+const CACHE = "palimpsest-v2";
 const SHELL = [
   "/",
   "/dashboards/ddti_observatory.html",

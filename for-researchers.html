@@ -24,38 +24,61 @@
 <meta name="apple-mobile-web-app-title" content="Palimpsest">
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
 
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <style>
-  body{margin:0;background:#0b1622;color:#e6eef4;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;line-height:1.55}
-  .wrap{max-width:860px;margin:0 auto;padding:44px 22px 72px}
-  .kick{letter-spacing:3px;text-transform:uppercase;font-size:11px;color:#7fd4d0;margin:0 0 10px}
-  h1{font-size:34px;line-height:1.1;margin:0 0 12px;font-weight:800}
-  .lede{font-size:16.5px;color:#c6d6e2;margin:0 0 22px;max-width:680px}
-  h2{font-size:15px;color:#bfe0e0;border-bottom:1px solid #24435c;padding-bottom:6px;margin:38px 0 14px;letter-spacing:.02em}
-  p{color:#c6d6e2;font-size:14.5px;max-width:700px}
-  a{color:#7fd4d0}
-  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 26px}
-  .btn{display:inline-block;background:#7fd4d0;color:#0b1622;font-weight:700;text-decoration:none;padding:9px 15px;border-radius:8px;font-size:13.5px}
-  .btn.ghost{background:transparent;color:#bfe6e4;border:1px solid #3a5f74}
+  /* shared site nav (identical on every page) */
+  .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
+  .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
+  .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
+  .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
+  .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
+  .pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
+
+  body{margin:0;background:var(--tk-void,#000);color:var(--tk-text-1,#e2e8f0);font-family:var(--tk-font-display),system-ui,-apple-system,sans-serif;line-height:1.55;background-image:radial-gradient(120% 80% at 50% -8%,rgba(6,214,224,.06),transparent 60%);background-attachment:fixed}
+  .wrap{max-width:880px;margin:0 auto;padding:40px clamp(18px,4vw,26px) 72px}
+  .kick{font-family:var(--tk-font-mono);letter-spacing:.26em;text-transform:uppercase;font-size:11px;color:var(--tk-live,#06d6e0);margin:0 0 12px}
+  h1{font-family:var(--tk-font-display);font-size:clamp(30px,5vw,40px);line-height:1.06;margin:0 0 12px;font-weight:800;letter-spacing:-.02em;color:#fff}
+  .lede{font-size:16px;color:var(--tk-text-2,#94a3b8);margin:0 0 22px;max-width:690px}
+  h2{font-family:var(--tk-font-mono);font-size:12px;color:var(--tk-text-3,#64748b);border-bottom:1px solid var(--tk-line-1,#1a1a1a);padding-bottom:8px;margin:40px 0 14px;letter-spacing:.14em;text-transform:uppercase}
+  p{color:var(--tk-text-2,#94a3b8);font-size:14.5px;max-width:700px}
+  a{color:var(--tk-live,#06d6e0)}
+  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 28px}
+  .btn{display:inline-block;background:var(--tk-live,#06d6e0);color:#04141a;font-weight:700;text-decoration:none;padding:9px 15px;border-radius:8px;font-size:13px;font-family:var(--tk-font-mono);letter-spacing:.02em}
+  .btn.ghost{background:transparent;color:var(--tk-text-1);border:1px solid var(--tk-line-3,#383838)}
+  .btn.ghost:hover{border-color:var(--tk-live);color:var(--tk-live)}
   table{width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:13.5px}
-  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #1d3a52;vertical-align:top}
-  th{color:#8fb4c8;font-weight:600;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase}
-  td b{color:#e6eef4}
-  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
-  .pill.live{background:rgba(127,212,208,.14);color:#7fd4d0;border:1px solid rgba(127,212,208,.4)}
-  .pill.off{background:rgba(216,166,87,.12);color:#e0b46a;border:1px solid rgba(216,166,87,.4)}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--tk-line-1,#1a1a1a);vertical-align:top}
+  th{color:var(--tk-text-3,#64748b);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-family:var(--tk-font-mono)}
+  td b{color:#fff}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em;font-family:var(--tk-font-mono)}
+  .pill.live{background:rgba(6,214,224,.12);color:#06d6e0;border:1px solid rgba(6,214,224,.4)}
+  .pill.off{background:rgba(245,158,11,.12);color:#ffb020;border:1px solid rgba(245,158,11,.4)}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0}
   @media(max-width:640px){.grid{grid-template-columns:1fr}}
-  .file{background:#11283c;border:1px solid #1d3a52;border-radius:10px;padding:13px 15px}
-  .file a{font-weight:700;font-size:14px;word-break:break-all}
-  .file .d{color:#94aec0;font-size:12.5px;margin-top:3px}
-  code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  pre{background:#0a1826;border:1px solid #1d3a52;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.5px;color:#cfe0ec;line-height:1.5}
-  ul{padding-left:18px} li{margin:7px 0;color:#c6d6e2;font-size:14px;max-width:700px}
-  .note{background:linear-gradient(135deg,#16304a,#1f5066);border-radius:12px;padding:16px 18px;margin:14px 0;font-size:14px;color:#dbeaf3}
-  .foot{color:#8ba4b6;font-size:12.5px;margin-top:40px;border-top:1px solid #24435c;padding-top:14px;max-width:700px}
+  .file{background:rgba(255,255,255,.02);border:1px solid var(--tk-line-1,#1a1a1a);border-radius:10px;padding:13px 15px;transition:border-color .15s}
+  .file:hover{border-color:var(--tk-line-3,#383838)}
+  .file a{font-weight:700;font-size:14px;word-break:break-all;font-family:var(--tk-font-mono)}
+  .file .d{color:var(--tk-text-3,#64748b);font-size:12.5px;margin-top:3px}
+  code,.mono{font-family:var(--tk-font-mono),ui-monospace,Menlo,monospace}
+  code{background:var(--tk-line-2,#272727);padding:1px 5px;border-radius:4px;font-size:12px}
+  pre{background:#0a0b0e;border:1px solid var(--tk-line-1,#1a1a1a);border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.5px;color:var(--tk-text-1,#e2e8f0);line-height:1.5;font-family:var(--tk-font-mono)}
+  ul{padding-left:18px} li{margin:7px 0;color:var(--tk-text-2,#94a3b8);font-size:14px;max-width:700px}
+  .note{background:rgba(6,214,224,.05);border:1px solid rgba(6,214,224,.2);border-radius:12px;padding:16px 18px;margin:14px 0;font-size:14px;color:var(--tk-text-1,#e2e8f0)}
+  .foot{color:var(--tk-text-3,#64748b);font-size:12.5px;margin-top:42px;border-top:1px solid var(--tk-line-1,#1a1a1a);padding-top:16px;max-width:700px;font-family:var(--tk-font-mono);line-height:1.7}
+  b{color:var(--tk-text-1,#e2e8f0)}
 </style>
 </head>
 <body>
+<nav class="pnav">
+  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="pnav__links">
+    <a href="/">Home</a>
+    <a href="/dashboards/ddti_observatory.html">Observatory</a>
+    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
+    <a href="/readings/generative-firewall-index.html">Firewall</a>
+    <a href="/for-researchers.html" aria-current="page">Data</a>
+  </div>
+</nav>
 <div class="wrap">
 
   <p class="kick">For researchers, journalists and analysts</p>
