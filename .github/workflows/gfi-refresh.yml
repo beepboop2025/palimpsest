@@ -1,0 +1,49 @@
+name: Refresh Generative Firewall Index
+
+# Measure how state-aligned LLMs censor, via public model APIs (OpenRouter).
+# Vantage-insensitive: a model refuses the same regardless of where you ask.
+# Runs daily because each run spends model quota. The OPENROUTER_API_KEY secret
+# is never printed and is NOT exposed here — this workflow only runs on schedule
+# and manual dispatch, never on pull_request, so untrusted code can't read it.
+
+on:
+  schedule:
+    - cron: "23 6 * * *"     # daily, ~06:23 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gfi-refresh
+  cancel-in-progress: false
+
+jobs:
+  gfi:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run the generative-firewall reading
+        run: python scripts/generative_firewall_reading.py
+
+      - name: Commit & push if the reading changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/latest.json readings/history.jsonl \
+                  readings/generative-firewall-index.html 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: generative firewall refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
