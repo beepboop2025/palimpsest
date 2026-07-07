@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "purpose": "Public Chinese URLs whose Wayback Machine capture timeline is reconstructed for deletions and silent redactions (collectors/wayback_vantage.py). The Internet Archive is a retroactive, outside-the-wall observer: for any URL it crawled, its CDX timeline brackets a takedown or rewrite far tighter than we can from live polling, with a permanent citable snapshot on each side.",
+    "safety": "TOPIC / INSTITUTION-LEVEL ONLY, per docs/ETHICS.md — never an individual's page assembled to profile a person. Every entry is a public encyclopedia entry, official portal, or state-media article. Reads hit the Internet Archive only, never Chinese infrastructure and never a person. This is a documented STARTER list (like config/github_refuge_watchlist.json and undertext DEFAULT_SURFACES); a deployer extends it, and each URL's reachability is itself recorded.",
+    "schema": "each entry: {url, term (the DDTI handle), domain (DDTI hint), why}",
+    "domains": ["ECONOMY", "LEADERSHIP", "UNREST", "RIGHTS", "INFORMATION", "HEALTH", "HISTORY"]
+  },
+  "watchlist": [
+    {
+      "url": "https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
+      "term": "青年失业率",
+      "domain": "ECONOMY",
+      "why": "Youth unemployment rate — the statistic whose publication was suspended in 2023; watch the state encyclopedia entry for silent rewrites."
+    },
+    {
+      "url": "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+      "term": "烂尾楼",
+      "domain": "ECONOMY",
+      "why": "Unfinished/stalled housing — a contested economic-distress topic prone to encyclopedic softening."
+    },
+    {
+      "url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+      "term": "白纸运动",
+      "domain": "UNREST",
+      "why": "The White Paper protests — an event whose public record is a censorship target."
+    },
+    {
+      "url": "https://www.stats.gov.cn/sj/zxfb/",
+      "term": "国家统计局 最新发布",
+      "domain": "ECONOMY",
+      "why": "National Bureau of Statistics latest-releases index — reconstruct which release pages appear then vanish."
+    }
+  ]
+}

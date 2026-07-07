@@ -1,0 +1,48 @@
+name: Refresh Wayback reconstruction
+
+# Recover deletion and silent-redaction events — with real, archive-witnessed timestamps — for a
+# watchlist of public Chinese URLs, by walking each URL's Internet Archive CDX capture timeline
+# (collectors/wayback_vantage.py). The Archive is an outside-the-wall, retroactive in-country
+# observer, so this closes the velocity gap the social-web legs cannot reach — from open egress.
+# Stdlib-only, key-less, read-only against archive.org (never Chinese infrastructure, never a
+# person). Fail-soft: if CDX is unreachable for every URL the runner abstains, publishing nothing.
+
+on:
+  schedule:
+    - cron: "23 */12 * * *"     # every 12 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wayback-refresh
+  cancel-in-progress: false
+
+jobs:
+  wayback:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reconstruct deletions from the Wayback CDX timeline
+        run: python -m scripts.wayback_reconstruct_pull
+
+      - name: Commit & push if the reconstruction changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/wayback-latest.json readings/wayback-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: Wayback reconstruction refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
