@@ -137,6 +137,101 @@ async def check_liveness(client, url: str) -> dict:
         return {"status": "unreachable", "censorship_likelihood": None, "error": str(e)}
 
 
+# ── robust feed parsing (RSS + Atom, namespace-tolerant) ──────────────────────────
+# The passive-feed backbone must read the whole ecosystem, not just WordPress RSS. CDT is RSS
+# with <item>/<description>; GreatFire, FreeWeibo, and many mirrors are Atom with <entry>, an
+# attribute-based <link href> and <category term>, and <content>/<summary> bodies. The original
+# parser saw only RSS <item> and silently yielded NOTHING for an Atom feed — a whole class of
+# reachable sources lost. This reader handles both by comparing tag *localnames* (so any XML
+# namespace prefix is tolerated) and pulling links/tags from text OR attribute. RSS/CDT output is
+# preserved byte-for-byte (description stays the primary body, so the live DDTI signal is
+# unchanged); Atom support is strictly additive.
+
+# Atom <link> rels that are not the article itself — never use these as the item URL.
+_SKIP_LINK_RELS = {"self", "replies", "edit", "enclosure", "hub", "via"}
+
+
+def _localname(tag) -> str:
+    """Strip any '{namespace}' prefix from an ElementTree tag, leaving the bare local name."""
+    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) and "}" in tag else (tag or "")
+
+
+def _children_by_local(el) -> dict:
+    m: dict[str, list] = {}
+    for child in el:
+        m.setdefault(_localname(child.tag), []).append(child)
+    return m
+
+
+def _first_text(cmap: dict, *names: str) -> str:
+    """First non-empty child text among `names`, in preference order."""
+    for n in names:
+        for c in cmap.get(n, []):
+            t = (c.text or "").strip()
+            if t:
+                return t
+    return ""
+
+
+def _extract_link(cmap: dict) -> str:
+    """Item URL from RSS (<link>text) or Atom (<link href rel>), skipping self/replies rels; falls
+    back to a permalink-looking <guid>/<id>."""
+    for c in cmap.get("link", []):
+        href = (c.get("href") or "").strip()
+        if href:
+            if (c.get("rel") or "").strip().lower() in _SKIP_LINK_RELS:
+                continue
+            return href
+        txt = (c.text or "").strip()
+        if txt:
+            return txt
+    for c in cmap.get("guid", []) + cmap.get("id", []):
+        t = (c.text or "").strip()
+        if t.startswith("http"):
+            return t
+    return ""
+
+
+def _extract_tags(cmap: dict) -> list:
+    """Topic tags from RSS (<category>text) or Atom (<category term=...>) — the free, curated
+    selectivity/novelty signal. De-duplicated, order preserved."""
+    tags, seen = [], set()
+    for c in cmap.get("category", []):
+        t = (c.get("term") or c.text or "").strip()
+        if t and t not in seen:
+            seen.add(t)
+            tags.append(t)
+    return tags
+
+
+def parse_feed_items(source: str, text: str) -> list[dict]:
+    """RSS + Atom → list of item dicts {source, title, text, url, published_at, tags}.
+
+    Namespace-tolerant and best-effort: a feed that isn't XML (or that defusedxml rejects as a
+    malicious entity) yields [] — reachability is recorded by the caller; we just surface no items.
+    Never raises. The return schema is exactly what `parse()` / `ddti_live_pull` already consume."""
+    out: list[dict] = []
+    try:
+        root = ET.fromstring(text)
+    except Exception as e:
+        logger.debug(f"[DDTI] {source} XML parse skipped: {type(e).__name__}")
+        return out
+    for el in root.iter():
+        if _localname(el.tag) not in ("item", "entry"):
+            continue
+        cmap = _children_by_local(el)
+        out.append({
+            "source": source,
+            "title": _first_text(cmap, "title"),
+            # description first keeps RSS/CDT output identical; encoded/content/summary cover Atom.
+            "text": _first_text(cmap, "description", "encoded", "content", "summary"),
+            "url": _extract_link(cmap),
+            "published_at": _first_text(cmap, "pubDate", "published", "updated", "date"),
+            "tags": _extract_tags(cmap),
+        })
+    return out
+
+
 class DDTIProbeCollector(BaseCollector):
     """Scheduled ingestion of deletion observations from passive feeds.
 
@@ -172,28 +267,9 @@ class DDTIProbeCollector(BaseCollector):
         return records
 
     def _parse_feed_items(self, source: str, text: str) -> list[dict]:
-        """Best-effort RSS/Atom parse of a deletion feed (CDT etc. are WordPress)."""
-        out = []
-        try:
-            root = ET.fromstring(text)
-        except Exception as e:
-            # Not XML/RSS, or defusedxml rejected a malicious entity. Reachability
-            # is still recorded by the caller; we just yield no items.
-            logger.debug(f"[DDTI] {source} XML parse skipped: {type(e).__name__}")
-            return out
-        for item in root.iter("item"):
-            # WordPress RSS (CDT) emits one <category> per tag — a free, curated
-            # topic signal that feeds the selectivity/novelty index directly.
-            tags = [c.text.strip() for c in item.findall("category") if (c.text or "").strip()]
-            out.append({
-                "source": source,
-                "title": (item.findtext("title") or "").strip(),
-                "text": (item.findtext("description") or "").strip(),
-                "url": (item.findtext("link") or "").strip(),
-                "published_at": (item.findtext("pubDate") or "").strip(),
-                "tags": tags,
-            })
-        return out
+        """Best-effort RSS + Atom parse of a deletion feed. Delegates to the module-level
+        `parse_feed_items` (namespace-tolerant, pure, independently unit-tested)."""
+        return parse_feed_items(source, text)
 
     async def parse(self, raw_data: list[dict]) -> pd.DataFrame:
         rows = []
