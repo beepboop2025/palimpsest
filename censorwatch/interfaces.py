@@ -86,6 +86,9 @@ class FetchResult:
     text: str | None           # response body (may be None on timeout)
     final_url: str | None = None   # after redirects — a login redirect is a tell
     error: str | None = None       # transport-level error message, if any
+    not_modified: bool = False     # served from the conditional-GET cache after a 304
+                                   # (a 304 is a strong LIVE tell: the origin itself
+                                   # asserted the content is unchanged)
 
     @property
     def transport_ok(self) -> bool:

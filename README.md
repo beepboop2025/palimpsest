@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen.svg)
+![tests](https://img.shields.io/badge/tests-278%20passing-brightgreen.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
 

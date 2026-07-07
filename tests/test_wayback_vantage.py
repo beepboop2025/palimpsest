@@ -210,6 +210,33 @@ def test_reconstruction_flows_into_ddti_index():
     assert any(r["term"] == "某地 挤兑" for r in index["ranked"])
 
 
+def test_runner_observations_merge_into_live_pull(tmp_path):
+    """The published wayback reading's ddti_observations must load back into the live DDTI
+    pull with detected_at revived to aware datetimes — and a missing file must be silent."""
+    import json
+    from datetime import timezone as _tz
+    from scripts.ddti_live_pull import load_wayback_observations
+
+    reading = {
+        "ddti_observations": [
+            {"terms": ["某地 挤兑"], "detected_at": "2026-07-01T00:00:00+00:00",
+             "title": "[undertext:deletion] 某地 挤兑", "url": "", "source": "undertext:wayback:x"},
+            {"terms": [], "detected_at": "2026-07-01T00:00:00+00:00"},        # no terms → skipped
+            {"terms": ["t"], "detected_at": "not-a-date"},                     # bad ts → skipped
+        ]
+    }
+    p = tmp_path / "wayback-latest.json"
+    p.write_text(json.dumps(reading), encoding="utf-8")
+
+    obs = load_wayback_observations(p)
+    assert len(obs) == 1
+    assert obs[0]["terms"] == ["某地 挤兑"]
+    assert obs[0]["detected_at"].tzinfo is not None
+    assert obs[0]["detected_at"].astimezone(_tz.utc).year == 2026
+
+    assert load_wayback_observations(tmp_path / "absent.json") == []   # fail-soft
+
+
 def test_cdx_query_url_uses_digest_collapse():
     url = cdx_query_url("https://example.cn/story", from_ts="20220101", to_ts="20221231")
     assert "collapse=digest" in url and "output=json" in url

@@ -33,6 +33,7 @@ from processors.zh_finance import load_lexicon
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "data" / "ddti"
 DASHBOARD = ROOT / "dashboards" / "ddti_dashboard.html"
+WAYBACK_LATEST = ROOT / "readings" / "wayback-latest.json"
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -97,6 +98,41 @@ async def pull():
                 reachability[feed["name"]] = f"error:{type(e).__name__}"
 
     return observations, reachability
+
+
+def load_wayback_observations(path: Path = WAYBACK_LATEST) -> list:
+    """Merge the Wayback Reconstruction signal into the DDTI observation stream.
+
+    Reads the ddti_observations the wayback runner publishes (already in the shared
+    divergence_to_observation schema, with detected_at serialized to ISO) and revives
+    detected_at into aware datetimes so compute_selectivity_novelty can window them.
+    An archive-witnessed event older than the history window is dropped by the index's
+    own cutoff — honest recency handling for free. Fail-soft: a missing or malformed
+    file yields [] (the CDT leg publishes alone, exactly as before)."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    out = []
+    for obs in doc.get("ddti_observations", []):
+        terms = [t for t in obs.get("terms", []) if t]
+        raw_ts = obs.get("detected_at")
+        if not terms or not isinstance(raw_ts, str):
+            continue
+        try:
+            ts = datetime.fromisoformat(raw_ts)
+        except ValueError:
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        out.append({
+            "terms": terms,
+            "detected_at": ts,
+            "title": obs.get("title", ""),
+            "url": obs.get("url", ""),
+            "source": obs.get("source", "wayback"),
+        })
+    return out
 
 
 def store_disk(index: dict) -> dict:
@@ -168,6 +204,11 @@ async def main():
     print(f"  reachability: {reachability}")
     print(f"  observations: {len(observations)}")
 
+    wayback = load_wayback_observations()
+    if wayback:
+        observations += wayback
+        print(f"  + {len(wayback)} wayback reconstruction observation(s) merged")
+
     now = datetime.now(timezone.utc)
     # Cold-start windows: CDT's curated feed spans ~6 weeks, so treat the whole
     # batch as "current" and rank by frequency×recency. Once daily cron pulls make
@@ -178,6 +219,7 @@ async def main():
         domain_map=dmap,
     )
     index["source_feeds"] = reachability
+    index["wayback_observations_merged"] = len(wayback)
 
     disk = store_disk(index)
     embedded = embed_in_dashboard(index)
