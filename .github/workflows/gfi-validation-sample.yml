@@ -1,0 +1,41 @@
+name: Draw GFI validation sample
+
+# Manual-only: draws the stratified human-coding sample for the classifier validation study
+# (validation/CODEBOOK.md). Uploads the coding sheets + answer key as a build artifact — they
+# are NOT committed: coding must finish before anything about the sample becomes public.
+# The OPENROUTER_API_KEY secret follows the same exposure rule as gfi-refresh.yml: this
+# workflow never runs on pull_request, so untrusted code can't read it.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gfi-validation-sample
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Draw the stratified validation sample
+        run: python scripts/gfi_validation_sample.py
+
+      - name: Upload coding sheets + answer key
+        uses: actions/upload-artifact@v4
+        with:
+          name: gfi-validation-sample
+          path: validation/out/
+          retention-days: 90
+          if-no-files-found: error
