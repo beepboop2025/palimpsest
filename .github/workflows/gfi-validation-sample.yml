@@ -23,9 +23,9 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
         with:
           python-version: "3.12"
 
@@ -33,7 +33,7 @@ jobs:
         run: python scripts/gfi_validation_sample.py
 
       - name: Upload coding sheets + answer key
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # TODO: pin to commit SHA (supply-chain hardening)
         with:
           name: gfi-validation-sample
           path: validation/out/

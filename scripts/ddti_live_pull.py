@@ -64,8 +64,18 @@ def _parse_date(s: str) -> datetime:
         return datetime.now(timezone.utc)
 
 
+def _strip_angles(s):
+    """Defense-in-depth: neutralize HTML tag delimiters in untrusted CDT feed text
+    before it is embedded/published. The dashboard's client-side esc() is the
+    CANONICAL escape; here we only strip '<' and '>' (rather than entity-encode)
+    so the two layers can never double-encode — stripping removes the characters
+    instead of producing entities that esc() would re-escape."""
+    return s.replace("<", "").replace(">", "") if isinstance(s, str) else s
+
+
 def _clean_terms(terms):
-    return [t for t in terms if t.strip().lower() not in STOP_TAGS and len(t.strip()) > 1]
+    return [_strip_angles(t) for t in terms
+            if t.strip().lower() not in STOP_TAGS and len(t.strip()) > 1]
 
 
 async def pull():
@@ -89,7 +99,7 @@ async def pull():
                     observations.append({
                         "terms": terms,
                         "detected_at": _parse_date(it.get("published_at", "")),
-                        "title": it["title"],
+                        "title": _strip_angles(it["title"]),
                         "url": it["url"],
                         "source": feed["name"],
                     })

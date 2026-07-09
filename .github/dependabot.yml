@@ -1,0 +1,17 @@
+# Keep the supply chain current: GitHub Actions tags/SHAs and pip dependencies
+# (requirements.txt) are checked weekly so the pinned versions above don't rot.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"

@@ -5,8 +5,13 @@
 set -uo pipefail
 export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-SCRAPER="/Users/mrinal/social_scraper"
-PAGES="/Users/mrinal/Desktop/palimpsest-censorwatch"
+# Paths come from the operator's environment — never hardcode a home directory in
+# a PUBLIC repo (it deanonymises the pseudonymous identity). Export both before
+# invoking (e.g. from the launchd plist or a private profile):
+#   export PALIMPSEST_SCRAPER=/path/to/social_scraper
+#   export PALIMPSEST_PAGES=/path/to/palimpsest-censorwatch
+SCRAPER="${PALIMPSEST_SCRAPER:?set PALIMPSEST_SCRAPER (path to the social_scraper checkout)}"
+PAGES="${PALIMPSEST_PAGES:?set PALIMPSEST_PAGES (path to the palimpsest pages repo)}"
 COMPOSE="$SCRAPER/docker-compose.yml"
 LOG="$PAGES/logs/publish_ddti.log"
 mkdir -p "$PAGES/logs"

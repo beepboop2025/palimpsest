@@ -24,9 +24,9 @@ jobs:
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
         with:
           python-version: "3.12"
 

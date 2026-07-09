@@ -24,14 +24,15 @@ jobs:
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
         with:
           python-version: "3.12"
 
       - name: Install engine dependencies
-        run: pip install --quiet httpx pandas defusedxml
+        # Pinned for reproducible, supply-chain-safe builds; kept current by dependabot.
+        run: pip install --quiet httpx==0.28.1 pandas==2.2.3 defusedxml==0.7.1
 
       - name: Compute live DDTI index from China Digital Times
         run: python -m scripts.ddti_live_pull
