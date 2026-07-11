@@ -186,6 +186,24 @@ def main() -> None:
                                                     "drift": None if not m["drift_vs_prior"] else m["drift_vs_prior"]["drift_rate_pct"]}
                                        for m in models}}, ensure_ascii=False) + "\n")
 
+    # Refresh the registry summary so the page reflects the FULL chain (these frontier runs
+    # are sealed after the ingest step wrote its summary, so regenerate it here too).
+    _refresh_registry_summary(now)
+
+
+def _refresh_registry_summary(now) -> None:
+    reg_out = os.path.join(READINGS, "eval-registry-latest.json")
+    s = reg.summary(REGISTRY)
+    with open(reg_out, "w", encoding="utf-8") as f:
+        json.dump({"generated_at": now.isoformat(),
+                   "title": "Verifiable Eval Registry",
+                   "what": ("tamper-evident, pre-registered AI model evaluations — the questions are "
+                            "frozen before the model is queried, and every result is hash-chained so "
+                            "it cannot be quietly revised. Any model, any suite; this is the record."),
+                   "registry": "readings/eval-registry.jsonl",
+                   "verify_cmd": "python3 scripts/verify_eval_registry.py", **s}, f,
+                  ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     main()
