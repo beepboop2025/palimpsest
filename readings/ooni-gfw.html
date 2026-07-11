@@ -61,6 +61,8 @@
 
     <div id="app"><p class="err">loading the live signal…</p></div>
 
+    <div id="events"></div>
+
     <div class="foot" id="foot"></div>
   </div>
 
@@ -108,8 +110,34 @@ function render(d){
 
   document.getElementById("foot").innerHTML=
     `Source: ${esc(d.source)}. Method: ${esc(d.method)}.<br>`+
+    `Companion event log below © net4people/bbs contributors (public GitHub issues).<br>`+
     `Generated ${esc(new Date(d.generated_at).toUTCString())} · window ${esc(d.since)} → ${esc(d.until)} · `+
     `data © OONI, open data, reused with attribution. Palimpsest observes public measurements; it runs no probes of its own.`;
+}
+
+// companion qualitative signal: recent firewall / circumvention events from net4people/bbs
+const kindColor = k => ({blocking:"var(--red)",circumvention:"var(--cy)",mixed:"var(--amb)"}[k]||"var(--dim)");
+fetch("/readings/net4people-latest.json?_="+Date.now())
+  .then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(renderEvents).catch(()=>{});  // silent: the OONI signal stands alone if this is absent
+
+function renderEvents(n){
+  const evs=(n.events||[]).slice(0,12).map(e=>{
+    const when=e.created_at?new Date(e.created_at).toISOString().slice(0,10):"";
+    const cn=e.china_tagged?'<span class="p" style="color:var(--cy)">CN</span>':'';
+    return `<li><span class="d"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a></span>`+
+           `<span class="p" style="color:${kindColor(e.kind)}">${esc(e.kind)}</span>${cn}`+
+           `<span class="p" style="color:var(--dim)">${esc(when)}</span></li>`;
+  }).join("") || '<li><span class="d" style="color:var(--dim)">no recent events</span></li>';
+  document.getElementById("events").innerHTML=`
+    <div class="card" style="margin-top:20px">
+      <h2>Recent firewall &amp; circumvention events — net4people/bbs</h2>
+      <div style="font-size:12px;color:var(--dim);margin:-6px 0 12px">
+        ${Number(n.n_recent)||0} in ${Number(n.recent_days)||30} days ·
+        ${Number(n.n_blocking)||0} blocking · ${Number(n.n_circumvention)||0} circumvention ·
+        chatter ${esc(n.velocity_reading||"")}</div>
+      <ul class="dlist">${evs}</ul>
+    </div>`;
 }
 </script>
 </body>

@@ -1,0 +1,47 @@
+name: Refresh net4people firewall-event signal
+
+# The community log of China network-blocking events and circumvention moves
+# (github.com/net4people/bbs), read via the GitHub Issues API. Qualitative
+# companion to the OONI anomaly signal. Vantage-insensitive (ingests a public
+# overseas repo), stdlib-only. Uses GITHUB_TOKEN for the higher API rate limit.
+
+on:
+  schedule:
+    - cron: "41 */12 * * *"     # twice daily, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: net4people-refresh
+  cancel-in-progress: false
+
+jobs:
+  net4people:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
+
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
+        with:
+          python-version: "3.12"
+
+      - name: Pull net4people/bbs events and publish the signal
+        run: python -m scripts.net4people_pull
+
+      - name: Commit & push if the events changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/net4people-latest.json readings/net4people-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: net4people firewall-event refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
