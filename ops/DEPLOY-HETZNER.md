@@ -40,7 +40,7 @@ happens on the clean web app at **https://console.hetzner.cloud**.
 In Terminal (skip if you already have `~/.ssh/id_ed25519.pub`):
 
 ```bash
-ssh-keygen -t ed25519 -C "mrinal-palimpsest"   # press Enter through the prompts; a passphrase is optional
+ssh-keygen -t ed25519 -C "palimpsest-deploy"   # press Enter through the prompts; a passphrase is optional
 pbcopy < ~/.ssh/id_ed25519.pub                  # copies the PUBLIC key to your clipboard
 ```
 
