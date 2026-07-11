@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palimpsest — an open observatory of authoritarian censorship</title>
-<meta name="description" content="Palimpsest measures how authoritarian states, and now their AI models, censor. Open-source. Watch the censor, never the censored.">
-<meta name="keywords" content="authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OSINT censorship">
+<title>Palimpsest · censorship observatory + verifiable AI eval registry</title>
+<meta name="description" content="Palimpsest measures how authoritarian states and their AI models censor, and seals AI evaluation results into a tamper-evident public registry that nobody can revise after publication. Open source. Watch the censor, never the censored.">
+<meta name="keywords" content="AI evaluation registry, verifiable evals, tamper-evident, refusal drift, authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OSINT censorship">
 <meta name="author" content="Palimpsest">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="https://palimpsest.info/">
@@ -22,8 +22,8 @@
 <!-- Open Graph / social -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Palimpsest — an open observatory of authoritarian censorship">
-<meta property="og:description" content="Measures how authoritarian states, and their state-aligned AI models, censor — by treating deletion as data. Open-source public good. Watch the censor, never the censored.">
+<meta property="og:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
+<meta property="og:description" content="Measures how authoritarian states and their AI models censor, and seals AI evaluation results so nobody can revise them after publication. Not a lab, not a government, not us. Open-source public good.">
 <meta property="og:url" content="https://palimpsest.info/">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og.png">
 <meta property="og:image:width" content="1200">
@@ -31,8 +31,8 @@
 <meta property="og:image:alt" content="Palimpsest — watch the censor, never the censored.">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Palimpsest — an open observatory of authoritarian censorship">
-<meta name="twitter:description" content="Deletion as data. A live index of what authoritarian states and their AI models are engineered to hide.">
+<meta name="twitter:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
+<meta name="twitter:description" content="Deletion as data, and AI evaluations sealed so nobody can revise them after publication. A live record of what states and models are engineered to hide.">
 <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og.png">
 
 <!-- Structured data: declares Palimpsest as a citable Dataset + Organization for AI/search engines -->
@@ -60,7 +60,7 @@
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#dataset",
       "name": "Palimpsest Censorship Observatory Dataset",
-      "description": "Continuously updated measurements of authoritarian censorship: (1) deletion-as-data — archived public posts watched for scrubbing, ranked by what the censor focuses on now, validated against six documented censorship events; and (2) the Generative Firewall Index — the share of sensitive answers that state-aligned AI models refuse or rewrite, against neutral controls, in Chinese and English. Every finding ships its raw evidence.",
+      "description": "Continuously updated measurements of authoritarian censorship plus a verifiable AI evaluation registry: (1) deletion-as-data, archived public posts watched for scrubbing, ranked by what the censor focuses on now, validated against six documented censorship events; (2) the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite, against neutral controls, in Chinese and English; and (3) the Verifiable Eval Registry, pre-registered, hash-chained model evaluations of Chinese and Western frontier models that cannot be revised after publication, including refusal drift over time. Every finding ships its raw evidence.",
       "url": "https://palimpsest.info/",
       "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censorship velocity"],
       "creator": { "@id": "https://palimpsest.info/#org" },
@@ -117,6 +117,14 @@
       "acceptedAnswer": {
         "@type": "Answer",
         "text": "The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It records how often state-aligned large language models refuse or substitute state-narrative answers on sensitive prompts, in Chinese and English, against neutral control models. A high index means the model is selectively suppressing truthful answers by design, not by accident."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the Verifiable Eval Registry?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The questions are frozen and sealed before any model is queried, each result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not frozen first, or a number edited after publication, fails verification. It currently holds sealed audits of Chinese state-aligned models and Western frontier models side by side, on the same frozen questions, and anyone can recompute the chain from the public repository."
       }
     },
     {
@@ -197,11 +205,27 @@
   <img class="logo" src="brand/palimpsest-icon.svg" alt="Palimpsest logo" width="60" height="60">
   <p class="kick">Open-source · public good · MIT</p>
   <h1>Palimpsest</h1>
-  <p class="lede">An open observatory that measures how authoritarian states censor by treating deletion
-  as data, and how their state-aligned AI models refuse and rewrite the truth. It watches the censor,
-  never the censored. Four live signals, updating on their own, every number tracing to public evidence.</p>
+  <p class="lede">An open observatory that measures how authoritarian states censor, and a sealed public
+  registry of AI evaluation results. Deletion is treated as data. Every result seals the moment it goes up,
+  hash-chained, so nobody can revise it afterwards. Not a lab, not a government, not us. It watches the
+  censor, never the censored, and every number traces to public evidence.</p>
 
   <div class="cards">
+    <div class="card">
+      <div class="ct"><span class="dot" style="color:#37c88b"></span>Sealed · independently verifiable</div>
+      <h2>Verifiable Eval Registry</h2>
+      <p>AI evaluations nobody can revise after publication. Questions frozen before any model is asked,
+      every result hash-chained. Chinese state-aligned and Western frontier models on the same record,
+      side by side, watched for refusal drift over time.</p>
+      <a class="btn" href="/readings/eval-registry.html">Open the registry &rarr;</a>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="dot" style="color:#a78bfa"></span>Live · every 6 hours</div>
+      <h2>Erasure Observatory</h2>
+      <p>What the record lost, measured across three layers: network, narrative, and model. Each reading
+      seals into a tamper-evident ledger, so our own history cannot be quietly rewritten either.</p>
+      <a class="btn" href="/readings/erasure-observatory.html">See the ledger &rarr;</a>
+    </div>
     <div class="card">
       <div class="ct"><span class="dot" style="color:#06d6e0"></span>Live · every 3 hours</div>
       <h2>DDTI Observatory</h2>
@@ -240,6 +264,10 @@
     censor is most focused on right now. Validated against six documented censorship events.</li>
     <li><b>The generation layer.</b> Probes state-aligned LLMs and records their refusals and
     state-narrative substitutions, in Chinese and English, against Western controls.</li>
+    <li><b>The sealed registry.</b> Every evaluation is pre-registered and hash-chained the moment it is
+    published. A lab, a government, or Palimpsest itself cannot revise a number afterwards, and anyone
+    can recompute the chain to check. Western frontier models now sit on the same record as the
+    state-aligned ones, watched for what they quietly stop answering.</li>
     <li><b>Safety as architecture.</b> Public reads only, no person inside is ever asked to act, and no
     state-aligned model is ever the analyst. Every finding ships its raw evidence.</li>
   </ul>
@@ -280,6 +308,15 @@
     It records how often state-aligned large language models refuse or substitute state-narrative answers on
     sensitive prompts, in Chinese and English, against neutral control models. A high index means the model
     is selectively suppressing truthful answers by design, not by accident.</p>
+
+    <p class="q">What is the Verifiable Eval Registry?</p>
+    <p class="a">The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations.
+    The questions are frozen and sealed before any model is queried, each result is hash-chained to the
+    one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were
+    not frozen first, or a number edited after publication, fails verification. It currently holds sealed
+    audits of Chinese state-aligned models and Western frontier models side by side, on the same frozen
+    questions, and anyone can recompute the chain from the
+    <a href="https://github.com/beepboop2025/palimpsest">public repository</a>.</p>
 
     <p class="q">Is Palimpsest free and open source?</p>
     <p class="a">Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public

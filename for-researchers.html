@@ -125,6 +125,27 @@
       <td><span class="pill live">LIVE</span></td>
     </tr>
     <tr>
+      <td><b>Eval Registry</b><br>sealed model evaluations</td>
+      <td>Pre-registered, hash-chained audits of Chinese state-aligned and Western frontier models on the same frozen probes, including refusal drift over time. Results cannot be revised after sealing; anyone can recompute the chain.</td>
+      <td>Public model APIs</td>
+      <td>every 6 hours</td>
+      <td><span class="pill live">LIVE</span></td>
+    </tr>
+    <tr>
+      <td><b>Erasure Observatory</b><br>composite erasure index</td>
+      <td>What the record lost, across the network, narrative, and model layers, sealed into a tamper-evident ledger. Layers that cannot report are shown absent, never zero-filled.</td>
+      <td>OONI, model audits, Baike (armed)</td>
+      <td>every 6 hours</td>
+      <td><span class="pill live">LIVE</span></td>
+    </tr>
+    <tr>
+      <td><b>GFW network signal</b><br>live firewall blocking</td>
+      <td>Independent, side-channel measurements of Great Firewall blocking events, with historical backfill.</td>
+      <td>OONI open data</td>
+      <td>every 6 hours</td>
+      <td><span class="pill live">LIVE</span></td>
+    </tr>
+    <tr>
       <td><b>Velocity</b><br>deletion speed</td>
       <td>How fast a post is deleted after posting, timed to the minute.</td>
       <td>In-country observation</td>
@@ -144,6 +165,12 @@
     <div class="file"><a href="readings/gdelt-history.jsonl">gdelt-history.jsonl</a><div class="d">GDELT time series: n_terms, containment and blackout counts, top term.</div></div>
     <div class="file"><a href="readings/github-refuge-latest.json">github-refuge-latest.json</a><div class="d">GitHub-refuge: each watched mirror with status, pressure likelihood, fork and star novelty, and any matched takedown notices.</div></div>
     <div class="file"><a href="readings/github-refuge-history.jsonl">github-refuge-history.jsonl</a><div class="d">GitHub-refuge time series: repos watched, present, and pressure events per run.</div></div>
+    <div class="file"><a href="readings/eval-registry.jsonl">eval-registry.jsonl</a><div class="d">The registry chain itself: every pre-registration and sealed run, hash-chained in order. This file is the tamper-evident record; verify it with <code>scripts/verify_eval_registry.py</code>.</div></div>
+    <div class="file"><a href="readings/eval-registry-latest.json">eval-registry-latest.json</a><div class="d">Registry summary: attestation counts, models audited, recent runs, Merkle root, head hash, verified flag.</div></div>
+    <div class="file"><a href="readings/refusal-drift-latest.json">refusal-drift-latest.json</a><div class="d">Frontier refusal drift: per-model suppression on the frozen benign probe set, refused probes, and drift versus the prior run.</div></div>
+    <div class="file"><a href="readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a><div class="d">Composite Erasure Index snapshot: per-layer readings (network, narrative, model) and the mean of reporting layers.</div></div>
+    <div class="file"><a href="readings/erasure-ledger.jsonl">erasure-ledger.jsonl</a><div class="d">The sealed erasure ledger: every observatory reading, hash-chained; verify with <code>scripts/verify_ledger.py</code>.</div></div>
+    <div class="file"><a href="readings/ooni-gfw-latest.json">ooni-gfw-latest.json</a><div class="d">GFW network signal: independent side-channel blocking measurements from OONI open data.</div></div>
   </div>
   <p style="margin-top:10px">A machine-readable summary for AI agents lives at <a href="/llms.txt">llms.txt</a>. The full directory is at <a href="readings/">/readings</a>.</p>
 
@@ -172,19 +199,22 @@
 
   <h2>How to cite</h2>
   <p>If you use this data in an article, report, or paper, a citation and a link back are appreciated. Please cite the accessed date, since the signals update continuously.</p>
-  <pre>Palimpsest (2026). Palimpsest Censorship Observatory: DDTI, Generative Firewall
-Index, and GDELT cross-signal [live dataset]. https://palimpsest.info
+  <pre>Palimpsest (2026). Palimpsest Censorship Observatory and Verifiable Eval
+Registry: DDTI, Generative Firewall Index, GDELT cross-signal, and sealed
+model evaluations [live dataset]. https://palimpsest.info
 (accessed YYYY-MM-DD).</pre>
   <pre>@misc{palimpsest,
-  title  = {Palimpsest Censorship Observatory},
+  title  = {Palimpsest Censorship Observatory and Verifiable Eval Registry},
   author = {Palimpsest},
   year   = {2026},
   url    = {https://palimpsest.info},
-  note   = {Open live dataset: DDTI, Generative Firewall Index, GDELT cross-signal}
+  note   = {Open live dataset: DDTI, Generative Firewall Index, GDELT
+            cross-signal, sealed eval registry with refusal drift}
 }</pre>
 
   <h2>Reproducibility and provenance</h2>
   <p>Palimpsest is fully open source under the MIT licence. The signals recompute inside public, auditable GitHub Actions, and every refresh is a timestamped commit in the repository, so the entire history of what was measured, and when, is public and verifiable. There is no private backend deciding the numbers.</p>
+  <p>Two of the surfaces go further than the commit trail: the erasure ledger and the eval registry are hash-chained and Merkle-committed, so they stay verifiable even outside git. Clone the repo and run <code>python3 scripts/verify_ledger.py</code> or <code>python3 scripts/verify_eval_registry.py</code>; exit 0 means every seal recomputes and, for the registry, that every run referenced a probe set frozen before the model was queried. This constraint applies to us too. If we edited a published number, our own verifier would report the break.</p>
   <p class="links">
     <a href="https://github.com/beepboop2025/palimpsest">Repository</a> ·
     <a href="https://github.com/beepboop2025/palimpsest/commits/main">Commit history (audit trail)</a> ·

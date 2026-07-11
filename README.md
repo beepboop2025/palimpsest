@@ -21,6 +21,15 @@ for journalists, researchers, and human rights defenders.
 It is built entirely from open sources. **The thing it watches is the censor, never the
 censored.**
 
+**New: the [Verifiable Eval Registry](docs/EVAL-REGISTRY.md).** Palimpsest now seals AI
+evaluation results into a public, tamper-evident chain. The questions are frozen before
+any model is queried, every result is hash-chained the moment it is published, and nobody
+can revise it afterwards. Not a lab, not a government, not us: if we edited a number, our
+own verifier would report the break. Chinese state-aligned models and Western frontier
+models sit on the same record, side by side, watched over time for what they quietly stop
+answering. [Open the live registry](https://palimpsest.info/readings/eval-registry.html)
+or verify it yourself: `python3 scripts/verify_eval_registry.py`.
+
 > **Try it in ten seconds — no install, no key, no database:**
 > ```bash
 > python3 demo/palimpsest_demo.py
