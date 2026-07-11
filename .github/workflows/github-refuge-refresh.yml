@@ -32,7 +32,7 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # built-in; only raises the read rate limit
     steps:
-      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
+      - uses: actions/checkout@v7  # TODO: pin to commit SHA (supply-chain hardening)
 
       - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
         with:
