@@ -61,6 +61,8 @@
 
     <div id="app"><p class="err">loading the live signal…</p></div>
 
+    <div id="cp"></div>
+
     <div id="events"></div>
 
     <div class="foot" id="foot"></div>
@@ -113,6 +115,30 @@ function render(d){
     `Companion event log below © net4people/bbs contributors (public GitHub issues).<br>`+
     `Generated ${esc(new Date(d.generated_at).toUTCString())} · window ${esc(d.since)} → ${esc(d.until)} · `+
     `data © OONI, open data, reused with attribution. Palimpsest observes public measurements; it runs no probes of its own.`;
+}
+
+// second, independent method: Censored Planet (DNS/HTTP side-channel). Silent if absent.
+fetch("/readings/censored-planet-latest.json?_="+Date.now())
+  .then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(renderCP).catch(()=>{});
+
+function renderCP(c){
+  const rate = c.cn_interference_rate_pct;
+  document.getElementById("cp").innerHTML=`
+    <div class="card" style="margin-top:20px">
+      <h2>Independent cross-check — Censored Planet</h2>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:none;text-align:center;min-width:96px">
+          <div style="font-size:34px;font-weight:800;line-height:1;color:var(--cy)">${rate==null?"—":Number(rate)}<small style="font-size:14px;color:var(--dim)">%</small></div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">CN interference</div>
+        </div>
+        <div style="flex:1;font-size:12.5px;color:var(--mut);min-width:220px">
+          A second, methodologically-independent measure — remote DNS/HTTP side-channels from 95k+ vantage points
+          (a different technique than OONI's probes). ${esc(c.persistence_note||"")}
+        </div>
+      </div>
+      <div class="foot" style="margin-top:12px;border:0;padding:0">${esc(c.note||"")}</div>
+    </div>`;
 }
 
 // companion qualitative signal: recent firewall / circumvention events from net4people/bbs

@@ -1,0 +1,47 @@
+name: Refresh Censored Planet signal
+
+# Independent China censorship measurement from Censored Planet (U. Michigan)
+# via their open GraphQL API: interference rate + alert time series, measured
+# by remote DNS/HTTP side-channels from 95k+ vantage points — a different method
+# than OONI's active probes. Stdlib-only, key-less, vantage-insensitive.
+# CP publishes ~weekly, so a daily poll is plenty.
+
+on:
+  schedule:
+    - cron: "37 5 * * *"     # once daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: censored-planet-refresh
+  cancel-in-progress: false
+
+jobs:
+  censored-planet:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
+
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
+        with:
+          python-version: "3.12"
+
+      - name: Pull Censored Planet CN data and publish the signal
+        run: python -m scripts.censored_planet_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/censored-planet-latest.json readings/censored-planet-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: Censored Planet signal refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
