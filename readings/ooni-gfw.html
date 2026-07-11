@@ -65,6 +65,9 @@
   </div>
 
 <script>
+// escape anything interpolated from the fetched JSON before it hits innerHTML.
+// the domain/test values originate from OONI's data, i.e. external input.
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtPct = r => r==null ? "—" : Math.round(r*100)+"%";
 const barColor = r => r==null?"#334":(r>=.6?"var(--red)":r>=.25?"var(--amb)":r>=.05?"#e0b83a":"var(--grn)");
 const bandFor = i => i==null?["—","#334"]:(i>=50?["SEVERE","var(--red)"]:i>=25?["HIGH","var(--amb)"]:i>=8?["ELEVATED","#e0b83a"]:["LOW","var(--grn)"]);
@@ -78,24 +81,24 @@ function render(d){
   const [bl,bc]=bandFor(d.gfw_index);
   const tests=(d.tests||[]).map(t=>{
     const w=t.available&&t.anomaly_rate!=null?Math.round(t.anomaly_rate*100):0;
-    return `<div class="row"><span class="lab">${t.test}</span>
+    return `<div class="row"><span class="lab">${esc(t.test)}</span>
       <span class="bar"><span style="width:${w}%;background:${t.available?barColor(t.anomaly_rate):'#334'}"></span></span>
       <span class="pc">${t.available?fmtPct(t.anomaly_rate):"n/a"}</span></div>`;
   }).join("");
   const doms=(d.top_blocked||[]).slice(0,15).map(x=>
-    `<li><span class="d">${x.domain}</span><span class="p">${fmtPct(x.anomaly_rate)}</span></li>`).join("")
+    `<li><span class="d">${esc(x.domain)}</span><span class="p">${fmtPct(x.anomaly_rate)}</span></li>`).join("")
     || '<li><span class="d" style="color:var(--dim)">no per-domain breakdown this run</span></li>';
 
   document.getElementById("app").innerHTML=`
     <div class="hero">
       <div>
-        <div class="idx">${d.gfw_index==null?"—":d.gfw_index}<small>/100</small></div>
+        <div class="idx">${d.gfw_index==null?"—":Number(d.gfw_index)}<small>/100</small></div>
         <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
       </div>
       <div class="heroTxt">
-        <div class="t">GFW pressure — measurement-weighted anomaly rate across ${d.n_tests_with_data} tests,
-          over ${d.n_measurements.toLocaleString()} CN measurements in the last ${d.window_days} days.</div>
-        <div class="m">${d.china_caveat}</div>
+        <div class="t">GFW pressure — measurement-weighted anomaly rate across ${Number(d.n_tests_with_data)||0} tests,
+          over ${Number(d.n_measurements||0).toLocaleString()} CN measurements in the last ${Number(d.window_days)||0} days.</div>
+        <div class="m">${esc(d.china_caveat)}</div>
       </div>
     </div>
     <div class="grid">
@@ -104,8 +107,8 @@ function render(d){
     </div>`;
 
   document.getElementById("foot").innerHTML=
-    `Source: ${d.source}. Method: ${d.method}.<br>`+
-    `Generated ${new Date(d.generated_at).toUTCString()} · window ${d.since} → ${d.until} · `+
+    `Source: ${esc(d.source)}. Method: ${esc(d.method)}.<br>`+
+    `Generated ${esc(new Date(d.generated_at).toUTCString())} · window ${esc(d.since)} → ${esc(d.until)} · `+
     `data © OONI, open data, reused with attribution. Palimpsest observes public measurements; it runs no probes of its own.`;
 }
 </script>
