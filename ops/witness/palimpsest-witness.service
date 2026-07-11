@@ -1,0 +1,16 @@
+[Unit]
+Description=Palimpsest independent chain witness (split-view / rewrite detector)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Adjust User and the script path to the box's layout.
+User=palimpsest
+ExecStart=/usr/bin/python3 /opt/palimpsest/ops/witness/palimpsest_witness.py
+# Optional Telegram alerting; leave unset to log-only.
+# Environment=TELEGRAM_BOT_TOKEN=...
+# Environment=TELEGRAM_CHAT_ID=...
+# Success means "consistent". Exit 2 (alert) and 3 (unreachable) surface as
+# unit failure so they show in systemctl --failed and journald.
+SuccessExitStatus=0

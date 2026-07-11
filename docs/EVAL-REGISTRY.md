@@ -90,3 +90,25 @@ auditor can later quietly revise.
 - `readings/eval-registry.html` — the public page.
 - `readings/eval-registry.jsonl` — the chain. `eval-registry-latest.json` — the summary.
 - `tests/test_eval_registry.py` — tamper detection and the pre-registration rule (6/6).
+
+## Beyond self-verification: the anchor and witness layers
+
+A hash chain the operator serves is only tamper-evident to someone who already
+holds an old copy. Three layers close that gap (full trust model, including
+what none of this can prove, in [INTEGRITY.md](INTEGRITY.md)):
+
+- **Inclusion proofs** (`scripts/prove_inclusion.py`): any single attestation
+  verifies against the published Merkle root with log2(N) hashes, no chain
+  download needed. Proofs are self-contained JSON.
+- **External anchoring** (`scripts/anchor_roots.py`, runs in the 6h refresh):
+  every root movement is snapshotted by the Internet Archive and stamped into
+  Bitcoin via OpenTimestamps. The `.ots` proofs in `readings/anchors/` verify
+  with the standard client against the blockchain, not against us. Failures
+  are recorded in `readings/anchors.jsonl` as failures, never faked.
+- **Independent witness** (`ops/witness/palimpsest_witness.py`): a from-scratch
+  reimplementation on separate infrastructure fetches the chains the world
+  sees, re-verifies them (including the pre-registration rule), and checks
+  that every chain head it ever witnessed is still present unchanged. A
+  split view or retroactive rewrite trips an alert. One stdlib file; anyone
+  can run a witness, and every additional witness shrinks the window in which
+  a rewrite could go unseen.

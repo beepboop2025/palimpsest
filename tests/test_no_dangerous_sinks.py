@@ -24,6 +24,16 @@ _SINKS = re.compile(
 )
 
 
+# Narrow, justified exemptions — (file, pattern substring) pairs. Each entry must name
+# WHY the sink cannot see fetched bytes. Anything not listed here still fails.
+#   anchor_roots.py: invokes the OpenTimestamps client as subprocess.run(["ots", "stamp",
+#   <path we constructed>]) — fixed argv, no shell, and the stamped file is written by us
+#   from our own chain roots. Fetched data (the Wayback response) never reaches it.
+_ALLOWED = {
+    ("scripts/anchor_roots.py", "subprocess."),
+}
+
+
 def _py_files():
     for d in SCANNED_DIRS:
         base = ROOT / d
@@ -38,10 +48,22 @@ def test_no_code_execution_sinks_on_collection_paths():
     offenders = []
     for p in _py_files():
         text = p.read_text(encoding="utf-8", errors="replace")
+        rel = str(p.relative_to(ROOT))
         for i, line in enumerate(text.splitlines(), 1):
             stripped = line.lstrip()
             if stripped.startswith("#"):
                 continue  # a mention in a comment is documentation, not a sink
-            if _SINKS.search(line):
-                offenders.append(f"{p.relative_to(ROOT)}:{i}: {line.strip()}")
+            m = _SINKS.search(line)
+            if m and (rel, "subprocess.") in _ALLOWED and "subprocess." in m.group(0):
+                continue
+            if m:
+                offenders.append(f"{rel}:{i}: {line.strip()}")
     assert not offenders, "dangerous execution sink(s) introduced:\n" + "\n".join(offenders)
+
+
+def test_allowlisted_file_never_uses_shell_or_untrusted_argv():
+    """The exemption above stays safe only while the ots call keeps a fixed argv and no
+    shell. Pin that shape so a later edit cannot widen the hole quietly."""
+    text = (ROOT / "scripts" / "anchor_roots.py").read_text(encoding="utf-8")
+    assert "shell=True" not in text
+    assert '["ots", "stamp", stamp_path]' in text  # the one permitted invocation, verbatim

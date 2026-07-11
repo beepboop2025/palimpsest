@@ -72,6 +72,7 @@
         <li><b>Pre-register.</b> The probe set is hashed and sealed into an append only chain before the model is ever asked.</li>
         <li><b>Run.</b> Each result records the model, a hash of its full responses, and the metrics, and it must reference a probe set that was frozen earlier.</li>
         <li><b>Verify.</b> Anyone recomputes the chain. A result whose questions were not frozen first, or any value altered after sealing, fails.</li>
+        <li><b>Anchor.</b> Each new root is deposited outside our infrastructure: snapshotted by the Internet Archive and stamped into Bitcoin via OpenTimestamps. An independent witness on separate infrastructure re-verifies the served chain and alerts if any previously seen history changes. Rewriting the record would mean defeating them too, not just us. <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">Full threat model</a>.</li>
       </ol>
       <div class="why">Why it matters: as models mediate more of what we can know, third parties need to audit them and prove the audit was not rewritten. A shared, independently verifiable record is the missing substrate. Palimpsest's own model-erasure audit is simply the first thing anchored here; the registry is model and topic agnostic.</div>
     </div>
@@ -127,9 +128,31 @@ function render(d){
         <div class="k">first sealed</div><div class="v">${esc((d.first_ts||"").slice(0,16).replace("T"," ") || "–")}</div>
         <div class="k">merkle root</div><div class="v">${esc(d.merkle_root || "–")}</div>
         <div class="k">head hash</div><div class="v">${esc(d.head_hash || "–")}</div>
+        <div class="k">external anchors</div><div class="v" id="anchors">checking…</div>
       </div>
       <div class="cmd">$ git clone the repo &nbsp;&amp;&amp;&nbsp; python3 scripts/verify_eval_registry.py&nbsp; # recompute + check pre-registration</div>
     </div>`;
+  renderAnchors();
+}
+
+// External anchors: the roots are deposited with parties we do not control
+// (Internet Archive snapshots + OpenTimestamps/Bitcoin), so rewriting our own
+// history would require defeating them too. See docs/INTEGRITY.md.
+function renderAnchors(){
+  const el = () => document.getElementById("anchors");
+  fetch("/readings/anchors-latest.json", {cache:"no-store"})
+    .then(r => r.ok ? r.json() : null)
+    .then(a => {
+      if(!el()) return;
+      if(!a){ el().textContent = "not yet anchored"; return; }
+      const bits = [];
+      if(a.wayback_ok) bits.push(`<a href="${esc((a.wayback_snapshots||[])[0]||"#")}">Internet Archive</a> (${esc(a.wayback_ok)} snapshots)`);
+      if(a.ots) bits.push(`<a href="/${esc(a.ots)}">Bitcoin via OpenTimestamps</a>`);
+      el().innerHTML = bits.length
+        ? `${bits.join(" &nbsp;·&nbsp; ")} &nbsp;·&nbsp; ${esc((a.ts||"").slice(0,16).replace("T"," "))} UTC`
+        : `last attempt ${esc((a.ts||"").slice(0,10))}: ${esc(a.ots_status || "no anchor landed")}`;
+    })
+    .catch(() => { if(el()) el().textContent = "not yet anchored"; });
 }
 
 fetch("/readings/eval-registry-latest.json", {cache:"no-store"})

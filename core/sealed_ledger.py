@@ -137,6 +137,41 @@ def merkle_root(entries: list[dict]) -> str:
     return level[0]
 
 
+def inclusion_proof(entries: list[dict], seq: int) -> dict:
+    """A Merkle inclusion proof for one entry: the sibling hashes needed to fold
+    that entry's hash up to the published root. Lets a third party verify that a
+    single attestation is inside a ledger of N entries with log2(N) hashes,
+    without downloading the chain. Uses the same duplicate-last padding as
+    merkle_root(), so a proof always verifies against the root that function
+    publishes.
+    """
+    if not entries or not 0 <= seq < len(entries):
+        raise ValueError(f"seq {seq} not in ledger of {len(entries)} entries")
+    level = [e["entry_hash"] for e in entries]
+    idx, path = seq, []
+    while len(level) > 1:
+        if len(level) % 2:
+            level.append(level[-1])
+        sib = idx + 1 if idx % 2 == 0 else idx - 1
+        path.append({"side": "right" if idx % 2 == 0 else "left",
+                     "hash": level[sib]})
+        level = [_sha256((level[i] + level[i + 1]).encode("utf-8"))
+                 for i in range(0, len(level), 2)]
+        idx //= 2
+    return {"seq": seq, "entry_hash": entries[seq]["entry_hash"],
+            "n_entries": len(entries), "path": path, "merkle_root": level[0]}
+
+
+def verify_inclusion(proof: dict) -> bool:
+    """Fold the proof: True iff the entry_hash climbs the sibling path to the
+    claimed merkle_root. Self-contained — needs nothing but this dict."""
+    h = proof["entry_hash"]
+    for step in proof["path"]:
+        pair = (h + step["hash"]) if step["side"] == "right" else (step["hash"] + h)
+        h = _sha256(pair.encode("utf-8"))
+    return h == proof["merkle_root"]
+
+
 def verify(entries: list[dict]) -> tuple[bool, list[str]]:
     """Recompute the chain and report EVERY break found (not a silent bool).
 

@@ -30,6 +30,13 @@ models sit on the same record, side by side, watched over time for what they qui
 answering. [Open the live registry](https://palimpsest.info/readings/eval-registry.html)
 or verify it yourself: `python3 scripts/verify_eval_registry.py`.
 
+The seal does not stop at our own hashes. Every new root is snapshotted by the
+Internet Archive and stamped into Bitcoin via OpenTimestamps, and an independent
+witness on separate infrastructure re-verifies the served chains on a timer,
+alerting if any previously seen history changes ([run one yourself](ops/witness/)
+— it is one stdlib file). The layer-by-layer trust model, including what it can
+NOT prove, is in [docs/INTEGRITY.md](docs/INTEGRITY.md).
+
 > **Try it in ten seconds — no install, no key, no database:**
 > ```bash
 > python3 demo/palimpsest_demo.py

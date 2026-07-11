@@ -57,6 +57,17 @@ jobs:
       - name: Verify the eval registry (chain + pre-registration rule)
         run: python -m scripts.verify_eval_registry
 
+      - name: Anchor the roots outside our infrastructure
+        # Wayback snapshots the served chain files (a third-party dated copy;
+        # it may lag one refresh behind the just-sealed state until Pages
+        # rebuilds — still a valid prefix witness). OpenTimestamps stamps the
+        # NEW roots into Bitcoin precisely; the .ots proofs commit below and
+        # verify with the standard client against the blockchain, not against
+        # us. Idempotent: skips entirely when the roots did not move.
+        run: |
+          pip install --quiet opentimestamps-client
+          python -m scripts.anchor_roots
+
       - name: Commit & push if anything changed
         run: |
           git config user.name  "palimpsest-bot"
@@ -69,7 +80,10 @@ jobs:
                   readings/eval-registry.jsonl \
                   readings/eval-registry-latest.json \
                   readings/refusal-drift-latest.json \
-                  readings/refusal-drift-history.jsonl 2>/dev/null || true
+                  readings/refusal-drift-history.jsonl \
+                  readings/anchors.jsonl \
+                  readings/anchors-latest.json \
+                  readings/anchors/ 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else
