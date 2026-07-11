@@ -1,0 +1,49 @@
+name: Refresh OONI Great-Firewall signal
+
+# Live Great-Firewall network censorship in China, read from outside via OONI's
+# public aggregation API: website / messenger / circumvention-tool anomaly rates
+# and the most-blocked sites right now. Stdlib-only, key-less, vantage-insensitive
+# — we ingest OONI's already-aggregated open data and probe nothing ourselves,
+# so this runs correctly from a GitHub runner (no in-China presence, no box egress).
+# China caveat: the GFW blocks without block pages, so we track anomaly rate,
+# not OONI's near-zero 'confirmed'.
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"     # every 6 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ooni-gfw-refresh
+  cancel-in-progress: false
+
+jobs:
+  ooni-gfw:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
+
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
+        with:
+          python-version: "3.12"
+
+      - name: Pull OONI CN aggregation and publish the GFW signal
+        run: python -m scripts.ooni_gfw_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/ooni-gfw-latest.json readings/ooni-gfw-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: OONI GFW signal refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

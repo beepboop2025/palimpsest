@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Great Firewall — live network censorship · Palimpsest</title>
+<meta name="description" content="Live Great-Firewall network blocking in China, measured from outside via OONI's open data. Website, messenger and circumvention-tool anomaly rates, and the most-blocked sites right now.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
+  a{color:var(--cy);text-decoration:none}
+  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px}
+  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
+  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
+  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
+  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
+  .wrap{max-width:920px;margin:0 auto;padding:clamp(18px,5vw,40px)}
+  h1{font-size:clamp(20px,4vw,27px);margin:.2em 0 .1em;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:26px}
+  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px}
+  .idx{font-size:66px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .idx small{font-size:20px;color:var(--dim);font-weight:400}
+  .band{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;margin-top:8px}
+  .heroTxt{flex:1;min-width:220px}
+  .heroTxt .t{font-size:13px;color:var(--mut)}
+  .heroTxt .m{font-size:12px;color:var(--dim);margin-top:8px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card h2{font-size:12px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  .row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px}
+  .row .lab{width:104px;color:var(--fg);flex:none}
+  .bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden}
+  .bar span{display:block;height:100%;border-radius:5px}
+  .row .pc{width:44px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums;flex:none}
+  .dlist{margin:0;padding:0;list-style:none}
+  .dlist li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
+  .dlist li:last-child{border:0}
+  .dlist .d{color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dlist .p{color:var(--red);flex:none;font-variant-numeric:tabular-nums}
+  .foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
+  .err{color:var(--amb);font-size:13px}
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="b">PALIMPSEST</span>
+    <a href="/">Home</a>
+    <a href="/dashboards/ddti_observatory.html">Observatory</a>
+    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
+    <a href="/readings/ooni-gfw.html" class="here">GFW Live</a>
+    <a href="/for-researchers.html">Data</a>
+  </nav>
+  <div class="wrap">
+    <h1>Great Firewall — live network censorship</h1>
+    <div class="sub">What China's network firewall is blocking right now — measured from
+      <em>outside</em> China, by ingesting <a href="https://ooni.org/data/" target="_blank" rel="noopener">OONI</a>'s
+      open measurements taken by real probes inside the country. We observe; we do not probe.</div>
+
+    <div id="app"><p class="err">loading the live signal…</p></div>
+
+    <div class="foot" id="foot"></div>
+  </div>
+
+<script>
+const fmtPct = r => r==null ? "—" : Math.round(r*100)+"%";
+const barColor = r => r==null?"#334":(r>=.6?"var(--red)":r>=.25?"var(--amb)":r>=.05?"#e0b83a":"var(--grn)");
+const bandFor = i => i==null?["—","#334"]:(i>=50?["SEVERE","var(--red)"]:i>=25?["HIGH","var(--amb)"]:i>=8?["ELEVATED","#e0b83a"]:["LOW","var(--grn)"]);
+
+fetch("/readings/ooni-gfw-latest.json?_="+Date.now())
+  .then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(render)
+  .catch(e=>{document.getElementById("app").innerHTML='<p class="err">signal unavailable right now (the observatory abstains rather than show a hollow reading). Error: '+e+'</p>';});
+
+function render(d){
+  const [bl,bc]=bandFor(d.gfw_index);
+  const tests=(d.tests||[]).map(t=>{
+    const w=t.available&&t.anomaly_rate!=null?Math.round(t.anomaly_rate*100):0;
+    return `<div class="row"><span class="lab">${t.test}</span>
+      <span class="bar"><span style="width:${w}%;background:${t.available?barColor(t.anomaly_rate):'#334'}"></span></span>
+      <span class="pc">${t.available?fmtPct(t.anomaly_rate):"n/a"}</span></div>`;
+  }).join("");
+  const doms=(d.top_blocked||[]).slice(0,15).map(x=>
+    `<li><span class="d">${x.domain}</span><span class="p">${fmtPct(x.anomaly_rate)}</span></li>`).join("")
+    || '<li><span class="d" style="color:var(--dim)">no per-domain breakdown this run</span></li>';
+
+  document.getElementById("app").innerHTML=`
+    <div class="hero">
+      <div>
+        <div class="idx">${d.gfw_index==null?"—":d.gfw_index}<small>/100</small></div>
+        <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
+      </div>
+      <div class="heroTxt">
+        <div class="t">GFW pressure — measurement-weighted anomaly rate across ${d.n_tests_with_data} tests,
+          over ${d.n_measurements.toLocaleString()} CN measurements in the last ${d.window_days} days.</div>
+        <div class="m">${d.china_caveat}</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>Blocking by service</h2>${tests}</div>
+      <div class="card"><h2>Most-blocked sites now</h2><ul class="dlist">${doms}</ul></div>
+    </div>`;
+
+  document.getElementById("foot").innerHTML=
+    `Source: ${d.source}. Method: ${d.method}.<br>`+
+    `Generated ${new Date(d.generated_at).toUTCString()} · window ${d.since} → ${d.until} · `+
+    `data © OONI, open data, reused with attribution. Palimpsest observes public measurements; it runs no probes of its own.`;
+}
+</script>
+</body>
+</html>
