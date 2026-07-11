@@ -140,23 +140,35 @@ fetch("/readings/eval-registry-latest.json", {cache:"no-store"})
        <a href="/readings/eval-registry.jsonl">chain</a> are served directly.</div>`;
   });
 
-// Frontier refusal-drift card (undisclosed behavioral change in a Western model over time)
+// Frontier refusal-drift card — a cross-lab panel, watched over time
+function driftLine(m){
+  const d = m.drift_vs_prior;
+  if(d == null) return "baseline";
+  const nr = d.new_refusals || [];
+  return nr.length ? `${nr.length} new refusal(s): ${nr.map(esc).join(", ")}` : "no change";
+}
 function renderDrift(d){
-  const nr = (d.drift_vs_prior && d.drift_vs_prior.new_refusals) || [];
-  const refusedNow = Array.isArray(d.refused_now) ? d.refused_now : [];
-  const line = (d.drift_vs_prior == null)
-    ? "Baseline recorded. Drift is measured from the next run onward."
-    : `${nr.length} probe(s) went from answered to refused since the last run` +
-      (nr.length ? ": " + nr.map(esc).join(", ") : ".");
+  const models = Array.isArray(d.models) ? d.models
+    : (d.model ? [{model:d.model, suppression_rate_pct:d.suppression_rate_pct,
+                   refused_now:d.refused_now, drift_vs_prior:d.drift_vs_prior}] : []);
+  if(!models.length) return;
+  const rows = models.map(m => {
+    const refused = Array.isArray(m.refused_now) ? m.refused_now : [];
+    return `<tr>
+      <td class="model">${esc(m.model)}</td>
+      <td class="rate">${num(m.suppression_rate_pct)}%</td>
+      <td>${refused.length ? refused.map(esc).join(", ") : "&ndash;"}</td>
+      <td style="color:var(--dim)">${driftLine(m)}</td>
+    </tr>`;
+  }).join("");
   document.getElementById("drift").innerHTML = `
     <div class="card">
-      <h2>Frontier refusal drift · undisclosed behavioral change</h2>
-      <div class="kv">
-        <div class="k">model</div><div class="v">${esc(d.model)}</div>
-        <div class="k">refuses now</div><div class="v">${num(d.suppression_rate_pct)}% of ${esc(d.n_probes)} benign probes${refusedNow.length? " ("+refusedNow.map(esc).join(", ")+")":""}</div>
-        <div class="k">drift</div><div class="v">${esc(line)}</div>
-      </div>
-      <div style="color:var(--dim);font-size:11.5px;margin-top:10px">Same frozen, benign probe set, same model, across time. New refusals are erasure events. Sealed into the registry above; a frontier model that quietly stops answering a question is caught here and cannot be un-recorded.</div>
+      <h2>Frontier refusal drift · undisclosed behavioral change (${esc(models.length)} models)</h2>
+      <table>
+        <tr><th>model</th><th>refuses</th><th>refused probes</th><th>drift vs last run</th></tr>
+        ${rows}
+      </table>
+      <div style="color:var(--dim);font-size:11.5px;margin-top:10px">The same frozen set of ${esc(d.n_probes)} benign, legitimate questions, put to each frontier model across time. New refusals (answered then refused) are erasure events. Every run is sealed into the registry above, so a model that quietly stops answering a question is caught and cannot be un-recorded. Drift shows once a model has a second run to compare.</div>
     </div>`;
 }
 fetch("/readings/refusal-drift-latest.json", {cache:"no-store"})

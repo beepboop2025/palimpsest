@@ -42,11 +42,15 @@ Two real audits, sealed and pre-registered:
 1. **Chinese-aligned model suppression** (the Generative Firewall): a 10-concept
    sensitive probe set, one sealed run per model (DeepSeek, Qwen), ~40% suppression.
 2. **Frontier refusal drift** (`scripts/refusal_drift_pull.py`): a benign,
-   informational 12-probe set run against a Western frontier model (default
-   openai/gpt-4o-mini) with a real, live result — 0% refused at baseline, including
-   the Tiananmen question the aligned models declined. Each run is sealed; drift is
-   the diff versus the last run, so a frontier model that *quietly* stops answering
-   a question later is caught and cannot be un-recorded.
+   informational 12-probe set run against a **cross-lab panel of Western frontier
+   models** (OpenAI gpt-4o-mini, Anthropic claude-3-haiku, Meta llama-3.3-70b,
+   Mistral mistral-nemo), with real, live results. OpenAI, Anthropic and Meta each
+   refused 0/12 (all answered the Tiananmen question the aligned models declined);
+   **Mistral over-refused one benign legal question ("how to represent yourself in
+   small claims") the others answered** — a concrete cross-model difference the panel
+   surfaces. Each run is sealed; drift is the diff versus that model's last run, so a
+   model that *quietly* stops answering a question later is caught and cannot be
+   un-recorded. Override the panel with `REFUSAL_DRIFT_MODELS`.
 
 The contrast is the point: the same tamper-evident, pre-registered machinery audits
 a state-aligned model and a Western frontier model side by side, and will surface an
