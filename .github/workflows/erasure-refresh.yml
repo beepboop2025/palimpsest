@@ -34,16 +34,33 @@ jobs:
       - name: Verify the ledger before sealing (fail loud on any prior tamper)
         run: python -m scripts.verify_ledger
 
+      - name: Refresh the narrative layer (Baike redaction-diff)
+        # Inert (instant honest abstain) unless a China-reachable egress secret is set;
+        # when PALIMPSEST_PROXY is configured this goes live and produces a real index.
+        env:
+          PALIMPSEST_PROXY: ${{ secrets.PALIMPSEST_PROXY }}
+        run: python -m scripts.baike_redaction_pull
+
       - name: Seal current readings and publish the composite index
         run: python -m scripts.erasure_pull
 
-      - name: Commit & push if the index or the ledger changed
+      - name: Refresh the Verifiable Eval Registry (seal model-erasure audit)
+        run: python -m scripts.eval_registry_ingest
+
+      - name: Verify the eval registry (chain + pre-registration rule)
+        run: python -m scripts.verify_eval_registry
+
+      - name: Commit & push if anything changed
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
           git add readings/erasure-observatory-latest.json \
                   readings/erasure-observatory-history.jsonl \
-                  readings/erasure-ledger.jsonl 2>/dev/null || true
+                  readings/erasure-ledger.jsonl \
+                  readings/baike-redaction-latest.json \
+                  readings/baike-redaction-history.jsonl \
+                  readings/eval-registry.jsonl \
+                  readings/eval-registry-latest.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else

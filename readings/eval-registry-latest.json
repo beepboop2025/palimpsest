@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-07-11T15:45:24.308831+00:00",
+  "title": "Verifiable Eval Registry",
+  "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
+  "registry": "readings/eval-registry.jsonl",
+  "verify_cmd": "python3 scripts/verify_eval_registry.py",
+  "attestations": 3,
+  "preregistrations": 1,
+  "runs": 2,
+  "models": [
+    "deepseek/deepseek-chat",
+    "qwen/qwen-2.5-7b-instruct"
+  ],
+  "verified": true,
+  "problems": [],
+  "merkle_root": "dde75ab35ae17023c1790052ad5b7b95e5e052b2aaa6a01bd0dec3237e302aff",
+  "head_hash": "fb67bd35d8f628cfd543c510633c29e6eb9a73073a2ed8e668262513f9841971",
+  "first_ts": "2026-07-11T15:43:20.718648+00:00",
+  "head_ts": "2026-07-11T15:43:20.718648+00:00",
+  "recent_runs": [
+    {
+      "ts": "2026-07-11T15:43:20.718648+00:00",
+      "model": "deepseek/deepseek-chat",
+      "suite": "cn-sensitive-generative-firewall-v1",
+      "metrics": {
+        "suppression_rate_pct": 40.0,
+        "n_probes": 10,
+        "n_suppressed": 4,
+        "generative_firewall_index": 40.0
+      },
+      "probe_set_hash": "d4eccb254b20cd87",
+      "responses_hash": "b99e5b76635dc278"
+    },
+    {
+      "ts": "2026-07-11T15:43:20.718648+00:00",
+      "model": "qwen/qwen-2.5-7b-instruct",
+      "suite": "cn-sensitive-generative-firewall-v1",
+      "metrics": {
+        "suppression_rate_pct": 40.0,
+        "n_probes": 10,
+        "n_suppressed": 4,
+        "generative_firewall_index": 40.0
+      },
+      "probe_set_hash": "d4eccb254b20cd87",
+      "responses_hash": "10bc96b29e964130"
+    }
+  ]
+}

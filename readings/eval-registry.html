@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verifiable Eval Registry · Palimpsest</title>
+<meta name="description" content="Tamper-evident, pre-registered AI model evaluations. The questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised or cherry-picked. Any model, any suite. Evals you can prove were not gamed.">
+<style>
+  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
+  a{color:var(--cy);text-decoration:none}
+  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}
+  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
+  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
+  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
+  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
+  .wrap{max-width:980px;margin:0 auto;padding:clamp(18px,5vw,40px)}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--grn);border:1px solid rgba(55,200,139,.4);border-radius:20px;padding:3px 11px;margin-bottom:14px}
+  h1{font-size:clamp(21px,4.4vw,30px);margin:.1em 0 .15em;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:24px;max-width:74ch}
+  .stat{display:flex;gap:26px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 24px;margin-bottom:18px}
+  .stat .n{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+  .ok{color:var(--grn)} .bad{color:var(--red)}
+  .how{background:linear-gradient(180deg,rgba(55,200,139,.06),rgba(55,200,139,.02));border:1px solid rgba(55,200,139,.26);border-radius:14px;padding:18px 22px;margin-bottom:18px}
+  .how h2{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--grn);margin:0 0 10px}
+  .how ol{margin:0;padding-left:20px;font-size:13px;color:var(--fg)}
+  .how li{margin:6px 0}
+  .how .why{font-size:12px;color:var(--mut);margin-top:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px}
+  .card h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+  td.model{color:#fff}
+  td.rate{color:var(--amb);font-variant-numeric:tabular-nums;text-align:right}
+  td.hash{color:var(--dim);font-size:11px}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:12.5px}
+  .kv .k{color:var(--mut)} .kv .v{color:var(--fg);word-break:break-all}
+  .cmd{margin-top:14px;background:#04050a;border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--cy);overflow-x:auto}
+  .foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.85}
+  .err{color:var(--amb);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="b">PALIMPSEST</span>
+    <a href="/">Home</a>
+    <a href="/dashboards/ddti_observatory.html">Observatory</a>
+    <a href="/readings/erasure-observatory.html">Erasure</a>
+    <a href="/readings/eval-registry.html" class="here">Eval Registry</a>
+    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
+    <a href="/for-researchers.html">Data</a>
+  </nav>
+  <div class="wrap">
+    <span class="tag">New · Verifiable Eval Registry</span>
+    <h1>AI evaluations you can prove were not gamed</h1>
+    <div class="sub">AI systems increasingly decide what people can and cannot learn, and the
+      audits that check them can be quietly re-run, cherry-picked, or revised until the number
+      looks right. This registry removes that move. The questions are frozen before any model is
+      queried, and every result is hash-chained so it cannot be edited after the fact. Any model,
+      any test suite. Recompute the chain yourself.</div>
+
+    <div id="app"><div class="err">Loading the registry…</div></div>
+
+    <div class="how">
+      <h2>How it works</h2>
+      <ol>
+        <li><b>Pre-register.</b> The probe set is hashed and sealed into an append only chain before the model is ever asked.</li>
+        <li><b>Run.</b> Each result records the model, a hash of its full responses, and the metrics, and it must reference a probe set that was frozen earlier.</li>
+        <li><b>Verify.</b> Anyone recomputes the chain. A result whose questions were not frozen first, or any value altered after sealing, fails.</li>
+      </ol>
+      <div class="why">Why it matters: as models mediate more of what we can know, third parties need to audit them and prove the audit was not rewritten. A shared, independently verifiable record is the missing substrate. Palimpsest's own model-erasure audit is simply the first thing anchored here; the registry is model and topic agnostic.</div>
+    </div>
+
+    <div class="foot">
+      Grounded in the trusted-public-archive and tamper-evident-logging literature
+      (ARCHANGEL, arXiv:1804.08342; arXiv:2509.03821) and the model-censorship measurement work
+      (arXiv:2505.17441, arXiv:2506.12349). The registry is stdlib only, key-less, and offline
+      verifiable. &nbsp;·&nbsp; <a href="/readings/eval-registry-latest.json">raw JSON</a>
+      &nbsp;·&nbsp; <a href="/readings/eval-registry.jsonl">the chain</a>
+    </div>
+  </div>
+
+<script>
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (v, d=1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : "–";
+
+function render(d){
+  const verified = d.verified === true;
+  const runs = Array.isArray(d.recent_runs) ? d.recent_runs : [];
+  const rows = runs.map(r => `<tr>
+      <td class="model">${esc(r.model)}</td>
+      <td>${esc(r.suite)}</td>
+      <td class="rate">${num((r.metrics||{}).suppression_rate_pct)}%</td>
+      <td class="hash">${esc(r.probe_set_hash)}…</td>
+      <td class="hash">${esc(r.responses_hash)}…</td>
+    </tr>`).join("");
+
+  document.getElementById("app").innerHTML = `
+    <div class="stat">
+      <div><div class="n">${esc(d.attestations ?? "–")}</div><div class="l">attestations</div></div>
+      <div><div class="n">${esc(d.preregistrations ?? "–")}</div><div class="l">probe sets frozen</div></div>
+      <div><div class="n">${esc(d.runs ?? "–")}</div><div class="l">model runs</div></div>
+      <div><div class="n ${verified?"ok":"bad"}">${verified?"✓":"✗"}</div><div class="l">${verified?"chain intact":"chain broken"}</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent runs</h2>
+      ${rows ? `<table>
+        <tr><th>model</th><th>suite</th><th>suppression</th><th>probe set</th><th>responses</th></tr>
+        ${rows}</table>`
+        : `<div style="color:var(--dim);font-size:12px">no runs recorded yet</div>`}
+    </div>
+
+    <div class="card">
+      <h2>Integrity</h2>
+      <div class="kv">
+        <div class="k">status</div><div class="v ${verified?"ok":"bad"}">${verified?"INTACT — chain verifies and every run was pre-registered first":"BROKEN"}</div>
+        <div class="k">models audited</div><div class="v">${esc((d.models||[]).join(", ") || "–")}</div>
+        <div class="k">first sealed</div><div class="v">${esc((d.first_ts||"").slice(0,16).replace("T"," ") || "–")}</div>
+        <div class="k">merkle root</div><div class="v">${esc(d.merkle_root || "–")}</div>
+        <div class="k">head hash</div><div class="v">${esc(d.head_hash || "–")}</div>
+      </div>
+      <div class="cmd">$ git clone the repo &nbsp;&amp;&amp;&nbsp; python3 scripts/verify_eval_registry.py&nbsp; # recompute + check pre-registration</div>
+    </div>`;
+}
+
+fetch("/readings/eval-registry-latest.json", {cache:"no-store"})
+  .then(r => { if(!r.ok) throw new Error("http "+r.status); return r.json(); })
+  .then(render)
+  .catch(e => {
+    document.getElementById("app").innerHTML =
+      `<div class="err">Registry unavailable right now (${esc(e.message)}). The
+       <a href="/readings/eval-registry-latest.json">raw JSON</a> and
+       <a href="/readings/eval-registry.jsonl">chain</a> are served directly.</div>`;
+  });
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-11T15:18:29.250178+00:00",
+  "generated_at": "2026-07-11T15:40:27.236818+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
   "erasure_index": 49.3,
@@ -30,7 +30,8 @@
       "title": "Narrative erasure",
       "value": null,
       "status": "ARMED",
-      "reason": "Baike redaction-diff instrument built; first sealed reading pending outside-the-wall egress"
+      "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
+      "reason": "live network not enabled (PALIMPSEST_LIVE / PALIMPSEST_PROXY unset)"
     }
   ],
   "cross_checks": [
@@ -49,32 +50,23 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 3,
+    "entries": 4,
     "verified": true,
-    "merkle_root": "3e31fe1432d65258bcb07b0b46e57c710281e723e21f67f42df6b6bd7804bc7f",
-    "head_hash": "9c55833982f7e7f3496b662c7c160038c989c08f56c0abed91b5843dd4563eaa",
+    "merkle_root": "bcddebdc81ea09494dbf1ee96de2b979b474c1baa47eb5b5ae76e8f18aa7ffd3",
+    "head_hash": "67a855c10c57f0ff174441aa0c73680dd2781070d8ff4e7178b53eba1d1e11c3",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-11T15:18:29.250178+00:00",
+    "head_ts": "2026-07-11T15:40:27.236818+00:00",
     "by_source": {
       "ooni-gfw": 1,
       "generative-firewall": 1,
-      "censored-planet": 1
+      "censored-planet": 1,
+      "baike-redaction": 1
     },
     "sealed_this_run": [
       {
-        "source": "ooni-gfw",
-        "seq": 0,
-        "entry_hash": "ca0e1434016b0ab772d67b74c5797e7888c1843fafb82f02769f557f2fb58951"
-      },
-      {
-        "source": "generative-firewall",
-        "seq": 1,
-        "entry_hash": "3dc9b9a9df1bcb22b033a0266710dcf62dee9f070bde4b382b79b76d666c55cd"
-      },
-      {
-        "source": "censored-planet",
-        "seq": 2,
-        "entry_hash": "9c55833982f7e7f3496b662c7c160038c989c08f56c0abed91b5843dd4563eaa"
+        "source": "baike-redaction",
+        "seq": 3,
+        "entry_hash": "67a855c10c57f0ff174441aa0c73680dd2781070d8ff4e7178b53eba1d1e11c3"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",

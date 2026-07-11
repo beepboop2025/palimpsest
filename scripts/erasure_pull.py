@@ -114,6 +114,12 @@ def main() -> None:
     # we report it ABSENT with a reason rather than fake a number.
     baike = _load("baike-redaction-latest.json")
     b_index = (baike or {}).get("rewrite_index")
+    # Seal whatever the narrative instrument recorded — a real index OR an honest abstain
+    # (both are timestamped provenance of what we saw and tried).
+    if baike:
+        e = sealed_ledger.append_seal(LEDGER, "baike-redaction", baike, now=now)
+        if e:
+            sealed.append({"source": "baike-redaction", "seq": e["seq"], "entry_hash": e["entry_hash"]})
     if baike and isinstance(b_index, (int, float)):
         layers.append({
             "layer": "narrative",
@@ -123,13 +129,14 @@ def main() -> None:
             "source": "Baike redaction-diff vs Chinese Wikipedia",
             "reading": "baike-redaction-latest.json",
         })
-        e = sealed_ledger.append_seal(LEDGER, "baike-redaction", baike, now=now)
-        if e:
-            sealed.append({"source": "baike-redaction", "seq": e["seq"], "entry_hash": e["entry_hash"]})
     else:
+        # surface the instrument's own reason when it published one, else the generic armed note
+        reason = ((baike or {}).get("reason")
+                  or "Baike redaction-diff instrument built; first sealed reading pending outside-the-wall egress")
         layers.append({"layer": "narrative", "title": "Narrative erasure",
                        "value": None, "status": "ARMED",
-                       "reason": "Baike redaction-diff instrument built; first sealed reading pending outside-the-wall egress"})
+                       "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
+                       "reason": reason})
 
     # ---- cross-checks (different scales, not folded into the composite) ---
     cp = _load("censored-planet-latest.json")
