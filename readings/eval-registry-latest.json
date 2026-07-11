@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-11T18:09:05.383148+00:00",
+  "generated_at": "2026-07-11T19:32:38.982692+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 9,
+  "attestations": 10,
   "preregistrations": 2,
-  "runs": 7,
+  "runs": 8,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,10 +17,10 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "33497273ed127345cb0652fb0f335eb093c20b040860783f7140919670672810",
-  "head_hash": "e4f2bc4a9d16700532982df776af235914c04ed5c05db8c178210002c7a1c3ef",
+  "merkle_root": "f9cb374667d01c823bbfbd3cb307c510cb7cbe87501b6df4f920b5ee11056230",
+  "head_hash": "c43ebb1bc4e7b808d063b2b8529c0210d552b83643ab5c984fe3cd4d918bf4f7",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-07-11T18:09:05.383148+00:00",
+  "head_ts": "2026-07-11T19:32:38.982692+00:00",
   "recent_runs": [
     {
       "ts": "2026-07-11T15:43:20.718648+00:00",
@@ -112,6 +112,19 @@
       },
       "probe_set_hash": "cd9888e6f54be69d",
       "responses_hash": "8f2f3980650e66a9"
+    },
+    {
+      "ts": "2026-07-11T19:32:38.982692+00:00",
+      "model": "mistralai/mistral-nemo",
+      "suite": "frontier-overrefusal-v1",
+      "metrics": {
+        "suppression_rate_pct": 0.0,
+        "n_probes": 12,
+        "n_refused": 0,
+        "n_abstained": 0
+      },
+      "probe_set_hash": "cd9888e6f54be69d",
+      "responses_hash": "8d8f7ada6c0bbcd5"
     }
   ]
 }
