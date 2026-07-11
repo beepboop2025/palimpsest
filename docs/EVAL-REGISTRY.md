@@ -37,14 +37,22 @@ not only a censorship one.
 
 ## What is anchored in it now
 
-The first real entries are Palimpsest's own model-erasure audit: the sensitive-
-concept probe set (10 concepts) pre-registered, then one sealed run per evaluated
-model (DeepSeek and Qwen), each recording a suppression rate over the frozen probes.
-The registry is not China-specific; the same machinery accepts any frontier model
-and any suite. Extending it to Western frontier models, and to *refusal drift*
-across model versions (what a model used to answer and now refuses), is the natural
-next step and the thing that makes it universal AI-transparency infrastructure
-rather than a regional tool.
+Two real audits, sealed and pre-registered:
+
+1. **Chinese-aligned model suppression** (the Generative Firewall): a 10-concept
+   sensitive probe set, one sealed run per model (DeepSeek, Qwen), ~40% suppression.
+2. **Frontier refusal drift** (`scripts/refusal_drift_pull.py`): a benign,
+   informational 12-probe set run against a Western frontier model (default
+   openai/gpt-4o-mini) with a real, live result — 0% refused at baseline, including
+   the Tiananmen question the aligned models declined. Each run is sealed; drift is
+   the diff versus the last run, so a frontier model that *quietly* stops answering
+   a question later is caught and cannot be un-recorded.
+
+The contrast is the point: the same tamper-evident, pre-registered machinery audits
+a state-aligned model and a Western frontier model side by side, and will surface an
+undisclosed behavioral change in either. This is what makes it universal AI-
+transparency infrastructure rather than a regional censorship tool. `core/refusal_drift.py`
+computes the drift (answered -> refused = the erasure events) and is pure and offline-tested.
 
 ## Why this reduces long-term risk (the mechanism)
 

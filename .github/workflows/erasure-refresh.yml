@@ -47,6 +47,13 @@ jobs:
       - name: Refresh the Verifiable Eval Registry (seal model-erasure audit)
         run: python -m scripts.eval_registry_ingest
 
+      - name: Frontier refusal-drift audit (real model; abstains without a key)
+        # Seals a fresh run of a Western frontier model and records drift vs the last run.
+        # Abstains cleanly if OPENROUTER_API_KEY is not configured as a repo secret.
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python -m scripts.refusal_drift_pull
+
       - name: Verify the eval registry (chain + pre-registration rule)
         run: python -m scripts.verify_eval_registry
 
@@ -60,7 +67,9 @@ jobs:
                   readings/baike-redaction-latest.json \
                   readings/baike-redaction-history.jsonl \
                   readings/eval-registry.jsonl \
-                  readings/eval-registry-latest.json 2>/dev/null || true
+                  readings/eval-registry-latest.json \
+                  readings/refusal-drift-latest.json \
+                  readings/refusal-drift-history.jsonl 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else
