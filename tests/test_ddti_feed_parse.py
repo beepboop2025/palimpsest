@@ -8,7 +8,11 @@ Two guarantees:
     and <category term>, closing a whole class of reachable sources (GreatFire/FreeWeibo/mirrors).
 """
 
-from collectors.ddti_probe import parse_feed_items
+import pytest
+
+pytest.importorskip("pandas", reason="collectors.ddti_probe needs the collector stack; "
+                    "the sealed-signal suite stays stdlib-only")
+from collectors.ddti_probe import parse_feed_items  # noqa: E402
 
 RSS = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>

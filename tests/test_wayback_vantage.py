@@ -215,6 +215,9 @@ def test_runner_observations_merge_into_live_pull(tmp_path):
     pull with detected_at revived to aware datetimes — and a missing file must be silent."""
     import json
     from datetime import timezone as _tz
+    import pytest
+    pytest.importorskip("httpx", reason="scripts.ddti_live_pull needs the collector "
+                        "stack; the sealed-signal suite stays stdlib-only")
     from scripts.ddti_live_pull import load_wayback_observations
 
     reading = {
