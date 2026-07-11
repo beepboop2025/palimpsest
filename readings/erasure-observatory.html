@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Information Erasure Observatory · Palimpsest</title>
+<meta name="description" content="Palimpsest does not just measure what is blocked. It measures what was removed or rewritten — across the network, the encyclopedia and the model — and seals every reading in a tamper-evident ledger so the record of the erasure can never be quietly rewritten in turn.">
+<style>
+  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
+  a{color:var(--cy);text-decoration:none}
+  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}
+  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
+  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
+  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
+  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
+  .wrap{max-width:960px;margin:0 auto;padding:clamp(18px,5vw,40px)}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--vio);border:1px solid rgba(167,139,250,.4);border-radius:20px;padding:3px 11px;margin-bottom:14px}
+  h1{font-size:clamp(21px,4.4vw,30px);margin:.1em 0 .15em;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:24px;max-width:70ch}
+  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:18px}
+  .idx{font-size:66px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .idx small{font-size:20px;color:var(--dim);font-weight:400}
+  .band{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;margin-top:8px}
+  .heroTxt{flex:1;min-width:230px}
+  .heroTxt .t{font-size:13px;color:var(--mut)}
+  .heroTxt .m{font-size:12px;color:var(--dim);margin-top:8px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+  @media(max-width:760px){.grid3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card .lyr{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .card h2{font-size:15px;margin:4px 0 6px}
+  .card .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .card .big.na{font-size:15px;font-weight:700;color:var(--amb)}
+  .bar{height:7px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden;margin:10px 0 8px}
+  .bar span{display:block;height:100%;border-radius:5px}
+  .card .d{font-size:11.5px;color:var(--mut)}
+  .card .src{font-size:10.5px;color:var(--dim);margin-top:8px}
+  .seal{background:linear-gradient(180deg,rgba(167,139,250,.07),rgba(167,139,250,.02));border:1px solid rgba(167,139,250,.28);border-radius:14px;padding:20px 22px;margin-bottom:18px}
+  .seal h2{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--vio);margin:0 0 4px}
+  .seal .lead{font-size:13px;color:var(--fg);margin:0 0 14px;max-width:74ch}
+  .seal .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:12.5px}
+  .seal .kv .k{color:var(--mut)}
+  .seal .kv .v{color:var(--fg);word-break:break-all;font-variant-numeric:tabular-nums}
+  .ok{color:var(--grn)} .bad{color:var(--red)}
+  .cmd{margin-top:14px;background:#04050a;border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--cy);overflow-x:auto}
+  .cross{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 15px;font-size:12px}
+  .chip b{color:#fff;font-size:16px;font-variant-numeric:tabular-nums}
+  .diff{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px;font-size:13px;color:var(--mut)}
+  .diff h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
+  .diff table{width:100%;border-collapse:collapse}
+  .diff td{padding:8px 8px;border-top:1px solid rgba(255,255,255,.06);vertical-align:top;font-size:12.5px}
+  .diff td:first-child{color:var(--dim);white-space:nowrap;width:44%}
+  .diff td:last-child{color:var(--fg)}
+  .foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.85}
+  .err{color:var(--amb);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="b">PALIMPSEST</span>
+    <a href="/">Home</a>
+    <a href="/dashboards/ddti_observatory.html">Observatory</a>
+    <a href="/readings/erasure-observatory.html" class="here">Erasure</a>
+    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
+    <a href="/readings/ooni-gfw.html">GFW Live</a>
+    <a href="/for-researchers.html">Data</a>
+  </nav>
+  <div class="wrap">
+    <span class="tag">New · Information Erasure Observatory</span>
+    <h1>What the record lost — sealed so it can't be lost again</h1>
+    <div class="sub">Most censorship trackers answer one question: <em>is this reachable right now?</em>
+      Palimpsest answers a different one. It measures what was <em>removed or rewritten</em> — across
+      three layers of the record — and hash-chains every reading at the moment we take it, so our own
+      account of the erasure can never be quietly edited afterward. We observe from outside the wall;
+      we put no one inside it at risk.</div>
+
+    <div id="app"><div class="err">Loading the live reading…</div></div>
+
+    <div class="diff">
+      <h2>How this differs from an access index</h2>
+      <table>
+        <tr><td>An access observatory measures…</td><td>whether a site, app or tool is reachable at this instant.</td></tr>
+        <tr><td>The Erasure Observatory measures…</td><td>what existed and is now gone or altered — a page that got shorter, an encyclopedia entry rewritten to the state line, an answer a model used to give and now refuses.</td></tr>
+        <tr><td>Anyone can publish a live number…</td><td>so the number alone proves nothing. The hard part is proving you did not edit your own history after the fact.</td></tr>
+        <tr><td>Our answer…</td><td>every reading is sealed into a public, append-only, tamper-evident ledger at capture time. Recompute the chain yourself — a single altered or dropped past reading fails to verify.</td></tr>
+      </table>
+    </div>
+
+    <div class="foot">
+      Method: vantage-insensitive. Each layer ingests already-public data (OONI's aggregated
+      measurements, the open encyclopedic record, a panel of state-aligned models queried from
+      outside the wall) and never asks any person inside China to act. Judgement is lexical and
+      auditable from the text. The composite is the mean of the layers that reported; absent layers
+      are shown as absent, never zero-filled. Grounded in the trusted-public-archive literature
+      (ARCHANGEL, arXiv:1804.08342) and the LLM-censorship measurement work
+      (arXiv:2505.17441, arXiv:2506.12349). Not affiliated with OONI or Censored Planet; we ingest
+      their open data with thanks. &nbsp;·&nbsp; <a href="/readings/erasure-observatory-latest.json">raw JSON</a>
+      &nbsp;·&nbsp; <a href="/readings/erasure-ledger.jsonl">the ledger</a>
+    </div>
+  </div>
+
+<script>
+// Fully client-side render. Every value injected via textContent or an escaped
+// helper — external strings (source labels, hashes) are never written as raw HTML.
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (v, d=1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : null;
+
+function band(v){
+  if(v == null) return {t:"no reading", c:"var(--dim)"};
+  if(v >= 60) return {t:"severe erasure", c:"var(--red)"};
+  if(v >= 35) return {t:"substantial erasure", c:"var(--amb)"};
+  if(v >= 15) return {t:"moderate", c:"var(--cy)"};
+  return {t:"low", c:"var(--grn)"};
+}
+const LCOLOR = {network:"var(--cy)", narrative:"var(--vio)", model:"var(--amb)"};
+
+function layerCard(l){
+  const v = (typeof l.value === "number") ? l.value : null;
+  const col = LCOLOR[l.layer] || "var(--cy)";
+  const big = v == null
+    ? `<div class="big na">${esc(l.status || "absent")}</div>`
+    : `<div class="big" style="color:${col}">${esc(num(v))}<small style="font-size:15px;color:var(--dim)">/100</small></div>`;
+  const bar = v == null ? "" :
+    `<div class="bar"><span style="width:${Math.max(0,Math.min(100,v))}%;background:${col}"></span></div>`;
+  const reason = l.reason ? `<div class="src">${esc(l.reason)}</div>` : "";
+  const src = l.source ? `<div class="src">source · ${esc(l.source)}</div>` : "";
+  return `<div class="card">
+    <div class="lyr">${esc(l.layer)}</div>
+    <h2>${esc(l.title || "")}</h2>
+    ${big}${bar}
+    <div class="d">${esc(l.detail || l.reason || "")}</div>
+    ${src || reason}
+  </div>`;
+}
+
+function render(d){
+  const app = document.getElementById("app");
+  const idx = (typeof d.erasure_index === "number") ? d.erasure_index : null;
+  const b = band(idx);
+  const layers = Array.isArray(d.layers) ? d.layers : [];
+  const nContrib = (d.layers_contributing || []).length;
+  const integ = d.integrity || {};
+  const verified = integ.verified === true;
+
+  const cross = (d.cross_checks || []).map(c =>
+    `<div class="chip">${esc(c.name)} · <b>${esc(num(c.value, c.unit==="x"?2:2))}${esc(c.unit||"")}</b>
+     <div style="color:var(--dim);margin-top:3px">${esc(c.note||"")}</div></div>`).join("");
+
+  const html = `
+  <div class="hero">
+    <div>
+      <div class="idx" style="color:${b.c}">${idx==null?"–":esc(num(idx))}<small>/100</small></div>
+      <div class="band" style="color:${b.c};border-color:${b.c}">${esc(b.t)}</div>
+    </div>
+    <div class="heroTxt">
+      <div class="t">${esc(d.thesis || "")}</div>
+      <div class="m">Composite Erasure Index · mean of ${nContrib} reporting layer${nContrib===1?"":"s"}
+        · updated ${esc((d.generated_at||"").slice(0,16).replace("T"," "))} UTC</div>
+    </div>
+  </div>
+
+  <div class="grid3">${layers.map(layerCard).join("")}</div>
+
+  ${cross ? `<div class="cross">${cross}</div>` : ""}
+
+  <div class="seal">
+    <h2>Tamper-evident record</h2>
+    <p class="lead">An observatory of erasure has to prove its own record was never erased. Every
+      reading above is hash-chained into a public append-only ledger the instant we capture it.
+      Recompute the chain from the raw file and a single altered, reordered or dropped past reading
+      fails to verify.</p>
+    <div class="kv">
+      <div class="k">status</div><div class="v ${verified?"ok":"bad"}">${verified?"INTACT — chain verifies":"BROKEN — see problems"}</div>
+      <div class="k">sealed readings</div><div class="v">${esc(integ.entries ?? "–")}</div>
+      <div class="k">first sealed</div><div class="v">${esc((integ.first_ts||"").slice(0,16).replace("T"," ")||"–")}</div>
+      <div class="k">latest sealed</div><div class="v">${esc((integ.head_ts||"").slice(0,16).replace("T"," ")||"–")}</div>
+      <div class="k">merkle root</div><div class="v" title="single-value fingerprint of the whole ledger">${esc(integ.merkle_root||"–")}</div>
+      <div class="k">head hash</div><div class="v">${esc(integ.head_hash||"–")}</div>
+    </div>
+    <div class="cmd">$ git clone the repo &nbsp;&amp;&amp;&nbsp; python3 scripts/verify_ledger.py&nbsp; # recompute the chain yourself</div>
+  </div>`;
+  app.innerHTML = html;
+}
+
+fetch("/readings/erasure-observatory-latest.json", {cache:"no-store"})
+  .then(r => { if(!r.ok) throw new Error("http "+r.status); return r.json(); })
+  .then(render)
+  .catch(e => {
+    document.getElementById("app").innerHTML =
+      `<div class="err">Live reading unavailable right now (${esc(e.message)}). The
+       <a href="/readings/erasure-observatory-latest.json">raw JSON</a> and
+       <a href="/readings/erasure-ledger.jsonl">ledger</a> are still served directly.</div>`;
+  });
+</script>
+</body>
+</html>

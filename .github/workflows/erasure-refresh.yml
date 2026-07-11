@@ -1,0 +1,53 @@
+name: Refresh Information Erasure Observatory
+
+# The unifying signal. Reads the latest per-surface readings (OONI GFW network
+# layer, Generative Firewall model layer, Baike redaction narrative layer when
+# present), seals each raw reading into the tamper-evident ledger at capture
+# time, and publishes the composite Erasure Index plus the ledger's integrity
+# proof. Re-measures nothing; stdlib-only, key-less, vantage-insensitive. Runs
+# after the per-surface signals so it seals fresh readings.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"      # every 6h, offset from the per-surface signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: erasure-refresh
+  cancel-in-progress: false
+
+jobs:
+  erasure:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4  # TODO: pin to commit SHA (supply-chain hardening)
+
+      - uses: actions/setup-python@v5  # TODO: pin to commit SHA (supply-chain hardening)
+        with:
+          python-version: "3.12"
+
+      - name: Verify the ledger before sealing (fail loud on any prior tamper)
+        run: python -m scripts.verify_ledger
+
+      - name: Seal current readings and publish the composite index
+        run: python -m scripts.erasure_pull
+
+      - name: Commit & push if the index or the ledger changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/erasure-observatory-latest.json \
+                  readings/erasure-observatory-history.jsonl \
+                  readings/erasure-ledger.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: erasure observatory refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
