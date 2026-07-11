@@ -208,6 +208,42 @@ from a real deletion (never-created, deleted, locked, disambiguation, and fetch-
 different states); from outside the wall the redaction *moment* is unobservable, so velocity is
 poll-bounded and shown suppressed.
 
+## 7. Wayback Reconstruction — `collectors/wayback_vantage.py`
+
+**Method.** The platform's one honest blocker is *velocity*: from outside the wall the moment a
+Chinese post dies is unobservable, so the passive legs only witness a deletion after an editor
+documents it, and UNDERTEXT is *poll-bounded* by our own cadence — we learn a page died somewhere
+between two of *our* visits, and only for pages we were already watching. But something else was
+watching almost everything, for two decades, and timestamps every capture: the **Internet
+Archive**. This surface turns the Archive's **CDX index** into a *retroactive in-country
+observer*. For a public Chinese URL, we pull its capture timeline (`collapse=digest`, so each row
+is a *distinct content state*) and read the transitions: a `200`→`404/410` is a **DELETION**
+bracketed in `[last_live_capture .. first_gone_capture]`; a change in the Archive's own SHA-1
+**content digest** between two live captures is a **MUTATION / silent redaction** — detected from
+CDX metadata alone, no body fetch. `geo` becomes `ARCHIVE`, `cohort` becomes `crawler`, `surface`
+becomes `wayback:<host>`, and the content fingerprint is the Archive's digest. Every event ships
+the exact `web.archive.org/web/<ts>/<url>` snapshot on each side — evidence that is a *permanent
+public artifact*, not a baseline we alone hold.
+
+**Maps to DDTI.** A reconstruction is emitted as an `undertext.Divergence` and flows through the
+**same** `divergence_to_observation()` adapter as every other surface, into
+`ddti_index.compute_selectivity_novelty` and the gazetteer evolver. A Wayback DELETION is a
+selectivity/velocity tell; a MUTATION is the state-rewrite signal `baike_redaction` reconstructs,
+now carrying a real archive-witnessed timestamp instead of a poll-bounded one.
+
+**Holds the lines.** *Line 1:* we read the **Internet Archive**, an outside-the-wall public
+mirror — never Chinese infrastructure, never a person, no account, no CAPTCHA, no injection. The
+CDX fetch is injectable, **inert by default** (no fetch supplied → zero network), governance-gated
+(kill switch + rate ceiling before every request), and fail-soft (an unreachable CDX abstains). A
+URL the Archive never captured live is `no_baseline`, kept strictly distinct from a real
+`200`→`404`; a live→redirect is treated as *uninformative*, never a fabricated takedown. *Line 2:*
+every judgement is arithmetic over HTTP status codes and lexical over a maintainer-authored marker
+table, auditable from the CDX row and the snapshot alone — no model decides sensitivity. *Fail
+loud:* the deletion moment is known only to within the capture bracket, so velocity is published
+as that explicit `[last_live .. first_gone]` bracket, never a false-precise instant; and if CDX is
+unreachable for every watched URL the runner abstains rather than publish a hollow all-unknown
+signal.
+
 ---
 
 ## How they fit together
@@ -220,6 +256,7 @@ poll-bounded and shown suppressed.
 | Silence Detection | a global-vs-domestic coverage gap | selectivity of *absence* (blackout) | injected domestic-volume feed |
 | GitHub-as-Refuge | a takedown-transparency / mirror-repo feed | selectivity (pressure) + novelty | injected GitHub read |
 | Baike Redaction-Diff | a state encyclopedia | selectivity + mutation (state rewrite) | injected fetch (`PALIMPSEST_PROXY` seam) |
+| Wayback Reconstruction | the Internet Archive capture timeline | velocity (deletion bracket) + mutation (silent redaction) | **live** — injected CDX fetch (public archive) |
 
 All six are **standard-library only** in their analytical core, fully unit-testable offline with
 an injected fake fetch / generate, and each emits into the DDTI index and gazetteer-evolution

@@ -75,6 +75,14 @@ class CensorwatchSettings:
     velocity_baseline_windows: int  # how many prior windows form the baseline
     spike_z_threshold: float      # z-score over baseline that flags a scrub-cluster
 
+    # ── Per-host politeness ceiling ──────────────────────────────
+    # A hard minimum interval (seconds) between any two requests to the SAME host,
+    # enforced inside the fetcher on top of the jitter. The jitter spaces requests
+    # globally; this bounds pressure per origin, so one collector fanning out over
+    # many posts on one platform can never hammer it. 0 disables (default), keeping
+    # existing behavior; deployments set CENSORWATCH_HOST_MIN_INTERVAL_S.
+    host_min_interval_s: float = 0.0
+
     user_agents: tuple[str, ...] = field(default=(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -104,6 +112,7 @@ def get_settings() -> CensorwatchSettings:
         velocity_window_min=_int("CENSORWATCH_VELOCITY_WINDOW_MIN", 60),
         velocity_baseline_windows=_int("CENSORWATCH_BASELINE_WINDOWS", 24),
         spike_z_threshold=_float("CENSORWATCH_SPIKE_Z", 3.0),
+        host_min_interval_s=_float("CENSORWATCH_HOST_MIN_INTERVAL_S", 0.0),
     )
 
 

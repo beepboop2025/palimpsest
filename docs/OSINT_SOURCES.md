@@ -22,6 +22,7 @@ private accounts, or asks anyone inside China to act.
 | --- | --- | --- | --- |
 | **China Digital Times** — main, MiniTrue (leaked directives), news feeds | Public RSS, no key | Editorially curated deletions + censorship directives, each tagged with topic categories — the selectivity/novelty backbone | English-fronted, editorial selection; a numerator without a denominator |
 | **GDELT 2.0 DOC API** | Public JSON, no key | Worldwide media volume for a term — the cross-signal that separates *containment* from *blackout* | Coverage/translation bias; topic-level only, never about individuals |
+| **Internet Archive Wayback CDX API** | Public JSON, no key | Full capture timeline (timestamp + HTTP status + content digest) of a public Chinese URL — a *retroactive* outside-the-wall observer that brackets a deletion or silent rewrite with archive-witnessed timestamps and a permanent citable snapshot on each side | Only covers URLs the Archive crawled; the deletion moment is bracketed by capture cadence, not instantaneous (reported as an explicit bracket, never a false-precise time) |
 
 ## Confirmed-deletion archives
 
