@@ -48,6 +48,12 @@ names the break. That is the entire idea: you do not have to trust the operator,
 > A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
 > Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
 
+![The Verifiable Eval Registry, live: sealed runs of Chinese and Western frontier models side by side, chain intact, with the frontier refusal-drift panel](docs/img/eval-registry.png)
+
+> *The registry, live. Chinese state-aligned and Western frontier models on the same frozen probes,
+> every run sealed and pre-registered, chain intact. The drift panel has already caught a real event:
+> one Western model newly refusing a benign legal question its peers answer.*
+
 ![Palimpsest DDTI Observatory — the Censorship Fear Index and the selectivity / novelty signals](docs/img/observatory.png)
 
 > *The observatory headline: the Censorship Fear Index (one auditable 0–100 number), the top censor
