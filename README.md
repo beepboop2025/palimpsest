@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-304%20passing-brightgreen.svg)
+![tests](https://img.shields.io/badge/tests-371%20passing-brightgreen.svg)
 ![verify](https://img.shields.io/badge/verify-offline%2C%20one%20command-06d6e0.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
@@ -11,6 +11,7 @@
 [![Generative Firewall](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml)
 [![GDELT cross-signal](https://github.com/beepboop2025/palimpsest/actions/workflows/gdelt-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gdelt-refresh.yml)
 [![GitHub-refuge](https://github.com/beepboop2025/palimpsest/actions/workflows/github-refuge-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/github-refuge-refresh.yml)
+[![Wayback reconstruction](https://github.com/beepboop2025/palimpsest/actions/workflows/wayback-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/wayback-refresh.yml)
 
 **A public, tamper-evident record of what powerful actors quietly erase, and a way for anyone
 to prove, offline, that not one entry was changed after it was published.**
@@ -26,7 +27,7 @@ pointed at two places where the record gets rewritten in the dark:
   published number, our own verifier would report the break.
 - **The Censorship Observatory.** Authoritarian deletion, measured as data. It archives public
   posts, watches for when they are scrubbed, and turns what a state is burying into a live, openly
-  licensed early-warning signal for journalists, researchers, and human rights defenders. Four
+  licensed early-warning signal for journalists, researchers, and human rights defenders. Five
   signals refresh on their own, every number tracing back to public evidence.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
@@ -43,7 +44,7 @@ No install, no key, no server, standard library only. Change one sealed byte and
 names the break. That is the entire idea: you do not have to trust the operator, you check.
 
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
-> (all four censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
+> (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
 > and the [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html).
 > A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
 > Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
@@ -164,7 +165,7 @@ Reproduce it: `PYTHONPATH=. python3 scripts/validate_ddti.py`. See
 
 ### Live signals (auto-published)
 
-[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Four independent
+[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Five independent
 signals refresh on their own schedules via GitHub Actions on this repo, so every run, its code, and
 its output are publicly auditable (the badges above are live run status). No hidden server publishes.
 
@@ -174,6 +175,7 @@ its output are publicly auditable (the badges above are live run status). No hid
 | **Generative Firewall** | Refusal and state-narrative substitution rates of state-aligned LLMs vs a control | Daily | [`readings/latest.json`](readings/latest.json) |
 | **GDELT cross-signal** | "Censored at home, loud abroad": global news volume on the terms China is deleting | Every 6 hours | [`readings/gdelt-latest.json`](readings/gdelt-latest.json) |
 | **GitHub-as-Refuge** | Takedown pressure on mirrors of censored material (996.ICU, nCovMemory, more), against persisted baselines | Every 12 hours | [`readings/github-refuge-latest.json`](readings/github-refuge-latest.json) |
+| **Wayback Reconstruction** | Deletions and silent redactions of watched Chinese URLs, recovered from the Internet Archive's capture timeline with archive-witnessed timestamp brackets | Every 12 hours | [`readings/wayback-latest.json`](readings/wayback-latest.json) |
 
 Every value is provenance-tracked to its source document, and a signal abstains rather than
 fabricates when its source returns nothing. Nothing is published without evidence. Researcher docs,
@@ -202,16 +204,21 @@ lexicon). Adding a country is a gazetteer plus a registry entry, not a rewrite. 
 | **Retrodiction validation** (6/6 documented events) | Built, tested |
 | **Generative Firewall** — refusal / party-line tomography of state-aligned LLMs | **Live** — auto-published daily (hosted-API layer) |
 | **GDELT cross-signal** · **GitHub-as-Refuge** | **Live** — auto-published (6h / 12h) |
+| **Wayback Reconstruction** — deletion brackets + silent redactions from the Internet Archive's CDX timeline | **Live** — auto-published every 12h |
 | Evidence-grounded Chinese gazetteer (154 terms, phylogeny) + self-evolving euphemism discovery | Built, tested |
 | Cross-region packs (China + Iran, config-driven) · censorship forecaster | Built, tested |
 | UNDERTEXT tomography · CDN-edge · Blocklist archaeology · Silence detection · Baike redaction-diff | Built, tested (live source injection gated, inert) |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
-| Real-time velocity at minute resolution | Needs in-country / seam measurement |
+| Real-time velocity at minute resolution | Needs in-country / seam measurement (retroactive velocity now ships via Wayback) |
 
-The honest blocker on the censorship side: selectivity and novelty work today, while velocity is
-walled from outside China. The method that closes it, **UNDERTEXT** many-vantage differential
-observation (disagreement between vantage points *is* the signal), is built and tested here; what
-scaling adds is the in-country / seam vantage backends. See [docs/UNDERTEXT.md](docs/UNDERTEXT.md).
+Velocity was the honest blocker on the censorship side: from outside the wall, the moment a post
+dies is unobservable. The **Wayback Reconstruction** vantage now recovers it retroactively from
+open egress, reading the Internet Archive's capture timeline so every deletion is published as an
+explicit archive-witnessed bracket (last seen alive to first seen gone), never a false-precise
+instant. What still needs in-country or seam vantage is *real-time* velocity at minute resolution.
+The method built for that, **UNDERTEXT** many-vantage differential observation (disagreement
+between vantage points *is* the signal), is built and tested here; what scaling adds is the vantage
+backends. See [docs/UNDERTEXT.md](docs/UNDERTEXT.md).
 
 ## Safety is the architecture
 
@@ -243,7 +250,7 @@ PYTHONPATH=. python3 scripts/forecaster_demo.py     # the censorship forecaster 
 
 # Tests:
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-PYTHONPATH=. python3 -m pytest tests/ -q            # 304 passing
+PYTHONPATH=. python3 -m pytest tests/ censorwatch/tests/ -q   # 371 passing
 ```
 
 The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
