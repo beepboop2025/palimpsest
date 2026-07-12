@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-12T03:58:39.433437+00:00",
+  "generated_at": "2026-07-12T08:32:22.679726+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
   "erasure_index": 49.2,
@@ -13,7 +13,7 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 58.5,
+      "value": 58.4,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json"
     },
@@ -50,14 +50,14 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 5,
+    "entries": 6,
     "verified": true,
-    "merkle_root": "3a37374b46ca1b86b6b982659ec21f0303f27ae3152357949a8547f720107a27",
-    "head_hash": "cffd55e8ec0bb132b7948ba0d3db666cc8e6fa17cfaf412ce0c8169961553c8d",
+    "merkle_root": "b415e84f7910ff5688ffc956a7ce44fabd13c44ff75fb996e615e20d4cea0823",
+    "head_hash": "4dd18d62189a75f61f897f82d9deaf84b04720dd26b488c5be9ec859ebb1e175",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-12T03:58:39.433437+00:00",
+    "head_ts": "2026-07-12T08:32:22.679726+00:00",
     "by_source": {
-      "ooni-gfw": 2,
+      "ooni-gfw": 3,
       "generative-firewall": 1,
       "censored-planet": 1,
       "baike-redaction": 1
@@ -65,8 +65,8 @@
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 4,
-        "entry_hash": "cffd55e8ec0bb132b7948ba0d3db666cc8e6fa17cfaf412ce0c8169961553c8d"
+        "seq": 5,
+        "entry_hash": "4dd18d62189a75f61f897f82d9deaf84b04720dd26b488c5be9ec859ebb1e175"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
