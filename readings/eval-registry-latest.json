@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-11T19:32:38.982692+00:00",
+  "generated_at": "2026-07-12T03:58:39.601733+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 10,
+  "attestations": 11,
   "preregistrations": 2,
-  "runs": 8,
+  "runs": 9,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,24 +17,11 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "f9cb374667d01c823bbfbd3cb307c510cb7cbe87501b6df4f920b5ee11056230",
-  "head_hash": "c43ebb1bc4e7b808d063b2b8529c0210d552b83643ab5c984fe3cd4d918bf4f7",
+  "merkle_root": "c76e2fae4482d25bb7921ba6baf2e1fe517ef59a1056e98d7dd6e00587d30d77",
+  "head_hash": "f61fcebe3b3a58c7e4be3636fd4b9c575584078358dbc9e1642719093c5b37a8",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-07-11T19:32:38.982692+00:00",
+  "head_ts": "2026-07-12T03:58:39.601733+00:00",
   "recent_runs": [
-    {
-      "ts": "2026-07-11T15:43:20.718648+00:00",
-      "model": "deepseek/deepseek-chat",
-      "suite": "cn-sensitive-generative-firewall-v1",
-      "metrics": {
-        "suppression_rate_pct": 40.0,
-        "n_probes": 10,
-        "n_suppressed": 4,
-        "generative_firewall_index": 40.0
-      },
-      "probe_set_hash": "d4eccb254b20cd87",
-      "responses_hash": "b99e5b76635dc278"
-    },
     {
       "ts": "2026-07-11T15:43:20.718648+00:00",
       "model": "qwen/qwen-2.5-7b-instruct",
@@ -125,6 +112,19 @@
       },
       "probe_set_hash": "cd9888e6f54be69d",
       "responses_hash": "8d8f7ada6c0bbcd5"
+    },
+    {
+      "ts": "2026-07-12T03:58:39.601733+00:00",
+      "model": "openai/gpt-4o-mini",
+      "suite": "frontier-overrefusal-v1",
+      "metrics": {
+        "suppression_rate_pct": 8.3,
+        "n_probes": 12,
+        "n_refused": 1,
+        "n_abstained": 0
+      },
+      "probe_set_hash": "cd9888e6f54be69d",
+      "responses_hash": "8f2f3980650e66a9"
     }
   ]
 }
