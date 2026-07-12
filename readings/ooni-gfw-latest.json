@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-12T04:03:39.025461+00:00",
+  "generated_at": "2026-07-12T08:33:55.853927+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -8,67 +8,67 @@
   "since": "2026-07-05",
   "until": "2026-07-13",
   "gfw_index": 58.4,
-  "n_measurements": 237826,
+  "n_measurements": 238107,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 136621,
-      "measurement_count": 236633,
-      "failure_count": 2120,
-      "anomaly_rate": 0.5826,
+      "anomaly_count": 136755,
+      "measurement_count": 236897,
+      "failure_count": 2125,
+      "anomaly_rate": 0.5825,
       "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 259,
-      "measurement_count": 267,
+      "anomaly_count": 262,
+      "measurement_count": 270,
       "failure_count": 0,
-      "anomaly_rate": 0.97,
+      "anomaly_rate": 0.9704,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 256,
-      "measurement_count": 265,
+      "anomaly_count": 259,
+      "measurement_count": 268,
       "failure_count": 0,
-      "anomaly_rate": 0.966,
+      "anomaly_rate": 0.9664,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 255,
-      "measurement_count": 265,
+      "anomaly_count": 259,
+      "measurement_count": 269,
       "failure_count": 1,
-      "anomaly_rate": 0.9659,
+      "anomaly_rate": 0.9664,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 156,
-      "measurement_count": 164,
+      "anomaly_count": 159,
+      "measurement_count": 167,
       "failure_count": 0,
-      "anomaly_rate": 0.9512,
+      "anomaly_rate": 0.9521,
       "reading": "95% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 40,
-      "measurement_count": 232,
+      "anomaly_count": 41,
+      "measurement_count": 236,
       "failure_count": 0,
-      "anomaly_rate": 0.1724,
+      "anomaly_rate": 0.1737,
       "reading": "17% anomalous — some interference"
     },
     {
@@ -216,6 +216,12 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "advox.globalvoices.org",
+      "anomaly_count": 18,
+      "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "ipfs.io",
       "anomaly_count": 18,
       "measurement_count": 18,
@@ -223,12 +229,6 @@
     },
     {
       "domain": "webcache.googleusercontent.com",
-      "anomaly_count": 18,
-      "measurement_count": 18,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.cato.org",
       "anomaly_count": 18,
       "measurement_count": 18,
       "anomaly_rate": 1.0
