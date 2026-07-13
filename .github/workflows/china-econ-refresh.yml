@@ -1,0 +1,49 @@
+name: Refresh China econ telemetry
+
+# Official CFETS/NIFC money-market benchmarks (SHIBOR fixings, pledged-repo
+# fixing rates incl. FDR007, USD/CNY central parity) pulled from the keyless
+# chinamoney English portal. State-PUBLISHED numbers — the economic half of
+# the latent-state read, complementing the censorship signals. The portal is
+# range-limited and burst-throttled, so the script makes three spaced calls
+# per run and the git history file is the long record. Stdlib-only,
+# vantage-insensitive — runs correctly from a GitHub runner (no box egress).
+
+on:
+  schedule:
+    - cron: "41 */6 * * *"     # every 6 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: china-econ-refresh
+  cancel-in-progress: false
+
+jobs:
+  china-econ:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Pull CFETS benchmarks and publish the china-econ signal
+        run: python -m scripts.china_econ_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/china-econ-latest.json readings/china-econ-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: china econ telemetry refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
