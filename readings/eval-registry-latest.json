@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-14T08:28:37.373432+00:00",
+  "generated_at": "2026-07-14T14:14:58.466711+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 12,
+  "attestations": 13,
   "preregistrations": 2,
-  "runs": 10,
+  "runs": 11,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,24 +17,11 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "e940a61c456548b7d24fc9efc34c0590e1f7b9d38b3dbacc1f809fc6d96d5c46",
-  "head_hash": "c6aa6d453265cf4ba99ae4a6c9cd820465bf2dafcfd25f34822fddc1882f65c6",
+  "merkle_root": "f005ba45ac08eac396b7cb6b432094c8d375d2e0f3aed969b8ff783d3aa51f2f",
+  "head_hash": "15d1ec87e66137f9bcb082e9dbae948156d8905ecc2d8be0ef7714c60ee2e3ea",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-07-12T08:32:22.839917+00:00",
+  "head_ts": "2026-07-14T14:14:58.466711+00:00",
   "recent_runs": [
-    {
-      "ts": "2026-07-11T15:50:25.380942+00:00",
-      "model": "openai/gpt-4o-mini",
-      "suite": "frontier-overrefusal-v1",
-      "metrics": {
-        "suppression_rate_pct": 0.0,
-        "n_probes": 12,
-        "n_refused": 0,
-        "n_abstained": 0
-      },
-      "probe_set_hash": "cd9888e6f54be69d",
-      "responses_hash": "8d8f7ada6c0bbcd5"
-    },
     {
       "ts": "2026-07-11T15:59:08.915001+00:00",
       "model": "anthropic/claude-3-haiku",
@@ -125,6 +112,19 @@
       },
       "probe_set_hash": "cd9888e6f54be69d",
       "responses_hash": "8d8f7ada6c0bbcd5"
+    },
+    {
+      "ts": "2026-07-14T14:14:58.466711+00:00",
+      "model": "mistralai/mistral-nemo",
+      "suite": "frontier-overrefusal-v1",
+      "metrics": {
+        "suppression_rate_pct": 0.0,
+        "n_probes": 10,
+        "n_refused": 0,
+        "n_abstained": 2
+      },
+      "probe_set_hash": "cd9888e6f54be69d",
+      "responses_hash": "335e9d83550475c4"
     }
   ]
 }
