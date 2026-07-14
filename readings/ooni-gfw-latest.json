@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-14T03:40:47.790926+00:00",
+  "generated_at": "2026-07-14T08:31:29.865406+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -7,69 +7,69 @@
   "window_days": 7,
   "since": "2026-07-07",
   "until": "2026-07-15",
-  "gfw_index": 59.7,
-  "n_measurements": 267744,
+  "gfw_index": 59.6,
+  "n_measurements": 268500,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 157527,
-      "measurement_count": 266483,
-      "failure_count": 2025,
-      "anomaly_rate": 0.5957,
+      "anomaly_count": 157860,
+      "measurement_count": 267206,
+      "failure_count": 2037,
+      "anomaly_rate": 0.5953,
       "reading": "60% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 268,
-      "measurement_count": 276,
+      "anomaly_count": 276,
+      "measurement_count": 284,
       "failure_count": 0,
-      "anomaly_rate": 0.971,
+      "anomaly_rate": 0.9718,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 263,
-      "measurement_count": 271,
+      "anomaly_count": 271,
+      "measurement_count": 279,
       "failure_count": 0,
-      "anomaly_rate": 0.9705,
+      "anomaly_rate": 0.9713,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 264,
-      "measurement_count": 273,
+      "anomaly_count": 271,
+      "measurement_count": 280,
       "failure_count": 1,
-      "anomaly_rate": 0.9706,
+      "anomaly_rate": 0.9713,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 191,
-      "measurement_count": 199,
+      "anomaly_count": 196,
+      "measurement_count": 204,
       "failure_count": 0,
-      "anomaly_rate": 0.9598,
+      "anomaly_rate": 0.9608,
       "reading": "96% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 44,
-      "measurement_count": 242,
+      "anomaly_count": 46,
+      "measurement_count": 247,
       "failure_count": 0,
-      "anomaly_rate": 0.1818,
-      "reading": "18% anomalous — some interference"
+      "anomaly_rate": 0.1862,
+      "reading": "19% anomalous — some interference"
     },
     {
       "test": "riseupvpn",
@@ -85,8 +85,14 @@
   "top_blocked": [
     {
       "domain": "f-droid.org",
-      "anomaly_count": 81,
-      "measurement_count": 88,
+      "anomaly_count": 82,
+      "measurement_count": 89,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "globalvoices.org",
+      "anomaly_count": 44,
+      "measurement_count": 51,
       "anomaly_rate": 1.0
     },
     {
@@ -96,9 +102,9 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "globalvoices.org",
-      "anomaly_count": 38,
-      "measurement_count": 45,
+      "domain": "chinadigitaltimes.net",
+      "anomaly_count": 31,
+      "measurement_count": 36,
       "anomaly_rate": 1.0
     },
     {
@@ -114,7 +120,7 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "chinadigitaltimes.net",
+      "domain": "telegram.org",
       "anomaly_count": 29,
       "measurement_count": 34,
       "anomaly_rate": 1.0
@@ -126,21 +132,15 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "telegram.org",
-      "anomaly_count": 28,
-      "measurement_count": 33,
-      "anomaly_rate": 1.0
-    },
-    {
       "domain": "dongtaiwang.com",
-      "anomaly_count": 27,
-      "measurement_count": 33,
+      "anomaly_count": 28,
+      "measurement_count": 34,
       "anomaly_rate": 1.0
     },
     {
       "domain": "vimeo.com",
-      "anomaly_count": 27,
-      "measurement_count": 29,
+      "anomaly_count": 28,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
@@ -174,6 +174,18 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "17.live",
+      "anomaly_count": 24,
+      "measurement_count": 30,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "abs.twimg.com",
+      "anomaly_count": 24,
+      "measurement_count": 31,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "asiatimes.com",
       "anomaly_count": 24,
       "measurement_count": 24,
@@ -189,6 +201,12 @@
       "domain": "btguard.com",
       "anomaly_count": 24,
       "measurement_count": 26,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "edge-mqtt.facebook.com",
+      "anomaly_count": 24,
+      "measurement_count": 28,
       "anomaly_rate": 1.0
     },
     {
@@ -213,24 +231,6 @@
       "domain": "scontent.cdninstagram.com",
       "anomaly_count": 24,
       "measurement_count": 30,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "upload.twitter.com",
-      "anomaly_count": 24,
-      "measurement_count": 31,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "web.facebook.com",
-      "anomaly_count": 24,
-      "measurement_count": 29,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.wsj.com",
-      "anomaly_count": 24,
-      "measurement_count": 25,
       "anomaly_rate": 1.0
     }
   ]
