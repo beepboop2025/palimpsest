@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-15T03:36:24.402037+00:00",
+  "generated_at": "2026-07-15T08:36:37.406487+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 49.8,
+  "erasure_index": 49.6,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -13,7 +13,7 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 59.6,
+      "value": 59.3,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json"
     },
@@ -37,7 +37,7 @@
   "cross_checks": [
     {
       "name": "Censored Planet interference",
-      "value": 4.81,
+      "value": 4.79,
       "unit": "%",
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
@@ -50,23 +50,28 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 19,
+    "entries": 21,
     "verified": true,
-    "merkle_root": "5b630d58701462ef88a7ee6db86412c1d485ca3876989e16c32c81613abc99cd",
-    "head_hash": "d4a740592d59ec6d3aa36fc7d1dbe9f37d5716980975ca7168fca5656e6a1158",
+    "merkle_root": "175b777787339b3c741a192b753d55d5f2ce7e732c53f90ded87325e4f3c094f",
+    "head_hash": "746bfc8f0f9223a5f906ad6f39436cf0d029581fb11a2165e3314b315b7048d5",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-15T03:36:24.402037+00:00",
+    "head_ts": "2026-07-15T08:36:37.406487+00:00",
     "by_source": {
-      "ooni-gfw": 14,
+      "ooni-gfw": 15,
       "generative-firewall": 1,
-      "censored-planet": 3,
+      "censored-planet": 4,
       "baike-redaction": 1
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 18,
-        "entry_hash": "d4a740592d59ec6d3aa36fc7d1dbe9f37d5716980975ca7168fca5656e6a1158"
+        "seq": 19,
+        "entry_hash": "788cad69e22d02606a127f03cff157416c2735ccf5f065ac859c8a6acffabfe1"
+      },
+      {
+        "source": "censored-planet",
+        "seq": 20,
+        "entry_hash": "746bfc8f0f9223a5f906ad6f39436cf0d029581fb11a2165e3314b315b7048d5"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
