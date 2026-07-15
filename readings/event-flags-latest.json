@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-07-15T14:44:30.954616+00:00",
+  "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
+  "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
+  "signals": {
+    "ooni_gfw": {
+      "state": "calm",
+      "stat": 4.1528,
+      "n": 23,
+      "n_alarms_in_history": 0,
+      "meaning": "network-layer GFW anomaly rate"
+    },
+    "ddti_threat": {
+      "state": "calm",
+      "stat": 5.7109,
+      "n": 59,
+      "n_alarms_in_history": 0,
+      "meaning": "peak censor attention on one term"
+    },
+    "ddti_novelty": {
+      "state": "calm",
+      "stat": 2.1774,
+      "n": 59,
+      "n_alarms_in_history": 0,
+      "meaning": "newly-sensitive terms entering the deletion stream"
+    },
+    "censored_planet": {
+      "state": "warming_up",
+      "stat": 0.0,
+      "n": 4,
+      "n_alarms_in_history": 0,
+      "meaning": "remote-vantage interference rate"
+    },
+    "gdelt_containment": {
+      "state": "calm",
+      "stat": 43.8892,
+      "n": 35,
+      "n_alarms_in_history": 0,
+      "meaning": "terms loud abroad while censored at home"
+    },
+    "github_refuge": {
+      "state": "calm",
+      "stat": 1.3915,
+      "n": 17,
+      "n_alarms_in_history": 0,
+      "meaning": "takedown/pressure events on refuge repositories"
+    },
+    "refusal_drift": {
+      "state": "warming_up",
+      "stat": 0.0,
+      "n": 1,
+      "n_alarms_in_history": 0,
+      "meaning": "cross-lab model suppression rate"
+    }
+  },
+  "active": [],
+  "headline": "all signals within their own history"
+}

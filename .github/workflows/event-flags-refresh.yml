@@ -1,0 +1,46 @@
+name: Refresh conformal event flags
+
+# Recompute the anytime-valid event flags over every signal's own history
+# JSONL — pure local recomputation (no network), stdlib-only, deterministic,
+# so anyone can verify every flag by rerunning the script on the same files.
+# Runs after the signal refreshers have had their turn each cycle.
+
+on:
+  schedule:
+    - cron: "47 */6 * * *"     # every 6 hours, after the signal pulls
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: event-flags-refresh
+  cancel-in-progress: false
+
+jobs:
+  event-flags:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Recompute conformal event flags from signal histories
+        run: python -m scripts.conformal_events_pull
+
+      - name: Commit & push if the flags changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/event-flags-latest.json readings/event-flags-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: conformal event flags refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
