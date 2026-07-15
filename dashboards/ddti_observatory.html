@@ -394,13 +394,13 @@ INDEX.ranked.forEach((t, i) => {
     <span><span class="tk-alarm__msg">${esc(t.term)}</span>
       <span class="tk-alarm__meta">${esc(t.domain)} · attention ${fmt(t.attention)} · novelty ${fmt(t.novelty)}${t.is_new?" · NEW":""}</span></span>
     <span class="tk-num" style="font-weight:800;color:var(--tk-${tr})">${fmt(t.threat)}</span>`;
-  el.onclick = () => showProv(t, i);
+  el.onclick = () => showProv(t, i, true);
   TiktoMotion.stagger(el, i); // entrance order = threat rank (data-centric)
   termsEl.appendChild(el);
 });
 
 /* ---- provenance-on-pull ---- */
-function showProv(t, i) {
+function showProv(t, i, scroll) {
   document.getElementById("provWrap").style.display = "block";
   const maxThreat = INDEX.ranked[0].threat;
   const samples = (t.samples||[]).map(s => `<div class="tk-prov__row"><span class="tk-prov__k">deleted</span><span class="tk-prov__v">${esc(s.title||"")}</span></div>`).join("");
@@ -412,9 +412,9 @@ function showProv(t, i) {
     <div class="tk-prov__row"><span class="tk-prov__k">burst ratio</span><span class="tk-prov__v">${t.burst_ratio ? t.burst_ratio+"×" : "newly sensitive (no baseline)"}</span></div>
     <div class="tk-prov__row"><span class="tk-prov__k">first seen</span><span class="tk-prov__v">${esc(t.first_seen)}</span></div>
     ${samples}`;
-  document.getElementById("provWrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  if (scroll) document.getElementById("provWrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
-showProv(topTerm, 0);
+showProv(topTerm, 0, false); // initial fill must not yank the page away from the Fear Index
 
 /* ---- the living map: terms as nodes, edges by shared domain, shock = a NEW term spreading ---- */
 const nodes = INDEX.ranked.map((t, i) => ({
