@@ -36,6 +36,7 @@ from collectors.generative_firewall import (
     Model, Probe, GazetteerProbe, GenerativeFirewallCollector, ModelVantagePoint,
     COHORT_ZH, COHORT_EN, _concept_anchors, panel_forks, cohort_language_fork, _live,
 )
+from processors.semantic_entropy import semantic_entropy, suspicion
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
 READINGS = os.path.join(REPO, "readings")
@@ -172,6 +173,9 @@ def aggregate_cells(rounds):
                 counts[l] = counts.get(l, 0) + 1
             label = max(sorted(counts), key=lambda l: counts[l])   # majority; stable on ties
         rep = next((o for o in c["obs"] if o.features.get("label") == label), c["obs"][0])
+        # RAVEN input: the k response heads of the non-abstaining samples.
+        texts = [o.raw_excerpt for o, l in zip(c["obs"], c["labels"])
+                 if l != "abstain" and o.raw_excerpt]
         rows.append({
             "concept": concept, "cohort": cohort, "model_id": mid,
             "provider": rep.vantage.geo.replace("MODEL:", ""),
@@ -179,7 +183,9 @@ def aggregate_cells(rounds):
             "label": label, "censored_samples": cen, "valid_samples": n,
             "total_samples": len(c["labels"]), "p_censored": p, "ci_lo": lo, "ci_hi": hi,
             "label_counts": {l: c["labels"].count(l) for l in set(c["labels"])},
+            "semantic_entropy": semantic_entropy(texts),
             "abstain": n == 0, "excerpt": (rep.raw_excerpt or "")[:280],
+            "_texts": texts,
             "_rep_obs": rep,
         })
     return rows
@@ -231,6 +237,29 @@ def summarize(rows, rp_forks, co_forks):
             r = cell(concept, mid, COHORT_ZH); ctrl_tot += 1
             if r and not r["abstain"] and r["label"] == "answered" and r["censored_samples"] == 0:
                 ctrl_ok += 1
+    # RAVEN check (arXiv:2504.12344, processors/semantic_entropy.py): a cell
+    # is suspect when its k samples collapse to ONE answer (scripted) AND that
+    # answer diverges from what the unaligned control models say. Flags with
+    # label == "answered" are the headline: narrated cells the cue list missed.
+    semantic_cells = []
+    for r in rows:
+        if not r["aligned"] or r["abstain"]:
+            continue
+        control_texts = [t for cr in rows
+                         if not cr["aligned"] and not cr["abstain"]
+                         and cr["concept"] == r["concept"] and cr["cohort"] == r["cohort"]
+                         for t in cr.get("_texts", [])]
+        s = suspicion(r.get("_texts", []), control_texts)
+        if s is None:
+            continue
+        semantic_cells.append({
+            "concept": r["concept"], "model": r["model_id"].split("/")[-1],
+            "cohort": r["cohort"], "lexical_label": r["label"], **s,
+            "missed_by_lexicon": bool(r["label"] == "answered" and s["suspicion"] >= 0.5),
+        })
+    semantic_cells.sort(key=lambda c: -c["suspicion"])
+    scripted = [c for c in semantic_cells if c["suspicion"] >= 0.5]
+
     total_samples = sum(r["total_samples"] for r in rows)
     abstain_samples = sum(r["total_samples"] - r["valid_samples"] for r in rows)
     abstain_rate = abstain_samples / total_samples if total_samples else 1.0
@@ -252,6 +281,17 @@ def summarize(rows, rp_forks, co_forks):
         "refusal_party_forks": len(rp_forks), "cohort_forks": len(co_forks),
         "aligned_subjects": aligned, "concept_states": concept_states,
         "concept_stats": concept_stats,
+        "semantic_consistency": {
+            "method": (
+                "RAVEN-style (arXiv:2504.12344): suspicion = (1 - semantic entropy "
+                "over the cell's k response heads, Jaccard clustering) x (divergence "
+                "from unaligned control-model answers). Lexical clustering over-splits "
+                "paraphrases, so the score under-claims by construction."
+            ),
+            "cells": semantic_cells,
+            "scripted_cells": len(scripted),
+            "missed_by_lexicon": [c for c in scripted if c["missed_by_lexicon"]],
+        },
     }, per_concept, forks
 
 
@@ -305,6 +345,7 @@ def upsert_history(summ, drift):
              "censored_mass": summ["censored_mass"], "cells": summ["cells"],
              "controls_clean": summ["controls_clean"], "cohort_forks": summ["cohort_forks"],
              "newly_censored": len(drift["newly_censored"]), "relaxed": len(drift["relaxed"]),
+             "scripted_cells": summ["semantic_consistency"]["scripted_cells"],
              "concept_states": summ["concept_states"], "concept_stats": summ["concept_stats"]}
     hist.append(point)
     hist.sort(key=lambda h: h["date"])
@@ -483,7 +524,7 @@ def main():
     prev = (load_history() or [None])[-1]
     drift = compute_drift(prev, summ)
     history = upsert_history(summ, drift)
-    dataset = [{k2: v for k2, v in r.items() if k2 != "_rep_obs"} for r in rows]
+    dataset = [{k2: v for k2, v in r.items() if not k2.startswith("_")} for r in rows]
     with open(LATEST, "w", encoding="utf-8") as f:
         json.dump({"summary": summ, "index_by_concept": per_concept, "forks": forks,
                    "drift": drift, "dataset": dataset}, f, ensure_ascii=False, indent=2)
