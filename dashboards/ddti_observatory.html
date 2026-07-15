@@ -68,6 +68,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span class="tk-chip tk-chip--watch" id="loadChip">LOAD 45%</span>
+        <button class="tk-btn" id="viewBtn" aria-pressed="false" title="Drill between the brief and the full analytical board">◈ Brief view</button>
         <button class="tk-btn" id="themeBtn">Institutional theme</button>
         <button class="tk-btn" id="autopilotBtn">▶ Autopilot</button>
       </div>
@@ -79,10 +80,10 @@
 
     <style>
       .fearbar{position:relative;height:12px;border-radius:999px;background:linear-gradient(90deg,#19c393,#ffb020 52%,#ff5b52)}
-      .fearbar__now{position:absolute;top:-5px;width:3px;height:22px;background:#fff;border-radius:2px;box-shadow:0 0 10px #fff;transform:translateX(-50%)}
+      .fearbar__now{position:absolute;top:-5px;width:3px;height:22px;background:#fff;border-radius:2px;box-shadow:0 0 10px #fff;transform:translateX(-50%);transition:left .9s var(--tk-ease-spring,cubic-bezier(.22,1,.36,1))}
       .fearscale{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tk-text-3,#64748b);margin-top:7px}
     </style>
-    <div class="full" style="margin-top:14px">
+    <div class="full" data-tkm style="margin-top:14px">
       <section class="tk-card" id="fearCard" style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
         <div>
           <div class="tk-card__title" style="margin-bottom:6px">⊘ Censorship Fear Index · now</div>
@@ -100,7 +101,7 @@
     </div>
 
     <!-- Hero + the two reachable signals + the fail-loud one -->
-    <div class="grid">
+    <div class="grid" data-tkm>
       <section class="tk-card tk-card--critical" id="heroCard">
         <div class="tk-card__head">
           <span class="tk-card__title">▣ Top censor target · now</span>
@@ -128,7 +129,7 @@
     </div>
 
     <!-- The Tick: DDTI top-threat over time (past actuals → now → forecast cone) -->
-    <div class="full" style="margin-top:14px">
+    <div class="full" data-tkm style="margin-top:14px">
       <div class="tk-tick">
         <div class="tk-tick__head">
           <span class="tk-card__title">⟿ DDTI top-threat index · 30 days → 7-day projection</span>
@@ -140,7 +141,7 @@
     </div>
 
     <!-- Living map + ranked threats -->
-    <div class="grid--2">
+    <div class="grid--2" data-tkm data-drill>
       <section class="tk-map mapwrap">
         <canvas class="tk-map__canvas" id="net"></canvas>
         <div class="tk-map__zoom" id="zoomLabel">TOPIC NETWORK · shock = newly-sensitive term spreading</div>
@@ -157,7 +158,7 @@
       </div>
     </div>
 
-    <section class="tk-grid-2">
+    <section class="tk-grid-2" data-tkm data-drill>
       <div class="tk-panel">
         <div class="tk-panel__title">Scenario cockpit</div>
         <div class="tk-matrix">
@@ -188,7 +189,7 @@
     </section>
 
     <!-- Velocity: the fail-loud signal (honest scope) -->
-    <div class="full" style="margin-top:14px">
+    <div class="full" data-tkm data-drill style="margin-top:14px">
       <section class="tk-card">
         <div class="tk-card__head"><span class="tk-card__title">⏱ Velocity · deletion speed</span><span class="tk-chip tk-chip--stale">suppressed</span></div>
         <div class="tk-hero"><span class="tk-hero__value tk-hero__value--degraded">— /min</span></div>
@@ -214,7 +215,7 @@
     </style>
 
     <!-- Signal 3: GDELT cross-signal (censored at home, loud abroad) -->
-    <div class="full" style="margin-top:14px">
+    <div class="full" data-tkm data-drill style="margin-top:14px">
       <section class="tk-card" id="gdeltCard">
         <div class="tk-card__head">
           <span class="tk-card__title">🌍 Censored at home, loud abroad · GDELT cross-signal</span>
@@ -226,7 +227,7 @@
     </div>
 
     <!-- Signal 4: GitHub-refuge (pressure on the mirrors) -->
-    <div class="full" style="margin-top:14px">
+    <div class="full" data-tkm data-drill style="margin-top:14px">
       <section class="tk-card" id="refugeCard">
         <div class="tk-card__head">
           <span class="tk-card__title">🛡 Pressure on the mirrors · GitHub-refuge</span>
@@ -238,7 +239,7 @@
     </div>
 
     <!-- Provenance-on-pull: a selected term's full derivation -->
-    <div class="full" id="provWrap" style="margin-top:14px; display:none">
+    <div class="full" id="provWrap" data-drill style="margin-top:14px; display:none">
       <div class="sec-h">Provenance · how this score was derived</div>
       <div class="tk-prov" id="prov"></div>
     </div>
@@ -252,6 +253,7 @@
   </div>
 
 <script src="./assets/tikto.js"></script>
+<script src="./assets/tikto-motion.js"></script>
 <!--DDTI_EMBED--><script>window.__DDTI_EMBED__={"generated_at": "2026-07-15T14:11:07.021709+00:00", "window": {"current_days": 45, "history_days": 180, "half_life_days": 2.0, "novelty_weight": 1.5}, "scope": "censor_attention_allocation (numerator-only; not a true deletion rate)", "n_observations_used": 15, "n_terms": 165, "ranked": [{"term": "social media censorship", "domain": "INFORMATION", "threat": 2.1918, "attention": 0.8767, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 6, "hist_count": 0, "first_seen": "2026-06-12T06:51:19+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}, {"title": "Translation: “How Do These Comments Break the Rules?”", "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"}]}, {"term": "censorship", "domain": "INFORMATION", "threat": 1.8082, "attention": 0.7233, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 8, "hist_count": 0, "first_seen": "2026-06-12T06:51:19+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Translation: “How Do These Comments Break the Rules?”", "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"}, {"title": "The Party at 105: Adept at Struggle, Even Better at Censorship", "url": "https://chinadigitaltimes.net/2026/07/the-party-at-105-adept-at-struggle-even-better-at-censorship/"}]}, {"term": "Internet censorship", "domain": "INFORMATION", "threat": 1.7033, "attention": 0.6813, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 5, "hist_count": 0, "first_seen": "2026-06-12T06:51:19+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Translation: “How Do These Comments Break the Rules?”", "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"}, {"title": "Censorship, Secrecy, and Speculation Continue After Pilot in Beijing CITIC Tower Collision Identified", "url": "https://chinadigitaltimes.net/2026/07/censorship-secrecy-and-speculation-continue-after-pilot-in-beijing-citic-tower-collision-identified/"}]}, {"term": "online censorship", "domain": "INFORMATION", "threat": 1.7033, "attention": 0.6813, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 5, "hist_count": 0, "first_seen": "2026-06-12T06:51:19+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Translation: “How Do These Comments Break the Rules?”", "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"}, {"title": "Censorship, Secrecy, and Speculation Continue After Pilot in Beijing CITIC Tower Collision Identified", "url": "https://chinadigitaltimes.net/2026/07/censorship-secrecy-and-speculation-continue-after-pilot-in-beijing-citic-tower-collision-identified/"}]}, {"term": "online public opinion", "domain": "INFORMATION", "threat": 1.3673, "attention": 0.5469, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 4, "hist_count": 0, "first_seen": "2026-06-16T00:26:11+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Censorship, Secrecy, and Speculation Continue After Pilot in Beijing CITIC Tower Collision Identified", "url": "https://chinadigitaltimes.net/2026/07/censorship-secrecy-and-speculation-continue-after-pilot-in-beijing-citic-tower-collision-identified/"}, {"title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?", "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"}]}, {"term": "CDT translation", "domain": "OTHER", "threat": 1.3251, "attention": 0.53, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-06-25T05:15:19+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?", "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"}]}, {"term": "Culture & the Arts", "domain": "OTHER", "threat": 1.3251, "attention": 0.53, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-06-25T04:55:16+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}, {"title": "Translation: Religion and Red Lines in Chinese Online Literature", "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"}]}, {"term": "dams", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "death toll", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "disaster relief", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "euphemisms", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "farmers", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "floods", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "infrastructure", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "natural disasters", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "rainfall", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "reporting", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "reservoirs", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "state media", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "typhoons", "domain": "OTHER", "threat": 1.323, "attention": 0.5292, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "social media", "domain": "OTHER", "threat": 0.8303, "attention": 0.3321, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 4, "hist_count": 0, "first_seen": "2026-06-24T06:17:30+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}, {"title": "Translation: “How Do These Comments Break the Rules?”", "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"}, {"title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?", "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"}]}, {"term": "Xi Jinping", "domain": "OTHER", "threat": 0.5873, "attention": 0.2349, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-07-06T06:26:18+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}, {"title": "The Party at 105: Adept at Struggle, Even Better at Censorship", "url": "https://chinadigitaltimes.net/2026/07/the-party-at-105-adept-at-struggle-even-better-at-censorship/"}]}, {"term": "#MeToo", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "COVID-19", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "Cyberspace Administration of China", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "Directives from the Ministry of Truth", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "Hong Kong", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-06-15T06:41:23+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}, {"title": "Siri AI’s Future in China Unclear Under “One Apple, Two Systems”", "url": "https://chinadigitaltimes.net/2026/06/siri-ais-future-in-china-unclear-under-one-apple-two-systems/"}]}, {"term": "Hong Kong extradition", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "Inner Mongolia", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "Internet video", "domain": "OTHER", "threat": 0.4885, "attention": 0.1954, "novelty": 1.0, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-10T21:07:04+00:00", "samples": [{"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}], "source_feeds": {"cdt_english": 200, "cdt_404": 403, "cdt_minitrue": 403, "cdt_economy": 403}, "wayback_observations_merged": 0};window.__DDTI_EMBED_AT__="2026-07-15T14:11Z";</script>
 <script>
 /* ============ representative DDTI index (matches processors/ddti_index.py shape) ============ */
@@ -259,6 +261,8 @@
    TOP of the script (above every first use) — the DDTI feed is untrusted scraped
    content, so nothing derived from it may reach innerHTML unescaped. */
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/* motion layer: scroll-reveal + data-ordered entrances (no-op under reduced motion) */
+TiktoMotion.init();
 const NOW = "2026-06-30T00:00:00Z";
 const INDEX = {
   generated_at: NOW,
@@ -333,8 +337,8 @@ document.getElementById("confFill").style.width = "78%";
 document.getElementById("confFill").style.background = "var(--tk-ok)";
 document.getElementById("confLbl").textContent = "78% conf";
 document.getElementById("confLbl").style.color = "var(--tk-ok)";
-document.getElementById("selVal").textContent = fmt(topTerm.attention);
-document.getElementById("novVal").textContent = fmt(Math.max(...INDEX.ranked.map(t=>t.novelty)));
+TiktoMotion.countUp(document.getElementById("selVal"), topTerm.attention, { decimals: 2 });
+TiktoMotion.countUp(document.getElementById("novVal"), Math.max(...INDEX.ranked.map(t=>t.novelty)), { decimals: 2 });
 document.getElementById("novNew").textContent = nNew;
 
 /* ---- Censorship Fear Index (faithful port of processors/fear_index.py) ---- */
@@ -367,11 +371,14 @@ function fearIndex(ranked, velocity){
 }
 const FEAR = fearIndex(INDEX.ranked);
 const fearColor = FEAR.index>=75?"var(--tk-critical)":FEAR.index>=50?"#ff7a18":FEAR.index>=25?"var(--tk-warning)":"var(--tk-ok)";
-document.getElementById("fearVal").textContent = FEAR.index;
+TiktoMotion.countUp(document.getElementById("fearVal"), FEAR.index, { decimals: 1, dur: 1100 });
 document.getElementById("fearVal").style.color = fearColor;
 const fearBandEl = document.getElementById("fearBand");
 fearBandEl.textContent = FEAR.band; fearBandEl.style.color = fearColor; fearBandEl.style.borderColor = fearColor;
-document.getElementById("fearNow").style.left = FEAR.index + "%";
+/* needle sweeps from calm to the reading (CSS spring transition on left) */
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  document.getElementById("fearNow").style.left = FEAR.index + "%";
+}));
 document.getElementById("fearWhat").innerHTML =
   `<b style="color:${fearColor}">${FEAR.band} (${FEAR.index})</b> — ${FEAR.interp}. `
   + `<span style="color:var(--tk-text-3)">Velocity suppressed; index from the reachable components, never faked.</span>`;
@@ -388,6 +395,7 @@ INDEX.ranked.forEach((t, i) => {
       <span class="tk-alarm__meta">${esc(t.domain)} · attention ${fmt(t.attention)} · novelty ${fmt(t.novelty)}${t.is_new?" · NEW":""}</span></span>
     <span class="tk-num" style="font-weight:800;color:var(--tk-${tr})">${fmt(t.threat)}</span>`;
   el.onclick = () => showProv(t, i);
+  TiktoMotion.stagger(el, i); // entrance order = threat rank (data-centric)
   termsEl.appendChild(el);
 });
 
@@ -441,7 +449,12 @@ for (let i = 0; i < 30; i++) { v += Math.sin(i*0.5)*0.06 + (i>20 ? 0.10 : 0.02);
 const base = past[past.length-1], alertLine = INDEX.alert_threshold;
 let drift = 0.55;
 let volatility = 1.0;
-function drawTick() {
+/* the intro draws the past line first (history), then fades in the cone
+   (projection) — the animation order mirrors the semantics of the chart.
+   tickP remembers progress so cockpit/resize redraws never fight the intro. */
+let tickP = 0;
+function drawTick(prog) {
+  if (prog == null) prog = tickP; else tickP = prog;
   const dpr = Math.min(devicePixelRatio||1, 2), r = tickCv.getBoundingClientRect();
   tickCv.width = r.width*dpr; tickCv.height = r.height*dpr;
   const ctx = tickCv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -457,26 +470,38 @@ function drawTick() {
   ctx.strokeStyle = hexA(crit, 0.5); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
   ctx.font = '9px "JetBrains Mono", monospace'; ctx.fillStyle = hexA(crit, 0.75); ctx.textAlign="left";
   ctx.fillText("ALERT 3.0", 18, Y(alertLine)-4);
-  // past actuals
+  // past actuals — drawn progressively; the line completes at 70% of the intro
+  const lineF = Math.min(1, prog / 0.7) * (past.length - 1);
+  const iEnd = Math.floor(lineF);
   ctx.beginPath();
-  past.forEach((p,i) => { const x = X(-1 + i/(past.length-1)), y = Y(p); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  for (let i = 0; i <= iEnd; i++) { const x = X(-1 + i/(past.length-1)), y = Y(past[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+  if (iEnd < past.length - 1 && lineF > iEnd) {
+    const fp = lineF - iEnd, vI = past[iEnd] + (past[iEnd+1] - past[iEnd]) * fp;
+    ctx.lineTo(X(-1 + lineF/(past.length-1)), Y(vI));
+  }
   ctx.strokeStyle = hexA(css("--tk-text-1"), 0.85); ctx.lineWidth = 1.6; ctx.stroke();
-  // forecast cone
-  const steps=40, topL=[], botL=[];
-  for (let s=0;s<=steps;s++){ const f=s/steps, mean=base+drift*f, sp=(0.05+0.5*Math.sqrt(f))*volatility; topL.push([X(f),Y(mean+sp)]); botL.push([X(f),Y(mean-sp)]); }
-  ctx.beginPath(); ctx.moveTo(topL[0][0],topL[0][1]); topL.forEach(p=>ctx.lineTo(p[0],p[1]));
-  for(let b=botL.length-1;b>=0;b--) ctx.lineTo(botL[b][0],botL[b][1]); ctx.closePath();
-  const g = ctx.createLinearGradient(X(0),0,w,0); g.addColorStop(0,hexA(live,0.34)); g.addColorStop(1,hexA(live,0.04));
-  ctx.fillStyle = g; ctx.fill();
-  ctx.setLineDash([4,3]); ctx.beginPath();
-  for(let m=0;m<=steps;m++){ const f=m/steps,x=X(f),y=Y(base+drift*f); m?ctx.lineTo(x,y):ctx.moveTo(x,y); }
-  ctx.strokeStyle = hexA(live,0.8); ctx.lineWidth=1.4; ctx.stroke(); ctx.setLineDash([]);
-  // NOW line
-  const nowX = X(0); ctx.beginPath(); ctx.moveTo(nowX,padT); ctx.lineTo(nowX,h-padB);
-  ctx.strokeStyle = hexA(live,0.9); ctx.lineWidth=1.5; ctx.shadowColor=live; ctx.shadowBlur=10; ctx.stroke(); ctx.shadowBlur=0;
-  ctx.fillStyle=live; ctx.textAlign="center"; ctx.fillText("NOW", nowX, h-4);
+  // forecast cone + NOW — fade in once the past line reaches the present
+  const fa = Math.max(0, Math.min(1, (prog - 0.7) / 0.3));
+  if (fa > 0) {
+    ctx.globalAlpha = fa;
+    const steps=40, topL=[], botL=[];
+    for (let s=0;s<=steps;s++){ const f=s/steps, mean=base+drift*f, sp=(0.05+0.5*Math.sqrt(f))*volatility; topL.push([X(f),Y(mean+sp)]); botL.push([X(f),Y(mean-sp)]); }
+    ctx.beginPath(); ctx.moveTo(topL[0][0],topL[0][1]); topL.forEach(p=>ctx.lineTo(p[0],p[1]));
+    for(let b=botL.length-1;b>=0;b--) ctx.lineTo(botL[b][0],botL[b][1]); ctx.closePath();
+    const g = ctx.createLinearGradient(X(0),0,w,0); g.addColorStop(0,hexA(live,0.34)); g.addColorStop(1,hexA(live,0.04));
+    ctx.fillStyle = g; ctx.fill();
+    ctx.setLineDash([4,3]); ctx.beginPath();
+    for(let m=0;m<=steps;m++){ const f=m/steps,x=X(f),y=Y(base+drift*f); m?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.strokeStyle = hexA(live,0.8); ctx.lineWidth=1.4; ctx.stroke(); ctx.setLineDash([]);
+    // NOW line
+    const nowX = X(0); ctx.beginPath(); ctx.moveTo(nowX,padT); ctx.lineTo(nowX,h-padB);
+    ctx.strokeStyle = hexA(live,0.9); ctx.lineWidth=1.5; ctx.shadowColor=live; ctx.shadowBlur=10; ctx.stroke(); ctx.shadowBlur=0;
+    ctx.fillStyle=live; ctx.textAlign="center"; ctx.fillText("NOW", nowX, h-4);
+    ctx.globalAlpha = 1;
+  }
 }
-drawTick(); addEventListener("resize", drawTick);
+TiktoMotion.drawIn((p) => drawTick(p), 1100, tickCv);
+addEventListener("resize", () => drawTick());
 
 /* ---- scenario cockpit + slash commands ---- */
 const shockRange = document.getElementById("shockRange");
@@ -559,6 +584,30 @@ document.getElementById("autopilotBtn").onclick = function () {
 };
 pushEvent("watch", "System live", "Operator stream connected to DDTI observatory.");
 
+/* ---- drillboard: Brief ↔ Full board (adaptive hierarchy) ----
+   Brief keeps the abstract layer: Fear Index, top signals, the trend tick.
+   Full unfolds the analyst layer: map, ranked targets, cockpit, cross-signals.
+   The fold is animated so the reader's mental map survives the transition,
+   and the chosen depth is remembered per visitor. */
+const DRILLS = Array.from(document.querySelectorAll("[data-drill]"));
+const viewBtn = document.getElementById("viewBtn");
+let fullBoard = (localStorage.getItem("pal.view") || "full") === "full";
+function applyView(animate) {
+  viewBtn.textContent = fullBoard ? "◈ Brief view" : "◈ Full board";
+  viewBtn.setAttribute("aria-pressed", String(!fullBoard));
+  DRILLS.forEach((el) => {
+    if (animate) TiktoMotion.drill(el, fullBoard);
+    else { el.style.display = fullBoard ? "" : "none"; el.setAttribute("aria-hidden", String(!fullBoard)); }
+  });
+}
+viewBtn.onclick = () => {
+  fullBoard = !fullBoard;
+  localStorage.setItem("pal.view", fullBoard ? "full" : "brief");
+  applyView(true);
+  pushEvent("watch", fullBoard ? "Full board" : "Brief view", fullBoard ? "Analyst layer unfolded." : "Collapsed to the decision layer.");
+};
+if (!fullBoard) applyView(false);
+
 /* ---- theme toggle (terminal ↔ institutional) ---- */
 document.getElementById("themeBtn").onclick = (e) => {
   const light = ROOT.getAttribute("data-tk-theme") === "light";
@@ -598,6 +647,7 @@ document.getElementById("themeBtn").onclick = (e) => {
         + `<span class="meta">global ${gv}%</span></div>`;
     }).join("")
       + `<div class="sig-sum">${d.n_containment || 0} containment · ${d.n_with_global_data || withData.length} of ${d.n_terms || withData.length} terms found in world news · source GDELT DOC 2.0</div>`;
+    body.querySelectorAll(".sig-row").forEach((row, i) => TiktoMotion.stagger(row, i, 28));
   }).catch(() => offChip(document.getElementById("gdeltChip")) || (document.getElementById("gdeltBody").innerHTML = '<div class="sig-empty">Cross-signal not published yet — it computes on the next scheduled run.</div>'));
 
   // ---- GitHub-refuge ----
@@ -625,6 +675,7 @@ document.getElementById("themeBtn").onclick = (e) => {
         + `<span class="sig-tag ${cls}">${esc(label)}</span></div>`;
     }).join("")
       + `<div class="sig-sum">${d.n_watched || rows.length} mirrors watched · ${d.n_present || 0} present · ${d.n_pressure_events || 0} under pressure${d.first_run ? " · baselines just recorded, pressure events begin next cycle" : ""}</div>`;
+    body.querySelectorAll(".sig-row").forEach((row, i) => TiktoMotion.stagger(row, i, 28));
   }).catch(() => offChip(document.getElementById("refugeChip")) || (document.getElementById("refugeBody").innerHTML = '<div class="sig-empty">Refuge watch not published yet — it computes on the next scheduled run.</div>'));
 })();
 </script>

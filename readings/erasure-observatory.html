@@ -56,6 +56,10 @@
   .diff td:last-child{color:var(--fg)}
   .foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.85}
   .err{color:var(--amb);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  /* motion: data-ordered entrances via tikto-motion.js (signal, not decoration) */
+  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
+  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
+  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
 </style>
 </head>
 <body>
@@ -103,6 +107,7 @@
     </div>
   </div>
 
+<script src="/dashboards/assets/tikto-motion.js"></script>
 <script>
 // Fully client-side render. Every value injected via textContent or an escaped
 // helper — external strings (source labels, hashes) are never written as raw HTML.
@@ -126,7 +131,7 @@ function layerCard(l){
     ? `<div class="big na">${esc(l.status || "absent")}</div>`
     : `<div class="big" style="color:${col}">${esc(num(v))}<small style="font-size:15px;color:var(--dim)">/100</small></div>`;
   const bar = v == null ? "" :
-    `<div class="bar"><span style="width:${Math.max(0,Math.min(100,v))}%;background:${col}"></span></div>`;
+    `<div class="bar"><span data-tkm-bar style="width:${Math.max(0,Math.min(100,v))}%;background:${col}"></span></div>`;
   const reason = l.reason ? `<div class="src">${esc(l.reason)}</div>` : "";
   const src = l.source ? `<div class="src">source · ${esc(l.source)}</div>` : "";
   return `<div class="card">
@@ -154,7 +159,7 @@ function render(d){
   const html = `
   <div class="hero">
     <div>
-      <div class="idx" style="color:${b.c}">${idx==null?"–":esc(num(idx))}<small>/100</small></div>
+      <div class="idx" style="color:${b.c}"><span id="idxNum">${idx==null?"–":esc(num(idx))}</span><small>/100</small></div>
       <div class="band" style="color:${b.c};border-color:${b.c}">${esc(b.t)}</div>
     </div>
     <div class="heroTxt">
@@ -185,6 +190,12 @@ function render(d){
     <div class="cmd">$ git clone the repo &nbsp;&amp;&amp;&nbsp; python3 scripts/verify_ledger.py&nbsp; # recompute the chain yourself</div>
   </div>`;
   app.innerHTML = html;
+  if (window.TiktoMotion) {
+    if (idx != null) TiktoMotion.countUp(document.getElementById("idxNum"), idx, { decimals: 1, dur: 1000 });
+    app.querySelectorAll(".grid3 .card").forEach((c, i) => TiktoMotion.stagger(c, i, 80));
+    app.querySelectorAll(".cross .chip").forEach((c, i) => TiktoMotion.stagger(c, i, 60));
+    TiktoMotion.growBars(app);
+  }
 }
 
 fetch("/readings/erasure-observatory-latest.json", {cache:"no-store"})

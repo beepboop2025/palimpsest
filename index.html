@@ -211,7 +211,7 @@
   censor, never the censored, and every number traces to public evidence.</p>
 
   <div class="cards">
-    <div class="card">
+    <div class="card" data-tkm style="--tkm-d:0ms">
       <div class="ct"><span class="dot" style="color:#37c88b"></span>Sealed · independently verifiable</div>
       <h2>Verifiable Eval Registry</h2>
       <p>AI evaluations nobody can revise after publication. Questions frozen before any model is asked,
@@ -219,35 +219,35 @@
       side by side, watched for refusal drift over time.</p>
       <a class="btn" href="/readings/eval-registry.html">Open the registry &rarr;</a>
     </div>
-    <div class="card">
+    <div class="card" data-tkm style="--tkm-d:55ms">
       <div class="ct"><span class="dot" style="color:#a78bfa"></span>Live · every 6 hours</div>
       <h2>Erasure Observatory</h2>
       <p>What the record lost, measured across three layers: network, narrative, and model. Each reading
       seals into a tamper-evident ledger, so our own history cannot be quietly rewritten either.</p>
       <a class="btn" href="/readings/erasure-observatory.html">See the ledger &rarr;</a>
     </div>
-    <div class="card">
+    <div class="card" data-tkm style="--tkm-d:110ms">
       <div class="ct"><span class="dot" style="color:#06d6e0"></span>Live · every 3 hours</div>
       <h2>DDTI Observatory</h2>
       <p>The full command surface: the censorship fear index, a live topic network, ranked censor targets,
       and the GDELT and GitHub-refuge signals in one view.</p>
       <a class="btn" href="/dashboards/ddti_observatory.html">Open observatory &rarr;</a>
     </div>
-    <div class="card">
+    <div class="card" data-tkm style="--tkm-d:165ms">
       <div class="ct"><span class="dot" style="color:#19c393"></span>Live · daily</div>
       <h2>Generative Firewall Index</h2>
       <p>What a state's AI is engineered to hide: the share of sensitive answers state-aligned models
       refuse or rewrite, against neutral controls, in Chinese and English.</p>
       <a class="btn" href="/readings/generative-firewall-index.html">View the index &rarr;</a>
     </div>
-    <div class="card">
+    <div class="card" data-tkm style="--tkm-d:220ms">
       <div class="ct"><span class="dot" style="color:#ff5b52"></span>Live · every 6 hours</div>
       <h2>Censored at home, loud abroad</h2>
       <p>The GDELT cross-signal: which censored topics the world's press covers heavily while they are
       being scrubbed at home. Containment, made visible.</p>
       <a class="btn ghost" href="/dashboards/ddti_observatory.html#gdeltCard">See the signal &rarr;</a>
     </div>
-    <div class="card">
+    <div class="card" data-tkm style="--tkm-d:275ms">
       <div class="ct"><span class="dot" style="color:#4aa3ff"></span>Live · twice a day</div>
       <h2>Pressure on the mirrors</h2>
       <p>GitHub-refuge watches the repos that shelter censored material, 996.ICU to nCovMemory, for
@@ -328,5 +328,7 @@
   product and never monetizes the people or topics it observes. The internet stays free because people
   keep measuring the dark.</p>
 </div>
+<script src="/dashboards/assets/tikto-motion.js"></script>
+<script>TiktoMotion.init()</script>
 </body>
 </html>

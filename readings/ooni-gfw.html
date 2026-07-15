@@ -42,6 +42,10 @@
   .dlist .p{color:var(--red);flex:none;font-variant-numeric:tabular-nums}
   .foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
   .err{color:var(--amb);font-size:13px}
+  /* motion: data-ordered entrances via tikto-motion.js (signal, not decoration) */
+  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
+  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
+  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
 </style>
 </head>
 <body>
@@ -69,6 +73,7 @@
     <div class="foot" id="foot"></div>
   </div>
 
+<script src="/dashboards/assets/tikto-motion.js"></script>
 <script>
 // escape anything interpolated from the fetched JSON before it hits innerHTML.
 // the domain/test values originate from OONI's data, i.e. external input.
@@ -87,7 +92,7 @@ function render(d){
   const tests=(d.tests||[]).map(t=>{
     const w=t.available&&t.anomaly_rate!=null?Math.round(t.anomaly_rate*100):0;
     return `<div class="row"><span class="lab">${esc(t.test)}</span>
-      <span class="bar"><span style="width:${w}%;background:${t.available?barColor(t.anomaly_rate):'#334'}"></span></span>
+      <span class="bar"><span data-tkm-bar style="width:${w}%;background:${t.available?barColor(t.anomaly_rate):'#334'}"></span></span>
       <span class="pc">${t.available?fmtPct(t.anomaly_rate):"n/a"}</span></div>`;
   }).join("");
   const doms=(d.top_blocked||[]).slice(0,15).map(x=>
@@ -97,7 +102,7 @@ function render(d){
   document.getElementById("app").innerHTML=`
     <div class="hero">
       <div>
-        <div class="idx">${d.gfw_index==null?"—":Number(d.gfw_index)}<small>/100</small></div>
+        <div class="idx"><span id="idxNum">${d.gfw_index==null?"—":Number(d.gfw_index)}</span><small>/100</small></div>
         <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
       </div>
       <div class="heroTxt">
@@ -110,6 +115,14 @@ function render(d){
       <div class="card"><h2>Blocking by service</h2>${tests}</div>
       <div class="card"><h2>Most-blocked sites now</h2><ul class="dlist">${doms}</ul></div>
     </div>`;
+
+  if (window.TiktoMotion) {
+    const app = document.getElementById("app");
+    if (d.gfw_index != null) TiktoMotion.countUp(document.getElementById("idxNum"), Number(d.gfw_index), { decimals: 0, dur: 1000 });
+    app.querySelectorAll(".row").forEach((r, i) => TiktoMotion.stagger(r, i, 45));
+    app.querySelectorAll(".dlist li").forEach((li, i) => TiktoMotion.stagger(li, i, 35));
+    TiktoMotion.growBars(app);
+  }
 
   document.getElementById("foot").innerHTML=
     `Source: ${esc(d.source)}. Method: ${esc(d.method)}.<br>`+

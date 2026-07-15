@@ -194,6 +194,12 @@
     font-size:10.5px; line-height:1.8; color:var(--bone-faint); letter-spacing:.04em}
   footer .scope{color:var(--bone-dim)}
   a.refresh{color:var(--jade); text-decoration:none; border-bottom:1px dotted var(--jade); cursor:pointer}
+  /* motion safety: rows/meters land instantly for reduce-motion readers */
+  @media (prefers-reduced-motion:reduce){
+    .row{animation:none; opacity:1; transform:none}
+    .meter i{animation:none; width:var(--w,40%)}
+    .chip .dot.live,.panel .ph .dot{animation:none}
+  }
 </style>
 </head>
 <body>

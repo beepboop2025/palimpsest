@@ -283,10 +283,35 @@ html.tk, body.tk { background: #000; }
   background: var(--tk-surface-3); border: 1px solid var(--tk-line-3); color: var(--tk-text-3);
 }
 
+/* ============================ MOTION LAYER =============================== */
+/* Data-animation states driven by tikto-motion.js. Entrance-hidden states are
+   gated behind html.tkm (set by JS at init) — without JS the page renders
+   complete. Motion is signal: entrances follow the data's own order. */
+.tkm [data-tkm] { opacity: 0; transform: translateY(12px); }
+.tkm [data-tkm].tkm-in {
+  opacity: 1; transform: none;
+  transition: opacity var(--tk-dur-slow) var(--tk-ease), transform var(--tk-dur-slow) var(--tk-ease-spring);
+  transition-delay: var(--tkm-d, 0ms);
+}
+/* data-centric stagger for injected rows — delay set per-rank by JS */
+.tkm .tkm-item { animation: tkm-rise 0.5s var(--tk-ease-spring) both; animation-delay: var(--tkm-d, 0ms); }
+@keyframes tkm-rise { from { opacity: 0; transform: translateY(9px); } }
+/* drill fold — height is driven by JS; opacity and margins ride along so the
+   surrounding layout closes up smoothly and the mental map survives the fold */
+.tkm-drill {
+  overflow: clip;
+  transition: height var(--tk-dur-slow) var(--tk-ease-spring),
+              opacity var(--tk-dur) var(--tk-ease),
+              margin var(--tk-dur-slow) var(--tk-ease-spring);
+}
+.tkm-drill--shut { opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; }
+
 /* ============================ MOTION SAFETY ============================== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
   .tk-alarm--critical { animation: none; }
+  .tkm [data-tkm] { opacity: 1; transform: none; }
+  .tkm .tkm-item { animation: none; }
 }
 
 /* visible keyboard focus everywhere (quality floor) */
