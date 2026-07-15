@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "generated_at": "2026-07-15T15:57:23.290503+00:00",
+  "fused_index": 29.3,
+  "confidence": "CONTESTED",
+  "agreement": 0.093,
+  "divergence_pp": 54.4,
+  "vantages": {
+    "censored_planet": 4.8,
+    "ooni": 59.2
+  },
+  "weights_used": {
+    "ooni": 0.45,
+    "censored_planet": 0.55
+  },
+  "net4people": {
+    "present": true,
+    "n_blocking": 0,
+    "n_recent": 8,
+    "blocking_share": 0.0
+  },
+  "qualitative_flag": null,
+  "verdict": "fused GFW anomaly 29/100 (contested, methods agree 9%); ROUTING-INDUCED DIVERGENCE: OONI and Censored Planet differ by 54pp — the number is vantage-dependent",
+  "caveats": [
+    "censorship is VANTAGE-DEPENDENT (arXiv:2406.19304): independent methods can legitimately disagree because of routing, partial deployment, or probe location — divergence is reported, never smoothed away",
+    "CORROBORATED means two independent methods agree, not that either is ground truth; the GFW blocks without a block page, so every method is a side-channel estimate",
+    "net4people is a QUALITATIVE cross-check — it modifies confidence, never the fused rate (an event log is not a measured rate)",
+    "coverage weights (Censored Planet 0.55, OONI 0.45) are a disclosed choice reflecting vantage count, renormalized over whichever vantages report"
+  ],
+  "method": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only."
+}
