@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "purpose": "BLEEDTHROUGH per-province target list: the dark IPs and open resolvers inside China that the injector-tomography prober probes. This is an EXAMPLE / SCHEMA only.",
+    "placeholder": true,
+    "warning": "Every IP below is in an RFC 5737 documentation range (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24) and is NOT a real target. A real list is a CURATED product: run collectors.bleedthrough.curate_dark_ips (dark space, direct transport) and curate_resolvers (live open resolvers, fallback transport) against Chinese prefixes, then paste the survivors here with province + ASN. The runner refuses to probe while placeholder=true.",
+    "kinds": "target.kind = 'dark' (direct-injection transport) | 'resolver' (open-resolver fallback transport). Default 'dark'.",
+    "clean_answers": "optional map domain -> legitimate IPs from a trusted control resolver; lets the resolver transport class any non-clean answer as a forgery (else it falls back to the known GFW pool only)."
+  },
+  "probe": {
+    "domain": "torproject.org",
+    "qtype": 1,
+    "ddti": "CIRCUMVENTION"
+  },
+  "clean_answers": {
+    "torproject.org": []
+  },
+  "targets": [
+    {"ip": "192.0.2.10",   "province": "CN-SH", "asn": "AS4812", "kind": "dark"},
+    {"ip": "192.0.2.11",   "province": "CN-BJ", "asn": "AS4808", "kind": "dark"},
+    {"ip": "198.51.100.20", "province": "CN-GD", "asn": "AS4134", "kind": "resolver"},
+    {"ip": "198.51.100.21", "province": "CN-HA", "asn": "AS4837", "kind": "resolver"},
+    {"ip": "203.0.113.30",  "province": "CN-ZJ", "asn": "AS4134", "kind": "resolver"}
+  ]
+}

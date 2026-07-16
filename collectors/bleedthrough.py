@@ -62,6 +62,7 @@ ready. Standard-library only (socket + struct + the shared content_key scheme).
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import socket
@@ -458,6 +459,84 @@ def open_resolver_transport(*, clean_answers: dict = None,
     return _transport
 
 
+# ── target-list curation (build the per-province list ONCE, off the probe path) ────────
+
+def is_probably_dark(ip: str, *, exchange, control_domain: str = "example.com") -> bool:
+    """Curation heuristic: does this IP look like unused/dark space? A benign, UNcensored
+    control query to a dark IP draws no answer — nothing is listening, and the GFW does not
+    inject for an uncensored domain. Any answer means a host is there, so we EXCLUDE it: the
+    point of dark targets is to keep active probing off live services. Firewalled silent IPs
+    also read as dark, which is fine — probing them harms no host."""
+    return not exchange(control_domain, ip)
+
+
+def curate_dark_ips(candidates: list, *, exchange, control_domain: str = "example.com",
+                    province: str = "CN", asn: str = "") -> list:
+    """Keep only candidates that look dark → TargetVantages for the direct transport."""
+    return [TargetVantage(ip, province, asn) for ip in candidates
+            if is_probably_dark(ip, exchange=exchange, control_domain=control_domain)]
+
+
+def curate_resolvers(candidates: list, *, exchange, control_domain: str = "example.com",
+                     clean_answers: dict = None, province: str = "CN", asn: str = "") -> list:
+    """Keep only candidates that behave as live open resolvers → TargetVantages for the
+    open-resolver transport. Run at list-build time so per-probe traffic stays minimal."""
+    return [TargetVantage(ip, province, asn) for ip in candidates
+            if is_live_resolver(ip, exchange=exchange, control_domain=control_domain,
+                                clean_answers=clean_answers)]
+
+
+def load_targets(path: str) -> dict:
+    """Load a per-province target file into {probe, dark, resolver}. Each target carries a
+    `kind` ('dark' | 'resolver', default 'dark') routing it to the right transport. The file
+    is expected to be a CURATED product of curate_dark_ips / curate_resolvers, not raw guesses."""
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+    pd = d.get("probe", {})
+    probe = InjectorProbe(domain=pd.get("domain", ""), qtype=int(pd.get("qtype", 1)),
+                          ddti=pd.get("ddti", ""))
+    dark, resolver = [], []
+    for t in d.get("targets", []):
+        tv = TargetVantage(t["ip"], t.get("province", "CN"), t.get("asn", ""))
+        (resolver if t.get("kind") == "resolver" else dark).append(tv)
+    return {"probe": probe, "dark": tuple(dark), "resolver": tuple(resolver),
+            "clean_answers": d.get("clean_answers")}
+
+
+# ── persistence: disk-backed fleet baseline (rotation/capacity across scheduled runs) ──
+
+class JsonFleetStore:
+    """Disk baseline of the last fingerprint per vantage, sharded by a hash of the tag.
+    Mirrors undertext.JsonBaselineStore's minimal-write, atomic-replace discipline; stores
+    only the baseline triple (pool_hash / cycle_signature / process_count / observed_at)."""
+
+    def __init__(self, root: str):
+        self.root = root
+        os.makedirs(root, exist_ok=True)
+
+    def _path(self, tag: str) -> str:
+        h = content_key(tag)   # filesystem-safe, collision-resistant name from the vantage tag
+        return os.path.join(self.root, h[:2], h + ".json")
+
+    def get(self, tag: str):
+        p = self._path(tag)
+        if not os.path.exists(p):
+            return None
+        try:
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
+
+    def put(self, tag: str, base: dict) -> None:
+        p = self._path(tag)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        tmp = p + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(base, f)
+        os.replace(tmp, p)   # atomic
+
+
 # ── governance-gated prober ────────────────────────────────────────────────────────────
 
 
@@ -530,6 +609,26 @@ def to_signal(events: list, fingerprints: list) -> dict:
                     "severity": e.severity()} for e in events],
         "observed_at": _aware(time.time()).isoformat(),
     }
+
+
+def run_round(probe: InjectorProbe, targets: list, *, transport, store=None,
+              kill_switch=None, rate_ceiling=None, burst: int = 24) -> dict:
+    """One measurement round: probe every target once, fingerprint each, then fold the
+    results two ways — longitudinally (pool rotation / capacity / silence, via the baseline
+    store) and cross-sectionally (regional divergence). Returns the fingerprints, the
+    apparatus events, the emitted signal card, and DDTI observations. This is the top-level
+    entrypoint a deployment-controlled prober calls; it never touches disk or the network
+    itself (transport + store are injected), so it is fully offline-testable."""
+    prober = InjectionProbe(transport=transport, kill_switch=kill_switch,
+                            rate_ceiling=rate_ceiling, burst=burst)
+    fingerprints = [prober.measure(probe, t) for t in targets]
+    events = []
+    if store is not None:
+        events.extend(e for e in (store.observe(fp) for fp in fingerprints) if e)
+    events.extend(regional_divergence(fingerprints))
+    return {"fingerprints": fingerprints, "events": events,
+            "signal": to_signal(events, fingerprints),
+            "observations": [event_to_observation(e) for e in events]}
 
 
 def _aware(epoch: float):

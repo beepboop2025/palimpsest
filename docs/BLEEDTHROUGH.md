@@ -125,8 +125,26 @@ apparatus events) for the site.
 ## 9. Status
 
 Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedthrough.py`,
-24 tests). Shipped: legs 1 & 3 (fleet enumeration + regional divergence) over stateless UDP
-DNS, **both transports** (direct + open-resolver fallback), forgery classification, and the
-DDTI/signal adapters. Next: wire a curated dark-IP + open-resolver target list per province
-(using `is_live_resolver` for curation), and schedule the signal into the site's 6-hour
-refresh alongside `ooni-gfw`.
+31 tests). Shipped:
+
+- Legs 1 & 3 (fleet enumeration + regional divergence) over stateless UDP DNS.
+- **Both transports** — direct (fleet size) and open-resolver fallback (pool/regional).
+- **Curation helpers** — `curate_dark_ips` / `curate_resolvers` / `is_probably_dark`, so the
+  target list is a validated product, not raw guesses; run once, off the probe path.
+- **`run_round`** — the deployment entrypoint: probe → fingerprint → longitudinal events
+  (via a disk `JsonFleetStore`) + regional divergence → signal card + DDTI observations.
+- **Runner** `scripts/bleedthrough_pull.py` — writes `readings/bleedthrough-latest.json`.
+- **Example target file** `config/bleedthrough_targets.example.json` (RFC 5737 placeholders).
+
+### Scheduling — NOT from CI (important correction)
+
+Unlike the passive signals, this one *actively probes*, so it does **not** run from GitHub
+Actions (shared CI IPs get burned and there is no rotation there). The runner is built to
+execute from a **deployment-controlled, rotating prober outside China**, and is triple-gated:
+`BLEEDTHROUGH_LIVE` must be set, the kill switch must be released, and the target file must be
+a curated list (it refuses the shipped placeholder). If nothing injects in a round it abstains
+rather than publish a hollow board.
+
+Next: curate a real per-province target list (dark IPs + live open resolvers) on a controlled
+prober, then run `scripts.bleedthrough_pull` on a rotation-aware schedule there and feed the
+resulting reading into the site.

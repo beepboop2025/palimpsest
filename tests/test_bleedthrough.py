@@ -10,6 +10,8 @@ test_undertext.
 
 import pytest
 
+import json
+
 from collectors.bleedthrough import (
     CAPACITY_SHIFT,
     INJECTOR_SILENT,
@@ -19,17 +21,23 @@ from collectors.bleedthrough import (
     FleetBaselineStore,
     InjectionProbe,
     InjectorProbe,
+    JsonFleetStore,
     RawInjection,
     TargetVantage,
     build_query,
     classify_resolver_answers,
+    curate_dark_ips,
+    curate_resolvers,
     event_to_observation,
     fingerprint_injector,
     is_live_resolver,
+    is_probably_dark,
+    load_targets,
     looks_injected,
     open_resolver_transport,
     parse_response,
     regional_divergence,
+    run_round,
     to_signal,
 )
 from core.governance import KillSwitch, RateCeiling
@@ -276,3 +284,85 @@ def test_open_resolver_path_surfaces_regional_divergence():
     fps.append(InjectionProbe(transport=tx_hn, burst=3).measure(q, TargetVantage("101.0.0.1", "CN-HA")))
     events = regional_divergence(fps)
     assert len(events) == 1 and events[0].kind == REGIONAL_FIREWALL and "CN-HA" in events[0].detail
+
+
+# ── curation (build the target list once, off the probe path) ──────────────────────────
+
+def test_is_probably_dark():
+    # a dark IP answers nothing; a live resolver answers the control domain
+    live = _resolver_exchange({"9.9.9.9": {"example.com": ["93.184.216.34"]}})
+    assert is_probably_dark("2.2.2.2", exchange=live) is True     # not in table -> no answer
+    assert is_probably_dark("9.9.9.9", exchange=live) is False    # something is listening
+
+
+def test_curate_dark_ips_keeps_only_silent():
+    ex = _resolver_exchange({"9.9.9.9": {"example.com": ["93.184.216.34"]}})  # 9.9.9.9 is live
+    kept = curate_dark_ips(["2.2.2.2", "9.9.9.9", "3.3.3.3"], exchange=ex, province="CN-SH")
+    assert [t.ip for t in kept] == ["2.2.2.2", "3.3.3.3"]
+    assert all(t.province == "CN-SH" for t in kept)
+
+
+def test_curate_resolvers_keeps_only_live():
+    table = {"1.1.1.1": {"example.com": ["93.184.216.34"]}, "2.2.2.2": {}}
+    kept = curate_resolvers(["1.1.1.1", "2.2.2.2"], exchange=_resolver_exchange(table),
+                            province="CN-GD")
+    assert [t.ip for t in kept] == ["1.1.1.1"]
+
+
+# ── target-file loader ─────────────────────────────────────────────────────────────────
+
+def test_load_targets_splits_by_kind(tmp_path):
+    p = tmp_path / "targets.json"
+    p.write_text(json.dumps({
+        "probe": {"domain": "torproject.org", "ddti": "CIRCUMVENTION"},
+        "clean_answers": {"torproject.org": ["1.2.3.4"]},
+        "targets": [
+            {"ip": "10.0.0.1", "province": "CN-SH", "kind": "dark"},
+            {"ip": "10.0.0.2", "province": "CN-GD", "kind": "resolver"},
+            {"ip": "10.0.0.3", "province": "CN-BJ"},  # default kind = dark
+        ],
+    }))
+    conf = load_targets(str(p))
+    assert conf["probe"].domain == "torproject.org"
+    assert [t.ip for t in conf["dark"]] == ["10.0.0.1", "10.0.0.3"]
+    assert [t.ip for t in conf["resolver"]] == ["10.0.0.2"]
+    assert conf["clean_answers"] == {"torproject.org": ["1.2.3.4"]}
+
+
+# ── disk baseline store ────────────────────────────────────────────────────────────────
+
+def test_json_fleet_store_roundtrips_and_persists_rotation(tmp_path):
+    store = FleetBaselineStore(store=JsonFleetStore(str(tmp_path)))
+    tv = TargetVantage("202.0.0.1", "CN-SH")
+    q = InjectorProbe("x.org")
+    store.observe(InjectionProbe(transport=_fleet(["4.36.66.178", "8.7.198.45"]), burst=6).measure(q, tv))
+    # a fresh FleetBaselineStore over the SAME disk dir still remembers the baseline
+    store2 = FleetBaselineStore(store=JsonFleetStore(str(tmp_path)))
+    ev = store2.observe(InjectionProbe(transport=_fleet(["93.46.8.89", "2.1.1.2"]), burst=6).measure(q, tv))
+    assert ev is not None and ev.kind == POOL_ROTATION
+
+
+# ── round runner (the deployment entrypoint) ───────────────────────────────────────────
+
+def test_run_round_emits_signal_events_and_observations():
+    q = InjectorProbe("torproject.org", ddti="CIRCUMVENTION")
+    targets = [TargetVantage(f"20.0.0.{i}", "CN") for i in range(3)]
+    targets.append(TargetVantage("101.0.0.1", "CN-HA"))
+    # national trio share a pool; the Henan target diverges -> a regional event
+    def transport(domain, ip):
+        pool = ["1.2.3.4", "5.6.7.8"] if ip == "101.0.0.1" else ["8.7.198.45", "2.1.1.2"]
+        return [RawInjection(pool[0]), RawInjection(pool[1])]
+    out = run_round(q, targets, transport=transport, store=FleetBaselineStore(), burst=4)
+    assert out["signal"]["vantages_injecting"] == 4
+    assert any(e.kind == REGIONAL_FIREWALL for e in out["events"])
+    assert out["observations"] and out["observations"][0]["source"].startswith("bleedthrough:")
+
+
+def test_run_round_honours_kill_switch(tmp_path):
+    from core.governance import KillSwitch
+    ks = KillSwitch(path=str(tmp_path / "halt"))
+    ks.engage("test")
+    import pytest
+    with pytest.raises(RuntimeError):
+        run_round(InjectorProbe("x.org"), [TargetVantage("20.0.0.1")],
+                  transport=_fleet(["8.7.198.45"]), kill_switch=ks, burst=2)
