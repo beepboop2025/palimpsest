@@ -52,6 +52,27 @@ degrading its own function.
 The **stateless UDP DNS** legs (1 and 3) are the default, always-on core. Legs 2 and 4 need
 raw sockets / stateful probes and are governance-gated, dark-IP-only add-ons.
 
+### Two transports (robustness)
+
+The channel that carries these emissions matters, because one of them is decaying:
+
+- **Direct transport** (`_udp_transport`) — probe a dark IP; the on-path GFW injects a
+  forgery back at our *inbound* packet. This is the fleet-size instrument (per-query
+  multiplicity → process count), but it relies on inbound injection, which has been degrading
+  since Sept 2024 (inbound stopped triggering except Beijing/Guangzhou; QUIC-SNI work).
+- **Open-resolver fallback** (`open_resolver_transport`) — use an in-China open resolver as
+  the involuntary vantage (Satellite/Iris-style). The resolver's *outbound* recursion for a
+  censored domain crosses the GFW, gets injected, and the forged answer returns to us. That
+  outbound channel is the long-standing robust one, so it **survives the inbound decay**. The
+  trade-off is honest: a resolver returns one cached answer, so fleet-size is weak on this
+  path — use it for pool / rotation / regional signal, keep the direct transport for fleet
+  size. Forgery classification here compares each answer against the known GFW pool and, when
+  available, a trusted control resolver's clean answers (`classify_resolver_answers`); live
+  resolvers are curated up front with `is_live_resolver` so the rate ceiling stays honest.
+
+Both transports obey one contract: return **only** answers they classify as GFW injections.
+Classification is channel-specific, so it lives in the transport, not the prober.
+
 ## 5. The observation tensor
 
 ```
@@ -92,7 +113,9 @@ apparatus events) for the site.
 ## 8. Honest limits
 
 1. **The bidirectional channel is degrading** — inbound triggering got flaky in late 2024
-   (QUIC-SNI work). Build the open-resolver (Satellite-style) fallback from day one.
+   (QUIC-SNI work). The open-resolver (Satellite-style) fallback is built for exactly this;
+   it rides outbound recursion, so the pool/rotation/regional signal keeps working even as
+   the direct fleet-size channel decays.
 2. **Active probing of a hostile state system** — within accepted research norms *only* on
    the stateless DNS path, dark IPs, hard rate caps. The Wallbleed NDSS committee flagged
    ethics as contested; that is the boundary, and BLEEDTHROUGH stays well inside it.
@@ -102,7 +125,8 @@ apparatus events) for the site.
 ## 9. Status
 
 Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedthrough.py`,
-18 tests). Legs 1 & 3 (fleet enumeration + regional divergence) over stateless UDP DNS are
-the shipped core. Next: wire a curated dark-IP target list per province, add the
-open-resolver fallback transport, and schedule the signal into the site's 6-hour refresh
-alongside `ooni-gfw`.
+24 tests). Shipped: legs 1 & 3 (fleet enumeration + regional divergence) over stateless UDP
+DNS, **both transports** (direct + open-resolver fallback), forgery classification, and the
+DDTI/signal adapters. Next: wire a curated dark-IP + open-resolver target list per province
+(using `is_live_resolver` for curation), and schedule the signal into the site's 6-hour
+refresh alongside `ooni-gfw`.

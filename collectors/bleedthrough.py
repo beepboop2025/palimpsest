@@ -38,6 +38,15 @@ Four involuntary emissions, all from stateless UDP probes, reconstruct the machi
     work, Zohaib et al. '25, caught the GFW changing inbound behaviour on a *specific date*).
     Left as a governance-gated, dark-IP-only leg; the stateless DNS core is the default.
 
+TWO TRANSPORTS (robustness). The DIRECT transport probes a dark IP and relies on the GFW
+injecting toward our *inbound* packet — a channel degrading since Sept 2024 (inbound stopped
+triggering except Beijing/Guangzhou). The OPEN-RESOLVER fallback (`open_resolver_transport`)
+instead rides an in-China open resolver's *outbound* recursion: the resolver's query for a
+censored domain crosses the GFW, gets injected, and the forged answer comes back to us. That
+outbound channel is the long-standing robust one, so it survives the inbound decay — at the
+cost of weak fleet-size on that path (a resolver returns one cached answer). Direct = fleet
+size; resolver = pool / rotation / regional signal that keeps working.
+
 SCOPE / SAFETY (the analytical-OSINT line, held). This sends benign UDP DNS A-queries — the
 same packet a normal resolver sends — and *reads* the response the GFW injects. NO
 exploitation: no Wallbleed memory-disclosure attempt (it is patched, and we would not),
@@ -324,21 +333,26 @@ def regional_divergence(fingerprints: list) -> list:
     return out
 
 
-# ── governance-gated probe (injectable transport; real UDP sender by default) ──────────
+# ── transports (each classifies its own channel; measure trusts what it returns) ───────
+# Contract: a transport is a callable (domain, target_ip) -> list[RawInjection] that returns
+# ONLY answers it classifies as GFW injections. Classification is channel-specific — only
+# the transport knows whether target_ip is a dark IP (direct injection) or an open resolver
+# (outbound-recursion injection) — so it lives here, not in the prober.
 
-def _udp_transport(domain: str, target_ip: str, *, port: int = 53, wait: float = 1.2,
-                   txid: int | None = None) -> list:
-    """Fire one UDP DNS A-query at target_ip and collect EVERY datagram that comes back
-    within `wait` seconds — the GFW may inject several forgeries from parallel injectors,
-    and that multiplicity is signal. Stdlib socket only; proxy/rotation is applied by the
-    deployment at the network layer (SOCKS via a wrapper), not here."""
+def _dns_exchange(domain: str, ip: str, *, port: int = 53, wait: float = 1.2,
+                  txid: int | None = None) -> list:
+    """Fire one UDP DNS A-query at `ip` and collect the A-records from EVERY datagram that
+    comes back within `wait` seconds (the GFW may inject several forgeries from parallel
+    injectors, and that multiplicity is signal). Returns raw answer dicts; the caller decides
+    what counts as a forgery. Stdlib socket only; proxy/rotation is applied by the deployment
+    at the network layer (SOCKS via a wrapper), not here."""
     tid = txid if txid is not None else struct.unpack(">H", os.urandom(2))[0]
     query = build_query(domain, tid, qtype=1)
     out = []
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         t0 = time.monotonic()
-        s.sendto(query, (target_ip, port))
+        s.sendto(query, (ip, port))
         deadline = t0 + wait
         while True:
             remaining = deadline - time.monotonic()
@@ -347,18 +361,104 @@ def _udp_transport(domain: str, target_ip: str, *, port: int = 53, wait: float =
             s.settimeout(remaining)
             try:
                 data, addr = s.recvfrom(4096)
-            except socket.timeout:
-                break
-            except OSError:
+            except (socket.timeout, OSError):
                 break
             rtt = (time.monotonic() - t0) * 1000.0
             for a in parse_response(data).get("answers", []):
                 if a.get("ip"):
-                    out.append(RawInjection(forged_ip=a["ip"], rr_ttl=int(a.get("ttl") or 0),
-                                            rtt_ms=round(rtt, 2), from_addr=addr[0]))
+                    out.append({"ip": a["ip"], "ttl": int(a.get("ttl") or 0),
+                                "rtt_ms": round(rtt, 2), "from_addr": addr[0]})
     finally:
         s.close()
     return out
+
+
+def _to_injections(answers: list) -> list:
+    return [RawInjection(a["ip"], rr_ttl=a.get("ttl", 0), rtt_ms=a.get("rtt_ms", 0.0),
+                         from_addr=a.get("from_addr", "")) for a in answers if a.get("ip")]
+
+
+def _udp_transport(domain: str, target_ip: str, *, wait: float = 1.2) -> list:
+    """Direct-injection transport: probe a DARK IP inside China; the on-path GFW injects a
+    forgery back at us. A dark IP has no real host, so any answer is a forgery — but we still
+    apply looks_injected() as a guard against a target that has been reassigned to a live
+    host, in which case a lone genuine answer is not counted."""
+    injs = _to_injections(_dns_exchange(domain, target_ip, wait=wait))
+    return injs if looks_injected(injs) else []
+
+
+# ── open-resolver fallback transport (Satellite/Iris-style; the robust channel) ────────
+
+def is_live_resolver(resolver_ip: str, *, exchange, control_domain: str = "example.com",
+                     clean_answers: dict = None, min_answers: int = 1) -> bool:
+    """CURATION-time check (not per-probe): does this IP behave as an open resolver? Query a
+    benign, uncensored control domain; a live resolver returns >= min_answers plausible A
+    records. When clean_answers[control_domain] is supplied, require overlap with the
+    legitimate set — this rejects an IP that only ever *injects* and never truly resolves.
+    Run this while building the per-province target list so the rate ceiling stays honest;
+    doing it per probe would double outbound traffic and bypass the token bucket."""
+    ips = {a["ip"] for a in exchange(control_domain, resolver_ip) if a.get("ip")}
+    if len(ips) < min_answers:
+        return False
+    if clean_answers is not None:
+        legit = clean_answers.get(control_domain)
+        if legit is not None and not (ips & set(legit)):
+            return False
+    return True
+
+
+def classify_resolver_answers(answers: list, domain: str, *, clean_answers: dict = None,
+                              known_forged: frozenset = KNOWN_FORGED_IPS) -> list:
+    """Return a RawInjection for each answer classed as a GFW injection. Unlike the dark-IP
+    path, a single resolver answer is not self-evidently forged, so we classify against
+    (a) the known GFW forgery pool and (b) — when clean_answers[domain] is known from a
+    trusted control resolver — any IP no clean resolver ever returns for this domain. Without
+    a clean baseline we fall back to the known-pool test only (conservative: an unrecognised
+    IP is treated as a genuine resolution, not a forgery)."""
+    legit = None if clean_answers is None else set(clean_answers.get(domain, ()))
+    out = []
+    for a in answers:
+        ip = a.get("ip")
+        if not ip:
+            continue
+        if ip in known_forged or (legit is not None and ip not in legit):
+            out.append(RawInjection(ip, rr_ttl=a.get("ttl", 0), rtt_ms=a.get("rtt_ms", 0.0),
+                                    from_addr=a.get("from_addr", "")))
+    return out
+
+
+def open_resolver_transport(*, clean_answers: dict = None,
+                            known_forged: frozenset = KNOWN_FORGED_IPS,
+                            exchange=None, wait: float = 1.2):
+    """Build a transport that uses an IN-CHINA OPEN RESOLVER as the involuntary vantage
+    (Satellite/Iris-style), for use as `InjectionProbe(transport=open_resolver_transport(...))`.
+
+    Why it exists — the robustness argument. The direct transport relies on the GFW injecting
+    toward our *inbound* probe, a channel that has been degrading since Sept 2024 (inbound
+    stopped triggering except Beijing/Guangzhou; QUIC-SNI work, Zohaib et al. '25). This path
+    instead rides the resolver's *outbound* recursion: when a Chinese open resolver recurses
+    for a censored domain, its query to the authoritative NS crosses the GFW, the GFW injects,
+    and the resolver hands us the forged answer. Outbound bidirectional injection is the
+    long-standing, robust channel, so this survives the inbound degradation.
+
+    Signal trade-off (honest): a resolver returns one cached answer, so per-probe multiplicity
+    is ~1 and this path gives WEAK fleet-size (process count). Use it for pool / rotation /
+    regional-divergence signal; the direct transport stays the fleet-size instrument. Silence
+    on this path is also ambiguous (dead resolver vs. silent injector), so INJECTOR_SILENT is
+    less meaningful here — curate live resolvers up front with is_live_resolver().
+
+    `exchange` is the injectable seam ((domain, ip) -> [answer dict]); the default uses the
+    real stdlib socket, so tests and the demo pass a canned exchange and never hit the network.
+    """
+    ex = exchange or (lambda d, ip: _dns_exchange(d, ip, wait=wait))
+
+    def _transport(domain: str, resolver_ip: str) -> list:
+        return classify_resolver_answers(ex(domain, resolver_ip), domain,
+                                         clean_answers=clean_answers, known_forged=known_forged)
+    return _transport
+
+
+# ── governance-gated prober ────────────────────────────────────────────────────────────
 
 
 class InjectionProbe:
@@ -388,7 +488,7 @@ class InjectionProbe:
             if self._rate is not None:
                 self._rate.acquire()           # token-bucket politeness
             injs = self._transport(probe.domain, target.ip)
-            if looks_injected(injs):
+            if injs:  # the transport already classified these as injections (see contract)
                 sequence.extend(injs)
                 max_multiplicity = max(max_multiplicity, len(injs))
         # per-probe answer count is the direct process-count floor (each injector fires once)
@@ -473,3 +573,11 @@ if __name__ == "__main__":  # offline demo: a canned two-injector fleet, then a 
     for e in regional_divergence(nat + [henan]):
         print(f"regional: {e.kind} — {e.detail} ({e.severity()})")
     print("→ DDTI observation:", event_to_observation(ev)["title"])
+
+    # open-resolver fallback — same fingerprint via a resolver's outbound recursion (the
+    # channel that survives inbound-injection decay). Canned exchange, no network.
+    exchange = lambda dom, rip: [{"ip": ip, "ttl": 300}
+                                 for ip in {"202.0.0.10": ["8.7.198.45", "2.1.1.2"]}.get(rip, [])]
+    res_probe = InjectionProbe(transport=open_resolver_transport(exchange=exchange), burst=6)
+    rfp = res_probe.measure(q, TargetVantage("202.0.0.10", "CN"))
+    print(f"resolver: pool={rfp.pool} (fleet-size weak on this path, by design)")

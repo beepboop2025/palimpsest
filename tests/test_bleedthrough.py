@@ -22,9 +22,12 @@ from collectors.bleedthrough import (
     RawInjection,
     TargetVantage,
     build_query,
+    classify_resolver_answers,
     event_to_observation,
     fingerprint_injector,
+    is_live_resolver,
     looks_injected,
+    open_resolver_transport,
     parse_response,
     regional_divergence,
     to_signal,
@@ -207,3 +210,69 @@ def test_to_signal_summarises_the_round():
     assert sig["vantages_injecting"] == 3
     assert sig["distinct_pools"] == 1
     assert sig["max_process_count"] == 2
+
+
+# ── open-resolver fallback transport ───────────────────────────────────────────────────
+
+def _resolver_exchange(table):
+    """A canned DNS exchange ((domain, resolver_ip) -> [answer dicts]) driven by a nested
+    dict table[resolver_ip][domain] = [ips], so tests never touch the network."""
+    def _ex(domain, ip):
+        ips = table.get(ip, {}).get(domain, [])
+        return [{"ip": x, "ttl": 300} for x in ips]
+    return _ex
+
+
+def test_classify_uses_known_forged_pool_without_a_baseline():
+    ans = [{"ip": "8.7.198.45"}, {"ip": "140.82.121.3"}]  # one bogus, one real-looking
+    injs = classify_resolver_answers(ans, "torproject.org")
+    assert [i.forged_ip for i in injs] == ["8.7.198.45"]   # unknown IP treated as genuine
+
+
+def test_classify_uses_clean_baseline_when_present():
+    ans = [{"ip": "203.0.113.9"}, {"ip": "198.51.100.7"}]
+    clean = {"torproject.org": {"198.51.100.7"}}            # only this is legitimate
+    injs = classify_resolver_answers(ans, "torproject.org", clean_answers=clean)
+    assert [i.forged_ip for i in injs] == ["203.0.113.9"]   # the non-clean IP is the forgery
+
+
+def test_is_live_resolver_accepts_real_and_rejects_dead():
+    table = {"1.1.1.1": {"example.com": ["93.184.216.34"]}, "2.2.2.2": {}}
+    ex = _resolver_exchange(table)
+    assert is_live_resolver("1.1.1.1", exchange=ex) is True
+    assert is_live_resolver("2.2.2.2", exchange=ex) is False   # returns nothing
+
+
+def test_is_live_resolver_rejects_inject_only_ip_with_baseline():
+    # an IP that answers the control domain only with a forged/non-clean IP is not a resolver
+    table = {"3.3.3.3": {"example.com": ["8.7.198.45"]}}
+    ex = _resolver_exchange(table)
+    clean = {"example.com": {"93.184.216.34"}}
+    assert is_live_resolver("3.3.3.3", exchange=ex, clean_answers=clean) is False
+
+
+def test_open_resolver_transport_end_to_end_via_prober():
+    # three in-China resolvers all inject the same forged pool for the censored domain
+    table = {ip: {"torproject.org": ["8.7.198.45", "2.1.1.2"]}
+             for ip in ("101.1.1.1", "101.1.1.2", "101.1.1.3")}
+    transport = open_resolver_transport(exchange=_resolver_exchange(table))
+    q = InjectorProbe("torproject.org", ddti="CIRCUMVENTION")
+    fps = [InjectionProbe(transport=transport, burst=4).measure(q, TargetVantage(rip, "CN"))
+           for rip in table]
+    assert all(fp.pool == ("2.1.1.2", "8.7.198.45") for fp in fps)
+    assert to_signal([], fps)["distinct_pools"] == 1
+
+
+def test_open_resolver_path_surfaces_regional_divergence():
+    q = InjectorProbe("torproject.org")
+    national = {ip: {"torproject.org": ["8.7.198.45", "2.1.1.2"]}
+                for ip in ("20.0.0.1", "20.0.0.2", "20.0.0.3")}
+    henan = {"101.0.0.1": {"torproject.org": ["1.2.3.4", "5.6.7.8"]}}
+    clean = {"torproject.org": set()}   # nothing is legitimate → every answer is a forgery
+    tx_nat = open_resolver_transport(exchange=_resolver_exchange(national), clean_answers=clean)
+    tx_hn = open_resolver_transport(exchange=_resolver_exchange(henan), clean_answers=clean)
+    fps = [InjectionProbe(transport=tx_nat, burst=3).measure(q, TargetVantage(ip, "CN"))
+           for ip in national]
+    fps.append(InjectionProbe(transport=tx_hn, burst=3).measure(q, TargetVantage("101.0.0.1", "CN-HA")))
+    events = regional_divergence(fps)
+    assert len(events) == 1 and events[0].kind == REGIONAL_FIREWALL and "CN-HA" in events[0].detail
