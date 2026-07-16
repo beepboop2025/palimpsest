@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-16T08:37:13.832087+00:00",
+  "generated_at": "2026-07-16T14:27:57.537998+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -8,67 +8,67 @@
   "since": "2026-07-09",
   "until": "2026-07-17",
   "gfw_index": 59.5,
-  "n_measurements": 255084,
+  "n_measurements": 255741,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 149448,
-      "measurement_count": 253617,
-      "failure_count": 2073,
-      "anomaly_rate": 0.5941,
+      "anomaly_count": 149749,
+      "measurement_count": 254239,
+      "failure_count": 2085,
+      "anomaly_rate": 0.5939,
       "reading": "59% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 308,
-      "measurement_count": 317,
+      "anomaly_count": 315,
+      "measurement_count": 324,
       "failure_count": 0,
-      "anomaly_rate": 0.9716,
+      "anomaly_rate": 0.9722,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 303,
-      "measurement_count": 312,
+      "anomaly_count": 309,
+      "measurement_count": 318,
       "failure_count": 0,
-      "anomaly_rate": 0.9712,
+      "anomaly_rate": 0.9717,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 303,
-      "measurement_count": 313,
+      "anomaly_count": 309,
+      "measurement_count": 319,
       "failure_count": 1,
-      "anomaly_rate": 0.9712,
+      "anomaly_rate": 0.9717,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 237,
-      "measurement_count": 245,
+      "anomaly_count": 245,
+      "measurement_count": 253,
       "failure_count": 0,
-      "anomaly_rate": 0.9673,
+      "anomaly_rate": 0.9684,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 47,
-      "measurement_count": 280,
+      "anomaly_count": 49,
+      "measurement_count": 288,
       "failure_count": 0,
-      "anomaly_rate": 0.1679,
+      "anomaly_rate": 0.1701,
       "reading": "17% anomalous — some interference"
     },
     {
@@ -180,6 +180,12 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "foreignpolicy.com",
+      "anomaly_count": 28,
+      "measurement_count": 29,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "telegram.me",
       "anomaly_count": 28,
       "measurement_count": 28,
@@ -192,9 +198,9 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "foreignpolicy.com",
+      "domain": "dongtaiwang.com",
       "anomaly_count": 27,
-      "measurement_count": 28,
+      "measurement_count": 33,
       "anomaly_rate": 1.0
     },
     {
@@ -204,7 +210,7 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "dongtaiwang.com",
+      "domain": "duihua.org",
       "anomaly_count": 26,
       "measurement_count": 32,
       "anomaly_rate": 1.0
@@ -225,12 +231,6 @@
       "domain": "www.xvideos.com",
       "anomaly_count": 26,
       "measurement_count": 26,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "17.live",
-      "anomaly_count": 25,
-      "measurement_count": 30,
       "anomaly_rate": 1.0
     }
   ]
