@@ -487,6 +487,60 @@ def curate_resolvers(candidates: list, *, exchange, control_domain: str = "examp
                                 clean_answers=clean_answers)]
 
 
+def parse_announced_prefixes(payload: dict) -> list:
+    """Extract prefix strings from a RIPEstat `announced-prefixes` payload
+    (data.prefixes[].prefix). Returns [] on any shape mismatch, so a bad/empty response
+    for one ASN skips that ASN rather than crashing the build."""
+    try:
+        return [p["prefix"] for p in payload["data"]["prefixes"] if p.get("prefix")]
+    except (KeyError, TypeError):
+        return []
+
+
+def select_ipv4_prefixes(prefixes: list, *, rng, k: int, min_len: int = 16,
+                         max_len: int = 24) -> list:
+    """Keep routable IPv4 prefixes whose length is in [min_len, max_len] — dropping IPv6, huge
+    aggregates (too broad to sample meaningfully) and tiny blocks — then sample up to k of them.
+    Deterministic under the injected rng."""
+    ok = []
+    for c in prefixes:
+        try:
+            net = ipaddress.ip_network(c, strict=False)
+        except ValueError:
+            continue
+        if net.version == 4 and min_len <= net.prefixlen <= max_len:
+            ok.append(str(net))
+    ok = sorted(set(ok))
+    kk = min(k, len(ok))
+    return sorted(rng.sample(ok, kk)) if kk else []
+
+
+def build_prefix_config(asn_entries: list, *, fetch, rng, prefixes_per_asn: int = 6,
+                        probe: dict = None, control_domain: str = "example.com",
+                        clean_answers: dict = None, sample_per_prefix: int = 6,
+                        min_len: int = 16, max_len: int = 24) -> dict:
+    """Turn a seed ASN→province map into a real per-province PREFIX config (the schema
+    scripts.bleedthrough_curate consumes) by fetching each ASN's announced prefixes from a BGP
+    source and sampling a handful per ASN. `fetch(asn)->payload` is injected (default: RIPEstat
+    over urllib), so this is offline-testable and provider-swappable. The output has no
+    placeholder flag, so it is a real, curate-ready list."""
+    provinces = []
+    for e in asn_entries:
+        asn = e["asn"]
+        pref = select_ipv4_prefixes(parse_announced_prefixes(fetch(asn)), rng=rng,
+                                    k=prefixes_per_asn, min_len=min_len, max_len=max_len)
+        if pref:
+            provinces.append({"province": e.get("province", "CN"), "asn": asn,
+                              "provider": e.get("provider", ""), "prefixes": pref})
+    return {
+        "probe": probe or {"domain": "torproject.org", "qtype": 1, "ddti": "CIRCUMVENTION"},
+        "control_domain": control_domain,
+        "clean_answers": clean_answers or {"torproject.org": []},
+        "sample_per_prefix": sample_per_prefix,
+        "provinces": provinces,
+    }
+
+
 def sample_ips_from_prefix(cidr: str, n: int, *, rng) -> list:
     """Sample up to `n` distinct host IPs from a CIDR, skipping the network and broadcast
     addresses for real IPv4 blocks. `rng` (a random.Random) is injected so sampling is

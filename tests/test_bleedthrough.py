@@ -24,13 +24,16 @@ from collectors.bleedthrough import (
     JsonFleetStore,
     RawInjection,
     TargetVantage,
+    build_prefix_config,
     build_query,
     build_target_file,
     classify_candidates,
     classify_resolver_answers,
     curate_dark_ips,
     curate_resolvers,
+    parse_announced_prefixes,
     sample_ips_from_prefix,
+    select_ipv4_prefixes,
     event_to_observation,
     fingerprint_injector,
     is_live_resolver,
@@ -423,3 +426,35 @@ def test_build_target_file_round_trips_through_load_targets(tmp_path):
     loaded = load_targets(str(p))
     assert loaded["probe"].domain == "torproject.org"
     assert len(loaded["dark"]) == len(out["targets"]) and not loaded["resolver"]
+
+
+# ── prefix fetch from BGP (real per-province list, the last human-input blocker) ────────
+
+def test_parse_announced_prefixes_and_bad_shapes():
+    payload = {"data": {"prefixes": [{"prefix": "1.2.3.0/24"}, {"prefix": "2408::/32"}, {}]}}
+    assert parse_announced_prefixes(payload) == ["1.2.3.0/24", "2408::/32"]
+    assert parse_announced_prefixes({}) == []          # missing keys -> [], no raise
+    assert parse_announced_prefixes({"data": None}) == []
+
+
+def test_select_ipv4_prefixes_filters_v6_and_size():
+    import random
+    prefixes = ["203.0.113.0/24", "198.51.0.0/16", "2408:8406::/44", "10.0.0.0/30", "192.0.2.0/28"]
+    got = select_ipv4_prefixes(prefixes, rng=random.Random(1), k=10, min_len=16, max_len=24)
+    # IPv6 dropped; /30 (too small) and /28 (>max_len 24) dropped; /24 and /16 kept
+    assert set(got) == {"203.0.113.0/24", "198.51.0.0/16"}
+
+
+def test_build_prefix_config_is_real_and_curate_ready():
+    import random
+    # canned BGP fetcher: each ASN returns a mix of v4/v6; only routable v4 in-range survives
+    def fetch(asn):
+        return {"data": {"prefixes": [
+            {"prefix": f"203.0.113.0/24"}, {"prefix": "2408:8406::/44"},
+            {"prefix": "198.51.100.0/24"}]}}
+    entries = [{"asn": "AS4808", "province": "CN-BJ", "provider": "Unicom BJ"}]
+    conf = build_prefix_config(entries, fetch=fetch, rng=random.Random(2), prefixes_per_asn=6)
+    assert "_meta" not in conf                          # no placeholder flag -> curate accepts it
+    assert conf["provinces"][0]["province"] == "CN-BJ"
+    assert all(":" not in p for p in conf["provinces"][0]["prefixes"])   # IPv4 only
+    assert conf["probe"]["domain"] == "torproject.org"

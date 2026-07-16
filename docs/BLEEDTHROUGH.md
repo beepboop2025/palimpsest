@@ -158,15 +158,32 @@ execute from a **deployment-controlled, rotating prober outside China**, and is 
 a curated list (it refuses the shipped placeholder). If nothing injects in a round it abstains
 rather than publish a hollow board.
 
-Going live is now two commands on a controlled prober outside China (never CI):
+Going live is now **one script** on a controlled, rotating VPS outside China (never CI, never
+your home machine, never the Hetzner box — the script refuses the box):
 
 ```
-# 1. drop real per-province Chinese prefixes into config/bleedthrough_prefixes.json, then:
-BLEEDTHROUGH_LIVE=1 python -m scripts.bleedthrough_curate   # -> config/bleedthrough_targets.json
-# 2. probe + publish the reading (schedule this on a rotation-aware timer):
-BLEEDTHROUGH_LIVE=1 python -m scripts.bleedthrough_pull     # -> readings/bleedthrough-latest.json
+BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
+# cron, every 6h:  17 */6 * * *  cd /opt/palimpsest && BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
 ```
 
-The only human input left is supplying the real per-province prefix list (map Chinese ASNs to
-their announced CIDRs). Everything downstream — sampling, classification, probing, fingerprint,
-events, signal, and the site card — is automated.
+That runs three stages end to end:
+
+1. **`scripts.bleedthrough_fetch_prefixes`** — builds a REAL per-province prefix list by
+   pulling each Chinese ASN's announced prefixes from RIPEstat (public BGP data; contacts RIPE,
+   never China; safe anywhere and therefore *not* gated). Seed ASN→province map in
+   `config/bleedthrough_asns.json`.
+2. **`scripts.bleedthrough_curate`** — samples candidate IPs, classifies dark vs open-resolver
+   via benign control queries.
+3. **`scripts.bleedthrough_pull`** — probes the censored domain and writes the real reading.
+
+There is **no remaining human-input blocker** — the prefix list is auto-sourced from BGP. The
+only thing you supply is the prober host itself. Publish a round by committing
+`readings/bleedthrough-latest.json` (+ history); the site card renders it and the DEMO/pending
+states disappear.
+
+Province granularity is currently ASN-level (Beijing/Shanghai/Guangdong via province-specific
+ASNs; national backbones tagged `CN`). True per-province resolution for regional-firewall
+detection (e.g. Henan) needs IP-geolocation of the sampled prefixes — a documented next step.
+
+Until the first real round is published, the site card shows an honest **"awaiting first live
+round"** panel — no synthetic data on the live site.

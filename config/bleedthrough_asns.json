@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "purpose": "Seed map of real Chinese ISP ASNs -> province, for scripts.bleedthrough_fetch_prefixes. The fetcher pulls each ASN's announced prefixes from RIPEstat and samples a few per ASN to build config/bleedthrough_prefixes.json.",
+    "not_placeholder": "These are REAL, publicly-registered Chinese network ASNs. Fetching their announced prefixes from RIPE is benign public BGP data (no China contact), so this step is safe to run anywhere; only the later curate/pull steps probe China and stay prober-gated.",
+    "province_caveat": "Province tags are ASN-level (best-effort): province-specific ASNs (Beijing/Shanghai/Guangdong) give real provincial granularity; the national backbones (AS4134/AS4837/AS9808) are tagged CN. True per-province resolution for regional-firewall detection (e.g. Henan) needs IP-geolocation of sampled prefixes — a documented future refinement.",
+    "probe": "the censored domain probed to provoke injection; torproject.org is a long-standing GFW-blocked domain."
+  },
+  "probe": {"domain": "torproject.org", "qtype": 1, "ddti": "CIRCUMVENTION"},
+  "control_domain": "example.com",
+  "clean_answers": {"torproject.org": []},
+  "prefixes_per_asn": 6,
+  "sample_per_prefix": 6,
+  "min_prefix_len": 16,
+  "max_prefix_len": 24,
+  "asns": [
+    {"asn": "AS4808",  "province": "CN-BJ", "provider": "China Unicom Beijing"},
+    {"asn": "AS4812",  "province": "CN-SH", "provider": "China Telecom Shanghai"},
+    {"asn": "AS17623", "province": "CN-GD", "provider": "China Unicom Shenzhen"},
+    {"asn": "AS9808",  "province": "CN",    "provider": "China Mobile (national)"},
+    {"asn": "AS4134",  "province": "CN",    "provider": "China Telecom / Chinanet (national backbone)"},
+    {"asn": "AS4837",  "province": "CN",    "provider": "China Unicom / China169 (national backbone)"}
+  ]
+}
