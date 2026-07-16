@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "purpose": "BLEEDTHROUGH per-province PREFIX config: the Chinese CIDR blocks the curation step samples candidate IPs from. Feed to scripts.bleedthrough_curate, which classifies each sample into dark IPs (direct transport) and live open resolvers (fallback transport) and writes config/bleedthrough_targets.json.",
+    "placeholder": true,
+    "warning": "Every prefix below is an RFC 5737 documentation range and is NOT real. Replace `provinces` with real per-province Chinese prefixes (province code + ASN + one or more CIDRs) before curating. bleedthrough_curate refuses to run while placeholder=true.",
+    "how_to_get_prefixes": "Map Chinese ASNs (e.g. AS4134 China Telecom, AS4837 China Unicom, AS4808/AS4812) to their announced prefixes via a public BGP/RIR source, and tag each with the province it serves.",
+    "sample_per_prefix": "how many random host IPs to sample and classify from each CIDR.",
+    "control_domain": "a benign, UNcensored domain used only to test liveness/dark-space (never a censored probe)."
+  },
+  "probe": {
+    "domain": "torproject.org",
+    "qtype": 1,
+    "ddti": "CIRCUMVENTION"
+  },
+  "control_domain": "example.com",
+  "clean_answers": {
+    "torproject.org": []
+  },
+  "sample_per_prefix": 8,
+  "provinces": [
+    {"province": "CN-SH", "asn": "AS4812", "prefixes": ["192.0.2.0/24"]},
+    {"province": "CN-BJ", "asn": "AS4808", "prefixes": ["198.51.100.0/24"]},
+    {"province": "CN-GD", "asn": "AS4134", "prefixes": ["203.0.113.0/24"]}
+  ]
+}

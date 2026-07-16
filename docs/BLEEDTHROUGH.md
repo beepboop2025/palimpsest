@@ -131,6 +131,11 @@ Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedth
 - **Both transports** — direct (fleet size) and open-resolver fallback (pool/regional).
 - **Curation helpers** — `curate_dark_ips` / `curate_resolvers` / `is_probably_dark`, so the
   target list is a validated product, not raw guesses; run once, off the probe path.
+- **One-command curation** — `scripts/bleedthrough_curate.py` samples candidate IPs from a
+  per-province prefix config (`config/bleedthrough_prefixes.example.json`), classifies each
+  into dark IPs / live open resolvers via benign control-domain queries, and writes the
+  curated `config/bleedthrough_targets.json` the runner consumes. Same triple gate as the
+  runner; rate-bounded; rng-seedable for reproducibility.
 - **`run_round`** — the deployment entrypoint: probe → fingerprint → longitudinal events
   (via a disk `JsonFleetStore`) + regional divergence → signal card + DDTI observations.
 - **Runner** `scripts/bleedthrough_pull.py` — writes `readings/bleedthrough-latest.json`.
@@ -153,6 +158,15 @@ execute from a **deployment-controlled, rotating prober outside China**, and is 
 a curated list (it refuses the shipped placeholder). If nothing injects in a round it abstains
 rather than publish a hollow board.
 
-Next: curate a real per-province target list (dark IPs + live open resolvers) on a controlled
-prober, then run `scripts.bleedthrough_pull` on a rotation-aware schedule there and feed the
-resulting reading into the site.
+Going live is now two commands on a controlled prober outside China (never CI):
+
+```
+# 1. drop real per-province Chinese prefixes into config/bleedthrough_prefixes.json, then:
+BLEEDTHROUGH_LIVE=1 python -m scripts.bleedthrough_curate   # -> config/bleedthrough_targets.json
+# 2. probe + publish the reading (schedule this on a rotation-aware timer):
+BLEEDTHROUGH_LIVE=1 python -m scripts.bleedthrough_pull     # -> readings/bleedthrough-latest.json
+```
+
+The only human input left is supplying the real per-province prefix list (map Chinese ASNs to
+their announced CIDRs). Everything downstream — sampling, classification, probing, fingerprint,
+events, signal, and the site card — is automated.

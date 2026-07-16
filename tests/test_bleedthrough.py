@@ -25,9 +25,12 @@ from collectors.bleedthrough import (
     RawInjection,
     TargetVantage,
     build_query,
+    build_target_file,
+    classify_candidates,
     classify_resolver_answers,
     curate_dark_ips,
     curate_resolvers,
+    sample_ips_from_prefix,
     event_to_observation,
     fingerprint_injector,
     is_live_resolver,
@@ -366,3 +369,57 @@ def test_run_round_honours_kill_switch(tmp_path):
     with pytest.raises(RuntimeError):
         run_round(InjectorProbe("x.org"), [TargetVantage("20.0.0.1")],
                   transport=_fleet(["8.7.198.45"]), kill_switch=ks, burst=2)
+
+
+# ── target-list curation from prefixes (the one-command prober setup) ───────────────────
+
+def test_sample_ips_from_prefix_is_in_range_distinct_and_deterministic():
+    import random
+    ips1 = sample_ips_from_prefix("203.0.113.0/24", 5, rng=random.Random(7))
+    ips2 = sample_ips_from_prefix("203.0.113.0/24", 5, rng=random.Random(7))
+    assert ips1 == ips2                                  # deterministic under a seed
+    assert len(set(ips1)) == 5                           # distinct
+    assert all(ip.startswith("203.0.113.") for ip in ips1)
+    octets = [int(ip.split(".")[-1]) for ip in ips1]
+    assert all(1 <= o <= 254 for o in octets)           # skips .0 network and .255 broadcast
+
+
+def test_sample_caps_at_available_hosts():
+    import random
+    ips = sample_ips_from_prefix("10.0.0.0/30", 10, rng=random.Random(1))  # 2 usable hosts
+    assert len(ips) == 2
+
+
+def test_classify_candidates_splits_dark_resolver_and_drops_bad():
+    # 1.1.1.1 resolves cleanly (resolver); 2.2.2.2 silent (dark); 3.3.3.3 answers but not
+    # with a clean IP (dropped)
+    table = {"1.1.1.1": {"example.com": ["93.184.216.34"]},
+             "3.3.3.3": {"example.com": ["8.7.198.45"]}}
+    clean = {"example.com": {"93.184.216.34"}}
+    split = classify_candidates(["1.1.1.1", "2.2.2.2", "3.3.3.3"],
+                                exchange=_resolver_exchange(table), clean_answers=clean,
+                                province="CN-GD", asn="AS4134")
+    assert [t.ip for t in split["dark"]] == ["2.2.2.2"]
+    assert [t.ip for t in split["resolver"]] == ["1.1.1.1"]
+    assert all(t.province == "CN-GD" for t in split["dark"] + split["resolver"])
+
+
+def test_build_target_file_round_trips_through_load_targets(tmp_path):
+    import json as _json
+    import random
+    conf = {
+        "probe": {"domain": "torproject.org", "ddti": "CIRCUMVENTION"},
+        "control_domain": "example.com",
+        "clean_answers": {"torproject.org": []},
+        "sample_per_prefix": 4,
+        "provinces": [{"province": "CN-SH", "asn": "AS4812", "prefixes": ["203.0.113.0/24"]}],
+    }
+    # every sampled IP is silent -> all become dark targets
+    out = build_target_file(conf, exchange=_resolver_exchange({}), rng=random.Random(3))
+    assert out["targets"] and all(t["kind"] == "dark" for t in out["targets"])
+    # the produced file is exactly what load_targets consumes
+    p = tmp_path / "targets.json"
+    p.write_text(_json.dumps(out))
+    loaded = load_targets(str(p))
+    assert loaded["probe"].domain == "torproject.org"
+    assert len(loaded["dark"]) == len(out["targets"]) and not loaded["resolver"]

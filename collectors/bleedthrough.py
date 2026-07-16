@@ -62,6 +62,7 @@ ready. Standard-library only (socket + struct + the shared content_key scheme).
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import os
@@ -486,10 +487,59 @@ def curate_resolvers(candidates: list, *, exchange, control_domain: str = "examp
                                 clean_answers=clean_answers)]
 
 
+def sample_ips_from_prefix(cidr: str, n: int, *, rng) -> list:
+    """Sample up to `n` distinct host IPs from a CIDR, skipping the network and broadcast
+    addresses for real IPv4 blocks. `rng` (a random.Random) is injected so sampling is
+    deterministic under test and reproducible from a seed in production."""
+    net = ipaddress.ip_network(cidr, strict=False)
+    total = net.num_addresses
+    pool = range(total) if total <= 2 else range(1, total - 1)
+    k = min(n, len(pool))
+    return [str(net[i]) for i in sorted(rng.sample(pool, k))]
+
+
+def classify_candidates(candidates: list, *, exchange, control_domain: str = "example.com",
+                        clean_answers: dict = None, province: str = "CN", asn: str = "") -> dict:
+    """Split candidate IPs into {dark, resolver} TargetVantages using the tested predicates:
+    silent → dark (direct transport), live open resolver → resolver (fallback transport). A
+    candidate that answers but not as a usable resolver (e.g. no overlap with the clean
+    baseline) is dropped. Benign control-domain queries only — no censored probing here."""
+    dark, resolver = [], []
+    for ip in candidates:
+        if is_probably_dark(ip, exchange=exchange, control_domain=control_domain):
+            dark.append(TargetVantage(ip, province, asn))
+        elif is_live_resolver(ip, exchange=exchange, control_domain=control_domain,
+                              clean_answers=clean_answers):
+            resolver.append(TargetVantage(ip, province, asn))
+    return {"dark": dark, "resolver": resolver}
+
+
+def build_target_file(conf: dict, *, exchange, rng, clean_answers: dict = None) -> dict:
+    """Turn a per-province PREFIX config into a curated TARGET file (the schema load_targets
+    consumes). For each province, sample IPs from its prefixes, classify them, and emit
+    dark/resolver targets. Pure given the injected `exchange` and `rng`, so it is fully
+    offline-testable; the CLI wraps it with the real DNS exchange behind the rate ceiling."""
+    n = int(conf.get("sample_per_prefix", 4))
+    ctrl = conf.get("control_domain", "example.com")
+    ca = clean_answers if clean_answers is not None else conf.get("clean_answers")
+    targets = []
+    for prov in conf.get("provinces", []):
+        province, asn = prov.get("province", "CN"), prov.get("asn", "")
+        cands = []
+        for cidr in prov.get("prefixes", []):
+            cands.extend(sample_ips_from_prefix(cidr, n, rng=rng))
+        split = classify_candidates(cands, exchange=exchange, control_domain=ctrl,
+                                    clean_answers=ca, province=province, asn=asn)
+        for kind in ("dark", "resolver"):
+            for tv in split[kind]:
+                targets.append({"ip": tv.ip, "province": tv.province, "asn": tv.asn, "kind": kind})
+    return {"probe": conf.get("probe", {}), "clean_answers": ca, "targets": targets}
+
+
 def load_targets(path: str) -> dict:
     """Load a per-province target file into {probe, dark, resolver}. Each target carries a
     `kind` ('dark' | 'resolver', default 'dark') routing it to the right transport. The file
-    is expected to be a CURATED product of curate_dark_ips / curate_resolvers, not raw guesses."""
+    is expected to be a CURATED product of build_target_file / curate_*, not raw guesses."""
     with open(path, encoding="utf-8") as f:
         d = json.load(f)
     pd = d.get("probe", {})
