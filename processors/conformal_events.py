@@ -162,6 +162,17 @@ SIGNALS = {
         lambda r: r.get("suppression_rate_pct"),
         "cross-lab model suppression rate",
     ),
+    "bleedthrough_pools": (
+        "bleedthrough-history.jsonl",
+        # ignore demo rows so a placeholder demo can't seed a false baseline
+        lambda r: None if r.get("demo") else r.get("distinct_pools"),
+        "distinct GFW injector pools — a jump signals regional fragmentation",
+    ),
+    "bleedthrough_capacity": (
+        "bleedthrough-history.jsonl",
+        lambda r: None if r.get("demo") else r.get("max_process_count"),
+        "peak parallel injector processes — fleet capacity on a border path",
+    ),
 }
 
 

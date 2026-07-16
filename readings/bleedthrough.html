@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bleedthrough — the GFW injector fleet · Palimpsest</title>
+<meta name="description" content="Apparatus-layer tomography of the Great Firewall: the size, forged-IP pools, regional divergence and operational events of China's DNS-injector fleet — reconstructed from outside by making the censor's own injectors answer benign probes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#b07cff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
+  a{color:var(--cy);text-decoration:none}
+  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px}
+  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
+  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
+  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
+  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
+  .wrap{max-width:920px;margin:0 auto;padding:clamp(18px,5vw,40px)}
+  h1{font-size:clamp(20px,4vw,27px);margin:.2em 0 .1em;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+  .demo{display:none;font-size:11px;letter-spacing:.08em;color:var(--amb);border:1px solid var(--amb);border-radius:6px;padding:8px 12px;margin-bottom:18px;background:rgba(244,183,64,.06)}
+  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px}
+  .idx{font-size:66px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .idx small{font-size:20px;color:var(--dim);font-weight:400}
+  .band{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;margin-top:8px}
+  .heroTxt{flex:1;min-width:220px}
+  .heroTxt .t{font-size:13px;color:var(--mut)}
+  .heroTxt .m{font-size:12px;color:var(--dim);margin-top:8px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+  @media(max-width:680px){.stats{grid-template-columns:1fr}}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .stat .n{font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:11px;color:var(--mut);margin-top:8px;text-transform:uppercase;letter-spacing:.05em}
+  .stat .d{font-size:11px;color:var(--dim);margin-top:4px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:20px}
+  .card h2{font-size:12px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+  .elist{margin:0;padding:0;list-style:none}
+  .elist li{display:flex;align-items:baseline;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
+  .elist li:last-child{border:0}
+  .sev{flex:none;width:66px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}
+  .kind{flex:none;color:var(--fg)}
+  .vt{flex:1;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .det{flex:none;color:var(--mut)}
+  .steps{margin:0;padding:0;list-style:none;counter-reset:s}
+  .steps li{position:relative;padding:6px 0 6px 30px;font-size:12.5px;color:var(--mut)}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:6px;width:20px;height:20px;border-radius:6px;background:rgba(6,214,224,.12);color:var(--cy);font-size:11px;display:grid;place-items:center}
+  .steps b{color:var(--fg);font-weight:600}
+  .foot{margin-top:8px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
+  .err{color:var(--amb);font-size:13px}
+  .pending{background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px;color:var(--mut);font-size:13px}
+  .pending b{color:var(--fg)}
+  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
+  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
+  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="b">PALIMPSEST</span>
+    <a href="/">Home</a>
+    <a href="/dashboards/ddti_observatory.html">Observatory</a>
+    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
+    <a href="/readings/ooni-gfw.html">GFW Live</a>
+    <a href="/readings/bleedthrough.html" class="here">Injectors</a>
+    <a href="/for-researchers.html">Data</a>
+  </nav>
+  <div class="wrap">
+    <h1>Bleedthrough — the GFW injector fleet</h1>
+    <div class="sub">Not <em>what</em> the Great Firewall blocks, but <em>what the censor is</em> —
+      the size, the forged-IP pools, and the regional structure of its DNS-injector fleet, reconstructed
+      from <em>outside</em> China by making the injectors answer benign probes. The censor is the sensor.</div>
+
+    <div class="demo" id="demoBadge">◆ DEMO READING — illustrative output of the real pipeline over canned inputs,
+      shown while a live prober is stood up. Not a live measurement. The first real round replaces it.</div>
+
+    <div id="app"><p class="err">loading the signal…</p></div>
+
+    <div class="card">
+      <h2>How this reads the machine, not the policy</h2>
+      <ol class="steps">
+        <li>A benign, stateless <b>UDP DNS query</b> for a censored domain is sent toward China. The on-path
+          GFW is bidirectional, so its own injector <b>answers with a forgery</b> — no node inside China needed.</li>
+        <li><b>Fleet size</b> comes from how many parallel injectors answer one query, and from the order they
+          cycle their forged-IP pool (the Wallbleed model).</li>
+        <li><b>Regional divergence</b> — a province whose forged-IP pool disagrees with the national baseline is
+          a candidate autonomous provincial firewall (the "wall behind a wall").</li>
+        <li>An <b>open-resolver fallback</b> rides Chinese resolvers' outbound recursion, so the signal survives
+          the decay of the inbound-injection channel.</li>
+      </ol>
+    </div>
+
+    <div class="foot" id="foot"></div>
+  </div>
+
+<script src="/dashboards/assets/tikto-motion.js"></script>
+<script>
+// escape anything interpolated from the fetched JSON before it hits innerHTML.
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sevColor = s => ({high:"var(--red)",medium:"var(--amb)",low:"var(--grn)"}[s]||"var(--dim)");
+const kindLabel = k => ({regional_firewall_candidate:"regional firewall",pool_rotation:"pool rotation",
+  capacity_shift:"capacity shift",injector_silent:"injector silent"}[k]||k);
+// fleet-pressure band from distinct pools (fragmentation) + high-severity events
+const bandFor = d => {
+  const frag = (d.distinct_pools||0), hi = (d.events||[]).filter(e=>e.severity==="high").length;
+  if (hi>=1 || frag>=3) return ["FRAGMENTING","var(--red)"];
+  if (frag===2 || (d.events||[]).length) return ["SHIFTING","var(--amb)"];
+  return ["STABLE","var(--grn)"];
+};
+
+fetch("/readings/bleedthrough-latest.json?_="+Date.now())
+  .then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(render)
+  .catch(()=>{
+    // not an error — the signal probes actively and may not be live yet. Show an honest pending state.
+    document.getElementById("app").innerHTML=`
+      <div class="pending"><b>Awaiting the first live round.</b> Unlike Palimpsest's passive signals,
+      Bleedthrough <b>actively probes</b>, so it runs from a controlled, rotating prober outside China —
+      never from shared CI. Until that prober publishes, there is no reading to show. The method is described
+      below, and the code is open.</div>`;
+  });
+
+function render(d){
+  if (d.demo) document.getElementById("demoBadge").style.display="block";
+  const [bl,bc]=bandFor(d);
+  const events=(d.events||[]).map(e=>`
+    <li class="tkm-item"><span class="sev" style="color:${sevColor(e.severity)}">${esc(e.severity)}</span>
+      <span class="kind">${esc(kindLabel(e.kind))}</span>
+      <span class="vt">${esc(e.vantage)}</span>
+      <span class="det">${esc(e.detail)}</span></li>`).join("")
+    || '<li><span class="vt" style="color:var(--dim)">no apparatus events this round — the fleet held steady</span></li>';
+
+  document.getElementById("app").innerHTML=`
+    <div class="hero">
+      <div>
+        <div class="idx"><span id="idxNum">${Number(d.max_process_count)||0}</span><small> injectors</small></div>
+        <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
+      </div>
+      <div class="heroTxt">
+        <div class="t">Peak parallel injector processes seen on a single border path, across
+          ${Number(d.vantages_injecting)||0} of ${Number(d.vantages_probed)||0} vantages that answered,
+          probing <b>${esc(d.probe_domain)}</b>.</div>
+        <div class="m">${esc(d.method)}</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat tkm-item"><div class="n">${Number(d.vantages_injecting)||0}<small style="font-size:15px;color:var(--dim)">/${Number(d.vantages_probed)||0}</small></div>
+        <div class="l">Vantages injecting</div><div class="d">involuntary sensors that answered</div></div>
+      <div class="stat tkm-item"><div class="n">${Number(d.distinct_pools)||0}</div>
+        <div class="l">Distinct forged pools</div><div class="d">&gt;1 hints regional fragmentation</div></div>
+      <div class="stat tkm-item"><div class="n">${Number(d.max_process_count)||0}</div>
+        <div class="l">Max injector processes</div><div class="d">fleet capacity on one path</div></div>
+    </div>
+    <div class="card">
+      <h2>Apparatus events this round</h2>
+      <ul class="elist">${events}</ul>
+    </div>`;
+
+  if (window.TiktoMotion){
+    const app=document.getElementById("app");
+    TiktoMotion.countUp(document.getElementById("idxNum"), Number(d.max_process_count)||0, {decimals:0,dur:900});
+    app.querySelectorAll(".stat").forEach((s,i)=>TiktoMotion.stagger(s,i,60));
+    app.querySelectorAll(".elist li").forEach((li,i)=>TiktoMotion.stagger(li,i,45));
+  }
+
+  document.getElementById("foot").innerHTML=
+    `Method: ${esc(d.method)}<br>`+
+    `Scope: ${esc(d.scope)}<br>`+
+    `Generated ${esc(new Date(d.generated_at).toUTCString())}. `+
+    `Probes are benign, stateless UDP DNS only (no residual censorship, dark-IP targets, governance-gated). `+
+    `Palimpsest measures the censor; it never operates a circumvention service. `+
+    `<a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/BLEEDTHROUGH.md" target="_blank" rel="noopener">Method &amp; safety →</a>`;
+}
+</script>
+</body>
+</html>

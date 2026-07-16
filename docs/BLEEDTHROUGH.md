@@ -135,6 +135,14 @@ Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedth
   (via a disk `JsonFleetStore`) + regional divergence → signal card + DDTI observations.
 - **Runner** `scripts/bleedthrough_pull.py` — writes `readings/bleedthrough-latest.json`.
 - **Example target file** `config/bleedthrough_targets.example.json` (RFC 5737 placeholders).
+- **Signal page** `readings/bleedthrough.html` — hero (fleet size + fragmentation band), stat
+  cards, apparatus-event feed, and a method explainer. Honest states: a **DEMO badge** when the
+  reading is illustrative, and an **"awaiting first live round"** panel (not an error) when no
+  reading exists yet. Linked from the nav, the readings index, and the OONI page.
+- **Anomaly integration** — `bleedthrough_pools` and `bleedthrough_capacity` registered in
+  `processors/conformal_events.py`; demo rows are excluded so they can't seed a false baseline.
+- **Demo generator** `scripts/bleedthrough_demo.py` — runs the real `run_round` over canned
+  inputs to publish a clearly-badged illustrative reading, replaced by the first live round.
 
 ### Scheduling — NOT from CI (important correction)
 
