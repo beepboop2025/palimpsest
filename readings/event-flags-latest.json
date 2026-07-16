@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-07-16T14:46:34.097290+00:00",
+  "generated_at": "2026-07-16T19:46:03.307899+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 2.4188,
-      "n": 30,
+      "stat": 2.3246,
+      "n": 31,
       "n_alarms_in_history": 0,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 64.8954,
-      "n": 71,
+      "stat": 39.5756,
+      "n": 73,
       "n_alarms_in_history": 0,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 1.6842,
-      "n": 71,
+      "stat": 1.6432,
+      "n": 73,
       "n_alarms_in_history": 0,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -51,6 +51,16 @@
       "n": 1,
       "n_alarms_in_history": 0,
       "meaning": "cross-lab model suppression rate"
+    },
+    "bleedthrough_pools": {
+      "state": "no_data",
+      "n": 0,
+      "meaning": "distinct GFW injector pools — a jump signals regional fragmentation"
+    },
+    "bleedthrough_capacity": {
+      "state": "no_data",
+      "n": 0,
+      "meaning": "peak parallel injector processes — fleet capacity on a border path"
     }
   },
   "active": [],
