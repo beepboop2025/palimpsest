@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-07-17T08:57:42.922095+00:00",
+  "generated_at": "2026-07-17T14:15:59.939523+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 1.6161,
-      "n": 33,
+      "stat": 1.4059,
+      "n": 34,
       "n_alarms_in_history": 0,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 12.9153,
-      "n": 76,
+      "stat": 5.5532,
+      "n": 78,
       "n_alarms_in_history": 0,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 1.5906,
-      "n": 76,
+      "stat": 1.5602,
+      "n": 78,
       "n_alarms_in_history": 0,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -40,8 +40,8 @@
     },
     "github_refuge": {
       "state": "calm",
-      "stat": 1.6883,
-      "n": 22,
+      "stat": 1.8565,
+      "n": 23,
       "n_alarms_in_history": 0,
       "meaning": "takedown/pressure events on refuge repositories"
     },
