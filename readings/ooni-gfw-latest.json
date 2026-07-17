@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-17T03:43:47.864770+00:00",
+  "generated_at": "2026-07-17T08:31:04.719352+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -7,68 +7,68 @@
   "window_days": 7,
   "since": "2026-07-10",
   "until": "2026-07-18",
-  "gfw_index": 58.6,
-  "n_measurements": 201964,
+  "gfw_index": 58.5,
+  "n_measurements": 203289,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 116012,
-      "measurement_count": 200447,
-      "failure_count": 1867,
-      "anomaly_rate": 0.5842,
+      "anomaly_count": 116589,
+      "measurement_count": 201712,
+      "failure_count": 1900,
+      "anomaly_rate": 0.5835,
       "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 321,
-      "measurement_count": 329,
+      "anomaly_count": 335,
+      "measurement_count": 343,
       "failure_count": 0,
-      "anomaly_rate": 0.9757,
+      "anomaly_rate": 0.9767,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 316,
-      "measurement_count": 324,
+      "anomaly_count": 330,
+      "measurement_count": 338,
       "failure_count": 0,
-      "anomaly_rate": 0.9753,
+      "anomaly_rate": 0.9763,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 314,
-      "measurement_count": 324,
+      "anomaly_count": 329,
+      "measurement_count": 339,
       "failure_count": 1,
-      "anomaly_rate": 0.9721,
+      "anomaly_rate": 0.9734,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 241,
-      "measurement_count": 249,
+      "anomaly_count": 248,
+      "measurement_count": 256,
       "failure_count": 0,
-      "anomaly_rate": 0.9679,
+      "anomaly_rate": 0.9688,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 49,
-      "measurement_count": 291,
+      "anomaly_count": 52,
+      "measurement_count": 301,
       "failure_count": 0,
-      "anomaly_rate": 0.1684,
+      "anomaly_rate": 0.1728,
       "reading": "17% anomalous — some interference"
     },
     {
@@ -85,116 +85,140 @@
   "top_blocked": [
     {
       "domain": "globalvoices.org",
-      "anomaly_count": 40,
-      "measurement_count": 47,
+      "anomaly_count": 42,
+      "measurement_count": 49,
       "anomaly_rate": 1.0
     },
     {
       "domain": "1.1.1.1",
-      "anomaly_count": 35,
-      "measurement_count": 42,
+      "anomaly_count": 38,
+      "measurement_count": 45,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.meetme.com",
-      "anomaly_count": 30,
-      "measurement_count": 32,
+      "anomaly_count": 32,
+      "measurement_count": 34,
       "anomaly_rate": 1.0
     },
     {
       "domain": "staticxx.facebook.com",
-      "anomaly_count": 29,
-      "measurement_count": 30,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "web.facebook.com",
-      "anomaly_count": 29,
+      "anomaly_count": 31,
       "measurement_count": 32,
       "anomaly_rate": 1.0
     },
     {
+      "domain": "web.facebook.com",
+      "anomaly_count": 31,
+      "measurement_count": 34,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "www.quora.com",
-      "anomaly_count": 29,
-      "measurement_count": 29,
+      "anomaly_count": 31,
+      "measurement_count": 31,
       "anomaly_rate": 1.0
     },
     {
       "domain": "static.xx.fbcdn.net",
+      "anomaly_count": 30,
+      "measurement_count": 30,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "upload.twitter.com",
+      "anomaly_count": 29,
+      "measurement_count": 37,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "foreignpolicy.com",
       "anomaly_count": 28,
       "measurement_count": 28,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "upload.twitter.com",
+      "domain": "scontent-ams4-1.cdninstagram.com",
+      "anomaly_count": 28,
+      "measurement_count": 29,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "video.cdninstagram.com",
+      "anomaly_count": 28,
+      "measurement_count": 28,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.clubhouse.com",
+      "anomaly_count": 28,
+      "measurement_count": 36,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.joinclubhouse.com",
+      "anomaly_count": 28,
+      "measurement_count": 29,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "static.cdninstagram.com",
+      "anomaly_count": 27,
+      "measurement_count": 34,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "styles.redditmedia.com",
+      "anomaly_count": 27,
+      "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.patreon.com",
       "anomaly_count": 27,
       "measurement_count": 35,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "foreignpolicy.com",
-      "anomaly_count": 26,
-      "measurement_count": 26,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "scontent-ams4-1.cdninstagram.com",
-      "anomaly_count": 26,
-      "measurement_count": 27,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "video.cdninstagram.com",
-      "anomaly_count": 26,
-      "measurement_count": 26,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.clubhouse.com",
-      "anomaly_count": 26,
-      "measurement_count": 34,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.joinclubhouse.com",
-      "anomaly_count": 26,
-      "measurement_count": 27,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "static.cdninstagram.com",
+      "domain": "dongtaiwang.com",
       "anomaly_count": 25,
-      "measurement_count": 32,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "styles.redditmedia.com",
-      "anomaly_count": 25,
-      "measurement_count": 25,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.patreon.com",
-      "anomaly_count": 25,
-      "measurement_count": 33,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "zht.globalvoices.org",
+      "domain": "duihua.org",
       "anomaly_count": 25,
       "measurement_count": 31,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "dongtaiwang.com",
-      "anomaly_count": 24,
-      "measurement_count": 29,
+      "domain": "scontent.cdninstagram.com",
+      "anomaly_count": 25,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "duihua.org",
+      "domain": "www.csis.org",
+      "anomaly_count": 25,
+      "measurement_count": 25,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "zht.globalvoices.org",
+      "anomaly_count": 25,
+      "measurement_count": 32,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "guardster.com",
       "anomaly_count": 24,
-      "measurement_count": 30,
+      "measurement_count": 24,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "telegram.me",
+      "anomaly_count": 24,
+      "measurement_count": 24,
       "anomaly_rate": 1.0
     },
     {
@@ -207,30 +231,6 @@
       "domain": "www.xvideos.com",
       "anomaly_count": 24,
       "measurement_count": 24,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "guardster.com",
-      "anomaly_count": 23,
-      "measurement_count": 23,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "scontent.cdninstagram.com",
-      "anomaly_count": 23,
-      "measurement_count": 28,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.csis.org",
-      "anomaly_count": 23,
-      "measurement_count": 23,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "17.live",
-      "anomaly_count": 22,
-      "measurement_count": 25,
       "anomaly_rate": 1.0
     }
   ]
