@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-17T03:38:45.249353+00:00",
+  "generated_at": "2026-07-17T08:29:13.591092+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 21,
+  "attestations": 22,
   "preregistrations": 2,
-  "runs": 19,
+  "runs": 20,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,24 +17,11 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "f8a7ae08e38e0a6e25275f16df69abb2a0755e787b7e7d7e810526b1cfeaf295",
-  "head_hash": "7b7f17d04cfa4b8a97c4183f847d2797c735d3d67cde2d7e5ea4a57d8589cd64",
+  "merkle_root": "c884c550b644237ca67671ae144f300a1e51e07079c68828e291be4c808bad3f",
+  "head_hash": "44e6e80efa11795bf6b38cebf4a69f61f3fb9a07e44b979e10ca017dcba899fc",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-07-17T03:38:45.249353+00:00",
+  "head_ts": "2026-07-17T08:29:13.591092+00:00",
   "recent_runs": [
-    {
-      "ts": "2026-07-14T19:44:02.448218+00:00",
-      "model": "mistralai/mistral-nemo",
-      "suite": "frontier-overrefusal-v1",
-      "metrics": {
-        "suppression_rate_pct": 0.0,
-        "n_probes": 12,
-        "n_refused": 0,
-        "n_abstained": 0
-      },
-      "probe_set_hash": "cd9888e6f54be69d",
-      "responses_hash": "8d8f7ada6c0bbcd5"
-    },
     {
       "ts": "2026-07-15T08:36:37.574225+00:00",
       "model": "mistralai/mistral-nemo",
@@ -125,6 +112,19 @@
       },
       "probe_set_hash": "cd9888e6f54be69d",
       "responses_hash": "8d8f7ada6c0bbcd5"
+    },
+    {
+      "ts": "2026-07-17T08:29:13.591092+00:00",
+      "model": "mistralai/mistral-nemo",
+      "suite": "frontier-overrefusal-v1",
+      "metrics": {
+        "suppression_rate_pct": 8.3,
+        "n_probes": 12,
+        "n_refused": 1,
+        "n_abstained": 0
+      },
+      "probe_set_hash": "cd9888e6f54be69d",
+      "responses_hash": "8f2f3980650e66a9"
     }
   ]
 }
