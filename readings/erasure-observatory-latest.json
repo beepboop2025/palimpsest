@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-17T19:34:00.809420+00:00",
+  "generated_at": "2026-07-18T03:33:28.436590+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 49.2,
+  "erasure_index": 49.0,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -13,7 +13,7 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 58.4,
+      "value": 58.1,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json"
     },
@@ -50,14 +50,14 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 32,
+    "entries": 33,
     "verified": true,
-    "merkle_root": "701cae2d81c880d4d6cc5066b949d1b7683c7ccf1ad5a3508a5f3e095c8f6bdc",
-    "head_hash": "ef03de0eaed558b40c64e13ce61535c118d44753526d1b527840df3903f13693",
+    "merkle_root": "767b608618cb85167845e5b57e9a81a8e4ee9ed32e111f49a13fd0b5a2c11a66",
+    "head_hash": "a58dcf4ce19ae211adef50bdc5f16fc46dac41fa6a158a582da0ad1aaf526656",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-17T19:34:00.809420+00:00",
+    "head_ts": "2026-07-18T03:33:28.436590+00:00",
     "by_source": {
-      "ooni-gfw": 25,
+      "ooni-gfw": 26,
       "generative-firewall": 1,
       "censored-planet": 5,
       "baike-redaction": 1
@@ -65,8 +65,8 @@
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 31,
-        "entry_hash": "ef03de0eaed558b40c64e13ce61535c118d44753526d1b527840df3903f13693"
+        "seq": 32,
+        "entry_hash": "a58dcf4ce19ae211adef50bdc5f16fc46dac41fa6a158a582da0ad1aaf526656"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
