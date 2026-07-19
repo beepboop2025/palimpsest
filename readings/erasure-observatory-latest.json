@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-19T03:56:12.832494+00:00",
+  "generated_at": "2026-07-19T08:34:06.536397+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
   "erasure_index": 50.0,
@@ -13,7 +13,7 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 60.1,
+      "value": 60.0,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json"
     },
@@ -43,21 +43,21 @@
     },
     {
       "name": "Firewall event velocity",
-      "value": 0.73,
+      "value": 0.83,
       "unit": "x",
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 38,
+    "entries": 39,
     "verified": true,
-    "merkle_root": "547ca35dcda77d84cb628d9b53d3daa8855a3fb8704822f62a096a3fcaaf1fb2",
-    "head_hash": "fc7702392207db5ea5600e973dc771bd2c0bcfbff697b09b94e1e433047be5f4",
+    "merkle_root": "fac4b8664d81e2287eaee7793f71f6ca1e0ad6621367ad8084cff17bd0813e85",
+    "head_hash": "ee7bdcc87d9f809cb62c9f2835f4877f880952b04511d8e40b3cdfeb3a5aeaf6",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-19T03:56:12.832494+00:00",
+    "head_ts": "2026-07-19T08:34:06.536397+00:00",
     "by_source": {
-      "ooni-gfw": 30,
+      "ooni-gfw": 31,
       "generative-firewall": 1,
       "censored-planet": 6,
       "baike-redaction": 1
@@ -65,8 +65,8 @@
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 37,
-        "entry_hash": "fc7702392207db5ea5600e973dc771bd2c0bcfbff697b09b94e1e433047be5f4"
+        "seq": 38,
+        "entry_hash": "ee7bdcc87d9f809cb62c9f2835f4877f880952b04511d8e40b3cdfeb3a5aeaf6"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
