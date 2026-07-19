@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-19T19:38:48.816452+00:00",
+  "generated_at": "2026-07-19T19:53:33.128939+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
@@ -75,6 +75,13 @@
       "n": 1,
       "n_alarms_in_history": 0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
+    },
+    "ioda_outages": {
+      "state": "warming_up",
+      "stat": 0.0,
+      "n": 1,
+      "n_alarms_in_history": 0,
+      "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     }
   },
   "active": [],

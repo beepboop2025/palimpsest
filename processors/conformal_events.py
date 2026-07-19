@@ -184,6 +184,11 @@ SIGNALS = {
         lambda r: r.get("suppressed_invisible"),
         "DDTI terms deleted AND denied hot-search attention at once",
     ),
+    "ioda_outages": (
+        "ioda-outages-history.jsonl",
+        lambda r: r.get("events_started_yesterday"),
+        "shutdown-scale connectivity events detected by IODA's instruments",
+    ),
 }
 
 

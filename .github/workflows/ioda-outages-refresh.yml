@@ -1,0 +1,45 @@
+name: Refresh IODA outage signal
+
+# IODA (Georgia Tech) outage events for country CN — BGP, active-probing
+# and darknet instruments, keyless JSON API, zero in-China footprint.
+# The heaviest end of the censorship spectrum: connectivity itself.
+
+on:
+  schedule:
+    - cron: "29 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ioda-outages-refresh
+  cancel-in-progress: false
+
+jobs:
+  ioda-outages:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Pull IODA CN outage window and publish the signal
+        run: python -m scripts.ioda_outages_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/ioda-outages-latest.json readings/ioda-outages-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: IODA outage signal refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

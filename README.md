@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-371%20passing-brightgreen.svg)
+![tests](https://img.shields.io/badge/tests-439%20passing-brightgreen.svg)
 ![verify](https://img.shields.io/badge/verify-offline%2C%20one%20command-06d6e0.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
@@ -27,7 +27,7 @@ pointed at two places where the record gets rewritten in the dark:
   published number, our own verifier would report the break.
 - **The Censorship Observatory.** Authoritarian deletion, measured as data. It archives public
   posts, watches for when they are scrubbed, and turns what a state is burying into a live, openly
-  licensed early-warning signal for journalists, researchers, and human rights defenders. Five
+  licensed early-warning signal for journalists, researchers, and human rights defenders. Eight
   signals refresh on their own, every number tracing back to public evidence.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
@@ -165,17 +165,20 @@ Reproduce it: `PYTHONPATH=. python3 scripts/validate_ddti.py`. See
 
 ### Live signals (auto-published)
 
-[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Five independent
+[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Eight independent
 signals refresh on their own schedules via GitHub Actions on this repo, so every run, its code, and
 its output are publicly auditable (the badges above are live run status). No hidden server publishes.
 
 | Signal | What it measures | Cadence | Feed |
 | --- | --- | --- | --- |
 | **DDTI** | Ranked censored terms with threat / attention / novelty, from public deletion streams | Every 3 hours | [`readings/ddti-latest.json`](readings/ddti-latest.json) |
-| **Generative Firewall** | Refusal and state-narrative substitution rates of state-aligned LLMs vs a control | Daily | [`readings/latest.json`](readings/latest.json) |
+| **Generative Firewall** | Refusal, state-narrative substitution, and routing (matched-parallel discrimination, zh-Hans/zh-Hant/EN script gradient, deflection, refusal sub-coding) of state-aligned LLMs vs a control | Daily | [`readings/latest.json`](readings/latest.json) |
 | **GDELT cross-signal** | "Censored at home, loud abroad": global news volume on the terms China is deleting | Every 6 hours | [`readings/gdelt-latest.json`](readings/gdelt-latest.json) |
 | **GitHub-as-Refuge** | Takedown pressure on mirrors of censored material (996.ICU, nCovMemory, more), against persisted baselines | Every 12 hours | [`readings/github-refuge-latest.json`](readings/github-refuge-latest.json) |
 | **Wayback Reconstruction** | Deletions and silent redactions of watched Chinese URLs, recovered from the Internet Archive's capture timeline with archive-witnessed timestamp brackets | Every 12 hours | [`readings/wayback-latest.json`](readings/wayback-latest.json) |
+| **Weibo hot-search join** | The allowed-attention denominator: DDTI terms deleted-yet-trending (contained) vs deleted-and-invisible (suppressed), gazetteer breakthroughs, withdrawal watch, the pinned state-headline series | Every 6 hours | [`readings/weibo-hotsearch-latest.json`](readings/weibo-hotsearch-latest.json) |
+| **Circumvention demand** | Tor bridge users from China (demand to climb the wall) + the per-transport split whose regime shifts fingerprint new GFW classifiers | Daily | [`readings/circumvention-demand-latest.json`](readings/circumvention-demand-latest.json) |
+| **IODA outages** | Shutdown-scale connectivity events for CN from three independent global instruments (BGP, active probing, darknet) | Every 6 hours | [`readings/ioda-outages-latest.json`](readings/ioda-outages-latest.json) |
 
 Every value is provenance-tracked to its source document, and a signal abstains rather than
 fabricates when its source returns nothing. Nothing is published without evidence. Researcher docs,
