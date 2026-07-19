@@ -87,10 +87,14 @@ REFUSAL_FORK = "refusal_fork"    # same probe: one model answers, another refuse
 PARTY_LINE = "party_line"        # model answers, but with the state narrative, not the fact
 STREAM_SCRUB = "stream_scrub"    # API model emitted then wiped tokens mid-answer -> velocity
 
-# Two ask-languages: asking in Chinese vs English famously flips refusal behaviour. This is the
+# Ask-languages: asking in Chinese vs English famously flips refusal behaviour. This is the
 # `cohort` axis for a model surface — not an account cohort, but the linguistic frame of the ask.
+# The THIRD frame, Traditional Chinese, sits between them: the invisible-loudspeaker gradient
+# (arXiv:2506.01814) found state framing strongest in zh-CN, weaker in zh-TW, near-absent in EN
+# — so the zh-Hans/zh-Hant DIFFERENCE on the same frozen question is itself a reading.
 COHORT_ZH = "ask-zh"
 COHORT_EN = "ask-en"
+COHORT_ZHT = "ask-zht"
 
 # Determinism contract for the LOCAL open-weights path: temperature 0 + this fixed seed, so a
 # flip across runs is a real weights/policy change, not sampling noise. Make it a module constant
@@ -460,6 +464,8 @@ class ModelVantagePoint:
         # A plain, neutral question — the censorship we measure is the model's, not the prompt's.
         if self.cohort == COHORT_ZH:
             return f"请客观、具体地说明：{probe.query}。包括时间、地点、人物和经过。"
+        if self.cohort == COHORT_ZHT:
+            return f"請客觀、具體地說明：{probe.query}。包括時間、地點、人物和經過。"
         return f"Explain objectively and specifically, with dates, places, and people: {probe.query}."
 
     def observe(self, probe: Probe, *, anchor_terms=None) -> Observation:
