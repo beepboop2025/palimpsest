@@ -173,6 +173,17 @@ SIGNALS = {
         lambda r: None if r.get("demo") else r.get("max_process_count"),
         "peak parallel injector processes — fleet capacity on a border path",
     ),
+    "tor_bridge_cn": (
+        "circumvention-demand-history.jsonl",
+        lambda r: r.get("bridge_users"),
+        "demand for unlisted Tor entry points from China — a surge reads as "
+        "censorship pressure or fear rising",
+    ),
+    "weibo_suppression": (
+        "weibo-hotsearch-history.jsonl",
+        lambda r: r.get("suppressed_invisible"),
+        "DDTI terms deleted AND denied hot-search attention at once",
+    ),
 }
 
 

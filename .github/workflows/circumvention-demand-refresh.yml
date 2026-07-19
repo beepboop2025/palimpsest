@@ -1,0 +1,49 @@
+name: Refresh circumvention-demand signal
+
+# Tor Metrics (CC0) userstats for country=cn: bridge users (demand for
+# unlisted entry points), relay users (direct reachability), and the
+# per-transport split (snowflake / webtunnel / obfs4 / meek) whose regime
+# shifts fingerprint new GFW classifier deployments. Tor revises recent
+# days as reports arrive, so each run re-reads a trailing window and the
+# history keeps Tor's best current estimate per day. Stdlib-only,
+# vantage-insensitive, generates no probe traffic.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"    # daily — Tor Metrics aggregates once a day
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: circumvention-demand-refresh
+  cancel-in-progress: false
+
+jobs:
+  circumvention-demand:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Pull Tor Metrics CN series and publish the demand signal
+        run: python -m scripts.circumvention_demand_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/circumvention-demand-latest.json readings/circumvention-demand-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: circumvention demand refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi
