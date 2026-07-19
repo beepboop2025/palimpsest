@@ -187,6 +187,69 @@ def join_ddti(ddti_terms: list[dict], days: dict[str, list[dict]]) -> list[dict]
     return out
 
 
+def withdrawal_candidates(days: dict[str, list[dict]], top_rank: int = 10,
+                          sensitive_terms: set | None = None) -> dict:
+    """One-day high-rank exits — the day-granularity read of 撤热搜 withdrawal.
+
+    A topic that reaches the board's top ranks and vanishes after a single day
+    is a candidate for on-command withdrawal. This is the deterministic,
+    day-level version of trending-survival analysis: per-day archive files
+    give residence in DAYS, not hours, so the honest unit here is "days on
+    the board".
+
+    MEASURED, not assumed: on this board a one-day top-10 exit is the NORM
+    (live baseline ≈ 23% persistence — sports and entertainment churn daily),
+    so a bare one-day exit is NOT evidence of withdrawal. The published shape
+    is therefore: aggregate counts + the baseline persistence rate as the
+    context statistic, and a NAMED candidate list only for exits whose title
+    carries known-sensitive vocabulary (sensitive_terms) — the intersection
+    where fast exit and sensitivity coincide.
+
+    Right-censoring, handled not ignored: a topic that debuts on the LAST day
+    of the window has had no chance to persist, so last-day debuts are
+    excluded from both numerator and baseline — never counted as exits.
+    """
+    dates = sorted(days)
+    if len(dates) < 3:
+        return {"baseline_persist_rate": None, "candidates": [],
+                "note": "window too short — warming up"}
+    last = dates[-1]
+
+    # first-seen date, days present, best rank per title
+    seen: dict[str, dict] = {}
+    for date in dates:
+        for e in days[date]:
+            t = e["title"]
+            rec = seen.setdefault(t, {"first": date, "days": 0, "best_rank": None})
+            rec["days"] += 1
+            r = e["rank"]
+            if r is not None and (rec["best_rank"] is None or r < rec["best_rank"]):
+                rec["best_rank"] = r
+
+    top = {t: r for t, r in seen.items()
+           if r["best_rank"] is not None and r["best_rank"] <= top_rank
+           and r["first"] != last}    # right-censored debuts excluded
+    if not top:
+        return {"baseline_persist_rate": None, "candidates": [],
+                "note": "no uncensored top-rank topics in window"}
+
+    persisted = sum(1 for r in top.values() if r["days"] >= 2)
+    exits = sorted(
+        ({"title": t, "best_rank": r["best_rank"], "date": r["first"]}
+         for t, r in top.items() if r["days"] == 1),
+        key=lambda c: c["best_rank"])
+    sens = sensitive_terms or set()
+    candidates = [
+        {**c, "matched_terms": sorted(s for s in sens if s in c["title"])}
+        for c in exits if any(s in c["title"] for s in sens)]
+    return {
+        "baseline_persist_rate": round(persisted / len(top), 4),
+        "top_topics_considered": len(top),
+        "one_day_exits": len(exits),
+        "candidates": candidates,
+    }
+
+
 def pinned_series(days: dict[str, list[dict]]) -> list[dict]:
     """The state's chosen headline per day (置顶 top slot), where captured."""
     out = []

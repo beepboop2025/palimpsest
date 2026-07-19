@@ -58,3 +58,38 @@ def test_pinned_series():
     days = {"2026-01-02": parse_day(DAY)}
     assert pinned_series(days) == [
         {"date": "2026-01-02", "pinned": ["向上向善造福人类"]}]
+
+
+def _day(titles_ranks):
+    return [{"title": t, "rank": r, "pinned": False} for t, r in titles_ranks]
+
+
+def test_withdrawal_candidates_flags_one_day_top_exit():
+    days = {
+        "2026-01-01": _day([("坚持的话题", 3), ("闪退话题", 2)]),
+        "2026-01-02": _day([("坚持的话题", 5)]),
+        "2026-01-03": _day([("坚持的话题", 8), ("末日首秀", 1)]),
+    }
+    from collectors.weibo_hotsearch import withdrawal_candidates
+    got = withdrawal_candidates(days, top_rank=10, sensitive_terms={"闪退"})
+    assert got["one_day_exits"] == 1                       # 闪退话题 only
+    assert [c["title"] for c in got["candidates"]] == ["闪退话题"]
+    assert got["candidates"][0]["matched_terms"] == ["闪退"]
+    assert got["baseline_persist_rate"] == 0.5
+
+
+def test_withdrawal_candidates_nonsensitive_exit_counted_not_named():
+    days = {
+        "2026-01-01": _day([("坚持的话题", 3), ("球赛话题", 2)]),
+        "2026-01-02": _day([("坚持的话题", 5)]),
+        "2026-01-03": _day([("坚持的话题", 8)]),
+    }
+    from collectors.weibo_hotsearch import withdrawal_candidates
+    got = withdrawal_candidates(days, top_rank=10, sensitive_terms={"敏感"})
+    assert got["one_day_exits"] == 1 and got["candidates"] == []
+
+
+def test_withdrawal_candidates_short_window_warms_up():
+    from collectors.weibo_hotsearch import withdrawal_candidates
+    got = withdrawal_candidates({"2026-01-01": _day([("a", 1)])})
+    assert got["candidates"] == [] and got["baseline_persist_rate"] is None

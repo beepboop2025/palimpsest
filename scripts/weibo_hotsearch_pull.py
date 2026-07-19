@@ -16,7 +16,9 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-from collectors.weibo_hotsearch import collect_range, join_ddti, pinned_series
+from collectors.weibo_hotsearch import (
+    collect_range, join_ddti, pinned_series, term_presence,
+    withdrawal_candidates)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
@@ -76,7 +78,6 @@ def main() -> None:
     # through, a sensitivity boundary moving, or an event too big to hold).
     # Absence of a gazetteer term with no live deletion pressure is expected
     # background and deliberately NOT labeled a regime.
-    from collectors.weibo_hotsearch import term_presence
     breakthroughs = []
     for g in _load_gazetteer_terms():
         pres = term_presence(g["term"], days)
@@ -98,6 +99,10 @@ def main() -> None:
         },
         "join": joined,
         "gazetteer_breakthroughs": breakthroughs,
+        "withdrawal_watch": withdrawal_candidates(
+            days,
+            sensitive_terms={g["term"] for g in _load_gazetteer_terms()}
+            | {t["term"] for t in ddti_terms}),
         "pinned_headlines": pinned_series(days),
         "method_note": (
             "The hot-search board is itself a censored surface (curated top "
