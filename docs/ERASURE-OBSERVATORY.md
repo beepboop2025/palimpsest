@@ -61,8 +61,7 @@ own history." No censorship observatory in the field answers that. The sealed
 ledger does: publication of the JSONL into the public repo is the anchoring, and a
 third party who cloned the repo yesterday holds a witness to yesterday's chain
 head. It is the one differentiator that is both technically real and impossible to
-hand-wave, and it maps directly onto what OpenSats and HRF fund — un-censorable
-public infrastructure.
+hand-wave: un-censorable public infrastructure.
 
 ## Status and honesty notes
 
