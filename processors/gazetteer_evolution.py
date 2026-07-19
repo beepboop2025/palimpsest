@@ -63,7 +63,84 @@ _CJK_RUN = re.compile(r"[一-鿿]+")
 # character is itself a Unicode word char, so \b never fires at a CJK↔digit seam and
 # would miss coinages glued to Chinese (纪念8964 → 8964).
 _ALNUM = re.compile(r"(?<![0-9A-Za-z])[0-9A-Za-z]{3,12}(?![0-9A-Za-z])")
-_CJK_NGRAM_SIZES = (2, 3)  # most censorship coinages are 2-3 characters
+_CJK_NGRAM_SIZES = (2, 3, 4)  # 2-3 char coinages dominate; 4 catches slogan-puns
+                              # (arXiv:2606.08715 candidate-generation scope)
+
+
+# ── word-formation garbage filter (arXiv:2606.08715 §3.5, rules R1-R5) ─────────────────
+# A character n-gram cut from running text often straddles a word boundary: it BEGINS or
+# ENDS with a function word ("的自由" is a fragment of X的自由, not a coinage). The paper
+# shows five closed character-position rules remove ~15% of candidates while falsely
+# rejecting only 0.7% of real new words (98% conditional recall) — the near-lossless kind
+# of filter this pipeline can afford. Closed lists, auditable, no model in the loop.
+# The paper's own caveat is inherited: productive prefixed coinages (自驾游, 在线教育)
+# can be caught by R3, so a rule hit DEMOTES a candidate to the watch list with the rule
+# named in the record — it never silently deletes evidence.
+_R1_INITIAL_FUNCTION = set("的了是就都也很才而且或及与被把")
+_R2_FINAL_FUNCTION = set("的了在中上下里内外前后间时是和与或者等")
+_R3_INITIAL_NEG_ADV_PREP = set("不没无非未别在于把对向为以自由从被让使更最太")
+_R4_INITIAL_DETERMINER = set("这那每各某该")
+_R5_INITIAL_SENTENCE_VERB = set("是有说要")
+
+
+def well_formed(term: str) -> tuple[bool, str]:
+    """Character-position well-formedness for a CJK candidate.
+
+    Returns (True, "") for a plausible word shape, or (False, rule_name) naming
+    the rule that fired. Non-CJK candidates (8964, VIIV) pass untouched — the
+    rules are about Chinese word formation only.
+    """
+    if not term or not _CJK_RUN.fullmatch(term):
+        return True, ""
+    head, tail = term[0], term[-1]
+    if head in _R1_INITIAL_FUNCTION:
+        return False, "R1_initial_function"
+    if tail in _R2_FINAL_FUNCTION:
+        return False, "R2_final_function"
+    if head in _R3_INITIAL_NEG_ADV_PREP:
+        return False, "R3_initial_neg_adv_prep"
+    if head in _R4_INITIAL_DETERMINER:
+        return False, "R4_initial_determiner"
+    if head in _R5_INITIAL_SENTENCE_VERB:
+        return False, "R5_initial_sentence_verb"
+    return True, ""
+
+
+def pmi_scores(observations: list[dict]) -> dict:
+    """Pointwise-mutual-information cohesion for CJK n-grams over THIS corpus.
+
+    PMI separates a cohesive coinage (its characters co-occur far above chance)
+    from an accidental slice of running text. Computed self-contained from the
+    observation stream (character unigram probs vs n-gram probs inside CJK
+    runs), base-2 log, deterministic. Following the paper's own limitations
+    section, PMI here ANNOTATES and tiebreaks — it never hard-filters, because
+    genuinely weak-cohesion neologisms (社死, 搭子) score low by construction.
+    Returns {term: pmi} for every n-gram seen (n in _CJK_NGRAM_SIZES).
+    """
+    char_n: dict[str, int] = {}
+    gram_n: dict[str, int] = {}
+    total_chars = 0
+    for obs in observations:
+        text = f"{obs.get('title', '')} {obs.get('text', '')}"
+        for run in _CJK_RUN.findall(text):
+            total_chars += len(run)
+            for ch in run:
+                char_n[ch] = char_n.get(ch, 0) + 1
+            for n in _CJK_NGRAM_SIZES:
+                for i in range(len(run) - n + 1):
+                    g = run[i:i + n]
+                    gram_n[g] = gram_n.get(g, 0) + 1
+    if not total_chars:
+        return {}
+    out = {}
+    for g, cnt in gram_n.items():
+        p_g = cnt / total_chars
+        p_prod = 1.0
+        for ch in g:
+            p_prod *= char_n[ch] / total_chars
+        if p_prod > 0:
+            out[g] = round(math.log2(p_g / p_prod), 2)
+    return out
 
 
 @dataclass
@@ -75,6 +152,8 @@ class Candidate:
     association: float = 0.0        # sens_support / total_support
     score: float = 0.0              # association-weighted recurrence score
     state: str = "watch"            # "watch" | "propose"
+    pmi: float | None = None        # cohesion over this corpus (annotates, never filters)
+    formation_rule: str = ""        # non-empty = failed well-formedness (rule named)
     first_seen: str = ""
     last_seen: str = ""
     evidence: list = field(default_factory=list)  # up to a few sample {title,url}
@@ -167,18 +246,72 @@ def mine_candidates(observations: list[dict],
             if len(c.evidence) < 3 and obs.get("title"):
                 c.evidence.append({"title": obs["title"][:140], "url": obs.get("url", "")})
 
+    pmi = pmi_scores(observations)
     candidates = []
     for c in agg.values():
         if c.total_support <= 0:
             continue
         c.association = round(c.sens_support / c.total_support, 4)
         c.score = round(c.association * math.log1p(c.sens_support), 4)
-        eligible = c.sens_support >= min_evidence and c.score >= promote_score
+        c.pmi = pmi.get(c.term)
+        ok, rule = well_formed(c.term)
+        c.formation_rule = rule
+        # A rule hit demotes to watch (fragment shape), never deletes: the
+        # evidence stays visible and a curator can override the rule.
+        eligible = ok and c.sens_support >= min_evidence and c.score >= promote_score
         c.state = "propose" if eligible else "watch"
         candidates.append(c)
 
-    candidates.sort(key=lambda x: x.score, reverse=True)
+    # score ranks; PMI cohesion tiebreaks (annotates, never gates — see pmi_scores)
+    candidates.sort(key=lambda x: (x.score, x.pmi if x.pmi is not None else -99.0),
+                    reverse=True)
     return candidates
+
+
+def stage_recall(truth_terms: set, observations: list[dict], known_terms: set,
+                 *, min_evidence: int = MIN_EVIDENCE,
+                 promote_score: float = PROMOTE_SCORE) -> dict:
+    """Per-stage conditional recall of a labeled truth set through the pipeline.
+
+    The paper's diagnostic contribution (arXiv:2606.08715 §3.7): aggregate
+    recall hides WHERE candidates die. Trace each truth term through the four
+    stages — (1) surfaced by candidate generation, (2) survives well-formedness,
+    (3) clears the evidence floor, (4) clears the proposal threshold — and
+    report each stage's conditional recall plus the multiplicative identity
+    R1·R2·R3·R4 = strict recall, so a tuning change can be attributed to the
+    stage it actually moved.
+    """
+    truth = {t for t in truth_terms if t}
+    if not truth:
+        return {"stages": [], "strict_recall": None, "n_truth": 0}
+    surfaced = set()
+    for obs in observations:
+        text = f"{obs.get('title', '')} {obs.get('text', '')}"
+        toks = candidate_tokens(text)
+        surfaced |= {t for t in truth if t in toks}
+
+    formed = {t for t in surfaced if well_formed(t)[0]}
+
+    by_term = {c.term: c for c in mine_candidates(
+        observations, known_terms - truth,
+        min_evidence=min_evidence, promote_score=promote_score)}
+    evidenced = {t for t in formed
+                 if t in by_term and by_term[t].sens_support >= min_evidence}
+    proposed = {t for t in evidenced if by_term[t].state == "propose"}
+
+    def _stage(name, entering, surviving):
+        return {"stage": name, "entering": len(entering), "surviving": len(surviving),
+                "recall": round(len(surviving) / len(entering), 4) if entering else None,
+                "lost": sorted(entering - surviving)[:20]}
+
+    stages = [
+        _stage("1_candidate_generation", truth, surfaced),
+        _stage("2_well_formedness", surfaced, formed),
+        _stage("3_evidence_floor", formed, evidenced),
+        _stage("4_proposal_threshold", evidenced, proposed),
+    ]
+    return {"stages": stages, "n_truth": len(truth),
+            "strict_recall": round(len(proposed) / len(truth), 4)}
 
 
 # ── evasion-phenomenon taxonomy (CSM-MTBench, Zhao et al. 2026) ────────────────────────

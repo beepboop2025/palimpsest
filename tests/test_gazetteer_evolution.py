@@ -100,3 +100,53 @@ def test_phenomenon_taxonomy_and_slang_recall():
 if __name__ == "__main__":
     import sys
     sys.exit(__import__("pytest").main([__file__, "-q"]))
+
+
+# ── word-formation + PMI + per-stage recall (arXiv:2606.08715) ─────────────────────────
+
+def test_well_formed_rules_name_the_rule():
+    from processors.gazetteer_evolution import well_formed
+    assert well_formed("白纸") == (True, "")
+    assert well_formed("的自由")[1] == "R1_initial_function"
+    assert well_formed("抗议的")[1] == "R2_final_function"
+    assert well_formed("不可以")[1] == "R3_initial_neg_adv_prep"
+    assert well_formed("这时候")[1] == "R4_initial_determiner"
+    assert well_formed("8964") == (True, "")   # non-CJK passes untouched
+
+
+def test_fragment_shaped_candidate_demoted_never_deleted():
+    from processors.gazetteer_evolution import mine_candidates
+    obs = [{"title": f"已删除 {i}", "text": "白纸 的自由 六四", "url": "u",
+            "detected_at": None} for i in range(5)]
+    cands = {c.term: c for c in mine_candidates(obs, {"六四"})}
+    assert cands["白纸"].state == "propose"
+    frag = cands["的自由"]
+    assert frag.state == "watch" and frag.formation_rule == "R1_initial_function"
+    assert frag.sens_support == 5               # the evidence stays visible
+
+
+def test_pmi_annotates_cohesion():
+    from processors.gazetteer_evolution import mine_candidates
+    # 白纸 always together (cohesive); 纸共 only across a random boundary
+    obs = [{"title": "", "text": "白纸运动 共产 白纸 共识 白纸", "url": "u",
+            "detected_at": None} for _ in range(4)]
+    cands = {c.term: c for c in mine_candidates(obs, {"共产"})}
+    assert cands["白纸"].pmi is not None and cands["白纸"].pmi > 0
+
+
+def test_stage_recall_multiplicative_identity():
+    from processors.gazetteer_evolution import stage_recall
+    obs = [{"title": f"删帖 {i}", "text": "白纸 六四 的自由", "url": "u",
+            "detected_at": None} for i in range(5)]
+    r = stage_recall({"白纸", "的自由", "从未出现"}, obs, {"六四"})
+    assert r["n_truth"] == 3
+    prod = 1.0
+    for s in r["stages"]:
+        assert s["recall"] is not None
+        prod *= s["recall"]
+    # identity holds on raw counts; published values carry 4dp display rounding
+    assert abs(prod - r["strict_recall"]) < 5e-4      # R1·R2·R3·R4 = strict
+    # 从未出现 dies at stage 1, 的自由 at stage 2, 白纸 survives to proposal
+    assert r["stages"][0]["surviving"] == 2
+    assert r["stages"][1]["surviving"] == 1
+    assert r["strict_recall"] == round(1 / 3, 4)
