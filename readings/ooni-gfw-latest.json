@@ -1,74 +1,74 @@
 {
-  "generated_at": "2026-07-20T20:00:06.183448+00:00",
+  "generated_at": "2026-07-21T03:51:38.583554+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
   "china_caveat": "the GFW blocks via RST/DNS injection without a block page, so OONI 'confirmed' is near-zero for CN; we track anomaly rate, not confirmed",
   "window_days": 7,
-  "since": "2026-07-13",
-  "until": "2026-07-21",
-  "gfw_index": 60.2,
-  "n_measurements": 302555,
+  "since": "2026-07-14",
+  "until": "2026-07-22",
+  "gfw_index": 60.7,
+  "n_measurements": 283431,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 179593,
-      "measurement_count": 300775,
-      "failure_count": 1922,
-      "anomaly_rate": 0.6009,
-      "reading": "60% anomalous — heavily interfered with"
+      "anomaly_count": 169557,
+      "measurement_count": 281742,
+      "failure_count": 1853,
+      "anomaly_rate": 0.6058,
+      "reading": "61% anomalous — heavily interfered with"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 373,
-      "measurement_count": 382,
+      "anomaly_count": 355,
+      "measurement_count": 363,
       "failure_count": 0,
-      "anomaly_rate": 0.9764,
+      "anomaly_rate": 0.978,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 373,
-      "measurement_count": 382,
+      "anomaly_count": 355,
+      "measurement_count": 363,
       "failure_count": 0,
-      "anomaly_rate": 0.9764,
+      "anomaly_rate": 0.978,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 371,
-      "measurement_count": 381,
+      "anomaly_count": 352,
+      "measurement_count": 361,
       "failure_count": 1,
-      "anomaly_rate": 0.9763,
+      "anomaly_rate": 0.9778,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 292,
-      "measurement_count": 302,
+      "anomaly_count": 277,
+      "measurement_count": 286,
       "failure_count": 0,
-      "anomaly_rate": 0.9669,
+      "anomaly_rate": 0.9685,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 58,
-      "measurement_count": 333,
+      "anomaly_count": 53,
+      "measurement_count": 316,
       "failure_count": 0,
-      "anomaly_rate": 0.1742,
+      "anomaly_rate": 0.1677,
       "reading": "17% anomalous — some interference"
     },
     {
@@ -86,85 +86,67 @@
     {
       "domain": "www.bbc.com",
       "anomaly_count": 78,
-      "measurement_count": 83,
+      "measurement_count": 79,
       "anomaly_rate": 1.0
     },
     {
       "domain": "globalvoices.org",
-      "anomaly_count": 48,
-      "measurement_count": 54,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "studentsforafreetibet.org",
-      "anomaly_count": 40,
-      "measurement_count": 42,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.brookings.edu",
-      "anomaly_count": 40,
-      "measurement_count": 40,
+      "anomaly_count": 47,
+      "measurement_count": 52,
       "anomaly_rate": 1.0
     },
     {
       "domain": "zht.globalvoices.org",
-      "anomaly_count": 39,
-      "measurement_count": 43,
+      "anomaly_count": 41,
+      "measurement_count": 45,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.nchrd.org",
+      "domain": "studentsforafreetibet.org",
+      "anomaly_count": 38,
+      "measurement_count": 40,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.brookings.edu",
       "anomaly_count": 38,
       "measurement_count": 38,
       "anomaly_rate": 1.0
     },
     {
+      "domain": "www.nchrd.org",
+      "anomaly_count": 36,
+      "measurement_count": 36,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "www.clubhouseapi.com",
-      "anomaly_count": 33,
+      "anomaly_count": 32,
+      "measurement_count": 33,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "rsf.org",
+      "anomaly_count": 31,
       "measurement_count": 34,
       "anomaly_rate": 1.0
     },
     {
       "domain": "dongtaiwang.com",
-      "anomaly_count": 32,
-      "measurement_count": 34,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "duihua.org",
-      "anomaly_count": 32,
-      "measurement_count": 36,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "rsf.org",
-      "anomaly_count": 32,
-      "measurement_count": 35,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "laborrights.org",
-      "anomaly_count": 31,
+      "anomaly_count": 29,
       "measurement_count": 31,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "explorer.ooni.org",
-      "anomaly_count": 30,
-      "measurement_count": 30,
+      "domain": "duihua.org",
+      "anomaly_count": 29,
+      "measurement_count": 32,
       "anomaly_rate": 1.0
     },
     {
       "domain": "foreignpolicy.com",
-      "anomaly_count": 30,
-      "measurement_count": 30,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "unwatch.org",
-      "anomaly_count": 30,
-      "measurement_count": 30,
+      "anomaly_count": 29,
+      "measurement_count": 29,
       "anomaly_rate": 1.0
     },
     {
@@ -174,27 +156,15 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "khilafah.net",
-      "anomaly_count": 29,
-      "measurement_count": 30,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "secure.avaaz.org",
+      "domain": "lalgbtcenter.org",
       "anomaly_count": 29,
       "measurement_count": 31,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.advocate.com",
-      "anomaly_count": 29,
-      "measurement_count": 29,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.falundafa.org",
-      "anomaly_count": 29,
-      "measurement_count": 29,
+      "domain": "explorer.ooni.org",
+      "anomaly_count": 28,
+      "measurement_count": 28,
       "anomaly_rate": 1.0
     },
     {
@@ -204,33 +174,63 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.aljazeera.net",
-      "anomaly_count": 28,
-      "measurement_count": 28,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.ifj.org",
-      "anomaly_count": 28,
-      "measurement_count": 28,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "googleweblight.com",
+      "domain": "laborrights.org",
       "anomaly_count": 27,
       "measurement_count": 27,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "shanghai.ist",
+      "domain": "secure.avaaz.org",
       "anomaly_count": 27,
       "measurement_count": 29,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "tails.net",
+      "domain": "unwatch.org",
       "anomaly_count": 27,
-      "measurement_count": 28,
+      "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.advocate.com",
+      "anomaly_count": 27,
+      "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.aljazeera.net",
+      "anomaly_count": 27,
+      "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.falundafa.org",
+      "anomaly_count": 27,
+      "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "googleweblight.com",
+      "anomaly_count": 26,
+      "measurement_count": 26,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "khilafah.net",
+      "anomaly_count": 26,
+      "measurement_count": 26,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "news.google.com",
+      "anomaly_count": 26,
+      "measurement_count": 30,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "nypost.com",
+      "anomaly_count": 26,
+      "measurement_count": 27,
       "anomaly_rate": 1.0
     }
   ]
