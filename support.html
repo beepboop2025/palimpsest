@@ -50,6 +50,7 @@
   .coin .net{color:var(--tk-text-3);font-size:11.5px;font-family:var(--tk-font-mono);margin:0 0 8px}
   .addr{display:block;word-break:break-all;background:rgba(0,0,0,.45);border:1px solid var(--tk-line-1);border-radius:8px;padding:9px 11px;
     font-family:var(--tk-font-mono);font-size:12px;color:var(--tk-text-1);line-height:1.5}
+  .coin .qr{width:120px;height:120px;border-radius:8px;display:block;margin:2px 0 12px}
   .copy{margin-top:10px;background:transparent;color:var(--tk-live,#06d6e0);border:1px solid rgba(6,214,224,.35);border-radius:8px;
     font-family:var(--tk-font-mono);font-size:11px;letter-spacing:.06em;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s}
   .copy:hover{background:rgba(6,214,224,.12)}
@@ -100,37 +101,43 @@
     <div class="coin">
       <div class="ct"><span class="dot" style="color:#f7931a;background:#f7931a"></span>Bitcoin · BTC</div>
       <p class="net">Bitcoin network only</p>
-      <code class="addr" id="btc">bc1qjg836tkh4f60twad5l4fhh4tek2wje5x3avc3r</code>
+            <img class="qr" src="/qr/pay-btc.svg" alt="QR code — Bitcoin address" width="120" height="120">
+<code class="addr" id="btc">bc1qjg836tkh4f60twad5l4fhh4tek2wje5x3avc3r</code>
       <button class="copy" data-for="btc">copy address</button>
     </div>
     <div class="coin">
       <div class="ct"><span class="dot" style="color:#8b9dff;background:#8b9dff"></span>Ethereum · ETH / USDC / USDT</div>
       <p class="net">Ethereum mainnet · ERC-20</p>
-      <code class="addr" id="eth">0x5B4A78b7EFe482d1579E287dA6F0043f89cf0EA1</code>
+            <img class="qr" src="/qr/pay-evm.svg" alt="QR code — Ethereum / EVM address" width="120" height="120">
+<code class="addr" id="eth">0x5B4A78b7EFe482d1579E287dA6F0043f89cf0EA1</code>
       <button class="copy" data-for="eth">copy address</button>
     </div>
     <div class="coin">
       <div class="ct"><span class="dot" style="color:#14f195;background:#14f195"></span>Solana · SOL / USDC</div>
       <p class="net">Solana network · SPL</p>
-      <code class="addr" id="sol">GSESNjnptegNExWRERN6w6niWcPH7WPh6aqdo9kje4UJ</code>
+            <img class="qr" src="/qr/pay-sol.svg" alt="QR code — Solana address" width="120" height="120">
+<code class="addr" id="sol">GSESNjnptegNExWRERN6w6niWcPH7WPh6aqdo9kje4UJ</code>
       <button class="copy" data-for="sol">copy address</button>
     </div>
     <div class="coin">
       <div class="ct"><span class="dot" style="color:#ff4d4d;background:#ff4d4d"></span>Tron · USDT / USDC</div>
       <p class="net">Tron network · TRC-20</p>
-      <code class="addr" id="trx">TAAUBJ4qcQtBEp7atEiCcyiEY4qYF56Eaa</code>
+            <img class="qr" src="/qr/pay-trx.svg" alt="QR code — Tron address" width="120" height="120">
+<code class="addr" id="trx">TAAUBJ4qcQtBEp7atEiCcyiEY4qYF56Eaa</code>
       <button class="copy" data-for="trx">copy address</button>
     </div>
     <div class="coin">
       <div class="ct"><span class="dot" style="color:#0098ea;background:#0098ea"></span>TON · TON / USDT</div>
       <p class="net">The Open Network</p>
-      <code class="addr" id="ton">UQCDAd8-Kt_wdVlvwDUG6eD78bdHVq7TO8D8jce37-XYsY7J</code>
+            <img class="qr" src="/qr/pay-ton.svg" alt="QR code — TON address" width="120" height="120">
+<code class="addr" id="ton">UQCDAd8-Kt_wdVlvwDUG6eD78bdHVq7TO8D8jce37-XYsY7J</code>
       <button class="copy" data-for="ton">copy address</button>
     </div>
     <div class="coin">
       <div class="ct"><span class="dot" style="color:#ff6600;background:#ff6600"></span>Monero · XMR</div>
       <p class="net">Monero network — private by design</p>
-      <code class="addr" id="xmr">44juwNHWxVhgPf6jp8BVqP8LSKwBbVm6rVoJ6d1Qhqd5AwRHhH5CNWSSQCbDNDvZuK6WcuJwT4wKt5csePngREkERtgPYs1</code>
+            <img class="qr" src="/qr/pay-xmr.svg" alt="QR code — Monero address" width="120" height="120">
+<code class="addr" id="xmr">44juwNHWxVhgPf6jp8BVqP8LSKwBbVm6rVoJ6d1Qhqd5AwRHhH5CNWSSQCbDNDvZuK6WcuJwT4wKt5csePngREkERtgPYs1</code>
       <button class="copy" data-for="xmr">copy address</button>
     </div>
   </div>
