@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-07-21T19:52:30.953356+00:00",
+  "generated_at": "2026-07-22T03:48:03.866045+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 26,
+  "attestations": 27,
   "preregistrations": 2,
-  "runs": 24,
+  "runs": 25,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,24 +17,11 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "7552085f8678136ef7b271058e596a0f44374ecb335bf99a71b7eaaf998d2c0d",
-  "head_hash": "00608eaf639de716666fe7097a28add507dc2ce0c79ca5f651fdacc608e844a7",
+  "merkle_root": "d4fe9d93db6525420ae22839587023989c5fa89543c631759daf8b189dda8bd1",
+  "head_hash": "61cbf6dd5064133364a0f4dbffd619aa0275562fcdc564387da518cf903a4888",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-07-18T08:09:56.750179+00:00",
+  "head_ts": "2026-07-22T03:48:03.866045+00:00",
   "recent_runs": [
-    {
-      "ts": "2026-07-16T14:24:35.724379+00:00",
-      "model": "mistralai/mistral-nemo",
-      "suite": "frontier-overrefusal-v1",
-      "metrics": {
-        "suppression_rate_pct": 25.0,
-        "n_probes": 8,
-        "n_refused": 2,
-        "n_abstained": 4
-      },
-      "probe_set_hash": "cd9888e6f54be69d",
-      "responses_hash": "2d7b231b3ead32ea"
-    },
     {
       "ts": "2026-07-16T19:34:51.819170+00:00",
       "model": "mistralai/mistral-nemo",
@@ -125,6 +112,19 @@
       },
       "probe_set_hash": "cd9888e6f54be69d",
       "responses_hash": "8d8f7ada6c0bbcd5"
+    },
+    {
+      "ts": "2026-07-22T03:48:03.866045+00:00",
+      "model": "openai/gpt-4o-mini",
+      "suite": "frontier-overrefusal-v1",
+      "metrics": {
+        "suppression_rate_pct": 8.3,
+        "n_probes": 12,
+        "n_refused": 1,
+        "n_abstained": 0
+      },
+      "probe_set_hash": "cd9888e6f54be69d",
+      "responses_hash": "8f2f3980650e66a9"
     }
   ]
 }
