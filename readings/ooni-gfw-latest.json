@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-22T14:30:04.347732+00:00",
+  "generated_at": "2026-07-22T19:49:33.894462+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -7,69 +7,69 @@
   "window_days": 7,
   "since": "2026-07-15",
   "until": "2026-07-23",
-  "gfw_index": 60.5,
-  "n_measurements": 283651,
+  "gfw_index": 60.2,
+  "n_measurements": 312636,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 169039,
-      "measurement_count": 281914,
-      "failure_count": 1851,
-      "anomaly_rate": 0.6036,
+      "anomaly_count": 185415,
+      "measurement_count": 310865,
+      "failure_count": 1980,
+      "anomaly_rate": 0.6003,
       "reading": "60% anomalous — heavily interfered with"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 366,
-      "measurement_count": 374,
+      "anomaly_count": 373,
+      "measurement_count": 381,
       "failure_count": 0,
-      "anomaly_rate": 0.9786,
+      "anomaly_rate": 0.979,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 370,
-      "measurement_count": 378,
+      "anomaly_count": 377,
+      "measurement_count": 385,
       "failure_count": 0,
-      "anomaly_rate": 0.9788,
+      "anomaly_rate": 0.9792,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 365,
-      "measurement_count": 375,
+      "anomaly_count": 372,
+      "measurement_count": 382,
       "failure_count": 1,
-      "anomaly_rate": 0.9759,
+      "anomaly_rate": 0.9764,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 278,
-      "measurement_count": 288,
+      "anomaly_count": 284,
+      "measurement_count": 294,
       "failure_count": 0,
-      "anomaly_rate": 0.9653,
+      "anomaly_rate": 0.966,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 49,
-      "measurement_count": 322,
+      "anomaly_count": 51,
+      "measurement_count": 329,
       "failure_count": 0,
-      "anomaly_rate": 0.1522,
-      "reading": "15% anomalous — some interference"
+      "anomaly_rate": 0.155,
+      "reading": "16% anomalous — some interference"
     },
     {
       "test": "riseupvpn",
@@ -85,152 +85,152 @@
   "top_blocked": [
     {
       "domain": "www.bbc.com",
-      "anomaly_count": 83,
-      "measurement_count": 84,
+      "anomaly_count": 84,
+      "measurement_count": 85,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.hrichina.org",
-      "anomaly_count": 66,
-      "measurement_count": 66,
+      "anomaly_count": 67,
+      "measurement_count": 67,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.theguardian.com",
-      "anomaly_count": 49,
-      "measurement_count": 49,
+      "anomaly_count": 50,
+      "measurement_count": 50,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.nchrd.org",
-      "anomaly_count": 41,
-      "measurement_count": 41,
+      "anomaly_count": 42,
+      "measurement_count": 42,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "zht.globalvoices.org",
+      "domain": "globalvoices.org",
       "anomaly_count": 40,
       "measurement_count": 44,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "globalvoices.org",
-      "anomaly_count": 39,
-      "measurement_count": 43,
+      "domain": "www.brookings.edu",
+      "anomaly_count": 40,
+      "measurement_count": 40,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.brookings.edu",
-      "anomaly_count": 38,
-      "measurement_count": 38,
+      "domain": "zht.globalvoices.org",
+      "anomaly_count": 40,
+      "measurement_count": 45,
       "anomaly_rate": 1.0
     },
     {
       "domain": "studentsforafreetibet.org",
-      "anomaly_count": 34,
-      "measurement_count": 36,
+      "anomaly_count": 35,
+      "measurement_count": 39,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.theatlantic.com",
+      "anomaly_count": 33,
+      "measurement_count": 33,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "dongtaiwang.com",
       "anomaly_count": 31,
       "measurement_count": 31,
       "anomaly_rate": 1.0
     },
     {
       "domain": "rsf.org",
-      "anomaly_count": 30,
-      "measurement_count": 33,
+      "anomaly_count": 31,
+      "measurement_count": 35,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.clubhouseapi.com",
-      "anomaly_count": 30,
-      "measurement_count": 31,
+      "anomaly_count": 31,
+      "measurement_count": 32,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.theepochtimes.com",
+      "anomaly_count": 31,
+      "measurement_count": 31,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "cloudflare-dns.com",
       "anomaly_count": 30,
       "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "dongtaiwang.com",
-      "anomaly_count": 29,
-      "measurement_count": 29,
-      "anomaly_rate": 1.0
-    },
-    {
       "domain": "explorer.ooni.org",
-      "anomaly_count": 29,
-      "measurement_count": 29,
+      "anomaly_count": 30,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "cloudflare-dns.com",
-      "anomaly_count": 28,
-      "measurement_count": 28,
+      "domain": "www.xvideos.com",
+      "anomaly_count": 30,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.advocate.com",
-      "anomaly_count": 28,
-      "measurement_count": 28,
+      "anomaly_count": 29,
+      "measurement_count": 29,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.nbcnews.com",
+      "anomaly_count": 29,
+      "measurement_count": 29,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "news.google.com",
+      "anomaly_count": 28,
+      "measurement_count": 32,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.gayscape.com",
       "anomaly_count": 28,
       "measurement_count": 28,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "news.google.com",
+      "domain": "www.lemonde.fr",
+      "anomaly_count": 28,
+      "measurement_count": 29,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "duihua.org",
       "anomaly_count": 27,
       "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.gayscape.com",
+      "domain": "guardster.com",
       "anomaly_count": 27,
       "measurement_count": 27,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.lemonde.fr",
-      "anomaly_count": 27,
-      "measurement_count": 28,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "guardster.com",
-      "anomaly_count": 26,
-      "measurement_count": 26,
       "anomaly_rate": 1.0
     },
     {
       "domain": "nypost.com",
-      "anomaly_count": 26,
-      "measurement_count": 26,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "substack.com",
-      "anomaly_count": 26,
-      "measurement_count": 28,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.ftchinese.com",
-      "anomaly_count": 26,
+      "anomaly_count": 27,
       "measurement_count": 27,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.huffpost.com",
-      "anomaly_count": 26,
-      "measurement_count": 26,
+      "domain": "proton.me",
+      "anomaly_count": 27,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     }
   ]
