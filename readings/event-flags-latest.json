@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-07-23T09:13:29.221323+00:00",
+  "generated_at": "2026-07-23T14:53:36.013577+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 0.5222,
-      "n": 57,
+      "stat": 0.7913,
+      "n": 58,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 1.029,
-      "n": 117,
+      "stat": 1.012,
+      "n": 119,
       "n_alarms_in_history": 0,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 1.2828,
-      "n": 117,
+      "stat": 1.2759,
+      "n": 119,
       "n_alarms_in_history": 0,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -33,15 +33,15 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 6.0405,
-      "n": 66,
+      "stat": 3.7376,
+      "n": 67,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
       "state": "calm",
-      "stat": 1.4045,
-      "n": 34,
+      "stat": 1.2729,
+      "n": 35,
       "n_alarms_in_history": 0,
       "meaning": "takedown/pressure events on refuge repositories"
     },
@@ -71,15 +71,15 @@
     },
     "weibo_suppression": {
       "state": "calm",
-      "stat": 0.9961,
-      "n": 16,
+      "stat": 0.998,
+      "n": 17,
       "n_alarms_in_history": 0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
-      "stat": 0.9961,
-      "n": 16,
+      "stat": 0.998,
+      "n": 17,
       "n_alarms_in_history": 0,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     }
