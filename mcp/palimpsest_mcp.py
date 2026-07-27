@@ -94,6 +94,59 @@ SIGNALS = {
     "eval-registry": (
         "/readings/eval-registry-latest.json",
         "registry of the prompts/evaluations behind the Generative Firewall Index"),
+
+    # ── the board-level judgements ──────────────────────────────────────────────
+    # These sit ON TOP of the signals above: they say what the board as a whole
+    # concludes, with the multiplicity and the confounds paid for. An agent asking
+    # "is anything happening in Chinese censorship right now?" should read
+    # board-alarm first and the individual signals second.
+    "board-alarm": (
+        "/readings/board-alarm-latest.json",
+        "THE BOARD'S ANSWER to 'is anything happening?': e-BH selection across every "
+        "monitored signal (false-discovery control under arbitrary dependence), a "
+        "board-wide merged e-value, and how many of the network/content/model layers "
+        "are elevated at once. Read this before any single signal"),
+    "coverage-guard": (
+        "/readings/coverage-guard-latest.json",
+        "whether each signal's latest movement survives conditioning on its own "
+        "sample size. A censorship rate can fall because probes thinned out rather "
+        "than because censorship eased; verdicts are CONFIRMED / COVERAGE_CONFOUNDED "
+        "/ NO_MOVE. Check this before quoting any signal as a censorship change"),
+    "forecast-ledger": (
+        "/readings/forecast-ledger-latest.json",
+        "the observatory's own scored track record: every signal forecast one step "
+        "ahead from only its past, scored by a proper rule against what arrived, with "
+        "empirical coverage, skill against a baseline, and the worst misses named"),
+    "cross-layer": (
+        "/readings/cross-layer-latest.json",
+        "does one layer of the apparatus move before another? Lead/lag between "
+        "network, content and model signals against a circular-shift null on "
+        "differenced series. Reports timing, never cause"),
+    "vantage-fusion": (
+        "/readings/vantage-fusion-latest.json",
+        "one GFW anomaly reading fused from OONI and Censored Planet, with an "
+        "INTERVAL rather than a point estimate: when the two methods disagree the "
+        "range widens and single_rate_quotable goes false"),
+    "circumvention-demand": (
+        "/readings/circumvention-demand-latest.json",
+        "Tor bridge and transport demand from China: the demand-side proxy for how "
+        "much censorship pressure is actually felt"),
+    "ioda-outages": (
+        "/readings/ioda-outages-latest.json",
+        "shutdown-scale connectivity events in China from IODA's BGP, active-probing "
+        "and telescope instruments"),
+    "weibo-hotsearch": (
+        "/readings/weibo-hotsearch-latest.json",
+        "the allowed-attention denominator: which censored terms are trending anyway "
+        "(contained-visible) versus deleted and denied attention (suppressed-invisible)"),
+    "erasure-observatory": (
+        "/readings/erasure-observatory-latest.json",
+        "the three-layer erasure composite (network, narrative, model) with its "
+        "tamper-evident ledger"),
+    "event-flags": (
+        "/readings/event-flags-latest.json",
+        "per-signal anytime-valid change alarms (conformal Shiryaev-Roberts "
+        "e-detectors), two-sided so a signal COLLAPSING flags as well as one rising"),
 }
 
 _cache: dict[str, tuple[float, dict]] = {}
@@ -148,6 +201,50 @@ def tool_gfw_reading(args: dict) -> dict:
                     "the same wall"}
 
 
+def tool_whats_happening(args: dict) -> dict:
+    """The board's judgement in one call, with the caveats attached to it.
+
+    An agent asking "is anything happening in Chinese censorship right now?"
+    should not have to fetch twelve signals and reconcile them — that
+    reconciliation IS the observatory's work, and doing it in the client would
+    reproduce exactly the errors this board exists to avoid: reading a per-signal
+    false-alarm rate as a board-level one, and reading a shrinking measurement
+    base as easing censorship.
+    """
+    out = {}
+    for name in ("board-alarm", "coverage-guard"):
+        try:
+            out[name] = _fetch(name)
+        except Exception as exc:
+            out[name] = {"unavailable": str(exc)}
+
+    board = out.get("board-alarm") or {}
+    guard = out.get("coverage-guard") or {}
+    confounded = guard.get("confounded") or []
+
+    answer = board.get("headline", "board unavailable")
+    if confounded:
+        answer += (f" — but {', '.join(confounded)} moved with its own measurement "
+                   f"coverage and must NOT be read as a censorship change")
+
+    return {
+        "answer": answer,
+        "board_e_value": board.get("board_e_value"),
+        "elevated_layers": board.get("elevated_layers"),
+        "layer_coincidence": board.get("layer_coincidence"),
+        "signals_surviving_multiplicity": (board.get("fdr_selection") or {}).get("selected"),
+        "coverage_confounded": confounded,
+        "how_to_read_this": (
+            "board_e_value is an e-value: under no change anywhere, the chance it ever "
+            "reaches A is at most 1/A. So 20 means 'at most a 1-in-20 fluke', once, for "
+            "the WHOLE board — not per signal. layer_coincidence >= 2 means network, "
+            "content or model layers moved together, which no single-layer observatory "
+            "can see. Anything named in coverage_confounded is an artifact of our own "
+            "measurement thinning out, not a finding."),
+        "full": out,
+    }
+
+
 TOOLS = {
     "list_signals": (
         "Every live censorship and information-control signal Palimpsest publishes, "
@@ -161,6 +258,13 @@ TOOLS = {
          "properties": {"name": {"type": "string", "description": "e.g. 'ooni-gfw'"}},
          "required": ["name"], "additionalProperties": False},
         tool_get_signal),
+    "whats_happening": (
+        "Is anything happening in Chinese censorship right now? The board's own "
+        "judgement across every signal at once, with the multiplicity paid for "
+        "(false-discovery control) and coverage confounds flagged. Use this instead "
+        "of fetching signals individually and reconciling them yourself.",
+        {"type": "object", "properties": {}, "additionalProperties": False},
+        tool_whats_happening),
     "gfw_reading": (
         "The Great Firewall right now, both layers at once: live network blocking "
         "measured inside China (OONI) and model-layer censorship (the Generative "
