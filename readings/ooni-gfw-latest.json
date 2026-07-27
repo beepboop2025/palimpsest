@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-27T15:18:46.738995+00:00",
+  "generated_at": "2026-07-27T19:59:48.056522+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -8,57 +8,57 @@
   "since": "2026-07-20",
   "until": "2026-07-28",
   "gfw_index": 58.0,
-  "n_measurements": 270962,
+  "n_measurements": 271311,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 155093,
-      "measurement_count": 269741,
-      "failure_count": 1980,
-      "anomaly_rate": 0.5792,
+      "anomaly_count": 155191,
+      "measurement_count": 270071,
+      "failure_count": 1989,
+      "anomaly_rate": 0.5789,
       "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 264,
-      "measurement_count": 271,
+      "anomaly_count": 266,
+      "measurement_count": 274,
       "failure_count": 0,
-      "anomaly_rate": 0.9742,
+      "anomaly_rate": 0.9708,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 269,
-      "measurement_count": 276,
+      "anomaly_count": 272,
+      "measurement_count": 280,
       "failure_count": 0,
-      "anomaly_rate": 0.9746,
+      "anomaly_rate": 0.9714,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 264,
-      "measurement_count": 273,
+      "anomaly_count": 267,
+      "measurement_count": 277,
       "failure_count": 1,
-      "anomaly_rate": 0.9706,
+      "anomaly_rate": 0.9674,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 163,
-      "measurement_count": 171,
+      "anomaly_count": 165,
+      "measurement_count": 174,
       "failure_count": 0,
-      "anomaly_rate": 0.9532,
+      "anomaly_rate": 0.9483,
       "reading": "95% anomalous — heavily interfered with"
     },
     {
@@ -66,9 +66,9 @@
       "label": "Psiphon circumvention",
       "available": true,
       "anomaly_count": 30,
-      "measurement_count": 230,
+      "measurement_count": 235,
       "failure_count": 0,
-      "anomaly_rate": 0.1304,
+      "anomaly_rate": 0.1277,
       "reading": "13% anomalous — some interference"
     },
     {
@@ -83,18 +83,6 @@
     }
   ],
   "top_blocked": [
-    {
-      "domain": "www.hrichina.org",
-      "anomaly_count": 44,
-      "measurement_count": 48,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.hrw.org",
-      "anomaly_count": 39,
-      "measurement_count": 42,
-      "anomaly_rate": 1.0
-    },
     {
       "domain": "globalvoices.org",
       "anomaly_count": 32,
@@ -117,6 +105,12 @@
       "domain": "www.theguardian.com",
       "anomaly_count": 27,
       "measurement_count": 27,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.csis.org",
+      "anomaly_count": 26,
+      "measurement_count": 26,
       "anomaly_rate": 1.0
     },
     {
@@ -145,12 +139,6 @@
     },
     {
       "domain": "dns.adguard.com",
-      "anomaly_count": 23,
-      "measurement_count": 23,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.csis.org",
       "anomaly_count": 23,
       "measurement_count": 23,
       "anomaly_rate": 1.0
@@ -231,6 +219,18 @@
       "domain": "www.worldometers.info",
       "anomaly_count": 21,
       "measurement_count": 21,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "delta.chat",
+      "anomaly_count": 20,
+      "measurement_count": 20,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "docs.google.com",
+      "anomaly_count": 20,
+      "measurement_count": 20,
       "anomaly_rate": 1.0
     }
   ]
