@@ -1,47 +1,41 @@
 {
-  "generated_at": "2026-07-27T15:02:23.926415+00:00",
+  "generated_at": "2026-07-27T20:10:36.436156+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 73,
-      "metric_now": 56.5,
-      "denominator_now": 229581.0,
-      "metric_robust_z": -2.94,
-      "denominator_robust_z": -1.32,
-      "denominator_change_pct": -16.9,
-      "fit": {
-        "slope": 2.2e-05,
-        "intercept": 53.334,
-        "correlation": 0.696
-      },
-      "residual_robust_z": -2.38,
-      "verdict": "CONFIRMED",
-      "note": "the move survives conditioning on coverage (raw z=-2.9 -> conditional z=-2.4); the measurement base tracks this metric (r=0.70) and absorbs part but not the bulk of the departure",
+      "n_pairs": 75,
+      "metric_now": 58.0,
+      "denominator_now": 271311.0,
+      "metric_robust_z": -1.26,
+      "denominator_robust_z": -0.08,
+      "denominator_change_pct": -1.0,
+      "verdict": "NO_MOVE",
+      "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 145,
-      "metric_now": 1.2083,
+      "n_pairs": 148,
+      "metric_now": 1.0492,
       "denominator_now": 141.0,
-      "metric_robust_z": -0.98,
-      "denominator_robust_z": -7.55,
+      "metric_robust_z": -1.14,
+      "denominator_robust_z": -6.3,
       "denominator_change_pct": -16.6,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 145,
+      "n_pairs": 148,
       "metric_now": 29.0,
       "denominator_now": 141.0,
       "metric_robust_z": null,
-      "denominator_robust_z": -7.55,
+      "denominator_robust_z": -6.3,
       "denominator_change_pct": -16.6,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 83,
+      "n_pairs": 84,
       "metric_now": 6.0,
       "denominator_now": 25.0,
       "metric_robust_z": 1.35,
@@ -52,7 +46,7 @@
       "denominator_is": "terms carried into the GDELT cross-signal"
     },
     "weibo_suppression": {
-      "n_pairs": 32,
+      "n_pairs": 34,
       "metric_now": 0.0,
       "denominator_now": 1.0,
       "metric_robust_z": null,
@@ -63,7 +57,7 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 42,
+      "n_pairs": 43,
       "metric_now": 1.0,
       "denominator_now": 7.0,
       "metric_robust_z": 0.0,
