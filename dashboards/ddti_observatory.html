@@ -132,11 +132,16 @@
     <div class="full" data-tkm style="margin-top:14px">
       <div class="tk-tick">
         <div class="tk-tick__head">
-          <span class="tk-card__title">⟿ DDTI top-threat index · 30 days → 7-day projection</span>
-          <span class="tk-tick__readout">trend <b id="tickTrend">rising</b></span>
+          <span class="tk-card__title">⟿ DDTI top-threat · last 30 readings → operator scenario</span>
+          <span class="tk-tick__readout">trend <b id="tickTrend">—</b></span>
         </div>
         <canvas class="tk-tick__canvas ddti" id="tick"></canvas>
-        <div class="tk-tick__axis"><span>−30d</span><span>−21d</span><span>−14d</span><span>−7d</span><span style="color:var(--tk-live)">NOW</span><span>+7d</span></div>
+        <div class="tk-tick__axis"><span>−30</span><span>−22</span><span>−15</span><span>−7</span><span style="color:var(--tk-live)">NOW</span><span>scenario</span></div>
+        <p class="tk-tick__foot">Line = measured <code>top_threat</code> from the last 30 committed DDTI
+          readings (<a href="../readings/ddti-history.jsonl">ddti-history.jsonl</a>; refreshed every 3h, so
+          30 readings ≈ 3.7 days). The shaded cone right of NOW is <b>not a forecast</b> — it is the
+          operator scenario set by the drift and volatility controls below, shown to reason about
+          what a given trajectory would imply.</p>
       </div>
     </div>
 
@@ -444,9 +449,16 @@ if (newIdx >= 0) { net.propagate(newIdx); setInterval(() => net.propagate(newIdx
 /* ---- the Tick: DDTI top-threat over time, drawn in the Tiktó visual language
         (custom so it is labelled for censorship, not the LCR-specific built-in) ---- */
 const tickCv = document.getElementById("tick");
-const past = []; let v = 3.2;
-for (let i = 0; i < 30; i++) { v += Math.sin(i*0.5)*0.06 + (i>20 ? 0.10 : 0.02); past.push(v); }
-const base = past[past.length-1], alertLine = INDEX.alert_threshold;
+/* `past` holds REAL top_threat readings from readings/ddti-history.jsonl, loaded
+   below. It starts empty on purpose: until the history arrives the chart renders
+   an explicit "awaiting history" state rather than a line. A shape drawn from a
+   formula and labelled as a measurement is the one thing this observatory must
+   never publish, so there is no synthetic fallback anywhere on this path. */
+let past = [];
+const TICK_MIN_POINTS = 8;   // below this the series is too short to read as a trend
+const TICK_MAX_POINTS = 30;  // window drawn
+let base = null;
+const alertLine = INDEX.alert_threshold;
 let drift = 0.55;
 let volatility = 1.0;
 /* the intro draws the past line first (history), then fades in the cone
@@ -460,6 +472,14 @@ function drawTick(prog) {
   const ctx = tickCv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
   const w = r.width, h = r.height, padB = 16, padT = 8;
   ctx.clearRect(0,0,w,h);
+  if (past.length < TICK_MIN_POINTS || base == null) {
+    // Fail loud: too little measured history to draw a trend. Say so on the
+    // canvas instead of drawing anything the eye would read as data.
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillStyle = hexA(css("--tk-text-1"), 0.55); ctx.textAlign = "center";
+    ctx.fillText(tickNote || "awaiting measured history", w/2, h/2);
+    return;
+  }
   const all = past.concat([base + drift]);
   const min = Math.min(...all, alertLine) - 0.4, max = Math.max(...all, alertLine) + 0.4;
   const X = t => 16 + (t+1)/2 * (w-32);            // t in -1..1, now at t=0
@@ -500,7 +520,48 @@ function drawTick(prog) {
     ctx.globalAlpha = 1;
   }
 }
-TiktoMotion.drawIn((p) => drawTick(p), 1100, tickCv);
+let tickNote = "loading measured history…";
+/* Load the REAL series: every committed DDTI reading carries top_threat, so the
+   history JSONL is the chart's only source. Parsed line-by-line because the file
+   is append-only JSONL, and a single torn line must not discard the whole series. */
+fetch("../readings/ddti-history.jsonl", { cache: "no-store" })
+  .then((r) => (r.ok ? r.text() : Promise.reject(r.status)))
+  .then((txt) => {
+    const vals = [];
+    for (const line of txt.split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const v = JSON.parse(line).top_threat;
+        if (typeof v === "number" && isFinite(v)) vals.push(v);
+      } catch (e) { /* skip a torn line, keep the rest of the series */ }
+    }
+    past = vals.slice(-TICK_MAX_POINTS);
+    base = past.length ? past[past.length - 1] : null;
+    tickNote = !past.length
+      ? "no measured history available"
+      : past.length < TICK_MIN_POINTS
+        ? `only ${past.length} readings — need ${TICK_MIN_POINTS} to plot a trend`
+        : "";
+    /* Trend is MEASURED, not asserted: compare the mean of the latest third of the
+       window against the mean of the earliest third. A flat band is reported flat —
+       "rising" must never be the default word on the card. */
+    const el = document.getElementById("tickTrend");
+    if (el) {
+      if (past.length < TICK_MIN_POINTS) { el.textContent = "insufficient history"; }
+      else {
+        const k = Math.max(2, Math.floor(past.length / 3));
+        const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+        const first = mean(past.slice(0, k)), last = mean(past.slice(-k));
+        const rel = first ? (last - first) / Math.abs(first) : 0;
+        el.textContent = Math.abs(rel) < 0.05 ? "flat"
+          : rel > 0 ? `rising ${(rel * 100).toFixed(0)}%` : `falling ${(Math.abs(rel) * 100).toFixed(0)}%`;
+      }
+    }
+    if (past.length >= TICK_MIN_POINTS) TiktoMotion.drawIn((p) => drawTick(p), 1100, tickCv);
+    else drawTick(1);
+  })
+  .catch(() => { tickNote = "history unavailable — not drawing an estimate"; drawTick(1); });
+drawTick(1);
 addEventListener("resize", () => drawTick());
 
 /* ---- scenario cockpit + slash commands ---- */

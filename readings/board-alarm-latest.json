@@ -1,0 +1,200 @@
+{
+  "generated_at": "2026-07-27T14:53:25.563215+00:00",
+  "board_e_value": 28.319,
+  "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
+  "fdr_selection": {
+    "selected": [
+      "ooni_gfw"
+    ],
+    "alpha": 0.1,
+    "k": 1,
+    "n_tested": 9,
+    "threshold": 90.0
+  },
+  "layers": {
+    "network": {
+      "e": 60.427,
+      "n_signals": 4,
+      "state": "elevated",
+      "corroborated": true,
+      "signals": {
+        "censored_planet": 16.391,
+        "ioda_outages": 1.0,
+        "ooni_gfw": 219.911,
+        "tor_bridge_cn": 4.404
+      },
+      "recent_alarms": []
+    },
+    "content": {
+      "e": 2.632,
+      "n_signals": 5,
+      "state": "calm",
+      "corroborated": true,
+      "signals": {
+        "ddti_novelty": 4.044,
+        "ddti_threat": 3.402,
+        "gdelt_containment": 3.214,
+        "github_refuge": 1.503,
+        "weibo_suppression": 1.0
+      },
+      "recent_alarms": []
+    },
+    "model": {
+      "e": null,
+      "n_signals": 0,
+      "state": "no_data",
+      "corroborated": false,
+      "signals": {},
+      "recent_alarms": []
+    }
+  },
+  "elevated_layers": [
+    "network"
+  ],
+  "layer_coincidence": 1,
+  "recently_fired": [],
+  "signals": {
+    "ooni_gfw": {
+      "state": "watch",
+      "e": 219.9113,
+      "n": 73,
+      "direction": "down",
+      "robust_z": -2.94,
+      "driver_side": "down",
+      "readings_since_alarm": 22,
+      "n_alarms_in_history": 1,
+      "meaning": "network-layer GFW anomaly rate"
+    },
+    "ddti_threat": {
+      "state": "calm",
+      "e": 3.4021,
+      "n": 145,
+      "direction": "down",
+      "robust_z": -0.98,
+      "driver_side": "down",
+      "readings_since_alarm": 21,
+      "n_alarms_in_history": 2,
+      "meaning": "peak censor attention on one term"
+    },
+    "ddti_novelty": {
+      "state": "calm",
+      "e": 4.0436,
+      "n": 145,
+      "direction": "down",
+      "robust_z": null,
+      "driver_side": "down",
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "newly-sensitive terms entering the deletion stream"
+    },
+    "censored_planet": {
+      "state": "calm",
+      "e": 16.3906,
+      "n": 13,
+      "direction": "down",
+      "robust_z": -2.79,
+      "driver_side": "down",
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "remote-vantage interference rate"
+    },
+    "gdelt_containment": {
+      "state": "calm",
+      "e": 3.214,
+      "n": 83,
+      "direction": "up",
+      "robust_z": 1.35,
+      "driver_side": "up",
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "terms loud abroad while censored at home"
+    },
+    "github_refuge": {
+      "state": "calm",
+      "e": 1.5026,
+      "n": 42,
+      "direction": "flat",
+      "robust_z": 0.0,
+      "driver_side": "down",
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "takedown/pressure events on refuge repositories"
+    },
+    "refusal_drift": {
+      "state": "warming_up",
+      "e": 0.0,
+      "n": 1,
+      "direction": "flat",
+      "robust_z": null,
+      "driver_side": null,
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "cross-lab model suppression rate"
+    },
+    "bleedthrough_pools": {
+      "state": "no_data",
+      "n": 0,
+      "meaning": "distinct GFW injector pools — a jump signals regional fragmentation"
+    },
+    "bleedthrough_capacity": {
+      "state": "no_data",
+      "n": 0,
+      "meaning": "peak parallel injector processes — fleet capacity on a border path"
+    },
+    "tor_bridge_cn": {
+      "state": "calm",
+      "e": 4.4042,
+      "n": 382,
+      "direction": "up",
+      "robust_z": 0.64,
+      "driver_side": "up",
+      "readings_since_alarm": 77,
+      "n_alarms_in_history": 6,
+      "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
+    },
+    "weibo_suppression": {
+      "state": "calm",
+      "e": 1.0,
+      "n": 32,
+      "direction": "flat",
+      "robust_z": null,
+      "driver_side": "up",
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "DDTI terms deleted AND denied hot-search attention at once"
+    },
+    "ioda_outages": {
+      "state": "calm",
+      "e": 1.0,
+      "n": 31,
+      "direction": "flat",
+      "robust_z": null,
+      "driver_side": "up",
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
+      "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
+    }
+  },
+  "headline": "single layer elevated: network",
+  "readings_to_days": {
+    "bleedthrough_capacity": 125.0,
+    "bleedthrough_pools": 125.0,
+    "censored_planet": 500.0,
+    "ddti_novelty": 62.5,
+    "ddti_threat": 62.5,
+    "gdelt_containment": 125.0,
+    "github_refuge": 250.0,
+    "ioda_outages": 125.0,
+    "ooni_gfw": 125.0,
+    "refusal_drift": 500.0,
+    "tor_bridge_cn": 500.0,
+    "weibo_suppression": 125.0
+  },
+  "method": "per-signal two-sided conformal Shiryaev-Roberts e-detectors; e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
+  "caveats": [
+    "layer co-movement is evidence of CO-MOVEMENT, not of a common cause: two layers can rise together under one directive or under one holiday; this reading reports the coincidence and does not name a cause",
+    "the guarantee is per READING and signals refresh on different cadences, so equal e-values mean different wall-clock rarity; readings_to_days gives the conversion for the ALARM threshold",
+    "a layer holding one signal cannot corroborate itself — corroborated=false marks those, and today that is the MODEL layer",
+    "signals still warming up contribute no e-value; they are neither evidence of calm nor of change"
+  ]
+}

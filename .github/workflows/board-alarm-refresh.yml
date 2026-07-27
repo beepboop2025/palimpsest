@@ -1,0 +1,58 @@
+name: Refresh board alarm and coverage guard
+
+# The two board-level judgements, both pure local recomputation over the signal
+# history JSONLs (no network, stdlib-only, deterministic):
+#
+#   board alarm    — e-BH selection across all monitored signals plus per-layer
+#                    and board-wide merged e-values, so the false-alarm rate a
+#                    reader is quoted is the family-wise one rather than twelve
+#                    separate per-signal ones.
+#   coverage guard — whether each signal's movement survives conditioning on its
+#                    own sample size, so a shrinking measurement base is never
+#                    published as a censorship change.
+#
+# Runs after the conformal event flags, which run after the signal pulls.
+
+on:
+  schedule:
+    - cron: "53 */6 * * *"     # every 6 hours, after event-flags at :47
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: board-alarm-refresh
+  cancel-in-progress: false
+
+jobs:
+  board-alarm:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Recompute the board alarm from signal histories
+        run: python -m scripts.board_alarm_pull
+
+      - name: Recompute the coverage guard from signal histories
+        run: python -m scripts.coverage_guard_pull
+
+      - name: Commit & push if either judgement changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/board-alarm-latest.json readings/board-alarm-history.jsonl \
+                  readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: board alarm + coverage guard refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

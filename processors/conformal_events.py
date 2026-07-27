@@ -62,16 +62,46 @@ WARMUP = 8         # readings before the first bet (rank needs company)
 STAT_CAP = 1e12    # numeric ceiling only; an alarm resets long before
 
 
-def conformal_pvalue(history: list[float], x: float) -> float:
-    """One-sided deterministic conformal p-value of x against its past.
+def conformal_pvalue(history: list[float], x: float, *, side: str = "up",
+                     weights: list[float] | None = None) -> float:
+    """Deterministic conformal p-value of x against its past.
 
-    p = (#{past >= x} + 1) / (n + 1): the chance a benign reading looks this
-    extreme. Ties count toward the numerator (conservative, super-uniform),
-    so validity holds without randomization — Palimpsest cores carry no RNG.
+    p = (#{past at least as extreme as x} + 1) / (n + 1): the chance a benign
+    reading looks this extreme. Ties count toward the numerator (conservative,
+    super-uniform), so validity holds without randomization — Palimpsest cores
+    carry no RNG.
+
+    side="up" scores unusually HIGH readings, side="down" unusually LOW ones.
+    A collapsing signal is an event too: OONI's anomaly rate falling can mean
+    measurement itself is being blocked, and injector pools going quiet means
+    consolidation — an upward-only detector is blind to half the event space.
+
+    weights (optional, one per history entry) implement the nonexchangeable
+    conformal p-value of Barber, Candes, Ramdas & Tibshirani (Ann. Statist.
+    2023, arXiv:2202.13415): recent history counts more, so slow drift and
+    seasonality erode coverage gracefully instead of silently becoming the new
+    null. The new point always carries weight 1.
     """
-    n = len(history)
-    ge = sum(1 for s in history if s >= x)
-    return (ge + 1) / (n + 1)
+    extreme = (lambda s: s >= x) if side == "up" else (lambda s: s <= x)
+    if weights is None:
+        return (sum(1 for s in history if extreme(s)) + 1) / (len(history) + 1)
+    if len(weights) != len(history):
+        raise ValueError("weights must be parallel to history")
+    num = sum(w for s, w in zip(history, weights) if extreme(s)) + 1.0
+    return num / (sum(weights) + 1.0)
+
+
+def decay_weights(n: int, half_life: float | None) -> list[float] | None:
+    """Geometric weights over an n-long history, newest last, weight 1 at the end.
+
+    half_life is in readings; None disables weighting (plain exchangeable
+    conformal). A finite half-life is what keeps a long-lived signal sensitive:
+    with an unweighted reference that only grows, each new point is one of ever
+    more and the detector goes progressively deaf.
+    """
+    if not half_life or n <= 0:
+        return None
+    return [0.5 ** ((n - 1 - i) / half_life) for i in range(n)]
 
 
 def bet(p: float) -> float:
@@ -80,36 +110,113 @@ def bet(p: float) -> float:
     return sum(e * p ** (e - 1.0) for e in EPS_GRID) / len(EPS_GRID)
 
 
-def analyze_series(values: list[float]) -> dict:
+def merge_e(values: list[float]) -> float:
+    """Merge e-values by arithmetic mean.
+
+    Vovk & Wang (Ann. Statist. 2021, arXiv:1912.06116): the mean of arbitrarily
+    DEPENDENT e-values is itself a valid e-value, and is essentially the only
+    admissible symmetric merger. Dependence is the normal case here — the two
+    sides of one signal, and the layers of one censorship event, all move
+    together — so the mean is used everywhere rather than a product.
+    """
+    return sum(values) / len(values) if values else 1.0
+
+
+def _median(xs: list[float]) -> float:
+    s = sorted(xs)
+    m = len(s) // 2
+    return s[m] if len(s) % 2 else (s[m - 1] + s[m]) / 2.0
+
+
+def _effect(reference: list[float], x: float) -> dict:
+    """How far the reading sits from its own past, in plain units.
+
+    A state label alone ("watch") does not tell a reader whether the departure
+    is trivial or enormous. Robust scale (median absolute deviation, scaled to
+    be comparable to a standard deviation for roughly-normal data) is used
+    because these series are short, skewed and outlier-prone.
+    """
+    if not reference:
+        return {"direction": "flat", "delta": None, "robust_z": None, "pct_of_past_below": None}
+    med = _median(reference)
+    mad = _median([abs(s - med) for s in reference])
+    delta = x - med
+    scale = 1.4826 * mad
+    below = sum(1 for s in reference if s < x) / len(reference)
+    return {
+        "direction": "up" if delta > 0 else "down" if delta < 0 else "flat",
+        "delta": round(delta, 4),
+        "robust_z": round(delta / scale, 2) if scale > 0 else None,
+        "pct_of_past_below": round(100.0 * below, 1),
+    }
+
+
+def analyze_series(values: list[float], *, two_sided: bool = True,
+                   half_life: float | None = None) -> dict:
     """Walk a signal's history with the Shiryaev-Roberts e-detector.
 
-    Returns per-reading statistic, state (calm/watch/alarm), and alarm epochs.
+    Returns per-reading statistic, state, alarm epochs, and — new — the
+    DIRECTION and size of the current departure.
+
+    two_sided runs an upward and a downward conformal p-value and merges their
+    bets by arithmetic mean (Vovk & Wang 2021). The merged quantity is still an
+    e-value, so the Shiryaev-Roberts guarantee below is unchanged; the detector
+    simply stops being blind to collapses.
+
+    half_life (readings) applies geometric weights to the reference, trading
+    exact exchangeability for robustness to slow drift (arXiv:2202.13415).
+    None keeps the original unweighted behaviour.
+
     Reset policy: the statistic and the reference history reset after each
     alarm, so the detector hunts the NEXT change instead of living off (or
-    saturating on) the last one.
+    saturating on) the last one. While the reference refills the state is
+    reported as "warming_up" — never as "calm", which would read as an
+    all-clear during exactly the period the detector cannot see.
     """
-    sr = 0.0
+    # Two independent Shiryaev-Roberts statistics, one per direction. Merging the
+    # two bets into a single e-value would be valid but halves the capital at
+    # every step, which costs most of the detector's power against a real shift.
+    # Running them separately keeps each at full power; the union bound over two
+    # detectors is paid for by doubling each threshold, so the FAMILY-WISE
+    # guarantee published below is exactly the one-sided guarantee it replaces:
+    #   P(either side flags within n) <= n/(2A) + n/(2A) = n/A.
+    sides = ("up", "down") if two_sided else ("up",)
+    mult = float(len(sides))
+    watch_at, alarm_at = WATCH_A * mult, ALARM_A * mult
+
+    sr = {s: 0.0 for s in sides}
     reference: list[float] = []
     states: list[str] = []
     stats: list[float] = []
     alarms: list[int] = []
+    directions: list[str] = []
+    driver: str | None = None
 
     for i, x in enumerate(values):
+        eff = _effect(reference, x)
         if len(reference) >= WARMUP:
-            sr = min((1.0 + sr) * bet(conformal_pvalue(reference, x)), STAT_CAP)
+            w = decay_weights(len(reference), half_life)
+            for s in sides:
+                p = conformal_pvalue(reference, x, side=s, weights=w)
+                sr[s] = min((1.0 + sr[s]) * bet(p), STAT_CAP)
+        peak = max(sr.values())
+        driver = max(sr, key=lambda s: sr[s]) if peak > 0 else None
         state = (
             "warming_up" if len(reference) < WARMUP else
-            "alarm" if sr >= ALARM_A else
-            "watch" if sr >= WATCH_A else "calm"
+            "alarm" if peak >= alarm_at else
+            "watch" if peak >= watch_at else "calm"
         )
         states.append(state)
-        stats.append(round(sr, 4))
+        stats.append(round(peak, 4))
+        directions.append(eff["direction"])
         reference.append(x)
         if state == "alarm":
             alarms.append(i)
-            sr = 0.0
+            sr = {s: 0.0 for s in sides}
             reference = []  # post-alarm world is the new null
 
+    last_ref = values[:-1] if len(values) > 1 else []
+    effect = _effect(last_ref, values[-1]) if values else {}
     return {
         "n": len(values),
         "state": states[-1] if states else "no_data",
@@ -117,6 +224,12 @@ def analyze_series(values: list[float]) -> dict:
         "stats": stats,
         "states": states,
         "alarm_indices": alarms,
+        "directions": directions,
+        "effect": effect,
+        "two_sided": two_sided,
+        "driver_side": driver,
+        "watch_at": watch_at,
+        "alarm_at": alarm_at,
     }
 
 
