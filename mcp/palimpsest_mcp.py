@@ -247,30 +247,61 @@ def tool_whats_happening(args: dict) -> dict:
 
 TOOLS = {
     "list_signals": (
-        "Every live censorship and information-control signal Palimpsest publishes, "
-        "with one-line descriptions and source URLs. Start here.",
+        "List every live censorship and information-control signal Palimpsest "
+        "publishes: name, one-line description and source URL for each — OONI "
+        "Great Firewall probes, Censored Planet, the Generative Firewall Index "
+        "over Chinese LLMs, takedown and redaction pressure, and the rest of the "
+        "board. Takes no arguments. Call this first to discover signal names, "
+        "then get_signal for one full reading.",
         {"type": "object", "properties": {}, "additionalProperties": False},
         tool_list_signals),
     "get_signal": (
-        "The full latest reading of one signal by name (see list_signals): raw "
-        "payload with generated_at, method scope and upstream sources.",
+        "Read the full latest published reading of one named signal: the raw "
+        "payload with its generated_at timestamp, method scope and upstream "
+        "sources, exactly as served on palimpsest.info. Call list_signals first "
+        "to discover valid names. Distinct from gfw_reading, which merges the "
+        "two Great Firewall layers into one combined view.",
         {"type": "object",
-         "properties": {"name": {"type": "string", "description": "e.g. 'ooni-gfw'"}},
+         "properties": {"name": {
+             "type": "string",
+             "description": "signal name from list_signals, e.g. 'ooni-gfw' or 'generative-firewall-index'"}},
          "required": ["name"], "additionalProperties": False},
         tool_get_signal),
     "whats_happening": (
-        "Is anything happening in Chinese censorship right now? The board's own "
-        "judgement across every signal at once, with the multiplicity paid for "
-        "(false-discovery control) and coverage confounds flagged. Use this instead "
-        "of fetching signals individually and reconciling them yourself.",
+        "Judge whether anything is happening in Chinese censorship right now, "
+        "across every signal at once: the board's own cross-signal verdict with "
+        "the multiplicity paid for (false-discovery control) and coverage "
+        "confounds flagged as measurement artifacts, never findings. Takes no "
+        "arguments. Use this instead of fetching signals individually and "
+        "reconciling them yourself; then use get_signal to drill into whichever "
+        "signal moved.",
         {"type": "object", "properties": {}, "additionalProperties": False},
         tool_whats_happening),
     "gfw_reading": (
-        "The Great Firewall right now, both layers at once: live network blocking "
-        "measured inside China (OONI) and model-layer censorship (the Generative "
-        "Firewall Index over Chinese LLMs).",
+        "Read the Great Firewall's current state at both layers in one call: "
+        "live network blocking measured inside China via OONI (website, "
+        "messenger and circumvention-tool reachability) joined with model-layer "
+        "censorship from the Generative Firewall Index over Chinese LLMs. Takes "
+        "no arguments. A combined convenience view — for one layer's full raw "
+        "payload use get_signal with 'ooni-gfw' or 'generative-firewall-index'.",
         {"type": "object", "properties": {}, "additionalProperties": False},
         tool_gfw_reading),
+}
+
+# Human-facing display names, served as MCP `title` beside the machine name.
+TOOL_TITLES = {
+    "list_signals": "List published signals",
+    "get_signal": "One signal's full reading",
+    "whats_happening": "Cross-signal board verdict",
+    "gfw_reading": "Great Firewall: both layers",
+}
+
+# Every tool reads the published board; nothing mutates state or reaches
+# beyond the observatory's own served payloads.
+TOOL_ANNOTATIONS = {
+    "readOnlyHint": True,
+    "idempotentHint": True,
+    "openWorldHint": False,
 }
 
 
@@ -305,7 +336,11 @@ def dispatch(msg):
         return _result(msg_id, {})
     if method == "tools/list":
         return _result(msg_id, {"tools": [
-            {"name": n, "description": d, "inputSchema": s}
+            {"name": n,
+             "title": TOOL_TITLES.get(n, n),
+             "description": d,
+             "inputSchema": s,
+             "annotations": {"title": TOOL_TITLES.get(n, n), **TOOL_ANNOTATIONS}}
             for n, (d, s, _) in TOOLS.items()]})
     if method == "tools/call":
         name = params.get("name")
