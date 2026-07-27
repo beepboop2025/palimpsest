@@ -135,3 +135,48 @@ def test_wilson_sane_at_edges():
     lo, hi = gfr.wilson(5, 5)
     assert 0.5 < lo < 0.6 and hi == 1.0
     assert gfr.wilson(0, 0) == (None, None)                # no valid samples -> no interval
+
+
+# ── transport-failure accounting ────────────────────────────────────────────────
+# Added after 2026-07-27, when the flagship GFI run failed with only
+# "abstain_rate 1.0" in the log. A dead key, an exhausted balance, a retired model
+# slug and a network outage all produced that identical line, so the cause had to
+# be reproduced by hand. The gate now has to say which.
+
+def _gfr():
+    import importlib.util
+    from pathlib import Path
+    p = Path(__file__).resolve().parent.parent / "scripts" / "generative_firewall_reading.py"
+    spec = importlib.util.spec_from_file_location("gfr_mod", p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_transport_errors_start_empty():
+    assert _gfr().TRANSPORT_ERRORS == {}
+
+
+def test_failures_are_counted_by_model_and_reason():
+    m = _gfr()
+    m._note_error("qwen/x: HTTP 401")
+    m._note_error("qwen/x: HTTP 401")
+    m._note_error("deepseek/y: HTTP 404")
+    assert m.TRANSPORT_ERRORS == {"qwen/x: HTTP 401": 2, "deepseek/y: HTTP 404": 1}
+
+
+def test_a_200_carrying_an_error_object_is_an_abstain_not_an_empty_answer():
+    """An empty string is classified as a refusal, so a failed read must never
+    become one — that would report a transport fault as censorship."""
+    import io
+    import json as _json
+    m = _gfr()
+
+    class _Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return _json.dumps({"error": {"message": "no credits"}}).encode()
+
+    m.urllib.request.urlopen = lambda *a, **k: _Resp()
+    assert m.fetch_one("k", "some/model", "prompt") is None
+    assert any("api-error" in reason for reason in m.TRANSPORT_ERRORS)

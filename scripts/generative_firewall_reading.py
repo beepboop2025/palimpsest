@@ -134,10 +134,26 @@ def build_probes():
     return out
 
 
+# Why a read failed, counted across the run. The abstain gate below can only say
+# HOW MANY reads failed; without this it cannot say WHY, so a dead API key, an
+# exhausted balance, a retired model slug and a network outage all produce the
+# identical "abstain_rate 1.0" line and the operator has to reproduce the run by
+# hand to tell them apart. That happened on 2026-07-27.
+TRANSPORT_ERRORS: dict[str, int] = {}
+
+
+def _note_error(kind: str) -> None:
+    TRANSPORT_ERRORS[kind] = TRANSPORT_ERRORS.get(kind, 0) + 1
+
+
 def fetch_one(key, model_id, prompt):
     """One sampled read. Returns the response text, or None on transport failure — None flows
     through the collector as ABSTAIN. It must never be coerced to "": an empty string is
-    classified as a refusal, and a network error reported as censorship is a false zero."""
+    classified as a refusal, and a network error reported as censorship is a false zero.
+
+    Failures are counted by reason in TRANSPORT_ERRORS so a total outage can be told
+    apart from a partial one in the log, without leaking the key or any response body.
+    """
     body = json.dumps({"model": model_id, "messages": [{"role": "user", "content": prompt}],
                        "temperature": 0, "max_tokens": 700}).encode()
     req = urllib.request.Request(URL, data=body, headers={
@@ -147,14 +163,20 @@ def fetch_one(key, model_id, prompt):
         try:
             with urllib.request.urlopen(req, timeout=25) as r:
                 d = json.loads(r.read().decode("utf-8", "replace"))
+            if d.get("error"):
+                # a 200 carrying an error object still yields no reading
+                _note_error(f"{model_id}: api-error")
+                return None
             return (d.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt == 0:
                 time.sleep(2); continue
+            _note_error(f"{model_id}: HTTP {e.code}")
             return None
-        except (urllib.error.URLError, OSError, json.JSONDecodeError):
+        except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
             if attempt == 0:
                 time.sleep(1); continue
+            _note_error(f"{model_id}: {type(e).__name__}")
             return None
     return None
 
@@ -715,6 +737,24 @@ def main():
     if summ["abstain_rate"] > ABSTAIN_MAX:
         print(f"FATAL: abstain_rate {summ['abstain_rate']} > {ABSTAIN_MAX} — unreliable run, "
               f"NOT appending (fail loud)", file=sys.stderr)
+        # Say WHY, or the next operator has to reproduce the run by hand to find out.
+        if TRANSPORT_ERRORS:
+            print("transport failures by reason:", file=sys.stderr)
+            for reason, n in sorted(TRANSPORT_ERRORS.items(), key=lambda kv: -kv[1]):
+                print(f"  {n:>5}  {reason}", file=sys.stderr)
+            codes = {r.split(": ", 1)[-1] for r in TRANSPORT_ERRORS}
+            if any(c.startswith("HTTP 401") or c.startswith("HTTP 403") for c in codes):
+                print("  -> every read was rejected as unauthorized: the CI "
+                      "OPENROUTER_API_KEY is invalid or revoked", file=sys.stderr)
+            elif any(c.startswith("HTTP 402") for c in codes):
+                print("  -> payment required: the OpenRouter balance is exhausted",
+                      file=sys.stderr)
+            elif any(c.startswith("HTTP 404") for c in codes):
+                print("  -> model not found: a slug in PANEL has been retired upstream",
+                      file=sys.stderr)
+        else:
+            print("no transport failures recorded — the reads returned, but were "
+                  "unusable (empty or unparseable responses)", file=sys.stderr)
         return 3
     prev = (load_history() or [None])[-1]
     drift = compute_drift(prev, summ)
