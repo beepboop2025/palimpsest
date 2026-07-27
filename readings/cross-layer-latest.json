@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-07-27T15:09:18.750032+00:00",
+  "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
+  "n_pairs_tested": 0,
+  "n_confirmed": 0,
+  "pairs": [],
+  "skipped": [
+    {
+      "pair": [
+        "ddti_novelty",
+        "ooni_gfw"
+      ],
+      "overlap_days": 17,
+      "reason": "overlap 17d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "ddti_novelty",
+        "tor_bridge_cn"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "ddti_threat",
+        "ooni_gfw"
+      ],
+      "overlap_days": 17,
+      "reason": "overlap 17d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "ddti_threat",
+        "tor_bridge_cn"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "gdelt_containment",
+        "ooni_gfw"
+      ],
+      "overlap_days": 17,
+      "reason": "overlap 17d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "gdelt_containment",
+        "tor_bridge_cn"
+      ],
+      "overlap_days": 19,
+      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "github_refuge",
+        "ooni_gfw"
+      ],
+      "overlap_days": 17,
+      "reason": "overlap 17d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "github_refuge",
+        "tor_bridge_cn"
+      ],
+      "overlap_days": 19,
+      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
+    }
+  ],
+  "preliminary": true,
+  "required_overlap_days": 36,
+  "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
+  "caveats": [
+    "TIMING, NOT CAUSE: a surviving pair means two layers move together with a consistent offset. One directive can move both, and so can a holiday, a news cycle, or a measurement change shared by both pipelines",
+    "PRELIMINARY: overlapping histories are weeks, not years. A lead/lag claim from this much daily data is a hypothesis worth watching, not a finding — overlap_days is published on every pair so the reader can judge",
+    "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
+    "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
+  ]
+}

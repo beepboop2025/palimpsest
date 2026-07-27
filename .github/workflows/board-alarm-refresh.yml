@@ -1,6 +1,6 @@
-name: Refresh board alarm, coverage guard and forecast ledger
+name: Refresh board-level judgements
 
-# The three board-level judgements, all pure local recomputation over the signal
+# The four board-level judgements, all pure local recomputation over the signal
 # history JSONLs (no network, stdlib-only, deterministic):
 #
 #   board alarm    — e-BH selection across all monitored signals plus per-layer
@@ -13,6 +13,9 @@ name: Refresh board alarm, coverage guard and forecast ledger
 #   forecast ledger— the observatory's own track record: every signal forecast one
 #                    step ahead from only its past, scored by a proper rule against
 #                    what arrived, with the misses named.
+#   cross-layer    — whether one layer of the apparatus moves before another, against
+#                    a circular-shift null on differenced series (a naive correlation
+#                    test on these autocorrelated signals is confidently wrong).
 #
 # Runs after the conformal event flags, which run after the signal pulls.
 
@@ -49,13 +52,17 @@ jobs:
       - name: Rescore the forecast ledger
         run: python -m scripts.forecast_ledger_pull
 
+      - name: Recompute cross-layer lead/lag
+        run: python -m scripts.cross_layer_pull
+
       - name: Commit & push if any judgement changed
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
           git add readings/board-alarm-latest.json readings/board-alarm-history.jsonl \
                   readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl \
-                  readings/forecast-ledger-latest.json readings/forecast-ledger-history.jsonl 2>/dev/null || true
+                  readings/forecast-ledger-latest.json readings/forecast-ledger-history.jsonl \
+                  readings/cross-layer-latest.json readings/cross-layer-history.jsonl 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else
