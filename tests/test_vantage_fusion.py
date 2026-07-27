@@ -29,8 +29,39 @@ def test_diverging_methods_are_contested_and_flagged():
     r = fuse(_r(ooni=70, cp=10))  # 60pp apart
     assert r["confidence"] == "CONTESTED"
     assert r["divergence_pp"] == 60.0
-    assert "ROUTING-INDUCED DIVERGENCE" in r["verdict"]
     assert r["agreement"] <= 0.05  # near-total disagreement
+    # the verdict must refuse the single number outright, not merely label it
+    assert "NO SINGLE RATE IS DEFENSIBLE" in r["verdict"]
+    assert "vantage-dependent" in r["verdict"]
+
+
+def test_disagreement_becomes_interval_width_not_a_label():
+    """The failure this replaced: OONI 59.2 and Censored Planet 4.8 were published
+    as a fused 29.3 with a CONTESTED tag, and a reader takes 29.3 as the estimate."""
+    r = fuse(_r(ooni=59.2, cp=4.8))
+    assert r["interval"] == [4.8, 59.2]
+    assert r["interval_width_pp"] > 50
+    assert r["single_rate_quotable"] is False
+
+
+def test_agreeing_methods_yield_a_narrow_quotable_interval():
+    r = fuse(_r(ooni=55, cp=50))
+    assert r["interval"] == [50.0, 55.0]
+    assert r["interval_width_pp"] == 5.0
+    assert r["single_rate_quotable"] is True
+    assert "NO SINGLE RATE" not in r["verdict"]
+
+
+def test_single_vantage_forms_no_interval_and_is_not_quotable():
+    r = fuse(_r(ooni=40))
+    assert r["interval"] == [40.0, 40.0]
+    assert r["single_rate_quotable"] is False
+    assert "uncorroborated" in r["verdict"]
+
+
+def test_unquotable_reading_says_so_in_its_caveats():
+    r = fuse(_r(ooni=70, cp=10))
+    assert any("not a defensible" in c.lower() for c in r["caveats"])
 
 
 def test_single_vantage_is_uncorroborated():

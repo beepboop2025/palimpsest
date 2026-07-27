@@ -1,6 +1,6 @@
-name: Refresh board alarm and coverage guard
+name: Refresh board alarm, coverage guard and forecast ledger
 
-# The two board-level judgements, both pure local recomputation over the signal
+# The three board-level judgements, all pure local recomputation over the signal
 # history JSONLs (no network, stdlib-only, deterministic):
 #
 #   board alarm    — e-BH selection across all monitored signals plus per-layer
@@ -10,6 +10,9 @@ name: Refresh board alarm and coverage guard
 #   coverage guard — whether each signal's movement survives conditioning on its
 #                    own sample size, so a shrinking measurement base is never
 #                    published as a censorship change.
+#   forecast ledger— the observatory's own track record: every signal forecast one
+#                    step ahead from only its past, scored by a proper rule against
+#                    what arrived, with the misses named.
 #
 # Runs after the conformal event flags, which run after the signal pulls.
 
@@ -43,12 +46,16 @@ jobs:
       - name: Recompute the coverage guard from signal histories
         run: python -m scripts.coverage_guard_pull
 
-      - name: Commit & push if either judgement changed
+      - name: Rescore the forecast ledger
+        run: python -m scripts.forecast_ledger_pull
+
+      - name: Commit & push if any judgement changed
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
           git add readings/board-alarm-latest.json readings/board-alarm-history.jsonl \
-                  readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl 2>/dev/null || true
+                  readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl \
+                  readings/forecast-ledger-latest.json readings/forecast-ledger-history.jsonl 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else

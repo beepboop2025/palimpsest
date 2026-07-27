@@ -1,0 +1,341 @@
+{
+  "generated_at": "2026-07-27T15:01:12.555749+00:00",
+  "headline": "6 signals scored over 804 one-step forecasts; 85% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 6",
+  "n_signals_scored": 6,
+  "n_forecasts": 804,
+  "pooled_empirical_coverage": 0.846,
+  "nominal_coverage": 0.8,
+  "n_beating_baseline": 4,
+  "signals": {
+    "ooni_gfw": {
+      "scoreable": true,
+      "n_forecasts": 62,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.839,
+      "coverage_gap_pp": 3.9,
+      "wis": 0.2361,
+      "wis_baseline_fixed_quantile": 0.2601,
+      "beats_baseline": true,
+      "skill_vs_baseline": 0.092,
+      "n_misses": 10,
+      "worst_misses": [
+        {
+          "t": 71,
+          "forecast": 57.7,
+          "lo": 57.4,
+          "hi": 58.0,
+          "actual": 55.6,
+          "covered": false,
+          "wis": 1.662,
+          "miss_by": 1.8
+        },
+        {
+          "t": 35,
+          "forecast": 58.1,
+          "lo": 57.7,
+          "hi": 58.5,
+          "actual": 59.6,
+          "covered": false,
+          "wis": 1.0151,
+          "miss_by": 1.1
+        },
+        {
+          "t": 63,
+          "forecast": 60.2,
+          "lo": 60.1,
+          "hi": 60.3,
+          "actual": 59.4,
+          "covered": false,
+          "wis": 0.5678,
+          "miss_by": 0.7
+        },
+        {
+          "t": 68,
+          "forecast": 58.7,
+          "lo": 58.4668,
+          "hi": 58.9332,
+          "actual": 57.8,
+          "covered": false,
+          "wis": 0.6091,
+          "miss_by": 0.6668
+        },
+        {
+          "t": 67,
+          "forecast": 59.4,
+          "lo": 59.3,
+          "hi": 59.5,
+          "actual": 58.7,
+          "covered": false,
+          "wis": 0.4955,
+          "miss_by": 0.6
+        }
+      ]
+    },
+    "ddti_threat": {
+      "scoreable": true,
+      "n_forecasts": 134,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.843,
+      "coverage_gap_pp": 4.3,
+      "wis": 0.1464,
+      "wis_baseline_fixed_quantile": 0.1469,
+      "beats_baseline": true,
+      "skill_vs_baseline": 0.004,
+      "n_misses": 21,
+      "worst_misses": [
+        {
+          "t": 26,
+          "forecast": 1.0808,
+          "lo": 0.9307,
+          "hi": 1.2309,
+          "actual": 3.4311,
+          "covered": false,
+          "wis": 2.2395,
+          "miss_by": 2.2002
+        },
+        {
+          "t": 64,
+          "forecast": 2.1918,
+          "lo": 1.9858,
+          "hi": 2.3978,
+          "actual": 4.5817,
+          "covered": false,
+          "wis": 2.24,
+          "miss_by": 2.1839
+        },
+        {
+          "t": 51,
+          "forecast": 1.6591,
+          "lo": 1.4501,
+          "hi": 1.8681,
+          "actual": 4.04,
+          "covered": false,
+          "wis": 2.2287,
+          "miss_by": 2.1719
+        },
+        {
+          "t": 129,
+          "forecast": 0.6172,
+          "lo": 0.4993,
+          "hi": 0.7351,
+          "actual": 2.4859,
+          "covered": false,
+          "wis": 1.7719,
+          "miss_by": 1.7508
+        },
+        {
+          "t": 32,
+          "forecast": 2.528,
+          "lo": 2.3041,
+          "hi": 2.7519,
+          "actual": 4.3721,
+          "covered": false,
+          "wis": 1.4947,
+          "miss_by": 1.6202
+        }
+      ]
+    },
+    "ddti_novelty": {
+      "scoreable": true,
+      "n_forecasts": 134,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.985,
+      "coverage_gap_pp": 18.5,
+      "wis": 0.0152,
+      "wis_baseline_fixed_quantile": 0.0155,
+      "beats_baseline": true,
+      "skill_vs_baseline": 0.024,
+      "n_misses": 2,
+      "worst_misses": [
+        {
+          "t": 32,
+          "forecast": 29.0,
+          "lo": 29.0,
+          "hi": 29.0,
+          "actual": 30.0,
+          "covered": false,
+          "wis": 1.0,
+          "miss_by": 1.0
+        },
+        {
+          "t": 130,
+          "forecast": 30.0,
+          "lo": 30.0,
+          "hi": 30.0,
+          "actual": 29.0,
+          "covered": false,
+          "wis": 1.0,
+          "miss_by": 1.0
+        }
+      ]
+    },
+    "gdelt_containment": {
+      "scoreable": true,
+      "n_forecasts": 72,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.806,
+      "coverage_gap_pp": 0.6,
+      "wis": 1.2342,
+      "wis_baseline_fixed_quantile": 1.2065,
+      "beats_baseline": false,
+      "skill_vs_baseline": -0.023,
+      "n_misses": 14,
+      "worst_misses": [
+        {
+          "t": 17,
+          "forecast": 9.0,
+          "lo": 6.0,
+          "hi": 12.0,
+          "actual": 2.0,
+          "covered": false,
+          "wis": 4.8906,
+          "miss_by": 4.0
+        },
+        {
+          "t": 35,
+          "forecast": 9.0,
+          "lo": 6.0,
+          "hi": 12.0,
+          "actual": 2.0,
+          "covered": false,
+          "wis": 4.6977,
+          "miss_by": 4.0
+        },
+        {
+          "t": 68,
+          "forecast": 9.0,
+          "lo": 6.0,
+          "hi": 12.0,
+          "actual": 2.0,
+          "covered": false,
+          "wis": 4.4,
+          "miss_by": 4.0
+        },
+        {
+          "t": 16,
+          "forecast": 3.0,
+          "lo": 0.7933,
+          "hi": 5.2067,
+          "actual": 9.0,
+          "covered": false,
+          "wis": 4.3956,
+          "miss_by": 3.7933
+        },
+        {
+          "t": 44,
+          "forecast": 7.0,
+          "lo": 4.3331,
+          "hi": 9.6669,
+          "actual": 1.0,
+          "covered": false,
+          "wis": 3.7999,
+          "miss_by": 3.3331
+        }
+      ]
+    },
+    "github_refuge": {
+      "scoreable": true,
+      "n_forecasts": 31,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.968,
+      "coverage_gap_pp": 16.8,
+      "wis": 0.4648,
+      "wis_baseline_fixed_quantile": 0.4731,
+      "beats_baseline": true,
+      "skill_vs_baseline": 0.018,
+      "n_misses": 1,
+      "worst_misses": [
+        {
+          "t": 30,
+          "forecast": 0.0,
+          "lo": -1.0,
+          "hi": 1.0,
+          "actual": 3.0,
+          "covered": false,
+          "wis": 2.2286,
+          "miss_by": 2.0
+        }
+      ]
+    },
+    "tor_bridge_cn": {
+      "scoreable": true,
+      "n_forecasts": 371,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.795,
+      "coverage_gap_pp": -0.5,
+      "wis": 53.826,
+      "wis_baseline_fixed_quantile": 53.0608,
+      "beats_baseline": false,
+      "skill_vs_baseline": -0.014,
+      "n_misses": 76,
+      "worst_misses": [
+        {
+          "t": 277,
+          "forecast": 1625.0,
+          "lo": 1422.7393,
+          "hi": 1827.2607,
+          "actual": 2330.0,
+          "covered": false,
+          "wis": 561.4647,
+          "miss_by": 502.7393
+        },
+        {
+          "t": 357,
+          "forecast": 2452.0,
+          "lo": 2316.0,
+          "hi": 2588.0,
+          "actual": 1859.0,
+          "covered": false,
+          "wis": 488.1829,
+          "miss_by": 457.0
+        },
+        {
+          "t": 95,
+          "forecast": 1740.0,
+          "lo": 1588.5512,
+          "hi": 1891.4488,
+          "actual": 2255.0,
+          "covered": false,
+          "wis": 411.9031,
+          "miss_by": 363.5512
+        },
+        {
+          "t": 324,
+          "forecast": 2224.0,
+          "lo": 2082.0058,
+          "hi": 2365.9942,
+          "actual": 2700.0,
+          "covered": false,
+          "wis": 367.6616,
+          "miss_by": 334.0058
+        },
+        {
+          "t": 258,
+          "forecast": 2393.0,
+          "lo": 2251.0,
+          "hi": 2535.0,
+          "actual": 2002.0,
+          "covered": false,
+          "wis": 287.1982,
+          "miss_by": 249.0
+        }
+      ]
+    }
+  },
+  "excluded": {
+    "censored_planet": "needs 20 readings, has 13",
+    "refusal_drift": "needs 20 readings, has 1",
+    "bleedthrough_pools": "needs 20 readings, has 0",
+    "bleedthrough_capacity": "needs 20 readings, has 0",
+    "weibo_suppression": "history logs state transitions, not a regular series",
+    "ioda_outages": "history logs state transitions, not a regular series"
+  },
+  "not_yet_scoreable": "term-level escalation calls from processors/forecaster.py are not scored here: resolving them needs the full ranked term list preserved at each reading, and readings/ddti-history.jsonl currently stores only the top term. Scoring them requires that list to start being written; it cannot be reconstructed.",
+  "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
+  "caveats": [
+    "one step ahead on each signal's OWN cadence; horizons are not pooled and a 3-hourly signal's forecast is not comparable to a daily signal's",
+    "the point forecast is a random walk on purpose — the claim being tested is CALIBRATION (does the band cover what it says), not sharpness",
+    "signals whose history logs state transitions rather than readings are excluded rather than scored; scoring them would manufacture a number out of how the file is written",
+    "misses are published in full because a forecast record with the misses removed is worth nothing"
+  ]
+}

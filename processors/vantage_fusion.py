@@ -102,6 +102,27 @@ def fuse(readings: dict) -> dict:
     if both:
         agreement = round(_clamp01(1.0 - divergence / AGREEMENT_SPAN), 3)
 
+    # Disagreement becomes INTERVAL WIDTH, not a label on a point estimate.
+    #
+    # This module's docstring promised never to smooth divergence away, but the
+    # headline number did exactly that and then labelled it: on 2026-07-15 OONI
+    # read 59.2 and Censored Planet 4.8, and the board published a fused 29.3 —
+    # a midpoint of two numbers that share no support, carried unchanged for
+    # twelve days under a CONTESTED tag. A reader takes 29.3 as the estimate.
+    #
+    # The honest interval when independent methods disagree is the span they
+    # actually bracket. When they agree it collapses to a narrow band, so the
+    # same construction serves both cases and the width itself carries the
+    # message: wide means nobody should quote a single rate.
+    if both:
+        lo, hi = min(rates.values()), max(rates.values())
+    else:
+        lo = hi = next(iter(rates.values()))
+    interval = [round(lo, 1), round(hi, 1)]
+    interval_width = round(hi - lo, 1)
+    # A single rate is only defensible when the methods substantially agree.
+    quotable = bool(both) and divergence is not None and divergence <= DIVERGENCE_PP
+
     q = _qualitative(readings)
 
     if not both:
@@ -127,19 +148,27 @@ def fuse(readings: dict) -> dict:
     parts = []
     for k, v in sorted(rates.items()):
         parts.append(f"{k.replace('_', ' ')} {v:.0f}")
-    verdict = (
-        f"fused GFW anomaly {fused:.0f}/100 ({confidence.lower()}"
-        + (f", methods agree {agreement:.0%}" if agreement is not None else ", single vantage")
-        + ")"
-        + (f"; ROUTING-INDUCED DIVERGENCE: OONI and Censored Planet differ by "
-           f"{divergence:.0f}pp — the number is vantage-dependent"
-           if confidence == "CONTESTED" else "")
-    )
+
+    if quotable:
+        verdict = (f"GFW anomaly {fused:.0f}/100, range {interval[0]:.0f}–{interval[1]:.0f} "
+                   f"({confidence.lower()}, methods agree {agreement:.0%})")
+    elif both:
+        verdict = (f"NO SINGLE RATE IS DEFENSIBLE: OONI reads {rates['ooni']:.0f} and "
+                   f"Censored Planet {rates['censored_planet']:.0f}, {divergence:.0f}pp apart. "
+                   f"The honest answer is the range {interval[0]:.0f}–{interval[1]:.0f}, not its "
+                   f"midpoint — censorship is vantage-dependent and these two methods are "
+                   f"measuring different things about the same wall.")
+    else:
+        verdict = (f"GFW anomaly {fused:.0f}/100 from a SINGLE vantage — uncorroborated, "
+                   f"no range can be formed")
 
     return {
         "ok": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "fused_index": round(fused, 1),
+        "interval": interval,
+        "interval_width_pp": interval_width,
+        "single_rate_quotable": quotable,
         "confidence": confidence,
         "agreement": agreement,
         "divergence_pp": round(divergence, 1) if divergence is not None else None,
@@ -149,6 +178,9 @@ def fuse(readings: dict) -> dict:
         "qualitative_flag": qual_flag,
         "verdict": verdict,
         "caveats": [
+            "when single_rate_quotable is false the fused_index is NOT a defensible "
+            "estimate — it is the weighted midpoint of methods that disagree, kept only "
+            "for continuity of the series; quote the interval instead",
             "censorship is VANTAGE-DEPENDENT (arXiv:2406.19304): independent methods "
             "can legitimately disagree because of routing, partial deployment, or "
             "probe location — divergence is reported, never smoothed away",
