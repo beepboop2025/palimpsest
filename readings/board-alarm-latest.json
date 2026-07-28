@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-28T15:07:35.105881+00:00",
-  "board_e_value": 15.145,
+  "generated_at": "2026-07-28T20:09:08.080963+00:00",
+  "board_e_value": 14.037,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
@@ -11,27 +11,27 @@
   },
   "layers": {
     "network": {
-      "e": 27.695,
+      "e": 25.404,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 27.529,
         "ioda_outages": 1.0,
-        "ooni_gfw": 79.247,
+        "ooni_gfw": 70.085,
         "tor_bridge_cn": 3.004
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 5.106,
+      "e": 4.943,
       "n_signals": 5,
       "state": "calm",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 3.301,
-        "ddti_threat": 16.652,
-        "gdelt_containment": 2.319,
+        "ddti_novelty": 3.148,
+        "ddti_threat": 14.753,
+        "gdelt_containment": 3.555,
         "github_refuge": 2.256,
         "weibo_suppression": 1.0
       },
@@ -54,30 +54,30 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 79.247,
-      "n": 78,
+      "e": 70.0847,
+      "n": 79,
       "direction": "down",
-      "robust_z": -1.26,
+      "robust_z": -1.27,
       "driver_side": "down",
-      "readings_since_alarm": 27,
+      "readings_since_alarm": 28,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 16.6521,
-      "n": 153,
+      "e": 14.7533,
+      "n": 155,
       "direction": "up",
-      "robust_z": 0.55,
+      "robust_z": 0.34,
       "driver_side": "up",
-      "readings_since_alarm": 29,
+      "readings_since_alarm": 31,
       "n_alarms_in_history": 2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 3.3008,
-      "n": 153,
+      "e": 3.1484,
+      "n": 155,
       "direction": "down",
       "robust_z": null,
       "driver_side": "down",
@@ -98,10 +98,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.3186,
-      "n": 87,
+      "e": 3.5555,
+      "n": 88,
       "direction": "down",
-      "robust_z": -0.22,
+      "robust_z": -1.35,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -153,7 +153,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 37,
+      "n": 38,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -164,7 +164,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 36,
+      "n": 37,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
