@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-28T09:05:15.030541+00:00",
+  "generated_at": "2026-07-28T14:38:51.206972+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 48.9,
+  "erasure_index": 49.0,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -13,7 +13,7 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 57.8,
+      "value": 58.0,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json"
     },
@@ -50,14 +50,14 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 82,
+    "entries": 83,
     "verified": true,
-    "merkle_root": "b6f348e4caef468b802138e6e55594ddbc6a7fef811fc322ca630a58900c4fe5",
-    "head_hash": "6e7cedbc6a5615b557cae10787f25648c2b2343b94f8284d3ccbaa29802138c7",
+    "merkle_root": "967c29ab3a2d86225f509133a51ae0b11f4127f01ae34315c74aed43cb35eb43",
+    "head_hash": "9dd5d651d11057833883c635cbbe98eaf8f498583080fceec528c614400faa42",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-28T09:05:15.030541+00:00",
+    "head_ts": "2026-07-28T14:38:51.206972+00:00",
     "by_source": {
-      "ooni-gfw": 67,
+      "ooni-gfw": 68,
       "generative-firewall": 1,
       "censored-planet": 13,
       "baike-redaction": 1
@@ -65,13 +65,8 @@
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 80,
-        "entry_hash": "a47c792b76c65874382ceeef4db2665e7acdf214afd5a8e713b73643e511e894"
-      },
-      {
-        "source": "censored-planet",
-        "seq": 81,
-        "entry_hash": "6e7cedbc6a5615b557cae10787f25648c2b2343b94f8284d3ccbaa29802138c7"
+        "seq": 82,
+        "entry_hash": "9dd5d651d11057833883c635cbbe98eaf8f498583080fceec528c614400faa42"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
