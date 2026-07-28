@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28T09:10:44.118044+00:00",
+  "generated_at": "2026-07-28T14:44:48.938376+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -8,57 +8,57 @@
   "since": "2026-07-21",
   "until": "2026-07-29",
   "gfw_index": 58.0,
-  "n_measurements": 270408,
+  "n_measurements": 270925,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 154837,
-      "measurement_count": 269266,
-      "failure_count": 1873,
-      "anomaly_rate": 0.5791,
+      "anomaly_count": 154987,
+      "measurement_count": 269755,
+      "failure_count": 1883,
+      "anomaly_rate": 0.5786,
       "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 246,
-      "measurement_count": 253,
+      "anomaly_count": 252,
+      "measurement_count": 259,
       "failure_count": 0,
-      "anomaly_rate": 0.9723,
+      "anomaly_rate": 0.973,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 251,
-      "measurement_count": 258,
+      "anomaly_count": 257,
+      "measurement_count": 264,
       "failure_count": 0,
-      "anomaly_rate": 0.9729,
+      "anomaly_rate": 0.9735,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 245,
-      "measurement_count": 254,
+      "anomaly_count": 251,
+      "measurement_count": 260,
       "failure_count": 1,
-      "anomaly_rate": 0.9684,
+      "anomaly_rate": 0.9691,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 155,
-      "measurement_count": 163,
+      "anomaly_count": 161,
+      "measurement_count": 169,
       "failure_count": 0,
-      "anomaly_rate": 0.9509,
+      "anomaly_rate": 0.9527,
       "reading": "95% anomalous — heavily interfered with"
     },
     {
@@ -66,9 +66,9 @@
       "label": "Psiphon circumvention",
       "available": true,
       "anomaly_count": 28,
-      "measurement_count": 214,
+      "measurement_count": 218,
       "failure_count": 0,
-      "anomaly_rate": 0.1308,
+      "anomaly_rate": 0.1284,
       "reading": "13% anomalous — some interference"
     },
     {
@@ -85,8 +85,14 @@
   "top_blocked": [
     {
       "domain": "f-droid.org",
-      "anomaly_count": 67,
-      "measurement_count": 71,
+      "anomaly_count": 68,
+      "measurement_count": 72,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.falundafa.org",
+      "anomaly_count": 30,
+      "measurement_count": 30,
       "anomaly_rate": 1.0
     },
     {
@@ -120,12 +126,6 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.falundafa.org",
-      "anomaly_count": 26,
-      "measurement_count": 26,
-      "anomaly_rate": 1.0
-    },
-    {
       "domain": "www.xvideos.com",
       "anomaly_count": 26,
       "measurement_count": 26,
@@ -147,6 +147,12 @@
       "domain": "static.cdninstagram.com",
       "anomaly_count": 23,
       "measurement_count": 25,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.bahai.org",
+      "anomaly_count": 23,
+      "measurement_count": 23,
       "anomaly_rate": 1.0
     },
     {
@@ -225,12 +231,6 @@
       "domain": "rumble.com",
       "anomaly_count": 21,
       "measurement_count": 21,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "upload.twitter.com",
-      "anomaly_count": 21,
-      "measurement_count": 28,
       "anomaly_rate": 1.0
     }
   ]
