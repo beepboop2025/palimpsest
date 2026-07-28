@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28T03:52:39.194892+00:00",
+  "generated_at": "2026-07-28T09:28:43.821353+00:00",
   "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
   "n_pairs_tested": 0,
   "n_confirmed": 0,
@@ -18,7 +18,7 @@
         "ddti_novelty",
         "tor_bridge_cn"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
@@ -33,23 +33,22 @@
         "ddti_threat",
         "tor_bridge_cn"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
         "gdelt_containment",
         "ooni_gfw"
       ],
-      "overlap_days": 17,
-      "reason": "overlap 17d — needs about 36d for the shift null to reach alpha=0.05"
+      "overlap_days": 18,
+      "reason": "overlap 18d — needs about 36d for the shift null to reach alpha=0.05"
     },
     {
       "pair": [
         "gdelt_containment",
         "tor_bridge_cn"
       ],
-      "overlap_days": 19,
-      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
+      "reason": "overlap 19d, need 20d"
     },
     {
       "pair": [
@@ -64,8 +63,7 @@
         "github_refuge",
         "tor_bridge_cn"
       ],
-      "overlap_days": 19,
-      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
+      "reason": "overlap 19d, need 20d"
     }
   ],
   "preliminary": true,
