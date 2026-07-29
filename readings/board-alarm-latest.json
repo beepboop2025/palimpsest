@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-29T09:30:41.522930+00:00",
-  "board_e_value": 11.128,
+  "generated_at": "2026-07-29T14:59:34.934865+00:00",
+  "board_e_value": 10.482,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
@@ -11,28 +11,28 @@
   },
   "layers": {
     "network": {
-      "e": 21.149,
+      "e": 18.761,
       "n_signals": 4,
-      "state": "elevated",
+      "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 46.783,
         "ioda_outages": 1.0,
-        "ooni_gfw": 34.283,
+        "ooni_gfw": 24.73,
         "tor_bridge_cn": 2.531
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 3.11,
+      "e": 3.859,
       "n_signals": 5,
       "state": "calm",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 2.951,
-        "ddti_threat": 6.73,
-        "gdelt_containment": 3.17,
-        "github_refuge": 1.699,
+        "ddti_novelty": 2.838,
+        "ddti_threat": 3.823,
+        "gdelt_containment": 3.38,
+        "github_refuge": 8.253,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
@@ -46,38 +46,36 @@
       "recent_alarms": []
     }
   },
-  "elevated_layers": [
-    "network"
-  ],
-  "layer_coincidence": 1,
+  "elevated_layers": [],
+  "layer_coincidence": 0,
   "recently_fired": [],
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 34.2835,
-      "n": 81,
+      "e": 24.7299,
+      "n": 82,
       "direction": "down",
-      "robust_z": -0.37,
+      "robust_z": -1.05,
       "driver_side": "down",
-      "readings_since_alarm": 30,
+      "readings_since_alarm": 31,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 6.73,
-      "n": 158,
+      "e": 3.8231,
+      "n": 160,
       "direction": "down",
-      "robust_z": -0.16,
+      "robust_z": -0.29,
       "driver_side": "up",
-      "readings_since_alarm": 34,
+      "readings_since_alarm": 36,
       "n_alarms_in_history": 2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 2.9512,
-      "n": 158,
+      "e": 2.8383,
+      "n": 160,
       "direction": "down",
       "robust_z": null,
       "driver_side": "down",
@@ -98,10 +96,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 3.1697,
-      "n": 90,
+      "e": 3.3803,
+      "n": 91,
       "direction": "up",
-      "robust_z": 1.35,
+      "robust_z": 0.67,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -109,10 +107,10 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 1.6989,
-      "n": 46,
-      "direction": "flat",
-      "robust_z": 0.0,
+      "e": 8.2531,
+      "n": 47,
+      "direction": "up",
+      "robust_z": 2.02,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -153,7 +151,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 40,
+      "n": 41,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -164,7 +162,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 39,
+      "n": 40,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -173,7 +171,7 @@
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     }
   },
-  "headline": "single layer elevated: network",
+  "headline": "no signal exceeds its own history beyond what chance explains",
   "readings_to_days": {
     "bleedthrough_capacity": 125.0,
     "bleedthrough_pools": 125.0,
