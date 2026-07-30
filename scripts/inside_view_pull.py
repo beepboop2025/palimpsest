@@ -1,0 +1,159 @@
+"""Inside View runner — command DNS measurements from inside mainland China via
+Globalping's volunteer probes and publish readings/inside-view-latest.json.
+
+Vantage-insensitive on our side (the probing happens on Globalping's probes, not
+ours), key-less, standard-library only. Follows the house pattern:
+collect -> control gate -> honesty guard / abstain -> write-if-changed -> history.
+
+The control gate is the part worth reading. Unlike the other pulls, this one can
+fail in a way that looks like success: if the classifier breaks, every domain
+reads "clean" and the observatory would report calm. So a round only produces a
+block rate when a benign control came back clean AND a censored domain came back
+forged in the same round.
+"""
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timezone
+
+from collectors.inside_view import (PANEL, RateLimited, control_state,
+                                    observe_panel, regional_divergence)
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+READINGS = os.path.join(ROOT, "readings")
+OUT = os.path.join(READINGS, "inside-view-latest.json")
+HIST = os.path.join(READINGS, "inside-view-history.jsonl")
+
+# Globalping allows 250 unauthenticated probe-credits/hour; a full panel round
+# costs len(PANEL) * (CN_PROBES + CONTROL_PROBES). Refuse to start a round that
+# cannot finish rather than publish a half-measured panel.
+CREDIT_BUDGET = 250
+
+
+def _band(rate: float) -> str:
+    if rate >= 0.9:
+        return "the panel is comprehensively blocked from inside"
+    if rate >= 0.6:
+        return "most of the panel is blocked from inside"
+    if rate >= 0.3:
+        return "part of the panel is blocked from inside"
+    if rate > 0:
+        return "a minority of the panel is blocked from inside"
+    return "no panel domain read as forged from inside"
+
+
+def main() -> None:
+    now = datetime.now(timezone.utc)
+
+    if not os.getenv("PALIMPSEST_LIVE"):
+        print("inside-view: inert (set PALIMPSEST_LIVE=1) — abstaining")
+        return
+
+    try:
+        observations = observe_panel()
+    except RateLimited as e:
+        # Not a measurement. A rate-limited round produces no probe results,
+        # which would otherwise look exactly like every probe going silent.
+        print(f"inside-view: Globalping rate limit hit ({e}) — abstaining, "
+              "this is a budget failure and not an observation")
+        return
+
+    control = control_state(observations)
+
+    # A DEGRADED round means the classifier itself is untrustworthy. Publishing
+    # anything derived from it would be publishing a guess as a measurement.
+    if control["state"] == "DEGRADED":
+        print(f"inside-view: DEGRADED — {control['why']} — abstaining, not publishing")
+        return
+
+    censored = [o for o in observations if o["expected_censored"]]
+    answered = [o for o in censored
+                if (o["n_forged"] or 0) + (o["n_clean"] or 0) > 0]
+
+    if not answered:
+        print("inside-view: no censored domain produced a classifiable answer "
+              "from any CN vantage — abstaining")
+        return
+
+    blocked = [o for o in answered if (o["n_forged"] or 0) > 0]
+    block_rate = round(len(blocked) / len(answered), 3)
+
+    # BLIND is published, deliberately. "We could not see injection" is a real
+    # coverage statement and belongs in the record; it is simply not the same
+    # claim as "there was no censorship", so no block rate is derived from it.
+    if control["state"] == "BLIND":
+        block_rate = None
+        reading = ("this vantage set could not see injection on any panel domain "
+                   "this round — a coverage gap, not an all-clear")
+    else:
+        reading = _band(block_rate)
+
+    # Regional divergence is an enrichment layer, not a precondition. Until it
+    # is implemented the signal still publishes, and says plainly that the layer
+    # is pending rather than silently omitting it.
+    regional, regional_status = [], "reporting"
+    for o in answered:
+        try:
+            regional.append({"domain": o["domain"], **regional_divergence(o)})
+        except NotImplementedError:
+            regional_status = ("armed, not yet reporting — regional_divergence() "
+                               "is unimplemented in collectors/inside_view.py")
+            regional = []
+            break
+
+    out = {
+        "generated_at": now.isoformat(),
+        "source": "Globalping (api.globalping.io) volunteer probes inside mainland China",
+        "scope": ("DNS answers received by probes INSIDE China for a fixed panel of "
+                  "censored and benign domains, classified against a same-round "
+                  "control arm outside China"),
+        "method": ("a CN answer is forged when it shares no address with the control "
+                   "arm's answer set; no forged-IP list is hardcoded, because the "
+                   "injector pool rotates"),
+        "control": control,
+        "block_rate": block_rate,
+        "reading": reading,
+        "n_censored_answered": len(answered),
+        "n_censored_blocked": len(blocked),
+        "panel_size": len(PANEL),
+        "regional_status": regional_status,
+        "regional": regional,
+        "domains": observations,
+    }
+
+    prev = {}
+    if os.path.exists(OUT):
+        try:
+            with open(OUT, encoding="utf-8") as f:
+                prev = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            prev = {}
+
+    # Write only when the answer changed, so a run that reproduces yesterday's
+    # finding does not manufacture a commit and a false sense of movement.
+    changed = (prev.get("block_rate") != out["block_rate"]
+               or (prev.get("control") or {}).get("state") != control["state"]
+               or prev.get("n_censored_blocked") != out["n_censored_blocked"])
+
+    os.makedirs(READINGS, exist_ok=True)
+    if changed or not prev:
+        with open(OUT, "w", encoding="utf-8") as f:
+            json.dump(out, f, ensure_ascii=False, indent=2)
+        with open(HIST, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "generated_at": out["generated_at"],
+                "control_state": control["state"],
+                "block_rate": block_rate,
+                "n_censored_answered": len(answered),
+                "n_censored_blocked": len(blocked),
+            }, ensure_ascii=False) + "\n")
+        print(f"inside-view: {control['state']} — block_rate={block_rate} "
+              f"({len(blocked)}/{len(answered)} censored domains forged)")
+    else:
+        print(f"inside-view: unchanged ({control['state']}, "
+              f"block_rate={block_rate}) — not rewriting")
+
+
+if __name__ == "__main__":
+    main()

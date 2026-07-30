@@ -1,0 +1,53 @@
+name: Refresh App Storefront signal
+
+# App-layer censorship: which apps are offered in the Chinese App Store
+# storefront versus the US one, read from Apple's own public catalogue API.
+#
+# This is a different phenomenon from network blocking, and the reading says so:
+# Facebook, X and YouTube stay listed in the Chinese storefront while being
+# unreachable there, whereas circumvention tools and secure messengers are
+# removed. Delisting is the layer that required a company to act.
+#
+# Vantage-insensitive, key-less, stdlib-only: Apple serves storefront metadata
+# for any country to any requester, so this runs correctly from a GitHub runner
+# and never touches the box's egress.
+
+on:
+  schedule:
+    - cron: "53 */6 * * *"     # every 6 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-storefront-refresh
+  cancel-in-progress: false
+
+jobs:
+  app-storefront:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Compare the CN and US storefronts and publish the signal
+        run: python -m scripts.app_storefront_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/app-storefront-latest.json readings/app-storefront-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: App Storefront refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

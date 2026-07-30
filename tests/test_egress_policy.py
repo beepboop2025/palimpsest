@@ -117,6 +117,14 @@ _ALLOWED = {
         "Raw pinned-IP TLS dial BY DESIGN — the `curl --resolve` technique that lets the probe "
         "choose which CDN POP answers. safe_fetch pins the IP *it* resolved and cannot be "
         "handed one, so this path is structurally outside it; TLS/SNI verification is kept.",
+    "collectors/inside_view.py":
+        "GET/POST the keyless Globalping API (api.globalping.io) to command DNS measurements on "
+        "in-China probes; fixed well-known host, uncapped body read, no redirect "
+        "re-validation. Migration needs safe_fetch's request-body path (same blocker as "
+        "censored_planet.py), so it is a candidate once that lands, not before.",
+    "collectors/app_storefront.py":
+        "GET Apple's keyless iTunes lookup API; fixed well-known host, uncapped body read — "
+        "plain migration candidate.",
 
     # ── core / censorwatch: the async fetch machinery ──────────────────────────────────────
     "core/safe_fetch.py":
