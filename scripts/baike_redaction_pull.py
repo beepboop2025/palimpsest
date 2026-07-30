@@ -173,8 +173,11 @@ def main() -> None:
             by_reason[k] = by_reason.get(k, 0) + 1
         detail = ", ".join(f"{k}×{n}" for k, n in sorted(by_reason.items()))
         reason = (f"only {comparable}/{len(ENTITIES)} entities were comparable "
-                  f"({detail or 'no per-entity detail'}). A 403 here is the source refusing "
-                  f"this client, which is not by itself evidence about geography")
+                  f"({detail or 'no per-entity detail'}). Baidu filters on two axes, "
+                  f"measured separately: the CLIENT (urllib and curl are refused, httpx is "
+                  f"served, same IP and same second) and the EGRESS (residential is served, "
+                  f"datacenter is refused whatever the client). This run cleared the first "
+                  f"and not the second — it needs a residential egress, not a Chinese one")
         print(f"baike-redaction: insufficient data — {reason}; abstaining")
         _write_abstain(now, reason=reason, comparable=comparable, forks=forks, results=results)
         return

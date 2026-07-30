@@ -35,18 +35,27 @@ jobs:
         run: python -m scripts.verify_ledger
 
       - name: Refresh the narrative layer (Baike redaction-diff)
-        # LIVE since 2026-07-31. It had been inert for twenty days waiting on a
-        # "China-reachable egress" that was never the blocker: Baidu's WAF refuses
-        # urllib's TLS fingerprint with a 403 and serves httpx a full page from the
-        # same IP in the same second. curl is refused too, so shelling out would not
-        # have helped either. No proxy, no residential egress, no subprocess.
+        # Stays inert HERE, and the reason is now measured rather than assumed.
         #
-        # PALIMPSEST_PROXY stays wired as an optional override for anyone who does
-        # have an egress to route through. Public reads of two encyclopedias only,
-        # kill-switch gated, one read per 12s (a full pass is ~4 minutes) because the
-        # previous 0.5/s pacing is what earned a Baidu IP ban.
+        # Baidu's WAF applies two independent filters and it took both to see it:
+        #
+        #   client   urllib / curl  -> 403 even from residential
+        #            httpx          -> 200, full page
+        #   egress   residential    -> served
+        #            datacenter     -> refused regardless of client
+        #
+        # httpx cleared the client half (same IP, same second, interleaved rounds).
+        # It does not clear the egress half: enabling PALIMPSEST_LIVE on this runner
+        # produced 0/10 comparable, fetch_failed x10, from an Azure address. So the
+        # old "needs an egress" instinct was half right, and its stated cause —
+        # "China-reachable" — was wrong. What is needed is RESIDENTIAL, not Chinese.
+        #
+        # Left off deliberately rather than left on to abstain: a live run here spends
+        # 20 requests every 6 hours on a service that is refusing us, which is rude and
+        # buys nothing. The collector runs live from a residential vantage today
+        # (rewrite_index 90.0, 10/10 comparable, 9 forked). Set PALIMPSEST_PROXY to a
+        # residential egress to turn this on, and it will work.
         env:
-          PALIMPSEST_LIVE: "1"
           PALIMPSEST_PROXY: ${{ secrets.PALIMPSEST_PROXY }}
         run: python -m scripts.baike_redaction_pull
 
