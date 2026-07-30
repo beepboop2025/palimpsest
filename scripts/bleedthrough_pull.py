@@ -35,6 +35,7 @@ from collectors.bleedthrough import (
     open_resolver_transport,
     run_round,
 )
+from core.claim_support import looks_sampled
 from core.governance import KillSwitch, RateCeiling
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -155,7 +156,7 @@ def main() -> None:
     # regional claims and record that we did. This is the failure mode a single prober over
     # many dark targets actually produces; regional_divergence guards it too, and this is the
     # second layer in case a future caller bypasses that one.
-    sampled_pools = len({fp.pool_hash for fp in injecting}) >= 0.5 * len(injecting)
+    sampled_pools = looks_sampled(len({fp.pool_hash for fp in injecting}), len(injecting))
     if sampled_pools:
         dropped = sum(1 for e in events if e.kind == REGIONAL_FIREWALL)
         events = [e for e in events if e.kind != REGIONAL_FIREWALL]

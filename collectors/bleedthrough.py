@@ -73,6 +73,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from collectors.undertext import content_key  # one fingerprint scheme across the codebase
+from core.claim_support import has_quorum      # one definition of "enough to claim this"
 
 logger = logging.getLogger(__name__)
 
@@ -381,8 +382,8 @@ def regional_divergence(fingerprints: list, *, min_group: int = 3) -> list:
             continue
         if region.split("/", 1)[0] in NATIONAL_BUCKETS:
             continue
-        if len(members.get(region, ())) < min_group:
-            continue
+        if not has_quorum(members.get(region, ()), lambda fp: fp.vantage_tag, minimum=min_group):
+            continue                       # too few independent targets to call it a region
         out.append(ApparatusEvent(
             REGIONAL_FIREWALL, region,
             f"prefixes in {region} diverge from the national baseline pool",
