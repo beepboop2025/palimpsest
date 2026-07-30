@@ -1,40 +1,40 @@
 {
-  "generated_at": "2026-07-30T03:45:52.060890+00:00",
+  "generated_at": "2026-07-30T09:18:19.765484+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 17.0605,
-      "n": 84,
+      "stat": 15.3835,
+      "n": 85,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 8.4901,
-      "n": 164,
+      "stat": 14.8391,
+      "n": 165,
       "n_alarms_in_history": 2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 2.6489,
-      "n": 164,
+      "stat": 2.6078,
+      "n": 165,
       "n_alarms_in_history": 0,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
       "state": "calm",
-      "stat": 46.7835,
-      "n": 15,
+      "stat": 47.4663,
+      "n": 16,
       "n_alarms_in_history": 0,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 3.7853,
-      "n": 93,
+      "stat": 3.9782,
+      "n": 94,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
     },
@@ -64,22 +64,22 @@
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "stat": 2.531,
-      "n": 384,
+      "stat": 2.7145,
+      "n": 385,
       "n_alarms_in_history": 6,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 43,
+      "n": 44,
       "n_alarms_in_history": 0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 42,
+      "n": 43,
       "n_alarms_in_history": 0,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     }
