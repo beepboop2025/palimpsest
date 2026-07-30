@@ -62,6 +62,68 @@ date the old root, and any witness would name the rewritten entry.
   ones without tripping layers 3 to 6). Signed attestations are the planned
   next layer; see below.
 
+## A worked case: the limit above, caught before it published
+
+The "lying at capture time" limit is not hypothetical, so here is a real instance,
+with numbers, because a threat model nobody has ever tripped is a guess.
+
+**30 July 2026.** BLEEDTHROUGH (`docs/BLEEDTHROUGH.md`) ran its first live round
+against 216 curated dark IPs inside Chinese prefixes. The measurement itself was
+sound: 204 of 216 targets drew a forged DNS answer, the forged IPs matched
+documented GFW pools, and the path traced into AS4134. The *labels* built on top
+of it were not. The round produced:
+
+| | |
+|---|---|
+| `distinct_pools` | 204, i.e. one per target |
+| apparatus events | 203, **every one `high` severity** |
+| all of kind | `regional_firewall_candidate` |
+| board band | FRAGMENTING (red) |
+| of those claims, labelled province `CN` | 96 |
+
+Read plainly, the board was about to announce **203 separate discoveries of
+autonomous provincial firewalls**, 96 of them in a "province" called CN, which is
+a backbone AS label and not a province at all.
+
+The cause was a category error, not a bug in the sense of a crash. A vantage's
+`pool_hash` is a content address of the forged IPs that *one target* happened to
+sample from the censor's rotating pool during its burst. Two targets behind the
+identical injector disagree whenever they drew different subsets, and at burst 24
+that is nearly always: a direct measurement on this path drew **47 distinct forged
+addresses from 40 queries**, with the count still climbing, so the pool is larger
+than any single burst can enumerate. The code then compared those per-target
+samples to each other and reported every difference as a regional firewall. The
+number it published was therefore a measure of our own sample size, not of the
+censor.
+
+**What did and did not catch it.** The hash chain would have sealed all 203 false
+claims faithfully and proved forever that we published exactly that. Merkle roots,
+Internet Archive snapshots, OpenTimestamps and the witness would each have
+preserved the falsehood intact and tamper-evident. Not one integrity layer is
+designed to notice that a sealed number is wrong, and none of them did. What
+caught it was an adversarial pre-publication review of the collector against the
+round's own output, before any reading was committed.
+
+**The fix, and how to check it.** `regional_divergence` now compares per-region
+unions rather than per-target samples, requires the national baseline to be shared
+by more than one region, requires a divergent region to carry at least three probed
+targets, and skips bare national labels. The runner adds an independent second
+layer: when per-target pool hashes are near-unique it strips the regional events
+outright and publishes `pool_sampling_suspected: true`. A single-vantage round now
+correctly emits nothing.
+
+```bash
+PYTHONPATH=. python3 -m pytest tests/test_bleedthrough.py -q   # the guards are pinned by tests
+```
+
+**Why this is written down.** The honest reading of the episode is that the
+integrity architecture protects the record and not the reasoning, exactly as the
+section above claims, and that the compensating control is a human-and-adversary
+review gate that has to actually run. It also cost nothing this time only because
+BLEEDTHROUGH had no automated publish path; the same error in a signal that
+auto-publishes would have reached the board unattended. That asymmetry is a real
+weakness and is named here rather than smoothed over.
+
 ## Verify it yourself
 
 ```bash
