@@ -188,3 +188,65 @@ def test_narrative_divergence_platform_fork():
 if __name__ == "__main__":
     import sys
     sys.exit(__import__("pytest").main([__file__, "-q"]))
+
+
+# ── fetch backend: the exception contract is load-bearing ─────────────────────
+
+def test_httpx_backend_raises_the_stdlib_error_type_on_404():
+    """The seam's callers branch on urllib.error.HTTPError.code, and that branch
+    carries meaning: baike treats 404 as a real absence rather than a transport
+    failure. Raising httpx's own error type instead would sail past those handlers
+    into a generic except — and the entities that 404 are precisely the most
+    censored ones (六四事件, 法轮功, 天安门母亲, 709大抓捕, 白纸运动 all 404 while
+    刘晓波 and 李文亮 return 200), so the observation would be discarded as an error."""
+    import urllib.error
+    import pytest
+    httpx = pytest.importorskip("httpx")
+    from collectors import undertext
+
+    def handler(request):
+        return httpx.Response(404, text="<html>errorBox</html>")
+
+    class _Client:
+        def __init__(self, **kw): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url): return handler(None)
+
+    orig, httpx.Client = httpx.Client, _Client
+    try:
+        with pytest.raises(urllib.error.HTTPError) as ei:
+            undertext._httpx_fetch("https://example.invalid/x")
+        assert ei.value.code == 404
+    finally:
+        httpx.Client = orig
+
+
+def test_default_fetch_falls_back_to_stdlib_when_httpx_is_absent():
+    """The module promises a bare clone still works, so an ImportError must
+    degrade rather than break."""
+    from collectors import undertext
+    calls = []
+    orig_h, orig_s = undertext._httpx_fetch, undertext._stdlib_fetch
+    undertext._httpx_fetch = lambda *a, **k: (_ for _ in ()).throw(ImportError("no httpx"))
+    undertext._stdlib_fetch = lambda url, proxy=None, timeout=20.0: calls.append(url) or "ok"
+    try:
+        assert undertext._default_fetch("https://example.invalid/y") == "ok"
+        assert calls == ["https://example.invalid/y"]
+    finally:
+        undertext._httpx_fetch, undertext._stdlib_fetch = orig_h, orig_s
+
+
+def test_stdlib_backend_can_be_forced(monkeypatch):
+    """PALIMPSEST_FETCH=stdlib must reach the fallback without touching httpx, so a
+    refusal can be reproduced deliberately."""
+    from collectors import undertext
+    monkeypatch.setenv("PALIMPSEST_FETCH", "stdlib")
+    seen = []
+    orig = undertext._stdlib_fetch
+    undertext._stdlib_fetch = lambda url, proxy=None, timeout=20.0: seen.append(url) or "s"
+    try:
+        assert undertext._default_fetch("https://example.invalid/z") == "s"
+        assert seen == ["https://example.invalid/z"]
+    finally:
+        undertext._stdlib_fetch = orig

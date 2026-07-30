@@ -157,10 +157,20 @@ def main() -> None:
         # finding. Say what was observed; do not name a culprit we have not established.
         by_reason = {}
         for r in results:
-            if not r["comparable"]:
-                k = r["baike_interstitial"] or ("wiki_missing" if not r["wiki_present"]
-                                                else "unknown")
-                by_reason[k] = by_reason.get(k, 0) + 1
+            # an entity that raised is appended as a short {entity, status} row with no
+            # comparability fields, so every read here has to tolerate their absence
+            if r.get("comparable"):
+                continue
+            status = str(r.get("status") or "")
+            if status.startswith("error:"):
+                k = status
+            elif r.get("baike_interstitial"):
+                k = r["baike_interstitial"]
+            elif not r.get("wiki_present"):
+                k = "wiki_missing"
+            else:
+                k = "unknown"
+            by_reason[k] = by_reason.get(k, 0) + 1
         detail = ", ".join(f"{k}×{n}" for k, n in sorted(by_reason.items()))
         reason = (f"only {comparable}/{len(ENTITIES)} entities were comparable "
                   f"({detail or 'no per-entity detail'}). A 403 here is the source refusing "

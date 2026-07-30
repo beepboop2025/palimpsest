@@ -35,9 +35,18 @@ jobs:
         run: python -m scripts.verify_ledger
 
       - name: Refresh the narrative layer (Baike redaction-diff)
-        # Inert (instant honest abstain) unless a China-reachable egress secret is set;
-        # when PALIMPSEST_PROXY is configured this goes live and produces a real index.
+        # LIVE since 2026-07-31. It had been inert for twenty days waiting on a
+        # "China-reachable egress" that was never the blocker: Baidu's WAF refuses
+        # urllib's TLS fingerprint with a 403 and serves httpx a full page from the
+        # same IP in the same second. curl is refused too, so shelling out would not
+        # have helped either. No proxy, no residential egress, no subprocess.
+        #
+        # PALIMPSEST_PROXY stays wired as an optional override for anyone who does
+        # have an egress to route through. Public reads of two encyclopedias only,
+        # kill-switch gated, one read per 12s (a full pass is ~4 minutes) because the
+        # previous 0.5/s pacing is what earned a Baidu IP ban.
         env:
+          PALIMPSEST_LIVE: "1"
           PALIMPSEST_PROXY: ${{ secrets.PALIMPSEST_PROXY }}
         run: python -m scripts.baike_redaction_pull
 

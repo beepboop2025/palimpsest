@@ -417,8 +417,12 @@ _USER_AGENT = "Mozilla/5.0 (Palimpsest/0.2; open-source censorship research)"
 _MAX_BYTES = 8 * 1024 * 1024
 
 
-def _default_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """Minimal stdlib GET honoring the optional PALIMPSEST_PROXY egress seam."""
+def _stdlib_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
+    """Minimal stdlib GET honoring the optional PALIMPSEST_PROXY egress seam.
+
+    Kept as the fallback so a bare clone with no dependencies still works, which is
+    the promise the module docstring makes.
+    """
     handlers = [urllib.request.HTTPRedirectHandler()]
     if proxy:
         handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
@@ -426,6 +430,59 @@ def _default_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
     raw = opener.open(req, timeout=timeout).read(_MAX_BYTES)
     return raw.decode("utf-8", "replace")
+
+
+def _httpx_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
+    """GET through httpx, whose TLS handshake some WAFs accept where they refuse
+    urllib's. Raises ImportError when httpx is absent so the caller can fall back."""
+    import httpx                                    # noqa: PLC0415 — optional dependency
+    kwargs = {"timeout": timeout, "follow_redirects": True,
+              "headers": {"User-Agent": _USER_AGENT}}
+    if proxy:
+        kwargs["proxy"] = proxy
+    with httpx.Client(**kwargs) as client:
+        resp = client.get(url)
+    body = resp.content[:_MAX_BYTES].decode("utf-8", "replace")
+    if resp.status_code >= 400:
+        # Raise the STDLIB error type, not httpx's. Callers of this seam are written
+        # against urllib's contract and branch on `.code`, and that branching carries
+        # meaning: baike's fetch_baike treats 404 as a real absence ("deleted") rather
+        # than a transport failure. Raising httpx.HTTPStatusError instead would sail
+        # past those handlers into a generic except, and the entities that 404 are
+        # exactly the most censored ones — 六四事件, 法轮功, 天安门母亲, 709大抓捕,
+        # 白纸运动 all return 404 while 刘晓波 and 李文亮 return 200. Losing that branch
+        # would discard the observation the collector exists to make.
+        raise urllib.error.HTTPError(url, resp.status_code, body, resp.headers, None)
+    return body
+
+
+def _default_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
+    """Fetch a public surface, preferring httpx and falling back to stdlib urllib.
+
+    WHY THE PREFERENCE, because it looks like a gratuitous dependency and is not.
+
+    Baidu Baike refuses urllib with HTTP 403 and serves httpx a full 213KB page —
+    same IP, same URL, same User-Agent, same second, reproduced across interleaved
+    rounds. It is not geography, not an IP reputation ban, and not HTTP/2 (httpx
+    negotiated plain HTTP/1.1 and still got through). The discriminator is the TLS
+    handshake fingerprint: httpx's cipher and extension ordering differs from
+    urllib's, and the WAF accepts one and not the other.
+
+    That distinction had real cost. The baike signal spent twenty days abstaining
+    with a published reason blaming geography and asking for a China-reachable
+    proxy, when what it actually needed was a different client on the same machine.
+    curl does not help either — curl 403s here where httpx succeeds — so the
+    obvious "shell out to curl" fix would have failed AND widened the execution
+    surface for nothing.
+
+    Set PALIMPSEST_FETCH=stdlib to force the fallback, e.g. to reproduce a refusal.
+    """
+    if os.environ.get("PALIMPSEST_FETCH") == "stdlib":
+        return _stdlib_fetch(url, proxy=proxy, timeout=timeout)
+    try:
+        return _httpx_fetch(url, proxy=proxy, timeout=timeout)
+    except ImportError:
+        return _stdlib_fetch(url, proxy=proxy, timeout=timeout)
 
 
 class WebVantagePoint:
