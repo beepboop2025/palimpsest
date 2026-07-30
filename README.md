@@ -29,7 +29,7 @@ pointed at two places where the record gets rewritten in the dark:
 - **The Censorship Observatory.** Authoritarian deletion, measured as data. It archives public
   posts, watches for when they are scrubbed, and turns what a state is burying into a live, openly
   licensed early-warning signal for journalists, researchers, and human rights defenders.
-  Twenty-one signals refresh on their own, unattended, every number tracing back to public evidence.
+  Twenty-six signals refresh on their own, unattended, every number tracing back to public evidence.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
 
@@ -172,12 +172,12 @@ Reproduce it: `PYTHONPATH=. python3 scripts/validate_ddti.py`. See
 
 ### Live signals (auto-published)
 
-[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Twenty-one
+[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Twenty-six
 independent observatory signals refresh on their own schedules via GitHub Actions on this repo, so
 every run, its code, and its output are publicly auditable (the badges above are live run status).
 No hidden server publishes. The Verifiable Eval Registry auto-publishes two further feeds of its own
 ([`readings/eval-registry-latest.json`](readings/eval-registry-latest.json) and
-[`readings/refusal-drift-latest.json`](readings/refusal-drift-latest.json)), for twenty-three
+[`readings/refusal-drift-latest.json`](readings/refusal-drift-latest.json)), for twenty-eight
 self-refreshing feeds in all.
 
 | Signal | What it measures | Cadence | Feed |
@@ -204,6 +204,10 @@ self-refreshing feeds in all.
 | **Coverage guard** | The anti-artefact check: whether a signal's movement is explained by its own measurement coverage rather than by the world | Every 6 hours | [`readings/coverage-guard-latest.json`](readings/coverage-guard-latest.json) |
 | **Cross-layer coupling** | Lagged coupling between layers against a circular-shift null; abstains loudly until enough overlapping history is earned | Every 6 hours | [`readings/cross-layer-latest.json`](readings/cross-layer-latest.json) |
 | **Forecast ledger** | The scoreboard on ourselves: strictly prequential one-step forecasts per signal, scored against what actually happened | Every 6 hours | [`readings/forecast-ledger-latest.json`](readings/forecast-ledger-latest.json) |
+| **In-path interference** | Positive evidence of a device on the path, not an inference from blocking: deliberately malformed HTTP that something rewrote, plus whether real-time voice and pluggable-transport plumbing works | Every 6 hours | [`readings/in-path-interference-latest.json`](readings/in-path-interference-latest.json) |
+| **Apple censorship** | The App Store census: which apps are unavailable in the CN storefront, measured against the same catalogue elsewhere | Daily | [`readings/apple-censorship-latest.json`](readings/apple-censorship-latest.json) |
+| **App storefront** | Storefront-level availability drift for watched apps, the removal timeline read from the store itself | Daily | [`readings/app-storefront-latest.json`](readings/app-storefront-latest.json) |
+| **Inside view** | What the domestic vantage can and cannot see, read from sources published inside the wall | Every 6 hours | [`readings/inside-view-latest.json`](readings/inside-view-latest.json) |
 
 Every value is provenance-tracked to its source document, and a signal abstains rather than
 fabricates when its source returns nothing. Nothing is published without evidence. Researcher docs,
@@ -237,6 +241,7 @@ lexicon). Adding a country is a gazetteer plus a registry entry, not a rewrite. 
 | Cross-region packs (China + Iran, config-driven) · censorship forecaster | Built, tested |
 | **Blocklist archaeology** — newly-shipped keywords diffed across client blocklist versions | **Live** — auto-published weekly from Citizen Lab's corpus |
 | UNDERTEXT tomography · CDN-edge · Silence detection · Baike redaction-diff | Built, tested (live source injection gated, inert) |
+| **BLEEDTHROUGH** — injector-fleet tomography: the GFW's own DNS injectors answer benign probes, so the apparatus is measured from outside with no node inside China | Built, tested; **first live round measured** — every sampled dark target drew a forgery, the forged IPs match documented GFW pools, the path traces into AS4134. **Deliberately unpublished**: a single vantage can evidence injection and a floor on parallel injector responses, but cannot support a regional claim, so nothing is put on the board until a multi-vantage round exists. See [docs/BLEEDTHROUGH.md](docs/BLEEDTHROUGH.md) |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
 | Real-time velocity at minute resolution | Needs in-country / seam measurement (retroactive velocity now ships via Wayback) |
 
@@ -298,13 +303,14 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |
 | [docs/NEW-METHODS.md](docs/NEW-METHODS.md) | The observation surfaces (Generative Firewall, CDN-edge, Blocklist, Silence, GitHub-refuge, Baike, Wayback Reconstruction) |
 | [docs/UNDERTEXT.md](docs/UNDERTEXT.md) | Active differential tomography, many-vantage divergence as signal |
+| [docs/BLEEDTHROUGH.md](docs/BLEEDTHROUGH.md) | Injector-fleet tomography, the method and the safety line for making the censor's own devices answer |
 | [docs/OSINT_SOURCES.md](docs/OSINT_SOURCES.md) | Every public source, how it is accessed, what it yields, its limits |
 | [docs/ETHICS.md](docs/ETHICS.md) · [SAFETY.md](SAFETY.md) · [CONTRIBUTING.md](CONTRIBUTING.md) | Threat model, do-no-harm rules, and the safety-review gate |
 
 ## Status and license
 
 Developed in the open as a public good. This is past the prototype stage and short of a finished
-product: twenty-three feeds refresh unattended on public CI, the sealed chains verify offline from a
+product: twenty-eight feeds refresh unattended on public CI, the sealed chains verify offline from a
 clean clone, and the whole thing runs without anyone touching it. What it is not yet is
 independently replicated, externally witnessed at scale, or in-country. Those are named openly in
 [docs/INTEGRITY.md](docs/INTEGRITY.md) and in the built-versus-not table above rather than smoothed
