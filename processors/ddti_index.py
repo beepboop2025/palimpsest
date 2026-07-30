@@ -365,6 +365,24 @@ class DDTIIndexProcessor(BaseProcessor):
                     "source": a.author or "",
                 })
 
+            # THE DENOMINATOR, checked before anything is computed or written.
+            # This task is scheduled every 30 minutes and used to persist a snapshot on
+            # every run regardless. The collector that fills this category (ddti_probe) is
+            # disabled in the platform's sources.yaml pending a feasibility GO, so the
+            # query has always returned nothing — and the stack recorded ~48 "computed"
+            # index rows a day over an empty table, indistinguishable from 48 readings of a
+            # quiet censor. An index over zero deletions is not an index of zero threat; it
+            # is no index, and the two must not share a row shape.
+            if not rows:
+                logger.warning(
+                    "[DDTI-Index] ABSTAIN — no ddti_deletion articles in the last %s days. "
+                    "Nothing was measured, so no snapshot is written. Check that the "
+                    "ddti_probe collector is enabled and its feeds are reachable.",
+                    self.history_days)
+                return {"status": "abstain", "reason": "no ddti_deletion articles in window",
+                        "observations": 0, "terms": 0,
+                        "window_days": self.history_days}
+
             dmap, _ = load_domain_map()
             index = compute_selectivity_novelty(observations, now, domain_map=dmap)
             self._publish(index)
