@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T03:37:49.496858+00:00",
+  "generated_at": "2026-07-30T09:08:03.302860+00:00",
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -8,68 +8,68 @@
   "since": "2026-07-23",
   "until": "2026-07-31",
   "gfw_index": 57.9,
-  "n_measurements": 235124,
+  "n_measurements": 235885,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 134272,
-      "measurement_count": 234024,
-      "failure_count": 1861,
-      "anomaly_rate": 0.5784,
+      "anomaly_count": 134580,
+      "measurement_count": 234749,
+      "failure_count": 1882,
+      "anomaly_rate": 0.5779,
       "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 232,
-      "measurement_count": 239,
+      "anomaly_count": 240,
+      "measurement_count": 247,
       "failure_count": 0,
-      "anomaly_rate": 0.9707,
+      "anomaly_rate": 0.9717,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 234,
-      "measurement_count": 241,
+      "anomaly_count": 242,
+      "measurement_count": 249,
       "failure_count": 0,
-      "anomaly_rate": 0.971,
+      "anomaly_rate": 0.9719,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 232,
-      "measurement_count": 240,
+      "anomaly_count": 240,
+      "measurement_count": 248,
       "failure_count": 1,
-      "anomaly_rate": 0.9707,
+      "anomaly_rate": 0.9717,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 161,
-      "measurement_count": 168,
+      "anomaly_count": 165,
+      "measurement_count": 172,
       "failure_count": 0,
-      "anomaly_rate": 0.9583,
+      "anomaly_rate": 0.9593,
       "reading": "96% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 35,
-      "measurement_count": 212,
+      "anomaly_count": 42,
+      "measurement_count": 220,
       "failure_count": 0,
-      "anomaly_rate": 0.1651,
-      "reading": "17% anomalous — some interference"
+      "anomaly_rate": 0.1909,
+      "reading": "19% anomalous — some interference"
     },
     {
       "test": "riseupvpn",
@@ -85,14 +85,14 @@
   "top_blocked": [
     {
       "domain": "f-droid.org",
-      "anomaly_count": 76,
-      "measurement_count": 79,
+      "anomaly_count": 77,
+      "measurement_count": 81,
       "anomaly_rate": 1.0
     },
     {
       "domain": "chinamediaproject.org",
-      "anomaly_count": 31,
-      "measurement_count": 38,
+      "anomaly_count": 32,
+      "measurement_count": 39,
       "anomaly_rate": 1.0
     },
     {
@@ -103,14 +103,20 @@
     },
     {
       "domain": "globalvoices.org",
-      "anomaly_count": 26,
-      "measurement_count": 33,
+      "anomaly_count": 27,
+      "measurement_count": 34,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.falundafa.org",
       "anomaly_count": 26,
       "measurement_count": 26,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.csis.org",
+      "anomaly_count": 25,
+      "measurement_count": 25,
       "anomaly_rate": 1.0
     },
     {
@@ -123,12 +129,6 @@
       "domain": "staticxx.facebook.com",
       "anomaly_count": 23,
       "measurement_count": 25,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.csis.org",
-      "anomaly_count": 23,
-      "measurement_count": 23,
       "anomaly_rate": 1.0
     },
     {
@@ -198,6 +198,12 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "dcard.tw",
+      "anomaly_count": 20,
+      "measurement_count": 24,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "explorer.ooni.org",
       "anomaly_count": 20,
       "measurement_count": 22,
@@ -225,12 +231,6 @@
       "domain": "www.patreon.com",
       "anomaly_count": 20,
       "measurement_count": 24,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "archive.ph",
-      "anomaly_count": 19,
-      "measurement_count": 19,
       "anomaly_rate": 1.0
     }
   ]
