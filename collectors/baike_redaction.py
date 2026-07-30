@@ -150,7 +150,26 @@ _TITLE_WORDS = ("外交部长", "部长", "书记", "省长", "市长", "主任"
 _SIG_NOT_CREATED = ("百科尚未收录词条", "词条暂未创建", "该词条尚未创建")
 _SIG_DELETED = ("该词条已被删除", "词条已被删除")
 _SIG_LOCKED = ("该词条已被锁定",)
-_SIG_DISAMBIG = ("polysemant", "lemmaWgt-subLemmaList", "多义词")
+# A bare "polysemant" substring was a false-positive generator and silently discarded real
+# findings. Modern Baike renders a homonym widget (class `polysemantText_...`, "展开44个同名
+# 词条") on ORDINARY lemma pages, so 刘晓波 and 李文亮 were dropped as disambiguation despite
+# successful 105KB/206KB fetches. Pinning lemma_id does NOT help: the pinned URL
+# /item/刘晓波/14900221 still contains `polysemant` three times.
+#
+# These two markers name an actual 多义词 landing rather than a widget on a real page.
+_SIG_DISAMBIG = ("lemmaWgt-subLemmaList", "多义词")
+
+# A real lemma page carries an article; a 多义词 landing carries a list of links. Measured on
+# the whole normalized body so it does not depend on any class name surviving a redesign —
+# the same reason the selectors below have a fallback.
+_MIN_LEMMA_BODY = 1200
+
+
+def _has_lemma_body(html: str) -> bool:
+    """True when there is enough article text behind the page for it to be a lemma rather
+    than a disambiguation landing."""
+    return len(normalize_body(html or "")) >= _MIN_LEMMA_BODY
+
 
 # Baike main-content selectors drift across redesigns — extract by these BUT fall back to a
 # whole-body normalize_body when they miss; never hinge on one class surviving (pitfall #7).
@@ -228,9 +247,14 @@ def extract_baike(html: str) -> dict:
     if any(s in html for s in _SIG_LOCKED):
         out["interstitial"] = "locked"
         return out
-    if any(s in html for s in _SIG_DISAMBIG):
+    if any(s in html for s in _SIG_DISAMBIG) and not _has_lemma_body(html):
         # A 多义词 landing means we are NOT on the entity (lemma_id was omitted). Flag, never
         # fingerprint it as the subject (pitfall #4).
+        #
+        # The body check is the safeguard. A marker on its own is not enough: Baike renders
+        # homonym widgets on real lemma pages, and treating that as a disambiguation landing
+        # silently discards a successful fetch of exactly the contested entity we came for.
+        # A genuine landing is a list of links with no article behind it.
         out["interstitial"] = "disambiguation"
         return out
 

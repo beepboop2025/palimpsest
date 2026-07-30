@@ -512,3 +512,53 @@ def test_redaction_flows_into_ddti_selectivity_index():
 if __name__ == "__main__":
     import sys
     sys.exit(__import__("pytest").main([__file__, "-q"]))
+
+
+# ── the homonym-widget false positive ─────────────────────────────────────────
+
+def test_homonym_widget_on_a_real_lemma_is_not_a_disambiguation_landing():
+    """Modern Baike renders a homonym widget (`polysemantText_...`, "展开44个同名词条")
+    on ORDINARY lemma pages. Treating that as a disambiguation landing silently
+    discarded successful fetches of 刘晓波 and 李文亮 — exactly the contested
+    entities the collector exists to watch. Pinning lemma_id does not help: the
+    pinned URL carries the widget too."""
+    from collectors.baike_redaction import extract_baike
+    html = ('<html><body><div class="polysemantText_rkuXx J-polysemantText">'
+            '<span>展开</span>44个同名词条</div>'
+            + "<p>" + ("刘晓波是中国作家与人权活动者。" * 120) + "</p>"
+            + "</body></html>")
+    out = extract_baike(html)
+    assert out["interstitial"] != "disambiguation"
+    assert out["present"] is True
+
+
+def test_a_real_disambiguation_landing_is_still_caught():
+    """The guard must still fire when there is genuinely no article behind the
+    page, or we would fingerprint a link list as though it were the subject."""
+    from collectors.baike_redaction import extract_baike
+    html = ('<html><body><div class="lemmaWgt-subLemmaList">多义词</div>'
+            '<a href="/item/x/1">义项一</a><a href="/item/x/2">义项二</a>'
+            '</body></html>')
+    out = extract_baike(html)
+    assert out["interstitial"] == "disambiguation"
+
+
+def test_the_pacing_stays_below_the_ban_threshold():
+    """0.5/s with a burst of 2 permitted ~20 reads in 40s, which is the burst
+    Baidu rate-bans on. A banned IP returns 403 for every entity, which reads as
+    'unreachable' and gets reported as a vantage problem — the pacing was
+    manufacturing the blocker the reading then blamed."""
+    from scripts.baike_redaction_pull import _RATE_PER_SEC, ENTITIES
+    reads = 2 * len(ENTITIES)
+    assert _RATE_PER_SEC <= 0.1, "pacing is back above the Baidu ban threshold"
+    assert reads / _RATE_PER_SEC >= 120, "a full pass should take minutes, not seconds"
+
+
+def test_every_entity_has_a_resolvable_wiki_control():
+    """A wiki_title that does not exist makes its entity permanently
+    non-comparable, so it can never contribute and quietly shrinks the
+    denominator. 天安门母亲 was such an entry; the article is 天安门母亲运动."""
+    from scripts.baike_redaction_pull import ENTITIES
+    titles = {e.wiki_title or e.zh_title for e in ENTITIES}
+    assert "天安门母亲" not in titles, "zh-wikipedia has no article at this title"
+    assert "天安门母亲运动" in titles

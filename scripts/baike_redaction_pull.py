@@ -58,7 +58,16 @@ METHOD_VERSION = 1
 MIN_COMPARABLE = 4
 
 # Polite by construction: two reads per entity against two public encyclopedias.
-_RATE_PER_SEC = 0.5
+#
+# 0.5/s with a burst of 2 permitted ~20 reads in 40 seconds, and that is precisely the burst
+# Baidu rate-bans on: a run at that pace took the source IP to blanket 403 on every entity,
+# still refusing 45s later. A banned IP does not fail loudly — it returns 403 for every
+# entity, which the collector reads as "unreachable" and reports as a vantage problem. The
+# pacing was manufacturing the very blocker the reading then blamed.
+#
+# One read per 12s with a small burst puts a full 10-entity pass (20 reads) at ~4 minutes,
+# which is nothing on a 6-hourly cadence and stays far below the ban threshold.
+_RATE_PER_SEC = 1 / 12
 _BURST = 2.0
 
 # Curated contested-entity canon: widely documented public censorship subjects only.
@@ -67,7 +76,9 @@ ENTITIES = [
     Entity(zh_title="六四事件", domain="UNREST", wiki_title="六四事件"),
     Entity(zh_title="刘晓波", domain="RIGHTS"),
     Entity(zh_title="法轮功", domain="RIGHTS"),
-    Entity(zh_title="天安门母亲", domain="UNREST"),
+    # wiki_title differs from zh_title here: zh-wikipedia has no article at 天安门母亲, so the
+    # control was permanently absent and this entity could never become comparable.
+    Entity(zh_title="天安门母亲", wiki_title="天安门母亲运动", domain="UNREST"),
     Entity(zh_title="维吾尔族", domain="RIGHTS", wiki_title="维吾尔族"),
     Entity(zh_title="新疆再教育营", domain="RIGHTS"),
     Entity(zh_title="白纸运动", domain="UNREST"),
@@ -137,8 +148,23 @@ def main() -> None:
         })
 
     if comparable < MIN_COMPARABLE:
+        # Report WHY each entity failed rather than asserting a cause. The previous text
+        # named a China-reachable proxy as the missing ingredient, and that diagnosis was
+        # wrong: Baidu's WAF refuses the stdlib client's TLS/HTTP fingerprint independently
+        # of IP or User-Agent, and the same URL from the same machine with the same UA
+        # succeeds under a browser-grade stack. An abstain reason is written at design time
+        # and then read downstream as a measurement, so a guessed cause becomes a published
+        # finding. Say what was observed; do not name a culprit we have not established.
+        by_reason = {}
+        for r in results:
+            if not r["comparable"]:
+                k = r["baike_interstitial"] or ("wiki_missing" if not r["wiki_present"]
+                                                else "unknown")
+                by_reason[k] = by_reason.get(k, 0) + 1
+        detail = ", ".join(f"{k}×{n}" for k, n in sorted(by_reason.items()))
         reason = (f"only {comparable}/{len(ENTITIES)} entities were comparable "
-                  f"(Baike unreachable from this vantage; needs a China-reachable PALIMPSEST_PROXY egress)")
+                  f"({detail or 'no per-entity detail'}). A 403 here is the source refusing "
+                  f"this client, which is not by itself evidence about geography")
         print(f"baike-redaction: insufficient data — {reason}; abstaining")
         _write_abstain(now, reason=reason, comparable=comparable, forks=forks, results=results)
         return
