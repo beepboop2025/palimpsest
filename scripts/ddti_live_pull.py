@@ -19,8 +19,9 @@ Usage:  python -m scripts.ddti_live_pull
 
 import asyncio
 import json
+import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -35,18 +36,76 @@ OUT_DIR = ROOT / "data" / "ddti"
 DASHBOARD = ROOT / "dashboards" / "ddti_dashboard.html"
 WAYBACK_LATEST = ROOT / "readings" / "wayback-latest.json"
 
-BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+# ── CDT ingestion: the one door the edge actually serves ──────────────────────
+# From early July 2026 an edge rule on chinadigitaltimes.net began challenging every
+# path except /feed/ and /robots.txt. The three category feeds this script used to read
+# — 404-archive (deleted posts), minitrue (leaked propaganda directives), economy — have
+# returned 403 ever since, and the published reading has been printing its own failure
+# ("cdt_404": 403) for three weeks while DDTI ran on one feed's first page: 15 items.
+# The category *pages* 403 too, so the slugs did not change; this is an edge heuristic.
+#
+# That heuristic overreaches CDT's own stated policy. Their robots.txt is `Allow: /`
+# with `Content-Signal: search=yes,ai-train=no,use=reference` for a generic agent —
+# only the named training crawlers (GPTBot, ClaudeBot, CCBot, Bytespider, …) are
+# disallowed, and we are none of them. DDTI stores titles and links back to the source
+# article: reference use, not training. So the fix is to walk in the door CDT actually
+# serves, slowly and under our own name — NOT to defeat the challenge. Routing around a
+# control would be brittle, and it is not what this project does.
+#
+# /feed/?paged=N is served and goes years deep (verified 2026-07-31: page 99 was still
+# returning items from December 2022). Every <item> carries its <category> terms, so the
+# taxonomy the dead category-feeds supplied is recoverable by filtering the root feed —
+# the 404-archive and Minitrue material arrives through the allowed door under its own
+# tags. Cost of a routine run is a handful of requests.
+CDT_ROOT_FEED = "https://chinadigitaltimes.net/feed/"
 
-# Real CDT feeds (English-first, per the "make it English" request). The script
-# follows redirects and uses a browser UA — some returned 301/403 to the probe's
-# bare client. It keeps whatever actually answers with items.
-FEEDS = [
-    {"name": "cdt_english",  "url": "https://chinadigitaltimes.net/feed/"},
-    {"name": "cdt_404",      "url": "https://chinadigitaltimes.net/china/404-archive/feed/"},
-    {"name": "cdt_minitrue", "url": "https://chinadigitaltimes.net/china/minitrue/feed/"},
-    {"name": "cdt_economy",  "url": "https://chinadigitaltimes.net/china/economy/feed/"},
-]
+# Identify honestly. CDT serves /feed/ to this exact UA (verified 2026-07-31), so there
+# is no reason to impersonate a browser and this project does not. Contact URL included
+# so an operator who wants us to stop has somewhere to look.
+PALIMPSEST_UA = ("Palimpsest/0.2 (+https://palimpsest.info; open-source censorship "
+                 "research; use=reference)")
+
+# How deep to page. Paginating by COUNT would silently shrink the window whenever CDT's
+# publication rate rose, so we paginate by DATE: keep pulling until the oldest item seen
+# predates the processor's history window, then stop. That is what makes novelty honest —
+# compute_selectivity_novelty scores a term against the 45–180 day band, and with only
+# page 1 (≈33 days of posts) that band was EMPTY, which is why every term in the last
+# reading carried is_new=true and hist_count=0. Those were artifacts, not findings.
+FEED_HISTORY_DAYS = float(os.getenv("DDTI_FEED_HISTORY_DAYS", "180"))
+FEED_MAX_PAGES = int(os.getenv("DDTI_FEED_MAX_PAGES", "10"))       # politeness ceiling
+FEED_PAGE_DELAY_S = float(os.getenv("DDTI_FEED_PAGE_DELAY_S", "2.0"))
+
+# The dead category feeds, recovered from each item's <category> tags. Lowercased exact
+# match. Roles are resolved in the priority order below so an item tagged both
+# "Censorship Vault" and "Economy" lands deterministically in the censorship bucket.
+CATEGORY_ROLES = {
+    "censorship vault": "cdt_404",                      # the 404 Archive — deleted posts
+    "404 archive": "cdt_404",
+    "directives from the ministry of truth": "cdt_minitrue",
+    "minitrue": "cdt_minitrue",
+    "economy": "cdt_economy",
+}
+_ROLE_PRIORITY = ("cdt_404", "cdt_minitrue", "cdt_economy")
+DEFAULT_ROLE = "cdt_english"
+# Roles we expect to see recovered. If one stops appearing, feed_health says so out loud
+# rather than letting the signal quietly narrow again.
+EXPECTED_ROLES = ("cdt_404", "cdt_minitrue", "cdt_economy")
+
+
+def page_url(page: int) -> str:
+    """Root feed for page 1, ?paged=N thereafter. Page 1 has no query string so the
+    routine request is byte-identical to what any feed reader sends."""
+    return CDT_ROOT_FEED if page <= 1 else f"{CDT_ROOT_FEED}?paged={page}"
+
+
+def role_for(tags) -> str:
+    """Which of the old per-feed roles this item would have arrived under."""
+    found = {CATEGORY_ROLES[t] for t in
+             (str(x).strip().lower() for x in (tags or [])) if t in CATEGORY_ROLES}
+    for role in _ROLE_PRIORITY:
+        if role in found:
+            return role
+    return DEFAULT_ROLE
 
 # CDT structural/editorial tags that aren't threat topics — drop as noise.
 STOP_TAGS = {
@@ -55,14 +114,22 @@ STOP_TAGS = {
 }
 
 
-def _parse_date(s: str) -> datetime:
+def _parse_date(s: str):
+    """RFC-2822 pubDate -> aware datetime, or None when it cannot be read.
+
+    None rather than now(): an item stamped with the current time because its date was
+    unreadable looks brand new to the novelty scorer, which is precisely the artifact
+    this module exists to avoid. An item we cannot place in time cannot contribute to a
+    time-windowed index, so the caller drops it and counts the drop out loud."""
     if not s:
-        return datetime.now(timezone.utc)
+        return None
     try:
         d = parsedate_to_datetime(s)
-        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
-    except Exception:
-        return datetime.now(timezone.utc)
+    except (TypeError, ValueError):
+        return None
+    if d is None:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
 def _strip_angles(s):
@@ -79,35 +146,102 @@ def _clean_terms(terms):
             if t.strip().lower() not in STOP_TAGS and len(t.strip()) > 1]
 
 
-async def pull():
+async def pull(now: datetime | None = None):
+    """Walk /feed/?paged=N until the archive predates the history window.
+
+    Returns (observations, reachability, health). `reachability` keeps the per-request
+    HTTP status the old four-feed version published — that self-report is the only
+    reason the three-week outage was ever findable, so it stays, now keyed per page.
+    `health` is the roll-up a human reads.
+    """
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=FEED_HISTORY_DAYS)
     lexicon = load_lexicon()
-    collector = DDTIProbeCollector({"deletion_feeds": []})  # reuse its RSS parser
+    collector = DDTIProbeCollector({"deletion_feeds": []})  # reuse its RSS/Atom parser
+
     observations, reachability = [], {}
+    seen_urls = set()
+    counts = {"items_seen": 0, "duplicates_dropped": 0, "undated_dropped": 0,
+              "no_terms_dropped": 0}
+    by_role, pages_ok, oldest, stopped = {}, 0, None, "page-ceiling"
 
     async with httpx.AsyncClient(timeout=25, follow_redirects=True,
-                                 headers={"User-Agent": BROWSER_UA, "Referer": "https://chinadigitaltimes.net/"}) as client:
-        for feed in FEEDS:
+                                 headers={"User-Agent": PALIMPSEST_UA}) as client:
+        for page in range(1, max(1, FEED_MAX_PAGES) + 1):
+            if page > 1:
+                await asyncio.sleep(FEED_PAGE_DELAY_S)      # stay slow, stay welcome
+            key = f"cdt_root_p{page}"
             try:
-                r = await client.get(feed["url"])
-                reachability[feed["name"]] = r.status_code
-                if r.status_code != 200:
-                    continue
-                items = collector._parse_feed_items(feed["name"], r.text)
-                for it in items:
-                    terms = _clean_terms(extract_terms(it["title"], it["text"], it.get("tags", []), lexicon))
-                    if not terms:
-                        continue
-                    observations.append({
-                        "terms": terms,
-                        "detected_at": _parse_date(it.get("published_at", "")),
-                        "title": _strip_angles(it["title"]),
-                        "url": it["url"],
-                        "source": feed["name"],
-                    })
+                r = await client.get(page_url(page))
             except Exception as e:
-                reachability[feed["name"]] = f"error:{type(e).__name__}"
+                # A transport failure is not "the archive ended here". Stop and say so;
+                # never let a network error masquerade as an exhausted feed.
+                reachability[key] = f"error:{type(e).__name__}"
+                stopped = "transport-error"
+                break
+            reachability[key] = r.status_code
+            if r.status_code != 200:
+                stopped = f"http-{r.status_code}"
+                break
 
-    return observations, reachability
+            items = collector._parse_feed_items(key, r.text)
+            if not items:
+                # A 200 carrying no <item> is either the end of the archive or an
+                # interstitial served with a 200. Either way we have no data — stop,
+                # and record which page went quiet.
+                stopped = "no-items"
+                break
+            pages_ok += 1
+
+            for it in items:
+                counts["items_seen"] += 1
+                url = (it.get("url") or "").strip()
+                if url and url in seen_urls:
+                    counts["duplicates_dropped"] += 1     # page overlap as CDT publishes
+                    continue
+                if url:
+                    seen_urls.add(url)
+                detected_at = _parse_date(it.get("published_at", ""))
+                if detected_at is None:
+                    counts["undated_dropped"] += 1
+                    continue
+                if oldest is None or detected_at < oldest:
+                    oldest = detected_at
+                tags = it.get("tags", [])
+                terms = _clean_terms(extract_terms(it["title"], it["text"], tags, lexicon))
+                if not terms:
+                    counts["no_terms_dropped"] += 1
+                    continue
+                role = role_for(tags)
+                by_role[role] = by_role.get(role, 0) + 1
+                observations.append({
+                    "terms": terms,
+                    "detected_at": detected_at,
+                    "title": _strip_angles(it["title"]),
+                    "url": url,
+                    "source": role,
+                })
+
+            if oldest is not None and oldest <= cutoff:
+                stopped = "history-window-covered"
+                break
+
+    health = {
+        "endpoint": CDT_ROOT_FEED,
+        "pages_ok": pages_ok,
+        "stopped_because": stopped,
+        "oldest_item": oldest.isoformat() if oldest else None,
+        "days_covered": round((now - oldest).total_seconds() / 86400, 1) if oldest else 0.0,
+        "history_window_days": FEED_HISTORY_DAYS,
+        "history_window_covered": bool(oldest and oldest <= cutoff),
+        "observations": len(observations),
+        "by_role": by_role,
+        # The load-bearing self-report: if the 404-archive or Minitrue material stops
+        # arriving through the root feed, this list is how anyone finds out.
+        "roles_missing": [r for r in EXPECTED_ROLES if r not in by_role],
+        **counts,
+    }
+    return observations, reachability, health
 
 
 def load_wayback_observations(path: Path = WAYBACK_LATEST) -> list:
@@ -209,26 +343,42 @@ def store_redis(index: dict) -> str:
 
 
 async def main():
-    print("Pulling live CDT feeds…")
-    observations, reachability = await pull()
-    print(f"  reachability: {reachability}")
-    print(f"  observations: {len(observations)}")
+    now = datetime.now(timezone.utc)
+    print(f"Pulling the CDT root feed (up to {FEED_MAX_PAGES} pages, "
+          f"{FEED_PAGE_DELAY_S}s apart, until {FEED_HISTORY_DAYS:.0f} days are covered)…")
+    observations, reachability, health = await pull(now)
+    print(f"  reachability : {reachability}")
+    print(f"  stopped      : {health['stopped_because']} after {health['pages_ok']} page(s)")
+    print(f"  covered      : {health['days_covered']} days "
+          f"(history window {'covered' if health['history_window_covered'] else 'NOT covered'})")
+    print(f"  observations : {len(observations)}  by_role={health['by_role']}")
+    if health["roles_missing"]:
+        print(f"  ⚠ roles missing from the root feed: {health['roles_missing']}")
+
+    # Nothing read is not the same as nothing happening. Publishing a "quiet day" built
+    # from zero successful requests is exactly the failure that hid the outage for three
+    # weeks, so refuse rather than overwrite a good reading with an empty one.
+    if health["pages_ok"] == 0:
+        print("\nABSTAIN: no CDT page answered — refusing to publish an empty index "
+              f"over the last good one (reachability={reachability}).")
+        raise SystemExit(3)
 
     wayback = load_wayback_observations()
     if wayback:
         observations += wayback
         print(f"  + {len(wayback)} wayback reconstruction observation(s) merged")
 
-    now = datetime.now(timezone.utc)
-    # Cold-start windows: CDT's curated feed spans ~6 weeks, so treat the whole
-    # batch as "current" and rank by frequency×recency. Once daily cron pulls make
-    # the data dense, the processor's default 3/30 windows let novelty/burst lead.
+    # The current/history split is what makes novelty mean anything: a term is "new" only
+    # if it is absent from the history band. Paging to FEED_HISTORY_DAYS is what finally
+    # puts data in that band — see the FEED_HISTORY_DAYS note above.
     dmap, _ = load_domain_map()
     index = compute_selectivity_novelty(
-        observations, now, current_window_days=45, history_window_days=180, top_n=30,
+        observations, now, current_window_days=45,
+        history_window_days=FEED_HISTORY_DAYS, top_n=30,
         domain_map=dmap,
     )
     index["source_feeds"] = reachability
+    index["feed_health"] = health
     index["wayback_observations_merged"] = len(wayback)
 
     disk = store_disk(index)
@@ -249,7 +399,7 @@ async def main():
         print(f"  {i:2}. {r['term'][:38]:38} threat={r['threat']:6.2f} "
               f"atten={r['attention']:5.2f} novelty={r['novelty']:.2f} n={r['recent_count']}{new}")
     if not index["ranked"]:
-        print("  (no terms — feeds may have been unreachable from this network)")
+        print("  (no terms — the feed answered but nothing in it scored)")
 
 
 if __name__ == "__main__":

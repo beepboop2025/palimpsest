@@ -94,6 +94,11 @@ def main() -> None:
         "n_terms": index.get("n_terms"),
         "n_observations": index.get("n_observations_used"),
         "source_feeds": index.get("source_feeds"),
+        # How much of the archive this reading actually saw, and which of the
+        # censorship-specific CDT roles arrived. The three-week outage was only ever
+        # visible because source_feeds published its own 403s; feed_health makes the
+        # next narrowing visible from the reading alone, without reading the ranking.
+        "feed_health": index.get("feed_health"),
         "ranked": ranked,
         "citation": "Palimpsest — an open observatory of authoritarian censorship, "
                     "palimpsest.info. DDTI censored-term index, provenance-tracked.",
@@ -103,12 +108,20 @@ def main() -> None:
 
     # 3. append-only public time-series
     top = ranked[0]
+    health = index.get("feed_health") or {}
     row = {
         "generated_at": index["generated_at"],
         "n_terms": index.get("n_terms"),
         "n_new": sum(1 for r in ranked if r.get("is_new")),
         "top_term": top.get("term"),
         "top_threat": top.get("threat"),
+        # Coverage travels with the time-series so a narrowing signal is diagnosable
+        # from the JSONL alone: a run of rows where days_covered collapses or
+        # roles_missing grows is a source outage, not a quiet censor.
+        "n_observations": index.get("n_observations_used"),
+        "days_covered": health.get("days_covered"),
+        "pages_ok": health.get("pages_ok"),
+        "roles_missing": health.get("roles_missing"),
     }
     hist = readings / "ddti-history.jsonl"
     prev = hist.read_text(encoding="utf-8") if hist.exists() else ""
