@@ -86,9 +86,24 @@ _MAX_BYTES = 8 * 1024 * 1024
 # substance, with no body fetch. Kept as a named tuple so parse and query never drift apart.
 CDX_FIELDS = ("timestamp", "original", "statuscode", "digest", "mimetype", "length")
 
-# China-side "the page is gone" body markers, reused from the post collectors / ddti_probe table.
-# Only consulted on the OPTIONAL deep path (fetching a snapshot body); the CDX status code alone
-# already classifies the common case. Maintainer-authored, never auto-generated.
+# China-side "the page is gone" body markers for the OPTIONAL deep path (fetching a snapshot
+# body). The CDX status code alone classifies the common case, which is why nothing calls this
+# yet: as of 2026-07-31 the deep path is unbuilt and this tuple is UNREFERENCED. It is kept
+# because the intent is real, and repaired for the same reason — an unused list is exactly the
+# thing that gets wired up later and inherits whatever was wrong with it.
+#
+# What was wrong with it: `"404"` and `"not found"` as bare substrings, which is a worse form of
+# the bug just removed from cdn_edge._BLOCK_MARKERS. `"404"` matches any page containing that
+# digit string anywhere — a price, an ID, a date, a phone number, a Wayback banner citing the
+# original status — and `"not found"` matches ordinary English prose. Both would classify live
+# archived pages as deletions, and on this surface a false "gone" is a fabricated censorship
+# event with an archival timestamp attached to it.
+#
+# `根据相关法律法规` alone is also standard PRC privacy-policy boilerplate, so like cdn_edge it
+# only counts alongside something actually being withheld — see _CN_GONE_PAIRS.
+#
+# WHOEVER BUILDS THE DEEP PATH: scan VISIBLE TEXT, not raw bytes (cdn_edge.visible_text), or
+# these will match markup and script contents regardless of how carefully they are worded.
 _CN_GONE_MARKERS = (
     "抱歉，此微博已被删除",
     "抱歉,此微博已被删除",
@@ -97,9 +112,14 @@ _CN_GONE_MARKERS = (
     "该内容已被删除",
     "内容不存在或已删除",
     "您访问的页面不存在",
-    "根据相关法律法规",
-    "404",
-    "not found",
+    "页面不存在",
+    "该内容暂时无法显示",
+)
+
+# Two-part tells: a legal preamble counts only with a withholding phrase beside it.
+_CN_GONE_PAIRS = (
+    (("根据相关法律法规", "根据国家法律法规", "根据法律法规"),
+     ("无法显示", "无法查看", "暂时无法", "未予显示", "已被删除", "已删除")),
 )
 
 
