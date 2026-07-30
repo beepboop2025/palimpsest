@@ -112,7 +112,11 @@ def cw_signal(self):
         from censorwatch.signal import run_signal
         create_tables()
         signal = run_signal()
-        return {"task": "cw_signal", "status": "ok",
+        # Propagate the abstention rather than reporting "ok" over it. A beat result of
+        # ok/0-deletions is what let a dead capture stage look like a working one.
+        return {"task": "cw_signal", "status": signal.get("status", "ok"),
+                "reason": signal.get("reason"),
+                "observed_posts": signal.get("observed_posts"),
                 "n_deletions": signal["n_deletions"], "n_spikes": signal["n_spikes"],
                 "top_term": signal["top_term"]}
     except Exception as e:

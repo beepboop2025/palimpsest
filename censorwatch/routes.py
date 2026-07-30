@@ -82,9 +82,15 @@ def _open_redis():
 
 
 def _velocity_payload() -> dict:
+    # The last-resort payload when neither Redis nor the DB has anything. It used to say
+    # n_deletions: 0, which renders on the dashboard as a measured zero — "we watched and
+    # the censor was quiet" — when in fact no signal has ever been computed. Null, plus an
+    # explicit status, so nothing downstream can round a missing reading down to calm.
     out = {
         "generated_at": None,
-        "n_deletions": 0,
+        "status": "no-data",
+        "reason": "no velocity signal has been computed yet (no cache, no snapshot)",
+        "n_deletions": None,
         "n_terms": 0,
         "top_term": None,
         "ranked": [],
@@ -116,9 +122,15 @@ def _velocity_payload() -> dict:
                 .first()
             )
             if snap:
+                # scope carries the abstention: a snapshot written while nothing was under
+                # observation is a record that we tried, not a reading of the censor.
+                abstained = str(snap.scope or "").startswith("abstain")
                 return {
                     "generated_at": snap.generated_at.isoformat() if snap.generated_at else None,
                     "window": snap.window,
+                    "status": "abstain" if abstained else "ok",
+                    "reason": ("no posts were under observation when this snapshot was taken "
+                               "— the capture stage was not producing") if abstained else None,
                     "n_deletions": snap.n_deletions,
                     "n_terms": snap.n_terms,
                     "top_term": snap.top_term,

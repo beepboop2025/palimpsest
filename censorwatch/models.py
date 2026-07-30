@@ -123,10 +123,17 @@ class DeletionVelocitySnapshot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     generated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     window = Column(JSONB, default=dict)        # window minutes, baseline config
-    n_deletions = Column(Integer, default=0)    # deletions in the active window
+    # NO Python-side default on the two metric columns. SQLAlchemy omits an explicitly
+    # assigned None from the INSERT when a column carries `default=`, so the default fires
+    # and 0 is written — an abstention would have been recorded as a measured zero, which
+    # is the exact bug the abstention exists to prevent. Verified on SQLAlchemy 2.0.51.
+    # This is a Python-side default only, so removing it is not a schema change: no DDL, no
+    # migration, existing rows untouched. NULL now means "not measured", 0 means "measured,
+    # none found", and run_signal is the only writer and always sets both explicitly.
+    n_deletions = Column(Integer)               # deletions in the active window; NULL = abstained
     n_terms = Column(Integer, default=0)
     top_term = Column(Text, nullable=True)
-    top_velocity = Column(Float, default=0.0)
+    top_velocity = Column(Float)                # NULL = abstained
     ranked = Column(JSONB, default=list)        # full ranked term list w/ z-scores
     scope = Column(Text, nullable=True)
 

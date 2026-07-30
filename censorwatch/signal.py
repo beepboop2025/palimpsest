@@ -73,6 +73,7 @@ def compute_velocity_signal(
     baseline_windows: int,
     z_threshold: float,
     top_n: int = _TOP_N,
+    observed_posts: int | None = None,
 ) -> dict:
     """Rank censored terms by deletion-velocity spike.
 
@@ -80,7 +81,35 @@ def compute_velocity_signal(
     A term's *current* count is deletions in the most recent ``window_min``
     minutes; its baseline is the per-window counts over the preceding
     ``baseline_windows`` windows. z = (current − mean) / max(std, 1).
+
+    ``observed_posts`` is the DENOMINATOR: how many posts were actually under
+    observation. Deletion velocity is deletions per watched post per unit time, and
+    with nothing watched the numerator is zero for a reason that has nothing to do
+    with the censor. This is processors/coverage_guard.py's question — "did the signal
+    move, or did our ability to measure it move?" — in its degenerate form, where the
+    denominator is not merely smaller but zero.
+
+    Pass 0 and the result is an ABSTENTION: n_deletions is None, not 0. Nothing was
+    measured, so there is no measurement, and a null is the only honest way to say that
+    in a column whose zero means "we looked and found none". Pass None (the default) to
+    skip the check entirely — the historical behaviour, kept for callers that have no
+    denominator to offer.
     """
+    if observed_posts == 0:
+        # Refuse before computing. A ranking over an empty corpus is not an empty
+        # ranking, it is no ranking, and the two must not share a shape.
+        return {
+            "generated_at": now.isoformat(),
+            "window": {"window_min": window_min, "baseline_windows": baseline_windows,
+                       "z_threshold": z_threshold},
+            "status": "abstain",
+            "reason": ("no posts under observation — the capture stage produced nothing, so "
+                       "a deletion count would describe our coverage, not the censor"),
+            "observed_posts": 0,
+            "n_deletions": None, "n_terms": 0, "top_term": None,
+            "top_velocity": None, "n_spikes": 0, "ranked": [],
+        }
+
     window_s = window_min * 60
     # counts[term][bucket] — bucket 0 = current window, 1..N = baseline.
     counts: dict[str, dict[int, int]] = {}
@@ -129,6 +158,8 @@ def compute_velocity_signal(
         "generated_at": now.isoformat(),
         "window": {"window_min": window_min, "baseline_windows": baseline_windows,
                    "z_threshold": z_threshold},
+        "status": "ok",
+        "observed_posts": observed_posts,
         "n_deletions": current_total,
         "n_terms": len(ranked),
         "top_term": ranked[0]["term"] if ranked else None,
@@ -149,10 +180,16 @@ def run_signal(settings: CensorwatchSettings | None = None, now: datetime | None
     lookback_start = now - timedelta(minutes=window_min * (baseline_windows + 1))
 
     from api.database import SessionLocal
-    from censorwatch.models import PostDeletion, DeletionVelocitySnapshot
+    from censorwatch.models import CensoredPost, PostDeletion, DeletionVelocitySnapshot
 
     db = SessionLocal()
     try:
+        # The denominator, read FIRST. For 24 days this stage computed over an empty
+        # censored_posts table and wrote ~1,161 rows all reading "0 deletions" — which is
+        # indistinguishable, in that column, from 24 quiet days on a healthy corpus. The
+        # capture stage had been dead the whole time and the signal stage never asked.
+        observed_posts = db.query(CensoredPost).count()
+
         rows = (
             db.query(PostDeletion)
             .filter(PostDeletion.deleted_at >= lookback_start)
@@ -162,13 +199,19 @@ def run_signal(settings: CensorwatchSettings | None = None, now: datetime | None
         signal = compute_velocity_signal(
             deletions, now, window_min=window_min,
             baseline_windows=baseline_windows, z_threshold=settings.spike_z_threshold,
+            observed_posts=observed_posts,
         )
 
+        # n_deletions is NULL on an abstention and 0 on a real quiet window. The column is
+        # nullable already, so the distinction costs no migration: SQL's own null-vs-zero
+        # is exactly the distinction that was missing, and
+        #   SELECT count(*) FROM deletion_velocity_snapshots WHERE n_deletions IS NULL
+        # is now the query that answers "how long has capture been down".
         snap = DeletionVelocitySnapshot(
             generated_at=now, window=signal["window"], n_deletions=signal["n_deletions"],
             n_terms=signal["n_terms"], top_term=signal["top_term"],
             top_velocity=signal["top_velocity"], ranked=signal["ranked"],
-            scope="all_sources",
+            scope=("abstain:no-corpus" if signal.get("status") == "abstain" else "all_sources"),
         )
         db.add(snap)
         db.commit()
@@ -176,9 +219,14 @@ def run_signal(settings: CensorwatchSettings | None = None, now: datetime | None
         db.close()
 
     _publish(signal)
-    logger.info("[signal] %d deletions in window, %d terms, %d spikes (top=%s)",
-                signal["n_deletions"], signal["n_terms"], signal["n_spikes"],
-                signal["top_term"])
+    if signal.get("status") == "abstain":
+        # Loud, and at warning level: a dead capture stage is an outage, not a quiet day.
+        logger.warning("[signal] ABSTAIN — %s", signal["reason"])
+    else:
+        logger.info("[signal] %d deletions over %s post(s) under observation, "
+                    "%d terms, %d spikes (top=%s)",
+                    signal["n_deletions"], signal["observed_posts"], signal["n_terms"],
+                    signal["n_spikes"], signal["top_term"])
     return signal
 
 
