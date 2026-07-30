@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T03:30:27.984935+00:00",
+  "generated_at": "2026-07-30T09:03:08.760041+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
   "erasure_index": 49.0,
@@ -13,7 +13,7 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 58.0,
+      "value": 57.9,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json"
     },
@@ -37,7 +37,7 @@
   "cross_checks": [
     {
       "name": "Censored Planet interference",
-      "value": 4.43,
+      "value": 4.45,
       "unit": "%",
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
@@ -50,23 +50,28 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 90,
+    "entries": 92,
     "verified": true,
-    "merkle_root": "92c25455a55cfad769a0ef4ad2a8a59a93e5a3761b874499c5e4b5436c77aa87",
-    "head_hash": "9bcc8205b0ecc6ce016f393bbca4f20c85bec1583a2e372730570be4d6fb4ce6",
+    "merkle_root": "36dad1b78e204c3b9979f90edb9dd25f7acbc80ac0090bddc34a5ef0effef8c4",
+    "head_hash": "16df151fe985d493021c6827fdd3db719af3ca15452a07e331352fadaa94bd8a",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-30T03:30:27.984935+00:00",
+    "head_ts": "2026-07-30T09:03:08.760041+00:00",
     "by_source": {
-      "ooni-gfw": 74,
+      "ooni-gfw": 75,
       "generative-firewall": 1,
-      "censored-planet": 14,
+      "censored-planet": 15,
       "baike-redaction": 1
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 89,
-        "entry_hash": "9bcc8205b0ecc6ce016f393bbca4f20c85bec1583a2e372730570be4d6fb4ce6"
+        "seq": 90,
+        "entry_hash": "4ae96bf6210a38463456a166a4dd9c9643460eacce30721d308e95dffdedfed7"
+      },
+      {
+        "source": "censored-planet",
+        "seq": 91,
+        "entry_hash": "16df151fe985d493021c6827fdd3db719af3ca15452a07e331352fadaa94bd8a"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
