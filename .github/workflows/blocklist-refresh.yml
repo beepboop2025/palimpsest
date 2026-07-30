@@ -1,0 +1,58 @@
+name: Refresh blocklist archaeology
+
+# Re-acquire Citizen Lab's published LINE client blocklists and re-diff them, publishing
+# readings/blocklist-latest.json. Stdlib-only, key-less, vantage-insensitive: the corpus is
+# hosted on GitHub, so this runs correctly from anywhere and needs no China vantage.
+#
+# WEEKLY, not hourly, and deliberately so. This corpus is historical — six LINE client
+# versions from 2014 — so there is nothing to poll for freshness. What the weekly run is
+# actually for is integrity: the fetcher records a sha256 per artifact and reports
+# content_changed_since_last_fetch, and a *published historical artifact changing underneath
+# us* is a finding in its own right. A new upstream version is picked up the same way, since
+# acquisition discovers line-v*.txt rather than hardcoding the list.
+#
+# The corpus itself is NEVER committed. It has no upstream licence, so it is cached under
+# data/ (gitignored) and only derived values are published, with attribution.
+
+on:
+  schedule:
+    - cron: "29 4 * * 1"      # Mondays, offset from every other signal
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: blocklist-refresh
+  cancel-in-progress: false
+
+jobs:
+  blocklist:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Acquire the published corpus
+        run: python -m scripts.fetch_citizenlab_blocklists
+
+      - name: Diff versions and publish the reading
+        run: python -m scripts.blocklist_pull
+
+      - name: Commit & push if the reading changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/blocklist-latest.json readings/blocklist-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: blocklist archaeology refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

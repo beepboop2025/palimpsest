@@ -1,0 +1,273 @@
+{
+  "generated_at": "2026-07-30T17:44:48.317486+00:00",
+  "title": "Blocklist archaeology — newly-shipped censorship keywords",
+  "scope": "keywords newly present in successive LINE client blocklists; each addition is a directive the platform labelled itself, not an inference from deletion",
+  "source": "citizenlab/chat-censorship",
+  "attribution": "The Citizen Lab, University of Toronto — chat-censorship corpus (https://github.com/citizenlab/chat-censorship). Asia Chats: Investigating Regionally-based Keyword Censorship in LINE (2013-2014).",
+  "licence_note": "NO licence file in the upstream repository and no terms stated in its README — treated as all-rights-reserved. Cached under data/ (gitignored), never redistributed from this repo.",
+  "app": "line",
+  "completeness": "exhaustive",
+  "versions_compared": [
+    "v20",
+    "v21",
+    "v22",
+    "v23",
+    "v24",
+    "v25"
+  ],
+  "n_versions": 6,
+  "n_additions": 503,
+  "additions_by_version": {
+    "line v21": 141,
+    "line v22": 309,
+    "line v23": 1,
+    "line v24": 48,
+    "line v25": 4
+  },
+  "severity_distribution": {
+    "medium": 445,
+    "high": 58
+  },
+  "n_gazetteer_proposals": 17,
+  "gazetteer_proposals": [
+    {
+      "term": "鲁木齐",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "乌鲁木",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "鲁木",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "木齐",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "乌鲁",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "安门",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "天安",
+      "total_support": 5,
+      "association": 1.0,
+      "score": 1.7918,
+      "state": "propose"
+    },
+    {
+      "term": "声援薄熙",
+      "total_support": 3,
+      "association": 1.0,
+      "score": 1.3863,
+      "state": "propose"
+    },
+    {
+      "term": "援薄熙来",
+      "total_support": 3,
+      "association": 1.0,
+      "score": 1.3863,
+      "state": "propose"
+    },
+    {
+      "term": "声援薄",
+      "total_support": 3,
+      "association": 1.0,
+      "score": 1.3863,
+      "state": "propose"
+    },
+    {
+      "term": "援薄熙",
+      "total_support": 3,
+      "association": 1.0,
+      "score": 1.3863,
+      "state": "propose"
+    },
+    {
+      "term": "李锐",
+      "total_support": 3,
+      "association": 1.0,
+      "score": 1.3863,
+      "state": "propose"
+    },
+    {
+      "term": "援薄",
+      "total_support": 3,
+      "association": 1.0,
+      "score": 1.3863,
+      "state": "propose"
+    },
+    {
+      "term": "坦克",
+      "total_support": 4,
+      "association": 0.75,
+      "score": 1.0397,
+      "state": "propose"
+    },
+    {
+      "term": "学生",
+      "total_support": 4,
+      "association": 0.75,
+      "score": 1.0397,
+      "state": "propose"
+    },
+    {
+      "term": "买枪",
+      "total_support": 7,
+      "association": 0.5714,
+      "score": 0.9196,
+      "state": "propose"
+    },
+    {
+      "term": "杀人",
+      "total_support": 9,
+      "association": 0.4444,
+      "score": 0.7152,
+      "state": "propose"
+    }
+  ],
+  "gazetteer_proposals_note": "candidates for the euphemism gazetteer, REPORTED not merged — the gazetteer is human-ratified by design and this runner never writes to it. Expect substring fragments of the same coinage (乌鲁木齐 also yields 乌鲁木/鲁木齐/木齐), which a ratifier collapses; the count is proposals, not distinct discoveries.",
+  "novelty_index": null,
+  "novelty_index_note": "not computed: compute_selectivity_novelty ranks recency-weighted attention over a live deletion stream, and a decade-old corpus of six discrete version diffs has no meaningful recency structure — every term is added once. Withheld rather than computed with stretched windows to yield a number that would not mean anything.",
+  "evidence_sample": [
+    {
+      "term": "为薄熙来平反",
+      "version": "line v21",
+      "severity": "high",
+      "observed_bound": "2014-04-15T18:30:42+00:00"
+    },
+    {
+      "term": "声援 薄熙来",
+      "version": "line v21",
+      "severity": "high",
+      "observed_bound": "2014-04-15T18:30:42+00:00"
+    },
+    {
+      "term": "声援薄熙来",
+      "version": "line v21",
+      "severity": "high",
+      "observed_bound": "2014-04-15T18:30:42+00:00"
+    },
+    {
+      "term": "声援薄熙来书记",
+      "version": "line v21",
+      "severity": "high",
+      "observed_bound": "2014-04-15T18:30:42+00:00"
+    },
+    {
+      "term": "薄公平反",
+      "version": "line v21",
+      "severity": "high",
+      "observed_bound": "2014-04-15T18:30:42+00:00"
+    },
+    {
+      "term": "重庆 声援薄熙来",
+      "version": "line v21",
+      "severity": "high",
+      "observed_bound": "2014-04-15T18:30:42+00:00"
+    },
+    {
+      "term": "11月5日至15日 出租车禁行",
+      "version": "line v22",
+      "severity": "high",
+      "observed_bound": "2014-04-30T15:56:55+00:00"
+    },
+    {
+      "term": "18大",
+      "version": "line v22",
+      "severity": "high",
+      "observed_bound": "2014-04-30T15:56:55+00:00"
+    },
+    {
+      "term": "198964",
+      "version": "line v22",
+      "severity": "high",
+      "observed_bound": "2014-04-30T15:56:55+00:00"
+    },
+    {
+      "term": "319政变",
+      "version": "line v22",
+      "severity": "high",
+      "observed_bound": "2014-04-30T15:56:55+00:00"
+    },
+    {
+      "term": "38军",
+      "version": "line v22",
+      "severity": "high",
+      "observed_bound": "2014-04-30T15:56:55+00:00"
+    },
+    {
+      "term": "64 学生",
+      "version": "line v22",
+      "severity": "high",
+      "observed_bound": "2014-04-30T15:56:55+00:00"
+    }
+  ],
+  "evidence_sample_note": "a bounded sample of 12 of 503 additions, published as cited evidence with attribution; the corpus itself is cached locally and not redistributed by this project",
+  "velocity": null,
+  "velocity_note": "a list observation date is an UPPER BOUND on the directive, not its timestamp — no latency is derived from it",
+  "decode_warnings": [],
+  "skipped": [],
+  "provenance": {
+    "line-v20.txt": {
+      "sha256": "48ed4831ab1ffeb1074807039e0813493e83bbb67746eb33d38c840c98c334b1",
+      "source_url": "https://raw.githubusercontent.com/citizenlab/chat-censorship/master/LINE/raw-block-lists/line-v20.txt",
+      "observed_at": "2014-04-15T18:30:42Z",
+      "date_basis": "earliest-commit-touching-file"
+    },
+    "line-v21.txt": {
+      "sha256": "9dec4c60ef5dce882ab873876d7c3cd51ba95632bcc0438391de43a487df0378",
+      "source_url": "https://raw.githubusercontent.com/citizenlab/chat-censorship/master/LINE/raw-block-lists/line-v21.txt",
+      "observed_at": "2014-04-15T18:30:42Z",
+      "date_basis": "earliest-commit-touching-file"
+    },
+    "line-v22.txt": {
+      "sha256": "9af5eca9bb1ff85ba5cff6a256d9fdc258a150bdbbace410b4353a33b79ad7e5",
+      "source_url": "https://raw.githubusercontent.com/citizenlab/chat-censorship/master/LINE/raw-block-lists/line-v22.txt",
+      "observed_at": "2014-04-30T15:56:55Z",
+      "date_basis": "earliest-commit-touching-file"
+    },
+    "line-v23.txt": {
+      "sha256": "bea79b4b1a7c57785c8741911cf89f24b2b65793393e49fda7498746ade1f3df",
+      "source_url": "https://raw.githubusercontent.com/citizenlab/chat-censorship/master/LINE/raw-block-lists/line-v23.txt",
+      "observed_at": "2014-07-08T15:37:04Z",
+      "date_basis": "earliest-commit-touching-file"
+    },
+    "line-v24.txt": {
+      "sha256": "b5d7ed8a29afdc6f9d1fc34d2b7c649668da39dc91ef896422cb8da46d10f4cd",
+      "source_url": "https://raw.githubusercontent.com/citizenlab/chat-censorship/master/LINE/raw-block-lists/line-v24.txt",
+      "observed_at": "2014-10-07T15:54:52Z",
+      "date_basis": "earliest-commit-touching-file"
+    },
+    "line-v25.txt": {
+      "sha256": "3d6a725d82de2047886c466dfff3682922cc9e31cba569a24b7f06a10e636a10",
+      "source_url": "https://raw.githubusercontent.com/citizenlab/chat-censorship/master/LINE/raw-block-lists/line-v25.txt",
+      "observed_at": "2014-10-07T15:54:52Z",
+      "date_basis": "earliest-commit-touching-file"
+    }
+  }
+}

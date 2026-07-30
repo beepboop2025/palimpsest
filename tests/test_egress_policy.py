@@ -76,6 +76,11 @@ _ALLOWED = {
         "the zero-dependency demo is deliberately standalone so a reader can run it from a bare "
         "clone without importing the core package.",
 
+    "scripts/fetch_citizenlab_blocklists.py":
+        "GET api.github.com and raw.githubusercontent.com for Citizen Lab's published "
+        "blocklist corpus; fixed well-known hosts, explicit 4 MiB cap, no redirect "
+        "re-validation. Plain migration candidate once safe_fetch carries an Accept header.",
+
     # ── collectors: the live public-signal fetchers ────────────────────────────────────────
     "collectors/censored_planet.py":
         "POST GraphQL to data.censoredplanet.org; 16 MiB read cap and fail-soft, but no "

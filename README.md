@@ -187,6 +187,7 @@ self-refreshing feeds in all.
 | **GDELT cross-signal** | "Censored at home, loud abroad": global news volume on the terms China is deleting | Every 6 hours | [`readings/gdelt-latest.json`](readings/gdelt-latest.json) |
 | **GitHub-as-Refuge** | Takedown pressure on mirrors of censored material (996.ICU, nCovMemory, more), against persisted baselines | Every 12 hours | [`readings/github-refuge-latest.json`](readings/github-refuge-latest.json) |
 | **Wayback Reconstruction** | Deletions and silent redactions of watched Chinese URLs, recovered from the Internet Archive's capture timeline with archive-witnessed timestamp brackets | Every 12 hours | [`readings/wayback-latest.json`](readings/wayback-latest.json) |
+| **Blocklist archaeology** | Keywords newly present in successive LINE client blocklists — the censor's own trigger list, so a new term is a dated directive rather than an inference from deletion | Weekly | [`readings/blocklist-latest.json`](readings/blocklist-latest.json) |
 | **Weibo hot-search join** | The allowed-attention denominator: DDTI terms deleted-yet-trending (contained) vs deleted-and-invisible (suppressed), gazetteer breakthroughs, withdrawal watch, the pinned state-headline series | Every 6 hours | [`readings/weibo-hotsearch-latest.json`](readings/weibo-hotsearch-latest.json) |
 | **Circumvention demand** | Tor bridge users from China (demand to climb the wall) + the per-transport split whose regime shifts fingerprint new GFW classifiers | Daily | [`readings/circumvention-demand-latest.json`](readings/circumvention-demand-latest.json) |
 | **IODA outages** | Shutdown-scale connectivity events for CN from three independent global instruments (BGP, active probing, darknet) | Every 6 hours | [`readings/ioda-outages-latest.json`](readings/ioda-outages-latest.json) |
@@ -234,7 +235,8 @@ lexicon). Adding a country is a gazetteer plus a registry entry, not a rewrite. 
 | **Wayback Reconstruction** — deletion brackets + silent redactions from the Internet Archive's CDX timeline | **Live** — auto-published every 12h |
 | Evidence-grounded Chinese gazetteer (154 terms, phylogeny) + self-evolving euphemism discovery | Built, tested |
 | Cross-region packs (China + Iran, config-driven) · censorship forecaster | Built, tested |
-| UNDERTEXT tomography · CDN-edge · Blocklist archaeology · Silence detection · Baike redaction-diff | Built, tested (live source injection gated, inert) |
+| **Blocklist archaeology** — newly-shipped keywords diffed across client blocklist versions | **Live** — auto-published weekly from Citizen Lab's corpus |
+| UNDERTEXT tomography · CDN-edge · Silence detection · Baike redaction-diff | Built, tested (live source injection gated, inert) |
 | Governance: kill-switch, rate ceiling, hash-chained audit | Built, tested |
 | Real-time velocity at minute resolution | Needs in-country / seam measurement (retroactive velocity now ships via Wayback) |
 
