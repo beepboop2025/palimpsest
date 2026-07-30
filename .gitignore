@@ -13,6 +13,13 @@ venv/
 
 # local scraped data cache (published output goes to readings/, not here)
 data/
+# ...except the China brief's novelty baseline, which is a published input, not a cache.
+# Novelty is scored against it, so if the refresh workflow cannot commit it every term
+# reads as new on every run. The directory must be re-included before the file can be:
+# git cannot un-ignore a path whose parent directory is still excluded.
+!demo/data/
+demo/data/*
+!demo/data/cdt_history.json
 
 # arXiv paper draft — identity-binding, must NEVER ship to this public repo
 paper/

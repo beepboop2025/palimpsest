@@ -1,0 +1,53 @@
+name: Refresh China brief
+
+# Rebuild /china-brief.html — the compact live state read of what the censor is working on
+# right now — from the public China Digital Times feed. Stdlib-only, key-less and
+# vantage-insensitive: CDT publishes from outside the wall, so this runs correctly anywhere.
+#
+# The page is PUBLISHED, so scripts/build_china_brief.py refuses to fall back to the demo's
+# seeded sample when the feeds are unreachable. It exits non-zero instead, leaving the
+# previous page in place and turning this workflow red — a visible gap rather than a
+# synthetic reading wearing a live timestamp.
+#
+# demo/data/cdt_history.json is committed alongside the page on purpose: novelty is scored
+# against that history, and without it every term reads as new on every run.
+
+on:
+  schedule:
+    - cron: "13 */6 * * *"     # every 6 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: china-brief-refresh
+  cancel-in-progress: false
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Build the brief from the live CDT feed
+        run: python -m scripts.build_china_brief
+
+      - name: Commit & push if the reading changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add china-brief.html readings/china-brief.json demo/data/cdt_history.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: China brief refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

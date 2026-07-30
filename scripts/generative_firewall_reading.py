@@ -701,10 +701,14 @@ def build_dashboard(summ, per_concept, rows, drift, history):
   <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="pnav__links">
     <a href="/">Home</a>
+    <a href="/china-brief.html">Brief</a>
     <a href="/dashboards/ddti_observatory.html">Observatory</a>
     <a href="/dashboards/ddti_dashboard.html">Monitor</a>
+    <a href="/readings/erasure-observatory.html">Erasure</a>
+    <a href="/readings/eval-registry.html">Eval Registry</a>
     <a href="/readings/generative-firewall-index.html" aria-current="page">Firewall</a>
     <a href="/for-researchers.html">Data</a>
+    <a href="/support.html">Support</a>
   </div>
 </nav>
 <div class="wrap">
