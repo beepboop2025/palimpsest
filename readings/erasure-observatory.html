@@ -37,6 +37,9 @@
   .bar span{display:block;height:100%;border-radius:5px}
   .card .d{font-size:11.5px;color:var(--mut)}
   .card .src{font-size:10.5px;color:var(--dim);margin-top:8px}
+  /* A layer that is not reporting must not read as a layer reporting a low number. */
+  .card.abstain{border-color:rgba(244,183,64,.34);background:linear-gradient(180deg,rgba(244,183,64,.05),var(--panel))}
+  .card.abstain s{color:var(--amb);opacity:.75}
   .seal{background:linear-gradient(180deg,rgba(167,139,250,.07),rgba(167,139,250,.02));border:1px solid rgba(167,139,250,.28);border-radius:14px;padding:20px 22px;margin-bottom:18px}
   .seal h2{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--vio);margin:0 0 4px}
   .seal .lead{font-size:13px;color:var(--fg);margin:0 0 14px;max-width:74ch}
@@ -124,22 +127,41 @@ function band(v){
 }
 const LCOLOR = {network:"var(--cy)", narrative:"var(--vio)", model:"var(--amb)"};
 
+// Every layer states WHEN it was measured, not just what it measured. The composite carries
+// one generated_at, which reads as "all of this is today" — and for 29 days it was not: the
+// model layer was a frozen number from a dated file and nothing here said so. A layer that
+// cannot show its own as-of date is a layer a reader cannot check.
+function ageLine(l){
+  if (!l.as_of) return "";
+  const when = String(l.as_of).slice(0,16).replace("T"," ");
+  const d = (typeof l.age_days === "number") ? l.age_days : null;
+  let how = "";
+  if (d != null) how = d < 1 ? " · today" : ` · ${d < 2 ? "1 day" : Math.round(d) + " days"} old`;
+  return `<div class="src">measured ${esc(when)} UTC${esc(how)}</div>`;
+}
+
 function layerCard(l){
   const v = (typeof l.value === "number") ? l.value : null;
   const col = LCOLOR[l.layer] || "var(--cy)";
+  const withheld = (typeof l.withheld_value === "number");
   const big = v == null
     ? `<div class="big na">${esc(l.status || "absent")}</div>`
     : `<div class="big" style="color:${col}">${esc(num(v))}<small style="font-size:15px;color:var(--dim)">/100</small></div>`;
   const bar = v == null ? "" :
     `<div class="bar"><span data-tkm-bar style="width:${Math.max(0,Math.min(100,v))}%;background:${col}"></span></div>`;
+  // Show the number we are DECLINING to publish, struck through. An abstention that hides
+  // what it withheld is just a gap; one that shows it is a claim a reader can audit.
+  const held = withheld
+    ? `<div class="src">withheld reading · <s>${esc(num(l.withheld_value))}/100</s> — not counted in the composite</div>`
+    : "";
   const reason = l.reason ? `<div class="src">${esc(l.reason)}</div>` : "";
   const src = l.source ? `<div class="src">source · ${esc(l.source)}</div>` : "";
-  return `<div class="card">
+  return `<div class="card${v == null ? " abstain" : ""}">
     <div class="lyr">${esc(l.layer)}</div>
     <h2>${esc(l.title || "")}</h2>
     ${big}${bar}
-    <div class="d">${esc(l.detail || l.reason || "")}</div>
-    ${src || reason}
+    <div class="d">${esc(l.detail || "")}</div>
+    ${ageLine(l)}${held}${src}${v == null ? reason : ""}
   </div>`;
 }
 

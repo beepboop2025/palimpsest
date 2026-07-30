@@ -45,6 +45,20 @@ HIST = os.path.join(READINGS, "erasure-observatory-history.jsonl")
 # in readings/latest.json. A week without a fresh one is a real measurement gap, not a
 # hiccup — past that we abstain rather than republish an old number as today's value.
 GF_STALE_AFTER_DAYS = 7
+# The network layer had no freshness bound at all — the same bug the model layer had, one
+# layer over, waiting for OONI's refresh to fail the way CDT's feeds did. A freshness rule
+# that guards one layer is a fix; one that guards every layer is the fix.
+#
+# The bound is NOT a new number. processors/vantage_fusion.py already bounds this exact OONI
+# reading at MAX_AGE_HOURS["ooni"] = 36.0 and excludes it from the fusion past that. Two
+# places in one repo deciding independently when the same reading goes stale is how the
+# definitions drift, so this imports that one rather than picking a second. If the OONI
+# cadence changes, it changes in one file.
+try:
+    from processors.vantage_fusion import MAX_AGE_HOURS as _FUSION_MAX_AGE_HOURS
+    NETWORK_STALE_AFTER_HOURS = float(_FUSION_MAX_AGE_HOURS["ooni"])
+except Exception:  # noqa: BLE001 — this script must run standalone from a bare checkout
+    NETWORK_STALE_AFTER_HOURS = 36.0
 # Candidate GF readings, live file first. The dated
 # readings/<date>_generative-firewall-index.json files are FROZEN one-off publications
 # kept only as an explicit fallback — they are never "now".
@@ -101,6 +115,45 @@ def _age_days(as_of: str | None, now: datetime) -> float | None:
     return (now - ts).total_seconds() / 86400.0
 
 
+def _reading_as_of(doc: dict | None) -> str | None:
+    """When a reading claims it was taken. Top-level first, then inside `summary` — the
+    two shapes this repo's readings actually use. The file's mtime is never consulted: a
+    republished file is not a fresh measurement, and that distinction is the whole point."""
+    for holder in (doc or {}, (doc or {}).get("summary") or {}):
+        if not isinstance(holder, dict):
+            continue
+        for key in ("generated_at", "as_of", "date"):
+            v = holder.get(key)
+            if isinstance(v, str) and v:
+                return v
+    return None
+
+
+def _stale_layer(layer: str, title: str, detail: str, *, reading: str, value: float,
+                 as_of: str | None, age_hours: float | None, bound_hours: float) -> dict:
+    """A layer we can read but cannot show to be current. Withheld, with its true as-of
+    date and the number we are declining to publish, so the abstention is auditable rather
+    than a silent gap. Same shape the model layer already uses — one idiom, not two.
+
+    Ages are stated in whichever unit reads honestly: a reading six hours past a 36-hour
+    bound is not "0.3 days old"."""
+    def _pretty(h: float) -> str:
+        return f"{h:.1f} hours" if h < 48 else f"{h / 24:.1f} days"
+
+    if age_hours is None:
+        status = "UNDATED"
+        reason = (f"the newest {layer} reading ({reading}) carries no usable timestamp, so it "
+                  f"cannot be shown to be current — withheld rather than published as live")
+    else:
+        status = "STALE"
+        reason = (f"the newest {layer} reading ({reading}) is {_pretty(age_hours)} old "
+                  f"(as of {as_of}) — beyond the {_pretty(bound_hours)} freshness bound, "
+                  f"so it is withheld rather than published as live")
+    return {"layer": layer, "title": title, "value": None, "status": status,
+            "detail": detail, "reason": reason, "reading": reading,
+            "as_of": as_of, "withheld_value": round(value, 1)}
+
+
 def _load_generative_firewall() -> tuple[dict | None, str | None]:
     """The LIVE GF reading, with the dated publications as an explicit fallback.
 
@@ -126,21 +179,40 @@ def main() -> None:
 
     # ---- NETWORK erasure: OONI Great Firewall index (0-100) --------------
     ooni = _load("ooni-gfw-latest.json")
-    if ooni and isinstance(ooni.get("gfw_index"), (int, float)):
-        layers.append({
-            "layer": "network",
-            "title": "Network erasure",
-            "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-            "value": round(float(ooni["gfw_index"]), 1),
-            "source": "OONI aggregation (probe_cc=CN)",
-            "reading": "ooni-gfw-latest.json",
-        })
+    ooni_detail = "reachability that disappeared — sites, messengers and tools blocked at the wire"
+    ooni_index = ooni.get("gfw_index") if ooni else None
+    ooni_ok = isinstance(ooni_index, (int, float)) and not isinstance(ooni_index, bool)
+    ooni_as_of = _reading_as_of(ooni)
+    ooni_age = _age_days(ooni_as_of, now)
+    if ooni_ok:
+        # seal what OONI last recorded whether or not we publish it — the ledger is a record
+        # of what we saw, and withholding a stale value from the index is not a reason to
+        # leave the observation out of the chain.
         e = sealed_ledger.append_seal(LEDGER, "ooni-gfw", ooni, now=now)
         if e:
             sealed.append({"source": "ooni-gfw", "seq": e["seq"], "entry_hash": e["entry_hash"]})
+    ooni_age_hours = ooni_age * 24.0 if ooni_age is not None else None
+    if ooni_ok and ooni_age_hours is not None and ooni_age_hours <= NETWORK_STALE_AFTER_HOURS:
+        layers.append({
+            "layer": "network",
+            "title": "Network erasure",
+            "detail": ooni_detail,
+            "value": round(float(ooni_index), 1),
+            "source": "OONI aggregation (probe_cc=CN)",
+            "reading": "ooni-gfw-latest.json",
+            "as_of": ooni_as_of,
+            "age_days": round(ooni_age, 2),
+            "age_hours": round(ooni_age_hours, 1),
+        })
+    elif ooni_ok:
+        layers.append(_stale_layer(
+            "network", "Network erasure", ooni_detail, reading="ooni-gfw-latest.json",
+            value=float(ooni_index), as_of=ooni_as_of, age_hours=ooni_age_hours,
+            bound_hours=NETWORK_STALE_AFTER_HOURS))
     else:
         layers.append({"layer": "network", "title": "Network erasure",
                        "value": None, "status": "ABSENT",
+                       "detail": ooni_detail,
                        "reason": "ooni-gfw-latest.json missing or malformed"})
 
     # ---- MODEL erasure: Generative Firewall index (0-100) ----------------
