@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T14:55:49.946827+00:00",
+  "generated_at": "2026-07-30T20:07:14.379302+00:00",
   "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
   "n_pairs_tested": 0,
   "n_confirmed": 0,
@@ -15,6 +15,13 @@
     {
       "pair": [
         "ddti_novelty",
+        "refusal_drift"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "ddti_novelty",
         "tor_bridge_cn"
       ],
       "reason": "7 admissible shifts: smallest attainable p is 0.125, above alpha=0.05. Needs about 36d of overlapping daily history (has 22d)"
@@ -23,6 +30,13 @@
       "pair": [
         "ddti_threat",
         "ooni_gfw"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "ddti_threat",
+        "refusal_drift"
       ],
       "reason": "overlap 19d, need 20d"
     },
@@ -43,6 +57,13 @@
     {
       "pair": [
         "gdelt_containment",
+        "refusal_drift"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "gdelt_containment",
         "tor_bridge_cn"
       ],
       "reason": "6 admissible shifts: smallest attainable p is 0.143, above alpha=0.05. Needs about 36d of overlapping daily history (has 21d)"
@@ -57,9 +78,31 @@
     {
       "pair": [
         "github_refuge",
+        "refusal_drift"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "github_refuge",
         "tor_bridge_cn"
       ],
       "reason": "6 admissible shifts: smallest attainable p is 0.143, above alpha=0.05. Needs about 36d of overlapping daily history (has 21d)"
+    },
+    {
+      "pair": [
+        "ooni_gfw",
+        "refusal_drift"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "refusal_drift",
+        "tor_bridge_cn"
+      ],
+      "overlap_days": 17,
+      "reason": "overlap 17d — needs about 36d for the shift null to reach alpha=0.05"
     }
   ],
   "preliminary": true,

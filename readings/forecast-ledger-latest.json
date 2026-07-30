@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-07-30T14:55:49.881912+00:00",
-  "headline": "6 signals scored over 883 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 2 of 6",
-  "n_signals_scored": 6,
-  "n_forecasts": 883,
-  "pooled_empirical_coverage": 0.838,
+  "generated_at": "2026-07-30T20:07:14.312022+00:00",
+  "headline": "7 signals scored over 958 one-step forecasts; 83% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 2 of 7",
+  "n_signals_scored": 7,
+  "n_forecasts": 958,
+  "pooled_empirical_coverage": 0.832,
   "nominal_coverage": 0.8,
   "n_beating_baseline": 2,
   "signals": {
     "ooni_gfw": {
       "scoreable": true,
-      "n_forecasts": 75,
+      "n_forecasts": 76,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.827,
-      "coverage_gap_pp": 2.7,
-      "wis": 0.2361,
-      "wis_baseline_fixed_quantile": 0.2556,
+      "empirical_coverage": 0.829,
+      "coverage_gap_pp": 2.9,
+      "wis": 0.2341,
+      "wis_baseline_fixed_quantile": 0.2537,
       "beats_baseline": true,
       "skill_vs_baseline": 0.077,
       "n_misses": 13,
@@ -73,15 +73,15 @@
     },
     "ddti_threat": {
       "scoreable": true,
-      "n_forecasts": 156,
+      "n_forecasts": 160,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.814,
-      "coverage_gap_pp": 1.4,
-      "wis": 0.1591,
-      "wis_baseline_fixed_quantile": 0.1589,
+      "empirical_coverage": 0.806,
+      "coverage_gap_pp": 0.6,
+      "wis": 0.1618,
+      "wis_baseline_fixed_quantile": 0.1605,
       "beats_baseline": false,
-      "skill_vs_baseline": -0.001,
-      "n_misses": 29,
+      "skill_vs_baseline": -0.008,
+      "n_misses": 31,
       "worst_misses": [
         {
           "t": 148,
@@ -137,16 +137,26 @@
     },
     "ddti_novelty": {
       "scoreable": true,
-      "n_forecasts": 156,
+      "n_forecasts": 160,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.987,
-      "coverage_gap_pp": 18.7,
-      "wis": 0.013,
-      "wis_baseline_fixed_quantile": 0.0133,
+      "empirical_coverage": 0.975,
+      "coverage_gap_pp": 17.5,
+      "wis": 0.0689,
+      "wis_baseline_fixed_quantile": 0.0692,
       "beats_baseline": true,
-      "skill_vs_baseline": 0.024,
-      "n_misses": 2,
+      "skill_vs_baseline": 0.004,
+      "n_misses": 4,
       "worst_misses": [
+        {
+          "t": 168,
+          "forecast": 29.0,
+          "lo": 29.0,
+          "hi": 29.0,
+          "actual": 21.0,
+          "covered": false,
+          "wis": 8.0,
+          "miss_by": 8.0
+        },
         {
           "t": 32,
           "forecast": 29.0,
@@ -166,19 +176,29 @@
           "covered": false,
           "wis": 1.0,
           "miss_by": 1.0
+        },
+        {
+          "t": 169,
+          "forecast": 21.0,
+          "lo": 21.0,
+          "hi": 21.0,
+          "actual": 20.0,
+          "covered": false,
+          "wis": 1.0,
+          "miss_by": 1.0
         }
       ]
     },
     "gdelt_containment": {
       "scoreable": true,
-      "n_forecasts": 84,
+      "n_forecasts": 85,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.774,
-      "coverage_gap_pp": -2.6,
-      "wis": 1.3033,
-      "wis_baseline_fixed_quantile": 1.2835,
+      "empirical_coverage": 0.776,
+      "coverage_gap_pp": -2.4,
+      "wis": 1.3076,
+      "wis_baseline_fixed_quantile": 1.2916,
       "beats_baseline": false,
-      "skill_vs_baseline": -0.015,
+      "skill_vs_baseline": -0.012,
       "n_misses": 19,
       "worst_misses": [
         {
@@ -287,6 +307,70 @@
         }
       ]
     },
+    "refusal_drift": {
+      "scoreable": true,
+      "n_forecasts": 65,
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.785,
+      "coverage_gap_pp": -1.5,
+      "wis": 1.1583,
+      "wis_baseline_fixed_quantile": 1.1303,
+      "beats_baseline": false,
+      "skill_vs_baseline": -0.025,
+      "n_misses": 14,
+      "worst_misses": [
+        {
+          "t": 55,
+          "forecast": 2.775,
+          "lo": 2.7385,
+          "hi": 2.8115,
+          "actual": 10.0,
+          "covered": false,
+          "wis": 6.0834,
+          "miss_by": 7.1885
+        },
+        {
+          "t": 72,
+          "forecast": 0.0,
+          "lo": -2.075,
+          "hi": 2.075,
+          "actual": 8.325,
+          "covered": false,
+          "wis": 6.4085,
+          "miss_by": 6.25
+        },
+        {
+          "t": 73,
+          "forecast": 8.325,
+          "lo": 6.25,
+          "hi": 10.4,
+          "actual": 0.0,
+          "covered": false,
+          "wis": 6.1543,
+          "miss_by": 6.25
+        },
+        {
+          "t": 58,
+          "forecast": 7.5,
+          "lo": 5.425,
+          "hi": 9.575,
+          "actual": 0.0,
+          "covered": false,
+          "wis": 5.7054,
+          "miss_by": 5.425
+        },
+        {
+          "t": 19,
+          "forecast": 6.25,
+          "lo": 4.175,
+          "hi": 8.325,
+          "actual": 0.0,
+          "covered": false,
+          "wis": 5.199,
+          "miss_by": 4.175
+        }
+      ]
+    },
     "tor_bridge_cn": {
       "scoreable": true,
       "n_forecasts": 374,
@@ -354,7 +438,6 @@
   },
   "excluded": {
     "censored_planet": "needs 20 readings, has 16",
-    "refusal_drift": "needs 20 readings, has 1",
     "bleedthrough_pools": "needs 20 readings, has 0",
     "bleedthrough_capacity": "needs 20 readings, has 0",
     "weibo_suppression": "history logs state transitions, not a regular series",

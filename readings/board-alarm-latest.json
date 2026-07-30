@@ -1,81 +1,87 @@
 {
-  "generated_at": "2026-07-30T14:55:49.745578+00:00",
-  "board_e_value": 11.18,
+  "generated_at": "2026-07-30T20:07:14.170648+00:00",
+  "board_e_value": 79.63,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
-    "selected": [],
+    "selected": [
+      "ddti_novelty"
+    ],
     "alpha": 0.1,
-    "k": 0,
-    "n_tested": 9,
-    "threshold": null
+    "k": 1,
+    "n_tested": 10,
+    "threshold": 100.0
   },
   "layers": {
     "network": {
-      "e": 16.17,
+      "e": 16.337,
       "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 47.466,
         "ioda_outages": 1.0,
-        "ooni_gfw": 13.5,
+        "ooni_gfw": 14.167,
         "tor_bridge_cn": 2.715
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 7.188,
+      "e": 145.645,
       "n_signals": 5,
-      "state": "calm",
+      "state": "elevated",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 2.532,
-        "ddti_threat": 25.863,
-        "gdelt_containment": 2.653,
+        "ddti_novelty": 712.513,
+        "ddti_threat": 7.094,
+        "gdelt_containment": 3.725,
         "github_refuge": 3.895,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
     },
     "model": {
-      "e": null,
-      "n_signals": 0,
-      "state": "no_data",
+      "e": 2.721,
+      "n_signals": 1,
+      "state": "calm",
       "corroborated": false,
-      "signals": {},
+      "signals": {
+        "refusal_drift": 2.721
+      },
       "recent_alarms": []
     }
   },
-  "elevated_layers": [],
-  "layer_coincidence": 0,
+  "elevated_layers": [
+    "content"
+  ],
+  "layer_coincidence": 1,
   "recently_fired": [],
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 13.4998,
-      "n": 86,
+      "e": 14.1674,
+      "n": 87,
       "direction": "down",
-      "robust_z": -1.12,
+      "robust_z": -1.2,
       "driver_side": "down",
-      "readings_since_alarm": 35,
+      "readings_since_alarm": 36,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 25.8629,
-      "n": 167,
-      "direction": "up",
-      "robust_z": 0.9,
+      "e": 7.0942,
+      "n": 171,
+      "direction": "down",
+      "robust_z": -0.51,
       "driver_side": "up",
-      "readings_since_alarm": 43,
+      "readings_since_alarm": 47,
       "n_alarms_in_history": 2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
-      "state": "calm",
-      "e": 2.5319,
-      "n": 167,
+      "state": "watch",
+      "e": 712.5131,
+      "n": 171,
       "direction": "down",
       "robust_z": null,
       "driver_side": "down",
@@ -96,10 +102,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.6529,
-      "n": 95,
-      "direction": "down",
-      "robust_z": -0.67,
+      "e": 3.7247,
+      "n": 96,
+      "direction": "up",
+      "robust_z": 0.67,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -117,25 +123,25 @@
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
-      "state": "warming_up",
-      "e": 0.0,
-      "n": 1,
+      "state": "calm",
+      "e": 2.7211,
+      "n": 76,
       "direction": "flat",
       "robust_z": null,
-      "driver_side": null,
+      "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
-      "meaning": "cross-lab model suppression rate"
+      "meaning": "cross-lab model suppression rate, averaged over the audited panel"
     },
     "bleedthrough_pools": {
       "state": "no_data",
       "n": 0,
-      "meaning": "distinct GFW injector pools — a jump signals regional fragmentation"
+      "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation"
     },
     "bleedthrough_capacity": {
       "state": "no_data",
       "n": 0,
-      "meaning": "peak parallel injector processes — fleet capacity on a border path"
+      "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
       "state": "calm",
@@ -151,7 +157,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 45,
+      "n": 46,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -162,7 +168,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 44,
+      "n": 45,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -171,7 +177,7 @@
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     }
   },
-  "headline": "no signal exceeds its own history beyond what chance explains",
+  "headline": "single layer elevated: content",
   "readings_to_days": {
     "bleedthrough_capacity": 125.0,
     "bleedthrough_pools": 125.0,
@@ -182,7 +188,7 @@
     "github_refuge": 250.0,
     "ioda_outages": 125.0,
     "ooni_gfw": 125.0,
-    "refusal_drift": 500.0,
+    "refusal_drift": 125.0,
     "tor_bridge_cn": 500.0,
     "weibo_suppression": 125.0
   },
