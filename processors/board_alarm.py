@@ -97,11 +97,21 @@ LAYER_ELEVATED_E = 1.0 / LAYER_ELEVATED_P
 # not a gap. No e-value is invented to fill the hole.
 
 # Nominal readings per day, used ONLY to translate the readings-based guarantee
-# into wall-clock for a reader. Derived from the committed refresh crons.
+# into wall-clock for a reader. Derived from the committed refresh crons — and
+# held to that claim by tests/test_cadence_matches_crons.py, which parses the
+# workflows and fails if a number here drifts away from the schedule that
+# actually produces the readings. An overstated interval here does not corrupt
+# any statistic, but it does mislead about how often the board can cry wolf,
+# which is the one thing this project sells.
+#
+# refusal_drift is refreshed inside erasure-refresh.yml (cron "17 */6 * * *"),
+# not by a workflow of its own, which is how it sat at a wrong 1.0/day.
+# bleedthrough_* have no committed cron (they are curated by hand), so their
+# figures are nominal and the cron test skips them by design.
 CADENCE_PER_DAY = {
     "ooni_gfw": 4.0, "ddti_threat": 8.0, "ddti_novelty": 8.0,
     "censored_planet": 1.0, "gdelt_containment": 4.0, "github_refuge": 2.0,
-    "refusal_drift": 1.0, "bleedthrough_pools": 4.0, "bleedthrough_capacity": 4.0,
+    "refusal_drift": 4.0, "bleedthrough_pools": 4.0, "bleedthrough_capacity": 4.0,
     "tor_bridge_cn": 1.0, "weibo_suppression": 4.0, "ioda_outages": 4.0,
 }
 

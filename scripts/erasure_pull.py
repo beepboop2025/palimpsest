@@ -15,8 +15,10 @@ quietly rewritten in turn. That combination is what no access-index competitor h
     MODEL erasure    — answers a model will no longer give (Generative Firewall refusal/party-line index)
 
 Fail loud: a missing surface is reported as ABSENT with a reason, never silently
-dropped or zero-filled. The composite is the mean of the layers that actually
-reported, and we publish exactly which layers contributed.
+dropped or zero-filled, and a surface whose newest reading is no longer current is
+reported STALE with its true as-of date rather than carried forward as today's value.
+The composite is the mean of the layers that actually reported, and we publish exactly
+which layers contributed.
 
 stdlib-only, key-less, vantage-insensitive. Runs in GitHub Actions after the
 per-surface signals have committed their readings.
@@ -39,6 +41,15 @@ LEDGER = os.path.join(READINGS, "erasure-ledger.jsonl")
 OUT = os.path.join(READINGS, "erasure-observatory-latest.json")
 HIST = os.path.join(READINGS, "erasure-observatory-history.jsonl")
 
+# The Generative Firewall reading refreshes daily (workflow: gfi-refresh.yml) and lands
+# in readings/latest.json. A week without a fresh one is a real measurement gap, not a
+# hiccup — past that we abstain rather than republish an old number as today's value.
+GF_STALE_AFTER_DAYS = 7
+# Candidate GF readings, live file first. The dated
+# readings/<date>_generative-firewall-index.json files are FROZEN one-off publications
+# kept only as an explicit fallback — they are never "now".
+GF_LIVE_SOURCES = ("latest.json", "generative-firewall-index.json")
+
 
 def _load(name: str) -> dict | None:
     path = os.path.join(READINGS, name)
@@ -51,15 +62,59 @@ def _load(name: str) -> dict | None:
         return None
 
 
+def _gf_index(gf: dict | None) -> float | None:
+    """The published model-erasure index, whatever the reading calls it.
+
+    The live daily reading publishes `summary.gfi`; the frozen 2026-07-01 reading
+    published `summary.generative_firewall_index`. Anything else — missing key, null,
+    a string — is unreadable, and unreadable means abstain, never a stand-in number.
+    """
+    summary = (gf or {}).get("summary") or {}
+    for key in ("gfi", "generative_firewall_index"):
+        v = summary.get(key)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            return float(v)
+    return None
+
+
+def _gf_as_of(gf: dict | None) -> str | None:
+    """When the GF reading was actually taken — its own claim, not the file's mtime."""
+    summary = (gf or {}).get("summary") or {}
+    for key in ("generated_at", "date"):
+        v = summary.get(key)
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
+def _age_days(as_of: str | None, now: datetime) -> float | None:
+    """Age of a reading in days, or None when it carries no usable timestamp.
+    An undatable reading cannot be shown to be current, so it is treated as unusable."""
+    if not as_of:
+        return None
+    try:
+        ts = datetime.fromisoformat(as_of)
+    except ValueError:
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return (now - ts).total_seconds() / 86400.0
+
+
 def _load_generative_firewall() -> tuple[dict | None, str | None]:
-    """The GF reading is published dated; take the most recent."""
-    plain = os.path.join(READINGS, "generative-firewall-index.json")
-    if os.path.exists(plain):
-        return _load("generative-firewall-index.json"), "generative-firewall-index.json"
-    dated = sorted(glob.glob(os.path.join(READINGS, "*generative-firewall-index.json")))
-    if dated:
-        name = os.path.basename(dated[-1])
-        return _load(name), name
+    """The LIVE GF reading, with the dated publications as an explicit fallback.
+
+    The daily instrument writes readings/latest.json; the dated
+    <date>_generative-firewall-index.json files are frozen one-off publications. We
+    read the live file first and only fall back to a dated one — reading them the
+    other way round is how a month-old index gets republished as today's model layer.
+    """
+    dated = sorted(glob.glob(os.path.join(READINGS, "*_generative-firewall-index.json")))
+    order = list(GF_LIVE_SOURCES) + [os.path.basename(p) for p in reversed(dated)]
+    for name in order:
+        gf = _load(name)
+        if gf and _gf_index(gf) is not None:
+            return gf, name
     return None, None
 
 
@@ -89,24 +144,55 @@ def main() -> None:
                        "reason": "ooni-gfw-latest.json missing or malformed"})
 
     # ---- MODEL erasure: Generative Firewall index (0-100) ----------------
+    # Read the live daily reading, and publish it only while it is actually current.
+    # A reading we cannot date, or one older than GF_STALE_AFTER_DAYS, is reported as
+    # withheld with its true as-of date — never carried forward as if it were today's.
     gf, gf_name = _load_generative_firewall()
-    gf_index = (gf or {}).get("summary", {}).get("generative_firewall_index")
-    if gf and isinstance(gf_index, (int, float)):
-        layers.append({
-            "layer": "model",
-            "title": "Model erasure",
-            "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
-            "value": round(float(gf_index), 1),
-            "source": "Generative Firewall (aligned LLM panel)",
-            "reading": gf_name,
-        })
+    gf_index = _gf_index(gf)
+    gf_as_of = _gf_as_of(gf)
+    gf_age = _age_days(gf_as_of, now)
+    gf_detail = "answers a state-aligned model will no longer give — refusals and party-line substitution"
+    if gf:
+        # seal whatever the model instrument last recorded (idempotent on an unchanged payload)
         e = sealed_ledger.append_seal(LEDGER, "generative-firewall", gf, now=now)
         if e:
             sealed.append({"source": "generative-firewall", "seq": e["seq"], "entry_hash": e["entry_hash"]})
+    if gf_index is not None and gf_age is not None and gf_age <= GF_STALE_AFTER_DAYS:
+        layers.append({
+            "layer": "model",
+            "title": "Model erasure",
+            "detail": gf_detail,
+            "value": round(gf_index, 1),
+            "source": "Generative Firewall (aligned LLM panel)",
+            "reading": gf_name,
+            "as_of": gf_as_of,
+            "age_days": round(gf_age, 2),
+        })
+    elif gf_index is not None:
+        # readable but not current — abstain loudly, and say exactly how old it is
+        if gf_age is None:
+            status = "UNDATED"
+            reason = (f"the newest generative-firewall reading ({gf_name}) carries no usable "
+                      f"timestamp, so it cannot be shown to be current — withheld rather than "
+                      f"published as live")
+        else:
+            status = "STALE"
+            reason = (f"the newest generative-firewall reading ({gf_name}) is {gf_age:.1f} days old "
+                      f"(as of {gf_as_of}) — beyond the {GF_STALE_AFTER_DAYS}-day freshness bound, "
+                      f"so it is withheld rather than published as live")
+        layers.append({"layer": "model", "title": "Model erasure",
+                       "value": None, "status": status,
+                       "detail": gf_detail,
+                       "reason": reason,
+                       "reading": gf_name,
+                       "as_of": gf_as_of,
+                       "withheld_value": round(gf_index, 1)})
     else:
         layers.append({"layer": "model", "title": "Model erasure",
                        "value": None, "status": "ABSENT",
-                       "reason": "no generative-firewall reading found"})
+                       "detail": gf_detail,
+                       "reason": "no generative-firewall reading found (readings/latest.json "
+                                 "missing, malformed, or carrying no index)"})
 
     # ---- NARRATIVE erasure: Baike redaction-diff (0-100) -----------------
     # baike_redaction.py is armed; its reading is published as baike-redaction-latest.json

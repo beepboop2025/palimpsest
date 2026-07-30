@@ -233,6 +233,43 @@ def analyze_series(values: list[float], *, two_sided: bool = True,
     }
 
 
+def refusal_suppression_rate(record: dict) -> float | None:
+    """Panel-mean suppression rate from one refusal-drift reading, or None.
+
+    The refusal-drift history changed shape: the earliest row carries a single
+    model's `suppression_rate_pct` at the TOP level, every row since nests one
+    entry per audited model under `models`. Reading only the top level silently
+    discarded all but the legacy row, so this signal was running on one point.
+
+    Rules, all of them conservative:
+      - a row WITHOUT `models` (the one legacy flat row) returns None. Its
+        number is one model's rate, not the panel's, and splicing it onto the
+        panel mean would manufacture a level shift the detector would then
+        dutifully flag as an event. A history that cannot be compared is
+        abstained on, never coerced;
+      - a row whose `models` is empty, or holds no numeric rate, returns None
+        (fail loud: an audit that measured nothing is not a zero);
+      - otherwise the arithmetic mean of the members' `suppression_rate_pct`.
+
+    The panel grew from one model to four over the first readings, so the mean
+    is over the models PRESENT in that reading. That is a real (small)
+    departure from exchangeability early in the series; the conformal detector
+    absorbs it as ordinary reference noise rather than being told a false
+    number, and `half_life` weighting exists for exactly this kind of drift.
+    """
+    models = record.get("models")
+    if not isinstance(models, dict):
+        return None
+    rates = [
+        float(m["suppression_rate_pct"])
+        for m in models.values()
+        if isinstance(m, dict)
+        and isinstance(m.get("suppression_rate_pct"), (int, float))
+        and not isinstance(m.get("suppression_rate_pct"), bool)
+    ]
+    return sum(rates) / len(rates) if rates else None
+
+
 # ── the observatory's signal registry ───────────────────────────────────────────
 # signal -> (history file, extractor(record) -> float | None, meaning of "high")
 SIGNALS = {
@@ -272,8 +309,8 @@ SIGNALS = {
     ),
     "refusal_drift": (
         "refusal-drift-history.jsonl",
-        lambda r: r.get("suppression_rate_pct"),
-        "cross-lab model suppression rate",
+        refusal_suppression_rate,
+        "cross-lab model suppression rate, averaged over the audited panel",
     ),
     "bleedthrough_pools": (
         "bleedthrough-history.jsonl",
