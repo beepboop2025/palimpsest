@@ -113,6 +113,18 @@ def main() -> None:
         "method": ("a CN answer is forged when it shares no address with the control "
                    "arm's answer set; no forged-IP list is hardcoded, because the "
                    "injector pool rotates"),
+        "vantage_limitation": (
+            "in-China probes are pinned to datacenter ASNs (Tencent, Alibaba, Huawei "
+            "Cloud). Globalping's CN pool also contains household connections, and a "
+            "volunteer hosting a probe did not thereby consent to have their home "
+            "connection emit DNS queries for censored domains. The cost is real: this "
+            "measures filtering as experienced on Chinese CLOUD networks, which is not "
+            "necessarily what a household sees"),
+        "attribution_caveat": (
+            "a forged answer proves on-path DNS interference, not necessarily national "
+            "filtering; Tencent and Alibaba each run resolver interception, so a domain "
+            "forged within a single ASN is reported as SINGLE_OPERATOR rather than as "
+            "blocked"),
         "control": control,
         "block_rate": block_rate,
         "reading": reading,

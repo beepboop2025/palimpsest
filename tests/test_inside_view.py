@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from collectors.inside_view import (RateLimited, control_state, observe_domain,
+from collectors.inside_view import (CLOUD_ASNS, CONTROL_COUNTRIES, RateLimited,
+                                    control_state, observe_domain,
                                     observe_panel, regional_divergence)
 
 TRUTH = ["95.216.163.36", "116.202.120.166"]
@@ -18,7 +19,9 @@ def _stub(control_answers, cn_probe_answers):
     """Build (create, collect) stubs. `cn_probe_answers` is a list of answer
     lists, one per simulated in-China probe; [] means the probe stayed silent."""
     def create(domain, locations, limit):
-        return "ctl" if locations and locations[0].get("country") != "CN" else "cn"
+        # The in-China arm is identified by its magic ASN filter, not by a
+        # country key — CN requests carry {"magic": "CN+<asn>"} and no "country".
+        return "cn" if any("magic" in l for l in locations) else "ctl"
 
     def collect(mid):
         def probe(city, asn, answers):
@@ -170,3 +173,70 @@ def test_silent_vantages_do_not_dilute_the_split():
     v = regional_divergence(o)
     assert v["verdict"] == "REGIONAL"
     assert "1/2" in v["detail"]
+
+
+# ── attribution + consent guards ──────────────────────────────────────────────
+
+def _stub_asn(control_answers, cn_probes):
+    """cn_probes is a list of (asn, answers) so ASN diversity can be controlled."""
+    def create(domain, locations, limit):
+        return "cn" if any("magic" in l for l in locations) else "ctl"
+
+    def collect(mid):
+        if mid == "ctl":
+            return [{"probe": {"city": "Frankfurt", "asn": 24940, "network": "n"},
+                     "result": {"answers": [{"type": "A", "value": a}
+                                            for a in control_answers]}}]
+        return [{"probe": {"city": f"c{i}", "asn": asn, "network": "n"},
+                 "result": {"answers": [{"type": "A", "value": a} for a in ans]}}
+                for i, (asn, ans) in enumerate(cn_probes)]
+    return create, collect
+
+
+def test_forgery_inside_one_asn_is_not_published_as_blocked():
+    """Tencent and Alibaba each run resolver interception. Forgery seen only
+    within one operator cannot be distinguished from that operator's own
+    meddling, so it must not be reported as national filtering."""
+    create, collect = _stub_asn(TRUTH, [(45090, ["4.36.66.178"]),
+                                        (45090, ["64.33.88.161"]),
+                                        (45090, ["203.161.230.171"])])
+    o = observe_domain(CENSORED, create=create, collect=collect)
+    v = regional_divergence(o)
+    assert v["verdict"] == "SINGLE_OPERATOR"
+    assert "45090" in v["detail"]
+
+
+def test_forgery_across_two_asns_is_uniform_blocked():
+    create, collect = _stub_asn(TRUTH, [(45090, ["4.36.66.178"]),
+                                        (37963, ["64.33.88.161"])])
+    o = observe_domain(CENSORED, create=create, collect=collect)
+    assert regional_divergence(o)["verdict"] == "UNIFORM_BLOCKED"
+
+
+def test_a_regional_split_still_reports_regional_within_one_asn():
+    """The single-operator guard applies to unanimous forgery. A split is
+    informative regardless of ASN width and must not be suppressed."""
+    create, collect = _stub_asn(TRUTH, [(45090, ["4.36.66.178"]), (45090, TRUTH)])
+    o = observe_domain(CENSORED, create=create, collect=collect)
+    assert regional_divergence(o)["verdict"] == "REGIONAL"
+
+
+def test_censored_queries_are_pinned_to_datacenter_asns():
+    """The consent guard: a volunteer hosting a probe did not agree to have
+    their household connection query wikileaks.org from inside China. Every CN
+    request must carry a cloud-ASN magic filter, never a bare country filter."""
+    asked = []
+
+    def create(domain, locations, limit):
+        asked.append(locations)
+        return None
+
+    observe_domain(CENSORED, create=create, collect=lambda mid: [])
+    cn_calls = [loc for loc in asked if any("magic" in l for l in loc)]
+    assert cn_calls, "the in-China call must use magic ASN filters"
+    for loc in cn_calls:
+        for entry in loc:
+            assert entry["magic"].startswith("CN+")
+            assert int(entry["magic"].split("+")[1]) in CLOUD_ASNS
+    # and no call may target CN by country alone
+    assert not any(l.get("country") == "CN" for loc in asked for l in loc)

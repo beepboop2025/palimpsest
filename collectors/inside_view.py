@@ -63,6 +63,33 @@ CN_PROBES = 5
 CONTROL_PROBES = 2
 CONTROL_COUNTRIES = ["DE", "NL"]
 
+# ── who is allowed to carry a sensitive query ────────────────────────────────
+#
+# Globalping's CN pool is mostly cloud VMs, but it also contains household
+# connections (Topway cable, Feixun, small provincial ISPs). A volunteer agreed
+# to host a probe; that is NOT the same as agreeing to have their home
+# connection emit a DNS query for wikileaks.org from inside China. The risk of
+# that query does not land on our data, it lands on a person, and no control
+# gate downstream can undo it.
+#
+# So censored-domain measurements are pinned to datacenter ASNs. This is a
+# deliberate loss of vantage diversity and it is a real limitation of the
+# signal, stated in the reading rather than hidden: what we measure is filtering
+# as experienced on Chinese CLOUD networks, which is not necessarily identical
+# to what a household sees.
+CLOUD_ASNS = [
+    45090,   # Shenzhen Tencent Computer Systems
+    37963,   # Hangzhou Alibaba Advertising
+    55990,   # Huawei Cloud
+]
+
+# A forged answer proves on-path DNS interference; it does not by itself prove
+# NATIONAL filtering. Tencent and Alibaba both operate their own resolver
+# interception, so a result drawn entirely from one operator is indistinguishable
+# from that operator's own meddling. A blocking verdict therefore requires
+# agreement across at least this many distinct ASNs.
+MIN_DISTINCT_ASNS = 2
+
 # The panel is half the method. `censored=True` domains are the measurement;
 # `censored=False` domains are the negative control that proves the classifier
 # is not simply calling everything forged.
@@ -165,7 +192,9 @@ def observe_domain(entry: dict, *, create=_create, collect=_collect) -> dict:
     domain = entry["domain"]
 
     ctl_id = create(domain, [{"country": c} for c in CONTROL_COUNTRIES], CONTROL_PROBES)
-    cn_id = create(domain, [{"country": "CN"}], CN_PROBES)
+    # "CN+<asn>" is Globalping's magic filter: country AND network. Restricting
+    # to CLOUD_ASNS keeps sensitive queries off household connections.
+    cn_id = create(domain, [{"magic": f"CN+{asn}"} for asn in CLOUD_ASNS], CN_PROBES)
 
     control = [r for r in (collect(ctl_id) if ctl_id else [])]
     inside = [r for r in (collect(cn_id) if cn_id else [])]
@@ -327,6 +356,19 @@ def regional_divergence(observation: dict) -> dict:
         return {"verdict": "INSUFFICIENT",
                 "detail": f"only {answering} vantage(s) answered; regional variation "
                           f"cannot be judged below {MIN_VANTAGES}"}
+
+    # Attribution gate. Tencent and Alibaba each run their own resolver
+    # interception, so forgery seen only inside one operator is that operator's
+    # behaviour as far as we can tell — it is not evidence of national filtering,
+    # and must not be published as if it were.
+    forged_asns = {v["asn"] for v in forged}
+    if forged and not clean and len(forged_asns) < MIN_DISTINCT_ASNS:
+        return {"verdict": "SINGLE_OPERATOR",
+                "detail": f"forged from all {answering} answering vantages but only "
+                          f"AS{'/AS'.join(str(a) for a in sorted(forged_asns))} is "
+                          f"represented; one operator's resolver behaviour is not "
+                          f"distinguishable from national filtering at this width"}
+
     if forged and clean:
         return {"verdict": "REGIONAL",
                 "detail": f"blocked from {len(forged)}/{answering} vantages "
