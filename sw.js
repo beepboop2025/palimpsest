@@ -1,11 +1,20 @@
 /* Palimpsest service worker — network-first so the observatory always shows the
    freshest censorship data when online, and falls back to the last cached copy
    only when offline. Never serve stale data to a connected user. */
-const CACHE = "palimpsest-v3";
+/* Bump CACHE whenever the shell assets change shape, so a returning reader is
+   not left holding a cached page that points at a stylesheet we no longer ship. */
+const CACHE = "palimpsest-v4";
 const SHELL = [
   "/",
   "/dashboards/ddti_observatory.html",
   "/dashboards/ddti_dashboard.html",
+  /* The stylesheets and behaviour the pages above depend on. Without these an
+     offline reader got the markup and none of the presentation, which on a page
+     whose whole job is to distinguish a reading from its evidence is not a
+     degraded experience so much as a misleading one. */
+  "/dashboards/assets/tikto.css",
+  "/assets/shell.css",
+  "/assets/shell.js",
   "/brand/palimpsest-icon.svg",
   "/brand/palimpsest-icon-512.png",
 ];

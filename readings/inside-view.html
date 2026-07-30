@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside View · the firewall measured from inside it · Palimpsest</title>
+<meta name="description" content="DNS injection measured from volunteer probes inside mainland China. An answer is forged when it shares no address with a same-round control arm outside China. Live block rate, per-domain vantage counts, per-city and per-ASN evidence, and the consent limits the method accepts.">
+<link rel="canonical" href="https://palimpsest.info/readings/inside-view.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  /* Page-specific only. Nothing here redefines a --tk-* or --ps-* token or a
+     ps-* class; every rule is namespaced iv-. */
+
+  /* ---- the inversion, stated typographically before any number ---- */
+  .iv-vs {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: clamp(18px, 3.4vw, 44px);
+    margin: 30px 0 34px; padding-top: 22px;
+    border-top: 1px solid var(--ps-edge-1);
+  }
+  .iv-vs h2 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .18em;
+              text-transform: uppercase; margin: 0 0 9px; font-weight: 500; }
+  .iv-vs--out h2 { color: var(--tk-text-4, #6f8098); }
+  .iv-vs--in h2 { color: var(--tk-live, #06d6e0); }
+  .iv-vs p { margin: 0; font-size: 14px; line-height: 1.62; color: var(--tk-text-2, #94a3b8); }
+  .iv-vs--in p { color: var(--tk-text-1, #e2e8f0); }
+  @media (max-width: 700px) { .iv-vs { grid-template-columns: 1fr; gap: 22px; } }
+
+  /* ---- plane 3: the reading ---- */
+  .iv-read { padding: clamp(20px, 3.2vw, 34px); margin: 0 0 14px; }
+  .iv-read__grid { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+                   gap: clamp(18px, 3.4vw, 42px); align-items: center; }
+  @media (max-width: 760px) { .iv-read__grid { grid-template-columns: 1fr; gap: 20px; } }
+  .iv-figure { display: flex; align-items: baseline; gap: 4px; }
+  .iv-big { font-size: clamp(56px, 11vw, 108px); font-weight: 800; line-height: .86;
+            letter-spacing: -.045em; color: var(--tk-text-0, #fff); }
+  .iv-unit { font-size: clamp(20px, 3.4vw, 30px); font-weight: 600; color: var(--tk-text-3, #7d8ca3); }
+  .iv-read__say { font-size: clamp(16px, 2vw, 20px); line-height: 1.4; font-weight: 600;
+                  color: var(--tk-text-0, #fff); margin: 0 0 10px; text-wrap: pretty; }
+  .iv-read__den { font-size: 13px; color: var(--tk-text-2, #94a3b8); margin: 0 0 14px;
+                  font-family: var(--tk-font-mono); }
+  .iv-read__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+                   font-size: 11.5px; font-family: var(--tk-font-mono); color: var(--tk-text-3, #7d8ca3); }
+
+  /* ---- chips: status is never colour alone, every chip carries its word ---- */
+  .iv-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 4px 9px; border-radius: 6px;
+    border: 1px solid var(--tk-stale-line, rgba(100,116,139,.45));
+    background: var(--tk-stale-bg, rgba(100,116,139,.16));
+    color: var(--tk-stale, #8593a8); white-space: nowrap;
+  }
+  .iv-chip--ok { border-color: var(--tk-ok-line); background: var(--tk-ok-bg); color: var(--tk-ok); }
+  .iv-chip--warn { border-color: var(--tk-warning-line); background: var(--tk-warning-bg); color: var(--tk-warning); }
+  .iv-chip--crit { border-color: var(--tk-critical-line); background: var(--tk-critical-bg); color: var(--tk-critical); }
+  .iv-chip--watch { border-color: var(--tk-watch-line); background: var(--tk-watch-bg); color: var(--tk-watch); }
+  .iv-chip--live { border-color: rgba(6,214,224,.30); background: rgba(6,214,224,.12); color: var(--tk-live, #06d6e0); }
+  .iv-stale { color: var(--tk-warning, #ffb020); }
+
+  /* ---- load / failure states. Never a plausible-looking zero. ---- */
+  .iv-note { font-size: 12.5px; line-height: 1.6; color: var(--tk-text-3, #7d8ca3); margin: 0; }
+  .iv-status {
+    margin: 0 0 22px; padding: 13px 16px; border-radius: var(--tk-radius-md, 11px);
+    border: 1px solid var(--tk-stale-line); background: var(--tk-stale-bg);
+    color: var(--tk-text-2, #94a3b8); font-size: 13px; line-height: 1.6;
+  }
+  .iv-status--err { border-color: var(--tk-critical-line); background: var(--tk-critical-bg); color: var(--tk-critical); }
+  .iv-status a { color: inherit; }
+  [data-iv="ok"] .iv-status { display: none; }
+  [data-iv="pending"] .iv-live, [data-iv="error"] .iv-live { display: none; }
+
+  /* ---- tiles ---- */
+  .iv-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; margin: 0 0 18px; }
+  .iv-tile { padding: 15px 16px; }
+  .iv-tile b { display: block; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .14em;
+               text-transform: uppercase; color: var(--tk-text-4, #6f8098); font-weight: 500; margin-bottom: 7px; }
+  .iv-tile .iv-v { display: block; font-size: 27px; font-weight: 700; line-height: 1;
+                   color: var(--tk-text-0, #fff); letter-spacing: -.02em; }
+  .iv-tile small { display: block; margin-top: 7px; font-size: 11.5px; line-height: 1.5; color: var(--tk-text-3, #7d8ca3); }
+
+  /* ---- definition lists (verdicts, control states) ---- */
+  .iv-defs { margin: 0; padding: 0; }
+  .iv-defs > div { padding: 11px 0; border-top: 1px solid var(--ps-edge-1); display: grid;
+                   grid-template-columns: minmax(0, 172px) minmax(0, 1fr); gap: 6px 18px; align-items: start; }
+  .iv-defs > div:first-child { border-top: 0; }
+  .iv-defs dt { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .1em;
+                text-transform: uppercase; color: var(--tk-text-1, #e2e8f0); }
+  .iv-defs dd { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--tk-text-2, #94a3b8); }
+  @media (max-width: 620px) { .iv-defs > div { grid-template-columns: 1fr; } }
+
+  /* ---- the panel, domain by domain ---- */
+  .iv-panel { display: grid; gap: 10px; }
+  .iv-dom { padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
+            gap: 8px 20px; align-items: center; }
+  @media (max-width: 720px) { .iv-dom { grid-template-columns: 1fr; } }
+  .iv-dom__name { font-family: var(--tk-font-mono); font-size: 14px; color: var(--tk-text-0, #fff);
+                  overflow-wrap: anywhere; }
+  .iv-dom__tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .iv-dom__counts { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3, #7d8ca3);
+                    margin-top: 7px; }
+  .iv-bar { display: flex; height: 9px; border-radius: 5px; overflow: hidden;
+            background: rgba(125,140,163,.16); border: 1px solid var(--ps-edge-1); }
+  .iv-bar i { display: block; height: 100%; }
+  .iv-bar .iv-seg--forged { background: var(--tk-critical, #ff5b52); }
+  .iv-bar .iv-seg--clean { background: var(--tk-ok, #19c393); }
+  .iv-bar .iv-seg--silent { background: var(--tk-stale, #8593a8); }
+  .iv-bar .iv-seg--unclassified { background: var(--tk-warning, #ffb020); }
+  .iv-frac { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-2, #94a3b8); margin-top: 8px; }
+  .iv-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 14px;
+               font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3, #7d8ca3); }
+  .iv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .iv-key { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .iv-key--forged { background: var(--tk-critical); }
+  .iv-key--clean { background: var(--tk-ok); }
+  .iv-key--silent { background: var(--tk-stale); }
+  .iv-key--unclassified { background: var(--tk-warning); }
+
+  /* ---- plane 1: the evidence ---- */
+  .iv-ev { padding: 16px 18px; margin: 0 0 12px; }
+  .iv-ev__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .iv-ev__name { font-family: var(--tk-font-mono); font-size: 14px; color: var(--tk-text-0, #fff);
+                 overflow-wrap: anywhere; }
+  .iv-ev__detail { font-size: 13px; line-height: 1.6; color: var(--tk-text-2, #94a3b8); margin: 0 0 12px; }
+  .iv-truth { font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.7;
+              color: var(--tk-text-3, #7d8ca3); margin: 0 0 12px; overflow-wrap: anywhere; }
+  .iv-truth b { color: var(--tk-text-4, #6f8098); font-weight: 500; letter-spacing: .1em;
+                text-transform: uppercase; font-size: 9.5px; display: block; margin-bottom: 3px; }
+  table.iv-t { width: 100%; border-collapse: collapse; font-size: 12.5px;
+               font-family: var(--tk-font-mono); min-width: 560px; }
+  table.iv-t th { text-align: left; font-weight: 500; font-size: 9.5px; letter-spacing: .13em;
+                  text-transform: uppercase; color: var(--tk-text-4, #6f8098);
+                  padding: 0 12px 8px 0; border-bottom: 1px solid var(--ps-edge-1); white-space: nowrap; }
+  table.iv-t td { padding: 8px 12px 8px 0; border-bottom: 1px solid rgba(125,140,163,.10);
+                  color: var(--tk-text-2, #94a3b8); vertical-align: top; }
+  table.iv-t tr:last-child td { border-bottom: 0; }
+  table.iv-t td.iv-c1 { color: var(--tk-text-1, #e2e8f0); }
+  .iv-st { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .iv-st--forged { color: var(--tk-critical, #ff5b52); }
+  .iv-st--clean { color: var(--tk-ok, #19c393); }
+  .iv-st--silent { color: var(--tk-stale, #8593a8); }
+  .iv-st--unclassified { color: var(--tk-warning, #ffb020); }
+
+  /* ---- quoted machine copy: fields the feed ships and we must not drop ---- */
+  .iv-quote { margin: 14px 0 0; padding: 12px 0 12px 15px; border-left: 2px solid var(--ps-edge-2);
+              font-size: 13.5px; line-height: 1.65; color: var(--tk-text-2, #94a3b8); }
+  .iv-quote b { display: block; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .14em;
+                text-transform: uppercase; color: var(--tk-text-4, #6f8098); margin-bottom: 6px; font-weight: 500; }
+
+  .iv-prose p { font-size: 15px; line-height: 1.68; color: var(--tk-text-2, #94a3b8);
+                max-width: var(--ps-measure); margin: 0 0 15px; text-wrap: pretty; }
+  .iv-prose p:last-child { margin-bottom: 0; }
+  .iv-prose strong { color: var(--tk-text-0, #fff); font-weight: 600; }
+  .iv-prose a { color: var(--tk-live, #06d6e0); }
+
+  .iv-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
+  .iv-hero-meta { font-size: 13px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3);
+                  max-width: var(--ps-measure); margin: 18px 0 0; }
+  .iv-hero-meta a { color: var(--tk-live, #06d6e0); }
+
+  .iv-prov { padding: 18px 20px; }
+  .iv-prov dl { margin: 0; }
+  .iv-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0;
+              font-family: var(--tk-font-mono); font-size: 12px; }
+  .iv-links a { color: var(--tk-live, #06d6e0); }
+  .iv-foot { margin: 46px 0 60px; padding-top: 20px; border-top: 1px solid var(--ps-edge-1); }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html" aria-current="page"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap" data-iv="pending">
+
+  <!-- ============================ HERO ============================ -->
+  <header class="ps-reveal" style="padding:clamp(38px,7vw,74px) 0 0">
+    <p class="ps-kicker"><span class="ps-dot ps-dot--live" aria-hidden="true" style="display:inline-block;margin-right:7px"></span>Inside View · DNS injection</p>
+    <h1 class="ps-h1">The firewall, measured from inside it</h1>
+    <p class="ps-lede">
+      Every other network signal on this site observes the Great Firewall from outside and reasons
+      inward. OONI ingests measurements other people's probes already uploaded. Bleedthrough reads
+      the injection that leaks out of China. Inside View runs it the other way: it commands live DNS
+      lookups on volunteer probes <strong style="color:var(--tk-text-0,#fff);font-weight:600">inside
+      mainland China</strong> and publishes the answers those probes were handed. An answer counts as
+      forged when it shares no address with a control arm measured outside China in the same round,
+      so truth is fixed per round rather than read off a stale list of known forged addresses.
+    </p>
+
+    <div class="iv-vs">
+      <section class="iv-vs--out">
+        <h2>Outside in</h2>
+        <p>
+          A probe outside China queries inward, or reads what escaped the wall, and infers what a
+          user inside would have received. The inference is sound. It is still an inference, and
+          differences between one Chinese province or one Chinese network and another are largely
+          invisible to it.
+        </p>
+      </section>
+      <section class="iv-vs--in">
+        <h2>Inside out</h2>
+        <p>
+          A probe inside China asks, and reports what it was actually given. Injection happens on the
+          path between that probe and its resolver, and that path is inside, so disagreement between
+          Beijing and Guangzhou, or between one operator and another, is a thing this measurement can
+          see rather than a thing it has to assume away.
+        </p>
+      </section>
+    </div>
+
+    <div class="iv-actions">
+      <a class="ps-btn" href="/readings/inside-view-latest.json">Raw reading</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/inside-view-history.jsonl">Round history</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/collectors/inside_view.py">Collector source</a>
+    </div>
+
+    <p class="iv-hero-meta">
+      Palimpsest is two instruments run as one public good: a China censorship observatory and a
+      pre-registered, hash-chained <a href="/readings/eval-registry.html">AI eval registry</a> whose
+      chain roots are anchored outside the project. MIT licensed, developed in the open, never a
+      commercial product, and never monetising the people or topics it observes.
+      <a href="/support.html">What it costs to run</a>.
+    </p>
+  </header>
+
+  <!-- ============================ READING (plane 3) ============================ -->
+  <h2 class="ps-section-head" id="reading">The reading</h2>
+
+  <p class="iv-status" id="iv-status" role="status">
+    Figures on this page are read from
+    <a href="/readings/inside-view-latest.json">inside-view-latest.json</a> when the page loads.
+    Nothing here is typed in by hand. If the numbers below do not appear, the fetch failed or
+    JavaScript is off, and the raw file is the reading.
+  </p>
+
+  <section class="ps-p3 iv-read iv-live ps-reveal" aria-labelledby="reading">
+    <div class="iv-read__grid">
+      <div>
+        <p class="ps-label" style="margin-bottom:10px">Block rate · censored panel</p>
+        <div class="iv-figure" id="iv-figure">
+          <span class="iv-big ps-num" id="iv-rate"></span><span class="iv-unit" id="iv-unit">%</span>
+        </div>
+      </div>
+      <div>
+        <p class="iv-read__say" id="iv-reading"></p>
+        <p class="iv-read__den ps-num" id="iv-denominator"></p>
+        <div class="iv-read__meta">
+          <span id="iv-control-chip"></span>
+          <span id="iv-freshness"></span>
+        </div>
+      </div>
+    </div>
+    <p class="iv-note" style="margin-top:18px">
+      The denominator is censored panel domains that produced a classifiable answer from at least one
+      in-China vantage, not the whole panel. Benign controls are excluded from it by construction:
+      their job is to prove the classifier works, not to be counted as blocked.
+    </p>
+  </section>
+
+  <!-- ============================ CONTROL GATE (plane 2) ============================ -->
+  <h2 class="ps-section-head" id="gate">How the round was gated</h2>
+
+  <div class="ps-band">
+    <div class="ps-pin">
+      <p class="ps-label">Honesty machinery</p>
+      <h3 class="ps-h2" style="font-size:clamp(19px,2.4vw,25px)">A round can fail in a way that looks like calm</h3>
+      <p class="iv-note">
+        If the classifier breaks, every domain reads clean and an observatory reports quiet. So the
+        panel carries two globally constant domains that must come back clean from inside China. If
+        they read forged, the round is thrown away rather than published. A censorship observatory
+        cannot report that it saw nothing unless it can also show that it would have seen something.
+      </p>
+    </div>
+
+    <div>
+      <section class="ps-p2 iv-live ps-reveal" style="padding:18px 20px;margin-bottom:12px">
+        <p class="ps-label" style="margin-bottom:10px">Control state, this round</p>
+        <p style="margin:0 0 12px" id="iv-control-chip-2"></p>
+        <p class="iv-note" style="font-size:13.5px;color:var(--tk-text-2,#94a3b8)" id="iv-control-why"></p>
+      </section>
+
+      <section class="ps-p2 ps-reveal" style="padding:18px 20px;margin-bottom:12px">
+        <p class="ps-label" style="margin-bottom:4px">What each state permits</p>
+        <dl class="iv-defs">
+          <div><dt>Sighted</dt><dd>At least one censored domain read forged and every benign control read clean. Injection is visible and is not being invented. A block rate may be derived.</dd></div>
+          <div><dt>Blind</dt><dd>The controls behaved but no censored domain read forged. That is a coverage gap, not an all clear, so the round is published with no block rate at all.</dd></div>
+          <div><dt>Degraded</dt><dd>A benign control read forged, or too little answered to judge. The classifier is untrustworthy this round, so nothing is published and the previous reading stands.</dd></div>
+        </dl>
+      </section>
+
+      <section class="ps-p2 iv-live ps-reveal" style="padding:18px 20px">
+        <p class="ps-label" style="margin-bottom:10px">The negative controls, this round</p>
+        <div id="iv-controls"></div>
+        <p class="iv-note" style="margin-top:12px">
+          These resolve to fixed anycast addresses that are identical everywhere on earth, so they
+          cannot geo-split and be mistaken for injection. An earlier version of this panel used a
+          China-hosted domain as its control and tripped the gate on the first live round, which is
+          exactly what the gate is for.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================ CONSENT ============================ -->
+  <h2 class="ps-section-head" id="consent">Constrained by consent, not by capability</h2>
+
+  <div class="ps-band ps-defer">
+    <div class="ps-pin">
+      <p class="ps-label">Ethics of the vantage</p>
+      <h3 class="ps-h2" style="font-size:clamp(19px,2.4vw,25px)">The probes belong to real people inside China</h3>
+      <p class="iv-note">
+        Globalping's China pool is mostly cloud machines, but it also holds household connections:
+        cable subscribers, small provincial ISPs, somebody's home router. Hosting a probe is
+        agreement to run measurements. It is not agreement to have a home connection ask the Great
+        Firewall about WikiLeaks.
+      </p>
+    </div>
+
+    <div class="iv-prose">
+      <section class="ps-p2 ps-reveal" style="padding:clamp(18px,2.6vw,24px)">
+        <p>
+          The first deployment of this collector asked Globalping for probes in China by country and
+          took whatever answered. Household networks answered alongside the cloud ones, and those
+          connections were made to emit DNS queries for wikileaks.org, torproject.org, rsf.org and
+          hrw.org from inside China.
+        </p>
+        <p>
+          <strong>This is the one class of error the control gates could never catch</strong>, because
+          the harm does not land on the data, it lands on a person, and no downstream check undoes a
+          packet already sent. Every other failure mode in this signal is recoverable by discarding a
+          round. That one is not.
+        </p>
+        <p>
+          Two things changed, and both narrow what the instrument is allowed to do. Every query in
+          the panel is now pinned to datacenter networks through Globalping's country-plus-network
+          filter, so a sensitive lookup is only ever carried by a cloud host. And a test in the suite
+          asserts that no request may ever target China by country alone, so the loose form of the
+          query cannot come back by accident.
+        </p>
+        <p>
+          The panel itself is small and fixed for the same reason. It is a short list, written out in
+          the collector where anyone can read it, and it does not grow to whatever a probe could be
+          made to ask. Its size is the figure printed in the reading above. What may be asked is
+          bounded by who has to carry the question.
+        </p>
+        <p>
+          This costs real measurement power, and the cost is stated in the reading rather than hidden
+          in a footnote. The feed carries the limitation in its own words, and the page prints it:
+        </p>
+        <blockquote class="iv-quote"><b>vantage_limitation, as published</b><span id="iv-vantage-limit"></span></blockquote>
+        <p style="margin-top:16px">
+          The full change, including what was drawn and what it was made to ask, is in the repository:
+          <a href="https://github.com/beepboop2025/palimpsest/commit/59405eee78de1bf508dd21a3bc7396eb3527293c">a volunteer hosting a probe did not consent to query WikiLeaks</a>.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================ VANTAGES AND ATTRIBUTION ============================ -->
+  <h2 class="ps-section-head" id="vantages">Vantages, and why the count decides the verdict</h2>
+
+  <div class="iv-tiles iv-live ps-stagger" id="iv-tiles"></div>
+
+  <section class="ps-p2 iv-live ps-reveal" style="padding:18px 20px;margin-bottom:12px">
+    <p class="ps-label" style="margin-bottom:10px">Networks represented this round</p>
+    <div id="iv-asns"></div>
+  </section>
+
+  <section class="ps-p2 ps-reveal iv-prose" style="padding:clamp(18px,2.6vw,24px)">
+    <p>
+      A forged answer proves that something on the path rewrote the reply. It does not by itself
+      prove national filtering. Tencent and Alibaba each operate their own resolver interception, so
+      forgery seen only inside one operator's network is that operator's behaviour as far as this
+      measurement can tell. A blocking verdict therefore requires agreement across at least two
+      distinct ASNs, and a unanimous single-network result is published as SINGLE_OPERATOR instead of
+      as blocked. Disagreement between vantages is reported at any width, because disagreement is
+      informative even when attribution is not.
+    </p>
+    <blockquote class="iv-quote"><b>attribution_caveat, as published</b><span id="iv-attribution"></span></blockquote>
+  </section>
+
+  <!-- ============================ THE PANEL (plane 2) ============================ -->
+  <h2 class="ps-section-head" id="panel">The panel, domain by domain</h2>
+
+  <p class="iv-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+    Each row is one domain measured from several in-China vantages in the same round. Counts are
+    vantages, not queries. A silent vantage returned no A record at all, which is a measurement in
+    its own right and is never folded into either the forged or the clean side.
+  </p>
+
+  <div class="iv-legend" aria-hidden="true">
+    <span><i class="iv-key iv-key--forged"></i>forged</span>
+    <span><i class="iv-key iv-key--clean"></i>clean</span>
+    <span><i class="iv-key iv-key--silent"></i>silent</span>
+    <span><i class="iv-key iv-key--unclassified"></i>unclassified</span>
+  </div>
+
+  <div class="iv-panel iv-live ps-stagger ps-defer" id="iv-domains"></div>
+
+  <!-- ============================ EVIDENCE (plane 1) ============================ -->
+  <h2 class="ps-section-head" id="evidence">Every vantage, every answer</h2>
+
+  <p class="iv-note" style="max-width:var(--ps-measure);margin-bottom:14px">
+    The receipts. For each domain: what the control arm outside China resolved, then what each
+    in-China vantage was handed, with its city and its network. Forged answers differ from vantage to
+    vantage even when every vantage is blocked, because the injector draws from a rotating pool, so
+    the states are compared and the addresses never are.
+  </p>
+
+  <section class="ps-p2 ps-reveal" style="padding:16px 18px;margin-bottom:14px">
+    <p class="ps-label" style="margin-bottom:4px">What each verdict means</p>
+    <dl class="iv-defs">
+      <div><dt>Uniform blocked</dt><dd>Forged from every answering vantage, across at least two distinct networks.</dd></div>
+      <div><dt>Regional</dt><dd>Forged from some vantages and resolving correctly from others. Filtering is not uniform, and this is the finding an outside vantage cannot produce.</dd></div>
+      <div><dt>Single operator</dt><dd>Forged from every answering vantage, but only one network was represented. Not distinguishable from that operator's own resolver behaviour, so not published as blocked.</dd></div>
+      <div><dt>Uniform clean</dt><dd>Resolved correctly from every answering vantage.</dd></div>
+      <div><dt>Insufficient</dt><dd>Fewer than two vantages answered. Regional variation cannot be judged at that width.</dd></div>
+    </dl>
+  </section>
+
+  <p class="iv-note iv-live" id="iv-regional-status" style="margin-bottom:14px"></p>
+
+  <div class="iv-live ps-defer" id="iv-evidence"></div>
+
+  <!-- ============================ PROVENANCE ============================ -->
+  <h2 class="ps-section-head" id="provenance">Provenance</h2>
+
+  <section class="ps-p1 iv-prov iv-live ps-reveal">
+    <dl class="iv-defs" id="iv-provenance"></dl>
+    <div class="iv-links">
+      <a href="/readings/inside-view-latest.json">inside-view-latest.json</a>
+      <a href="/readings/inside-view-history.jsonl">inside-view-history.jsonl</a>
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/collectors/inside_view.py">collectors/inside_view.py</a>
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/inside_view_pull.py">scripts/inside_view_pull.py</a>
+      <a href="https://globalping.io/">Globalping</a>
+    </div>
+    <p class="iv-note" style="margin-top:14px">
+      Measurements run on Globalping, operated by jsDelivr, on probes hosted by volunteers. The
+      published file is rewritten only when the answer changes, so an unchanged round leaves the
+      timestamp where it was rather than manufacturing movement.
+    </p>
+  </section>
+
+  <!-- ============================ WHAT THIS IS ============================ -->
+  <section class="iv-foot ps-reveal">
+    <p class="ps-label">Palimpsest</p>
+    <p class="iv-note" style="max-width:var(--ps-measure);font-size:14px">
+      An open source observatory of information control, run as a public good. It watches the censor
+      and never the censored: public reads only, no person inside is ever asked to act, and no
+      state-aligned model is ever the analyst. Every finding ships its raw evidence. The same project
+      runs a verifiable AI eval registry whose runs are pre-registered, hash-chained and anchored
+      outside the project, so a result cannot be quietly rewritten after the fact.
+    </p>
+    <div class="iv-links" style="margin-top:14px">
+      <a href="/readings/">All readings</a>
+      <a href="/readings/eval-registry.html">Eval registry</a>
+      <a href="/for-researchers.html">For researchers</a>
+      <a href="/support.html">Support the work</a>
+      <a href="https://github.com/beepboop2025/palimpsest">Source, MIT licensed</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+/* ============================================================================
+   Inside View — render readings/inside-view-latest.json.
+
+   Nothing on this page is a literal. Every figure comes out of the feed at load
+   time, and any field the feed does not carry is rendered as an explicit gap
+   rather than as a zero. block_rate is null on a BLIND round by design, and a
+   BLIND round showing "0%" would be the single most misleading thing this page
+   could do, so that path is handled first and separately.
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  var FEED = "/readings/inside-view-latest.json";
+  var CADENCE_H = 6;                 /* the workflow runs every 6 hours */
+  var STALE_H = CADENCE_H * 2;       /* past 2x cadence, freshness is a finding */
+
+  var root = document.querySelector("main[data-iv]");
+  var statusEl = document.getElementById("iv-status");
+
+  /* ---- tiny DOM helpers; all text goes in as text, never as markup ---- */
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = String(text);
+    return n;
+  }
+  function put(id, text) {
+    var n = document.getElementById(id);
+    if (n) n.textContent = text == null ? "" : String(text);
+    return n;
+  }
+  function clear(n) { while (n && n.firstChild) n.removeChild(n.firstChild); return n; }
+  /* Nodes built after the shell has initialised do not get its stagger index,
+     so set it here rather than re-running init() and double-binding the nav. */
+  function staggered(node, i) {
+    node.classList.add("ps-reveal");
+    node.style.setProperty("--ps-i", Math.min(i, 12));
+    return node;
+  }
+
+  var Shell = window.PalimpsestShell || null;
+
+  function ago(iso) {
+    if (Shell && Shell.ago) return Shell.ago(iso);
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return "unknown";
+    var s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 90) return "just now";
+    if (s < 5400) return Math.round(s / 60) + " min ago";
+    if (s < 172800) return Math.round(s / 3600) + " h ago";
+    return Math.round(s / 86400) + " d ago";
+  }
+  function load(url, ok, bad) {
+    if (Shell && Shell.loadReading) return Shell.loadReading(url, ok, bad);
+    return fetch(url, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(ok).catch(bad);
+  }
+
+  function fail(why) {
+    root.setAttribute("data-iv", "error");
+    clear(statusEl);
+    statusEl.className = "iv-status iv-status--err";
+    statusEl.appendChild(el("strong", null, "This reading did not load. "));
+    statusEl.appendChild(document.createTextNode(
+      why + ". No figure is shown here rather than a placeholder that might be mistaken for a "
+          + "measurement. The published file is "));
+    var a = el("a", null, "inside-view-latest.json");
+    a.href = FEED;
+    statusEl.appendChild(a);
+    statusEl.appendChild(document.createTextNode("."));
+  }
+
+  /* ---- number formatting ---- */
+  function pctText(fraction) {
+    var v = fraction * 100;
+    return (Math.abs(v - Math.round(v)) < 0.05 ? Math.round(v) : v.toFixed(1)) + "%";
+  }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  /* ---- chips ---- */
+  var CONTROL_TONE = { SIGHTED: "live", BLIND: "warn", DEGRADED: "crit" };
+  var VERDICT_TONE = {
+    UNIFORM_BLOCKED: "crit", REGIONAL: "warn", SINGLE_OPERATOR: "watch",
+    UNIFORM_CLEAN: "ok", INSUFFICIENT: ""
+  };
+  function chip(text, tone) {
+    var n = el("span", "iv-chip" + (tone ? " iv-chip--" + tone : ""), text);
+    return n;
+  }
+
+  /* ------------------------------------------------------------------ render */
+  function render(d) {
+    if (!d || typeof d !== "object") return fail("the feed did not parse as an object");
+
+    var control = d.control || {};
+    var domains = Array.isArray(d.domains) ? d.domains : [];
+    var regional = Array.isArray(d.regional) ? d.regional : [];
+
+    if (!domains.length) return fail("the feed carried no domain observations");
+
+    root.setAttribute("data-iv", "ok");
+
+    /* ---- headline. A BLIND round has no block_rate and must not read as 0. -- */
+    var rateEl = document.getElementById("iv-rate");
+    var unitEl = document.getElementById("iv-unit");
+    var figEl = document.getElementById("iv-figure");
+
+    if (typeof d.block_rate === "number" && isFinite(d.block_rate)) {
+      var pct = d.block_rate * 100;
+      var dec = Math.abs(pct - Math.round(pct)) < 0.05 ? 0 : 1;
+      if (Shell && Shell.countUp) Shell.countUp(rateEl, pct, { decimals: dec });
+      else rateEl.textContent = pct.toFixed(dec);
+      unitEl.style.display = "";
+    } else {
+      /* No rate published this round. Say so in words, in the number's place. */
+      clear(figEl);
+      figEl.appendChild(chip("no block rate this round", "warn"));
+      figEl.style.display = "block";
+    }
+
+    put("iv-reading", d.reading || "the feed published no plain-language reading this round");
+
+    var answered = d.n_censored_answered, blocked = d.n_censored_blocked;
+    var denom = [];
+    if (typeof blocked === "number" && typeof answered === "number") {
+      denom.push(blocked + " of " + answered + " censored domains forged");
+    }
+    if (typeof d.panel_size === "number") {
+      denom.push("panel of " + d.panel_size);
+    }
+    put("iv-denominator", denom.join("  ·  "));
+
+    /* ---- control state, in the reading card and again in the gate panel ---- */
+    var state = control.state || "UNREPORTED";
+    var tone = CONTROL_TONE[state] || "";
+    var slot1 = clear(document.getElementById("iv-control-chip"));
+    slot1.appendChild(chip("control " + state.toLowerCase(), tone));
+    var slot2 = clear(document.getElementById("iv-control-chip-2"));
+    slot2.appendChild(chip(state, tone));
+    put("iv-control-why", control.why || "the feed published no control rationale this round");
+
+    /* ---- freshness. Past 2x cadence this is styled as a warning, with the
+           reason, because the writer only rewrites when the answer moves. ---- */
+    var fresh = document.getElementById("iv-freshness");
+    clear(fresh);
+    var t = Date.parse(d.generated_at);
+    if (isFinite(t)) {
+      var hours = (Date.now() - t) / 3.6e6;
+      var line = "last published change " + ago(d.generated_at);
+      var n = el("span", hours > STALE_H ? "iv-stale" : null, line);
+      n.title = new Date(t).toISOString();
+      fresh.appendChild(n);
+      if (hours > STALE_H) {
+        fresh.appendChild(el("span", "iv-stale",
+          "  ·  the round runs every " + CADENCE_H + " h and rewrites only when the answer moves"));
+      }
+    } else {
+      fresh.appendChild(el("span", "iv-stale", "no measurement timestamp in the feed"));
+    }
+
+    /* ---- fields the feed ships because the number misleads without them ---- */
+    put("iv-vantage-limit", d.vantage_limitation || "not carried in this reading");
+    put("iv-attribution", d.attribution_caveat || "not carried in this reading");
+
+    /* ---- negative controls ---- */
+    var ctlBox = clear(document.getElementById("iv-controls"));
+    var benign = domains.filter(function (o) { return o.expected_censored === false; });
+    if (!benign.length) {
+      ctlBox.appendChild(el("p", "iv-note", "this reading carried no benign control domains"));
+    } else {
+      benign.forEach(function (o) {
+        var row = el("p", "iv-read__den");
+        row.style.margin = "0 0 7px";
+        var ok = (o.n_forged || 0) === 0 && (o.n_clean || 0) > 0;
+        row.appendChild(chip(ok ? "clean" : "check", ok ? "ok" : "crit"));
+        row.appendChild(document.createTextNode(
+          "  " + o.domain + "  ·  " + (o.n_clean || 0) + " clean of "
+          + plural(o.n_vantages || 0, "vantage", "vantages")
+          + ((o.n_silent || 0) ? ", " + o.n_silent + " silent" : "")));
+        ctlBox.appendChild(row);
+      });
+    }
+
+    /* ---- vantage width and ASN diversity ---- */
+    var asnMap = {}, pairs = {}, observations = 0, perDomain = {};
+    domains.forEach(function (o) {
+      observations += (o.n_vantages || 0);
+      if (typeof o.n_vantages === "number") perDomain[o.n_vantages] = true;
+      (o.vantages || []).forEach(function (v) {
+        if (v.asn != null) asnMap[v.asn] = v.network || "network not reported";
+        pairs[(v.city || "unknown city") + "|" + (v.asn == null ? "?" : v.asn)] = true;
+      });
+    });
+    var asns = Object.keys(asnMap);
+    var perDomainKeys = Object.keys(perDomain).map(Number).sort(function (a, b) { return a - b; });
+    var perDomainText = perDomainKeys.length === 1
+      ? String(perDomainKeys[0])
+      : (perDomainKeys.length ? perDomainKeys[0] + " to " + perDomainKeys[perDomainKeys.length - 1] : "");
+
+    var tiles = clear(document.getElementById("iv-tiles"));
+    function tile(label, value, note, warn) {
+      var t = el("div", "ps-p2 iv-tile");
+      t.appendChild(el("b", null, label));
+      t.appendChild(el("span", "iv-v ps-num" + (warn ? " iv-stale" : ""), value));
+      if (note) t.appendChild(el("small", null, note));
+      tiles.appendChild(staggered(t, tiles.children.length));
+    }
+    tile("ASNs represented", asns.length,
+         asns.length >= 2
+           ? "a blocking verdict needs at least 2, so attribution holds this round"
+           : "a blocking verdict needs at least 2, so nothing here is published as blocked",
+         asns.length < 2);
+    tile("City and ASN pairs", Object.keys(pairs).length,
+         "distinct in-China vantage points seen across the panel");
+    if (perDomainText) tile("Probes per domain", perDomainText, "in-China vantages requested per lookup");
+    tile("Probe observations", observations, "in-China vantage results in this round");
+
+    var asnBox = clear(document.getElementById("iv-asns"));
+    if (!asns.length) {
+      asnBox.appendChild(el("p", "iv-note", "no probe network was reported in this reading"));
+    } else {
+      asns.sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (a) {
+        var row = el("p", "iv-read__den");
+        row.style.margin = "0 0 6px";
+        row.appendChild(chip("AS" + a, "watch"));
+        row.appendChild(document.createTextNode("  " + asnMap[a]));
+        asnBox.appendChild(row);
+      });
+    }
+
+    /* ---- the panel, domain by domain ---- */
+    var panel = clear(document.getElementById("iv-domains"));
+    domains.forEach(function (o, idx) {
+      var n = o.n_vantages || 0;
+      var f = o.n_forged || 0, c = o.n_clean || 0, s = o.n_silent || 0;
+      var u = Math.max(0, n - f - c - s);
+      var answering = f + c;
+
+      var card = el("section", "ps-p2 iv-dom");
+
+      var left = el("div");
+      left.appendChild(el("div", "iv-dom__name", o.domain));
+      var tags = el("div", "iv-dom__tags");
+      tags.appendChild(chip(o.expected_censored ? "expected censored" : "negative control",
+                            o.expected_censored ? "" : "ok"));
+      if (o.ddti) tags.appendChild(chip(o.ddti, "watch"));
+      left.appendChild(tags);
+      var counts = [f + " forged", c + " clean", s + " silent"];
+      if (u) counts.push(u + " unclassified");
+      left.appendChild(el("div", "iv-dom__counts",
+        counts.join("  ·  ") + "  of " + plural(n, "vantage", "vantages")));
+
+      var right = el("div");
+      var bar = el("div", "iv-bar");
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label",
+        o.domain + ": " + counts.join(", ") + " of " + plural(n, "vantage", "vantages"));
+      [["forged", f], ["clean", c], ["silent", s], ["unclassified", u]].forEach(function (seg) {
+        if (!seg[1] || !n) return;
+        var i = el("i", "iv-seg--" + seg[0]);
+        i.style.width = (seg[1] / n * 100) + "%";
+        bar.appendChild(i);
+      });
+      right.appendChild(bar);
+      if (typeof o.forged_fraction === "number") {
+        right.appendChild(el("div", "iv-frac ps-num",
+          pctText(o.forged_fraction) + " forged of " + plural(answering, "answering vantage", "answering vantages")));
+      } else {
+        right.appendChild(el("div", "iv-frac",
+          "no forged share: no vantage produced a classifiable answer"));
+      }
+      card.appendChild(left);
+      card.appendChild(right);
+      panel.appendChild(staggered(card, idx));
+    });
+
+    /* ---- regional status line ---- */
+    var rs = d.regional_status;
+    put("iv-regional-status", rs === "reporting"
+      ? "Regional layer: reporting. " + plural(regional.length, "domain carries", "domains carry")
+        + " a verdict this round."
+      : (rs ? "Regional layer: " + rs : "Regional layer: the feed published no status"));
+
+    /* ---- evidence: verdicts joined to their vantages ---- */
+    var verdicts = {};
+    regional.forEach(function (r) { verdicts[r.domain] = r; });
+
+    var ev = clear(document.getElementById("iv-evidence"));
+    var ordered = domains.slice().sort(function (a, b) {
+      return (b.expected_censored ? 1 : 0) - (a.expected_censored ? 1 : 0);
+    });
+
+    ordered.forEach(function (o, idx) {
+      var box = staggered(el("section", "ps-p1 iv-ev"), idx);
+      var head = el("div", "iv-ev__head");
+      head.appendChild(el("span", "iv-ev__name", o.domain));
+
+      var r = verdicts[o.domain];
+      if (r && r.verdict) {
+        head.appendChild(chip(r.verdict.replace(/_/g, " "), VERDICT_TONE[r.verdict] || ""));
+      } else if (o.expected_censored) {
+        head.appendChild(chip("no verdict this round", ""));
+      } else {
+        head.appendChild(chip("negative control", "ok"));
+      }
+      box.appendChild(head);
+
+      if (r && r.detail) box.appendChild(el("p", "iv-ev__detail", r.detail));
+
+      var truth = el("p", "iv-truth");
+      truth.appendChild(el("b", null, "control arm, outside China"
+        + (typeof o.control_probes === "number"
+            ? " (" + plural(o.control_probes, "probe", "probes") + ")" : "")));
+      var ans = Array.isArray(o.control_answers) ? o.control_answers : [];
+      truth.appendChild(document.createTextNode(
+        ans.length ? ans.join(", ")
+                   : "the control arm returned no address, so nothing from this domain was classified"));
+      box.appendChild(truth);
+
+      var vs = Array.isArray(o.vantages) ? o.vantages : [];
+      if (!vs.length) {
+        box.appendChild(el("p", "iv-note", "no in-China vantage returned a result for this domain"));
+      } else {
+        var scroll = el("div", "ps-scroll-x");
+        var table = el("table", "iv-t");
+        var thead = el("thead");
+        var hr = el("tr");
+        ["City", "ASN", "Network", "State", "Answer received inside China"].forEach(function (h) {
+          hr.appendChild(el("th", null, h));
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        var tb = el("tbody");
+        vs.forEach(function (v) {
+          var tr = el("tr");
+          tr.appendChild(el("td", "iv-c1", v.city || "not reported"));
+          tr.appendChild(el("td", null, v.asn == null ? "not reported" : "AS" + v.asn));
+          tr.appendChild(el("td", null, v.network || "not reported"));
+          var st = el("td");
+          st.appendChild(el("span", "iv-st iv-st--" + (v.state || "unclassified"), v.state || "unclassified"));
+          tr.appendChild(st);
+          var got = Array.isArray(v.answers) ? v.answers : [];
+          tr.appendChild(el("td", "iv-c1", got.length ? got.join(", ") : "no answer returned"));
+          tb.appendChild(tr);
+        });
+        table.appendChild(tb);
+        scroll.appendChild(table);
+        box.appendChild(scroll);
+      }
+      ev.appendChild(box);
+    });
+
+    /* ---- provenance ---- */
+    var prov = clear(document.getElementById("iv-provenance"));
+    function pair(k, v) {
+      if (v == null || v === "") return;
+      var row = el("div");
+      row.appendChild(el("dt", null, k));
+      row.appendChild(el("dd", null, v));
+      prov.appendChild(row);
+    }
+    pair("Source", d.source);
+    pair("Scope", d.scope);
+    pair("Method", d.method);
+    pair("Method version", d.method_version == null ? null : String(d.method_version));
+    pair("Generated at", d.generated_at);
+    pair("Regional layer", d.regional_status);
+  }
+
+  function boot() {
+    if (!root) return;
+    load(FEED, render, function (err) {
+      fail(String((err && err.message) || err || "unknown error"));
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

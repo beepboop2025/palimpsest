@@ -31,6 +31,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/dashboards/assets/tikto.css" />
+<link rel="stylesheet" href="/assets/shell.css" />
 <style>
   :root{
     --ink:#000000; --ink-2:#0d0e12; --ink-3:#14151b;
@@ -42,33 +44,28 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{
-    background:var(--ink); color:var(--bone);
-    font-family:'JetBrains Mono',ui-monospace,monospace;
-    min-height:100vh; overflow-x:hidden; position:relative;
-    -webkit-font-smoothing:antialiased;
-  }
-  /* atmosphere: grain + faint red survey grid + vignette */
-  body::before{
-    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
-  }
+  body{ min-height:100vh; }
+  /* Atmosphere: grain + faint survey grid + vignette. This is plane 0 for this
+     page. It rides on ::after because shell.css owns body.ps::before, and the
+     grain layer carries its own alpha now that the wrapper opacity is gone
+     (0.045 painted at 50% opacity is the 0.022 baked into the layer below). */
   body::after{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
     background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.022'/%3E%3C/svg%3E") 0 0/120px 120px,
       linear-gradient(transparent 0 96%, rgba(6,214,224,.05) 96% 100%) 0 0/100% 46px,
       linear-gradient(90deg, transparent 0 96%, rgba(6,214,224,.045) 96% 100%) 0 0/46px 100%,
       radial-gradient(120% 90% at 50% -10%, rgba(6,214,224,.08), transparent 60%),
       radial-gradient(140% 120% at 50% 120%, rgba(0,0,0,.6), transparent 55%);
   }
-  .wrap{position:relative; z-index:2; max-width:1320px; margin:0 auto; padding:28px clamp(16px,4vw,52px) 80px}
-  /* shared site nav (identical on every page) */
-  .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
-  .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
-  .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
-  .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-  .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
+  /* The monitor's own voice (mono, bone) lives on the page container rather than
+     on body, so it survives shell.css's body.ps rule without fighting it. */
+  .wrap{
+    position:relative; z-index:2; max-width:1320px; margin:0 auto;
+    padding:28px clamp(16px,4vw,52px) 80px;
+    font-family:'JetBrains Mono',ui-monospace,monospace;
+    color:var(--bone); line-height:1.5;
+  }
 
   /* ── command bar ── */
   header.bar{
@@ -112,8 +109,10 @@
   .feed-tag.err{color:var(--signal); border-color:rgba(255,47,47,.45)}
 
   /* ── stat strip ── */
+  /* The strip carries .ps-p3 (the reading plane); the tiles stay opaque, so the
+     plane reads as the outer edge and the 1px seams between them. */
   .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
-    background:var(--line); border:1px solid var(--line); margin:14px 0 30px}
+    margin:14px 0 30px; overflow:hidden}
   .stat{background:var(--ink-2); padding:18px 20px}
   .stat .k{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--bone-faint)}
   .stat .v{font-family:'Anton',sans-serif; font-size:38px; line-height:1; margin-top:8px; color:var(--bone)}
@@ -136,13 +135,14 @@
 
   /* ── threat rows ── */
   .board{display:flex; flex-direction:column; gap:12px}
+  /* .row carries .ps-p2: the plane owns background, border and radius. */
   .row{
-    position:relative; background:var(--ink-2); border:1px solid var(--line);
+    position:relative;
     padding:18px 20px 18px 64px; overflow:hidden;
     opacity:0; transform:translateY(14px); animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards;
   }
   @keyframes rise{to{opacity:1;transform:none}}
-  .row:hover{border-color:var(--line-strong); background:var(--ink-3)}
+  .row:hover{border-color:var(--line-strong)}
   .row .rank{
     position:absolute; left:0; top:0; bottom:0; width:48px;
     display:flex; align-items:center; justify-content:center;
@@ -185,7 +185,8 @@
   .metrics .jade{color:var(--jade)} .metrics .sig{color:var(--signal)}
 
   /* redacted headlines — the signature motif */
-  .leaks{margin-top:14px; display:flex; flex-direction:column; gap:6px}
+  /* the deleted headlines are the receipts, so they sit back on .ps-p1 */
+  .leaks{margin-top:14px; display:flex; flex-direction:column; gap:6px; padding:9px}
   .leak{
     position:relative; font-size:11.5px; color:var(--bone); padding:5px 9px;
     background:var(--redact); border-left:2px solid var(--signal-deep);
@@ -197,8 +198,10 @@
   .leak::before{ display:none; }
 
   /* ── side column ── */
-  aside{position:sticky; top:24px; display:flex; flex-direction:column; gap:24px}
-  .panel{border:1px solid var(--line); background:var(--ink-2)}
+  /* clears the shell's sticky nav rather than tucking under it */
+  aside{position:sticky; top:calc(var(--ps-nav-h) + 22px); display:flex; flex-direction:column; gap:24px}
+  /* .panel carries .ps-p2: the plane owns background, border and radius. */
+  .panel{overflow:hidden}
   .panel .ph{padding:13px 16px; border-bottom:1px solid var(--line);
     font-size:10.5px; letter-spacing:.28em; text-transform:uppercase; color:var(--bone-dim);
     display:flex; align-items:center; gap:8px}
@@ -223,21 +226,76 @@
   }
 </style>
 </head>
-<body>
-<nav class="pnav">
-  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
-  <div class="pnav__links">
-    <a href="/">Home</a>
-    <a href="/china-brief.html">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html" aria-current="page">Monitor</a>
-    <a href="/readings/generative-firewall-index.html">Firewall</a>
-    <a href="/readings/eval-registry.html">Evals</a>
-    <a href="/for-researchers.html">Data</a>
-    <a href="/support.html">Support</a>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html" aria-current="page"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
   </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
 </nav>
-<div class="wrap">
+<!--/PS_NAV-->
+<main class="wrap" id="main">
   <header class="bar">
     <div class="brand">
       <div class="codename">PALIMPSEST<b>.</b>DDTI</div>
@@ -255,19 +313,19 @@
     <span id="feedNote">demonstration feed — connect the API for live signal</span>
   </div>
 
-  <div class="stats" id="stats"></div>
+  <div class="stats ps-p3" id="stats"></div>
 
   <div class="grid">
-    <main>
+    <div class="boardcol">
       <div class="section-h"><span class="num">01</span>Threat Board — ranked by censor attention × novelty</div>
       <div class="board" id="board"></div>
-    </main>
+    </div>
     <aside>
-      <div class="panel">
+      <div class="panel ps-p2">
         <div class="ph"><span class="dot"></span>Newly Sensitive</div>
         <div id="alerts"></div>
       </div>
-      <div class="panel">
+      <div class="panel ps-p2">
         <div class="ph">Reading the index</div>
         <div class="legend">
           <p><span class="sig">Threat</span> = attention × (1 + novelty). What the apparatus is spending capacity on, right now.</p>
@@ -283,7 +341,7 @@
     <div class="scope" id="scope">SCOPE — censor attention allocation (numerator-only; not a true deletion rate).</div>
     <div style="margin-top:8px">SOURCE: China Digital Times 404 archive + Minitrue · velocity sub-signal pending in-China egress · <a class="refresh" onclick="boot()">↻ refresh</a></div>
   </footer>
-</div>
+</main>
 
 <!--DDTI_EMBED--><script>window.__DDTI_EMBED__={"generated_at": "2026-07-30T19:53:20.522921+00:00", "window": {"current_days": 45, "history_days": 180.0, "half_life_days": 2.0, "novelty_weight": 1.5, "novelty_evidence_k": 1.0}, "scope": "censor_attention_allocation (numerator-only; not a true deletion rate)", "n_observations_used": 81, "n_terms": 197, "ranked": [{"term": "censorship", "domain": "INFORMATION", "threat": 1.6594, "attention": 1.1063, "novelty": 0.3333, "novelty_raw": 0.375, "novelty_evidence": 0.8889, "burst_ratio": 1.6, "is_new": false, "recent_count": 8, "hist_count": 15, "first_seen": "2026-02-05T02:35:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}, {"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "Changsha", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "Hunan", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "Internet", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "Internet access", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "cybersecurity", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "real name registration", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "wi-fi", "domain": "OTHER", "threat": 1.3093, "attention": 0.7482, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-29T23:48:00+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "floods", "domain": "OTHER", "threat": 1.0338, "attention": 0.4865, "novelty": 0.75, "novelty_raw": 1.0, "novelty_evidence": 0.75, "burst_ratio": null, "is_new": true, "recent_count": 3, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}, {"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "natural disasters", "domain": "OTHER", "threat": 1.0338, "attention": 0.4865, "novelty": 0.75, "novelty_raw": 1.0, "novelty_evidence": 0.75, "burst_ratio": null, "is_new": true, "recent_count": 3, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}, {"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "Cyberspace Administration of China", "domain": "OTHER", "threat": 0.9989, "attention": 0.7492, "novelty": 0.2222, "novelty_raw": 0.3333, "novelty_evidence": 0.6667, "burst_ratio": 1.5, "is_new": false, "recent_count": 2, "hist_count": 4, "first_seen": "2026-02-26T07:40:33+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}, {"title": "Minitrue: 718 Leaked Directives from Video Platform LeTV", "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"}]}, {"term": "Internet censorship", "domain": "INFORMATION", "threat": 0.8862, "attention": 0.8862, "novelty": 0.0, "novelty_raw": 0.0, "novelty_evidence": 0.875, "burst_ratio": 0.7, "is_new": false, "recent_count": 7, "hist_count": 30, "first_seen": "2026-02-10T02:38:33+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}, {"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines", "url": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/"}]}, {"term": "Great Firewall", "domain": "OTHER", "threat": 0.7482, "attention": 0.7482, "novelty": 0.0, "novelty_raw": 0.0, "novelty_evidence": 0.5, "burst_ratio": 1.0, "is_new": false, "recent_count": 1, "hist_count": 3, "first_seen": "2026-03-04T07:21:40+00:00", "samples": [{"title": "Translation: No Scaling the Great Firewall in the Library", "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"}]}, {"term": "drones", "domain": "OTHER", "threat": 0.709, "attention": 0.3545, "novelty": 0.6667, "novelty_raw": 1.0, "novelty_evidence": 0.6667, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-07-03T19:21:12+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}, {"title": "Censorship, Secrecy, and Speculation Continue After Pilot in Beijing CITIC Tower Collision Identified", "url": "https://chinadigitaltimes.net/2026/07/censorship-secrecy-and-speculation-continue-after-pilot-in-beijing-citic-tower-collision-identified/"}]}, {"term": "Henan", "domain": "OTHER", "threat": 0.6202, "attention": 0.3544, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-27T20:03:29+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "Li Zhi", "domain": "OTHER", "threat": 0.6202, "attention": 0.3544, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-27T20:03:29+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "Sometimes Forgetting Is as Terrible as the Disaster", "domain": "OTHER", "threat": 0.6202, "attention": 0.3544, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-27T20:03:29+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "Zhengzhou", "domain": "OTHER", "threat": 0.6202, "attention": 0.3544, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-27T20:03:29+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "accountability", "domain": "OTHER", "threat": 0.6202, "attention": 0.3544, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-27T20:03:29+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "subway", "domain": "OTHER", "threat": 0.6202, "attention": 0.3544, "novelty": 0.5, "novelty_raw": 1.0, "novelty_evidence": 0.5, "burst_ratio": null, "is_new": true, "recent_count": 1, "hist_count": 0, "first_seen": "2026-07-27T20:03:29+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "mourning", "domain": "OTHER", "threat": 0.5316, "attention": 0.3544, "novelty": 0.3333, "novelty_raw": 0.6667, "novelty_evidence": 0.5, "burst_ratio": 3.0, "is_new": false, "recent_count": 1, "hist_count": 1, "first_seen": "2026-04-03T02:47:04+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "social media censorship", "domain": "INFORMATION", "threat": 0.4935, "attention": 0.4935, "novelty": 0.0, "novelty_raw": 0.0, "novelty_evidence": 0.8889, "burst_ratio": 0.83, "is_new": false, "recent_count": 8, "hist_count": 29, "first_seen": "2026-02-05T02:35:00+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}, {"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines", "url": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/"}]}, {"term": "online censorship", "domain": "INFORMATION", "threat": 0.4925, "attention": 0.4925, "novelty": 0.0, "novelty_raw": 0.0, "novelty_evidence": 0.875, "burst_ratio": 0.66, "is_new": false, "recent_count": 7, "hist_count": 32, "first_seen": "2026-02-05T02:35:00+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}, {"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines", "url": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/"}]}, {"term": "State Council", "domain": "OTHER", "threat": 0.443, "attention": 0.3544, "novelty": 0.1667, "novelty_raw": 0.3333, "novelty_evidence": 0.5, "burst_ratio": 1.5, "is_new": false, "recent_count": 1, "hist_count": 2, "first_seen": "2026-04-25T04:34:50+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "Chengdu", "domain": "OTHER", "threat": 0.3544, "attention": 0.3544, "novelty": 0.0, "novelty_raw": 0.0, "novelty_evidence": 0.5, "burst_ratio": 1.0, "is_new": false, "recent_count": 1, "hist_count": 3, "first_seen": "2026-02-05T02:35:00+00:00", "samples": [{"title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On", "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"}]}, {"term": "reporting", "domain": "OTHER", "threat": 0.2746, "attention": 0.1373, "novelty": 0.6667, "novelty_raw": 0.8889, "novelty_evidence": 0.75, "burst_ratio": 9.0, "is_new": false, "recent_count": 3, "hist_count": 1, "first_seen": "2026-02-23T02:11:05+00:00", "samples": [{"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines", "url": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "dams", "domain": "OTHER", "threat": 0.2641, "attention": 0.1321, "novelty": 0.6667, "novelty_raw": 1.0, "novelty_evidence": 0.6667, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "death toll", "domain": "OTHER", "threat": 0.2641, "attention": 0.1321, "novelty": 0.6667, "novelty_raw": 1.0, "novelty_evidence": 0.6667, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "disaster relief", "domain": "OTHER", "threat": 0.2641, "attention": 0.1321, "novelty": 0.6667, "novelty_raw": 1.0, "novelty_evidence": 0.6667, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}, {"term": "infrastructure", "domain": "OTHER", "threat": 0.2641, "attention": 0.1321, "novelty": 0.6667, "novelty_raw": 1.0, "novelty_evidence": 0.6667, "burst_ratio": null, "is_new": true, "recent_count": 2, "hist_count": 0, "first_seen": "2026-07-13T18:06:48+00:00", "samples": [{"title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”", "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"}, {"title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News", "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"}]}], "source_feeds": {"cdt_root_p1": 200, "cdt_root_p2": 200, "cdt_root_p3": 200, "cdt_root_p4": 200, "cdt_root_p5": 200, "cdt_root_p6": 200}, "feed_health": {"endpoint": "https://chinadigitaltimes.net/feed/", "pages_ok": 6, "stopped_because": "history-window-covered", "oldest_item": "2026-01-25T02:28:46+00:00", "days_covered": 186.7, "history_window_days": 180.0, "history_window_covered": true, "observations": 90, "by_role": {"cdt_english": 65, "cdt_economy": 15, "cdt_minitrue": 1, "cdt_404": 9}, "roles_missing": [], "items_seen": 90, "duplicates_dropped": 0, "undated_dropped": 0, "no_terms_dropped": 0}, "wayback_observations_merged": 0};window.__DDTI_EMBED_AT__="2026-07-30T19:53Z";</script>
 <script>
@@ -364,7 +422,7 @@ function renderBoard(d){
     const stamp=r.is_new?`<span class="stamp"><span class="cn">新</span>NEW</span>`:"";
     const burst=r.burst_ratio==null?"new":num(r.burst_ratio,1)+"×";
     const leaks=(r.samples||[]).map(s=>`<div class="leak">${esc(s.title||"")}</div>`).join("");
-    return `<div class="row ${tcls}" style="animation-delay:${i*70}ms">
+    return `<div class="row ps-p2 ${tcls}" style="animation-delay:${i*70}ms">
       <div class="rank">${String(i+1).padStart(2,"0")}</div>
       <div class="row-top">
         <div class="term">${esc(r.term)}</div>${stamp}${domainChip(r.domain)}
@@ -378,7 +436,7 @@ function renderBoard(d){
         <span>burst <b class="jade">${esc(burst)}</b></span>
         <span>deletions <b>${intg(r.recent_count)}</b> <span style="color:var(--bone-faint)">/ ${intg(r.hist_count)} hist</span></span>
       </div>
-      ${leaks?`<div class="leaks">${leaks}</div>`:""}
+      ${leaks?`<div class="leaks ps-p1">${leaks}</div>`:""}
     </div>`;
   }).join("");
 }
@@ -430,5 +488,6 @@ async function boot(){
 boot();
 setInterval(()=>{ $("clock").textContent=new Date().toISOString().slice(11,19); },1000);
 </script>
+<script src="/assets/shell.js" defer></script>
 </body>
 </html>

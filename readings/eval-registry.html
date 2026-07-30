@@ -1,8 +1,8 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verifiable Eval Registry · Palimpsest</title>
 <meta name="description" content="Tamper-evident, pre-registered AI model evaluations. The questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised or cherry-picked. Any model, any suite. Evals you can prove were not gamed.">
 <link rel="canonical" href="https://palimpsest.info/readings/eval-registry.html">
@@ -25,6 +25,11 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
 <meta name="apple-mobile-web-app-title" content="Palimpsest">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 
 <script type="application/ld+json">
 {
@@ -54,248 +59,991 @@
 }
 </script>
 <style>
-  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#a78bfa}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
-  a{color:var(--cy);text-decoration:none}
-  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}
-  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
-  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
-  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
-  .wrap{max-width:980px;margin:0 auto;padding:clamp(18px,5vw,40px)}
-  .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--grn);border:1px solid rgba(55,200,139,.4);border-radius:20px;padding:3px 11px;margin-bottom:14px}
-  h1{font-size:clamp(21px,4.4vw,30px);margin:.1em 0 .15em;letter-spacing:-.01em}
-  .sub{color:var(--mut);font-size:13px;margin-bottom:24px;max-width:74ch}
-  .stat{display:flex;gap:26px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 24px;margin-bottom:18px}
-  .stat .n{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .stat .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
-  .ok{color:var(--grn)} .bad{color:var(--red)}
-  .how{background:linear-gradient(180deg,rgba(55,200,139,.06),rgba(55,200,139,.02));border:1px solid rgba(55,200,139,.26);border-radius:14px;padding:18px 22px;margin-bottom:18px}
-  .how h2{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--grn);margin:0 0 10px}
-  .how ol{margin:0;padding-left:20px;font-size:13px;color:var(--fg)}
-  .how li{margin:6px 0}
-  .how .why{font-size:12px;color:var(--mut);margin-top:12px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px}
-  .card h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
-  table{width:100%;border-collapse:collapse;font-size:12px}
-  th{text-align:left;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;padding:6px 8px;border-bottom:1px solid var(--line)}
-  td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
-  td.model{color:#fff}
-  td.rate{color:var(--amb);font-variant-numeric:tabular-nums;text-align:right}
-  td.hash{color:var(--dim);font-size:11px}
-  /* wide tables scroll inside their own box; the page itself never scrolls sideways */
-  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .tw table{min-width:560px}
-  .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:12.5px}
-  .kv .k{color:var(--mut)} .kv .v{color:var(--fg);word-break:break-all}
-  .cmd{margin-top:14px;background:#04050a;border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--cy);overflow-x:auto}
-  .foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.85}
-  .err{color:var(--amb);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
-  /* motion: data-ordered entrances via tikto-motion.js. Table rows fade only —
-     transforms on tr break table layout in some engines. */
-  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
-  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
-  tr.tkm-item{animation-name:tkm-fade}
-  @keyframes tkm-fade{from{opacity:0}}
-  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
+  /* Page-specific only. Nothing here redefines a --tk-* or --ps-* token or a
+     ps-* class; every rule is namespaced er-. */
+
+  /* ---- the claim, stated typographically before any number ---- */
+  .er-vs {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: clamp(18px, 3.4vw, 44px);
+    margin: 30px 0 34px; padding-top: 22px;
+    border-top: 1px solid var(--ps-edge-1);
+  }
+  .er-vs h2 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .18em;
+              text-transform: uppercase; margin: 0 0 9px; font-weight: 500; }
+  .er-vs--claimed h2 { color: var(--tk-text-4, #6f8098); }
+  .er-vs--proved h2 { color: var(--tk-live, #06d6e0); }
+  .er-vs p { margin: 0; font-size: 14px; line-height: 1.62; color: var(--tk-text-2, #94a3b8); }
+  .er-vs--proved p { color: var(--tk-text-1, #e2e8f0); }
+  @media (max-width: 700px) { .er-vs { grid-template-columns: 1fr; gap: 22px; } }
+
+  /* ---- plane 3: the reading, the thing you may cite ---- */
+  .er-read { padding: clamp(20px, 3.2vw, 34px); margin: 0 0 14px; }
+  .er-read__grid { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+                   gap: clamp(18px, 3.4vw, 42px); align-items: center; }
+  @media (max-width: 760px) { .er-read__grid { grid-template-columns: 1fr; gap: 20px; } }
+  .er-figure { display: flex; align-items: baseline; gap: 8px; }
+  .er-big { font-size: clamp(56px, 11vw, 108px); font-weight: 800; line-height: .86;
+            letter-spacing: -.045em; color: var(--tk-text-0, #fff); }
+  .er-unit { font-size: clamp(15px, 2vw, 19px); font-weight: 600; color: var(--tk-text-3, #7d8ca3); }
+  .er-read__say { font-size: clamp(16px, 2vw, 20px); line-height: 1.4; font-weight: 600;
+                  color: var(--tk-text-0, #fff); margin: 0 0 10px; text-wrap: pretty; }
+  .er-read__den { font-size: 13px; color: var(--tk-text-2, #94a3b8); margin: 0 0 14px;
+                  font-family: var(--tk-font-mono); }
+  .er-read__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+                   font-size: 11.5px; font-family: var(--tk-font-mono); color: var(--tk-text-3, #7d8ca3); }
+  .er-read__what { font-size: 13.5px; line-height: 1.65; color: var(--tk-text-2, #94a3b8);
+                   margin: 18px 0 0; max-width: var(--ps-measure); }
+
+  /* ---- chips: status is never colour alone, every chip carries its word ---- */
+  .er-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 4px 9px; border-radius: 6px;
+    border: 1px solid var(--tk-stale-line, rgba(100,116,139,.45));
+    background: var(--tk-stale-bg, rgba(100,116,139,.16));
+    color: var(--tk-stale, #8593a8); white-space: nowrap;
+  }
+  .er-chip--ok { border-color: var(--tk-ok-line); background: var(--tk-ok-bg); color: var(--tk-ok); }
+  .er-chip--warn { border-color: var(--tk-warning-line); background: var(--tk-warning-bg); color: var(--tk-warning); }
+  .er-chip--crit { border-color: var(--tk-critical-line); background: var(--tk-critical-bg); color: var(--tk-critical); }
+  .er-chip--live { border-color: rgba(6,214,224,.30); background: rgba(6,214,224,.12); color: var(--tk-live, #06d6e0); }
+  .er-stale { color: var(--tk-warning, #ffb020); }
+
+  /* ---- load / failure states. Never a plausible-looking zero. ---- */
+  .er-note { font-size: 12.5px; line-height: 1.6; color: var(--tk-text-3, #7d8ca3); margin: 0; }
+  .er-status {
+    margin: 0 0 22px; padding: 13px 16px; border-radius: var(--tk-radius-md, 11px);
+    border: 1px solid var(--tk-stale-line); background: var(--tk-stale-bg);
+    color: var(--tk-text-2, #94a3b8); font-size: 13px; line-height: 1.6;
+  }
+  .er-status--err { border-color: var(--tk-critical-line); background: var(--tk-critical-bg); color: var(--tk-critical); }
+  .er-status a { color: inherit; }
+  /* The registry status line disappears once the registry renders. The drift and
+     anchor sections each own their own status line and clear it themselves, so
+     this rule is deliberately scoped to one id rather than to the class. */
+  [data-er="ok"] #er-status { display: none; }
+  [data-er="pending"] .er-live, [data-er="error"] .er-live { display: none; }
+
+  /* ---- tiles ---- */
+  .er-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin: 0 0 18px; }
+  .er-tile { padding: 15px 16px; }
+  .er-tile b { display: block; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .14em;
+               text-transform: uppercase; color: var(--tk-text-4, #6f8098); font-weight: 500; margin-bottom: 7px; }
+  .er-tile .er-v { display: block; font-size: 27px; font-weight: 700; line-height: 1;
+                   color: var(--tk-text-0, #fff); letter-spacing: -.02em; }
+  /* A tile whose value is a date or a phrase rather than a count. Same tile,
+     smaller type, so a timestamp does not push the grid sideways. */
+  .er-tile .er-v--text { font-size: 17px; line-height: 1.25; letter-spacing: 0; }
+  .er-tile small { display: block; margin-top: 7px; font-size: 11.5px; line-height: 1.5; color: var(--tk-text-3, #7d8ca3); }
+
+  /* ---- the four steps ---- */
+  .er-step { padding: 16px 18px; margin-bottom: 10px; display: grid;
+             grid-template-columns: 30px minmax(0, 1fr); gap: 4px 14px; align-items: start; }
+  .er-step__n { font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-live, #06d6e0);
+                grid-row: span 2; padding-top: 2px; }
+  .er-step h3 { margin: 0 0 5px; font-size: 15px; font-weight: 600; color: var(--tk-text-0, #fff); }
+  .er-step p { margin: 0; font-size: 13.5px; line-height: 1.62; color: var(--tk-text-2, #94a3b8); }
+  .er-step a { color: var(--tk-live, #06d6e0); }
+
+  /* ---- tables ---- */
+  .er-tbox { padding: 16px 18px; margin: 0 0 12px; }
+  table.er-t { width: 100%; border-collapse: collapse; font-size: 12.5px;
+               font-family: var(--tk-font-mono); min-width: 720px; }
+  table.er-t th { text-align: left; font-weight: 500; font-size: 9.5px; letter-spacing: .13em;
+                  text-transform: uppercase; color: var(--tk-text-4, #6f8098);
+                  padding: 0 12px 8px 0; border-bottom: 1px solid var(--ps-edge-1); white-space: nowrap; }
+  table.er-t td { padding: 8px 12px 8px 0; border-bottom: 1px solid rgba(125,140,163,.10);
+                  color: var(--tk-text-2, #94a3b8); vertical-align: top; }
+  table.er-t tr:last-child td { border-bottom: 0; }
+  table.er-t td.er-c1 { color: var(--tk-text-1, #e2e8f0); }
+  table.er-t td.er-n { text-align: right; white-space: nowrap; }
+  table.er-t td.er-rate { text-align: right; white-space: nowrap; color: var(--tk-text-0, #fff); }
+  table.er-t td.er-hash { color: var(--tk-text-4, #6f8098); overflow-wrap: anywhere; }
+  table.er-t td.er-wrap { white-space: normal; min-width: 180px; }
+
+  /* ---- definition lists (chain evidence, anchors) ---- */
+  .er-defs { margin: 0; padding: 0; }
+  .er-defs > div { padding: 11px 0; border-top: 1px solid var(--ps-edge-1); display: grid;
+                   grid-template-columns: minmax(0, 176px) minmax(0, 1fr); gap: 6px 18px; align-items: start; }
+  .er-defs > div:first-child { border-top: 0; }
+  .er-defs dt { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .1em;
+                text-transform: uppercase; color: var(--tk-text-1, #e2e8f0); }
+  .er-defs dd { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--tk-text-2, #94a3b8);
+                overflow-wrap: anywhere; }
+  .er-defs dd.er-mono { font-family: var(--tk-font-mono); font-size: 12px; }
+  .er-defs dd a { color: var(--tk-live, #06d6e0); }
+  @media (max-width: 620px) { .er-defs > div { grid-template-columns: 1fr; } }
+
+  /* ---- the command you run to check us ---- */
+  .er-cmd {
+    margin: 16px 0 0; padding: 12px 14px; border-radius: var(--tk-radius-md, 11px);
+    background: rgba(0,0,0,.34); border: 1px solid var(--ps-edge-1);
+    font-family: var(--tk-font-mono); font-size: 12px; line-height: 1.8;
+    color: var(--tk-live, #06d6e0); overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+
+  .er-prose p { font-size: 15px; line-height: 1.68; color: var(--tk-text-2, #94a3b8);
+                max-width: var(--ps-measure); margin: 0 0 15px; text-wrap: pretty; }
+  .er-prose p:last-child { margin-bottom: 0; }
+  .er-prose strong { color: var(--tk-text-0, #fff); font-weight: 600; }
+  .er-prose a { color: var(--tk-live, #06d6e0); }
+
+  .er-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
+  .er-hero-meta { font-size: 13px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3);
+                  max-width: var(--ps-measure); margin: 18px 0 0; }
+  .er-hero-meta a { color: var(--tk-live, #06d6e0); }
+  .er-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0;
+              font-family: var(--tk-font-mono); font-size: 12px; }
+  .er-links a { color: var(--tk-live, #06d6e0); }
+  .er-foot { margin: 46px 0 60px; padding-top: 20px; border-top: 1px solid var(--ps-edge-1); }
 </style>
 </head>
-<body>
-  <nav class="nav">
-    <span class="b">PALIMPSEST</span>
-    <a href="/">Home</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/eval-registry.html" class="here">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
-    <a href="/for-researchers.html">Data</a>
-  </nav>
-  <div class="wrap">
-    <span class="tag">New · Verifiable Eval Registry</span>
-    <h1>AI evaluations you can prove were not gamed</h1>
-    <div class="sub">AI systems increasingly decide what people can and cannot learn, and the audits
-      that check them can be re-run, cherry-picked, or revised until the number looks right. This
-      registry removes that move. The questions are frozen before any model is queried, and every
-      result seals into a hash chain the moment it is published. After that, nobody can revise it.
-      Not a lab, not a government, not us. Chinese state-aligned models and Western frontier models
-      are held here to the same machinery, each on its own frozen suite, watched over time for what
-      they quietly stop answering. Recompute the chain yourself.</div>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1" data-within="">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html" aria-current="page"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
 
-    <div id="app"><div class="err">Loading the registry…</div></div>
+<main id="main" class="ps-wrap" data-er="pending">
 
-    <div class="how">
-      <h2>How it works</h2>
-      <ol>
-        <li><b>Pre-register.</b> The probe set is hashed and sealed into an append only chain before the model is ever asked.</li>
-        <li><b>Run.</b> Each result records the model, a hash of its full responses, and the metrics, and it must reference a probe set that was frozen earlier.</li>
-        <li><b>Verify.</b> Anyone recomputes the chain. A result whose questions were not frozen first, or any value altered after sealing, fails.</li>
-        <li><b>Anchor.</b> Each new root is deposited outside our infrastructure: snapshotted by the Internet Archive and stamped into Bitcoin via OpenTimestamps. An independent witness on separate infrastructure re-verifies the served chain and alerts if any previously seen history changes. Rewriting the record would mean defeating them too, not just us. <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">Full threat model</a>.</li>
-      </ol>
-      <div class="why">Why it matters: as models mediate more of what we can know, third parties need to audit them and prove the audit was not rewritten. A shared, independently verifiable record is the missing substrate. Palimpsest's own model-erasure audit is simply the first thing anchored here; the registry is model and topic agnostic.</div>
+  <!-- ============================ HERO ============================ -->
+  <header class="ps-reveal" style="padding:clamp(38px,7vw,74px) 0 0">
+    <p class="ps-kicker"><span class="ps-dot ps-dot--live" aria-hidden="true" style="display:inline-block;margin-right:7px"></span>Verifiable Eval Registry</p>
+    <h1 class="ps-h1">AI evaluations you can prove were not gamed</h1>
+    <p class="ps-lede">
+      AI systems increasingly decide what a person can and cannot learn, and the audits that check
+      them can be re-run, quietly cherry-picked, or revised until the number reads well. This
+      registry removes that move. Every probe set is hashed and sealed into an append-only chain
+      <strong style="color:var(--tk-text-0,#fff);font-weight:600">before any model is asked</strong>,
+      every result seals the moment it publishes, and the chain roots are deposited with parties this
+      project does not control. After that nobody can revise a result. Not a lab, not a government,
+      not us.
+    </p>
+
+    <div class="er-vs">
+      <section class="er-vs--claimed">
+        <h2>An eval you are asked to trust</h2>
+        <p>
+          A number in a report. The questions may have been chosen after the answers were seen, a
+          weak run may have been dropped, a rate may have been recomputed on a friendlier subset.
+          None of that is visible in the artifact, so what you are really assessing is the reputation
+          of whoever published it.
+        </p>
+      </section>
+      <section class="er-vs--proved">
+        <h2>An eval you can recompute</h2>
+        <p>
+          The probe set was hashed and frozen before the model was queried, the full responses are
+          hashed, and each entry chains to the one before it. Clone the repository and run the
+          verifier with the standard library alone. If one value moved, or a run cites a probe set
+          that was not frozen first, verification fails on your machine rather than on ours.
+        </p>
+      </section>
     </div>
 
-    <div class="foot">
-      Grounded in the trusted-public-archive and tamper-evident-logging literature
-      (ARCHANGEL, arXiv:1804.08342; arXiv:2509.03821) and the model-censorship measurement work
-      (arXiv:2505.17441, arXiv:2506.12349). The registry is stdlib only, key-less, and offline
-      verifiable. &nbsp;·&nbsp; <a href="/readings/eval-registry-latest.json">raw JSON</a>
-      &nbsp;·&nbsp; <a href="/readings/eval-registry.jsonl">the chain</a>
+    <div class="er-actions">
+      <a class="ps-btn" href="/readings/eval-registry-latest.json">Raw reading</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/eval-registry.jsonl">The chain</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/verify_eval_registry.py">Verifier source</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">Threat model</a>
+    </div>
+
+    <p class="er-hero-meta">
+      Palimpsest is two instruments run as one public good: this registry, and a
+      <a href="/dashboards/ddti_observatory.html">China censorship observatory</a> whose readings are
+      sealed by the same machinery. MIT licensed, developed in the open, never a commercial product,
+      and never monetising the people or topics it observes.
+      <a href="/fund.html">What it costs to run</a>.
+    </p>
+  </header>
+
+  <!-- ============================ READING (plane 3) ============================ -->
+  <h2 class="ps-section-head" id="reading">The reading</h2>
+
+  <p class="er-status" id="er-status" role="status">
+    Figures on this page are read from
+    <a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a> when the page loads.
+    Nothing here is typed in by hand. If the numbers below do not appear, the fetch failed or
+    JavaScript is off, and the raw file and the chain are served directly.
+  </p>
+
+  <section class="ps-p3 er-read er-live ps-reveal" aria-labelledby="reading">
+    <div class="er-read__grid">
+      <div>
+        <p class="ps-label" style="margin-bottom:10px">Model runs sealed</p>
+        <div class="er-figure" id="er-figure">
+          <span class="er-big ps-num" id="er-runs-n"></span><span class="er-unit" id="er-runs-unit">runs</span>
+        </div>
+      </div>
+      <div>
+        <p class="er-read__say" id="er-say"></p>
+        <p class="er-read__den ps-num" id="er-denominator"></p>
+        <div class="er-read__meta">
+          <span id="er-chain-chip"></span>
+          <span id="er-freshness"></span>
+        </div>
+      </div>
+    </div>
+    <p class="er-read__what" id="er-what"></p>
+  </section>
+
+  <div class="er-tiles er-live ps-stagger" id="er-tiles"></div>
+
+  <!-- ============================ HOW ============================ -->
+  <h2 class="ps-section-head" id="how">How a result becomes unrevisable</h2>
+
+  <div class="ps-band">
+    <div class="ps-pin">
+      <p class="ps-label">The machinery</p>
+      <h3 class="ps-h2" style="font-size:clamp(19px,2.4vw,25px)">Freezing the question is the whole trick</h3>
+      <p class="er-note">
+        An eval is gameable at exactly one joint: the gap between choosing the questions and
+        publishing the answers. Close that gap with a hash committed in advance and the remaining
+        attacks all require rewriting history in public, in front of witnesses who are not us.
+      </p>
+    </div>
+
+    <div>
+      <section class="ps-p2 er-step ps-reveal">
+        <span class="er-step__n" aria-hidden="true">01</span>
+        <div>
+          <h3>Pre-register</h3>
+          <p>The probe set is hashed and sealed into an append-only chain before the model is ever asked.</p>
+        </div>
+      </section>
+      <section class="ps-p2 er-step ps-reveal">
+        <span class="er-step__n" aria-hidden="true">02</span>
+        <div>
+          <h3>Run</h3>
+          <p>Each result records the model, a hash of its full responses, and the metrics, and it must reference a probe set that was frozen earlier.</p>
+        </div>
+      </section>
+      <section class="ps-p2 er-step ps-reveal">
+        <span class="er-step__n" aria-hidden="true">03</span>
+        <div>
+          <h3>Verify</h3>
+          <p>Anyone recomputes the chain. A result whose questions were not frozen first, or any value altered after sealing, fails.</p>
+        </div>
+      </section>
+      <section class="ps-p2 er-step ps-reveal">
+        <span class="er-step__n" aria-hidden="true">04</span>
+        <div>
+          <h3>Anchor</h3>
+          <p>
+            Each new root is deposited outside our infrastructure: snapshotted by the Internet
+            Archive and stamped into Bitcoin via OpenTimestamps. An independent witness on separate
+            infrastructure re-verifies the served chain and alerts if any previously seen history
+            changes. Rewriting the record would mean defeating them too, not only us.
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">Full threat model</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="ps-p2 ps-reveal er-prose" style="padding:clamp(18px,2.6vw,24px);margin-top:14px">
+        <p>
+          As models mediate more of what people can know, third parties need to audit them and prove
+          the audit was not rewritten afterwards. A shared, independently verifiable record is the
+          missing substrate. Palimpsest's own model-erasure audit is simply the first thing anchored
+          here. The registry itself is model agnostic and topic agnostic: any suite, any model, same
+          machinery.
+        </p>
+      </section>
     </div>
   </div>
 
-<script src="/dashboards/assets/tikto-motion.js"></script>
+  <!-- ============================ RUNS (plane 2) ============================ -->
+  <h2 class="ps-section-head" id="runs">Recent runs</h2>
+
+  <p class="er-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+    Two frozen suites with no model in common. Chinese state-aligned models and Western frontier
+    models are held to the same machinery, each on its own suite, and watched over time for what they
+    quietly stop answering.
+  </p>
+
+  <div class="er-live" id="er-runs-box"></div>
+
+  <p class="er-note" style="max-width:var(--ps-measure);margin-top:14px">
+    Every rate carries its own denominator. <b style="color:var(--tk-text-1,#e2e8f0)">n scored</b> is
+    how many probes in that run returned a usable response and therefore produced the percentage
+    beside it, and <b style="color:var(--tk-text-1,#e2e8f0)">abstained</b> is how many were dropped
+    because the response was unusable. Runs of the same suite can differ in n, so the rates are not
+    directly comparable without reading both columns.
+  </p>
+
+  <!-- ============================ DRIFT ============================ -->
+  <!-- The nav deep-links to #drift, so this section deliberately does not carry
+       .ps-defer: a content-visibility placeholder can land a fragment jump at
+       the wrong scroll offset, and a nav link that misses its target is worse
+       than a few milliseconds of layout. -->
+  <section id="drift">
+    <h2 class="ps-section-head" id="drift-h">Frontier refusal drift</h2>
+
+    <p class="er-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+      One frozen set of benign, legitimate questions, put to each frontier model across time. A model
+      that used to answer a question and now refuses it has erased something, and the erasure is
+      normally undisclosed. Every run is sealed into the registry above, so the change is on the
+      record and cannot be un-recorded.
+    </p>
+
+    <p class="er-status" id="er-drift-status" role="status">
+      Read from <a href="/readings/refusal-drift-latest.json">refusal-drift-latest.json</a> at load.
+    </p>
+
+    <div id="er-drift-box"></div>
+
+    <p class="er-note" style="max-width:var(--ps-measure);margin-top:14px">
+      A model's rate is computed over the probes it actually returned a usable response to, which is
+      the <b style="color:var(--tk-text-1,#e2e8f0)">n scored</b> column, not over the whole frozen
+      set. The models do not share one denominator, so read each rate against its own n.
+      <b style="color:var(--tk-text-1,#e2e8f0)">Abstained</b> is the remainder, dropped rather than
+      counted either way. Drift shows once a model has a second run to compare against.
+    </p>
+  </section>
+
+  <!-- ============================ CHAIN EVIDENCE (plane 1) ============================ -->
+  <h2 class="ps-section-head" id="integrity">The chain, and how to attack it</h2>
+
+  <div class="ps-band">
+    <div class="ps-pin">
+      <p class="ps-label">Evidence</p>
+      <h3 class="ps-h2" style="font-size:clamp(19px,2.4vw,25px)">These are the values you recompute</h3>
+      <p class="er-note">
+        The head hash covers every entry before it, and the merkle root is a single fingerprint of
+        the whole registry. Take them from this page, take the chain file, and check that they agree
+        without asking us anything. The verifier is standard library only: no install, no key, no
+        account.
+      </p>
+    </div>
+
+    <div>
+      <section class="ps-p1 er-live ps-reveal" style="padding:18px 20px;margin-bottom:12px">
+        <p class="ps-label" style="margin-bottom:4px">Chain state, as served</p>
+        <dl class="er-defs" id="er-chain"></dl>
+        <div class="er-cmd">$ git clone https://github.com/beepboop2025/palimpsest &amp;&amp; cd palimpsest<br>$ python3 scripts/verify_eval_registry.py</div>
+        <p class="er-note" style="margin-top:12px">
+          Recomputes the chain and checks that every run references a probe set frozen before it.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================ ANCHORS (plane 1) ============================ -->
+  <!-- Deep-linked from the nav as well; same reason, no .ps-defer here. -->
+  <section id="anchors">
+    <h2 class="ps-section-head" id="anchors-h">External anchors</h2>
+
+    <p class="er-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+      A hash chain proves internal consistency. It does not by itself stop the party that holds the
+      chain from rewriting the whole thing and reserving every hash. What stops that is depositing
+      the root with someone else. Each new root is snapshotted by the Internet Archive and stamped
+      into Bitcoin through OpenTimestamps, so a rewrite would have to defeat those records too.
+    </p>
+
+    <p class="er-status" id="er-anchors-status" role="status">
+      Read from <a href="/readings/anchors-latest.json">anchors-latest.json</a> at load.
+    </p>
+
+    <section class="ps-p1 ps-reveal" style="padding:18px 20px" aria-labelledby="anchors-h">
+      <dl class="er-defs" id="er-anchors"></dl>
+    </section>
+  </section>
+
+  <!-- ============================ WHAT THIS IS ============================ -->
+  <section class="er-foot ps-reveal">
+    <p class="ps-label">Palimpsest</p>
+    <p class="er-note" style="max-width:var(--ps-measure);font-size:14px">
+      An open source observatory of information control, run as a public good, and the verifiable
+      eval registry on this page. It watches the censor and never the censored: public reads only, no
+      person inside is ever asked to act, and no state-aligned model is ever the analyst. Every
+      finding ships its raw evidence. Grounded in the trusted-public-archive and tamper-evident
+      logging literature (ARCHANGEL, arXiv:1804.08342; arXiv:2509.03821) and the model-censorship
+      measurement work (arXiv:2505.17441, arXiv:2506.12349).
+    </p>
+    <div class="er-links">
+      <a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a>
+      <a href="/readings/eval-registry.jsonl">eval-registry.jsonl</a>
+      <a href="/readings/refusal-drift-latest.json">refusal-drift-latest.json</a>
+      <a href="/readings/anchors-latest.json">anchors-latest.json</a>
+    </div>
+    <div class="er-links" style="margin-top:10px">
+      <a href="/readings/">All readings</a>
+      <a href="/readings/generative-firewall-index.html">Generative Firewall Index</a>
+      <a href="/for-researchers.html">For researchers</a>
+      <a href="/fund.html">Fund the work</a>
+      <a href="https://github.com/beepboop2025/palimpsest">Source, MIT licensed</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
 <script>
-const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
-  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const num = (v, d=1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : "–";
-// A count is printed only when it was actually measured. Never zero-fill.
-const cnt = v => (typeof v === "number" && isFinite(v)) ? String(v) : "–";
-// Abstentions: published when recorded, otherwise derived from the frozen set
-// size minus the probes this model actually scored. If neither is available the
-// cell abstains rather than implying zero.
-function abstained(o, frozen){
-  if (typeof o.n_abstained === "number" && isFinite(o.n_abstained)) return String(o.n_abstained);
-  if (typeof frozen === "number" && isFinite(frozen) &&
-      typeof o.n_probes === "number" && isFinite(o.n_probes) && frozen >= o.n_probes)
-    return String(frozen - o.n_probes);
-  return "–";
-}
+/* ============================================================================
+   Verifiable Eval Registry — renders three feeds:
+     /readings/eval-registry-latest.json   the chain state and recent runs
+     /readings/refusal-drift-latest.json   the frontier panel, watched over time
+     /readings/anchors-latest.json         where the roots were deposited
 
-function render(d){
-  const verified = d.verified === true;
-  const runs = Array.isArray(d.recent_runs) ? d.recent_runs : [];
-  const rows = runs.map(r => {
-    const m = r.metrics || {};
-    return `<tr>
-      <td class="model">${esc(r.model)}</td>
-      <td>${esc(r.suite)}</td>
-      <td class="rate">${num(m.suppression_rate_pct)}%</td>
-      <td class="rate">${cnt(m.n_probes)}</td>
-      <td class="rate">${abstained(m)}</td>
-      <td class="hash">${esc(r.probe_set_hash)}…</td>
-      <td class="hash">${esc(r.responses_hash)}…</td>
-    </tr>`;
-  }).join("");
+   Nothing on this page is a literal. Every figure comes out of a feed at load
+   time, and any field a feed does not carry renders as an explicit gap rather
+   than as a zero. A missing count is printed as an abstention, never as 0,
+   because a fabricated denominator on this page would undo the only thing the
+   page is for.
+   ========================================================================== */
+(function () {
+  "use strict";
 
-  document.getElementById("app").innerHTML = `
-    <div class="stat">
-      <div><div class="n">${esc(d.attestations ?? "–")}</div><div class="l">attestations</div></div>
-      <div><div class="n">${esc(d.preregistrations ?? "–")}</div><div class="l">probe sets frozen</div></div>
-      <div><div class="n">${esc(d.runs ?? "–")}</div><div class="l">model runs</div></div>
-      <div><div class="n ${verified?"ok":"bad"}">${verified?"✓":"✗"}</div><div class="l">${verified?"chain intact":"chain broken"}</div></div>
-    </div>
+  var REGISTRY = "/readings/eval-registry-latest.json";
+  var DRIFT = "/readings/refusal-drift-latest.json";
+  var ANCHORS = "/readings/anchors-latest.json";
+  var CADENCE_H = 6;               /* the sealing workflow runs roughly 4x a day */
+  var STALE_H = CADENCE_H * 2;     /* past 2x cadence, freshness is a finding */
 
-    <div class="card">
-      <h2>Recent runs</h2>
-      ${rows ? `<div class="tw"><table>
-        <tr><th>model</th><th>suite</th><th>suppression</th><th>n scored</th><th>abstained</th><th>probe set</th><th>responses</th></tr>
-        ${rows}</table></div>
-        <div style="color:var(--dim);font-size:11.5px;margin-top:10px">Every rate carries its own
-        denominator: <b>n scored</b> is how many probes in that run returned a usable response and
-        therefore produced the percentage beside it, and <b>abstained</b> is how many were dropped
-        because the response was unusable. Runs of the same suite can differ in n, so the rates are
-        not directly comparable without reading both columns.</div>`
-        : `<div style="color:var(--dim);font-size:12px">no runs recorded yet</div>`}
-    </div>
+  var root = document.querySelector("main[data-er]");
+  var statusEl = document.getElementById("er-status");
+  /* The merkle root the registry feed served, kept so the anchor panel can say
+     whether the externally deposited root is still the root served here. */
+  var servedRoot = null;
 
-    <div id="drift"></div>
-
-    <div class="card">
-      <h2>Integrity</h2>
-      <div class="kv">
-        <div class="k">status</div><div class="v ${verified?"ok":"bad"}">${verified?"INTACT — chain verifies and every run was pre-registered first":"BROKEN"}</div>
-        <div class="k">models audited</div><div class="v">${esc((d.models||[]).join(", ") || "–")}</div>
-        <div class="k">first sealed</div><div class="v">${esc((d.first_ts||"").slice(0,16).replace("T"," ") || "–")}</div>
-        <div class="k">merkle root</div><div class="v">${esc(d.merkle_root || "–")}</div>
-        <div class="k">head hash</div><div class="v">${esc(d.head_hash || "–")}</div>
-        <div class="k">external anchors</div><div class="v" id="anchors">checking…</div>
-      </div>
-      <div class="cmd">$ git clone https://github.com/beepboop2025/palimpsest &amp;&amp; cd palimpsest<br>$ python3 scripts/verify_eval_registry.py</div>
-      <div style="color:var(--dim);font-size:11.5px;margin-top:8px">Recomputes the chain and checks
-      that every run references a probe set frozen before it. Standard library only — no install, no
-      key, no account.</div>
-    </div>`;
-  if (window.TiktoMotion) {
-    document.querySelectorAll(".stat .n").forEach((n, i) => {
-      const v = Number(n.textContent);
-      if (Number.isFinite(v)) TiktoMotion.countUp(n, v, { decimals: 0, dur: 800 + i * 100 });
-    });
-    document.querySelectorAll(".card table tr").forEach((r, i) => TiktoMotion.stagger(r, i, 40));
+  /* ---- tiny DOM helpers; all text goes in as text, never as markup ---- */
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = String(text);
+    return n;
   }
-  renderAnchors();
-}
+  function put(id, text) {
+    var n = document.getElementById(id);
+    if (n) n.textContent = text == null ? "" : String(text);
+    return n;
+  }
+  function clear(n) { while (n && n.firstChild) n.removeChild(n.firstChild); return n; }
+  /* Nodes built after the shell has initialised do not get its stagger index,
+     so set it here rather than re-running init() and double-binding the nav. */
+  function staggered(node, i) {
+    node.classList.add("ps-reveal");
+    node.style.setProperty("--ps-i", Math.min(i, 12));
+    return node;
+  }
 
-// External anchors: the roots are deposited with parties we do not control
-// (Internet Archive snapshots + OpenTimestamps/Bitcoin), so rewriting our own
-// history would require defeating them too. See docs/INTEGRITY.md.
-function renderAnchors(){
-  const el = () => document.getElementById("anchors");
-  fetch("/readings/anchors-latest.json", {cache:"no-store"})
-    .then(r => r.ok ? r.json() : null)
-    .then(a => {
-      if(!el()) return;
-      if(!a){ el().textContent = "not yet anchored"; return; }
-      const bits = [];
-      if(a.wayback_ok) bits.push(`<a href="${esc((a.wayback_snapshots||[])[0]||"#")}">Internet Archive</a> (${esc(a.wayback_ok)} snapshots)`);
-      if(a.ots) bits.push(`<a href="/${esc(a.ots)}">Bitcoin via OpenTimestamps</a>`);
-      el().innerHTML = bits.length
-        ? `${bits.join(" &nbsp;·&nbsp; ")} &nbsp;·&nbsp; ${esc((a.ts||"").slice(0,16).replace("T"," "))} UTC`
-        : `last attempt ${esc((a.ts||"").slice(0,10))}: ${esc(a.ots_status || "no anchor landed")}`;
-    })
-    .catch(() => { if(el()) el().textContent = "not yet anchored"; });
-}
+  var Shell = window.PalimpsestShell || null;
 
-fetch("/readings/eval-registry-latest.json", {cache:"no-store"})
-  .then(r => { if(!r.ok) throw new Error("http "+r.status); return r.json(); })
-  .then(render)
-  .catch(e => {
-    document.getElementById("app").innerHTML =
-      `<div class="err">Registry unavailable right now (${esc(e.message)}). The
-       <a href="/readings/eval-registry-latest.json">raw JSON</a> and
-       <a href="/readings/eval-registry.jsonl">chain</a> are served directly.</div>`;
-  });
+  function ago(iso) {
+    if (Shell && Shell.ago) return Shell.ago(iso);
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return "unknown";
+    var s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 90) return "just now";
+    if (s < 5400) return Math.round(s / 60) + " min ago";
+    if (s < 172800) return Math.round(s / 3600) + " h ago";
+    return Math.round(s / 86400) + " d ago";
+  }
+  function load(url, ok, bad) {
+    if (Shell && Shell.loadReading) return Shell.loadReading(url, ok, bad);
+    return fetch(url, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(ok).catch(bad);
+  }
 
-// Frontier refusal-drift card — a cross-lab panel, watched over time
-function driftLine(m){
-  const d = m.drift_vs_prior;
-  if(d == null) return "baseline";
-  const nr = d.new_refusals || [];
-  return nr.length ? `${nr.length} new refusal(s): ${nr.map(esc).join(", ")}` : "no change";
-}
-function renderDrift(d){
-  const models = Array.isArray(d.models) ? d.models
-    : (d.model ? [{model:d.model, suppression_rate_pct:d.suppression_rate_pct,
-                   refused_now:d.refused_now, drift_vs_prior:d.drift_vs_prior}] : []);
-  if(!models.length) return;
-  const frozen = d.n_probes;
-  const rows = models.map(m => {
-    const refused = Array.isArray(m.refused_now) ? m.refused_now : [];
-    return `<tr>
-      <td class="model">${esc(m.model)}</td>
-      <td class="rate">${num(m.suppression_rate_pct)}%</td>
-      <td class="rate">${cnt(m.n_probes)}</td>
-      <td class="rate">${abstained(m, frozen)}</td>
-      <td>${refused.length ? refused.map(esc).join(", ") : "&ndash;"}</td>
-      <td style="color:var(--dim)">${driftLine(m)}</td>
-    </tr>`;
-  }).join("");
-  document.getElementById("drift").innerHTML = `
-    <div class="card">
-      <h2>Frontier refusal drift · undisclosed behavioral change (${esc(models.length)} models)</h2>
-      <div class="tw"><table>
-        <tr><th>model</th><th>refuses</th><th>n scored</th><th>abstained</th><th>refused probes</th><th>drift vs last run</th></tr>
-        ${rows}
-      </table></div>
-      <div style="color:var(--dim);font-size:11.5px;margin-top:10px">One frozen set of benign, legitimate questions${(typeof frozen === "number" && isFinite(frozen)) ? ` (${esc(frozen)} probes)` : ""}, put to each frontier model across time. A model's rate is computed over the probes it actually returned a usable response to, which is the <b>n scored</b> column, not over the whole set — the models do not all share one denominator, so read each rate against its own n. <b>Abstained</b> is the remainder, dropped rather than counted either way. New refusals (answered then refused) are erasure events. Every run is sealed into the registry above, so a model that quietly stops answering a question is caught and cannot be un-recorded. Drift shows once a model has a second run to compare.</div>
-    </div>`;
-  if (window.TiktoMotion)
-    document.querySelectorAll("#drift table tr").forEach((r, i) => TiktoMotion.stagger(r, i, 40));
-}
-fetch("/readings/refusal-drift-latest.json", {cache:"no-store"})
-  .then(r => r.ok ? r.json() : null)
-  .then(d => { if(d) renderDrift(d); })
-  .catch(()=>{});
+  function chip(text, tone) {
+    return el("span", "er-chip" + (tone ? " er-chip--" + tone : ""), text);
+  }
+
+  /* ---- formatting. A value that is not a finite number abstains. ---- */
+  function num(v, d) {
+    return (typeof v === "number" && isFinite(v)) ? v.toFixed(d == null ? 1 : d) : null;
+  }
+  function cnt(v) { return (typeof v === "number" && isFinite(v)) ? String(v) : null; }
+  function stamp(iso) {
+    if (!iso) return null;
+    var s = String(iso).slice(0, 16).replace("T", " ");
+    return s ? s + " UTC" : null;
+  }
+  /* Abstentions: published when recorded, otherwise derived from the frozen set
+     size minus the probes this model actually scored. If neither is available
+     the cell abstains rather than implying zero. */
+  function abstained(m, frozen) {
+    if (typeof m.n_abstained === "number" && isFinite(m.n_abstained)) return String(m.n_abstained);
+    if (typeof frozen === "number" && isFinite(frozen) &&
+        typeof m.n_probes === "number" && isFinite(m.n_probes) && frozen >= m.n_probes) {
+      return String(frozen - m.n_probes);
+    }
+    return null;
+  }
+  var GAP = "not reported";
+
+  function td(row, cls, text) {
+    row.appendChild(el("td", cls, text == null ? GAP : text));
+  }
+
+  /* ------------------------------------------------------- registry failure */
+  function fail(why) {
+    root.setAttribute("data-er", "error");
+    clear(statusEl);
+    statusEl.className = "er-status er-status--err";
+    statusEl.appendChild(el("strong", null, "This reading did not load. "));
+    statusEl.appendChild(document.createTextNode(
+      why + ". No figure is shown here rather than a placeholder that might be mistaken for a "
+          + "measurement. The published files are "));
+    var a = el("a", null, "eval-registry-latest.json");
+    a.href = REGISTRY;
+    statusEl.appendChild(a);
+    statusEl.appendChild(document.createTextNode(" and the chain, "));
+    var b = el("a", null, "eval-registry.jsonl");
+    b.href = "/readings/eval-registry.jsonl";
+    statusEl.appendChild(b);
+    statusEl.appendChild(document.createTextNode("."));
+  }
+
+  /* ------------------------------------------------------------- registry -- */
+  function renderRegistry(d) {
+    if (!d || typeof d !== "object") return fail("the feed did not parse as an object");
+
+    var verified = d.verified === true;
+    var runs = Array.isArray(d.recent_runs) ? d.recent_runs : [];
+    var models = Array.isArray(d.models) ? d.models : [];
+    var problems = Array.isArray(d.problems) ? d.problems : [];
+
+    root.setAttribute("data-er", "ok");
+
+    /* ---- headline: how many runs are sealed, and whether the chain holds ---- */
+    var runsEl = document.getElementById("er-runs-n");
+    var unitEl = document.getElementById("er-runs-unit");
+    var figEl = document.getElementById("er-figure");
+    if (typeof d.runs === "number" && isFinite(d.runs)) {
+      if (Shell && Shell.countUp) Shell.countUp(runsEl, d.runs, { decimals: 0 });
+      else runsEl.textContent = String(d.runs);
+      unitEl.textContent = d.runs === 1 ? "run" : "runs";
+    } else {
+      clear(figEl);
+      figEl.appendChild(chip("run count not published", "warn"));
+      figEl.style.display = "block";
+    }
+
+    put("er-say", verified
+      ? "The chain verifies, and every run in it references a probe set that was frozen before the model was queried."
+      : "The chain does not verify. Until it does, no number on this page should be cited. The problems are listed below.");
+
+    var den = [];
+    if (cnt(d.attestations)) den.push(d.attestations + " sealed entries in total");
+    if (cnt(d.preregistrations)) den.push(d.preregistrations + " probe sets frozen");
+    if (models.length) den.push(models.length + " models");
+    put("er-denominator", den.join("  ·  "));
+
+    var chipSlot = clear(document.getElementById("er-chain-chip"));
+    chipSlot.appendChild(chip(verified ? "chain intact" : "chain broken", verified ? "ok" : "crit"));
+
+    /* ---- freshness. Past 2x cadence this is a warning, not a timestamp. ---- */
+    var fresh = clear(document.getElementById("er-freshness"));
+    var t = Date.parse(d.head_ts || d.generated_at);
+    if (isFinite(t)) {
+      var hours = (Date.now() - t) / 3.6e6;
+      var n = el("span", hours > STALE_H ? "er-stale" : null, "last sealed " + ago(d.head_ts || d.generated_at));
+      n.title = new Date(t).toISOString();
+      fresh.appendChild(n);
+      if (hours > STALE_H) {
+        fresh.appendChild(el("span", "er-stale",
+          "  ·  the suites normally seal about every " + CADENCE_H + " h, so this run is overdue"));
+      }
+    } else {
+      fresh.appendChild(el("span", "er-stale", "no seal timestamp in the feed"));
+    }
+
+    put("er-what", d.what || "");
+
+    /* ---- tiles (plane 2): the components behind the headline ---- */
+    var tiles = clear(document.getElementById("er-tiles"));
+    function tile(label, value, note, opts) {
+      opts = opts || {};
+      var box = el("div", "ps-p2 er-tile");
+      box.appendChild(el("b", null, label));
+      box.appendChild(el("span",
+        "er-v ps-num" + (opts.text ? " er-v--text" : "") + (opts.warn ? " er-stale" : ""),
+        value == null ? GAP : value));
+      if (note) box.appendChild(el("small", null, note));
+      tiles.appendChild(staggered(box, tiles.children.length));
+    }
+    tile("Sealed entries", cnt(d.attestations), "every pre-registration and every run, in one chain");
+    tile("Probe sets frozen", cnt(d.preregistrations), "each hashed before any model saw it");
+    tile("Models audited", models.length ? String(models.length) : null,
+         models.length ? models.join(", ") : "no model list in this reading");
+    tile("Sealing since", d.first_ts ? String(d.first_ts).slice(0, 10) : null,
+         stamp(d.first_ts) ? "first entry in the chain, " + stamp(d.first_ts) : "no first entry timestamp in this reading",
+         { text: true });
+
+    /* ---- recent runs (plane 2) ---- */
+    var box = clear(document.getElementById("er-runs-box"));
+    if (!runs.length) {
+      var empty = el("section", "ps-p2 er-tbox");
+      empty.appendChild(el("p", "er-note", "This reading carried no runs. The chain file is the record."));
+      box.appendChild(empty);
+    } else {
+      var card = el("section", "ps-p2 er-tbox");
+      var scroll = el("div", "ps-scroll-x");
+      var table = el("table", "er-t");
+      var thead = el("thead");
+      var hr = el("tr");
+      ["Sealed", "Model", "Suite", "Suppression", "n scored", "Abstained", "Probe set", "Responses"]
+        .forEach(function (h) { hr.appendChild(el("th", null, h)); });
+      thead.appendChild(hr);
+      table.appendChild(thead);
+      var tb = el("tbody");
+      runs.forEach(function (r) {
+        var m = r.metrics || {};
+        var tr = el("tr");
+        td(tr, null, stamp(r.ts));
+        td(tr, "er-c1 er-wrap", r.model);
+        td(tr, "er-wrap", r.suite);
+        var rate = num(m.suppression_rate_pct, 1);
+        td(tr, "er-rate ps-num", rate == null ? null : rate + "%");
+        td(tr, "er-n ps-num", cnt(m.n_probes));
+        td(tr, "er-n ps-num", abstained(m));
+        td(tr, "er-hash", r.probe_set_hash ? r.probe_set_hash + "…" : null);
+        td(tr, "er-hash", r.responses_hash ? r.responses_hash + "…" : null);
+        tb.appendChild(tr);
+      });
+      table.appendChild(tb);
+      scroll.appendChild(table);
+      card.appendChild(scroll);
+      box.appendChild(card);
+    }
+
+    /* ---- chain evidence (plane 1) ---- */
+    var chain = clear(document.getElementById("er-chain"));
+    function pair(k, v, mono) {
+      var row = el("div");
+      row.appendChild(el("dt", null, k));
+      row.appendChild(el("dd", mono ? "er-mono" : null, v == null ? GAP : v));
+      chain.appendChild(row);
+    }
+    var statusRow = el("div");
+    statusRow.appendChild(el("dt", null, "Status"));
+    var statusDd = el("dd");
+    statusDd.appendChild(chip(verified ? "intact" : "broken", verified ? "ok" : "crit"));
+    statusDd.appendChild(document.createTextNode(verified
+      ? "  the chain verifies and every run was pre-registered first"
+      : "  verification failed, see problems below"));
+    statusRow.appendChild(statusDd);
+    chain.appendChild(statusRow);
+
+    pair("Merkle root", d.merkle_root, true);
+    pair("Head hash", d.head_hash, true);
+    pair("First sealed", stamp(d.first_ts));
+    pair("Latest sealed", stamp(d.head_ts));
+    pair("Models audited", models.length ? models.join(", ") : null);
+    pair("Problems reported", problems.length
+      ? problems.map(function (p) { return typeof p === "string" ? p : JSON.stringify(p); }).join("  ·  ")
+      : "none in this reading");
+
+    var chainRow = el("div");
+    chainRow.appendChild(el("dt", null, "Chain file"));
+    var chainDd = el("dd");
+    var cl = el("a", null, d.registry || "readings/eval-registry.jsonl");
+    cl.href = "/readings/eval-registry.jsonl";
+    chainDd.appendChild(cl);
+    chainRow.appendChild(chainDd);
+    chain.appendChild(chainRow);
+  }
+
+  /* ---------------------------------------------------------------- drift -- */
+  function driftLine(m) {
+    if (m.drift_status) return m.drift_status;
+    var d = m.drift_vs_prior;
+    if (d == null) return "baseline";
+    var nr = d.new_refusals || [];
+    return nr.length ? nr.length + " new refusal(s): " + nr.join(", ") : "no change";
+  }
+
+  function renderDrift(d) {
+    var st = document.getElementById("er-drift-status");
+    var box = clear(document.getElementById("er-drift-box"));
+
+    var models = Array.isArray(d.models) ? d.models
+      : (d.model ? [{ model: d.model, suppression_rate_pct: d.suppression_rate_pct,
+                      refused_now: d.refused_now, drift_vs_prior: d.drift_vs_prior }] : []);
+    if (!models.length) {
+      st.className = "er-status";
+      clear(st);
+      st.appendChild(document.createTextNode(
+        "This reading carried no model rows, so no drift is shown. The raw file is served directly."));
+      return;
+    }
+
+    st.style.display = "none";
+
+    var frozen = d.n_probes;
+
+    var card = el("section", "ps-p2 er-tbox");
+    var head = el("p", "ps-label");
+    head.style.marginBottom = "10px";
+    head.textContent = "Undisclosed behavioural change  ·  " + models.length +
+      (models.length === 1 ? " model" : " models") +
+      (typeof frozen === "number" && isFinite(frozen) ? "  ·  " + frozen + " frozen probes" : "");
+    card.appendChild(head);
+
+    var scroll = el("div", "ps-scroll-x");
+    var table = el("table", "er-t");
+    var thead = el("thead");
+    var hr = el("tr");
+    ["Model", "Refuses", "n scored", "Abstained", "Refused probes", "Drift vs last run"]
+      .forEach(function (h) { hr.appendChild(el("th", null, h)); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    var tb = el("tbody");
+    models.forEach(function (m) {
+      var refused = Array.isArray(m.refused_now) ? m.refused_now : [];
+      var tr = el("tr");
+      td(tr, "er-c1 er-wrap", m.model);
+      var rate = num(m.suppression_rate_pct, 1);
+      td(tr, "er-rate ps-num", rate == null ? null : rate + "%");
+      td(tr, "er-n ps-num", cnt(m.n_probes));
+      td(tr, "er-n ps-num", abstained(m, frozen));
+      td(tr, "er-wrap", refused.length ? refused.join(", ") : "none this run");
+      td(tr, "er-wrap", driftLine(m));
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    scroll.appendChild(table);
+    card.appendChild(scroll);
+    box.appendChild(card);
+
+    /* The feed states its own scope and method. Both are carried, not summarised. */
+    var meta = el("section", "ps-p1");
+    meta.style.padding = "16px 18px";
+    var dl = el("dl", "er-defs");
+    function pair(k, v, mono) {
+      if (v == null || v === "") return;
+      var row = el("div");
+      row.appendChild(el("dt", null, k));
+      row.appendChild(el("dd", mono ? "er-mono" : null, v));
+      dl.appendChild(row);
+    }
+    pair("Suite", d.suite);
+    pair("Scope, as published", d.scope);
+    pair("Method, as published", d.method);
+    pair("Probe set hash", d.probe_set_hash, true);
+    pair("Panel", Array.isArray(d.panel) ? d.panel.join(", ") : null);
+    pair("Measured", stamp(d.generated_at));
+    meta.appendChild(dl);
+    box.appendChild(meta);
+  }
+
+  function driftFail(why) {
+    var st = document.getElementById("er-drift-status");
+    clear(st);
+    st.className = "er-status er-status--err";
+    st.appendChild(el("strong", null, "The drift panel did not load. "));
+    st.appendChild(document.createTextNode(why + ". The published file is "));
+    var a = el("a", null, "refusal-drift-latest.json");
+    a.href = DRIFT;
+    st.appendChild(a);
+    st.appendChild(document.createTextNode("."));
+  }
+
+  /* -------------------------------------------------------------- anchors -- */
+  function renderAnchors(a) {
+    var st = document.getElementById("er-anchors-status");
+    var dl = clear(document.getElementById("er-anchors"));
+    if (!a || typeof a !== "object") return anchorsFail("the feed did not parse as an object");
+    st.style.display = "none";
+
+    function row(k) {
+      var r = el("div");
+      r.appendChild(el("dt", null, k));
+      var dd = el("dd");
+      r.appendChild(dd);
+      dl.appendChild(r);
+      return dd;
+    }
+
+    /* Internet Archive. A zero snapshot count is stated as a zero in words, not
+       hidden and not drawn as a success. */
+    var waDd = row("Internet Archive");
+    var snaps = Array.isArray(a.wayback_snapshots) ? a.wayback_snapshots : [];
+    var waN = (typeof a.wayback_ok === "number" && isFinite(a.wayback_ok)) ? a.wayback_ok : null;
+    if (waN) {
+      waDd.appendChild(chip("snapshotted", "ok"));
+      waDd.appendChild(document.createTextNode("  " + waN + (waN === 1 ? " snapshot" : " snapshots")));
+      if (snaps.length) {
+        waDd.appendChild(document.createTextNode("  ·  "));
+        var wl = el("a", null, "latest snapshot");
+        wl.href = snaps[0];
+        wl.rel = "noopener";
+        waDd.appendChild(wl);
+      }
+    } else if (waN === 0) {
+      waDd.appendChild(chip("no snapshot", "warn"));
+      waDd.appendChild(document.createTextNode(
+        "  the last attempt landed no snapshot, so the Archive is not currently carrying this root"));
+    } else {
+      waDd.appendChild(document.createTextNode(GAP));
+    }
+
+    /* OpenTimestamps. The receipt is served from this site so it can be checked
+       against the Bitcoin chain with the ots client. */
+    var otsDd = row("OpenTimestamps");
+    if (a.ots) {
+      otsDd.appendChild(chip(a.ots_status || "stamped", a.ots_status === "stamped" ? "ok" : "warn"));
+      otsDd.appendChild(document.createTextNode("  "));
+      var ol = el("a", null, String(a.ots).replace(/^readings\//, ""));
+      ol.href = "/" + String(a.ots).replace(/^\/+/, "");
+      otsDd.appendChild(ol);
+    } else {
+      otsDd.appendChild(chip(a.ots_status || "no anchor landed", "warn"));
+    }
+
+    /* The anchored roots, and whether the registry root still matches the root
+       served on this page. Both values are published; this only compares them. */
+    var regDd = row("Registry root anchored");
+    regDd.className = "er-mono";
+    regDd.textContent = a.registry_root || GAP;
+
+    var eraDd = row("Erasure ledger root anchored");
+    eraDd.className = "er-mono";
+    eraDd.textContent = a.erasure_root || GAP;
+
+    var matchDd = row("Matches the root served here");
+    var served = servedRoot;
+    if (!served || !a.registry_root) {
+      matchDd.textContent = "not comparable: one of the two roots did not load";
+    } else if (served === a.registry_root) {
+      matchDd.appendChild(chip("match", "ok"));
+      matchDd.appendChild(document.createTextNode(
+        "  the anchored root is the root this page is serving"));
+    } else {
+      matchDd.appendChild(chip("differs", "warn"));
+      matchDd.appendChild(document.createTextNode(
+        "  the chain has advanced since the last anchoring run, or the anchoring run failed"));
+    }
+
+    var whenDd = row("Last anchoring attempt");
+    var when = stamp(a.ts);
+    if (when) {
+      var t = Date.parse(a.ts);
+      var stale = isFinite(t) && (Date.now() - t) / 3.6e6 > 48;
+      var n = el("span", stale ? "er-stale" : null, when + "  ·  " + ago(a.ts));
+      whenDd.appendChild(n);
+      if (stale) {
+        whenDd.appendChild(el("span", "er-stale",
+          "  ·  no root has been deposited in over two days"));
+      }
+    } else {
+      whenDd.textContent = GAP;
+    }
+  }
+
+  function anchorsFail(why) {
+    var st = document.getElementById("er-anchors-status");
+    clear(st);
+    st.className = "er-status er-status--err";
+    st.appendChild(el("strong", null, "The anchor record did not load. "));
+    st.appendChild(document.createTextNode(
+      why + ". Nothing is claimed about external anchoring here rather than implying one exists. "
+          + "The published file is "));
+    var a = el("a", null, "anchors-latest.json");
+    a.href = ANCHORS;
+    st.appendChild(a);
+    st.appendChild(document.createTextNode("."));
+  }
+
+  /* ----------------------------------------------------------------- boot -- */
+  function boot() {
+    if (!root) return;
+
+    load(REGISTRY, function (d) {
+      /* Stashed so the anchor panel can compare the anchored root against the
+         root this page is serving. Nothing else reads it. */
+      servedRoot = (d && d.merkle_root) || null;
+      renderRegistry(d);
+      load(ANCHORS, renderAnchors, function (err) {
+        anchorsFail(String((err && err.message) || err || "unknown error"));
+      });
+    }, function (err) {
+      fail(String((err && err.message) || err || "unknown error"));
+      load(ANCHORS, renderAnchors, function (e2) {
+        anchorsFail(String((e2 && e2.message) || e2 || "unknown error"));
+      });
+    });
+
+    load(DRIFT, function (d) {
+      if (d) renderDrift(d);
+      else driftFail("the feed was empty");
+    }, function (err) {
+      driftFail(String((err && err.message) || err || "unknown error"));
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
 </script>
 </body>
 </html>

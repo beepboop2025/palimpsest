@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In-Path Interference, China · Palimpsest</title>
+<meta name="description" content="Middlebox rewriting of HTTP in transit, circumvention and real-time transport health, and the OONI test methods that never complete a single run inside China. Rates are over completed tests only, and every denominator is shown.">
+<link rel="canonical" href="https://palimpsest.info/readings/in-path-interference.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+/* Page-specific only. Never redefines a --tk-* token or a .ps-* class. */
+
+/* ---- status strip: control state, freshness, window, source -------------- */
+.ipi-status {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 9px 20px;
+  padding: 12px 16px; margin: 0 0 34px;
+  font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--tk-text-3);
+}
+.ipi-status__b { display: inline-flex; align-items: center; gap: 7px; }
+.ipi-status b { color: var(--tk-text-1); font-weight: 600; }
+.ipi-status .ipi-warn { color: var(--tk-warning); }
+.ipi-status a { color: var(--tk-text-2); text-decoration: underline; text-underline-offset: 2px; }
+.ipi-status a:hover { color: var(--tk-live); }
+.ipi-why { margin: 8px 0 0; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3); line-height: 1.6; }
+
+/* ---- the funder line, kept on screen with the first finding -------------- */
+.ipi-trust {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline;
+  padding: 13px 16px; margin: 0 0 12px;
+  font-size: 12.5px; color: var(--tk-text-2);
+}
+.ipi-trust p { margin: 0; max-width: 60ch; }
+.ipi-trust a { color: var(--tk-live); text-decoration: none; font-family: var(--tk-font-mono); font-size: 11.5px; }
+.ipi-trust a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- a finding: claim on the left, reading + evidence on the right ------- */
+.ipi-finding { margin: 0 0 clamp(46px, 7vw, 78px); }
+.ipi-claim p { color: var(--tk-text-2); font-size: 14.5px; margin: 0 0 12px; }
+.ipi-claim .ipi-family { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em; color: var(--tk-text-4); }
+
+/* the quotable number, plane 3 */
+.ipi-read { padding: 24px 26px; margin: 0 0 14px; }
+.ipi-read__k { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 10px; }
+.ipi-read__v {
+  font-size: clamp(38px, 6.4vw, 58px); font-weight: 800; line-height: 1;
+  letter-spacing: -.03em; color: var(--tk-text-0); font-variant-numeric: tabular-nums;
+}
+.ipi-read__t { margin: 12px 0 0; font-size: 14px; color: var(--tk-text-2); max-width: 56ch; }
+.ipi-read__denom { margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--ps-edge-1); font-size: 12.5px; color: var(--tk-text-3); }
+.ipi-read__denom b { color: var(--tk-text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ipi-sum { display: block; margin-top: 5px; font-family: var(--tk-font-mono); font-size: 10.5px; color: var(--tk-text-4); }
+
+/* ---- the blackout treatment: a shape that cannot be read as a low rate ---
+   Never a bar, never a percentage, never a track that could be mistaken for
+   an empty one. A dashed void with words in it, and the words say so. */
+.ipi-void {
+  border: 1.5px dashed var(--tk-stale-line, rgba(100,116,139,.45));
+  border-radius: var(--tk-radius-lg, 14px);
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(133,147,168,.10) 0 9px, rgba(133,147,168,.028) 9px 18px);
+  padding: 22px 24px; margin: 0 0 14px;
+}
+.ipi-void__k { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-stale); margin: 0 0 10px; }
+.ipi-void__v {
+  font-family: var(--tk-font-mono); font-weight: 700;
+  font-size: clamp(26px, 4.4vw, 40px); line-height: 1.05; letter-spacing: .04em;
+  color: var(--tk-stale);
+}
+.ipi-void__t { margin: 12px 0 0; font-size: 14px; color: var(--tk-text-2); max-width: 56ch; }
+.ipi-void__note { margin: 13px 0 0; padding-top: 12px; border-top: 1px dashed var(--tk-stale-line, rgba(100,116,139,.45)); font-size: 12.5px; color: var(--tk-text-3); }
+
+/* the same void, sized for a single test row */
+.ipi-nobar {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  min-height: 30px; padding: 6px 10px;
+  border: 1.5px dashed var(--tk-stale-line, rgba(100,116,139,.45));
+  border-radius: 7px;
+  background: repeating-linear-gradient(135deg,
+    rgba(133,147,168,.10) 0 9px, rgba(133,147,168,.028) 9px 18px);
+  font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--tk-stale); text-align: center;
+}
+
+/* ---- evidence rows: one card per test, both denominators visible --------- */
+.ipi-tests { display: grid; gap: 10px; }
+.ipi-test { padding: 16px 18px; }
+.ipi-test__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 14px; }
+.ipi-test__label { font-size: 14.5px; font-weight: 600; color: var(--tk-text-0); }
+.ipi-test__id { font-family: var(--tk-font-mono); font-size: 10.5px; color: var(--tk-text-4); }
+.ipi-test__spacer { flex: 1; min-width: 0; }
+
+.ipi-metric + .ipi-metric { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ps-edge-1); }
+.ipi-metric__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
+.ipi-metric__k { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--tk-text-4); }
+.ipi-metric__v { font-size: 15px; font-weight: 700; color: var(--tk-text-0); font-variant-numeric: tabular-nums; flex: none; }
+
+.ipi-track { height: 8px; border-radius: 5px; background: rgba(255,255,255,.055); border: 1px solid var(--ps-edge-1); overflow: hidden; }
+.ipi-fill { display: block; height: 100%; background: var(--tk-live); }
+/* execution failure is drawn as hatch, not as a solid fill: these are runs
+   that produced nothing, and a full hatch is the honest limit of that. */
+.ipi-fill--hatch {
+  background: repeating-linear-gradient(135deg,
+    rgba(133,147,168,.85) 0 4px, rgba(133,147,168,.26) 4px 8px);
+}
+.ipi-denom { margin: 6px 0 0; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3); font-variant-numeric: tabular-nums; }
+.ipi-unavail { margin: 12px 0 0; padding: 9px 11px; border-radius: 8px; background: var(--tk-stale-bg); border: 1px solid var(--tk-stale-line); font-size: 12px; color: var(--tk-text-2); }
+.ipi-unavail b { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--tk-stale); display: block; margin-bottom: 3px; }
+
+/* ---- method plane ------------------------------------------------------- */
+.ipi-method { padding: 22px 24px; margin: 0 0 12px; }
+.ipi-method h3 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 10px; font-weight: 600; }
+.ipi-method p { margin: 0 0 14px; font-size: 14px; color: var(--tk-text-2); max-width: var(--ps-measure); }
+.ipi-method p:last-child { margin-bottom: 0; }
+.ipi-quote { margin: 0 0 16px; padding: 12px 15px; border-left: 2px solid var(--ps-edge-3); font-family: var(--tk-font-mono); font-size: 12px; line-height: 1.65; color: var(--tk-text-2); }
+.ipi-rule { font-family: var(--tk-font-mono); font-size: 12.5px; color: var(--tk-text-1); }
+.ipi-rule s { color: var(--tk-text-4); text-decoration-color: var(--tk-critical); }
+
+.ipi-legend { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.ipi-legend li { display: flex; align-items: center; gap: 11px; font-size: 12.5px; color: var(--tk-text-2); }
+.ipi-legend__sw { width: 64px; flex: none; height: 10px; border-radius: 5px; border: 1px solid var(--ps-edge-1); }
+.ipi-legend__sw--fill { background: linear-gradient(90deg, var(--tk-live) 0 60%, rgba(255,255,255,.055) 60% 100%); }
+.ipi-legend__sw--hatch { background: repeating-linear-gradient(135deg, rgba(133,147,168,.85) 0 4px, rgba(133,147,168,.26) 4px 8px); }
+.ipi-legend__sw--void { background: repeating-linear-gradient(135deg, rgba(133,147,168,.10) 0 6px, rgba(133,147,168,.028) 6px 12px); border: 1.5px dashed var(--tk-stale-line, rgba(100,116,139,.45)); border-radius: 4px; }
+
+/* ---- the full numeric receipt ------------------------------------------- */
+.ipi-table { width: 100%; border-collapse: collapse; font-family: var(--tk-font-mono); font-size: 11.5px; min-width: 720px; }
+.ipi-table th, .ipi-table td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--ps-edge-1); }
+.ipi-table th { color: var(--tk-text-4); font-weight: 600; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; position: sticky; top: 0; background: var(--tk-surface-2, #0e0e0e); }
+.ipi-table th:first-child, .ipi-table td:first-child { text-align: left; }
+.ipi-table td { color: var(--tk-text-2); font-variant-numeric: tabular-nums; }
+.ipi-table td.ipi-t-name { color: var(--tk-text-0); }
+.ipi-table td.ipi-t-none { color: var(--tk-stale); }
+.ipi-table tbody tr:last-child td { border-bottom: 0; }
+
+/* ---- receipts and the closing band -------------------------------------- */
+.ipi-links { display: grid; gap: 9px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 0; padding: 0; list-style: none; }
+.ipi-links a { display: block; padding: 13px 15px; text-decoration: none; }
+.ipi-links b { display: block; font-size: 13px; color: var(--tk-text-0); font-weight: 600; }
+.ipi-links span { display: block; margin-top: 3px; font-size: 11.5px; color: var(--tk-text-3); line-height: 1.5; }
+
+.ipi-three { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 0 0 40px; padding: 0; list-style: none; }
+.ipi-three a { display: block; padding: 18px 20px; height: 100%; text-decoration: none; }
+.ipi-three .ipi-three__k { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-live); }
+.ipi-three b { display: block; margin: 7px 0 5px; font-size: 15px; color: var(--tk-text-0); font-weight: 700; }
+.ipi-three span { display: block; font-size: 12.5px; color: var(--tk-text-3); line-height: 1.55; }
+
+/* ---- states ------------------------------------------------------------- */
+.ipi-pending { font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-4); letter-spacing: .06em; }
+.ipi-error { display: none; padding: 18px 20px; margin: 0 0 30px; border-radius: var(--tk-radius-lg, 14px); background: var(--tk-critical-bg); border: 1px solid var(--tk-critical-line); }
+.ipi-error[data-shown] { display: block; }
+.ipi-error h2 { margin: 0 0 7px; font-size: 15px; color: var(--tk-critical); font-family: var(--tk-font-mono); letter-spacing: .06em; }
+.ipi-error p { margin: 0 0 6px; font-size: 13px; color: var(--tk-text-2); }
+.ipi-error code { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3); }
+
+/* Tiktó flips its surface ramp on the light theme but keeps the status ramp,
+   and --tk-stale is too pale on paper. The void treatment has to stay legible
+   in both, because it is carrying the finding, not decorating it. */
+[data-tk-theme="light"] .ipi-void__k,
+[data-tk-theme="light"] .ipi-void__v,
+[data-tk-theme="light"] .ipi-nobar,
+[data-tk-theme="light"] .ipi-table td.ipi-t-none { color: #4a586e; }
+[data-tk-theme="light"] .ipi-track { background: rgba(12, 20, 34, .06); }
+[data-tk-theme="light"] .ipi-void,
+[data-tk-theme="light"] .ipi-nobar,
+[data-tk-theme="light"] .ipi-legend__sw--void { border-color: rgba(74, 88, 110, .55); }
+
+@media (max-width: 860px) {
+  .ipi-read { padding: 20px 18px; }
+  .ipi-void { padding: 18px 18px; }
+  .ipi-metric__head { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html" aria-current="page"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap">
+
+  <header style="padding: clamp(34px,6vw,64px) 0 0;">
+    <p class="ps-kicker">Signal · In-path interference</p>
+    <h1 class="ps-h1">Three findings, kept apart on purpose.</h1>
+    <p class="ps-lede">
+      OONI's public aggregation for China over a ninety day window. Devices rewriting HTTP
+      on the path. The transport that real-time voice and circumvention depend on. And
+      measurement methods that never complete a single run inside the country. These are
+      three different kinds of observation, and collapsing them into one index would
+      destroy what each of them says.
+    </p>
+  </header>
+
+  <div class="ipi-error ps-p2" id="ipi-error" role="alert">
+    <h2>Reading could not be loaded</h2>
+    <p>This page publishes nothing when the feed does not load. There is no cached
+       figure and no placeholder, because a plausible-looking number here would be worse
+       than a blank page.</p>
+    <p><code id="ipi-error-detail"></code></p>
+    <p><a href="/readings/in-path-interference-latest.json" class="ps-btn ps-btn--ghost">Open the raw file directly</a></p>
+  </div>
+
+  <div class="ipi-status ps-p1 ps-reveal" id="ipi-status">
+    <span class="ipi-pending">loading reading</span>
+  </div>
+
+  <div class="ipi-trust ps-p1 ps-reveal">
+    <p>Palimpsest is a free public good. MIT licensed, developed in the open, never a
+       commercial product, and every finding on it ships the raw file it was computed from.</p>
+    <a href="/fund.html">What funding buys</a>
+    <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source on GitHub</a>
+  </div>
+
+  <hr class="ps-rule" style="margin: 40px 0;">
+
+  <!-- ============ FINDING 1 · MIDDLEBOX ================================== -->
+  <section class="ipi-finding ps-band ps-reveal" aria-labelledby="ipi-h-middlebox">
+    <div class="ps-pin ipi-claim">
+      <p class="ps-label">Finding 1 of 3</p>
+      <h2 class="ps-h2" id="ipi-h-middlebox">Interference you can see</h2>
+      <p>These tests do not ask whether a site is blocked. They send deliberately malformed
+         or oddly cased HTTP and check whether anything on the path rewrote it before it
+         arrived.</p>
+      <p>A non-zero rate is positive evidence of a device in the middle, whether or not that
+         device chose to block anything.</p>
+      <p class="ipi-family">Family: MIDDLEBOX</p>
+    </div>
+    <div>
+      <div class="ipi-read ps-p3" id="ipi-read-middlebox">
+        <p class="ipi-read__k">Middlebox index</p>
+        <div class="ipi-read__v"><span class="ipi-pending">loading</span></div>
+      </div>
+      <div class="ipi-tests" id="ipi-tests-MIDDLEBOX"></div>
+    </div>
+  </section>
+
+  <!-- ============ FINDING 2 · TRANSPORT ================================== -->
+  <section class="ipi-finding ps-band ps-reveal" aria-labelledby="ipi-h-transport">
+    <div class="ps-pin ipi-claim">
+      <p class="ps-label">Finding 2 of 3</p>
+      <h2 class="ps-h2" id="ipi-h-transport">Degradation you can measure</h2>
+      <p>Whether the plumbing that real-time voice and pluggable-transport circumvention
+         depend on is usable at all. STUN reachability for WebRTC, a stock Tor bootstrap,
+         and Tor carried over Snowflake.</p>
+      <p>This is a health reading on transport. It is not a claim about any single website,
+         and it is not the same measurement as the Great Firewall reachability index.</p>
+      <p class="ipi-family">Family: TRANSPORT</p>
+    </div>
+    <div>
+      <div class="ipi-read ps-p3" id="ipi-read-transport">
+        <p class="ipi-read__k">Transport index</p>
+        <div class="ipi-read__v"><span class="ipi-pending">loading</span></div>
+      </div>
+      <div class="ipi-tests" id="ipi-tests-TRANSPORT"></div>
+    </div>
+  </section>
+
+  <!-- ============ FINDING 3 · EXECUTION BLACKOUTS ======================== -->
+  <section class="ipi-finding ps-band ps-reveal" aria-labelledby="ipi-h-execution">
+    <div class="ps-pin ipi-claim">
+      <p class="ps-label">Finding 3 of 3</p>
+      <h2 class="ps-h2" id="ipi-h-execution">Measurement that cannot happen</h2>
+      <p>Some test methods ran inside China this window and never once produced a result.
+         That is not a low anomaly rate. It is no anomaly rate at all, because OONI's
+         anomaly counter only ranges over runs that completed.</p>
+      <p>Drawing this as zero percent would invert it. Zero percent reads as clean. What it
+         actually says is that the method cannot be carried out here, so nothing can be
+         read from it in either direction.</p>
+      <p>So this finding is never given a bar and never given a percentage.</p>
+      <p class="ipi-family">Family: EXECUTION</p>
+    </div>
+    <div>
+      <div id="ipi-read-execution">
+        <div class="ipi-void">
+          <p class="ipi-void__k">Execution blackouts</p>
+          <div class="ipi-void__v"><span class="ipi-pending">loading</span></div>
+        </div>
+      </div>
+      <div class="ipi-tests" id="ipi-tests-EXECUTION"></div>
+    </div>
+  </section>
+
+  <!-- any family the collector adds later still gets rendered, never hidden -->
+  <section id="ipi-other-wrap" hidden>
+    <h2 class="ps-section-head">Other families in this reading</h2>
+    <div id="ipi-other"></div>
+  </section>
+
+  <!-- ============ METHOD ================================================= -->
+  <h2 class="ps-section-head" id="method">How the denominator was chosen</h2>
+
+  <div class="ipi-method ps-p2 ps-reveal">
+    <h3>The rule, as the collector states it</h3>
+    <blockquote class="ipi-quote" id="ipi-method-text"><span class="ipi-pending">loading</span></blockquote>
+    <p class="ipi-rule">
+      anomaly_count &divide; completed_count &nbsp;&nbsp;is a rate.<br>
+      <s>anomaly_count &divide; measurement_count</s> &nbsp;&nbsp;is not.
+    </p>
+  </div>
+
+  <div class="ipi-method ps-p2 ps-reveal" id="ipi-worked-wrap" hidden>
+    <h3>Why it matters here</h3>
+    <p id="ipi-worked"></p>
+  </div>
+
+  <div class="ipi-method ps-p2 ps-reveal">
+    <h3>Reading the three marks</h3>
+    <ul class="ipi-legend">
+      <li><span class="ipi-legend__sw ipi-legend__sw--fill" aria-hidden="true"></span>
+          Solid fill: anomalies as a share of runs that completed. A real rate.</li>
+      <li><span class="ipi-legend__sw ipi-legend__sw--hatch" aria-hidden="true"></span>
+          Hatched fill: runs that never produced a result, as a share of runs attempted.</li>
+      <li><span class="ipi-legend__sw ipi-legend__sw--void" aria-hidden="true"></span>
+          Dashed void, no bar: no rate exists. Nothing completed, so there is nothing to
+          take a share of.</li>
+    </ul>
+    <p style="margin-top:14px">Every mark on this page is labelled in words as well as in
+       colour and shape, so none of the three depends on colour to be told apart.</p>
+  </div>
+
+  <!-- ============ FULL RECEIPT =========================================== -->
+  <h2 class="ps-section-head ps-defer" id="counts">Every count in the reading</h2>
+
+  <div class="ps-p1 ps-scroll-x ps-defer" style="border-radius:var(--tk-radius-lg,14px);">
+    <table class="ipi-table">
+      <caption class="ps-sr">Per-test OONI counts for China over the reading window, including measurements attempted, runs completed, failures, anomalies, anomaly rate over completed runs, and execution failure rate over runs attempted.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Test</th>
+          <th scope="col">Family</th>
+          <th scope="col">Attempted</th>
+          <th scope="col">Completed</th>
+          <th scope="col">Failures</th>
+          <th scope="col">Anomalies</th>
+          <th scope="col">Anomalies / completed</th>
+          <th scope="col">Failures / attempted</th>
+          <th scope="col">State</th>
+        </tr>
+      </thead>
+      <tbody id="ipi-table-body">
+        <tr><td colspan="9"><span class="ipi-pending">loading reading</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ============ RECEIPTS =============================================== -->
+  <h2 class="ps-section-head">Take the evidence with you</h2>
+  <ul class="ipi-links">
+    <li><a class="ps-p1" href="/readings/in-path-interference-latest.json">
+      <b>in-path-interference-latest.json</b>
+      <span>The exact file this page renders. Every figure above comes from it at load time.</span></a></li>
+    <li><a class="ps-p1" href="/readings/in-path-interference-history.jsonl">
+      <b>in-path-interference-history.jsonl</b>
+      <span>One line per round, appended and never rewritten.</span></a></li>
+    <li><a class="ps-p1" href="https://github.com/beepboop2025/palimpsest/blob/main/collectors/in_path_interference.py" target="_blank" rel="noopener">
+      <b>collectors/in_path_interference.py</b>
+      <span>The collector, including the floor below which a test is reported as insufficient rather than given a rate.</span></a></li>
+    <li><a class="ps-p1" href="https://ooni.org/data/" target="_blank" rel="noopener">
+      <b>OONI open data</b>
+      <span>The upstream source. We ingest OONI's already-aggregated measurements and probe nothing ourselves.</span></a></li>
+  </ul>
+
+  <hr class="ps-rule" style="margin: 46px 0 34px;">
+
+  <ul class="ipi-three">
+    <li><a class="ps-p1" href="/readings/">
+      <span class="ipi-three__k">Observatory</span>
+      <b>China censorship observatory</b>
+      <span>Signals across the network, content and model layers, each one publishing its own raw file. This page is one of them.</span></a></li>
+    <li><a class="ps-p1" href="/readings/eval-registry.html">
+      <span class="ipi-three__k">Registry</span>
+      <b>Verifiable eval registry</b>
+      <span>Pre-registered suites, hash-chained, anchored outside our own infrastructure. A peer of the observatory, not a side feature.</span></a></li>
+    <li><a class="ps-p1" href="/fund.html">
+      <span class="ipi-three__k">Funding</span>
+      <b>A funded public good</b>
+      <span>MIT licensed and open from the first commit. Grants and donations pay for the collectors, the storage and the anchoring.</span></a></li>
+  </ul>
+
+  <p style="margin:0 0 60px;font-size:12px;color:var(--tk-text-4);max-width:var(--ps-measure);line-height:1.7">
+    Watch the censor, never the censored. This reading is built entirely from public
+    aggregate data published by OONI. No person inside China is asked to run anything for
+    it, and no individual measurement is attributed to anyone.
+  </p>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var URL_LATEST = "/readings/in-path-interference-latest.json";
+  var CADENCE_H = 6;              /* the refresh workflow runs every 6 hours */
+  var STALE_H = CADENCE_H * 2;    /* past 2x cadence, freshness is a finding */
+
+  var NF = new Intl.NumberFormat("en-US");
+
+  function n(v) { return (typeof v === "number" && isFinite(v)) ? NF.format(v) : null; }
+
+  /* A fraction (0..1) as a percentage string, or null when there is no rate.
+     Null is never coerced to 0 anywhere in this file. */
+  function pct(frac, dec) {
+    if (typeof frac !== "number" || !isFinite(frac)) return null;
+    return (frac * 100).toFixed(dec == null ? 2 : dec) + "%";
+  }
+  /* An index already expressed 0..100. */
+  function idx(v) {
+    if (typeof v !== "number" || !isFinite(v)) return null;
+    return v.toFixed(2) + "%";
+  }
+  function clampPct(frac) { return Math.max(0, Math.min(100, frac * 100)); }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function fail(err) {
+    var box = document.getElementById("ipi-error");
+    var detail = document.getElementById("ipi-error-detail");
+    if (detail) detail.textContent = URL_LATEST + " : " + (err && err.message ? err.message : String(err));
+    if (box) box.setAttribute("data-shown", "");
+    /* Strip every pending placeholder so nothing reads as a value. */
+    [].slice.call(document.querySelectorAll(".ipi-pending")).forEach(function (p) {
+      p.textContent = "no reading";
+    });
+    var tb = document.getElementById("ipi-table-body");
+    if (tb) {
+      tb.textContent = "";
+      var tr = el("tr"), td = el("td", null, "No reading loaded.");
+      td.colSpan = 9; tr.appendChild(td); tb.appendChild(tr);
+    }
+  }
+
+  /* ------------------------------------------------------------ status ---- */
+  function renderStatus(d) {
+    var wrap = document.getElementById("ipi-status");
+    if (!wrap) return;
+    wrap.textContent = "";
+
+    var ctrl = d.control || {};
+    var state = typeof ctrl.state === "string" ? ctrl.state : null;
+    var chipCls = "tk-chip tk-chip--stale";
+    if (state === "OK") chipCls = "tk-chip tk-chip--ok";
+    else if (state === "DEGRADED") chipCls = "tk-chip tk-chip--warning";
+
+    var row = el("div", "ipi-status__b");
+    row.appendChild(el("span", null, "Control"));
+    row.appendChild(el("span", chipCls, state || "unknown"));
+    wrap.appendChild(row);
+
+    /* freshness */
+    var fresh = el("div", "ipi-status__b");
+    fresh.appendChild(el("span", null, "Measured"));
+    var when = el("b");
+    if (typeof d.generated_at === "string") {
+      var t = Date.parse(d.generated_at);
+      var agoTxt = (window.PalimpsestShell && window.PalimpsestShell.ago)
+        ? window.PalimpsestShell.ago(d.generated_at) : d.generated_at;
+      when.textContent = agoTxt;
+      when.title = d.generated_at;
+      if (isFinite(t) && (Date.now() - t) / 3600000 > STALE_H) {
+        when.className = "ipi-warn";
+        var warn = el("span", "ipi-warn", "stale, refresh runs every " + CADENCE_H + " h");
+        fresh.appendChild(when);
+        fresh.appendChild(warn);
+      } else {
+        fresh.appendChild(when);
+      }
+    } else {
+      when.textContent = "unknown";
+      fresh.appendChild(when);
+    }
+    wrap.appendChild(fresh);
+
+    if (typeof d.window_days === "number" && isFinite(d.window_days)) {
+      var w = el("div", "ipi-status__b");
+      w.appendChild(el("span", null, "Window"));
+      w.appendChild(el("b", null, NF.format(d.window_days) + " days"));
+      wrap.appendChild(w);
+    }
+
+    if (typeof d.source === "string") {
+      var s = el("div", "ipi-status__b");
+      s.appendChild(el("span", null, "Source"));
+      s.appendChild(el("b", null, d.source));
+      wrap.appendChild(s);
+    }
+
+    var notes = [];
+    if (ctrl && typeof ctrl.why === "string") notes.push("Control: " + ctrl.why + ".");
+    if (typeof d.scope === "string") notes.push("Scope: " + d.scope + ".");
+    if (notes.length) {
+      var p = el("p", "ipi-why", notes.join(" "));
+      p.style.flexBasis = "100%";
+      wrap.appendChild(p);
+    }
+  }
+
+  /* --------------------------------------------------- family reading ----- */
+  /* The published index, plus the denominator it was taken over. The
+     denominator is the sum of the completed_count values in the rows directly
+     beneath, and it is only shown when it reconciles with the published
+     figure. If those two disagree we show the published number alone and say
+     so, rather than quietly presenting arithmetic that does not hold. */
+  function renderFamilyReading(hostId, value, reading, tests, label) {
+    var host = document.getElementById(hostId);
+    if (!host) return;
+    host.textContent = "";
+
+    host.appendChild(el("p", "ipi-read__k", label));
+
+    var vbox = el("div", "ipi-read__v ps-num");
+    host.appendChild(vbox);
+
+    var txt = idx(value);
+    if (txt === null) {
+      vbox.textContent = "no rate";
+      vbox.style.fontSize = "28px";
+      vbox.style.fontFamily = "var(--tk-font-mono)";
+      vbox.style.color = "var(--tk-stale)";
+      host.appendChild(el("p", "ipi-read__t",
+        "No test in this family cleared the measurement floor this round, so no index was published."));
+      return;
+    }
+
+    if (window.PalimpsestShell && window.PalimpsestShell.countUp) {
+      window.PalimpsestShell.countUp(vbox, value, { decimals: 2, suffix: "%" });
+    } else {
+      vbox.textContent = txt;
+    }
+
+    if (typeof reading === "string" && reading) {
+      host.appendChild(el("p", "ipi-read__t", reading));
+    }
+
+    var usable = tests.filter(function (t) { return t.available === true; });
+    var denomOk = usable.length > 0 && usable.every(function (t) {
+      return typeof t.completed_count === "number" && typeof t.anomaly_count === "number";
+    });
+
+    var d = el("p", "ipi-read__denom");
+    if (denomOk) {
+      var sumC = 0, sumA = 0;
+      usable.forEach(function (t) { sumC += t.completed_count; sumA += t.anomaly_count; });
+      var recomputed = sumC > 0 ? (100 * sumA / sumC) : null;
+      if (recomputed !== null && Math.abs(recomputed - value) <= 0.02) {
+        d.appendChild(document.createTextNode("Taken over "));
+        d.appendChild(el("b", null, NF.format(sumC)));
+        d.appendChild(document.createTextNode(" completed runs, of which "));
+        d.appendChild(el("b", null, NF.format(sumA)));
+        d.appendChild(document.createTextNode(
+          " were anomalous. Weighted by completed count across " + usable.length +
+          (usable.length === 1 ? " test" : " tests") + ", so a thinly measured test cannot outvote a heavily measured one."));
+        var addends = el("span", "ipi-sum",
+          "completed: " + usable.map(function (t) { return NF.format(t.completed_count); }).join(" + ") +
+          "   anomalies: " + usable.map(function (t) { return NF.format(t.anomaly_count); }).join(" + "));
+        d.appendChild(addends);
+      } else {
+        d.textContent = "The published index is shown as published. The completed counts in the rows below do not reconcile with it this round, so no reconstructed denominator is shown here.";
+      }
+    } else {
+      d.textContent = "Denominator: see the completed count on each row below.";
+    }
+    host.appendChild(d);
+  }
+
+  /* ------------------------------------------------- execution blackout --- */
+  function renderBlackout(d, byName) {
+    var host = document.getElementById("ipi-read-execution");
+    if (!host) return;
+    host.textContent = "";
+
+    var list = Array.isArray(d.execution_blackouts) ? d.execution_blackouts : [];
+
+    var card = el("div", "ipi-void");
+    card.appendChild(el("p", "ipi-void__k", "Execution blackouts"));
+
+    var v = el("div", "ipi-void__v");
+    if (list.length === 0) {
+      v.textContent = "NONE THIS ROUND";
+      card.appendChild(v);
+      card.appendChild(el("p", "ipi-void__t",
+        "Every test method in this reading completed at least one run in China this window."));
+      host.appendChild(card);
+      return;
+    }
+    v.textContent = "NO RATE EXISTS";
+    card.appendChild(v);
+
+    card.appendChild(el("p", "ipi-void__t",
+      list.length + (list.length === 1 ? " measurement method" : " measurement methods") +
+      " ran and never completed. There is no anomaly rate to report, and this is deliberately not drawn as a bar."));
+
+    if (typeof d.execution_reading === "string" && d.execution_reading) {
+      card.appendChild(el("p", "ipi-void__note", d.execution_reading));
+    }
+    host.appendChild(card);
+
+    /* one line per blacked-out method, with the counts that are real */
+    list.forEach(function (b) {
+      var full = byName[b.test] || {};
+      var row = el("div", "ipi-void");
+      row.style.marginBottom = "10px";
+
+      var head = el("div", "ipi-test__head");
+      head.appendChild(el("span", "ipi-test__label", b.label || b.test || "unnamed test"));
+      if (b.test) head.appendChild(el("span", "ipi-test__id", b.test));
+      row.appendChild(head);
+
+      var attempted = n(typeof b.measurement_count === "number" ? b.measurement_count : full.measurement_count);
+      var completed = n(full.completed_count);
+      var failures = n(full.failure_count);
+
+      var bits = [];
+      if (completed !== null && attempted !== null) bits.push(completed + " of " + attempted + " runs completed");
+      else if (attempted !== null) bits.push(attempted + " runs attempted");
+      if (failures !== null) bits.push(failures + " produced no result");
+      row.appendChild(el("p", "ipi-denom", bits.length ? bits.join(". ") + "." : "counts not present in the reading."));
+
+      row.appendChild(el("p", "ipi-void__note",
+        "A rate needs a denominator. This one is zero, so the honest reading is not a low number, it is the absence of a number."));
+      host.appendChild(row);
+    });
+  }
+
+  /* ------------------------------------------------------- a test card ---- */
+  function testCard(t) {
+    var card = el("div", "ipi-test ps-p1");
+
+    var head = el("div", "ipi-test__head");
+    head.appendChild(el("span", "ipi-test__label", t.label || t.test || "unnamed test"));
+    if (t.test) head.appendChild(el("span", "ipi-test__id", t.test));
+    head.appendChild(el("span", "ipi-test__spacer"));
+    if (t.never_completes === true) {
+      head.appendChild(el("span", "tk-chip tk-chip--stale", "never completes"));
+    } else if (t.available === true) {
+      head.appendChild(el("span", "tk-chip tk-chip--watch", "rate published"));
+    } else {
+      head.appendChild(el("span", "tk-chip tk-chip--stale", "no rate"));
+    }
+    card.appendChild(head);
+
+    /* metric 1: anomalies over COMPLETED runs */
+    var m1 = el("div", "ipi-metric");
+    var h1 = el("div", "ipi-metric__head");
+    h1.appendChild(el("span", "ipi-metric__k", "Anomalies / completed"));
+    var rateTxt = pct(t.anomaly_rate);
+    if (rateTxt !== null) {
+      h1.appendChild(el("span", "ipi-metric__v ps-num", rateTxt));
+      m1.appendChild(h1);
+      var track = el("div", "ipi-track");
+      var fill = el("span", "ipi-fill");
+      fill.style.width = clampPct(t.anomaly_rate) + "%";
+      track.appendChild(fill);
+      m1.appendChild(track);
+      var a = n(t.anomaly_count), c = n(t.completed_count);
+      m1.appendChild(el("p", "ipi-denom",
+        (a !== null ? a : "?") + " anomalous of " + (c !== null ? c : "?") + " completed runs"));
+    } else {
+      m1.appendChild(h1);
+      var void1 = el("div", "ipi-nobar");
+      var c2 = n(t.completed_count);
+      void1.textContent = "no rate · " + (c2 !== null ? c2 : "0") + " completed runs";
+      m1.appendChild(void1);
+      m1.appendChild(el("p", "ipi-denom",
+        "Not zero percent. With nothing completed there is no denominator, so no share can be taken."));
+    }
+    card.appendChild(m1);
+
+    /* metric 2: runs that never produced a result, over ALL attempted runs */
+    var m2 = el("div", "ipi-metric");
+    var h2 = el("div", "ipi-metric__head");
+    h2.appendChild(el("span", "ipi-metric__k", "Never produced a result / attempted"));
+    var failTxt = pct(t.execution_failure_rate);
+    if (failTxt !== null) {
+      h2.appendChild(el("span", "ipi-metric__v ps-num", failTxt));
+      m2.appendChild(h2);
+      var track2 = el("div", "ipi-track");
+      var fill2 = el("span", "ipi-fill ipi-fill--hatch");
+      fill2.style.width = clampPct(t.execution_failure_rate) + "%";
+      track2.appendChild(fill2);
+      m2.appendChild(track2);
+      var f = n(t.failure_count), mc = n(t.measurement_count);
+      m2.appendChild(el("p", "ipi-denom",
+        (f !== null ? f : "?") + " failures of " + (mc !== null ? mc : "?") + " runs attempted"));
+    } else {
+      h2.appendChild(el("span", "ipi-metric__v", "not reported"));
+      m2.appendChild(h2);
+      m2.appendChild(el("p", "ipi-denom", "The reading carries no execution failure rate for this test."));
+    }
+    card.appendChild(m2);
+
+    if (t.available === false && typeof t.why === "string" && t.why) {
+      var u = el("div", "ipi-unavail");
+      u.appendChild(el("b", null, "No rate published, because"));
+      u.appendChild(document.createTextNode(t.why));
+      card.appendChild(u);
+    } else if (t.available === false) {
+      var u2 = el("div", "ipi-unavail");
+      u2.appendChild(el("b", null, "No rate published"));
+      u2.appendChild(document.createTextNode("The reading gives no reason for this one."));
+      card.appendChild(u2);
+    }
+
+    return card;
+  }
+
+  function renderGroup(hostId, tests) {
+    var host = document.getElementById(hostId);
+    if (!host) return;
+    host.textContent = "";
+    if (!tests.length) {
+      var e = el("div", "ipi-test ps-p1");
+      e.appendChild(el("p", "ipi-denom", "No test in this family appears in the reading this round."));
+      host.appendChild(e);
+      return;
+    }
+    tests.forEach(function (t) { host.appendChild(testCard(t)); });
+  }
+
+  /* ---------------------------------------------------- worked example ---- */
+  /* The clearest live illustration of why the denominator is the whole point:
+     the published test with the most runs that produced nothing. Stated in
+     words with only the counts the reading actually carries. No counterfactual
+     percentage is rendered anywhere. */
+  function renderWorked(tests) {
+    var wrap = document.getElementById("ipi-worked-wrap");
+    var p = document.getElementById("ipi-worked");
+    if (!wrap || !p) return;
+
+    var cand = tests.filter(function (t) {
+      return t.available === true && typeof t.failure_count === "number" && t.failure_count > 0
+        && typeof t.measurement_count === "number" && typeof t.completed_count === "number"
+        && typeof t.anomaly_count === "number" && typeof t.anomaly_rate === "number";
+    }).sort(function (a, b) { return b.failure_count - a.failure_count; });
+
+    if (!cand.length) { wrap.hidden = true; return; }
+    var t = cand[0];
+
+    p.textContent =
+      t.test + " attempted " + NF.format(t.measurement_count) + " runs in China this window, and "
+      + NF.format(t.failure_count) + " of them never produced a result. The published "
+      + pct(t.anomaly_rate) + " is " + NF.format(t.anomaly_count) + " anomalies over the "
+      + NF.format(t.completed_count) + " runs that completed. Divide by all "
+      + NF.format(t.measurement_count) + " instead and the figure collapses, but it stops being a rate of anything: "
+      + NF.format(t.failure_count) + " of those runs never reached a result to be anomalous about.";
+    wrap.hidden = false;
+  }
+
+  /* ----------------------------------------------------------- table ------ */
+  function renderTable(tests) {
+    var tb = document.getElementById("ipi-table-body");
+    if (!tb) return;
+    tb.textContent = "";
+
+    tests.forEach(function (t) {
+      var tr = el("tr");
+
+      var c0 = el("td", "ipi-t-name", t.test || "unnamed");
+      tr.appendChild(c0);
+      tr.appendChild(el("td", null, t.family || "unassigned"));
+      tr.appendChild(el("td", null, n(t.measurement_count) || "not reported"));
+      tr.appendChild(el("td", null, n(t.completed_count) || (t.completed_count === 0 ? "0" : "not reported")));
+      tr.appendChild(el("td", null, n(t.failure_count) || (t.failure_count === 0 ? "0" : "not reported")));
+      tr.appendChild(el("td", null, n(t.anomaly_count) || (t.anomaly_count === 0 ? "0" : "not reported")));
+
+      var r = pct(t.anomaly_rate);
+      tr.appendChild(r === null ? el("td", "ipi-t-none", "no rate") : el("td", null, r));
+
+      var f = pct(t.execution_failure_rate);
+      tr.appendChild(f === null ? el("td", "ipi-t-none", "not reported") : el("td", null, f));
+
+      var state = t.never_completes === true ? "never completes"
+        : (t.available === true ? "rate published" : "no rate");
+      tr.appendChild(el("td", t.never_completes === true ? "ipi-t-none" : null, state));
+
+      tb.appendChild(tr);
+    });
+  }
+
+  /* ------------------------------------------------------------ render --- */
+  function render(d) {
+    if (!d || typeof d !== "object") { fail(new Error("reading was not an object")); return; }
+    var tests = Array.isArray(d.tests) ? d.tests : null;
+    if (!tests || !tests.length) { fail(new Error("reading carried no tests[]")); return; }
+
+    renderStatus(d);
+
+    var byName = {}, byFamily = {}, order = [];
+    tests.forEach(function (t) {
+      if (t && typeof t.test === "string") byName[t.test] = t;
+      var fam = (t && typeof t.family === "string") ? t.family : "UNASSIGNED";
+      if (!byFamily[fam]) { byFamily[fam] = []; order.push(fam); }
+      byFamily[fam].push(t);
+    });
+
+    var mid = byFamily.MIDDLEBOX || [];
+    var tra = byFamily.TRANSPORT || [];
+    var exe = byFamily.EXECUTION || [];
+
+    renderFamilyReading("ipi-read-middlebox", d.middlebox_index, d.middlebox_reading, mid, "Middlebox index");
+    renderGroup("ipi-tests-MIDDLEBOX", mid);
+
+    renderFamilyReading("ipi-read-transport", d.transport_index, d.transport_reading, tra, "Transport index");
+    renderGroup("ipi-tests-TRANSPORT", tra);
+
+    renderBlackout(d, byName);
+    renderGroup("ipi-tests-EXECUTION", exe);
+
+    /* Any family the collector grows later is rendered rather than dropped. */
+    var known = { MIDDLEBOX: 1, TRANSPORT: 1, EXECUTION: 1 };
+    var extras = order.filter(function (f) { return !known[f]; });
+    if (extras.length) {
+      var wrap = document.getElementById("ipi-other-wrap");
+      var host = document.getElementById("ipi-other");
+      host.textContent = "";
+      extras.forEach(function (fam) {
+        host.appendChild(el("p", "ps-label", "Family: " + fam));
+        var g = el("div", "ipi-tests");
+        byFamily[fam].forEach(function (t) { g.appendChild(testCard(t)); });
+        host.appendChild(g);
+      });
+      wrap.hidden = false;
+    }
+
+    var mt = document.getElementById("ipi-method-text");
+    if (mt) {
+      if (typeof d.method === "string" && d.method) mt.textContent = d.method;
+      else mt.textContent = "This reading carries no method statement.";
+    }
+
+    renderWorked(tests);
+    renderTable(tests);
+  }
+
+  function boot() {
+    if (window.PalimpsestShell && window.PalimpsestShell.loadReading) {
+      window.PalimpsestShell.loadReading(URL_LATEST, render, fail);
+    } else {
+      fetch(URL_LATEST, { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(render)
+        .catch(fail);
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

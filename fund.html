@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fund Palimpsest · what a grant pays for</title>
+<meta name="description" content="Palimpsest is an MIT-licensed censorship observatory and verifiable AI eval registry with no sponsor and no paywall. This page states what it is, shows the live evidence that it is real, and says what funding buys.">
+<link rel="canonical" href="https://palimpsest.info/fund.html">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Fund Palimpsest · what a grant pays for">
+<meta property="og:description" content="Open source, no paywall, no sponsor, never monetizes the observed. Every claim on this page ships the file you can check it against.">
+<meta property="og:url" content="https://palimpsest.info/fund.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  /* page-local only: no ps-* class and no token is redefined here */
+  .f-hero { padding: clamp(34px, 6.5vw, 70px) 0 4px; }
+  .f-hero .ps-lede { margin-bottom: 18px; }
+  .f-cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 8px; }
+
+  .f-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 30px 0 0; }
+  @media (max-width: 820px) { .f-tiles { grid-template-columns: 1fr; } }
+  .f-tile { padding: 17px 19px 15px; }
+  .f-big {
+    display: block; font-size: clamp(28px, 4.2vw, 40px); font-weight: 800;
+    letter-spacing: -.022em; line-height: 1; color: var(--tk-text-0, #fff);
+  }
+  .f-big.f-range { font-size: clamp(21px, 3vw, 30px); }
+  .f-cap { margin: 7px 0 0; font-size: 13px; line-height: 1.45; color: var(--tk-text-2, #94a3b8); }
+
+  .f-receipt {
+    margin: 8px 0 0; padding: 11px 14px;
+    font-family: var(--tk-font-mono), ui-monospace, monospace;
+    font-size: 11px; line-height: 1.7; color: var(--tk-text-3, #7d8ca3);
+  }
+  .f-receipt p { margin: 0 0 3px; }
+  .f-receipt p:last-child { margin-bottom: 0; }
+  .f-receipt a, .f-card a, .f-note a, .f-claim a { color: var(--tk-live, #06d6e0); text-decoration: none; border-bottom: 1px solid rgba(6,214,224,.32); }
+  .f-receipt a:hover, .f-card a:hover, .f-note a:hover, .f-claim a:hover { border-bottom-color: currentColor; }
+
+  .f-jump { margin: 26px 0 0; padding: 12px 16px; }
+  .f-jump ol { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; padding: 0;
+    font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11.5px; }
+  .f-jump a { color: var(--tk-text-2, #94a3b8); text-decoration: none; }
+  .f-jump a:hover { color: var(--tk-live, #06d6e0); }
+
+  .f-sec { margin: clamp(46px, 7vw, 82px) 0 0; }
+  .f-claim p { font-size: 14.5px; line-height: 1.62; color: var(--tk-text-2, #94a3b8); margin: 0 0 12px; }
+  .f-claim p:last-child { margin-bottom: 0; }
+  .f-ev > * + * { margin-top: 14px; }
+
+  .f-card { padding: 17px 19px 16px; }
+  .f-card h3 {
+    margin: 0 0 9px; font-family: var(--tk-font-mono), ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .15em; text-transform: uppercase; color: var(--tk-text-3, #7d8ca3);
+  }
+  .f-card p { margin: 0 0 9px; font-size: 14px; line-height: 1.6; color: var(--tk-text-2, #94a3b8); }
+  .f-card p:last-child { margin-bottom: 0; }
+  .f-card strong, .f-claim strong { color: var(--tk-text-1, #e2e8f0); font-weight: 600; }
+
+  .f-list { list-style: none; margin: 0; padding: 0; }
+  .f-list li { padding: 10px 0; border-top: 1px solid var(--ps-edge-1); font-size: 13.5px; line-height: 1.55; color: var(--tk-text-2, #94a3b8); }
+  .f-list li:first-child { border-top: 0; padding-top: 2px; }
+  .f-list b { display: block; color: var(--tk-text-1, #e2e8f0); font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+
+  .f-kv { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 4px 14px;
+    font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11.5px; line-height: 1.65; }
+  @media (max-width: 520px) { .f-kv { grid-template-columns: 1fr; gap: 1px 0; } .f-kv dt { margin-top: 8px; } }
+  .f-kv dt { color: var(--tk-text-4, #6f8098); }
+  .f-kv dd { margin: 0; color: var(--tk-text-2, #94a3b8); word-break: break-all; }
+
+  table.f-tab { border-collapse: collapse; width: 100%; min-width: 520px;
+    font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11.5px; }
+  table.f-tab th, table.f-tab td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--ps-edge-1); white-space: nowrap; }
+  table.f-tab th:first-child, table.f-tab td:first-child { text-align: left; }
+  table.f-tab thead th { color: var(--tk-text-4, #6f8098); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; font-size: 9.5px; }
+  table.f-tab tbody td { color: var(--tk-text-2, #94a3b8); }
+  table.f-tab tbody td:first-child { color: var(--tk-text-1, #e2e8f0); }
+  table.f-tab tbody tr:last-child td { border-bottom: 0; }
+
+  .f-note { margin: 10px 0 0; font-size: 12px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3); }
+  .f-note--mono { font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11px; }
+  .f-quote { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--tk-text-1, #e2e8f0); }
+  .f-quote cite { display: block; margin-top: 7px; font-style: normal;
+    font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 10.5px; letter-spacing: .06em; color: var(--tk-text-4, #6f8098); }
+
+  .f-warn { color: var(--tk-warning, #ffb020); }
+  .f-bad  { color: var(--tk-critical, #ff5b52); }
+  .f-ok   { color: var(--tk-ok, #19c393); }
+  .f-pend { color: var(--tk-text-4, #6f8098); }
+
+  .f-err { margin: 9px 0 0; padding: 9px 12px; border-radius: 9px;
+    background: var(--tk-critical-bg, rgba(239,68,68,.13)); border: 1px solid var(--tk-critical-line, rgba(239,68,68,.5));
+    color: var(--tk-critical, #ff5b52); font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11px; line-height: 1.6; }
+  .f-err a { color: inherit; border-bottom: 1px solid currentColor; }
+
+  .f-status { display: inline-flex; align-items: center; gap: 6px; }
+
+  .f-foot { margin: clamp(54px, 8vw, 92px) 0 60px; padding-top: 18px; border-top: 1px solid var(--ps-edge-1);
+    font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11.5px; line-height: 1.8; color: var(--tk-text-3, #7d8ca3); }
+  .f-foot a { color: var(--tk-live, #06d6e0); text-decoration: none; }
+</style>
+</head>
+<body class="ps">
+<a class="ps-skip" href="#main">Skip to content</a>
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html" aria-current="page">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap">
+
+  <!-- ================================================================= HERO -->
+  <header class="f-hero">
+    <p class="ps-kicker">For grantmakers and technical funders</p>
+    <h1 class="ps-h1">What a grant to Palimpsest pays for</h1>
+    <p class="ps-lede">Palimpsest measures censorship. It watches what governments and their
+    AI models quietly remove from the public record, publishes each measurement as an open
+    JSON file within hours of taking it, and seals its own record so that nobody, including
+    the person who runs it, can revise a published number afterwards. It is MIT licensed and
+    fully open source. It has no sponsor, no paywall and no advertising, and it never
+    monetizes the people or the topics it observes. Everything below is that same claim
+    broken into parts, each one sitting directly above the file you can check it against.</p>
+
+    <p class="f-cta">
+      <a class="ps-btn" href="https://github.com/beepboop2025/palimpsest/issues">Open a funding conversation</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest">Read the source</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/index.html">Browse the live readings</a>
+    </p>
+
+    <div class="f-tiles ps-stagger">
+      <div class="ps-p3 f-tile" id="card-registry-hero">
+        <span class="f-big ps-num" id="hero-attest">not loaded</span>
+        <p class="f-cap">sealed attestations in the eval registry, each one a frozen probe
+        set and a named model, chained to the entry before it</p>
+        <div class="ps-p1 f-receipt">
+          <p><span id="hero-attest-verified" class="f-pend">chain state: not loaded</span></p>
+          <p id="hero-attest-fresh" class="f-pend">measured: not loaded</p>
+          <p><a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a>
+          &middot; <a href="/readings/eval-registry.jsonl">the chain itself</a></p>
+          <div class="f-err" id="err-registry" hidden></div>
+        </div>
+      </div>
+
+      <div class="ps-p3 f-tile" id="card-ledger-hero">
+        <span class="f-big ps-num" id="hero-ledger">not loaded</span>
+        <p class="f-cap">entries in the sealed erasure ledger, a second and separate
+        hash chain covering the censorship observations</p>
+        <div class="ps-p1 f-receipt">
+          <p><span id="hero-ledger-verified" class="f-pend">chain state: not loaded</span></p>
+          <p id="hero-ledger-fresh" class="f-pend">measured: not loaded</p>
+          <p><a href="/readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a>
+          &middot; <a href="/readings/erasure-ledger.jsonl">the ledger itself</a></p>
+          <div class="f-err" id="err-erasure" hidden></div>
+        </div>
+      </div>
+
+      <div class="ps-p3 f-tile" id="card-forecast-hero">
+        <span class="f-big ps-num" id="hero-forecasts">not loaded</span>
+        <p class="f-cap">one step forecasts scored against what actually happened next,
+        including every one the published band got wrong</p>
+        <div class="ps-p1 f-receipt">
+          <p><span id="hero-forecast-cov" class="f-pend">coverage: not loaded</span></p>
+          <p id="hero-forecast-fresh" class="f-pend">measured: not loaded</p>
+          <p><a href="/readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a>
+          &middot; <a href="/readings/forecast-ledger-history.jsonl">history</a></p>
+          <div class="f-err" id="err-forecast" hidden></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ps-p1 f-jump">
+      <ol>
+        <li><a href="#what">01 What this is</a></li>
+        <li><a href="#real">02 Is it real</a></li>
+        <li><a href="#public-good">03 Is it a public good</a></li>
+        <li><a href="#rigour">04 Is it rigorous</a></li>
+        <li><a href="#safety">05 Is it safe</a></li>
+        <li><a href="#buys">06 What money buys</a></li>
+        <li><a href="#contact">07 Contact</a></li>
+      </ol>
+    </div>
+
+    <noscript>
+      <p class="ps-p1 f-receipt" style="margin-top:14px">Every figure on this page is fetched
+      live from a JSON file at page load, so with scripting disabled the numbers stay unread
+      rather than showing you a stale copy. The files themselves are plain and public:
+      <a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a>,
+      <a href="/readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a>,
+      <a href="/readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a>,
+      <a href="/readings/vantage-fusion-latest.json">vantage-fusion-latest.json</a>,
+      <a href="/readings/anchors-latest.json">anchors-latest.json</a>.</p>
+    </noscript>
+  </header>
+
+  <!-- ============================================================== 01 WHAT -->
+  <section class="f-sec ps-band ps-reveal" id="what" aria-labelledby="h-what">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">01 &middot; What this is</p>
+      <h2 class="ps-h2" id="h-what">One instrument, pointed at two places the record gets rewritten</h2>
+      <p>Stated without jargon, in one paragraph, because a funder should not need the
+      vocabulary of the field to decide whether this matters.</p>
+    </div>
+
+    <div class="f-ev">
+      <div class="ps-p2 f-card">
+        <p>When a government censors, the evidence is an absence: a post that was there
+        yesterday and is gone today, a website that stops resolving, an answer a chatbot
+        used to give and now will not. Absences are hard to cite, which is why censorship
+        is so often reported as anecdote. Palimpsest turns those absences into measurements.
+        It archives public material first, watches for what disappears, probes AI models
+        with the same frozen set of questions week after week to see what they quietly stop
+        answering, and publishes each reading as a dated, openly licensed file with the raw
+        evidence attached. Because a record of erasure is itself worth erasing, every entry
+        is hashed into an append only chain whose root is stamped outside this project, so
+        a reader can prove offline that nothing published was later edited.</p>
+      </div>
+
+      <ul class="ps-p1 f-card f-list">
+        <li><b>The censorship observatory</b>
+        Deletion, blocking and rewriting measured as data across the network layer, the
+        model layer and the narrative layer, refreshing on its own schedule without a human
+        in the loop. <a href="/dashboards/ddti_observatory.html">Live observatory</a>,
+        <a href="/readings/erasure-observatory.html">erasure observatory</a>,
+        <a href="/china-brief.html">the brief</a>.</li>
+        <li><b>The verifiable eval registry</b>
+        AI evaluations sealed at publication. The questions are frozen and hash committed
+        before any model is queried, so a suite cannot be quietly reshaped to flatter a
+        result, and Chinese state aligned models and Western frontier models are held to
+        the same machinery. Two frozen suites run with no model in common.
+        <a href="/readings/eval-registry.html">The registry</a>,
+        <a href="/readings/generative-firewall-index.html">the Generative Firewall Index</a>.</li>
+        <li><b>Both are free to everyone, forever</b>
+        Every reading is a public file. There is no gated tier, no dataset held back, no
+        commercial version. <a href="/for-researchers.html">Data and method for researchers</a>,
+        <a href="/readings/index.html">every dataset published</a>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================== 02 REAL -->
+  <section class="f-sec ps-band ps-reveal" id="real" aria-labelledby="h-real">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">02 &middot; Is it real</p>
+      <h2 class="ps-h2" id="h-real">It is running right now, and you can check it without asking us</h2>
+      <p>The strongest thing this project can offer a funder is not a description of itself.
+      It is a set of files that were written by machines on a schedule, that carry their own
+      timestamps, and that fail verification if anyone touches them.</p>
+      <p>The numbers in this column are fetched from those files as you read. If a fetch
+      fails, the card says so in red instead of showing a figure.</p>
+    </div>
+
+    <div class="f-ev">
+      <div class="ps-p3 f-card" id="card-registry">
+        <h3>The sealed record</h3>
+        <p><span class="f-big ps-num" id="reg-attest">not loaded</span></p>
+        <p class="f-cap">attestations in the eval chain, of which
+        <span class="ps-num" id="reg-runs">not loaded</span> are sealed model runs and
+        <span class="ps-num" id="reg-prereg">not loaded</span> are pre registrations
+        committing a probe set before the model saw it.</p>
+        <div class="ps-p1 f-receipt">
+          <dl class="f-kv">
+            <dt>chain verified</dt><dd id="reg-verified" class="f-pend">not loaded</dd>
+            <dt>models covered</dt><dd id="reg-models" class="f-pend">not loaded</dd>
+            <dt>merkle root</dt><dd id="reg-root" class="f-pend">not loaded</dd>
+            <dt>head hash</dt><dd id="reg-head" class="f-pend">not loaded</dd>
+            <dt>first entry</dt><dd id="reg-first" class="f-pend">not loaded</dd>
+            <dt>verify offline</dt><dd id="reg-cmd" class="f-pend">not loaded</dd>
+          </dl>
+          <p id="reg-fresh" class="f-pend" style="margin-top:6px">measured: not loaded</p>
+          <div class="f-err" id="err-registry-2" hidden></div>
+        </div>
+      </div>
+
+      <div class="ps-p3 f-card" id="card-anchors">
+        <h3>The external anchor</h3>
+        <p class="f-cap" style="margin-bottom:9px">A chain you keep to yourself proves
+        nothing. Both roots are stamped outside this project, so the publication date of a
+        root is attested by something that has no interest in Palimpsest being right.</p>
+        <div class="ps-p1 f-receipt">
+          <dl class="f-kv">
+            <dt>OpenTimestamps</dt><dd id="anc-ots" class="f-pend">not loaded</dd>
+            <dt>Internet Archive</dt><dd id="anc-wb" class="f-pend">not loaded</dd>
+            <dt>registry root</dt><dd id="anc-reg" class="f-pend">not loaded</dd>
+            <dt>erasure root</dt><dd id="anc-era" class="f-pend">not loaded</dd>
+            <dt>reconciliation</dt><dd id="anc-match" class="f-pend">not loaded</dd>
+          </dl>
+          <p id="anc-fresh" class="f-pend" style="margin-top:6px">stamped: not loaded</p>
+          <p style="margin-top:4px"><a href="/readings/anchors-latest.json">anchors-latest.json</a>
+          &middot; <a href="/readings/anchors.jsonl">every stamp ever taken</a></p>
+          <div class="f-err" id="err-anchors" hidden></div>
+        </div>
+      </div>
+
+      <ul class="ps-p1 f-card f-list">
+        <li><b>The code is the whole project</b>
+        Collectors, processors, verifiers, tests and the site itself are in one public
+        repository under MIT.
+        <a href="https://github.com/beepboop2025/palimpsest">github.com/beepboop2025/palimpsest</a>.</li>
+        <li><b>The signals refresh unattended</b>
+        Each signal is a scheduled workflow that writes a dated file, and its run history is
+        public.
+        <a href="https://github.com/beepboop2025/palimpsest/actions">Every scheduled run</a>.</li>
+        <li><b>There is a test suite, and it is the honest kind</b>
+        Alongside the ordinary unit tests are tests that exist to stop the project fooling
+        itself, for example that a transport failure is never recorded as a takedown, that
+        an empty corpus makes the index abstain rather than print a zero, and that the
+        published cadence matches the actual cron.
+        <a href="https://github.com/beepboop2025/palimpsest/tree/main/tests">The tests</a>.</li>
+        <li><b>Anyone can verify the chains offline</b>
+        Two commands, standard library only, no key and no server. Change one sealed byte
+        and the verifier names the break.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">How the sealing works</a>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ======================================================= 03 PUBLIC GOOD -->
+  <section class="f-sec ps-band ps-reveal" id="public-good" aria-labelledby="h-pg">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">03 &middot; Is it a public good</p>
+      <h2 class="ps-h2" id="h-pg">Free, open, unsponsored, and structurally unable to sell you out</h2>
+      <p>Public good is a claim about structure, not intention, so each line here points at
+      the thing that makes it true rather than at a promise.</p>
+    </div>
+
+    <div class="f-ev">
+      <ul class="ps-p2 f-card f-list">
+        <li><b>MIT licensed, in full</b>
+        Code and data both. Anyone may run it, fork it, or replace the maintainer entirely.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/LICENSE">LICENSE</a>.</li>
+        <li><b>No paywall and no gated tier</b>
+        Every reading on this site is a plain JSON file served to anyone who asks, with a
+        history file beside it. There is no premium dataset and no embargo window.
+        <a href="/readings/index.html">The readings index</a>.</li>
+        <li><b>No sponsor and no advertising</b>
+        Nothing on this site is placed. Individual support is voluntary, taken in crypto,
+        with no donor list kept.
+        <a href="/support.html">The individual support page</a>.</li>
+        <li><b>It never monetizes the people it observes</b>
+        The subject of measurement is the act of suppression. There is no product built on
+        the speakers, no profile of any individual, and no data sold about anyone.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/SAFETY.md">SAFETY.md</a>.</li>
+        <li><b>Built to be cited and replicated, not depended on</b>
+        Method notes, a codebook and a citation file are published so the work survives
+        this maintainer.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/METHODOLOGY.md">Methodology</a>,
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/CITATION.cff">how to cite</a>.</li>
+      </ul>
+
+      <div class="ps-p1 f-card">
+        <p class="f-note" style="margin-top:0">Individual donors have their own page and it
+        stays deliberately separate from this one. If you are giving personally rather than
+        institutionally, <a href="/support.html">start there</a>. Funding of either kind pays
+        for measurement infrastructure only.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 04 RIGOUR -->
+  <section class="f-sec ps-band ps-reveal" id="rigour" aria-labelledby="h-rig">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">04 &middot; Is it rigorous</p>
+      <h2 class="ps-h2" id="h-rig">It keeps a public score of its own forecasts, misses included</h2>
+      <p>Any observatory can publish a number. The question that separates an instrument
+      from a dashboard is whether it says how wrong it expects to be, and then reports back
+      when it was wrong.</p>
+      <p>Palimpsest scores every signal prequentially: each reading is forecast from only
+      its own past, never refitted with hindsight, and scored by a proper rule against a
+      fixed quantile baseline. The misses are published in full, because a forecast record
+      with the misses removed is worth nothing.</p>
+    </div>
+
+    <div class="f-ev">
+      <div class="ps-p3 f-card" id="card-forecast">
+        <h3>Calibration of the published bands</h3>
+        <p><span class="f-big ps-num" id="fl-cov">not loaded</span></p>
+        <p class="f-cap">of readings fell inside the 80 percent band, over
+        <span class="ps-num" id="fl-n">not loaded</span> one step forecasts across
+        <span class="ps-num" id="fl-sig">not loaded</span> signals. A band that is honest
+        should land near its nominal rate, not above it.</p>
+        <p class="f-quote" id="fl-headline" style="margin-top:11px">not loaded</p>
+        <div class="ps-p1 f-receipt">
+          <p id="fl-fresh" class="f-pend">measured: not loaded</p>
+          <p><a href="/readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a></p>
+          <div class="f-err" id="err-forecast-2" hidden></div>
+        </div>
+      </div>
+
+      <div class="ps-p2 f-card">
+        <h3>Per signal, including where the adaptive band lost to the baseline</h3>
+        <div class="ps-scroll-x">
+          <table class="f-tab">
+            <thead>
+              <tr>
+                <th scope="col">Signal</th>
+                <th scope="col">Forecasts</th>
+                <th scope="col">Coverage</th>
+                <th scope="col">Nominal</th>
+                <th scope="col">Misses</th>
+                <th scope="col">Beats baseline</th>
+              </tr>
+            </thead>
+            <tbody id="fl-rows">
+              <tr><td colspan="6" class="f-pend">not loaded</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="f-note" id="fl-baseline">not loaded</p>
+      </div>
+
+      <div class="ps-p1 f-card">
+        <h3>The worst miss on each signal</h3>
+        <p class="f-cap" style="margin-bottom:10px">This table is the point of the section.
+        These are the readings the published interval failed to contain, taken straight from
+        the ledger with nothing removed. Values are in each signal's own units and do not
+        compare across rows.</p>
+        <div class="ps-scroll-x">
+          <table class="f-tab">
+            <thead>
+              <tr>
+                <th scope="col">Signal</th>
+                <th scope="col">Step</th>
+                <th scope="col">Forecast</th>
+                <th scope="col">80% band</th>
+                <th scope="col">Actual</th>
+                <th scope="col">Missed by</th>
+              </tr>
+            </thead>
+            <tbody id="fl-miss-rows">
+              <tr><td colspan="6" class="f-pend">not loaded</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="f-note" id="fl-misstotal">not loaded</p>
+        <p class="f-note f-note--mono" id="fl-excluded">not loaded</p>
+        <p class="f-note f-note--mono" id="fl-caveats">not loaded</p>
+      </div>
+
+      <div class="ps-p3 f-card" id="card-vantage">
+        <h3>When methods disagree, the interval is the answer</h3>
+        <p><span class="f-big f-range ps-num" id="vf-interval">not loaded</span></p>
+        <p class="f-cap" id="vf-cap">not loaded</p>
+        <p class="f-quote" id="vf-verdict" style="margin-top:11px">not loaded</p>
+        <div class="ps-p1 f-receipt">
+          <dl class="f-kv">
+            <dt>OONI</dt><dd id="vf-ooni" class="f-pend">not loaded</dd>
+            <dt>Censored Planet</dt><dd id="vf-cp" class="f-pend">not loaded</dd>
+            <dt>agreement</dt><dd id="vf-agree" class="f-pend">not loaded</dd>
+            <dt>weighted midpoint</dt><dd id="vf-mid" class="f-pend">not loaded</dd>
+          </dl>
+          <p id="vf-caveat" class="f-pend" style="margin-top:6px">not loaded</p>
+          <p id="vf-fresh" class="f-pend">measured: not loaded</p>
+          <p><a href="/readings/vantage-fusion-latest.json">vantage-fusion-latest.json</a></p>
+          <div class="f-err" id="err-vantage" hidden></div>
+        </div>
+      </div>
+
+      <ul class="ps-p1 f-card f-list">
+        <li><b>The scoring method is one a reviewer can attack</b>
+        Strictly prequential forecasts, adaptive conformal bands valid under distribution
+        shift, scored by the Weighted Interval Score against a fixed quantile baseline. The
+        point forecast is a random walk on purpose, because the claim being tested is
+        calibration and not sharpness.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/forecast_ledger_pull.py">The scorer</a>.</li>
+        <li><b>Movement is checked against its own measurement coverage</b>
+        Before a signal is allowed to look like news, it is tested against the possibility
+        that only the sample size moved. A verdict that does not survive that conditioning
+        is published as coverage confounded rather than as a finding.
+        <a href="/readings/coverage-guard-latest.json">coverage-guard-latest.json</a>.</li>
+        <li><b>The detection method is retrodicted against documented events</b>
+        The censor attention scorer is run unmodified over six documented censorship events
+        from 2020 to 2023, reconstructed from public documentation, and the top ranked term
+        is the event's own term in all six, never a high volume background term. What is not
+        validated by that exercise is stated in the same document.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md">docs/VALIDATION.md</a>.</li>
+        <li><b>The human coding study is published as unfinished</b>
+        The sampler, the codebook, the answer key and the two coding sheets for the
+        generative firewall labels are in the repository, drawn with a disclosed seed and
+        with the shortfalls in the rare cells recorded rather than hidden. The two coder
+        pass has not been run, so no inter rater agreement figure is published and none is
+        claimed. Funding that study is one of the things this page is asking for.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">The codebook</a>,
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/gfi_validation_agreement.py">the agreement script that is waiting on coders</a>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================ 05 SAFETY -->
+  <section class="f-sec ps-band ps-reveal" id="safety" aria-labelledby="h-safe">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">05 &middot; Is it safe</p>
+      <h2 class="ps-h2" id="h-safe">Watch the censor, never the censored</h2>
+      <p>Censorship measurement has a history of getting people detained. The safety rules
+      here are architectural, written into how collection works rather than added as a
+      policy page, and they are the reason several otherwise useful capabilities do not
+      exist in this codebase.</p>
+    </div>
+
+    <div class="f-ev">
+      <ul class="ps-p2 f-card f-list">
+        <li><b>Public reads only</b>
+        Palimpsest looks at material that was already published in public, and at the fact
+        that it later disappeared. It never deanonymizes a contributor and never profiles
+        an individual.</li>
+        <li><b>Nobody inside the censoring jurisdiction is ever asked to act</b>
+        The system observes from outside. It places no person in country at risk to gather
+        a data point. Where a vantage inside a censored network is used, it is volunteer
+        hosted infrastructure of an existing measurement platform, and that constraint is
+        surfaced on the reading rather than buried.</li>
+        <li><b>The subject is the state, not the speaker</b>
+        The unit of analysis is the act of suppression. The gazetteer identifies the
+        vocabulary of censorship, not any person.</li>
+        <li><b>No state aligned model is ever the analyst</b>
+        The classifier patterns and the sensitive terms list are authored directly and are
+        never delegated to a model aligned with the government being measured, because such
+        a model quietly omits the most sensitive terms. That asymmetry is designed around on
+        purpose. State aligned models are objects of measurement here, never instruments of
+        it.</li>
+        <li><b>A deletion is never claimed lightly</b>
+        The detector probes a known live control post first each cycle. If the network looks
+        unreliable the whole cycle is marked degraded and every deletion write is suppressed,
+        so a flaky connection can never be recorded as censorship.</li>
+        <li><b>Offensive capability is out of scope, not backlogged</b>
+        Requests to add intrusion or deanonymization are declined as out of scope rather
+        than triaged as features.</li>
+      </ul>
+
+      <div class="ps-p1 f-card f-receipt">
+        <p>The rules above are published, versioned and enforceable against the code:</p>
+        <p><a href="https://github.com/beepboop2025/palimpsest/blob/main/SAFETY.md">SAFETY.md</a>
+        &middot; <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md">docs/ETHICS.md</a>
+        &middot; <a href="https://github.com/beepboop2025/palimpsest/blob/main/SECURITY.md">SECURITY.md</a>
+        &middot; <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/OSINT_SOURCES.md">docs/OSINT_SOURCES.md</a></p>
+        <p style="margin-top:6px">Source safety overrides every other consideration,
+        including completeness of measurement. If any part of this project could endanger a
+        person, the private reporting route in SECURITY.md is the right channel and it
+        reaches the maintainer with no public trace.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== 06 BUYS -->
+  <section class="f-sec ps-band ps-reveal" id="buys" aria-labelledby="h-buys">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">06 &middot; What money buys</p>
+      <h2 class="ps-h2" id="h-buys">Four cost categories, each attached to a gap you can see on this page</h2>
+      <p>Funding here buys measurement capacity and nothing else. Each category below names
+      the specific limitation in the current published record that more of it removes.</p>
+      <p>No budget figures are published on this page. Ask through the repository and a
+      current cost breakdown against these four categories will be prepared for you.</p>
+    </div>
+
+    <div class="f-ev">
+      <div class="ps-p2 f-card">
+        <h3>01 &middot; Vantage points, the single largest running cost</h3>
+        <p>Censorship is vantage dependent. Two independent methods can legitimately
+        disagree because of routing, partial deployment or probe location, and when they
+        do, the honest published answer is a range rather than a midpoint. Egress and
+        vantage infrastructure is what narrows that range, and it is the largest recurring
+        line in running this project.</p>
+        <div class="ps-p1 f-receipt">
+          <p>The gap, live and unretouched:</p>
+          <p><span id="buy-vantage" class="f-pend">not loaded</span></p>
+          <p><a href="/readings/vantage-fusion-latest.json">vantage-fusion-latest.json</a></p>
+        </div>
+      </div>
+
+      <div class="ps-p2 f-card">
+        <h3>02 &middot; Archival storage and external anchoring</h3>
+        <p>Deletion is only measurable if the original was captured first, so the archive
+        grows every cycle and nothing is ever removed from it. Anchoring costs sit here too:
+        each root has to be stamped outside this project for the seal to mean anything to a
+        stranger.</p>
+        <div class="ps-p1 f-receipt">
+          <p>The gap, live and unretouched:</p>
+          <p><span id="buy-archive" class="f-pend">not loaded</span></p>
+          <p><a href="/readings/anchors-latest.json">anchors-latest.json</a>
+          &middot; <a href="/readings/erasure-ledger.jsonl">the sealed ledger</a></p>
+        </div>
+      </div>
+
+      <div class="ps-p2 f-card">
+        <h3>03 &middot; Model probe budget</h3>
+        <p>The eval registry pays per query. Every sealed run is a frozen probe set put to a
+        named model, and the value of the series comes from repeating it on a schedule for
+        long enough that drift becomes visible. More budget means more models, more
+        languages, and a denser series rather than a sparser one.</p>
+        <div class="ps-p1 f-receipt">
+          <p>The gap, live and unretouched:</p>
+          <p><span id="buy-probe" class="f-pend">not loaded</span></p>
+          <p><a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a></p>
+        </div>
+      </div>
+
+      <div class="ps-p2 f-card">
+        <h3>04 &middot; Human validation studies</h3>
+        <p>Machine labels are not evidence until humans have checked them. The sampling
+        frame, codebook and answer key for the generative firewall labels are already
+        written and published. What is missing is paid coder time, which is the difference
+        between a plausible index and a validated one, and the reason no agreement figure
+        appears anywhere on this site.</p>
+        <div class="ps-p1 f-receipt">
+          <p>The gap, stated plainly: two independent coders have not yet worked the
+          published sheets, so inter rater agreement is unmeasured and every model derived
+          label on this site should be read as unvalidated until it is.</p>
+          <p><a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">validation/CODEBOOK.md</a></p>
+        </div>
+      </div>
+
+      <!-- Deliberately not published here: any grant application status, programme names,
+           amounts requested, decision timelines, referees, or outcomes. That is private
+           strategy, not public content. If a specific funder needs figures, they come
+           through the contact route below, not from this page. -->
+    </div>
+  </section>
+
+  <!-- =========================================================== 07 CONTACT -->
+  <section class="f-sec ps-band ps-reveal" id="contact" aria-labelledby="h-contact">
+    <div class="ps-pin f-claim">
+      <p class="ps-label">07 &middot; Contact</p>
+      <h2 class="ps-h2" id="h-contact">How to start a conversation</h2>
+      <p>The repository is the front door, because it is the one route a stranger can verify
+      reaches the person who actually maintains the project.</p>
+    </div>
+
+    <div class="f-ev">
+      <ul class="ps-p2 f-card f-list">
+        <li><b>Funders and institutions</b>
+        Open an issue on the repository saying what you need to see. Diligence material,
+        a cost breakdown against the four categories above, or a walkthrough of the
+        verification path can all be prepared on request.
+        <a href="https://github.com/beepboop2025/palimpsest/issues">github.com/beepboop2025/palimpsest/issues</a>.</li>
+        <li><b>Anything touching a person's safety</b>
+        Use the private reporting route in SECURITY.md rather than a public issue. It
+        reaches the maintainer with no public trace.
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/SECURITY.md">SECURITY.md</a>.</li>
+        <li><b>Individuals who want to give</b>
+        The individual support page takes contributions in crypto, keeps no donor list, and
+        is deliberately separate from institutional funding.
+        <a href="/support.html">Support page</a>.</li>
+        <li><b>Help that is not money</b>
+        Cite the data in research and journalism, replicate a reading and say where it
+        disagreed, or volunteer as a coder for the validation study. Coders are the single
+        most useful non financial contribution right now.
+        <a href="/for-researchers.html">For researchers</a>,
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/CONTRIBUTING.md">contributing</a>.</li>
+      </ul>
+
+      <!-- No direct email or postal address is published here because none is published
+           anywhere in the repository, and inventing one would be worse than omitting it.
+           If a direct contact address should appear on this page, add it here by hand. -->
+
+      <div class="ps-p1 f-card">
+        <p class="f-note" style="margin-top:0">This page names no institution, no team size
+        and no funding total, because none of those are things a reader could check. What is
+        checkable is on the page, and what is not has been left off it.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="f-foot">
+    Palimpsest is MIT licensed and developed in the open as a public good. It watches the
+    censor, never the censored. Every finding ships its raw evidence.<br>
+    <a href="/">Home</a> &middot;
+    <a href="/readings/index.html">Readings</a> &middot;
+    <a href="/for-researchers.html">For researchers</a> &middot;
+    <a href="/support.html">Individual support</a> &middot;
+    <a href="https://github.com/beepboop2025/palimpsest">Source</a>
+  </p>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+/* ---------------------------------------------------------------------------
+   fund.html: every figure on this page is rendered from a live reading file.
+   Nothing here invents, rounds up, or substitutes a plausible value: if a feed
+   cannot be read, the affected cards say so in red and the numbers stay unread.
+   --------------------------------------------------------------------------- */
+(function () {
+  "use strict";
+
+  function ready(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else fn();
+  }
+
+  ready(function () {
+    var S = window.PalimpsestShell || {};
+    var STALE_H = 12;          /* every feed used here refreshes on a 6 hour cron */
+    var store = {};
+
+    /* shell.js normally supplies this. If it failed to load, the readings must
+       still render rather than leaving every card silently unread. */
+    if (typeof S.loadReading !== "function") {
+      S.loadReading = function (url, onData, onError) {
+        return fetch(url, { cache: "no-store" })
+          .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+          .then(onData)
+          .catch(function (err) { if (onError) onError(err); });
+      };
+    }
+
+    function q(id) { return document.getElementById(id); }
+
+    function set(id, value, cls) {
+      var n = q(id);
+      if (!n) return;
+      n.textContent = value;
+      n.classList.remove("f-pend", "f-warn", "f-ok", "f-bad");
+      if (cls) n.classList.add(cls);
+    }
+
+    /* A number is only ever written when it is actually a finite number. */
+    function num(id, value, opts) {
+      var n = q(id);
+      if (!n) return;
+      var v = Number(value);
+      if (!isFinite(v)) { set(id, "unavailable", "f-bad"); return; }
+      n.classList.remove("f-pend", "f-warn", "f-ok", "f-bad");
+      opts = opts || {};
+      if (S.countUp) S.countUp(n, v, opts);
+      else n.textContent = v.toFixed(opts.decimals || 0) + (opts.suffix || "");
+    }
+
+    function ago(iso) { return S.ago ? S.ago(iso) : iso; }
+
+    function stamp(id, iso, label) {
+      var n = q(id);
+      if (!n) return;
+      var t = Date.parse(iso);
+      if (!isFinite(t)) { set(id, (label || "measured") + ": timestamp missing from the feed", "f-warn"); return; }
+      var hours = (Date.now() - t) / 3600000;
+      var when = String(iso).slice(0, 16).replace("T", " ") + " UTC";
+      if (hours > STALE_H) {
+        set(id, "stale: last " + (label || "measured") + " " + ago(iso) + " (" + when + "), cadence is 6 h", "f-warn");
+      } else {
+        set(id, (label || "measured") + " " + ago(iso) + " (" + when + ")");
+      }
+    }
+
+    function shorten(hash) {
+      if (typeof hash !== "string" || !hash) return null;
+      return hash.length > 24 ? hash.slice(0, 16) + "…" + hash.slice(-8) : hash;
+    }
+
+    function hash(id, value) {
+      var n = q(id);
+      if (!n) return;
+      var s = shorten(value);
+      if (!s) { set(id, "absent from the feed", "f-warn"); return; }
+      set(id, s);
+      n.setAttribute("title", value);
+    }
+
+    /* Loud failure. A silent empty card on this site would be a lie by omission. */
+    function bail(errId, url, err, numIds) {
+      var box = q(errId);
+      if (box) {
+        box.hidden = false;
+        box.textContent = "";
+        box.appendChild(document.createTextNode("could not read "));
+        var a = document.createElement("a");
+        a.href = url; a.textContent = url;
+        box.appendChild(a);
+        box.appendChild(document.createTextNode(" (" + (err && err.message ? err.message : err) + "). No figure is shown rather than a wrong one."));
+      }
+      (numIds || []).forEach(function (id) { set(id, "unavailable", "f-bad"); });
+    }
+
+    function cell(row, text, cls) {
+      var td = document.createElement("td");
+      td.textContent = text;
+      if (cls) td.className = cls;
+      row.appendChild(td);
+      return td;
+    }
+
+    function fill(tbodyId, rows) {
+      var tb = q(tbodyId);
+      if (!tb) return;
+      tb.textContent = "";
+      rows.forEach(function (r) { tb.appendChild(r); });
+    }
+
+    function fixed(v, d) { return isFinite(Number(v)) ? Number(v).toFixed(d) : "not published"; }
+
+    /* Scale decimals to magnitude so a bridge count and a percentage both read. */
+    function auto(v) {
+      var n = Number(v);
+      if (!isFinite(n)) return "not published";
+      var a = Math.abs(n);
+      if (a >= 1000) return n.toFixed(0);
+      if (a >= 100) return n.toFixed(1);
+      if (a >= 1) return n.toFixed(2);
+      return n.toFixed(3);
+    }
+
+    function pretty(key) { return String(key).replace(/_/g, " "); }
+
+    /* ---------------------------------------------------- eval registry ---- */
+    var REG = "/readings/eval-registry-latest.json";
+    S.loadReading(REG, function (d) {
+      store.registry = d;
+      num("hero-attest", d.attestations);
+      num("reg-attest", d.attestations);
+      num("reg-runs", d.runs);
+      num("reg-prereg", d.preregistrations);
+
+      if (d.verified === true) {
+        set("hero-attest-verified", "chain state: verified, no breaks", "f-ok");
+        set("reg-verified", "yes, and the verifier reports no problems", "f-ok");
+      } else if (d.verified === false) {
+        var probs = Array.isArray(d.problems) && d.problems.length ? d.problems.join("; ") : "the feed reports the chain as unverified";
+        set("hero-attest-verified", "chain state: NOT verified", "f-bad");
+        set("reg-verified", "no. " + probs, "f-bad");
+      } else {
+        set("hero-attest-verified", "chain state: not reported by the feed", "f-warn");
+        set("reg-verified", "not reported by the feed", "f-warn");
+      }
+
+      set("reg-models", Array.isArray(d.models) && d.models.length ? d.models.join(", ") : "not listed in the feed",
+        Array.isArray(d.models) && d.models.length ? null : "f-warn");
+      hash("reg-root", d.merkle_root);
+      hash("reg-head", d.head_hash);
+      set("reg-first", d.first_ts ? String(d.first_ts).slice(0, 10) : "not published",
+        d.first_ts ? null : "f-warn");
+      set("reg-cmd", d.verify_cmd || "not published", d.verify_cmd ? null : "f-warn");
+      stamp("hero-attest-fresh", d.generated_at);
+      stamp("reg-fresh", d.generated_at);
+
+      var runs = Number(d.runs), models = Array.isArray(d.models) ? d.models.length : NaN;
+      if (isFinite(runs) && isFinite(models) && models > 0) {
+        set("buy-probe", runs + " sealed runs so far across " + models +
+          " models on two frozen suites. Every additional model, language and repeat costs query budget.");
+      } else {
+        set("buy-probe", "run and model counts were not readable from the feed", "f-warn");
+      }
+      reconcile();
+    }, function (e) {
+      store.registryFailed = true;
+      bail("err-registry", REG, e, ["hero-attest", "hero-attest-verified", "hero-attest-fresh"]);
+      bail("err-registry-2", REG, e, ["reg-attest", "reg-runs", "reg-prereg", "reg-verified",
+        "reg-models", "reg-root", "reg-head", "reg-first", "reg-cmd", "reg-fresh", "buy-probe"]);
+      reconcile();
+    });
+
+    /* ------------------------------------------------- erasure integrity ---- */
+    var ERA = "/readings/erasure-observatory-latest.json";
+    S.loadReading(ERA, function (d) {
+      var integ = d.integrity || {};
+      store.erasure = integ;
+      num("hero-ledger", integ.entries);
+      if (integ.verified === true) set("hero-ledger-verified", "chain state: verified, no breaks", "f-ok");
+      else if (integ.verified === false) set("hero-ledger-verified", "chain state: NOT verified", "f-bad");
+      else set("hero-ledger-verified", "chain state: not reported by the feed", "f-warn");
+      stamp("hero-ledger-fresh", d.generated_at);
+      reconcile();
+    }, function (e) {
+      store.erasureFailed = true;
+      bail("err-erasure", ERA, e, ["hero-ledger", "hero-ledger-verified", "hero-ledger-fresh"]);
+      reconcile();
+    });
+
+    /* -------------------------------------------------------- anchoring ---- */
+    var ANC = "/readings/anchors-latest.json";
+    S.loadReading(ANC, function (d) {
+      store.anchors = d;
+      if (d.ots_status === "stamped") set("anc-ots", "stamped (" + (d.ots || "file path not published") + ")", "f-ok");
+      else if (d.ots_status) set("anc-ots", String(d.ots_status), "f-warn");
+      else set("anc-ots", "not reported by the feed", "f-warn");
+
+      var wb = Number(d.wayback_ok);
+      var snaps = Array.isArray(d.wayback_snapshots) ? d.wayback_snapshots.length : null;
+      if (!isFinite(wb)) {
+        set("anc-wb", "not reported by the feed", "f-warn");
+      } else if (wb > 0) {
+        set("anc-wb", wb + " snapshot" + (wb === 1 ? "" : "s") + " recorded in the latest run", "f-ok");
+      } else {
+        set("anc-wb", "0 snapshots in the latest run" + (snaps === 0 ? " and none listed" : "") +
+          ". The Internet Archive leg of the anchor is currently failing and is reported here rather than hidden.", "f-warn");
+      }
+      hash("anc-reg", d.registry_root);
+      hash("anc-era", d.erasure_root);
+      stamp("anc-fresh", d.ts, "stamped");
+
+      var bits = [];
+      if (isFinite(wb) && wb === 0) bits.push("the Internet Archive leg of the anchor is failing at the moment, so the external seal currently rests on OpenTimestamps alone");
+      bits.push("the archive grows every cycle and nothing is removed from it");
+      set("buy-archive", bits.join("; ") + ".");
+      reconcile();
+    }, function (e) {
+      bail("err-anchors", ANC, e, ["anc-ots", "anc-wb", "anc-reg", "anc-era", "anc-match", "anc-fresh", "buy-archive"]);
+    });
+
+    /* Roots reconcile only once both sides are in. A root that has moved on is
+       normal (the chain advanced since the stamp); it is not evidence of a break. */
+    function reconcile() {
+      var a = store.anchors;
+      if (!a) return;
+      var reg = store.registry, era = store.erasure;
+      if (!reg && !era) {
+        if (store.registryFailed && store.erasureFailed) {
+          set("anc-match", "cannot reconcile: neither chain feed could be read, so the stamped roots are shown without a comparison", "f-warn");
+        }
+        return;
+      }
+      var parts = [];
+      if (reg && reg.merkle_root) {
+        parts.push(a.registry_root === reg.merkle_root
+          ? "the stamped registry root is the current registry head root"
+          : "the registry chain has advanced since the last stamp, so its stamped root is older than the current head");
+      }
+      if (era && era.merkle_root) {
+        parts.push(a.erasure_root === era.merkle_root
+          ? "the stamped erasure root is the current ledger head root"
+          : "the erasure ledger has advanced since the last stamp, so its stamped root is older than the current head");
+      }
+      if (!parts.length) return;
+      var allMatch = parts.every(function (p) { return p.indexOf("advanced") === -1; });
+      set("anc-match", parts.join("; ") + ".", allMatch ? "f-ok" : null);
+    }
+
+    /* --------------------------------------------------- forecast ledger ---- */
+    var FL = "/readings/forecast-ledger-latest.json";
+    S.loadReading(FL, function (d) {
+      num("hero-forecasts", d.n_forecasts);
+      num("fl-n", d.n_forecasts);
+      num("fl-sig", d.n_signals_scored);
+
+      var cov = Number(d.pooled_empirical_coverage), nom = Number(d.nominal_coverage);
+      if (isFinite(cov)) {
+        num("fl-cov", cov * 100, { decimals: 1, suffix: "%" });
+        set("hero-forecast-cov", "coverage: " + (cov * 100).toFixed(1) + "% inside the published " +
+          (isFinite(nom) ? (nom * 100).toFixed(0) + "% band" : "band"));
+      } else {
+        set("fl-cov", "unavailable", "f-bad");
+        set("hero-forecast-cov", "coverage not published in the feed", "f-warn");
+      }
+      set("fl-headline", d.headline ? "“" + d.headline + "”" : "no headline published in this reading",
+        d.headline ? null : "f-warn");
+      stamp("hero-forecast-fresh", d.generated_at);
+      stamp("fl-fresh", d.generated_at);
+
+      var sig = d.signals || {}, keys = Object.keys(sig);
+      var rows = [], missRows = [], totalMisses = 0, haveMisses = false;
+
+      keys.forEach(function (k) {
+        var s = sig[k] || {};
+        var unscored = s.scoreable === false;
+        var gap = unscored ? "not scored" : "not published";
+        var tr = document.createElement("tr");
+        var th = document.createElement("th");
+        th.setAttribute("scope", "row");
+        th.textContent = pretty(k);
+        th.style.textAlign = "left";
+        th.style.fontWeight = "600";
+        tr.appendChild(th);
+        cell(tr, isFinite(Number(s.n_forecasts)) ? String(s.n_forecasts) : gap);
+        cell(tr, isFinite(Number(s.empirical_coverage)) ? (Number(s.empirical_coverage) * 100).toFixed(1) + "%" : gap);
+        cell(tr, isFinite(Number(s.nominal_coverage)) ? (Number(s.nominal_coverage) * 100).toFixed(0) + "%" : gap);
+        cell(tr, isFinite(Number(s.n_misses)) ? String(s.n_misses) : gap);
+        cell(tr, s.beats_baseline === true ? "yes" : (s.beats_baseline === false ? "no" : gap),
+          s.beats_baseline === true ? "f-ok" : (s.beats_baseline === false ? "f-warn" : null));
+        rows.push(tr);
+
+        if (isFinite(Number(s.n_misses))) { totalMisses += Number(s.n_misses); haveMisses = true; }
+
+        var worst = Array.isArray(s.worst_misses) && s.worst_misses.length ? s.worst_misses[0] : null;
+        if (worst) {
+          var mr = document.createElement("tr");
+          var mth = document.createElement("th");
+          mth.setAttribute("scope", "row");
+          mth.textContent = pretty(k);
+          mth.style.textAlign = "left";
+          mth.style.fontWeight = "600";
+          mr.appendChild(mth);
+          cell(mr, isFinite(Number(worst.t)) ? String(worst.t) : "not published");
+          cell(mr, auto(worst.forecast));
+          cell(mr, auto(worst.lo) + " to " + auto(worst.hi));
+          cell(mr, auto(worst.actual));
+          cell(mr, auto(worst.miss_by), "f-warn");
+          missRows.push(mr);
+        }
+      });
+
+      if (rows.length) fill("fl-rows", rows);
+      else {
+        var empty = document.createElement("tr");
+        cell(empty, "no signals were scored in this reading", "f-warn").colSpan = 6;
+        fill("fl-rows", [empty]);
+      }
+
+      if (missRows.length) fill("fl-miss-rows", missRows);
+      else {
+        var e2 = document.createElement("tr");
+        cell(e2, "this reading published no individual misses", "f-warn").colSpan = 6;
+        fill("fl-miss-rows", [e2]);
+      }
+
+      var beat = Number(d.n_beating_baseline);
+      var scored = isFinite(Number(d.n_signals_scored)) ? Number(d.n_signals_scored) : keys.length;
+      if (isFinite(beat) && scored) {
+        set("fl-baseline", "The adaptive band beat the fixed quantile baseline on " + beat +
+          " of " + scored + " signals. On the rest the simpler baseline scored the same or better, which is published here rather than dropped.");
+      } else {
+        set("fl-baseline", "the baseline comparison was not published in this reading", "f-warn");
+      }
+
+      if (haveMisses && isFinite(Number(d.n_forecasts))) {
+        set("fl-misstotal", totalMisses + " of " + d.n_forecasts +
+          " forecasts fell outside their published band. The full list of misses per signal is in the feed, not only the worst one shown here.");
+      } else {
+        set("fl-misstotal", "the miss counts were not published in this reading", "f-warn");
+      }
+
+      var exc = d.excluded && typeof d.excluded === "object" ? Object.keys(d.excluded) : [];
+      if (exc.length) {
+        set("fl-excluded", "Not scored: " + exc.map(function (k) {
+          return pretty(k) + " (" + d.excluded[k] + ")";
+        }).join(" · ") + ". Signals are excluded rather than scored on too little history, because scoring them would manufacture a number out of how the file is written.");
+      } else {
+        set("fl-excluded", "no signals were excluded from this reading");
+      }
+
+      var cav = Array.isArray(d.caveats) ? d.caveats : [];
+      set("fl-caveats", cav.length ? "Caveats carried by this reading: " + cav.join(" · ")
+        : "this reading published no caveats", cav.length ? null : "f-warn");
+    }, function (e) {
+      bail("err-forecast", FL, e, ["hero-forecasts", "hero-forecast-cov", "hero-forecast-fresh"]);
+      bail("err-forecast-2", FL, e, ["fl-cov", "fl-n", "fl-sig", "fl-headline", "fl-fresh",
+        "fl-baseline", "fl-misstotal", "fl-excluded", "fl-caveats"]);
+      var row = document.createElement("tr");
+      cell(row, "could not read " + FL, "f-bad").colSpan = 6;
+      fill("fl-rows", [row]);
+      var row2 = document.createElement("tr");
+      cell(row2, "could not read " + FL, "f-bad").colSpan = 6;
+      fill("fl-miss-rows", [row2]);
+    });
+
+    /* --------------------------------------------------- vantage fusion ---- */
+    var VF = "/readings/vantage-fusion-latest.json";
+    S.loadReading(VF, function (d) {
+      var iv = Array.isArray(d.interval) && d.interval.length === 2 ? d.interval : null;
+      var quotable = d.single_rate_quotable === true;
+
+      if (quotable && isFinite(Number(d.fused_index))) {
+        set("vf-interval", fixed(d.fused_index, 1));
+        set("vf-cap", "The vantages agree closely enough that a single fused rate is quotable in this reading. The interval and the per vantage values are below.");
+      } else if (iv) {
+        set("vf-interval", fixed(iv[0], 1) + " to " + fixed(iv[1], 1));
+        set("vf-cap", "No single rate is quotable in this reading. Confidence is " +
+          (d.confidence || "not published") + " and the two methods sit " +
+          fixed(d.divergence_pp, 1) + " percentage points apart, so the published answer is the range and not its midpoint.");
+      } else {
+        set("vf-interval", "unavailable", "f-bad");
+        set("vf-cap", "this reading published neither a quotable rate nor an interval", "f-warn");
+      }
+
+      set("vf-verdict", d.verdict ? "“" + d.verdict + "”" : "no verdict published in this reading",
+        d.verdict ? null : "f-warn");
+
+      var v = d.vantages || {};
+      set("vf-ooni", isFinite(Number(v.ooni)) ? fixed(v.ooni, 1) : "not reporting", isFinite(Number(v.ooni)) ? null : "f-warn");
+      set("vf-cp", isFinite(Number(v.censored_planet)) ? fixed(v.censored_planet, 1) : "not reporting", isFinite(Number(v.censored_planet)) ? null : "f-warn");
+      set("vf-agree", isFinite(Number(d.agreement)) ? fixed(Number(d.agreement) * 100, 1) + "%" : "not published");
+      set("vf-mid", isFinite(Number(d.fused_index))
+        ? fixed(d.fused_index, 1) + (quotable ? "" : ", kept only for series continuity and not quotable")
+        : "not published", quotable ? null : "f-warn");
+      var cav = Array.isArray(d.caveats) && d.caveats.length ? d.caveats[0] : null;
+      set("vf-caveat", cav ? cav : "this reading published no caveats", cav ? null : "f-warn");
+      stamp("vf-fresh", d.generated_at);
+
+      if (iv && isFinite(Number(d.divergence_pp))) {
+        set("buy-vantage", "Two independent methods currently read " + fixed(v.ooni, 1) + " and " +
+          fixed(v.censored_planet, 1) + " on the same wall, " + fixed(d.divergence_pp, 1) +
+          " percentage points apart, so the published answer is the range " + fixed(iv[0], 1) +
+          " to " + fixed(iv[1], 1) + ". More vantages is the input that narrows it.");
+      } else {
+        set("buy-vantage", "the vantage spread was not readable from this reading", "f-warn");
+      }
+    }, function (e) {
+      bail("err-vantage", VF, e, ["vf-interval", "vf-cap", "vf-verdict", "vf-ooni", "vf-cp",
+        "vf-agree", "vf-mid", "vf-caveat", "vf-fresh", "buy-vantage"]);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,199 +1,869 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Bleedthrough — the GFW injector fleet · Palimpsest</title>
-<meta name="description" content="Apparatus-layer tomography of the Great Firewall: the size, forged-IP pools, regional divergence and operational events of China's DNS-injector fleet — reconstructed from outside by making the censor's own injectors answer benign probes.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bleedthrough, the GFW injector fleet · Palimpsest</title>
+<meta name="description" content="Apparatus-layer tomography of the Great Firewall: the size, forged-IP pools, regional divergence and operational events of China's DNS-injector fleet, reconstructed from outside by making the censor's own injectors answer benign probes.">
+<link rel="canonical" href="https://palimpsest.info/readings/bleedthrough.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
-  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#b07cff}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
-  a{color:var(--cy);text-decoration:none}
-  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}
-  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
-  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
-  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
-  .wrap{max-width:920px;margin:0 auto;padding:clamp(18px,5vw,40px)}
-  h1{font-size:clamp(20px,4vw,27px);margin:.2em 0 .1em;letter-spacing:-.01em}
-  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
-  .demo{display:none;font-size:11px;letter-spacing:.08em;color:var(--amb);border:1px solid var(--amb);border-radius:6px;padding:8px 12px;margin-bottom:18px;background:rgba(244,183,64,.06)}
-  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px}
-  .idx{font-size:66px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .idx small{font-size:20px;color:var(--dim);font-weight:400}
-  .band{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;margin-top:8px}
-  .heroTxt{flex:1;min-width:220px}
-  .heroTxt .t{font-size:13px;color:var(--mut)}
-  .heroTxt .m{font-size:12px;color:var(--dim);margin-top:8px}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
-  @media(max-width:680px){.stats{grid-template-columns:1fr}}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
-  .stat .n{font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .stat .l{font-size:11px;color:var(--mut);margin-top:8px;text-transform:uppercase;letter-spacing:.05em}
-  .stat .d{font-size:11px;color:var(--dim);margin-top:4px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:20px}
-  .card h2{font-size:12px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
-  .elist{margin:0;padding:0;list-style:none}
-  .elist li{display:flex;align-items:baseline;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
-  .elist li:last-child{border:0}
-  .sev{flex:none;width:66px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}
-  .kind{flex:none;color:var(--fg)}
-  .vt{flex:1;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .det{flex:none;color:var(--mut)}
-  .steps{margin:0;padding:0;list-style:none;counter-reset:s}
-  .steps li{position:relative;padding:6px 0 6px 30px;font-size:12.5px;color:var(--mut)}
-  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:6px;width:20px;height:20px;border-radius:6px;background:rgba(6,214,224,.12);color:var(--cy);font-size:11px;display:grid;place-items:center}
-  .steps b{color:var(--fg);font-weight:600}
-  .foot{margin-top:8px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
-  .err{color:var(--amb);font-size:13px}
-  .pending{background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px;color:var(--mut);font-size:13px}
-  .pending b{color:var(--fg)}
-  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
-  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
-  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
+/* Page-specific only. Never redefines a --tk-* token or a .ps-* class. */
+
+/* ---- status strip ------------------------------------------------------- */
+.bt-status {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 9px 20px;
+  padding: 12px 16px; margin: 0 0 12px;
+  font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--tk-text-3);
+}
+.bt-status__b { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.bt-status b { color: var(--tk-text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bt-status a { color: var(--tk-text-2); text-decoration: underline; text-underline-offset: 2px; }
+.bt-status a:hover { color: var(--tk-live); }
+
+/* ---- the funder line ---------------------------------------------------- */
+.bt-trust {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline;
+  padding: 13px 16px; margin: 0 0 12px;
+  font-size: 12.5px; color: var(--tk-text-2);
+}
+.bt-trust p { margin: 0; max-width: 60ch; }
+.bt-trust a { color: var(--tk-live); text-decoration: none; font-family: var(--tk-font-mono); font-size: 11.5px; }
+.bt-trust a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- standing by: the honest pre-first-round state ----------------------
+   This is a designed state, not a fallback. Nothing here is a spinner, an
+   error, or a greyed-out shape pretending a number will appear in it. The
+   plane says the rest: no reading exists yet, so nothing sits on plane 3. */
+.bt-standby { padding: clamp(24px, 4vw, 34px) clamp(22px, 4vw, 32px); margin: 0 0 16px; }
+.bt-standby[hidden] { display: none; }
+.bt-standby__k {
+  display: inline-flex; align-items: center; gap: 9px; margin: 0 0 16px;
+  font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--tk-text-3);
+}
+.bt-standby__dot { color: var(--tk-live); }
+.bt-standby h2 {
+  margin: 0 0 14px; font-size: clamp(21px, 3vw, 27px); line-height: 1.16;
+  font-weight: 700; letter-spacing: -.018em; color: var(--tk-text-0);
+}
+.bt-standby p { margin: 0 0 14px; font-size: 14.5px; color: var(--tk-text-2); max-width: 62ch; line-height: 1.65; }
+.bt-standby p:last-of-type { margin-bottom: 0; }
+.bt-standby__why {
+  margin: 20px 0 0; padding: 14px 16px;
+  border-radius: var(--tk-radius-md, 11px); border: 1px solid var(--ps-edge-1);
+  font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.75; color: var(--tk-text-3);
+}
+.bt-standby__why b { display: block; color: var(--tk-text-1); font-weight: 600; margin: 0 0 6px; letter-spacing: .1em; text-transform: uppercase; font-size: 10px; }
+.bt-standby__acts { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 0; }
+
+/* ---- badges the reading can raise --------------------------------------- */
+.bt-badge {
+  display: none; padding: 13px 16px; margin: 0 0 14px;
+  border-radius: var(--tk-radius-md, 11px);
+  background: var(--tk-warning-bg); border: 1px solid var(--tk-warning-line);
+  font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.65; color: var(--tk-text-2);
+}
+.bt-badge[data-shown] { display: block; }
+.bt-badge b {
+  display: block; margin: 0 0 5px; letter-spacing: .14em; text-transform: uppercase;
+  font-size: 10px; color: var(--tk-warning); font-weight: 600;
+}
+
+/* ---- the reading, plane 3 ----------------------------------------------- */
+.bt-reading[hidden] { display: none; }
+.bt-read { padding: 24px 26px; margin: 0 0 14px; }
+.bt-read__k { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 10px; }
+.bt-read__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+.bt-read__v {
+  font-size: clamp(38px, 6.6vw, 58px); font-weight: 800; line-height: 1;
+  letter-spacing: -.03em; color: var(--tk-text-0); font-variant-numeric: tabular-nums;
+}
+.bt-read__ge { font-size: clamp(22px, 3.4vw, 30px); font-weight: 400; color: var(--tk-text-4); }
+.bt-read__u { font-size: 17px; font-weight: 400; color: var(--tk-text-4); letter-spacing: 0; }
+.bt-read__t { margin: 14px 0 0; font-size: 14px; color: var(--tk-text-2); max-width: 58ch; }
+.bt-read__denom {
+  margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--ps-edge-1);
+  font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3); line-height: 1.75;
+}
+.bt-read__denom b { color: var(--tk-text-1); font-weight: 600; }
+
+/* ---- components of the reading, plane 2 --------------------------------- */
+.bt-stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin: 0 0 14px; }
+.bt-stat { padding: 16px 18px; }
+.bt-stat__n { font-size: 28px; font-weight: 800; line-height: 1; color: var(--tk-text-0); font-variant-numeric: tabular-nums; }
+.bt-stat__n small { font-size: 14px; font-weight: 400; color: var(--tk-text-4); }
+.bt-stat__l { margin: 10px 0 0; font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--tk-text-3); }
+.bt-stat__d { margin: 5px 0 0; font-size: 11.5px; color: var(--tk-text-4); line-height: 1.55; }
+.bt-stat__n .bt-none { font-size: 15px; font-weight: 600; color: var(--tk-stale); font-family: var(--tk-font-mono); letter-spacing: .06em; }
+
+/* ---- apparatus events, plane 1 ------------------------------------------ */
+.bt-events { margin: 0; padding: 0 4px; list-style: none; }
+.bt-events li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 11px;
+  padding: 10px 12px; border-bottom: 1px solid var(--ps-edge-1); font-size: 12.5px;
+}
+.bt-events li:last-child { border-bottom: 0; }
+.bt-events .bt-sev {
+  flex: none; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--ps-edge-2); color: var(--tk-text-3);
+}
+.bt-events .bt-sev--high { color: var(--tk-critical); border-color: var(--tk-critical-line); background: var(--tk-critical-bg); }
+.bt-events .bt-sev--medium { color: var(--tk-warning); border-color: var(--tk-warning-line); background: var(--tk-warning-bg); }
+.bt-events .bt-sev--low { color: var(--tk-ok); border-color: var(--tk-ok-line); background: var(--tk-ok-bg); }
+.bt-events .bt-kind { flex: none; color: var(--tk-text-0); font-weight: 600; }
+.bt-events .bt-vt { flex: none; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4); }
+.bt-events .bt-det { flex: 1; min-width: 160px; color: var(--tk-text-2); }
+.bt-events .bt-quiet { flex: 1; color: var(--tk-text-4); }
+
+/* ---- method plane ------------------------------------------------------- */
+.bt-method { padding: 22px 24px; margin: 0 0 12px; }
+.bt-method h3 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 12px; font-weight: 600; }
+.bt-method p { margin: 0 0 13px; font-size: 14px; color: var(--tk-text-2); max-width: var(--ps-measure); }
+.bt-method p:last-child { margin-bottom: 0; }
+.bt-method dl { margin: 0; font-size: 13px; }
+.bt-method dt { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--tk-text-4); margin: 16px 0 5px; }
+.bt-method dt:first-child { margin-top: 0; }
+.bt-method dd { margin: 0; color: var(--tk-text-2); line-height: 1.7; max-width: var(--ps-measure); }
+
+.bt-steps { margin: 0; padding: 0; list-style: none; counter-reset: bt-s; }
+.bt-steps li { position: relative; padding: 9px 0 9px 34px; font-size: 14px; color: var(--tk-text-2); line-height: 1.6; max-width: var(--ps-measure); }
+.bt-steps li::before {
+  counter-increment: bt-s; content: counter(bt-s);
+  position: absolute; left: 0; top: 10px;
+  width: 22px; height: 22px; border-radius: 7px;
+  background: rgba(6,214,224,.12); color: var(--tk-live);
+  font-family: var(--tk-font-mono); font-size: 11px;
+  display: grid; place-items: center;
+}
+.bt-steps b { color: var(--tk-text-0); font-weight: 600; }
+
+.bt-guard { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.bt-guard li { display: flex; align-items: baseline; gap: 11px; font-size: 13.5px; color: var(--tk-text-2); line-height: 1.6; }
+.bt-guard li::before { content: "·"; color: var(--tk-live); font-weight: 700; flex: none; }
+.bt-guard b { color: var(--tk-text-0); font-weight: 600; }
+
+/* ---- provenance receipt ------------------------------------------------- */
+.bt-prov { display: grid; gap: 0; margin: 0; }
+.bt-prov__r { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 9px 0; border-bottom: 1px solid var(--ps-edge-1); }
+.bt-prov__r:last-child { border-bottom: 0; }
+.bt-prov__k { flex: none; width: 168px; font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--tk-text-4); }
+.bt-prov__v { flex: 1; min-width: 180px; font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-1); overflow-wrap: anywhere; }
+
+/* ---- caveat and receipts ------------------------------------------------ */
+.bt-caveat { padding: 15px 18px; margin: 0 0 14px; font-size: 13px; color: var(--tk-text-2); line-height: 1.65; }
+.bt-caveat > b {
+  display: block; margin: 0 0 5px;
+  font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--tk-warning); font-weight: 600;
+}
+.bt-caveat p { margin: 0 0 9px; }
+.bt-caveat p:last-child { margin-bottom: 0; }
+
+.bt-links { display: grid; gap: 9px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 0; padding: 0; list-style: none; }
+.bt-links a, .bt-links .bt-nolink { display: block; padding: 13px 15px; text-decoration: none; height: 100%; }
+.bt-links b { display: block; font-size: 13px; color: var(--tk-text-0); font-weight: 600; }
+.bt-links .bt-nolink b { color: var(--tk-text-3); }
+.bt-links span { display: block; margin-top: 3px; font-size: 11.5px; color: var(--tk-text-3); line-height: 1.5; }
+
+.bt-three { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 0 0 40px; padding: 0; list-style: none; }
+.bt-three a { display: block; padding: 18px 20px; height: 100%; text-decoration: none; }
+.bt-three .bt-three__k { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-live); }
+.bt-three b { display: block; margin: 7px 0 5px; font-size: 15px; color: var(--tk-text-0); font-weight: 700; }
+.bt-three span { display: block; font-size: 12.5px; color: var(--tk-text-3); line-height: 1.55; }
+
+/* ---- states ------------------------------------------------------------- */
+.bt-pending { font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-4); letter-spacing: .06em; }
+.bt-error { display: none; padding: 18px 20px; margin: 0 0 16px; border-radius: var(--tk-radius-lg, 14px); background: var(--tk-critical-bg); border: 1px solid var(--tk-critical-line); }
+.bt-error[data-shown] { display: block; }
+.bt-error h2 { margin: 0 0 7px; font-size: 15px; color: var(--tk-critical); font-family: var(--tk-font-mono); letter-spacing: .06em; }
+.bt-error p { margin: 0 0 8px; font-size: 13px; color: var(--tk-text-2); }
+.bt-error code { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3); overflow-wrap: anywhere; }
+
+[data-tk-theme="light"] .bt-stat__n .bt-none { color: #4a586e; }
+
+@media (max-width: 860px) {
+  .bt-read { padding: 20px 18px; }
+  .bt-prov__k { width: 100%; }
+}
+
+/* Staleness is a finding, so it wins over every local text colour. Declared
+   last on purpose: it has to out-rank .bt-status b, which is equally specific. */
+.bt-warn, b.bt-warn { color: var(--tk-warning); }
 </style>
 </head>
-<body>
-  <nav class="nav">
-    <span class="b">PALIMPSEST</span>
-    <a href="/">Home</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
-    <a href="/readings/ooni-gfw.html">GFW Live</a>
-    <a href="/readings/bleedthrough.html" class="here">Injectors</a>
-    <a href="/for-researchers.html">Data</a>
-  </nav>
-  <div class="wrap">
-    <h1>Bleedthrough — the GFW injector fleet</h1>
-    <div class="sub">Not <em>what</em> the Great Firewall blocks, but <em>what the censor is</em> —
-      the size, the forged-IP pools, and the regional structure of its DNS-injector fleet, reconstructed
-      from <em>outside</em> China by making the injectors answer benign probes. The censor is the sensor.</div>
-
-    <div class="demo" id="demoBadge">◆ DEMO READING — illustrative output of the real pipeline over canned inputs,
-      shown while a live prober is stood up. Not a live measurement. The first real round replaces it.</div>
-
-    <div id="app"><p class="err">loading the signal…</p></div>
-
-    <div class="card">
-      <h2>How this reads the machine, not the policy</h2>
-      <ol class="steps">
-        <li>A benign, stateless <b>UDP DNS query</b> for a censored domain is sent toward China. The on-path
-          GFW is bidirectional, so its own injector <b>answers with a forgery</b> — no node inside China needed.</li>
-        <li><b>Fleet size</b> comes from how many parallel injectors answer one query, and from the order they
-          cycle their forged-IP pool (the Wallbleed model).</li>
-        <li><b>Regional divergence</b> — a province whose forged-IP pool disagrees with the national baseline is
-          a candidate autonomous provincial firewall (the "wall behind a wall").</li>
-        <li>An <b>open-resolver fallback</b> rides Chinese resolvers' outbound recursion, so the signal survives
-          the decay of the inbound-injection channel.</li>
-      </ol>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html" aria-current="page"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
     </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
 
-    <div class="foot" id="foot"></div>
+<main id="main" class="ps-wrap">
+
+  <header style="padding: clamp(34px,6vw,64px) 0 0;">
+    <p class="ps-kicker">Signal · Bleedthrough</p>
+    <h1 class="ps-h1">Not what the firewall blocks. What the firewall is.</h1>
+    <p class="ps-lede">
+      Every other China observatory answers the policy question: which sites are blocked.
+      Bleedthrough asks the apparatus question. How many injectors are running, which
+      forged address pools they hold, whether a province has begun answering differently
+      from the national baseline, and when any of that changes. It is reconstructed from
+      outside China by making the censor's own injectors answer benign queries. The censor
+      is the sensor.
+    </p>
+  </header>
+
+  <div class="bt-trust ps-p1 ps-reveal">
+    <p>Palimpsest is a free public good. MIT licensed, developed in the open, never a
+       commercial product, and every finding on it ships the raw file it was computed from.</p>
+    <a href="/fund.html">What funding buys</a>
+    <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source on GitHub</a>
   </div>
 
-<script src="/dashboards/assets/tikto-motion.js"></script>
-<script>
-// escape anything interpolated from the fetched JSON before it hits innerHTML.
-const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const sevColor = s => ({high:"var(--red)",medium:"var(--amb)",low:"var(--grn)"}[s]||"var(--dim)");
-const kindLabel = k => ({regional_firewall_candidate:"regional firewall",pool_rotation:"pool rotation",
-  capacity_shift:"capacity shift",injector_silent:"injector silent"}[k]||k);
-// render a count, but never turn "not measured" into a confident 0
-const num = v => (v===null||v===undefined||v==="") ? "—" : Number(v);
-// fleet-pressure band from distinct pools (fragmentation) + high-severity events.
-// When the reading says the forged-IP pool was SAMPLED rather than enumerated, the pool
-// count tracks how many targets we probed rather than how many pools the censor runs, so it
-// must not colour the board — otherwise every large round reads as fragmentation.
-const bandFor = d => {
-  const frag = (d.distinct_pools||0), hi = (d.events||[]).filter(e=>e.severity==="high").length;
-  const fragUsable = !d.pool_sampling_suspected;
-  if (hi>=1 || (fragUsable && frag>=3)) return ["FRAGMENTING","var(--red)"];
-  if ((fragUsable && frag===2) || (d.events||[]).length) return ["SHIFTING","var(--amb)"];
-  return ["STABLE","var(--grn)"];
-};
+  <hr class="ps-rule" style="margin: 34px 0;">
 
-fetch("/readings/bleedthrough-latest.json?_="+Date.now())
-  .then(r=>r.ok?r.json():Promise.reject(r.status))
-  .then(render)
-  .catch(()=>{
-    // not an error — the signal probes actively and may not be live yet. Show an honest pending state.
-    document.getElementById("app").innerHTML=`
-      <div class="pending"><b>Awaiting the first live round.</b> Unlike Palimpsest's passive signals,
-      Bleedthrough <b>actively probes</b>, so it runs from a controlled, rotating prober outside China —
-      never from shared CI. Until that prober publishes, there is no reading to show. The method is described
-      below, and the code is open.</div>`;
-  });
+  <!-- ============ STATE OF THE SIGNAL ==================================== -->
+  <!-- Default state, and the state with JS off. If a round has been published
+       the script replaces it with the reading; if not, this stays, on purpose. -->
+  <section id="bt-standby" class="bt-standby ps-p2 ps-reveal" aria-labelledby="bt-standby-h">
+    <p class="bt-standby__k">
+      <span class="ps-dot bt-standby__dot" aria-hidden="true"></span>
+      Signal status
+    </p>
+    <h2 id="bt-standby-h">Awaiting the first live round.</h2>
+    <p>Bleedthrough is the one signal on this site that measures actively rather than
+       reading somebody else's published data. That changes what it is allowed to do and
+       where it is allowed to run, so it publishes nothing until a controlled prober is
+       standing.</p>
+    <p>There is no reading here yet, and no estimate, no cached figure and no illustrative
+       shape standing in for one. When the prober publishes its first round, this panel is
+       replaced by the reading and by the raw file behind it.</p>
+    <div class="bt-standby__why">
+      <b>Why it is not simply switched on</b>
+      An active prober sends packets at a hostile state system. It runs from a controlled,
+      rotating vantage outside China, never from shared CI, because prober addresses get
+      burned and because shared infrastructure must not be the thing that is seen probing.
+      Every round is gated by a kill switch and a rate ceiling. Standing that up properly
+      is the work; publishing early would be the shortcut.
+    </div>
+    <div class="bt-standby__acts">
+      <a class="ps-btn ps-btn--ghost" href="#method">Read the method</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/collectors/bleedthrough.py" target="_blank" rel="noopener">Read the collector</a>
+    </div>
+  </section>
 
-function render(d){
-  if (d.demo) document.getElementById("demoBadge").style.display="block";
-  const p = d.provenance || {};
-  const [bl,bc]=bandFor(d);
-  const events=(d.events||[]).map(e=>`
-    <li class="tkm-item"><span class="sev" style="color:${sevColor(e.severity)}">${esc(e.severity)}</span>
-      <span class="kind">${esc(kindLabel(e.kind))}</span>
-      <span class="vt">${esc(e.vantage)}</span>
-      <span class="det">${esc(e.detail)}</span></li>`).join("")
-    || '<li><span class="vt" style="color:var(--dim)">no apparatus events this round — the fleet held steady</span></li>';
+  <div class="bt-error ps-p2" id="bt-error" role="alert">
+    <h2>Reading could not be loaded</h2>
+    <p>A round appears to have been published, but the file could not be read. Nothing is
+       shown in its place. There is no cached figure here, because a plausible looking
+       number would be worse than a blank panel.</p>
+    <p><code id="bt-error-detail"></code></p>
+    <p><a href="/readings/bleedthrough-latest.json" class="ps-btn ps-btn--ghost">Open the raw file directly</a></p>
+  </div>
 
-  document.getElementById("app").innerHTML=`
-    <div class="hero">
+  <!-- ============ THE READING (only once a round exists) ================== -->
+  <section class="bt-reading" id="bt-reading" hidden aria-labelledby="bt-reading-h">
+
+    <div class="bt-badge" id="bt-demo-badge">
+      <b>Demo reading</b>
+      Illustrative output of the real pipeline over canned inputs, shown while a live
+      prober is stood up. This is not a live measurement. The first real round replaces it.
+    </div>
+
+    <div class="bt-badge" id="bt-sampled-badge">
+      <b>Pool sampled, not enumerated</b>
+      At this burst each target sees only part of the censor's rotating forged address
+      pool, so per region pools are not comparable and no regional claim is made this
+      round. The pool count is withheld rather than shown as a low number.
+    </div>
+
+    <div class="bt-status ps-p1" id="bt-status"></div>
+
+    <h2 class="ps-sr" id="bt-reading-h">The current round</h2>
+
+    <div class="ps-band" style="margin: 20px 0 clamp(40px,6vw,64px);">
+      <div class="ps-pin">
+        <p class="ps-label">The reading</p>
+        <h2 class="ps-h2">A floor on the fleet, never a census</h2>
+        <p style="color:var(--tk-text-2);font-size:14.5px;margin:0 0 12px">
+          Each injector answers a given query at most once, so parallel answers to a single
+          query put a floor under how many injector processes are running on that path.
+        </p>
+        <p style="color:var(--tk-text-2);font-size:14.5px;margin:0">
+          A silent injector is undercounted. The true fleet is at least this large and may
+          be larger, which is why the figure is always written with a greater than or equal
+          sign and never quoted as a count.
+        </p>
+      </div>
       <div>
-        <div class="idx"><small style="font-size:26px;color:var(--dim)">≥</small><span id="idxNum">${Number(d.max_process_count)||0}</span><small> injectors</small></div>
-        <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
-      </div>
-      <div class="heroTxt">
-        <div class="t">A <b>lower bound</b> on parallel injector responses to a single query:
-          each injector answers a given query at most once, so a silent one is undercounted.
-          Measured from <b>${num(p.vantage_count)} prober</b> outside China across
-          ${Number(d.vantages_injecting)||0} of ${Number(d.vantages_probed)||0} target IPs that
-          answered, probing <b>${esc(d.probe_domain)}</b>.</div>
+        <div class="bt-read ps-p3" id="bt-read"></div>
+        <div class="bt-stats" id="bt-stats"></div>
+        <h3 class="ps-label" style="margin: 22px 0 10px;">Apparatus events this round</h3>
+        <div class="ps-p1" style="border-radius: var(--tk-radius-lg, 14px); padding: 6px 0;">
+          <ul class="bt-events" id="bt-events"></ul>
+        </div>
       </div>
     </div>
-    ${d.pool_sampling_suspected ? `<div class="demo" style="display:block">◆ POOL SAMPLED, NOT ENUMERATED —
-      at this burst each target sees only part of the censor's rotating forged-IP pool, so
-      per-region pools are not comparable and no regional claim is made this round.</div>` : ""}
-    <div class="stats">
-      <div class="stat tkm-item"><div class="n">${Number(d.vantages_injecting)||0}<small style="font-size:15px;color:var(--dim)">/${Number(d.vantages_probed)||0}</small></div>
-        <div class="l">Target IPs injecting</div><div class="d">dark addresses the GFW answered for</div></div>
-      <div class="stat tkm-item"><div class="n">${d.pool_sampling_suspected ? "—" : num(d.distinct_pools)}</div>
-        <div class="l">Distinct forged pools</div><div class="d">${d.pool_sampling_suspected
-          ? "not identifiable at this burst" : "counted per region, not per target"}</div></div>
-      <div class="stat tkm-item"><div class="n">≥${Number(d.max_process_count)||0}</div>
-        <div class="l">Injector processes (floor)</div><div class="d">per-query answer floor; the fleet is at least this large</div></div>
-    </div>
-    <div class="card">
-      <h2>Apparatus events this round</h2>
-      <ul class="elist">${events}</ul>
-    </div>`;
 
-  if (window.TiktoMotion){
-    const app=document.getElementById("app");
-    TiktoMotion.countUp(document.getElementById("idxNum"), Number(d.max_process_count)||0, {decimals:0,dur:900});
-    app.querySelectorAll(".stat").forEach((s,i)=>TiktoMotion.stagger(s,i,60));
-    app.querySelectorAll(".elist li").forEach((li,i)=>TiktoMotion.stagger(li,i,45));
+    <div class="bt-caveat ps-p1" id="bt-caveat" hidden></div>
+
+    <h2 class="ps-section-head">Provenance of this round</h2>
+    <div class="ps-p1" style="border-radius: var(--tk-radius-lg, 14px); padding: 6px 20px;">
+      <div class="bt-prov" id="bt-prov"></div>
+    </div>
+
+  </section>
+
+  <!-- ============ METHOD ================================================= -->
+  <h2 class="ps-section-head" id="method">How this reads the machine, not the policy</h2>
+
+  <div class="bt-method ps-p2 ps-reveal">
+    <ol class="bt-steps">
+      <li>A benign, stateless <b>UDP DNS query</b> for a censored domain is sent toward
+        China. The on-path firewall is bidirectional, so its own injector
+        <b>answers with a forgery</b>. No node inside China is needed, and nobody inside
+        China is asked to do anything.</li>
+      <li><b>Fleet size</b> comes from how many parallel injectors answer one query, and
+        from the order in which they cycle their forged address pool. That ordering is not
+        a bug and cannot be patched away without degrading the thing itself.</li>
+      <li><b>Regional divergence</b>. A province whose forged address pool disagrees with
+        the national baseline is a candidate autonomous provincial firewall, the wall
+        behind the wall.</li>
+      <li>An <b>open resolver fallback</b> rides Chinese resolvers' outbound recursion, so
+        the signal survives the decay of the inbound injection channel.</li>
+    </ol>
+  </div>
+
+  <div class="bt-method ps-p2 ps-reveal">
+    <h3>Stated by the collector itself</h3>
+    <dl id="bt-method-dl">
+      <dt>Method</dt>
+      <dd>The collector states its scope and method inside each published round. No round
+          has been published yet, so nothing is quoted here. The code is open and linked
+          below, and it is the authority in the meantime.</dd>
+    </dl>
+  </div>
+
+  <div class="bt-method ps-p2 ps-reveal">
+    <h3>Scope and safety, held</h3>
+    <ul class="bt-guard">
+      <li><b>Benign, stateless UDP DNS only.</b> The same packet a normal resolver sends.
+          It triggers no residual censorship, so probing is polite by construction and no
+          real connection is harmed.</li>
+      <li><b>Dark address targets.</b> Curated sink addresses inside Chinese prefixes, not
+          live services, so no third party carries the traffic or the risk.</li>
+      <li><b>No exploitation.</b> No memory disclosure attempt, no packet dropping, no
+          availability effect, no third party reflector.</li>
+      <li><b>Governance gated.</b> Active probing runs only behind the kill switch and the
+          rate ceiling. The halt is armed per probe rather than checked once at startup.</li>
+      <li><b>Never a circumvention service.</b> Palimpsest measures the censor. It does not
+          route anyone around it.</li>
+    </ul>
+  </div>
+
+  <!-- ============ RECEIPTS =============================================== -->
+  <h2 class="ps-section-head">Take the evidence with you</h2>
+  <ul class="bt-links">
+    <li id="bt-receipt-json"><div class="ps-p1 bt-nolink">
+      <b>bleedthrough-latest.json</b>
+      <span>Not published yet. The first round from the prober appears at this path, and
+            this page renders that file and nothing else.</span></div></li>
+    <li><a class="ps-p1" href="https://github.com/beepboop2025/palimpsest/blob/main/collectors/bleedthrough.py" target="_blank" rel="noopener">
+      <b>collectors/bleedthrough.py</b>
+      <span>The collector. Fleet size, pool hashing, regional divergence and the two transports.</span></a></li>
+    <li><a class="ps-p1" href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/bleedthrough_pull.py" target="_blank" rel="noopener">
+      <b>scripts/bleedthrough_pull.py</b>
+      <span>The round runner. Where the burst, the rate ceiling and the published fields are set.</span></a></li>
+    <li><a class="ps-p1" href="https://github.com/beepboop2025/palimpsest/blob/main/docs/BLEEDTHROUGH.md" target="_blank" rel="noopener">
+      <b>docs/BLEEDTHROUGH.md</b>
+      <span>Method and safety in full, including what the signal deliberately does not do.</span></a></li>
+  </ul>
+
+  <hr class="ps-rule" style="margin: 46px 0 34px;">
+
+  <ul class="bt-three">
+    <li><a class="ps-p1" href="/readings/">
+      <span class="bt-three__k">Observatory</span>
+      <b>China censorship observatory</b>
+      <span>Signals across the network, content and model layers, each publishing its own raw file. This page is one of them.</span></a></li>
+    <li><a class="ps-p1" href="/readings/eval-registry.html">
+      <span class="bt-three__k">Registry</span>
+      <b>Verifiable eval registry</b>
+      <span>Pre-registered suites, hash chained, anchored outside our own infrastructure. A peer of the observatory, not a side feature.</span></a></li>
+    <li><a class="ps-p1" href="/fund.html">
+      <span class="bt-three__k">Funding</span>
+      <b>A funded public good</b>
+      <span>MIT licensed and open from the first commit. Grants and donations pay for the collectors, the storage and the anchoring.</span></a></li>
+  </ul>
+
+  <p style="margin:0 0 60px;font-size:12px;color:var(--tk-text-4);max-width:var(--ps-measure);line-height:1.7">
+    Watch the censor, never the censored. Bleedthrough reads the machine that does the
+    censoring. It never observes a person, never asks anyone inside China to act, and never
+    operates a circumvention service.
+  </p>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var URL_LATEST = "/readings/bleedthrough-latest.json";
+
+  /* No cron publishes this signal yet, so there is no cadence to measure
+     staleness against. Once a prober is standing this becomes its interval. */
+  var STALE_H = 48;
+
+  var NF = new Intl.NumberFormat("en-US");
+
+  /* shell.js is deferred, so it has not run when this script is parsed.
+     Every use of it resolves at call time, never at parse time. */
+  function shell() { return window.PalimpsestShell || null; }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function clear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
+  function byId(id) { return document.getElementById(id); }
+  function br() { return document.createElement("br"); }
+
+  function num(v) { return (typeof v === "number" && isFinite(v)) ? NF.format(v) : null; }
+  function int(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
+
+  function hoursSince(iso) {
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return null;
+    return (Date.now() - t) / 3600000;
+  }
+  function appendFreshness(parent, iso, staleH) {
+    var s = shell();
+    var when = (s && typeof iso === "string") ? s.ago(iso) : "unknown";
+    var h = typeof iso === "string" ? hoursSince(iso) : null;
+    var stale = (h == null || h > staleH);
+    parent.appendChild(el("b", stale ? "bt-warn" : null, when));
+    if (stale) {
+      var chip = el("span", "tk-chip tk-chip--stale", "stale");
+      chip.title = "Older than twice the intended round interval.";
+      parent.appendChild(chip);
+    }
   }
 
-  const prov = [
-    p.vantage_count!=null ? `${esc(p.vantage_count)} prober (${esc(p.vantage_kind||"undisclosed")})` : null,
-    p.burst!=null ? `burst ${esc(p.burst)}` : null,
-    p.rate_per_sec!=null ? `${esc(p.rate_per_sec)} q/s ceiling` : null,
-    p.queries_attempted!=null ? `${esc(p.queries_attempted)} queries` : null,
-    p.flow_id_policy ? esc(p.flow_id_policy) : null,
-    p.code_version ? `code ${esc(String(p.code_version).slice(0,10))}` : null,
-  ].filter(Boolean).join(" · ");
+  var KIND_LABEL = {
+    regional_firewall_candidate: "regional firewall candidate",
+    pool_rotation: "pool rotation",
+    capacity_shift: "capacity shift",
+    injector_silent: "injector silent"
+  };
+  function kindLabel(k) { return KIND_LABEL[k] || k; }
 
-  document.getElementById("foot").innerHTML=
-    `Method: ${esc(d.method)}<br>`+
-    `Scope: ${esc(d.scope)}<br>`+
-    (prov ? `Provenance: ${prov}<br>` : "")+
-    (p.caveat ? `<span style="color:var(--amb)">Caveat: ${esc(p.caveat)}</span><br>` : "")+
-    `Generated ${esc(new Date(d.generated_at).toUTCString())}. `+
-    `Probes are benign, stateless UDP DNS only (no residual censorship, dark-IP targets, governance-gated). `+
-    `Palimpsest measures the censor; it never operates a circumvention service. `+
-    `<a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/BLEEDTHROUGH.md" target="_blank" rel="noopener">Method &amp; safety →</a>`;
-}
+  /* Fleet pressure band, from pool fragmentation plus high severity events.
+     When the round says the forged pool was SAMPLED rather than enumerated,
+     the pool count tracks how many targets were probed rather than how many
+     pools the censor runs, so it must not colour the board. Otherwise every
+     large round would read as fragmentation. */
+  function bandFor(d) {
+    var frag = int(d.distinct_pools) || 0;
+    var events = Array.isArray(d.events) ? d.events : [];
+    var hi = events.filter(function (e) { return e.severity === "high"; }).length;
+    var fragUsable = !d.pool_sampling_suspected;
+    if (hi >= 1 || (fragUsable && frag >= 3)) return { label: "FRAGMENTING", chip: "tk-chip tk-chip--critical" };
+    if ((fragUsable && frag === 2) || events.length) return { label: "SHIFTING", chip: "tk-chip tk-chip--warning" };
+    return { label: "STABLE", chip: "tk-chip tk-chip--ok" };
+  }
+
+  /* ---------------------------------------------------------- standby ----- */
+  /* A 404 is not a failure here. It is the documented state of a signal whose
+     prober has not published its first round, and the page says exactly that. */
+  function isNotPublishedYet(err) {
+    var m = (err && err.message) ? String(err.message) : String(err);
+    return m.indexOf("404") !== -1;
+  }
+
+  function stayOnStandby() { /* the default markup is already the right answer */ }
+
+  /* Anything other than a 404 means a round exists but could not be read. The
+     standby panel has to go: leaving it up would assert "not published yet"
+     next to an error saying the opposite. */
+  function showError(err) {
+    var standby = byId("bt-standby");
+    if (standby) standby.hidden = true;
+    var box = byId("bt-error"), detail = byId("bt-error-detail");
+    if (detail) detail.textContent = URL_LATEST + " : " + (err && err.message ? err.message : String(err));
+    if (box) box.setAttribute("data-shown", "");
+    renderReceipt();
+  }
+
+  /* ---------------------------------------------------------- reading ----- */
+  function render(d) {
+    var standby = byId("bt-standby");
+    if (standby) standby.hidden = true;
+    var reading = byId("bt-reading");
+    if (reading) reading.hidden = false;
+
+    if (d.demo === true) {
+      var db = byId("bt-demo-badge");
+      if (db) db.setAttribute("data-shown", "");
+    }
+    if (d.pool_sampling_suspected === true) {
+      var sb = byId("bt-sampled-badge");
+      if (sb) sb.setAttribute("data-shown", "");
+    }
+
+    renderStatus(d);
+    renderRead(d);
+    renderStats(d);
+    renderEvents(d);
+    renderCaveat(d);
+    renderProvenance(d);
+    renderMethod(d);
+    renderReceipt();
+  }
+
+  function renderStatus(d) {
+    var wrap = byId("bt-status");
+    if (!wrap) return;
+    clear(wrap);
+
+    var f = el("div", "bt-status__b");
+    f.appendChild(el("span", null, "Measured"));
+    appendFreshness(f, d.generated_at, STALE_H);
+    wrap.appendChild(f);
+
+    var band = bandFor(d);
+    var b = el("div", "bt-status__b");
+    b.appendChild(el("span", null, "Fleet"));
+    b.appendChild(el("span", band.chip, band.label));
+    wrap.appendChild(b);
+
+    if (typeof d.probe_domain === "string" && d.probe_domain) {
+      var p = el("div", "bt-status__b");
+      p.appendChild(el("span", null, "Probe domain"));
+      p.appendChild(el("b", null, d.probe_domain));
+      wrap.appendChild(p);
+    }
+
+    if (typeof d.method_version === "string" && d.method_version) {
+      var mv = el("div", "bt-status__b");
+      mv.appendChild(el("span", null, "Method version"));
+      mv.appendChild(el("b", null, d.method_version));
+      wrap.appendChild(mv);
+    }
+
+    var r = el("div", "bt-status__b");
+    r.appendChild(el("span", null, "Raw"));
+    var a = el("a", null, "bleedthrough-latest.json");
+    a.href = URL_LATEST;
+    r.appendChild(a);
+    wrap.appendChild(r);
+  }
+
+  function renderRead(d) {
+    var wrap = byId("bt-read");
+    if (!wrap) return;
+    clear(wrap);
+    wrap.appendChild(el("p", "bt-read__k", "Injector processes, floor"));
+
+    var row = el("div", "bt-read__row");
+    var v = int(d.max_process_count);
+    if (v != null) {
+      var big = el("span", "bt-read__v");
+      big.appendChild(el("span", "bt-read__ge", "≥ "));
+      var digits = el("span", null, String(v));
+      big.appendChild(digits);
+      big.appendChild(el("span", "bt-read__u", " injectors"));
+      row.appendChild(big);
+      var band = bandFor(d);
+      row.appendChild(el("span", band.chip, band.label));
+      wrap.appendChild(row);
+      var s = shell();
+      if (s && typeof s.countUp === "function") s.countUp(digits, v, { decimals: 0, dur: 900 });
+    } else {
+      row.appendChild(el("span", "bt-read__v bt-pending", "no floor in this round"));
+      wrap.appendChild(row);
+    }
+
+    var inj = int(d.vantages_injecting), probed = int(d.vantages_probed);
+    if (inj != null && probed != null) {
+      wrap.appendChild(el("p", "bt-read__t",
+        "Measured across " + NF.format(inj) + " of " + NF.format(probed) +
+        " target addresses that answered."));
+    }
+
+    var den = el("p", "bt-read__denom");
+    den.appendChild(document.createTextNode("Semantics: "));
+    den.appendChild(el("b", null,
+      typeof d.process_count_semantics === "string" && d.process_count_semantics
+        ? d.process_count_semantics
+        : "floor"));
+    den.appendChild(document.createTextNode(
+      ". Each injector answers a given query at most once, so a silent injector is undercounted."));
+    var p = d.provenance || {};
+    var vc = int(p.vantage_count);
+    if (vc != null) {
+      den.appendChild(br());
+      den.appendChild(document.createTextNode("Vantage: "));
+      den.appendChild(el("b", null, NF.format(vc) + " prober" + (vc === 1 ? "" : "s") +
+        (typeof p.vantage_kind === "string" && p.vantage_kind ? ", " + p.vantage_kind : "") +
+        (typeof p.vantage_country === "string" && p.vantage_country ? ", " + p.vantage_country : "")));
+    }
+    wrap.appendChild(den);
+  }
+
+  function renderStats(d) {
+    var wrap = byId("bt-stats");
+    if (!wrap) return;
+    clear(wrap);
+
+    function stat(valueNode, label, detail) {
+      var card = el("div", "bt-stat ps-p2");
+      var n = el("div", "bt-stat__n");
+      n.appendChild(valueNode);
+      card.appendChild(n);
+      card.appendChild(el("p", "bt-stat__l", label));
+      if (detail) card.appendChild(el("p", "bt-stat__d", detail));
+      wrap.appendChild(card);
+    }
+
+    var inj = int(d.vantages_injecting), probed = int(d.vantages_probed);
+    var f1 = document.createDocumentFragment();
+    if (inj != null && probed != null) {
+      f1.appendChild(document.createTextNode(NF.format(inj)));
+      var small = el("small", null, " / " + NF.format(probed));
+      f1.appendChild(small);
+    } else {
+      f1.appendChild(el("span", "bt-none", "not in this round"));
+    }
+    stat(f1, "Target addresses injecting", "dark addresses the firewall answered for");
+
+    var f2 = document.createDocumentFragment();
+    if (d.pool_sampling_suspected === true) {
+      f2.appendChild(el("span", "bt-none", "withheld"));
+    } else {
+      var dp = int(d.distinct_pools);
+      f2.appendChild(dp != null ? document.createTextNode(NF.format(dp))
+                                : el("span", "bt-none", "not in this round"));
+    }
+    stat(f2, "Distinct forged pools",
+      d.pool_sampling_suspected === true
+        ? "not identifiable at this burst, so no count is shown"
+        : (typeof d.distinct_pools_basis === "string" && d.distinct_pools_basis
+            ? d.distinct_pools_basis
+            : null));
+
+    var f3 = document.createDocumentFragment();
+    var mp = int(d.max_process_count);
+    if (mp != null) f3.appendChild(document.createTextNode("≥ " + NF.format(mp)));
+    else f3.appendChild(el("span", "bt-none", "not in this round"));
+    stat(f3, "Injector processes, floor", "per query answer floor; the fleet is at least this large");
+  }
+
+  function renderEvents(d) {
+    var wrap = byId("bt-events");
+    if (!wrap) return;
+    clear(wrap);
+    var evs = Array.isArray(d.events) ? d.events : [];
+    if (!evs.length) {
+      var li0 = el("li");
+      li0.appendChild(el("span", "bt-quiet",
+        "No apparatus events this round. The fleet held steady against the previous baseline."));
+      wrap.appendChild(li0);
+      return;
+    }
+    evs.forEach(function (e) {
+      var li = el("li");
+      var sevCls = "bt-sev";
+      if (e.severity === "high" || e.severity === "medium" || e.severity === "low") {
+        sevCls += " bt-sev--" + e.severity;
+      }
+      li.appendChild(el("span", sevCls, e.severity || "unrated"));
+      if (typeof e.kind === "string" && e.kind) li.appendChild(el("span", "bt-kind", kindLabel(e.kind)));
+      if (typeof e.vantage === "string" && e.vantage) li.appendChild(el("span", "bt-vt", e.vantage));
+      if (typeof e.detail === "string" && e.detail) li.appendChild(el("span", "bt-det", e.detail));
+      wrap.appendChild(li);
+    });
+  }
+
+  function renderCaveat(d) {
+    var wrap = byId("bt-caveat");
+    if (!wrap) return;
+    var p = d.provenance || {};
+    if (typeof p.caveat !== "string" || !p.caveat) { wrap.hidden = true; return; }
+    clear(wrap);
+    wrap.hidden = false;
+    wrap.appendChild(el("b", null, "Caveat carried from the round"));
+    wrap.appendChild(el("p", null, p.caveat));
+  }
+
+  function renderProvenance(d) {
+    var wrap = byId("bt-prov");
+    if (!wrap) return;
+    clear(wrap);
+    var p = d.provenance || {};
+
+    function row(k, v) {
+      if (v == null || v === "") return;
+      var r = el("div", "bt-prov__r");
+      r.appendChild(el("span", "bt-prov__k", k));
+      r.appendChild(el("span", "bt-prov__v", String(v)));
+      wrap.appendChild(r);
+    }
+
+    if (typeof d.generated_at === "string") row("Generated", d.generated_at);
+    row("Method version", d.method_version);
+    row("Probe domain", d.probe_domain);
+
+    var vc = int(p.vantage_count);
+    if (vc != null) {
+      row("Probers", NF.format(vc) +
+        (typeof p.vantage_kind === "string" && p.vantage_kind ? " (" + p.vantage_kind + ")" : ""));
+    }
+    row("Prober country", p.vantage_country);
+    row("Flow id policy", p.flow_id_policy);
+    var burst = int(p.burst); if (burst != null) row("Burst", NF.format(burst));
+    var rate = int(p.rate_per_sec); if (rate != null) row("Rate ceiling", NF.format(rate) + " queries per second");
+    var wait = int(p.wait_s); if (wait != null) row("Wait", wait + " s");
+    var qa = int(p.queries_attempted); if (qa != null) row("Queries attempted", NF.format(qa));
+    if (typeof p.code_version === "string" && p.code_version) row("Code version", p.code_version);
+
+    var tr = p.transports;
+    if (tr && typeof tr === "object") {
+      Object.keys(tr).forEach(function (name) {
+        var leg = tr[name];
+        if (!leg || typeof leg !== "object") return;
+        var bits = [leg.ran ? "ran" : "did not run"];
+        var t = int(leg.targets);
+        if (t != null) bits.push(NF.format(t) + " targets");
+        row("Transport, " + name.replace(/_/g, " "), bits.join(" · "));
+      });
+    }
+
+    if (!wrap.firstChild) {
+      wrap.appendChild(el("div", "bt-prov__r",
+        "This round published no provenance block."));
+    }
+  }
+
+  function renderMethod(d) {
+    var dl = byId("bt-method-dl");
+    if (!dl) return;
+    var lines = [];
+    if (typeof d.scope === "string" && d.scope) lines.push(["Scope", d.scope]);
+    if (typeof d.method === "string" && d.method) lines.push(["Method", d.method]);
+    if (!lines.length) return;
+    clear(dl);
+    lines.forEach(function (pair) {
+      dl.appendChild(el("dt", null, pair[0]));
+      dl.appendChild(el("dd", null, pair[1]));
+    });
+  }
+
+  function renderReceipt() {
+    var li = byId("bt-receipt-json");
+    if (!li) return;
+    clear(li);
+    var a = el("a", "ps-p1");
+    a.href = URL_LATEST;
+    a.appendChild(el("b", null, "bleedthrough-latest.json"));
+    a.appendChild(el("span", null,
+      "The exact file this page renders. Every figure above comes from it at load time."));
+    li.appendChild(a);
+  }
+
+  /* ---------------------------------------------------------- boot -------- */
+  function load(url, onData, onError) {
+    var s = shell();
+    if (s && typeof s.loadReading === "function") return s.loadReading(url, onData, onError);
+    return fetch(url, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(onData)
+      .catch(onError);
+  }
+
+  function boot() {
+    load(URL_LATEST, render, function (err) {
+      if (isNotPublishedYet(err)) stayOnStandby();
+      else showError(err);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
 </script>
 </body>
 </html>

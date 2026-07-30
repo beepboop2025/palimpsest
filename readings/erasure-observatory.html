@@ -1,234 +1,794 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Information Erasure Observatory · Palimpsest</title>
-<meta name="description" content="Palimpsest does not just measure what is blocked. It measures what was removed or rewritten — across the network, the encyclopedia and the model — and seals every reading in a tamper-evident ledger so the record of the erasure can never be quietly rewritten in turn.">
+<meta name="description" content="Palimpsest does not just measure what is blocked. It measures what was removed or rewritten, across the network, the encyclopedia and the model, and seals every reading in a tamper-evident ledger so the record of the erasure can never be quietly rewritten in turn.">
+<link rel="canonical" href="https://palimpsest.info/readings/erasure-observatory.html">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Information Erasure Observatory · Palimpsest">
+<meta property="og:description" content="A composite index of what the record lost, across the network, the encyclopedia and the model, with every reading hash-chained at capture time.">
+<meta property="og:url" content="https://palimpsest.info/readings/erasure-observatory.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Information Erasure Observatory · Palimpsest">
+<meta name="twitter:description" content="A composite index of what the record lost, across three layers, sealed into an append-only ledger at capture time.">
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+
+<meta name="theme-color" content="#06070a">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
+<meta name="apple-mobile-web-app-title" content="Palimpsest">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
-  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#a78bfa}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
-  a{color:var(--cy);text-decoration:none}
-  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}
-  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
-  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
-  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
-  .wrap{max-width:960px;margin:0 auto;padding:clamp(18px,5vw,40px)}
-  .tag{display:inline-block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--vio);border:1px solid rgba(167,139,250,.4);border-radius:20px;padding:3px 11px;margin-bottom:14px}
-  h1{font-size:clamp(21px,4.4vw,30px);margin:.1em 0 .15em;letter-spacing:-.01em}
-  .sub{color:var(--mut);font-size:13px;margin-bottom:24px;max-width:70ch}
-  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:18px}
-  .idx{font-size:66px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .idx small{font-size:20px;color:var(--dim);font-weight:400}
-  .band{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;margin-top:8px}
-  .heroTxt{flex:1;min-width:230px}
-  .heroTxt .t{font-size:13px;color:var(--mut)}
-  .heroTxt .m{font-size:12px;color:var(--dim);margin-top:8px}
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
-  @media(max-width:760px){.grid3{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
-  .card .lyr{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-  .card h2{font-size:15px;margin:4px 0 6px}
-  .card .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
-  .card .big.na{font-size:15px;font-weight:700;color:var(--amb)}
-  .bar{height:7px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden;margin:10px 0 8px}
-  .bar span{display:block;height:100%;border-radius:5px}
-  .card .d{font-size:11.5px;color:var(--mut)}
-  .card .src{font-size:10.5px;color:var(--dim);margin-top:8px}
+  /* Page-specific only. Nothing here redefines a --tk-* or --ps-* token or a
+     ps-* class; every rule and every custom property is namespaced eo-. */
+  .eo-scope { --eo-narrative: #a78bfa; }
+
+  /* ---- the distinction, stated typographically before any number ---- */
+  .eo-vs {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: clamp(18px, 3.4vw, 44px);
+    margin: 30px 0 34px; padding-top: 22px;
+    border-top: 1px solid var(--ps-edge-1);
+  }
+  .eo-vs h2 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .18em;
+              text-transform: uppercase; margin: 0 0 9px; font-weight: 500; }
+  .eo-vs--now h2 { color: var(--tk-text-4, #6f8098); }
+  .eo-vs--lost h2 { color: var(--tk-live, #06d6e0); }
+  .eo-vs p { margin: 0; font-size: 14px; line-height: 1.62; color: var(--tk-text-2, #94a3b8); }
+  .eo-vs--lost p { color: var(--tk-text-1, #e2e8f0); }
+  @media (max-width: 700px) { .eo-vs { grid-template-columns: 1fr; gap: 22px; } }
+
+  /* ---- plane 3: the composite, the thing you may cite ---- */
+  .eo-read { padding: clamp(20px, 3.2vw, 34px); margin: 0 0 14px; }
+  .eo-read__grid { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+                   gap: clamp(18px, 3.4vw, 42px); align-items: center; }
+  @media (max-width: 760px) { .eo-read__grid { grid-template-columns: 1fr; gap: 20px; } }
+  .eo-figure { display: flex; align-items: baseline; gap: 3px; }
+  .eo-big { font-size: clamp(56px, 11vw, 108px); font-weight: 800; line-height: .86;
+            letter-spacing: -.045em; color: var(--tk-text-0, #fff); }
+  .eo-unit { font-size: clamp(20px, 3.4vw, 30px); font-weight: 600; color: var(--tk-text-3, #7d8ca3); }
+  .eo-read__say { font-size: clamp(16px, 2vw, 20px); line-height: 1.4; font-weight: 600;
+                  color: var(--tk-text-0, #fff); margin: 0 0 10px; text-wrap: pretty; }
+  .eo-read__den { font-size: 13px; color: var(--tk-text-2, #94a3b8); margin: 0 0 14px;
+                  font-family: var(--tk-font-mono); }
+  .eo-read__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+                   font-size: 11.5px; font-family: var(--tk-font-mono); color: var(--tk-text-3, #7d8ca3); }
+  .eo-read__scale { font-size: 13px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3);
+                    margin: 18px 0 0; max-width: var(--ps-measure); }
+
+  /* ---- chips: status is never colour alone, every chip carries its word ---- */
+  .eo-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; padding: 4px 9px; border-radius: 6px;
+    border: 1px solid var(--tk-stale-line, rgba(100,116,139,.45));
+    background: var(--tk-stale-bg, rgba(100,116,139,.16));
+    color: var(--tk-stale, #8593a8); white-space: nowrap;
+  }
+  .eo-chip--ok { border-color: var(--tk-ok-line); background: var(--tk-ok-bg); color: var(--tk-ok); }
+  .eo-chip--warn { border-color: var(--tk-warning-line); background: var(--tk-warning-bg); color: var(--tk-warning); }
+  .eo-chip--crit { border-color: var(--tk-critical-line); background: var(--tk-critical-bg); color: var(--tk-critical); }
+  .eo-chip--live { border-color: rgba(6,214,224,.30); background: rgba(6,214,224,.12); color: var(--tk-live, #06d6e0); }
+  .eo-stale { color: var(--tk-warning, #ffb020); }
+
+  /* ---- load / failure states. Never a plausible-looking zero. ---- */
+  .eo-note { font-size: 12.5px; line-height: 1.6; color: var(--tk-text-3, #7d8ca3); margin: 0; }
+  .eo-status {
+    margin: 0 0 22px; padding: 13px 16px; border-radius: var(--tk-radius-md, 11px);
+    border: 1px solid var(--tk-stale-line); background: var(--tk-stale-bg);
+    color: var(--tk-text-2, #94a3b8); font-size: 13px; line-height: 1.6;
+  }
+  .eo-status--err { border-color: var(--tk-critical-line); background: var(--tk-critical-bg); color: var(--tk-critical); }
+  .eo-status a { color: inherit; }
+  [data-eo="ok"] #eo-status { display: none; }
+  [data-eo="pending"] .eo-live, [data-eo="error"] .eo-live { display: none; }
+
+  /* ---- the three layers ---- */
+  .eo-layers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0 0 18px; }
+  @media (max-width: 860px) { .eo-layers { grid-template-columns: 1fr; } }
+  .eo-layer { padding: 18px 20px; }
+  .eo-layer__name { font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .14em;
+                    text-transform: uppercase; color: var(--tk-text-4, #6f8098); margin: 0 0 6px; }
+  .eo-layer h3 { margin: 0 0 10px; font-size: 15.5px; font-weight: 600; color: var(--tk-text-0, #fff); }
+  .eo-layer__v { font-size: 34px; font-weight: 800; line-height: 1.05; letter-spacing: -.03em; }
+  .eo-layer__v small { font-size: 15px; font-weight: 500; color: var(--tk-text-3, #7d8ca3); }
+  .eo-bar { height: 7px; border-radius: 5px; overflow: hidden; margin: 11px 0 9px;
+            background: rgba(125,140,163,.16); border: 1px solid var(--ps-edge-1); }
+  .eo-bar i { display: block; height: 100%; border-radius: 5px; }
+  .eo-layer__d { font-size: 12.5px; line-height: 1.6; color: var(--tk-text-2, #94a3b8); margin: 0; }
+  .eo-src { font-size: 11px; line-height: 1.6; color: var(--tk-text-4, #6f8098); margin: 8px 0 0;
+            font-family: var(--tk-font-mono); overflow-wrap: anywhere; }
+  .eo-src s { color: var(--tk-warning, #ffb020); }
   /* A layer that is not reporting must not read as a layer reporting a low number. */
-  .card.abstain{border-color:rgba(244,183,64,.34);background:linear-gradient(180deg,rgba(244,183,64,.05),var(--panel))}
-  .card.abstain s{color:var(--amb);opacity:.75}
-  .seal{background:linear-gradient(180deg,rgba(167,139,250,.07),rgba(167,139,250,.02));border:1px solid rgba(167,139,250,.28);border-radius:14px;padding:20px 22px;margin-bottom:18px}
-  .seal h2{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--vio);margin:0 0 4px}
-  .seal .lead{font-size:13px;color:var(--fg);margin:0 0 14px;max-width:74ch}
-  .seal .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:12.5px}
-  .seal .kv .k{color:var(--mut)}
-  .seal .kv .v{color:var(--fg);word-break:break-all;font-variant-numeric:tabular-nums}
-  .ok{color:var(--grn)} .bad{color:var(--red)}
-  .cmd{margin-top:14px;background:#04050a;border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--cy);overflow-x:auto}
-  .cross{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
-  .chip{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 15px;font-size:12px}
-  .chip b{color:#fff;font-size:16px;font-variant-numeric:tabular-nums}
-  .diff{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px;font-size:13px;color:var(--mut)}
-  .diff h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
-  .diff table{width:100%;border-collapse:collapse}
-  .diff td{padding:8px 8px;border-top:1px solid rgba(255,255,255,.06);vertical-align:top;font-size:12.5px}
-  .diff td:first-child{color:var(--dim);white-space:nowrap;width:44%}
-  .diff td:last-child{color:var(--fg)}
-  .foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.85}
-  .err{color:var(--amb);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
-  /* motion: data-ordered entrances via tikto-motion.js (signal, not decoration) */
-  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
-  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
-  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
+  .eo-layer--abstain { border-color: var(--tk-warning-line); }
+
+  /* ---- cross checks ---- */
+  .eo-cross { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 0 0 18px; }
+  .eo-cc { padding: 15px 17px; }
+  .eo-cc b { display: block; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .14em;
+             text-transform: uppercase; color: var(--tk-text-4, #6f8098); font-weight: 500; margin-bottom: 7px; }
+  .eo-cc .eo-v { display: block; font-size: 26px; font-weight: 700; line-height: 1;
+                 color: var(--tk-text-0, #fff); letter-spacing: -.02em; }
+  .eo-cc small { display: block; margin-top: 7px; font-size: 11.5px; line-height: 1.5; color: var(--tk-text-3, #7d8ca3); }
+
+  /* ---- the contrast table ---- */
+  table.eo-diff { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.eo-diff td { padding: 12px 14px 12px 0; border-top: 1px solid var(--ps-edge-1);
+                     vertical-align: top; line-height: 1.6; color: var(--tk-text-1, #e2e8f0); }
+  table.eo-diff tr:first-child td { border-top: 0; }
+  table.eo-diff td:first-child { color: var(--tk-text-3, #7d8ca3); width: 42%;
+                                 font-family: var(--tk-font-mono); font-size: 11.5px; }
+  @media (max-width: 620px) {
+    table.eo-diff td, table.eo-diff td:first-child { display: block; width: auto; padding-right: 0; }
+    table.eo-diff td:first-child { border-top: 1px solid var(--ps-edge-1); padding-bottom: 4px; }
+    table.eo-diff td:last-child { border-top: 0; padding-top: 0; }
+  }
+
+  /* ---- definition lists (ledger evidence) ---- */
+  .eo-defs { margin: 0; padding: 0; }
+  .eo-defs > div { padding: 11px 0; border-top: 1px solid var(--ps-edge-1); display: grid;
+                   grid-template-columns: minmax(0, 176px) minmax(0, 1fr); gap: 6px 18px; align-items: start; }
+  .eo-defs > div:first-child { border-top: 0; }
+  .eo-defs dt { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .1em;
+                text-transform: uppercase; color: var(--tk-text-1, #e2e8f0); }
+  .eo-defs dd { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--tk-text-2, #94a3b8);
+                overflow-wrap: anywhere; }
+  .eo-defs dd.eo-mono { font-family: var(--tk-font-mono); font-size: 12px; }
+  .eo-defs dd a { color: var(--tk-live, #06d6e0); }
+  @media (max-width: 620px) { .eo-defs > div { grid-template-columns: 1fr; } }
+
+  .eo-cmd {
+    margin: 16px 0 0; padding: 12px 14px; border-radius: var(--tk-radius-md, 11px);
+    background: rgba(0,0,0,.34); border: 1px solid var(--ps-edge-1);
+    font-family: var(--tk-font-mono); font-size: 12px; line-height: 1.8;
+    color: var(--tk-live, #06d6e0); overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+
+  .eo-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
+  .eo-hero-meta { font-size: 13px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3);
+                  max-width: var(--ps-measure); margin: 18px 0 0; }
+  .eo-hero-meta a { color: var(--tk-live, #06d6e0); }
+  .eo-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0;
+              font-family: var(--tk-font-mono); font-size: 12px; }
+  .eo-links a { color: var(--tk-live, #06d6e0); }
+  .eo-foot { margin: 46px 0 60px; padding-top: 20px; border-top: 1px solid var(--ps-edge-1); }
 </style>
 </head>
-<body>
-  <nav class="nav">
-    <span class="b">PALIMPSEST</span>
-    <a href="/">Home</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/readings/erasure-observatory.html" class="here">Erasure</a>
-    <a href="/readings/eval-registry.html">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
-    <a href="/readings/ooni-gfw.html">GFW Live</a>
-    <a href="/for-researchers.html">Data</a>
-  </nav>
-  <div class="wrap">
-    <span class="tag">New · Information Erasure Observatory</span>
-    <h1>What the record lost — sealed so it can't be lost again</h1>
-    <div class="sub">Most censorship trackers answer one question: <em>is this reachable right now?</em>
-      Palimpsest answers a different one. It measures what was <em>removed or rewritten</em> — across
-      three layers of the record — and hash-chains every reading at the moment we take it, so our own
-      account of the erasure can never be quietly edited afterward. We observe from outside the wall;
-      we put no one inside it at risk.</div>
-
-    <div id="app"><div class="err">Loading the live reading…</div></div>
-
-    <div class="diff">
-      <h2>How this differs from an access index</h2>
-      <table>
-        <tr><td>An access observatory measures…</td><td>whether a site, app or tool is reachable at this instant.</td></tr>
-        <tr><td>The Erasure Observatory measures…</td><td>what existed and is now gone or altered — a page that got shorter, an encyclopedia entry rewritten to the state line, an answer a model used to give and now refuses.</td></tr>
-        <tr><td>Anyone can publish a live number…</td><td>so the number alone proves nothing. The hard part is proving you did not edit your own history after the fact.</td></tr>
-        <tr><td>Our answer…</td><td>every reading is sealed into a public, append-only, tamper-evident ledger at capture time. Recompute the chain yourself — a single altered or dropped past reading fails to verify.</td></tr>
-      </table>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html" aria-current="page"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <div class="foot">
-      Method: vantage-insensitive. Each layer ingests already-public data (OONI's aggregated
-      measurements, the open encyclopedic record, a panel of state-aligned models queried from
-      outside the wall) and never asks any person inside China to act. Judgement is lexical and
-      auditable from the text. The composite is the mean of the layers that reported; absent layers
-      are shown as absent, never zero-filled. Grounded in the trusted-public-archive literature
-      (ARCHANGEL, arXiv:1804.08342) and the LLM-censorship measurement work
-      (arXiv:2505.17441, arXiv:2506.12349). Not affiliated with OONI or Censored Planet; we ingest
-      their open data with thanks. &nbsp;·&nbsp; <a href="/readings/erasure-observatory-latest.json">raw JSON</a>
-      &nbsp;·&nbsp; <a href="/readings/erasure-ledger.jsonl">the ledger</a>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
     </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
   </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
 
-<script src="/dashboards/assets/tikto-motion.js"></script>
-<script>
-// Fully client-side render. Every value injected via textContent or an escaped
-// helper — external strings (source labels, hashes) are never written as raw HTML.
-const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
-  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const num = (v, d=1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : null;
+<main id="main" class="ps-wrap eo-scope" data-eo="pending">
 
-function band(v){
-  if(v == null) return {t:"no reading", c:"var(--dim)"};
-  if(v >= 60) return {t:"severe erasure", c:"var(--red)"};
-  if(v >= 35) return {t:"substantial erasure", c:"var(--amb)"};
-  if(v >= 15) return {t:"moderate", c:"var(--cy)"};
-  return {t:"low", c:"var(--grn)"};
-}
-const LCOLOR = {network:"var(--cy)", narrative:"var(--vio)", model:"var(--amb)"};
+  <!-- ============================ HERO ============================ -->
+  <header class="ps-reveal" style="padding:clamp(38px,7vw,74px) 0 0">
+    <p class="ps-kicker"><span class="ps-dot ps-dot--live" aria-hidden="true" style="display:inline-block;margin-right:7px"></span>Information Erasure Observatory</p>
+    <h1 class="ps-h1">What the record lost, sealed so it cannot be lost again</h1>
+    <p class="ps-lede">
+      Most censorship trackers answer one question: is this reachable right now? Palimpsest answers a
+      different one. It measures what was
+      <strong style="color:var(--tk-text-0,#fff);font-weight:600">removed or rewritten</strong>, across
+      three layers of the record, and hash-chains every reading at the moment of capture so our own
+      account of the erasure cannot be quietly edited afterwards. We observe from outside the wall and
+      put no one inside it at risk.
+    </p>
 
-// Every layer states WHEN it was measured, not just what it measured. The composite carries
-// one generated_at, which reads as "all of this is today" — and for 29 days it was not: the
-// model layer was a frozen number from a dated file and nothing here said so. A layer that
-// cannot show its own as-of date is a layer a reader cannot check.
-function ageLine(l){
-  if (!l.as_of) return "";
-  const when = String(l.as_of).slice(0,16).replace("T"," ");
-  const d = (typeof l.age_days === "number") ? l.age_days : null;
-  let how = "";
-  if (d != null) how = d < 1 ? " · today" : ` · ${d < 2 ? "1 day" : Math.round(d) + " days"} old`;
-  return `<div class="src">measured ${esc(when)} UTC${esc(how)}</div>`;
-}
+    <div class="eo-vs">
+      <section class="eo-vs--now">
+        <h2>An access index measures</h2>
+        <p>
+          Whether a site, an app or a tool is reachable at this instant. That is a real and useful
+          measurement, and it is a snapshot. It cannot tell you that a page got shorter, that an
+          encyclopedia entry moved to the state line, or that a model stopped giving an answer it
+          used to give.
+        </p>
+      </section>
+      <section class="eo-vs--lost">
+        <h2>This observatory measures</h2>
+        <p>
+          What existed and is now gone or altered. Anyone can publish a live number, so the number
+          alone proves nothing. The hard part is proving you did not edit your own history after the
+          fact, and that is what the ledger below is for.
+        </p>
+      </section>
+    </div>
 
-function layerCard(l){
-  const v = (typeof l.value === "number") ? l.value : null;
-  const col = LCOLOR[l.layer] || "var(--cy)";
-  const withheld = (typeof l.withheld_value === "number");
-  const big = v == null
-    ? `<div class="big na">${esc(l.status || "absent")}</div>`
-    : `<div class="big" style="color:${col}">${esc(num(v))}<small style="font-size:15px;color:var(--dim)">/100</small></div>`;
-  const bar = v == null ? "" :
-    `<div class="bar"><span data-tkm-bar style="width:${Math.max(0,Math.min(100,v))}%;background:${col}"></span></div>`;
-  // Show the number we are DECLINING to publish, struck through. An abstention that hides
-  // what it withheld is just a gap; one that shows it is a claim a reader can audit.
-  const held = withheld
-    ? `<div class="src">withheld reading · <s>${esc(num(l.withheld_value))}/100</s> — not counted in the composite</div>`
-    : "";
-  const reason = l.reason ? `<div class="src">${esc(l.reason)}</div>` : "";
-  const src = l.source ? `<div class="src">source · ${esc(l.source)}</div>` : "";
-  return `<div class="card${v == null ? " abstain" : ""}">
-    <div class="lyr">${esc(l.layer)}</div>
-    <h2>${esc(l.title || "")}</h2>
-    ${big}${bar}
-    <div class="d">${esc(l.detail || "")}</div>
-    ${ageLine(l)}${held}${src}${v == null ? reason : ""}
-  </div>`;
-}
+    <div class="eo-actions">
+      <a class="ps-btn" href="/readings/erasure-observatory-latest.json">Raw reading</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/erasure-ledger.jsonl">The ledger</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/erasure-observatory-history.jsonl">Reading history</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/verify_ledger.py">Verifier source</a>
+    </div>
 
-function render(d){
-  const app = document.getElementById("app");
-  const idx = (typeof d.erasure_index === "number") ? d.erasure_index : null;
-  const b = band(idx);
-  const layers = Array.isArray(d.layers) ? d.layers : [];
-  const nContrib = (d.layers_contributing || []).length;
-  const integ = d.integrity || {};
-  const verified = integ.verified === true;
+    <p class="eo-hero-meta">
+      Palimpsest is two instruments run as one public good: this observatory, and a pre-registered,
+      hash-chained <a href="/readings/eval-registry.html">AI eval registry</a> whose roots are
+      anchored outside the project. MIT licensed, developed in the open, never a commercial product,
+      and never monetising the people or topics it observes.
+      <a href="/fund.html">What it costs to run</a>.
+    </p>
+  </header>
 
-  const cross = (d.cross_checks || []).map(c =>
-    `<div class="chip">${esc(c.name)} · <b>${esc(num(c.value, c.unit==="x"?2:2))}${esc(c.unit||"")}</b>
-     <div style="color:var(--dim);margin-top:3px">${esc(c.note||"")}</div></div>`).join("");
+  <!-- ============================ READING (plane 3) ============================ -->
+  <h2 class="ps-section-head" id="reading">The composite reading</h2>
 
-  const html = `
-  <div class="hero">
+  <p class="eo-status" id="eo-status" role="status">
+    Figures on this page are read from
+    <a href="/readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a> when the
+    page loads. Nothing here is typed in by hand. If the numbers below do not appear, the fetch
+    failed or JavaScript is off, and the raw file and the ledger are served directly.
+  </p>
+
+  <section class="ps-p3 eo-read eo-live ps-reveal" aria-labelledby="reading">
+    <div class="eo-read__grid">
+      <div>
+        <p class="ps-label" style="margin-bottom:10px">Composite Erasure Index</p>
+        <div class="eo-figure" id="eo-figure">
+          <span class="eo-big ps-num" id="eo-index"></span><span class="eo-unit" id="eo-index-unit">/100</span>
+        </div>
+        <p style="margin:12px 0 0" id="eo-band"></p>
+      </div>
+      <div>
+        <p class="eo-read__say" id="eo-thesis"></p>
+        <p class="eo-read__den ps-num" id="eo-denominator"></p>
+        <div class="eo-read__meta">
+          <span id="eo-chain-chip"></span>
+          <span id="eo-freshness"></span>
+        </div>
+      </div>
+    </div>
+    <p class="eo-read__scale" id="eo-scale"></p>
+  </section>
+
+  <!-- ============================ LAYERS (plane 2) ============================ -->
+  <h2 class="ps-section-head" id="layers">The three layers</h2>
+
+  <p class="eo-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+    The composite is the mean of the layers that reported. A layer that is not reporting is shown as
+    absent, with its reason, and is never folded in as a zero. A zero would say the record lost
+    nothing on that layer, which is a different claim from having no measurement at all.
+  </p>
+
+  <div class="eo-layers eo-live ps-stagger" id="eo-layers"></div>
+
+  <!-- ============================ CROSS CHECKS ============================ -->
+  <section id="cross-checks">
+    <h2 class="ps-section-head" id="cross-h">Independent cross checks</h2>
+
+    <p class="eo-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+      Separate instruments, measured by other people, pointed at the same thing. They do not feed the
+      composite. They exist so that a layer moving on its own can be told apart from the world moving.
+    </p>
+
+    <div class="eo-cross eo-live ps-stagger" id="eo-cross"></div>
+  </section>
+
+  <!-- ============================ THE DISTINCTION ============================ -->
+  <h2 class="ps-section-head" id="difference">How this differs from an access index</h2>
+
+  <div class="ps-band">
+    <div class="ps-pin">
+      <p class="ps-label">The claim</p>
+      <h3 class="ps-h2" style="font-size:clamp(19px,2.4vw,25px)">Proving the measurement was not edited is the product</h3>
+      <p class="eo-note">
+        An observatory of erasure that can quietly revise its own past readings is not evidence of
+        anything. It is a blog with charts. The ledger is what turns a number into something a
+        sceptical reader can hold us to.
+      </p>
+    </div>
+
     <div>
-      <div class="idx" style="color:${b.c}"><span id="idxNum">${idx==null?"–":esc(num(idx))}</span><small>/100</small></div>
-      <div class="band" style="color:${b.c};border-color:${b.c}">${esc(b.t)}</div>
-    </div>
-    <div class="heroTxt">
-      <div class="t">${esc(d.thesis || "")}</div>
-      <div class="m">Composite Erasure Index · mean of ${nContrib} reporting layer${nContrib===1?"":"s"}
-        · updated ${esc((d.generated_at||"").slice(0,16).replace("T"," "))} UTC</div>
+      <section class="ps-p2 ps-reveal" style="padding:clamp(18px,2.6vw,24px);margin-bottom:12px">
+        <table class="eo-diff">
+          <tbody>
+            <tr>
+              <td>An access observatory measures</td>
+              <td>whether a site, app or tool is reachable at this instant.</td>
+            </tr>
+            <tr>
+              <td>The Erasure Observatory measures</td>
+              <td>what existed and is now gone or altered: a page that got shorter, an encyclopedia entry rewritten to the state line, an answer a model used to give and now refuses.</td>
+            </tr>
+            <tr>
+              <td>Anyone can publish a live number</td>
+              <td>so the number alone proves nothing. The hard part is proving you did not edit your own history after the fact.</td>
+            </tr>
+            <tr>
+              <td>Our answer</td>
+              <td>every reading is sealed into a public, append-only, tamper-evident ledger at capture time. Recompute the chain yourself. A single altered or dropped past reading fails to verify.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="ps-p2 eo-live ps-reveal" style="padding:18px 20px">
+        <p class="ps-label" style="margin-bottom:8px">As the feed puts it</p>
+        <p class="eo-layer__d" id="eo-vs-access"></p>
+      </section>
     </div>
   </div>
 
-  <div class="grid3">${layers.map(layerCard).join("")}</div>
+  <!-- ============================ THE LEDGER (plane 1) ============================ -->
+  <h2 class="ps-section-head" id="ledger">The ledger, and how to check it</h2>
 
-  ${cross ? `<div class="cross">${cross}</div>` : ""}
-
-  <div class="seal">
-    <h2>Tamper-evident record</h2>
-    <p class="lead">An observatory of erasure has to prove its own record was never erased. Every
-      reading above is hash-chained into a public append-only ledger the instant we capture it.
-      Recompute the chain from the raw file and a single altered, reordered or dropped past reading
-      fails to verify.</p>
-    <div class="kv">
-      <div class="k">status</div><div class="v ${verified?"ok":"bad"}">${verified?"INTACT — chain verifies":"BROKEN — see problems"}</div>
-      <div class="k">sealed readings</div><div class="v">${esc(integ.entries ?? "–")}</div>
-      <div class="k">first sealed</div><div class="v">${esc((integ.first_ts||"").slice(0,16).replace("T"," ")||"–")}</div>
-      <div class="k">latest sealed</div><div class="v">${esc((integ.head_ts||"").slice(0,16).replace("T"," ")||"–")}</div>
-      <div class="k">merkle root</div><div class="v" title="single-value fingerprint of the whole ledger">${esc(integ.merkle_root||"–")}</div>
-      <div class="k">head hash</div><div class="v">${esc(integ.head_hash||"–")}</div>
+  <div class="ps-band">
+    <div class="ps-pin">
+      <p class="ps-label">Evidence</p>
+      <h3 class="ps-h2" style="font-size:clamp(19px,2.4vw,25px)">These are the values you recompute</h3>
+      <p class="eo-note">
+        The head hash covers every entry before it, and the merkle root is a single fingerprint of the
+        whole ledger. Take them from this page, take the ledger file, and check that they agree
+        without asking us anything. The registry roots are additionally deposited outside this
+        project, which is what stops a wholesale rewrite.
+        <a href="/readings/eval-registry.html#anchors" style="color:var(--tk-live,#06d6e0)">Where the roots are anchored</a>.
+      </p>
     </div>
-    <div class="cmd">$ git clone the repo &nbsp;&amp;&amp;&nbsp; python3 scripts/verify_ledger.py&nbsp; # recompute the chain yourself</div>
-  </div>`;
-  app.innerHTML = html;
-  if (window.TiktoMotion) {
-    if (idx != null) TiktoMotion.countUp(document.getElementById("idxNum"), idx, { decimals: 1, dur: 1000 });
-    app.querySelectorAll(".grid3 .card").forEach((c, i) => TiktoMotion.stagger(c, i, 80));
-    app.querySelectorAll(".cross .chip").forEach((c, i) => TiktoMotion.stagger(c, i, 60));
-    TiktoMotion.growBars(app);
-  }
-}
 
-fetch("/readings/erasure-observatory-latest.json", {cache:"no-store"})
-  .then(r => { if(!r.ok) throw new Error("http "+r.status); return r.json(); })
-  .then(render)
-  .catch(e => {
-    document.getElementById("app").innerHTML =
-      `<div class="err">Live reading unavailable right now (${esc(e.message)}). The
-       <a href="/readings/erasure-observatory-latest.json">raw JSON</a> and
-       <a href="/readings/erasure-ledger.jsonl">ledger</a> are still served directly.</div>`;
-  });
+    <div>
+      <section class="ps-p1 eo-live ps-reveal" style="padding:18px 20px;margin-bottom:12px">
+        <p class="ps-label" style="margin-bottom:4px">Ledger state, as served</p>
+        <dl class="eo-defs" id="eo-ledger"></dl>
+        <div class="eo-cmd">$ git clone https://github.com/beepboop2025/palimpsest &amp;&amp; cd palimpsest<br>$ python3 scripts/verify_ledger.py</div>
+        <p class="eo-note" style="margin-top:12px" id="eo-ledger-note"></p>
+      </section>
+
+      <section class="ps-p1 eo-live ps-reveal" style="padding:18px 20px">
+        <p class="ps-label" style="margin-bottom:4px">Sealed in the latest run</p>
+        <dl class="eo-defs" id="eo-sealed"></dl>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================ METHOD ============================ -->
+  <section class="eo-foot ps-reveal">
+    <p class="ps-label">Method</p>
+    <p class="eo-note" style="max-width:var(--ps-measure);font-size:14px">
+      Vantage-insensitive. Each layer ingests already-public data: OONI's aggregated measurements, the
+      open encyclopedic record, and a panel of state-aligned models queried from outside the wall. No
+      person inside China is ever asked to act. Judgement is lexical and auditable from the text. The
+      composite is the mean of the layers that reported, and absent layers are shown as absent rather
+      than zero-filled. Grounded in the trusted-public-archive literature (ARCHANGEL,
+      arXiv:1804.08342) and the LLM-censorship measurement work (arXiv:2505.17441, arXiv:2506.12349).
+      Not affiliated with OONI or Censored Planet. We ingest their open data with thanks.
+    </p>
+    <div class="eo-links">
+      <a href="/readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a>
+      <a href="/readings/erasure-observatory-history.jsonl">erasure-observatory-history.jsonl</a>
+      <a href="/readings/erasure-ledger.jsonl">erasure-ledger.jsonl</a>
+    </div>
+    <div class="eo-links" style="margin-top:10px">
+      <a href="/readings/">All readings</a>
+      <a href="/readings/ooni-gfw.html">Great Firewall</a>
+      <a href="/readings/eval-registry.html">Eval registry</a>
+      <a href="/for-researchers.html">For researchers</a>
+      <a href="/fund.html">Fund the work</a>
+      <a href="https://github.com/beepboop2025/palimpsest">Source, MIT licensed</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+/* ============================================================================
+   Information Erasure Observatory — renders readings/erasure-observatory-latest.json.
+
+   Fully client-side. Every value arrives as text, never as markup, so a source
+   label or a hash from the feed can never become an element. Nothing here is a
+   literal: a layer with no value renders its published status and reason, and a
+   composite with no value renders as an explicit abstention rather than as a
+   zero. Zero on this index means "the record lost nothing", which is a claim,
+   and it must never be printed where the truth is "we did not measure".
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  var FEED = "/readings/erasure-observatory-latest.json";
+  var CADENCE_H = 6;               /* the composite is rebuilt roughly 4x a day */
+  var STALE_H = CADENCE_H * 2;     /* past 2x cadence, freshness is a finding */
+
+  var root = document.querySelector("main[data-eo]");
+  var statusEl = document.getElementById("eo-status");
+
+  /* ---- tiny DOM helpers; all text goes in as text, never as markup ---- */
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = String(text);
+    return n;
+  }
+  function put(id, text) {
+    var n = document.getElementById(id);
+    if (n) n.textContent = text == null ? "" : String(text);
+    return n;
+  }
+  function clear(n) { while (n && n.firstChild) n.removeChild(n.firstChild); return n; }
+  function staggered(node, i) {
+    node.classList.add("ps-reveal");
+    node.style.setProperty("--ps-i", Math.min(i, 12));
+    return node;
+  }
+
+  var Shell = window.PalimpsestShell || null;
+
+  function ago(iso) {
+    if (Shell && Shell.ago) return Shell.ago(iso);
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return "unknown";
+    var s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 90) return "just now";
+    if (s < 5400) return Math.round(s / 60) + " min ago";
+    if (s < 172800) return Math.round(s / 3600) + " h ago";
+    return Math.round(s / 86400) + " d ago";
+  }
+  function load(url, ok, bad) {
+    if (Shell && Shell.loadReading) return Shell.loadReading(url, ok, bad);
+    return fetch(url, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(ok).catch(bad);
+  }
+
+  function chip(text, tone) {
+    return el("span", "eo-chip" + (tone ? " eo-chip--" + tone : ""), text);
+  }
+
+  var GAP = "not reported";
+  function num(v, d) {
+    return (typeof v === "number" && isFinite(v)) ? v.toFixed(d == null ? 1 : d) : null;
+  }
+  function cnt(v) { return (typeof v === "number" && isFinite(v)) ? String(v) : null; }
+  function stamp(iso) {
+    if (!iso) return null;
+    var s = String(iso).slice(0, 16).replace("T", " ");
+    return s ? s + " UTC" : null;
+  }
+
+  /* Banding is unchanged from the first version of this page: the thresholds are
+     part of what the index means, not a presentation choice. */
+  function band(v) {
+    if (v == null) return { t: "no reading", tone: "", c: "var(--tk-stale, #8593a8)" };
+    if (v >= 60) return { t: "severe erasure", tone: "crit", c: "var(--tk-critical, #ff5b52)" };
+    if (v >= 35) return { t: "substantial erasure", tone: "warn", c: "var(--tk-warning, #ffb020)" };
+    if (v >= 15) return { t: "moderate", tone: "live", c: "var(--tk-live, #06d6e0)" };
+    return { t: "low", tone: "ok", c: "var(--tk-ok, #19c393)" };
+  }
+  var LCOLOR = {
+    network: "var(--tk-live, #06d6e0)",
+    narrative: "var(--eo-narrative, #a78bfa)",
+    model: "var(--tk-warning, #ffb020)"
+  };
+
+  /* ------------------------------------------------------------ failure ---- */
+  function fail(why) {
+    root.setAttribute("data-eo", "error");
+    clear(statusEl);
+    statusEl.className = "eo-status eo-status--err";
+    statusEl.appendChild(el("strong", null, "This reading did not load. "));
+    statusEl.appendChild(document.createTextNode(
+      why + ". No figure is shown here rather than a placeholder that might be mistaken for a "
+          + "measurement. The published files are "));
+    var a = el("a", null, "erasure-observatory-latest.json");
+    a.href = FEED;
+    statusEl.appendChild(a);
+    statusEl.appendChild(document.createTextNode(" and the ledger, "));
+    var b = el("a", null, "erasure-ledger.jsonl");
+    b.href = "/readings/erasure-ledger.jsonl";
+    statusEl.appendChild(b);
+    statusEl.appendChild(document.createTextNode("."));
+  }
+
+  /* ---- a layer states WHEN it was measured, not only what it measured. The
+         composite carries one generated_at, which reads as "all of this is
+         today", and for 29 days it was not: the model layer was a frozen number
+         from a dated file and nothing on the page said so. ---- */
+  function ageLine(l) {
+    if (!l.as_of) return null;
+    var when = stamp(l.as_of);
+    var d = (typeof l.age_days === "number" && isFinite(l.age_days)) ? l.age_days : null;
+    var how = "";
+    if (d != null) how = d < 1 ? "  ·  today" : ("  ·  " + (d < 2 ? "1 day" : Math.round(d) + " days") + " old");
+    return "measured " + when + how;
+  }
+
+  function layerCard(l, i) {
+    var v = (typeof l.value === "number" && isFinite(l.value)) ? l.value : null;
+    var col = LCOLOR[l.layer] || "var(--tk-live, #06d6e0)";
+    var card = el("section", "ps-p2 eo-layer" + (v == null ? " eo-layer--abstain" : ""));
+
+    card.appendChild(el("p", "eo-layer__name", l.layer || "layer"));
+    card.appendChild(el("h3", null, l.title || l.layer || "layer"));
+
+    if (v == null) {
+      /* Not reporting. The status word carries it, and the bar is omitted
+         entirely rather than drawn empty. */
+      card.appendChild(chip(l.status || "absent", "warn"));
+    } else {
+      var big = el("div", "eo-layer__v ps-num");
+      big.style.color = col;
+      big.appendChild(document.createTextNode(num(v)));
+      big.appendChild(el("small", null, "/100"));
+      card.appendChild(big);
+
+      var bar = el("div", "eo-bar");
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label", (l.title || l.layer) + ": " + num(v) + " out of 100");
+      var fill = el("i");
+      fill.style.width = Math.max(0, Math.min(100, v)) + "%";
+      fill.style.background = col;
+      bar.appendChild(fill);
+      card.appendChild(bar);
+    }
+
+    if (l.detail) card.appendChild(el("p", "eo-layer__d", l.detail));
+
+    var age = ageLine(l);
+    if (age) card.appendChild(el("p", "eo-src", age));
+
+    /* Show the number we are declining to publish, struck through. An abstention
+       that hides what it withheld is just a gap; one that shows it is a claim a
+       reader can audit. */
+    if (typeof l.withheld_value === "number" && isFinite(l.withheld_value)) {
+      var held = el("p", "eo-src");
+      held.appendChild(document.createTextNode("withheld reading  ·  "));
+      held.appendChild(el("s", null, num(l.withheld_value) + "/100"));
+      held.appendChild(document.createTextNode("  not counted in the composite"));
+      card.appendChild(held);
+    }
+
+    if (l.source) card.appendChild(el("p", "eo-src", "source  ·  " + l.source));
+    if (v == null && l.reason) card.appendChild(el("p", "eo-src", l.reason));
+
+    return staggered(card, i);
+  }
+
+  /* ------------------------------------------------------------- render ---- */
+  function render(d) {
+    if (!d || typeof d !== "object") return fail("the feed did not parse as an object");
+
+    var layers = Array.isArray(d.layers) ? d.layers : [];
+    var contributing = Array.isArray(d.layers_contributing) ? d.layers_contributing : [];
+    var crosses = Array.isArray(d.cross_checks) ? d.cross_checks : [];
+    var integ = d.integrity || {};
+    var verified = integ.verified === true;
+
+    root.setAttribute("data-eo", "ok");
+
+    /* ---- the composite. No value means no number, not a zero. ---- */
+    var idx = (typeof d.erasure_index === "number" && isFinite(d.erasure_index)) ? d.erasure_index : null;
+    var b = band(idx);
+    var idxEl = document.getElementById("eo-index");
+    var unitEl = document.getElementById("eo-index-unit");
+    var figEl = document.getElementById("eo-figure");
+
+    if (idx == null) {
+      clear(figEl);
+      figEl.appendChild(chip("no composite this run", "warn"));
+      figEl.style.display = "block";
+    } else {
+      idxEl.style.color = b.c;
+      if (Shell && Shell.countUp) Shell.countUp(idxEl, idx, { decimals: 1, dur: 1000 });
+      else idxEl.textContent = num(idx);
+      unitEl.style.display = "";
+    }
+
+    var bandSlot = clear(document.getElementById("eo-band"));
+    bandSlot.appendChild(chip(b.t, b.tone));
+
+    put("eo-thesis", d.thesis || "the feed published no thesis line this run");
+
+    var den = [];
+    den.push(contributing.length
+      ? "mean of " + contributing.length + " reporting layer" + (contributing.length === 1 ? "" : "s")
+        + "  ·  " + contributing.join(", ")
+      : "no layer reported this run");
+    if (layers.length) den.push(layers.length + " layers watched");
+    put("eo-denominator", den.join("  ·  "));
+
+    var chipSlot = clear(document.getElementById("eo-chain-chip"));
+    chipSlot.appendChild(chip(verified ? "ledger intact" : "ledger broken", verified ? "ok" : "crit"));
+
+    /* ---- freshness. Past 2x cadence this is a warning, not a timestamp. ---- */
+    var fresh = clear(document.getElementById("eo-freshness"));
+    var t = Date.parse(d.generated_at);
+    if (isFinite(t)) {
+      var hours = (Date.now() - t) / 3.6e6;
+      var n = el("span", hours > STALE_H ? "eo-stale" : null, "composite built " + ago(d.generated_at));
+      n.title = new Date(t).toISOString();
+      fresh.appendChild(n);
+      if (hours > STALE_H) {
+        fresh.appendChild(el("span", "eo-stale",
+          "  ·  the composite normally rebuilds about every " + CADENCE_H + " h, so this reading is overdue"));
+      }
+    } else {
+      fresh.appendChild(el("span", "eo-stale", "no build timestamp in the feed"));
+    }
+
+    put("eo-scale", d.index_scale ? "Scale: " + d.index_scale : "");
+    put("eo-vs-access", d.vs_access_indices || "the feed published no comparison line this run");
+
+    /* ---- layers (plane 2) ---- */
+    var box = clear(document.getElementById("eo-layers"));
+    if (!layers.length) {
+      var none = el("section", "ps-p2 eo-layer eo-layer--abstain");
+      none.appendChild(el("p", "eo-layer__d",
+        "This reading carried no layers at all, so no composite can be read from it."));
+      box.appendChild(none);
+    } else {
+      layers.forEach(function (l, i) { box.appendChild(layerCard(l, i)); });
+    }
+
+    /* ---- cross checks ---- */
+    var cbox = clear(document.getElementById("eo-cross"));
+    if (!crosses.length) {
+      cbox.appendChild(el("p", "eo-note", "No cross check reported in this reading."));
+    } else {
+      crosses.forEach(function (c, i) {
+        var card = el("div", "ps-p2 eo-cc");
+        card.appendChild(el("b", null, c.name || "cross check"));
+        var val = num(c.value, 2);
+        card.appendChild(el("span", "eo-v ps-num",
+          val == null ? GAP : val + (c.unit || "")));
+        if (c.note) card.appendChild(el("small", null, c.note));
+        cbox.appendChild(staggered(card, i));
+      });
+    }
+
+    /* ---- ledger evidence (plane 1) ---- */
+    var led = clear(document.getElementById("eo-ledger"));
+    function pair(k, v, mono) {
+      var row = el("div");
+      row.appendChild(el("dt", null, k));
+      row.appendChild(el("dd", mono ? "eo-mono" : null, v == null ? GAP : v));
+      led.appendChild(row);
+    }
+    var statusRow = el("div");
+    statusRow.appendChild(el("dt", null, "Status"));
+    var statusDd = el("dd");
+    statusDd.appendChild(chip(verified ? "intact" : "broken", verified ? "ok" : "crit"));
+    statusDd.appendChild(document.createTextNode(verified
+      ? "  the chain verifies from the first entry to the head"
+      : "  verification failed, so no reading on this page should be cited until it passes"));
+    statusRow.appendChild(statusDd);
+    led.appendChild(statusRow);
+
+    pair("Sealed readings", cnt(integ.entries));
+    pair("First sealed", stamp(integ.first_ts));
+    pair("Latest sealed", stamp(integ.head_ts));
+    pair("Merkle root", integ.merkle_root, true);
+    pair("Head hash", integ.head_hash, true);
+
+    var by = integ.by_source && typeof integ.by_source === "object" ? integ.by_source : null;
+    if (by) {
+      var keys = Object.keys(by);
+      pair("Entries by source", keys.length
+        ? keys.map(function (k) { return k + " " + by[k]; }).join("  ·  ")
+        : null);
+    }
+
+    var ledgerRow = el("div");
+    ledgerRow.appendChild(el("dt", null, "Ledger file"));
+    var ledgerDd = el("dd");
+    var ll = el("a", null, integ.ledger || "readings/erasure-ledger.jsonl");
+    ll.href = "/readings/erasure-ledger.jsonl";
+    ledgerDd.appendChild(ll);
+    ledgerRow.appendChild(ledgerDd);
+    led.appendChild(ledgerRow);
+
+    put("eo-ledger-note", integ.note || "");
+
+    /* ---- what this run actually sealed ---- */
+    var sealed = clear(document.getElementById("eo-sealed"));
+    var runs = Array.isArray(integ.sealed_this_run) ? integ.sealed_this_run : [];
+    if (!runs.length) {
+      var r0 = el("div");
+      r0.appendChild(el("dt", null, "This run"));
+      r0.appendChild(el("dd", null,
+        "No new entry was sealed in this run. The ledger is unchanged since the previous reading."));
+      sealed.appendChild(r0);
+    } else {
+      runs.forEach(function (s) {
+        var row = el("div");
+        row.appendChild(el("dt", null, s.source || "entry"));
+        var dd = el("dd", "eo-mono");
+        var seq = cnt(s.seq);
+        dd.textContent = (seq ? "seq " + seq + "  ·  " : "") + (s.entry_hash || GAP);
+        row.appendChild(dd);
+        sealed.appendChild(row);
+      });
+    }
+  }
+
+  function boot() {
+    if (!root) return;
+    load(FEED, render, function (err) {
+      fail(String((err && err.message) || err || "unknown error"));
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
 </script>
 </body>
 </html>

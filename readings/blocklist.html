@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blocklist Archaeology · Palimpsest</title>
+<meta name="description" content="Keywords newly present in successive LINE client blocklists, from the Citizen Lab chat-censorship corpus. Counts and severity distribution by client version. Palimpsest republishes derived counts, not the corpus.">
+<link rel="canonical" href="https://palimpsest.info/readings/blocklist.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  /* Page-local only. Nothing here redefines a --tk-* token or a .ps-* class. */
+
+  .bl-head { padding: clamp(30px, 6vw, 62px) 0 6px; }
+
+  /* ---- the reading: three figures on the reading plane ---- */
+  .bl-reading { padding: clamp(20px, 3.4vw, 30px); margin-bottom: 14px; }
+  .bl-figs {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(16px, 3vw, 34px);
+  }
+  @media (max-width: 700px) { .bl-figs { grid-template-columns: 1fr; gap: 20px; } }
+  .bl-fig .n {
+    font-size: clamp(34px, 6vw, 58px); font-weight: 800; line-height: 1;
+    letter-spacing: -.03em; color: var(--tk-text-0, #fff);
+  }
+  .bl-fig .n small { font-size: .38em; font-weight: 500; color: var(--tk-text-3, #7d8ca3); letter-spacing: 0; }
+  .bl-fig .n.is-word { font-size: clamp(22px, 3.4vw, 32px); }
+  .bl-fig .l {
+    font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--tk-text-3, #7d8ca3); margin-top: 11px;
+  }
+  .bl-fig .d { font-size: 12.5px; color: var(--tk-text-2, #94a3b8); margin-top: 6px; line-height: 1.5; }
+
+  .bl-fresh {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3, #7d8ca3);
+    margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--ps-edge-1);
+  }
+  .bl-fresh[data-stale] { color: var(--tk-warning, #ffb020); }
+  .bl-fresh .ps-dot { color: var(--tk-live, #06d6e0); }
+  .bl-fresh[data-stale] .ps-dot { color: var(--tk-warning, #ffb020); }
+  .bl-fresh__note {
+    flex-basis: 100%; margin-top: 2px;
+    font-size: 10.5px; line-height: 1.6; color: var(--tk-text-4, #6f8098);
+  }
+
+  /* ---- attribution: the loudest block on the page after the number ---- */
+  .bl-attrib {
+    padding: clamp(18px, 3vw, 26px) clamp(18px, 3vw, 28px);
+    border-left: 3px solid var(--tk-live, #06d6e0);
+    margin-bottom: 14px;
+  }
+  .bl-attrib__who {
+    font-size: clamp(16px, 2.2vw, 20px); font-weight: 700; line-height: 1.3;
+    color: var(--tk-text-0, #fff); margin: 0 0 8px; letter-spacing: -.012em;
+  }
+  .bl-attrib__cite {
+    font-size: 13px; line-height: 1.6; color: var(--tk-text-2, #94a3b8);
+    margin: 0 0 6px; overflow-wrap: anywhere;
+  }
+  .bl-attrib a { color: var(--tk-live, #06d6e0); }
+  .bl-licence {
+    margin-top: 16px; padding: 14px 16px; border-radius: var(--tk-radius-md, 10px);
+    background: var(--tk-warning-bg, rgba(245,158,11,.13));
+    border: 1px solid var(--tk-warning-line, rgba(245,158,11,.45));
+  }
+  .bl-licence .h {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--tk-warning, #ffb020); margin-bottom: 7px;
+  }
+  .bl-licence p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--tk-text-1, #e2e8f0); }
+  .bl-licence p + p { margin-top: 8px; color: var(--tk-text-2, #94a3b8); }
+
+  /* ---- orientation strip: what a reader of any of the three kinds needs ---- */
+  .bl-orient { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 8px; }
+  @media (max-width: 760px) { .bl-orient { grid-template-columns: 1fr; } }
+  a.bl-orient__c { display: block; padding: 15px 17px; text-decoration: none; }
+  .bl-orient__c b { display: block; font-size: 13.5px; font-weight: 600; color: var(--tk-text-0, #fff); }
+  .bl-orient__c span { display: block; margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--tk-text-3, #7d8ca3); }
+
+  /* ---- per-version timeline ---- */
+  .bl-tl { list-style: none; margin: 0; padding: clamp(14px, 2.6vw, 22px); }
+  .bl-row {
+    display: grid; align-items: center; gap: 14px;
+    grid-template-columns: 58px 112px minmax(0, 1fr) 104px;
+    padding: 13px 0; border-top: 1px solid var(--ps-edge-1);
+  }
+  .bl-row:first-child { border-top: 0; }
+  @media (max-width: 660px) {
+    .bl-row { grid-template-columns: 58px 1fr; gap: 6px 12px; }
+    .bl-row .bl-bar { grid-column: 1 / -1; }
+    .bl-row .bl-n { grid-column: 2; text-align: left; }
+  }
+  .bl-v {
+    font-family: var(--tk-font-mono); font-size: 12px; font-weight: 600;
+    color: var(--tk-text-0, #fff); padding: 3px 0;
+  }
+  .bl-when { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-2, #94a3b8); }
+  .bl-when small { display: block; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--tk-text-4, #6f8098); margin-top: 2px; }
+  .bl-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.055); overflow: hidden; }
+  .bl-bar i {
+    display: block; height: 100%; border-radius: 4px; min-width: 3px;
+    background: linear-gradient(90deg, var(--tk-live-dim, #0891a2), var(--tk-live, #06d6e0));
+    transform-origin: left center;
+  }
+  .bl-row--base .bl-bar { background: transparent; border: 1px dashed var(--ps-edge-2); }
+  .bl-n { text-align: right; font-size: 19px; font-weight: 700; color: var(--tk-text-0, #fff); line-height: 1.15; }
+  .bl-n small { display: block; font-size: 10.5px; font-weight: 500; color: var(--tk-text-3, #7d8ca3); margin-top: 3px; }
+  .bl-n.is-word { font-size: 12px; font-weight: 500; color: var(--tk-text-3, #7d8ca3); }
+
+  /* ---- severity ---- */
+  .bl-sev { padding: clamp(16px, 2.8vw, 24px); }
+  .bl-sevbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,.055); }
+  .bl-sevbar i { display: block; height: 100%; }
+  .bl-sevkeys { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-top: 16px; }
+  .bl-sevkey { display: flex; align-items: baseline; gap: 9px; font-size: 13px; }
+  .bl-sevkey .sw { width: 9px; height: 9px; border-radius: 2px; flex: none; align-self: center; }
+  .bl-sevkey b { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--tk-text-1, #e2e8f0); }
+  .bl-sevkey span { color: var(--tk-text-3, #7d8ca3); font-size: 12.5px; }
+
+  /* ---- notes and caveats live on the evidence plane ---- */
+  .bl-note { padding: 15px 18px; font-size: 13px; line-height: 1.65; color: var(--tk-text-2, #94a3b8); margin-top: 12px; }
+  .bl-note b, .bl-note strong { color: var(--tk-text-1, #e2e8f0); font-weight: 600; }
+  .bl-note p { margin: 0 0 9px; }
+  .bl-note p:last-child { margin-bottom: 0; }
+  .bl-note--warn { border-color: var(--tk-warning-line, rgba(245,158,11,.45)); }
+
+  .bl-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 760px) { .bl-grid2 { grid-template-columns: 1fr; } }
+  .bl-null { padding: 18px 20px; }
+  .bl-null .k { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3, #7d8ca3); }
+  .bl-null .v { font-size: 17px; font-weight: 700; color: var(--tk-stale, #8593a8); margin: 7px 0 9px; }
+  .bl-null p { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--tk-text-2, #94a3b8); }
+
+  /* ---- evidence table ---- */
+  .bl-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .bl-tbl th {
+    text-align: left; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--tk-text-4, #6f8098); font-weight: 500;
+    padding: 0 14px 9px 0; white-space: nowrap; border-bottom: 1px solid var(--ps-edge-2);
+  }
+  .bl-tbl td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--ps-edge-1); vertical-align: top; color: var(--tk-text-2, #94a3b8); }
+  .bl-tbl tr:last-child td { border-bottom: 0; }
+  .bl-tbl td.f { font-family: var(--tk-font-mono); color: var(--tk-text-1, #e2e8f0); white-space: nowrap; }
+  .bl-tbl td.f a { color: var(--tk-text-1, #e2e8f0); text-decoration: none; border-bottom: 1px solid var(--ps-edge-3); }
+  .bl-tbl td.f a:hover { color: var(--tk-live, #06d6e0); border-bottom-color: var(--tk-live, #06d6e0); }
+  .bl-tbl td.h { font-family: var(--tk-font-mono); font-size: 10.5px; color: var(--tk-text-4, #6f8098); overflow-wrap: anywhere; max-width: 340px; }
+  .bl-tbl td.w { white-space: nowrap; font-family: var(--tk-font-mono); }
+  .bl-ev { padding: clamp(16px, 2.8vw, 22px); }
+
+  .bl-meta { list-style: none; margin: 0; padding: 0; }
+  .bl-meta li { display: flex; gap: 12px; flex-wrap: wrap; padding: 9px 0; border-top: 1px solid var(--ps-edge-1); font-size: 12.5px; }
+  .bl-meta li:first-child { border-top: 0; }
+  .bl-meta b { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--tk-text-4, #6f8098); flex: none; min-width: 150px; padding-top: 2px; }
+  .bl-meta span { color: var(--tk-text-2, #94a3b8); overflow-wrap: anywhere; }
+
+  /* ---- states ---- */
+  .bl-fail {
+    padding: 18px 20px; border-radius: var(--tk-radius-md, 10px);
+    background: var(--tk-critical-bg, rgba(239,68,68,.13));
+    border: 1px solid var(--tk-critical-line, rgba(239,68,68,.5));
+    color: var(--tk-text-1, #e2e8f0); font-size: 13.5px; line-height: 1.6;
+  }
+  .bl-fail b { display: block; color: var(--tk-critical, #ff5b52); font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 7px; }
+  .bl-load { font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-4, #6f8098); padding: 10px 0; }
+
+  .bl-close { padding: clamp(20px, 3.4vw, 30px); margin: 18px 0 clamp(40px, 7vw, 80px); }
+  .bl-close p { max-width: var(--ps-measure); font-size: 14px; line-height: 1.7; color: var(--tk-text-2, #94a3b8); margin: 0 0 14px; }
+  .bl-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html" aria-current="page"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap">
+
+  <header class="bl-head">
+    <p class="ps-kicker">Signal · Blocklist archaeology</p>
+    <h1 class="ps-h1">The censor wrote the list itself.</h1>
+    <p class="ps-lede">
+      Most censorship measurement is inference. You watch what disappears and reason backwards about
+      what someone objected to. This is the other kind of evidence: the trigger list shipped inside the
+      client, differenced version against version, so every keyword that appears is a decision somebody
+      made and then released to users. The corpus belongs to the Citizen Lab. Palimpsest publishes the
+      counts, not the list.
+    </p>
+  </header>
+
+  <!-- ================= the reading (plane 3: the quotable numbers) ========== -->
+  <section class="ps-p3 bl-reading ps-reveal" aria-labelledby="reading-h">
+    <h2 id="reading-h" class="ps-sr">The reading</h2>
+    <div id="reading-body">
+      <p class="bl-load" role="status">Loading the reading.</p>
+    </div>
+  </section>
+  <p class="ps-p1 bl-note" id="scope-note"><span class="bl-load">Loading scope.</span></p>
+
+  <!-- ================= attribution: mandatory, and placed where it is read == -->
+  <section class="ps-p2 bl-attrib ps-reveal" aria-labelledby="attrib-h">
+    <p class="ps-label" id="attrib-h">Source corpus and attribution</p>
+    <p class="bl-attrib__who">The Citizen Lab, University of Toronto</p>
+    <p class="bl-attrib__cite">
+      chat-censorship corpus.
+      <a href="https://github.com/citizenlab/chat-censorship" rel="noopener noreferrer" target="_blank">github.com/citizenlab/chat-censorship</a>
+    </p>
+    <p class="bl-attrib__cite" id="attrib-full"><span class="bl-load">Loading the attribution string carried by the reading.</span></p>
+
+    <div class="bl-licence">
+      <p class="h"><span aria-hidden="true">&#9888;</span> Licence status</p>
+      <p id="licence-note"><span class="bl-load">Loading the licence note carried by the reading.</span></p>
+      <p>
+        Palimpsest republishes derived counts. The corpus files are read, hashed and differenced,
+        and are not redistributed from this project.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= orientation for the three kinds of reader =========== -->
+  <nav class="bl-orient" aria-label="Where this sits in the project">
+    <a class="ps-p1 bl-orient__c" href="/readings/">
+      <b>One of many readings</b>
+      <span>The observatory publishes every signal it measures, each with its raw file.</span>
+    </a>
+    <a class="ps-p1 bl-orient__c" href="/readings/eval-registry.html">
+      <b>Also an eval registry</b>
+      <span>Pre-registered, hash-chained, externally anchored AI evaluations.</span>
+    </a>
+    <a class="ps-p1 bl-orient__c" href="/support.html">
+      <b>A funded public good</b>
+      <span>MIT licensed, open source, never a commercial product. What it costs to run.</span>
+    </a>
+  </nav>
+
+  <!-- ================= per-version timeline ================================ -->
+  <h2 class="ps-section-head" id="by-version">Additions by client version</h2>
+  <div class="ps-band ps-defer">
+    <div class="ps-pin">
+      <p class="ps-h2">A diff, not a guess.</p>
+      <p class="ps-lede" style="margin-bottom:14px">
+        Two consecutive client blocklists are differenced. Every keyword present in the later list and
+        absent from the earlier one counts as an addition. The ordering of the versions is exact. The
+        dating is not: a list is dated by when its file first entered the public archive, which is an
+        upper bound on when the directive shipped.
+      </p>
+      <p class="ps-label" style="margin:0">Application</p>
+      <p style="margin:0;font-size:13.5px;color:var(--tk-text-2)" id="app-name">LINE chat client</p>
+    </div>
+    <div>
+      <ol class="ps-p2 bl-tl ps-stagger" id="timeline">
+        <li class="bl-load" role="status">Loading the per-version timeline.</li>
+      </ol>
+      <p class="ps-p1 bl-note bl-note--warn" id="velocity-note"><span class="bl-load">Loading the dating caveat.</span></p>
+    </div>
+  </div>
+
+  <!-- ================= severity ============================================ -->
+  <h2 class="ps-section-head" id="severity">Severity distribution</h2>
+  <section class="ps-p2 bl-sev ps-reveal ps-defer" aria-labelledby="severity">
+    <div id="sev-body">
+      <p class="bl-load" role="status">Loading the severity distribution.</p>
+    </div>
+  </section>
+  <p class="ps-p1 bl-note">
+    <b>Whose judgement this is.</b> Severity is assigned by Palimpsest, by a lexical rule applied to the
+    term itself. It is not a Citizen Lab field, and nothing about it should be attributed to them. The
+    reading file publishes the split but not the rule, so the split is reported here and nothing is read
+    into what a class means. The rule is in the open source collector.
+  </p>
+
+  <!-- ================= what is deliberately not here ======================= -->
+  <h2 class="ps-section-head" id="not-published">What this page does not publish</h2>
+  <section class="ps-p1 bl-note ps-defer" aria-labelledby="not-published" style="padding:clamp(16px,2.8vw,24px)">
+    <p><b>The keyword strings.</b> The reading file carries a bounded evidence sample of the additions
+      and a set of proposed gazetteer terms. Neither is rendered here, and this page offers no search
+      across them.</p>
+    <p>The corpus already exists in one place, with an institution's name attached to it and a citation
+      that leads back to the research it came from. A second, more browsable copy would add nothing a
+      researcher needs, and a blocklist is as useful to whoever wants to enforce it as to whoever wants
+      to study it. There is no licence on the upstream repository, so Palimpsest treats it as all rights
+      reserved and publishes counts only.</p>
+    <p id="held-back"><span class="bl-load">Loading the count of what is held back.</span></p>
+    <p>Researchers who need the terms should take them from the Citizen Lab repository, which is linked
+      above, and cite the Citizen Lab.</p>
+  </section>
+
+  <!-- ================= gazetteer proposals ================================= -->
+  <h2 class="ps-section-head" id="gazetteer">Gazetteer proposals</h2>
+  <section class="ps-p2 bl-sev ps-reveal ps-defer" aria-labelledby="gazetteer">
+    <div id="gaz-body">
+      <p class="bl-load" role="status">Loading the proposal count.</p>
+    </div>
+  </section>
+
+  <!-- ================= withheld ============================================ -->
+  <h2 class="ps-section-head" id="withheld">Withheld by the runner</h2>
+  <div class="bl-grid2 ps-defer" id="withheld-body">
+    <p class="ps-p1 bl-null bl-load" role="status" style="grid-column:1/-1">Loading the withheld fields.</p>
+  </div>
+
+  <!-- ================= evidence (plane 1) ================================== -->
+  <h2 class="ps-section-head" id="evidence">Evidence</h2>
+  <section class="ps-p1 bl-ev ps-defer" aria-labelledby="evidence">
+    <p class="ps-label">Files read, hashed and differenced</p>
+    <div class="ps-scroll-x">
+      <table class="bl-tbl">
+        <thead>
+          <tr>
+            <th scope="col">Blocklist file</th>
+            <th scope="col">First seen in archive</th>
+            <th scope="col">Dating basis</th>
+            <th scope="col">sha256</th>
+          </tr>
+        </thead>
+        <tbody id="prov-body">
+          <tr><td colspan="4" class="bl-load">Loading provenance.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="ps-p1 bl-ev ps-defer" style="margin-top:12px" aria-label="Run metadata">
+    <p class="ps-label">Run</p>
+    <ul class="bl-meta" id="run-meta">
+      <li class="bl-load">Loading run metadata.</li>
+    </ul>
+    <p style="margin:16px 0 0;font-size:12.5px">
+      <a href="/readings/blocklist-latest.json" class="ps-btn ps-btn--ghost">Raw reading (JSON)</a>
+      <a href="/readings/blocklist-history.jsonl" class="ps-btn ps-btn--ghost" style="margin-left:8px">History (JSONL)</a>
+    </p>
+  </section>
+
+  <!-- ================= closing: what this is part of ======================= -->
+  <h2 class="ps-section-head" id="about">What this is part of</h2>
+  <section class="ps-p2 bl-close ps-reveal" aria-labelledby="about">
+    <p>
+      Palimpsest is a censorship observatory and a verifiable AI eval registry, developed in the open
+      as a public good. It is MIT licensed, it has never been a commercial product, and it does not
+      monetise the people or the topics it observes. It watches the censor, never the censored: public
+      reads only, no person inside is ever asked to act, and no state-aligned model is ever the analyst.
+      Every finding ships with the raw evidence that produced it.
+    </p>
+    <p>
+      This signal costs almost nothing to run and produces a citable, dated record of platform side
+      censorship that does not depend on anyone being at risk. Funding keeps the collectors, the archive
+      and the anchoring running.
+    </p>
+    <div class="bl-cta">
+      <a class="ps-btn" href="/support.html">How this is funded</a>
+      <a class="ps-btn ps-btn--ghost" href="/for-researchers.html">Data and methods</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest" rel="noopener noreferrer" target="_blank">Source code</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var URL_LATEST = "/readings/blocklist-latest.json";
+
+  /* Everything interpolated from the feed is escaped before it reaches innerHTML. */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function el(id) { return document.getElementById(id); }
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+
+  /* A count that is absent is never drawn as zero. */
+  function countText(v) { return isNum(v) ? v.toLocaleString("en-GB") : "not reported"; }
+
+  /* Feed notes are written as fragments and do not always close a sentence.
+     Nothing is reworded; a full stop is only added so two notes do not run
+     into each other on screen. */
+  function sentence(s) {
+    var t = String(s == null ? "" : s).trim();
+    if (!t) return "";
+    return /[.!?;:]$/.test(t) ? t : t + ".";
+  }
+
+  function fmtDate(iso) {
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return "not reported";
+    try {
+      return new Intl.DateTimeFormat("en-GB", {
+        timeZone: "UTC", day: "numeric", month: "short", year: "numeric"
+      }).format(new Date(t));
+    } catch (e) { return String(iso).slice(0, 10); }
+  }
+
+  var SEV_COLOUR = {
+    high: "var(--tk-critical, #ff5b52)",
+    medium: "var(--tk-warning, #ffb020)",
+    low: "var(--tk-ok, #19c393)"
+  };
+  var SEV_ORDER = ["high", "medium", "low"];
+
+  /* ------------------------------------------------------------- failure --- */
+  /* An unloadable reading leaves the attribution standing and every number
+     replaced by an explicit statement that nothing was measured on this page. */
+  function fail(err) {
+    var msg = "The reading could not be loaded" + (err ? " (" + esc(String(err.message || err)) + ")" : "") + ".";
+    el("reading-body").innerHTML =
+      '<div class="bl-fail" role="alert"><b>No reading on screen</b>' + msg +
+      ' No count is shown, because a plausible looking number here would be worse than a blank panel. ' +
+      'The raw file is linked under Evidence below; if it loads for you there, this page failed, not the signal.</div>';
+
+    var blanks = {
+      "scope-note": "Scope could not be loaded.",
+      "attrib-full": "The attribution string carried by the reading could not be loaded. The corpus is the Citizen Lab chat-censorship corpus, University of Toronto, linked above.",
+      "licence-note": "The licence note carried by the reading could not be loaded. Read the upstream repository before reusing anything from it.",
+      "velocity-note": "The dating caveat carried by the reading could not be loaded.",
+      "held-back": "The counts of held back material could not be loaded.",
+      "app-name": "not loaded"
+    };
+    Object.keys(blanks).forEach(function (id) {
+      var n = el(id); if (n) n.textContent = blanks[id];
+    });
+
+    /* List containers need list items; the rest take a paragraph. Either way the
+       text says nothing was measured rather than showing an empty shell. */
+    ["timeline", "run-meta"].forEach(function (id) {
+      var n = el(id);
+      if (n) n.innerHTML = '<li class="bl-load" style="list-style:none">Not loaded.</li>';
+    });
+    ["sev-body", "gaz-body", "withheld-body"].forEach(function (id) {
+      var n = el(id);
+      if (n) n.innerHTML = '<p class="bl-load" style="grid-column:1/-1">Not loaded.</p>';
+    });
+    var pb = el("prov-body");
+    if (pb) pb.innerHTML = '<tr><td colspan="4" class="bl-load">Not loaded.</td></tr>';
+  }
+
+  /* -------------------------------------------------------------- render --- */
+  function render(d) {
+    if (!d || typeof d !== "object") { fail(new Error("empty reading")); return; }
+
+    var app = typeof d.app === "string" ? d.app : null;
+    var versions = Array.isArray(d.versions_compared) ? d.versions_compared : [];
+    var byVersion = (d.additions_by_version && typeof d.additions_by_version === "object") ? d.additions_by_version : {};
+    var prov = (d.provenance && typeof d.provenance === "object") ? d.provenance : {};
+
+    /* ---- the reading ---- */
+    var figs = "";
+    figs += '<div class="bl-fig">' +
+      '<div class="n ps-num"><span id="fig-add">' + esc(countText(d.n_additions)) + '</span></div>' +
+      '<div class="l">Keyword additions</div>' +
+      '<div class="d">Terms present in a client blocklist and absent from the one before it.</div></div>';
+
+    figs += '<div class="bl-fig">' +
+      '<div class="n ps-num">' + esc(countText(d.n_versions)) +
+      (versions.length ? '<small> versions</small>' : '') +
+      '</div><div class="l">Client versions compared</div>' +
+      '<div class="d">' + (versions.length
+        ? esc(versions.join(", ")) + "." + (app ? " " + esc(app.toUpperCase()) + " client blocklists." : "")
+        : "Version list not reported.") + '</div></div>';
+
+    var comp = typeof d.completeness === "string" ? d.completeness : null;
+    figs += '<div class="bl-fig">' +
+      '<div class="n is-word">' + (comp ? esc(comp) : "not reported") + '</div>' +
+      '<div class="l">Completeness</div>' +
+      '<div class="d">As declared by the runner for this corpus.</div></div>';
+
+    var fresh = "";
+    var gen = Date.parse(d.generated_at);
+    if (isFinite(gen)) {
+      var days = (Date.now() - gen) / 86400000;
+      var stale = days > 30;
+      var agoTxt = (window.PalimpsestShell && window.PalimpsestShell.ago)
+        ? window.PalimpsestShell.ago(d.generated_at) : "";
+      fresh = '<p class="bl-fresh"' + (stale ? ' data-stale' : '') + '>' +
+        '<span class="ps-dot' + (stale ? '' : ' ps-dot--live') + '" aria-hidden="true"></span>' +
+        (stale ? 'Stale run: derived ' : 'Derived ') + esc(agoTxt) +
+        ', ' + esc(new Date(gen).toISOString().replace("T", " ").slice(0, 16)) + ' UTC' +
+        (stale ? ' (over 30 days old)' : '') + '.' +
+        '<span class="bl-fresh__note">The lists themselves are archival: the newest one here entered the public archive in 2014. A fresh run moves these counts only if the upstream corpus gains a version.</span></p>';
+    } else {
+      fresh = '<p class="bl-fresh" data-stale><span class="ps-dot" aria-hidden="true"></span>' +
+        'This reading carries no usable generation timestamp.</p>';
+    }
+
+    el("reading-body").innerHTML = '<div class="bl-figs">' + figs + '</div>' + fresh;
+
+    var addEl = el("fig-add");
+    if (addEl && isNum(d.n_additions) && window.PalimpsestShell && window.PalimpsestShell.countUp) {
+      window.PalimpsestShell.countUp(addEl, d.n_additions, { decimals: 0, dur: 900 });
+    }
+
+    el("scope-note").innerHTML = d.scope
+      ? "<b>Scope.</b> " + esc(sentence(d.scope))
+      : "This reading did not carry a scope statement.";
+
+    /* ---- attribution and licence, verbatim from the feed ---- */
+    el("attrib-full").textContent = d.attribution
+      ? d.attribution
+      : "This reading did not carry an attribution string. The corpus is the Citizen Lab chat-censorship corpus, University of Toronto.";
+    el("licence-note").textContent = d.licence_note
+      ? d.licence_note
+      : "This reading did not carry a licence note. Read the upstream repository before reusing anything from it.";
+
+    el("app-name").textContent = app ? app.toUpperCase() + " chat client" : "not reported";
+
+    /* ---- per-version timeline ---- */
+    var counts = versions.map(function (v) {
+      var k = app ? app + " " + v : v;
+      return isNum(byVersion[k]) ? byVersion[k] : null;
+    });
+    var maxCount = counts.reduce(function (m, c) { return (c != null && c > m) ? c : m; }, 0);
+    var total = isNum(d.n_additions) ? d.n_additions : null;
+
+    var rows = versions.map(function (v, i) {
+      var c = counts[i];
+      var pf = prov[(app ? app + "-" : "") + v + ".txt"] || {};
+      var when = fmtDate(pf.observed_at);
+      var isBase = (c == null);
+
+      var bar = isBase
+        ? '<div class="bl-bar" aria-hidden="true"></div>'
+        : '<div class="bl-bar"><i style="width:' +
+          (maxCount > 0 ? (Math.max(1, (c / maxCount) * 100)).toFixed(2) : "0") + '%"></i></div>';
+
+      var n = isBase
+        ? '<div class="bl-n is-word">baseline list, nothing prior to diff against</div>'
+        : '<div class="bl-n ps-num">' + esc(c.toLocaleString("en-GB")) +
+          (total ? '<small>' + ((c / total) * 100).toFixed(1) + '% of all</small>' : '') + '</div>';
+
+      return '<li class="bl-row' + (isBase ? ' bl-row--base' : '') + '">' +
+        '<div class="bl-v">' + esc(v) + '</div>' +
+        '<div class="bl-when">' + esc(when) +
+        (pf.observed_at ? '<small>upper bound</small>' : '') + '</div>' +
+        bar + n + '</li>';
+    }).join("");
+
+    el("timeline").innerHTML = rows ||
+      '<li class="bl-load" style="list-style:none">This reading compared no versions.</li>';
+
+    var vn = d.velocity_note;
+    el("velocity-note").innerHTML =
+      "<b>On the dates.</b> " +
+      (vn ? esc(sentence(vn)) : "This reading did not carry a dating caveat.") +
+      " Several of these lists share a date because they entered the public archive in the same commit," +
+      " so the gaps between the bars are archive gaps, not release intervals.";
+
+    /* ---- severity ---- */
+    var sev = (d.severity_distribution && typeof d.severity_distribution === "object") ? d.severity_distribution : null;
+    if (sev) {
+      var keys = Object.keys(sev).filter(function (k) { return isNum(sev[k]); });
+      keys.sort(function (a, b) {
+        var ia = SEV_ORDER.indexOf(a), ib = SEV_ORDER.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
+      var sevTotal = keys.reduce(function (s, k) { return s + sev[k]; }, 0);
+      if (keys.length && sevTotal > 0) {
+        var segs = keys.map(function (k) {
+          return '<i style="width:' + ((sev[k] / sevTotal) * 100).toFixed(2) + '%;background:' +
+            (SEV_COLOUR[k] || "var(--tk-stale, #8593a8)") + '"></i>';
+        }).join("");
+        var legend = keys.map(function (k) {
+          return '<span class="bl-sevkey"><span class="sw" style="background:' +
+            (SEV_COLOUR[k] || "var(--tk-stale, #8593a8)") + '" aria-hidden="true"></span>' +
+            '<b>' + esc(k) + '</b>' +
+            '<span class="ps-num">' + esc(sev[k].toLocaleString("en-GB")) + ' terms, ' +
+            ((sev[k] / sevTotal) * 100).toFixed(1) + '%</span></span>';
+        }).join("");
+        el("sev-body").innerHTML =
+          '<div class="bl-sevbar" role="img" aria-label="Severity split: ' +
+          esc(keys.map(function (k) { return k + " " + sev[k]; }).join(", ")) + '">' + segs + '</div>' +
+          '<div class="bl-sevkeys">' + legend + '</div>' +
+          '<p style="margin:16px 0 0;font-size:12.5px;color:var(--tk-text-3)" class="ps-num">' +
+          esc(sevTotal.toLocaleString("en-GB")) + ' classified additions' +
+          (total && sevTotal !== total ? ' of ' + esc(total.toLocaleString("en-GB")) + ' total' : '') + '.</p>';
+      } else {
+        el("sev-body").innerHTML = '<p class="bl-load">This reading carried no usable severity counts.</p>';
+      }
+    } else {
+      el("sev-body").innerHTML = '<p class="bl-load">This reading carried no severity distribution.</p>';
+    }
+
+    /* ---- gazetteer proposals: the count and the caveat, never the terms ---- */
+    var gazNote = d.gazetteer_proposals_note;
+    el("gaz-body").innerHTML =
+      '<div style="display:flex;gap:22px;align-items:baseline;flex-wrap:wrap">' +
+        '<div class="ps-num" style="font-size:clamp(30px,5vw,44px);font-weight:800;line-height:1;color:var(--tk-text-0)">' +
+          esc(countText(d.n_gazetteer_proposals)) + '</div>' +
+        '<div class="ps-label" style="margin:0">Proposed, not merged</div>' +
+      '</div>' +
+      '<p style="margin:14px 0 0;font-size:13px;line-height:1.65;color:var(--tk-text-2);max-width:var(--ps-measure)">' +
+        (gazNote ? esc(gazNote) : "This reading did not explain how proposals are handled.") + '</p>' +
+      '<p style="margin:10px 0 0;font-size:13px;line-height:1.65;color:var(--tk-text-3);max-width:var(--ps-measure)">' +
+        'The proposed terms are not listed on this page.</p>';
+
+    /* ---- withheld ---- */
+    var withheld = [];
+    if (d.novelty_index == null) {
+      withheld.push({ k: "novelty_index", note: d.novelty_index_note });
+    }
+    if (d.velocity == null) {
+      withheld.push({ k: "velocity", note: d.velocity_note });
+    }
+    if (withheld.length) {
+      el("withheld-body").innerHTML = withheld.map(function (w) {
+        return '<section class="ps-p1 bl-null">' +
+          '<p class="k">' + esc(w.k) + '</p>' +
+          '<p class="v">not computed</p>' +
+          '<p>' + (w.note ? esc(sentence(w.note)) : "No reason was given.") + '</p></section>';
+      }).join("");
+    } else {
+      el("withheld-body").innerHTML =
+        '<p class="ps-p1 bl-null" style="grid-column:1/-1">This run withheld nothing: every derived index it can compute was computed.</p>';
+    }
+
+    /* ---- held back on this page ---- */
+    var nSample = Array.isArray(d.evidence_sample) ? d.evidence_sample.length : null;
+    var nGaz = Array.isArray(d.gazetteer_proposals) ? d.gazetteer_proposals.length : null;
+    var parts = [];
+    if (nSample != null) parts.push(nSample.toLocaleString("en-GB") + " sampled terms");
+    if (nGaz != null) parts.push(nGaz.toLocaleString("en-GB") + " proposed gazetteer terms");
+    el("held-back").innerHTML = parts.length
+      ? "<b>Held back on this page:</b> " + esc(parts.join(" and ")) +
+        " that the reading file does carry. The counts above are computed from all " +
+        esc(countText(d.n_additions)) + " additions, not from that sample."
+      : "This reading carried no keyword strings to hold back.";
+
+    /* ---- provenance ---- */
+    var files = Object.keys(prov);
+    if (files.length) {
+      el("prov-body").innerHTML = files.map(function (f) {
+        var p = prov[f] || {};
+        var name = p.source_url
+          ? '<a href="' + esc(p.source_url) + '" rel="noopener noreferrer" target="_blank">' + esc(f) + '</a>'
+          : esc(f);
+        return '<tr>' +
+          '<td class="f">' + name + '</td>' +
+          '<td class="w">' + esc(fmtDate(p.observed_at)) + '</td>' +
+          '<td>' + esc(p.date_basis || "not reported") + '</td>' +
+          '<td class="h">' + esc(p.sha256 || "not reported") + '</td>' +
+        '</tr>';
+      }).join("");
+    } else {
+      el("prov-body").innerHTML = '<tr><td colspan="4" class="bl-load">This reading carried no provenance block.</td></tr>';
+    }
+
+    /* ---- run metadata ---- */
+    var warnings = Array.isArray(d.decode_warnings) ? d.decode_warnings : null;
+    var skipped = Array.isArray(d.skipped) ? d.skipped : null;
+    var meta = [
+      ["Source repository", d.source ? String(d.source) : "not reported"],
+      ["Application", app ? app : "not reported"],
+      ["Completeness", comp ? comp : "not reported"],
+      ["Decode warnings", warnings ? (warnings.length ? warnings.join("; ") : "none") : "not reported"],
+      ["Files skipped", skipped ? (skipped.length ? skipped.join("; ") : "none") : "not reported"],
+      ["Generated at", d.generated_at ? String(d.generated_at) : "not reported"]
+    ];
+    el("run-meta").innerHTML = meta.map(function (row) {
+      return "<li><b>" + esc(row[0]) + "</b><span>" + esc(row[1]) + "</span></li>";
+    }).join("");
+
+    /* Rows arrived after shell.js indexed the staggered lists, so re-index. */
+    var tl = el("timeline");
+    if (tl) {
+      [].slice.call(tl.children).forEach(function (c, i) {
+        c.style.setProperty("--ps-i", Math.min(i, 12));
+      });
+    }
+  }
+
+  function start() {
+    if (window.PalimpsestShell && window.PalimpsestShell.loadReading) {
+      window.PalimpsestShell.loadReading(URL_LATEST, render, fail);
+    } else {
+      fetch(URL_LATEST, { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(render)
+        .catch(fail);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();
+</script>
+</body>
+</html>

@@ -29,11 +29,18 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "demo"))
 
 import palimpsest_demo as demo  # noqa: E402  (standalone by design; path set above)
+
+# The site's navigation and shell tags, defined once in scripts/site_nav.py. This page is
+# rewritten wholesale every six hours, so a nav hand-copied into this file would quietly
+# revert the rest of the site's chrome on the next cron run. Import it instead.
+import site_nav  # noqa: E402
 
 OUT = os.path.join(ROOT, "china-brief.html")
 META = os.path.join(ROOT, "readings", "china-brief.json")
@@ -59,21 +66,7 @@ HEAD = f"""<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="twitter:title" content="{TITLE}">
 <meta name="twitter:description" content="{DESCRIPTION}">"""
 
-NAV = """<nav class="pnav" aria-label="Primary">
-  <div class="pnav__links">
-    <a href="/">Home</a>
-    <a href="/china-brief.html" aria-current="page">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/eval-registry.html">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html">Firewall</a>
-    <a href="/for-researchers.html">Data</a>
-    <a href="/support.html">Support</a>
-  </div>
-</nav>"""
-
-PROVENANCE = """<div class="prov" role="note">
+PROVENANCE = """<div class="prov ps-p1" role="note">
   <p><strong>What this is.</strong> Live public-source measurement, built from the
   <a href="https://chinadigitaltimes.net/">China Digital Times</a> feed of documented
   censorship directives and scrubbed material. Terms are ranked by censor attention and by
@@ -89,16 +82,11 @@ PROVENANCE = """<div class="prov" role="note">
   · raw datasets on <a href="/for-researchers.html">the researcher page</a>.</p>
 </div>"""
 
+# Page-specific only. Surfaces come from the shell's plane classes (ps-p3 reading,
+# ps-p2 method, ps-p1 evidence), which are linked AFTER this block so they win the
+# tie against the demo's own .panel background — see build().
 EXTRA_CSS = """
-.pnav{position:sticky;top:0;z-index:50;background:rgba(8,8,11,.86);backdrop-filter:blur(9px);
-  border-bottom:1px solid rgba(255,255,255,.08);padding:8px clamp(12px,3vw,20px)}
-.pnav__links{display:flex;gap:2px;flex-wrap:wrap}
-.pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;
-  text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-.pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
-.pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
-.prov{margin:18px clamp(12px,3vw,20px);padding:15px 17px;border-radius:12px;
-  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);max-width:960px}
+.prov{margin:18px clamp(12px,3vw,20px) 26px;padding:15px 17px;max-width:960px}
 .prov p{margin:0 0 9px;font-size:13px;line-height:1.6;color:#b9c2cd}
 .prov p:last-child{margin-bottom:0}
 .prov strong{color:#e9e4d8}
@@ -106,8 +94,27 @@ EXTRA_CSS = """
 .prov a{color:#4dd0e1}
 table{max-width:100%}
 .panel{overflow-x:auto}
+.ps-p1>h2,.ps-p2>h2,.ps-p3>h2{background:transparent}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
 """
+
+
+def _swap(page: str, old: str, new: str, *, what: str, required: bool = True) -> str:
+    """Make one anchored edit to the demo's markup, and be loud when the anchor is gone.
+
+    demo/palimpsest_demo.py owns this page's HTML, so every hook below is a literal string
+    from that file. A silent no-op would publish a brief with no navigation, or with the
+    depth grammar missing, and nothing would flag it. Structural hooks (nav, shell, main)
+    are required and stop the run; the presentation-only ones warn and continue, because a
+    brief that publishes one plane class short still carries a true reading.
+    """
+    if old not in page:
+        msg = f"demo markup drifted — the {what} anchor is no longer in the rendered page"
+        if required:
+            raise SystemExit(f"FATAL: {msg}. Refusing to publish a page without its shell.")
+        print(f"WARNING: {msg}; depth class not applied.", file=sys.stderr)
+        return page
+    return page.replace(old, new, 1)
 
 
 def _canonicalise_history() -> bool:
@@ -180,12 +187,42 @@ def build() -> dict:
         with open(tmp, encoding="utf-8") as fh:
             page = fh.read()
 
-    # The demo owns the markup; we add only the site chrome and the provenance note, so the
-    # published page cannot drift from the demo a reader runs locally.
-    page = page.replace("<title>Palimpsest · CN</title>", f"<title>{TITLE}</title>{HEAD}", 1)
-    page = page.replace("</style>", EXTRA_CSS + "</style>", 1)
-    page = page.replace("<body>", "<body>" + NAV, 1)
-    page = page.replace("</body>", PROVENANCE + "</body>", 1)
+    # The demo owns the markup; we add only the site chrome, the depth classes and the
+    # provenance note, so the published page cannot drift from the demo a reader runs locally.
+    page = _swap(page, "<title>Palimpsest · CN</title>", f"<title>{TITLE}</title>{HEAD}",
+                 what="title")
+    page = _swap(page, "</style>", EXTRA_CSS + "</style>", what="page stylesheet")
+    # tikto.css + shell.css are linked AFTER the demo's inline <style>, deliberately. The
+    # demo gives .panel an opaque background at one class of specificity, the plane classes
+    # are also one class, and the later sheet wins that tie — so this ordering is what lets
+    # the depth grammar below actually reach the surface it names.
+    page = _swap(page, "</head>", site_nav.HEAD + "\n</head>", what="shell stylesheet links")
+    page = _swap(page, "<body>",
+                 '<body class="ps">\n' + site_nav.render("/china-brief.html") + '\n<main id="main">',
+                 what="body open")
+    page = _swap(page, "<footer>", PROVENANCE + "</main>\n<footer>", what="footer")
+    page = _swap(page, "</body>", site_nav.FOOT + "</body>", what="body close")
+
+    # Depth encodes epistemic distance. The state read is the sentence a reader may quote,
+    # so it sits nearest the eye (p3); the two overview panels are the components that
+    # produced it (p2); the full ranked table and the signal bars are the receipts (p1).
+    page = _swap(page, "<div class=stateread>", '<div class="stateread ps-p3">',
+                 what="state read", required=False)
+    for anchor, plane, what in (
+        ("<div class=panel><h2><span class='dot r'></span>Censor attention",
+         "ps-p2", "censor-attention panel"),
+        ("<div class=panel><h2><span class='dot t'></span>Economic stress",
+         "ps-p2", "economic-stress panel"),
+        ("<div class=panel><h2><span class='dot r'></span>DDTI",
+         "ps-p1", "DDTI table"),
+        ("<div class=panel><h2><span class='dot t'></span>Surging topics",
+         "ps-p1", "surging-topics panel"),
+        ("<div class=panel><h2><span class='dot g'></span>Attention by domain",
+         "ps-p1", "attention-by-domain panel"),
+    ):
+        page = _swap(page, anchor,
+                     anchor.replace("<div class=panel>", f'<div class="panel {plane}">'),
+                     what=what, required=False)
 
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write(page)

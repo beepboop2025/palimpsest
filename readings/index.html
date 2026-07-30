@@ -1,297 +1,745 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Readings &amp; Data — Palimpsest</title>
-<meta name="description" content="Every dataset Palimpsest publishes: two dozen self-refreshing machine-readable feeds across the network, content, model and statistical layers, their time series, and dated evidence-backed readings.">
+<title>Readings and data · Palimpsest</title>
+<meta name="description" content="Every self-refreshing feed Palimpsest publishes, at stable URLs: one row for every latest.json in this directory, grouped by the layer of the apparatus it observes, with each feed's own measurement time read live from the file.">
 <meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://palimpsest.info/readings/">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
- :root{--vd:#000;--t0:#fff;--t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b;--l1:#1a1a1a;--l2:#272727;--cy:#06d6e0;--ok:#19c393}
- .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
- .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
- .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
- .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none}
- .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
- .pnav__links a[aria-current="page"]{color:var(--cy);background:rgba(6,214,224,.11)}
- body{margin:0;background:var(--vd);color:var(--t1);font-family:'Outfit',system-ui,-apple-system,sans-serif;line-height:1.55;background-image:radial-gradient(120% 80% at 50% -8%,rgba(6,214,224,.06),transparent 60%);background-attachment:fixed}
- .wrap{max-width:960px;margin:0 auto;padding:32px clamp(16px,4vw,26px) 60px}
- .kick{font-family:'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;font-size:11px;color:var(--cy);margin:0 0 8px}
- h1{font-size:32px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;color:#fff}
- .sub{color:var(--t2);font-size:14px;margin:0 0 26px}
- h2{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--l1);padding-bottom:8px;margin:28px 0 10px}
- table{width:100%;border-collapse:collapse;font-size:13.5px}
- th{text-align:left;color:var(--t3);font-weight:600;padding:7px 10px;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
- td{padding:9px 10px;border-top:1px solid var(--l1);vertical-align:top}
- td.sig b{color:var(--t0)} td.sig span{display:block;color:var(--t3);font-size:11.5px}
- code,a.file{background:var(--l2);padding:1px 6px;border-radius:4px;font-size:12px;font-family:'JetBrains Mono',monospace}
- a{color:var(--cy);text-decoration:none} a:hover{text-decoration:underline}
- .cad{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--t2);white-space:nowrap}
- .note{color:var(--t3);font-size:12px;margin-top:26px;border-top:1px solid var(--l1);padding-top:12px;line-height:1.7}
- .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
- /* wide tables scroll inside their own box; the page itself never scrolls sideways */
- .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
- .tw table{min-width:640px}
- .pend{color:var(--t3);font-style:normal}
-</style></head><body>
-<nav class="pnav">
-  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
-  <div class="pnav__links">
-    <a href="/">Home</a>
-    <a href="/china-brief.html">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
-    <a href="/readings/generative-firewall-index.html">Firewall</a>
-    <a href="/for-researchers.html" aria-current="page">Data</a>
-    <a href="/support.html">Support</a>
+/* Page-specific only. Nothing here redefines a token or a ps-* class. */
+
+.rd-head { padding: 34px 0 4px; }
+.rd-lede code { font-family: var(--tk-font-mono); font-size: .88em; }
+
+/* The three-audience orientation strip. Plane 1: it carries no reading. */
+.rd-orient {
+  display: grid; gap: 10px 26px; grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px 18px; margin: 0 0 22px; font-size: 12.5px; line-height: 1.5;
+  color: var(--tk-text-3, #7d8ca3);
+}
+.rd-orient b { display: block; color: var(--tk-text-1, #e2e8f0); font-size: 12.5px; }
+@media (max-width: 780px) { .rd-orient { grid-template-columns: 1fr; } }
+
+/* Jump bar. A thirty-row directory needs an index of its own. */
+.rd-jump { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0 0 18px; padding: 0; }
+.rd-jump a {
+  display: block; padding: 5px 9px; border-radius: 7px;
+  border: 1px solid var(--ps-edge-1); text-decoration: none;
+  font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--tk-text-3, #7d8ca3);
+}
+.rd-jump a:hover, .rd-jump a:focus-visible { color: var(--tk-live, #06d6e0); border-color: var(--tk-live, #06d6e0); }
+
+.rd-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 26px; }
+.rd-tools p { margin: 0; font-size: 12px; color: var(--tk-text-3, #7d8ca3); max-width: 62ch; }
+
+/* Each layer block is a plane-1 surface: these are the raw files. */
+.rd-block { margin: 0 0 8px; overflow: hidden; }
+.rd-block .ps-scroll-x:focus-visible { outline: 2px solid var(--tk-live, #06d6e0); outline-offset: -2px; }
+
+.rd-table { width: 100%; min-width: 940px; border-collapse: collapse; font-size: 13.5px; }
+.rd-table th {
+  text-align: left; white-space: nowrap; padding: 11px 13px;
+  font-family: var(--tk-font-mono); font-size: 9.5px; font-weight: 600;
+  letter-spacing: .15em; text-transform: uppercase; color: var(--tk-text-4, #6f8098);
+  border-bottom: 1px solid var(--ps-edge-2);
+}
+.rd-table td { padding: 11px 13px; border-top: 1px solid var(--ps-edge-1); vertical-align: top; }
+.rd-table tbody tr:first-child td { border-top: 0; }
+
+.rd-sig b { display: block; color: var(--tk-text-0, #fff); font-size: 13.5px; font-weight: 650; }
+.rd-sig span {
+  display: block; margin-top: 3px; max-width: 62ch;
+  color: var(--tk-text-3, #7d8ca3); font-size: 11.5px; line-height: 1.5;
+}
+.rd-sig code { font-family: var(--tk-font-mono); font-size: 10.5px; }
+
+.rd-cad { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-2, #94a3b8); white-space: nowrap; }
+
+.rd-file {
+  display: inline-block; margin: 1px 0; padding: 2px 6px; border-radius: 5px;
+  border: 1px solid var(--ps-edge-1); background: rgba(255, 255, 255, .04);
+  font-family: var(--tk-font-mono); font-size: 11px; white-space: nowrap;
+  color: var(--tk-text-1, #e2e8f0); text-decoration: none;
+}
+.rd-file:hover, .rd-file:focus-visible { border-color: var(--tk-live, #06d6e0); color: var(--tk-live, #06d6e0); }
+
+.rd-view a { color: var(--tk-live, #06d6e0); text-decoration: none; font-size: 12.5px; white-space: nowrap; }
+.rd-view a:hover { text-decoration: underline; }
+.rd-none { color: var(--tk-text-4, #6f8098); font-size: 12px; white-space: nowrap; }
+
+/* Freshness. Read from the file itself, never from this page's build time.
+   Status is never colour alone: a stale feed also gets the word "stale". */
+.rd-fresh { font-family: var(--tk-font-mono); font-size: 11.5px; white-space: nowrap; color: var(--tk-text-2, #94a3b8); }
+.rd-fresh--wait { color: var(--tk-text-4, #6f8098); }
+.rd-fresh--ok { color: var(--tk-text-2, #94a3b8); }
+.rd-fresh--stale { color: var(--tk-warning, #ffb020); }
+.rd-fresh--bad { color: var(--tk-critical, #ff5b52); }
+.rd-flag {
+  display: inline-block; margin-left: 6px; padding: 1px 4px; border-radius: 4px;
+  border: 1px solid currentColor; font-size: 8.5px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+
+/* A signal with no file yet says so across the file columns. */
+.rd-pend { color: var(--tk-text-3, #7d8ca3); font-size: 12px; line-height: 1.5; }
+
+.rd-note {
+  margin: 18px 0 0; padding: 16px 18px;
+  font-size: 12px; line-height: 1.75; color: var(--tk-text-3, #7d8ca3);
+}
+.rd-note b { color: var(--tk-text-1, #e2e8f0); }
+.rd-note a { color: var(--tk-live, #06d6e0); text-decoration: none; }
+.rd-note a:hover { text-decoration: underline; }
+.rd-note + .rd-note { margin-top: 10px; }
+
+.rd-foot { margin: 40px 0 60px; }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
   </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
 </nav>
-<div class="wrap">
- <p class="kick">Palimpsest · data directory</p>
- <h1>Readings &amp; Data</h1>
- <p class="sub">Every dataset the observatory publishes, at stable URLs — grouped below by the layer
- of the apparatus it observes. Each reading ships its raw evidence beside the headline number, so any
- figure on this site can be audited from the files below. A <code>*-latest.json</code> file is the
- current snapshot; the matching <code>*-history.jsonl</code> is an append-only time series, one
- compact record per run. Nothing is listed here until it is actually published: a signal awaiting its
- first round says so rather than linking a file that does not exist.
- Schemas, honest scope, and citation guidance: <a href="/for-researchers.html">for researchers</a>.</p>
+<!--/PS_NAV-->
+<main id="main" class="ps-wrap ps-wrap--wide">
 
- <h2><span class="live"></span>Live feeds — composite indices</h2>
- <div class="tw">
- <table>
-  <tr><th>Signal</th><th>Cadence</th><th>Latest</th><th>Time series</th><th>View</th></tr>
-  <tr>
-    <td class="sig"><b>DDTI</b><span>domestic discourse tightening index — deletion signals</span></td>
-    <td class="cad">every 3h</td>
-    <td><a class="file" href="ddti-latest.json">ddti-latest.json</a></td>
-    <td><a class="file" href="ddti-history.jsonl">ddti-history.jsonl</a></td>
-    <td><a href="/dashboards/ddti_observatory.html">observatory</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Generative Firewall Index</b><span>refusal / state-narrative tomography of state-aligned LLMs · k-sampled with 95% Wilson bands</span></td>
-    <td class="cad">daily</td>
-    <td><a class="file" href="latest.json">latest.json</a></td>
-    <td><a class="file" href="history.jsonl">history.jsonl</a></td>
-    <td><a href="generative-firewall-index.html">dashboard</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Information Erasure Observatory</b><span>composite erasure index across the network, narrative and model layers, with the mean taken only over layers actually reporting</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="erasure-observatory-latest.json">erasure-observatory-latest.json</a></td>
-    <td><a class="file" href="erasure-observatory-history.jsonl">erasure-observatory-history.jsonl</a> · <a class="file" href="erasure-ledger.jsonl">sealed ledger</a></td>
-    <td><a href="erasure-observatory.html">dashboard</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>GDELT cross-signal</b><span>censored at home, loud abroad — containment detection</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="gdelt-latest.json">gdelt-latest.json</a></td>
-    <td><a class="file" href="gdelt-history.jsonl">gdelt-history.jsonl</a></td>
-    <td><a href="/dashboards/ddti_observatory.html">observatory</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>GitHub-as-Refuge</b><span>developer migration toward censorship-resistant infrastructure</span></td>
-    <td class="cad">every 12h</td>
-    <td><a class="file" href="github-refuge-latest.json">github-refuge-latest.json</a></td>
-    <td><a class="file" href="github-refuge-history.jsonl">github-refuge-history.jsonl</a> · <a class="file" href="github-refuge-baselines.json">baselines</a></td>
-    <td><a href="/">home</a></td>
-  </tr>
- </table>
- </div>
+  <header class="rd-head">
+    <p class="ps-kicker">Palimpsest · data directory</p>
+    <h1 class="ps-h1">Readings and data</h1>
+    <p class="ps-lede rd-lede">Every self-refreshing feed the observatory publishes, at stable URLs,
+    grouped by the layer of the apparatus it observes. The list is exhaustive against this directory:
+    there is one row for every <code>*-latest.json</code> file here, plus the Generative Firewall Index,
+    which has published at <code>latest.json</code> since before the naming convention existed. A
+    <code>*-latest.json</code> file is the current snapshot; the matching <code>*-history.jsonl</code>
+    is an append-only time series, one compact record per run. Nothing is listed until it is actually
+    published: a signal awaiting its first round says so rather than linking a file that does not exist.</p>
+  </header>
 
- <h2><span class="live"></span>Live feeds — network layer</h2>
- <div class="tw">
- <table>
-  <tr><th>Signal</th><th>Cadence</th><th>Latest</th><th>Time series</th><th>View</th></tr>
-  <tr>
-    <td class="sig"><b>OONI Great-Firewall signal</b><span>website, messenger and circumvention-tool anomaly rates measured from outside via OONI's open data</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="ooni-gfw-latest.json">ooni-gfw-latest.json</a></td>
-    <td><a class="file" href="ooni-gfw-history.jsonl">ooni-gfw-history.jsonl</a></td>
-    <td><a href="ooni-gfw.html">dashboard</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Censored Planet</b><span>independent DNS/HTTP side-channel interference rate — a different method from OONI, so agreement is triangulation, not repetition. The two denominators differ and are never quoted as one number</span></td>
-    <td class="cad">daily</td>
-    <td><a class="file" href="censored-planet-latest.json">censored-planet-latest.json</a></td>
-    <td><a class="file" href="censored-planet-history.jsonl">censored-planet-history.jsonl</a></td>
-    <td><a href="ooni-gfw.html">dashboard</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Vantage fusion</b><span>OONI and Censored Planet fused into one reading as an interval, not a point — when the two methods diverge the range widens and <code>single_rate_quotable</code> goes false</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="vantage-fusion-latest.json">vantage-fusion-latest.json</a></td>
-    <td><a class="file" href="vantage-fusion-history.jsonl">vantage-fusion-history.jsonl</a></td>
-    <td><a href="/for-researchers.html">schema</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>IODA outages</b><span>connectivity-scale events from three independent global instruments — BGP visibility, active probing, darknet traffic — the heavy end of the spectrum, where the link itself drops</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="ioda-outages-latest.json">ioda-outages-latest.json</a></td>
-    <td><a class="file" href="ioda-outages-history.jsonl">ioda-outages-history.jsonl</a></td>
-    <td>—</td>
-  </tr>
-  <tr>
-    <td class="sig"><b>net4people events</b><span>the community's live log of new blocking events and circumvention developments, read from a public overseas board — the qualitative companion to the anomaly rates</span></td>
-    <td class="cad">every 12h</td>
-    <td><a class="file" href="net4people-latest.json">net4people-latest.json</a></td>
-    <td><a class="file" href="net4people-history.jsonl">net4people-history.jsonl</a></td>
-    <td><a href="ooni-gfw.html">dashboard</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Circumvention demand</b><span>Tor's own directory-request telemetry as a barometer: relay, bridge and pluggable-transport users from China. When the wall tightens, demand to climb it moves</span></td>
-    <td class="cad">daily</td>
-    <td><a class="file" href="circumvention-demand-latest.json">circumvention-demand-latest.json</a></td>
-    <td><a class="file" href="circumvention-demand-history.jsonl">circumvention-demand-history.jsonl</a></td>
-    <td>—</td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Bleedthrough</b><span>GFW injector-fleet tomography — size, forged-IP pools, regional divergence (apparatus layer, not policy)</span></td>
-    <td class="cad">prober-run</td>
-    <td colspan="2" class="pend">Awaiting the first live round. Bleedthrough actively probes, so it runs from a
-      controlled, rotating prober outside China and never from shared CI. No data file is published
-      until that prober publishes — the method is on the dashboard and the code is open.</td>
-    <td><a href="bleedthrough.html">dashboard</a></td>
-  </tr>
- </table>
- </div>
+  <div class="ps-p1 rd-orient">
+    <div><b>A censorship observatory.</b> Network, content and model layers over China, built from
+      public sources only. Watch the censor, never the censored.</div>
+    <div><b>A verifiable eval registry.</b> Pre-registered, hash-chained model evaluations whose chain
+      roots are anchored outside our own infrastructure.</div>
+    <div><b>A funded public good.</b> MIT licensed, developed in the open, never a commercial product
+      and never monetising the people or topics it observes. <a href="/fund.html">What funding buys</a>.</div>
+  </div>
 
- <h2><span class="live"></span>Live feeds — content and narrative layer</h2>
- <div class="tw">
- <table>
-  <tr><th>Signal</th><th>Cadence</th><th>Latest</th><th>Time series</th><th>View</th></tr>
-  <tr>
-    <td class="sig"><b>Weibo hot-search</b><span>the allowed-attention denominator the DDTI lacks: what the public was permitted to attend to, from the publicly archived hot-search board, plus withdrawal watch</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="weibo-hotsearch-latest.json">weibo-hotsearch-latest.json</a></td>
-    <td><a class="file" href="weibo-hotsearch-history.jsonl">weibo-hotsearch-history.jsonl</a></td>
-    <td>—</td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Baike redaction-diff</b><span>silent rewriting of a state-moderated encyclopedia, reconstructed from outside by content-addressing entries over time and diffing against the open record</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="baike-redaction-latest.json">baike-redaction-latest.json</a></td>
-    <td><a class="file" href="baike-redaction-history.jsonl">baike-redaction-history.jsonl</a></td>
-    <td><a href="erasure-observatory.html">observatory</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Wayback reconstruction</b><span>deletions and silent redactions of public Chinese URLs, bracketed by real archive-witnessed capture timestamps on each side and reported fail-loud as an explicit bracket</span></td>
-    <td class="cad">every 12h</td>
-    <td><a class="file" href="wayback-latest.json">wayback-latest.json</a></td>
-    <td><a class="file" href="wayback-history.jsonl">wayback-history.jsonl</a></td>
-    <td>—</td>
-  </tr>
- </table>
- </div>
+  <ul class="rd-jump">
+    <li><a href="#composite">Composite indices</a></li>
+    <li><a href="#network">Network layer</a></li>
+    <li><a href="#content">Content and narrative</a></li>
+    <li><a href="#model">Model layer and sealed record</a></li>
+    <li><a href="#stats">Board statistics</a></li>
+    <li><a href="#state">State telemetry</a></li>
+    <li><a href="#dated">Dated readings</a></li>
+    <li><a href="#other">Other files here</a></li>
+  </ul>
 
- <h2><span class="live"></span>Live feeds — model layer and the sealed record</h2>
- <div class="tw">
- <table>
-  <tr><th>Signal</th><th>Cadence</th><th>Latest</th><th>Time series</th><th>View</th></tr>
-  <tr>
-    <td class="sig"><b>Verifiable Eval Registry</b><span>pre-registered, hash-chained model evaluations — the probe set is frozen before any model is queried, and no sealed result can be revised afterwards</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="eval-registry-latest.json">eval-registry-latest.json</a></td>
-    <td><a class="file" href="eval-registry.jsonl">eval-registry.jsonl</a> (the chain)</td>
-    <td><a href="eval-registry.html">registry</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Frontier refusal drift</b><span>the same frozen benign probe set put to a cross-lab frontier panel over time; answered-then-refused is an erasure event. Each model's rate carries its own n</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="refusal-drift-latest.json">refusal-drift-latest.json</a></td>
-    <td><a class="file" href="refusal-drift-history.jsonl">refusal-drift-history.jsonl</a></td>
-    <td><a href="eval-registry.html">registry</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>External anchors</b><span>each chain root deposited outside our own infrastructure — Internet Archive snapshots and OpenTimestamps/Bitcoin — so rewriting the record would mean defeating them too</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="anchors-latest.json">anchors-latest.json</a></td>
-    <td><a class="file" href="anchors.jsonl">anchors.jsonl</a></td>
-    <td><a href="eval-registry.html">registry</a></td>
-  </tr>
- </table>
- </div>
+  <div class="rd-tools">
+    <button class="ps-btn ps-btn--ghost" type="button" id="rd-check" hidden>Check every feed now</button>
+    <p>The <b>measured</b> column is read live from each feed's own file when its row comes into view,
+    so it reports that feed's <code>generated_at</code>, not this page's publication date. A feed older
+    than twice its cadence is flagged <b>stale</b>. If a file cannot be fetched the column says so
+    rather than showing a plausible time. Schemas, honest scope and citation guidance:
+    <a href="/for-researchers.html">for researchers</a>.</p>
+  </div>
 
- <h2><span class="live"></span>Live feeds — board-level statistics</h2>
- <div class="tw">
- <table>
-  <tr><th>Signal</th><th>Cadence</th><th>Latest</th><th>Time series</th><th>View</th></tr>
-  <tr>
-    <td class="sig"><b>Board alarm</b><span>what the board as a whole concludes, with the multiplicity paid for: e-BH selection across every monitored signal and one board-wide merged e-value. Per-signal guarantees are not a board guarantee</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="board-alarm-latest.json">board-alarm-latest.json</a></td>
-    <td><a class="file" href="board-alarm-history.jsonl">board-alarm-history.jsonl</a></td>
-    <td><a href="/for-researchers.html">schema</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Event flags</b><span>per-signal anytime-valid change alarms: two-sided conformal Shiryaev-Roberts e-detectors, so a signal collapsing flags as well as one rising</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="event-flags-latest.json">event-flags-latest.json</a></td>
-    <td><a class="file" href="event-flags-history.jsonl">event-flags-history.jsonl</a></td>
-    <td><a href="/for-researchers.html">schema</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Coverage guard</b><span>whether a signal's movement survives conditioning on its own sample size — a rate can fall because probes thinned out, not because censorship eased. Check this before quoting any change</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="coverage-guard-latest.json">coverage-guard-latest.json</a></td>
-    <td><a class="file" href="coverage-guard-history.jsonl">coverage-guard-history.jsonl</a></td>
-    <td><a href="/for-researchers.html">schema</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Cross-layer timing</b><span>does one layer move before another? Lead/lag against a circular-shift null on differenced series, Holm-corrected. Reports timing, never cause, and publishes both tests' false-positive rates</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="cross-layer-latest.json">cross-layer-latest.json</a></td>
-    <td><a class="file" href="cross-layer-history.jsonl">cross-layer-history.jsonl</a></td>
-    <td><a href="/for-researchers.html">schema</a></td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Forecast ledger</b><span>our own scored track record: every signal forecast one step ahead from only its past, scored against what arrived, with empirical coverage and the worst misses by date. The misses are not removable</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="forecast-ledger-latest.json">forecast-ledger-latest.json</a></td>
-    <td><a class="file" href="forecast-ledger-history.jsonl">forecast-ledger-history.jsonl</a></td>
-    <td><a href="/for-researchers.html">schema</a></td>
-  </tr>
- </table>
- </div>
+  <!-- ================= COMPOSITE ================= -->
+  <h2 class="ps-section-head" id="composite">Live feeds · composite indices</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="composite">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Signal</th><th scope="col">Cadence</th><th scope="col">Measured</th><th scope="col">Latest</th><th scope="col">Time series</th><th scope="col">View</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-sig"><b>DDTI</b><span>domestic discourse tightening index, built from deletion signals across the monitored feeds</span></td>
+        <td class="rd-cad">every 3h</td>
+        <td class="rd-fresh" data-feed="ddti-latest.json" data-stale-h="6">not checked</td>
+        <td><a class="rd-file" href="ddti-latest.json">ddti-latest.json</a></td>
+        <td><a class="rd-file" href="ddti-history.jsonl">ddti-history.jsonl</a></td>
+        <td class="rd-view"><a href="/dashboards/ddti_observatory.html">observatory</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Generative Firewall Index</b><span>refusal and state-narrative tomography of state-aligned LLMs, k-sampled with 95% Wilson bands. Publishes at <code>latest.json</code>, not at a prefixed name</span></td>
+        <td class="rd-cad">daily</td>
+        <td class="rd-fresh" data-feed="latest.json" data-ts="summary.generated_at" data-stale-h="48">not checked</td>
+        <td><a class="rd-file" href="latest.json">latest.json</a></td>
+        <td><a class="rd-file" href="history.jsonl">history.jsonl</a></td>
+        <td class="rd-view"><a href="generative-firewall-index.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Information Erasure Observatory</b><span>composite erasure index across the network, narrative and model layers, with the mean taken only over layers actually reporting</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="erasure-observatory-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="erasure-observatory-latest.json">erasure-observatory-latest.json</a></td>
+        <td><a class="rd-file" href="erasure-observatory-history.jsonl">erasure-observatory-history.jsonl</a> <a class="rd-file" href="erasure-ledger.jsonl">erasure-ledger.jsonl</a></td>
+        <td class="rd-view"><a href="erasure-observatory.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>GDELT cross-signal</b><span>censored at home, loud abroad: containment detection against the global news record</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="gdelt-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="gdelt-latest.json">gdelt-latest.json</a></td>
+        <td><a class="rd-file" href="gdelt-history.jsonl">gdelt-history.jsonl</a></td>
+        <td class="rd-view"><a href="/dashboards/ddti_observatory.html">observatory</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>GitHub-as-Refuge</b><span>developer migration toward censorship-resistant infrastructure, watched against per-repository baselines</span></td>
+        <td class="rd-cad">every 12h</td>
+        <td class="rd-fresh" data-feed="github-refuge-latest.json" data-stale-h="24">not checked</td>
+        <td><a class="rd-file" href="github-refuge-latest.json">github-refuge-latest.json</a></td>
+        <td><a class="rd-file" href="github-refuge-history.jsonl">github-refuge-history.jsonl</a> <a class="rd-file" href="github-refuge-baselines.json">github-refuge-baselines.json</a></td>
+        <td class="rd-view"><a href="/dashboards/ddti_observatory.html">observatory</a></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
 
- <h2><span class="live"></span>Live feeds — state-published telemetry</h2>
- <div class="tw">
- <table>
-  <tr><th>Signal</th><th>Cadence</th><th>Latest</th><th>Time series</th><th>View</th></tr>
-  <tr>
-    <td class="sig"><b>China econ telemetry</b><span>what the state publishes on the financial side — SHIBOR fixings, the pledged-repo rates and the daily parity fix. Not censorship: the policy read is FDR007 against the 7-day OMO rate</span></td>
-    <td class="cad">every 6h</td>
-    <td><a class="file" href="china-econ-latest.json">china-econ-latest.json</a></td>
-    <td><a class="file" href="china-econ-history.jsonl">china-econ-history.jsonl</a></td>
-    <td>—</td>
-  </tr>
-  <tr>
-    <td class="sig"><b>Stock Connect flows</b><span>a published-then-narrowed record: HKEX discontinued the northbound buy/sell split in August 2024, so southbound carries net flow and northbound is turnover only. Northbound net is never estimated</span></td>
-    <td class="cad">weekdays</td>
-    <td><a class="file" href="stock-connect-latest.json">stock-connect-latest.json</a></td>
-    <td><a class="file" href="stock-connect-history.jsonl">stock-connect-history.jsonl</a></td>
-    <td>—</td>
-  </tr>
- </table>
- </div>
+  <!-- ================= NETWORK ================= -->
+  <h2 class="ps-section-head" id="network">Live feeds · network layer</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="network">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Signal</th><th scope="col">Cadence</th><th scope="col">Measured</th><th scope="col">Latest</th><th scope="col">Time series</th><th scope="col">View</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-sig"><b>Inside View</b><span>the only inside-out vantage on this site: volunteer Globalping probes inside mainland China resolving a fixed panel of censored and control domains. A Chinese answer counts as forged when it shares no address with the same-round control arm, so no forged-IP list is hardcoded. The in-China probes sit on datacenter networks, which means this is filtering as a server in China meets it, not as a household does, and a domain forged inside one operator's network is reported as single-operator rather than as blocked</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="inside-view-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="inside-view-latest.json">inside-view-latest.json</a></td>
+        <td><a class="rd-file" href="inside-view-history.jsonl">inside-view-history.jsonl</a></td>
+        <td class="rd-view"><a href="inside-view.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>In-Path Interference</b><span>OONI's China aggregation over a 90-day window, split three ways: HTTP rewritten in transit, circumvention and real-time transport health, and measurement methods that never complete a single run inside China. Rates are computed over completed tests only, so a test that never completes has no rate and is never drawn as zero</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="in-path-interference-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="in-path-interference-latest.json">in-path-interference-latest.json</a></td>
+        <td><a class="rd-file" href="in-path-interference-history.jsonl">in-path-interference-history.jsonl</a></td>
+        <td class="rd-view"><a href="in-path-interference.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>OONI Great-Firewall signal</b><span>website, messenger and circumvention-tool anomaly rates measured from outside via OONI's open data</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="ooni-gfw-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="ooni-gfw-latest.json">ooni-gfw-latest.json</a></td>
+        <td><a class="rd-file" href="ooni-gfw-history.jsonl">ooni-gfw-history.jsonl</a></td>
+        <td class="rd-view"><a href="ooni-gfw.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Censored Planet</b><span>independent DNS and HTTP side-channel interference rate. A different method from OONI, so agreement is triangulation rather than repetition. The two denominators differ and are never quoted as one number</span></td>
+        <td class="rd-cad">daily</td>
+        <td class="rd-fresh" data-feed="censored-planet-latest.json" data-stale-h="48">not checked</td>
+        <td><a class="rd-file" href="censored-planet-latest.json">censored-planet-latest.json</a></td>
+        <td><a class="rd-file" href="censored-planet-history.jsonl">censored-planet-history.jsonl</a></td>
+        <td class="rd-view"><a href="ooni-gfw.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Vantage fusion</b><span>OONI and Censored Planet fused into one reading as an interval, not a point. When the two methods diverge the range widens and <code>single_rate_quotable</code> goes false</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="vantage-fusion-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="vantage-fusion-latest.json">vantage-fusion-latest.json</a></td>
+        <td><a class="rd-file" href="vantage-fusion-history.jsonl">vantage-fusion-history.jsonl</a></td>
+        <td class="rd-view"><a href="/for-researchers.html">schema</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>IODA outages</b><span>connectivity-scale events from three independent global instruments: BGP visibility, active probing and darknet traffic. The heavy end of the spectrum, where the link itself drops</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="ioda-outages-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="ioda-outages-latest.json">ioda-outages-latest.json</a></td>
+        <td><a class="rd-file" href="ioda-outages-history.jsonl">ioda-outages-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>net4people events</b><span>the community's live log of new blocking events and circumvention developments, read from a public overseas board. The qualitative companion to the anomaly rates</span></td>
+        <td class="rd-cad">every 12h</td>
+        <td class="rd-fresh" data-feed="net4people-latest.json" data-stale-h="24">not checked</td>
+        <td><a class="rd-file" href="net4people-latest.json">net4people-latest.json</a></td>
+        <td><a class="rd-file" href="net4people-history.jsonl">net4people-history.jsonl</a></td>
+        <td class="rd-view"><a href="ooni-gfw.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Circumvention demand</b><span>Tor's own directory-request telemetry as a barometer: relay, bridge and pluggable-transport users from China. When the wall tightens, demand to climb it moves</span></td>
+        <td class="rd-cad">daily</td>
+        <td class="rd-fresh" data-feed="circumvention-demand-latest.json" data-stale-h="48">not checked</td>
+        <td><a class="rd-file" href="circumvention-demand-latest.json">circumvention-demand-latest.json</a></td>
+        <td><a class="rd-file" href="circumvention-demand-history.jsonl">circumvention-demand-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Bleedthrough</b><span>Great Firewall injector-fleet tomography: fleet size, forged-address pools and regional divergence. Apparatus layer, not policy layer</span></td>
+        <td class="rd-cad">prober-run</td>
+        <td class="rd-fresh">no file yet</td>
+        <td colspan="2" class="rd-pend">Awaiting the first live round. Bleedthrough actively probes, so it
+          runs from a controlled, rotating prober outside China and never from shared CI. No data file is
+          published until that prober publishes. The method is on the dashboard and the code is open.</td>
+        <td class="rd-view"><a href="bleedthrough.html">dashboard</a></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
 
- <h2>Dated readings — evidence-backed snapshots</h2>
- <div class="tw">
- <table>
-  <tr><th>Date</th><th>Reading</th><th>Artifacts</th></tr>
-  <tr>
-    <td class="cad">2026-07-01</td>
-    <td class="sig"><b>Generative Firewall Index</b><span>refusal / state-narrative tomography of DeepSeek &amp; Qwen vs a Western control, sensitive Chinese-language probes plus neutral controls</span></td>
-    <td><a href="2026-07-01_generative-firewall-index.md">reading</a> · <a class="file" href="2026-07-01_generative-firewall-index.json">dataset</a></td>
-  </tr>
- </table>
- </div>
+  <!-- ================= CONTENT AND NARRATIVE ================= -->
+  <h2 class="ps-section-head" id="content">Live feeds · content and narrative layer</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="content">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Signal</th><th scope="col">Cadence</th><th scope="col">Measured</th><th scope="col">Latest</th><th scope="col">Time series</th><th scope="col">View</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-sig"><b>Weibo hot-search</b><span>the allowed-attention denominator the DDTI lacks: what the public was permitted to attend to, from the publicly archived hot-search board, plus withdrawal watch</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="weibo-hotsearch-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="weibo-hotsearch-latest.json">weibo-hotsearch-latest.json</a></td>
+        <td><a class="rd-file" href="weibo-hotsearch-history.jsonl">weibo-hotsearch-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Baike redaction-diff</b><span>silent rewriting of a state-moderated encyclopedia, reconstructed from outside by content-addressing entries over time and diffing against the open record</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="baike-redaction-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="baike-redaction-latest.json">baike-redaction-latest.json</a></td>
+        <td><a class="rd-file" href="baike-redaction-history.jsonl">baike-redaction-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Wayback reconstruction</b><span>deletions and silent redactions of public Chinese URLs, bracketed by real archive-witnessed capture timestamps on each side and reported fail-loud as an explicit bracket</span></td>
+        <td class="rd-cad">every 12h</td>
+        <td class="rd-fresh" data-feed="wayback-latest.json" data-stale-h="24">not checked</td>
+        <td><a class="rd-file" href="wayback-latest.json">wayback-latest.json</a></td>
+        <td><a class="rd-file" href="wayback-history.jsonl">wayback-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>App storefront panel</b><span>our own live panel of tracked apps compared across the Chinese and US storefronts through Apple's public lookup API, with a control arm that must stay present in both. Delisting is not network blocking: Facebook, X and YouTube remain listed in the Chinese storefront while unreachable there, and the apps that get removed are the ones that would still work over a VPN</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="app-storefront-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="app-storefront-latest.json">app-storefront-latest.json</a></td>
+        <td><a class="rd-file" href="app-storefront-history.jsonl">app-storefront-history.jsonl</a></td>
+        <td class="rd-view"><a href="app-store.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Apple Censorship corpus</b><span>the same layer at corpus scale, from GreatFire's App Store survey: how much of a large tested catalogue is unavailable in the Chinese storefront, what the removals are tagged for, and where China sits among the surveyed storefronts. Scale and composition only. It complements the storefront panel and does not feed that panel's rate</span></td>
+        <td class="rd-cad">daily</td>
+        <td class="rd-fresh" data-feed="apple-censorship-latest.json" data-stale-h="48">not checked</td>
+        <td><a class="rd-file" href="apple-censorship-latest.json">apple-censorship-latest.json</a></td>
+        <td><a class="rd-file" href="apple-censorship-history.jsonl">apple-censorship-history.jsonl</a></td>
+        <td class="rd-view"><a href="app-store.html">dashboard</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Blocklist archaeology</b><span>keywords newly present in successive LINE client blocklists, from the Citizen Lab chat-censorship corpus. Each addition is a directive the platform labelled itself rather than an inference drawn from deletion. A list observation date is an upper bound on the directive, never its timestamp, so no velocity is derived from it. Corpus by <a href="https://github.com/citizenlab/chat-censorship" rel="noopener" target="_blank">The Citizen Lab, University of Toronto</a>; upstream states no licence, so it is cached locally and never redistributed from this repository</span></td>
+        <td class="rd-cad">weekly</td>
+        <td class="rd-fresh" data-feed="blocklist-latest.json" data-stale-h="336">not checked</td>
+        <td><a class="rd-file" href="blocklist-latest.json">blocklist-latest.json</a></td>
+        <td><a class="rd-file" href="blocklist-history.jsonl">blocklist-history.jsonl</a></td>
+        <td class="rd-view"><a href="blocklist.html">dashboard</a></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
 
- <p class="note"><b>How a reading is made.</b> A human-ratified probe set (never model-derived) is put
- to a model panel through a public API; every response is recorded verbatim; all judgement is the
- repo's lexical, auditable rule set — no state-aligned model is ever the analyst; the Chinese models
- are the subjects under observation. Public reads only; no jailbreak. When a source breaks or a
- number cannot be stood behind, the signal is suppressed or the run is skipped — never faked.
- Machine-readable summary for AI agents: <a href="/llms.txt">llms.txt</a>. Complete file tree
- including newer dated readings: <a href="https://github.com/beepboop2025/palimpsest/tree/main/readings">github.com/beepboop2025/palimpsest/readings</a>.
- All data is free to reuse with attribution (MIT).</p>
-</div></body></html>
+  <!-- ================= MODEL LAYER ================= -->
+  <h2 class="ps-section-head" id="model">Live feeds · model layer and the sealed record</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="model">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Signal</th><th scope="col">Cadence</th><th scope="col">Measured</th><th scope="col">Latest</th><th scope="col">Time series</th><th scope="col">View</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-sig"><b>Verifiable Eval Registry</b><span>pre-registered, hash-chained model evaluations. The probe set is frozen before any model is queried, and no sealed result can be revised afterwards</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="eval-registry-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="eval-registry-latest.json">eval-registry-latest.json</a></td>
+        <td><a class="rd-file" href="eval-registry.jsonl">eval-registry.jsonl</a> (the chain)</td>
+        <td class="rd-view"><a href="eval-registry.html">registry</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Frontier refusal drift</b><span>the same frozen benign probe set put to a cross-lab frontier panel over time; answered then refused is an erasure event. Each model's rate carries its own n</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="refusal-drift-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="refusal-drift-latest.json">refusal-drift-latest.json</a></td>
+        <td><a class="rd-file" href="refusal-drift-history.jsonl">refusal-drift-history.jsonl</a></td>
+        <td class="rd-view"><a href="eval-registry.html#drift">registry</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>External anchors</b><span>each chain root deposited outside our own infrastructure, in Internet Archive snapshots and OpenTimestamps on Bitcoin, so rewriting the record would mean defeating those too. This feed stamps its time in <code>ts</code> rather than <code>generated_at</code></span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="anchors-latest.json" data-ts="ts" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="anchors-latest.json">anchors-latest.json</a></td>
+        <td><a class="rd-file" href="anchors.jsonl">anchors.jsonl</a> <a class="rd-file" href="https://github.com/beepboop2025/palimpsest/tree/main/readings/anchors" rel="noopener" target="_blank">anchors/ receipts</a></td>
+        <td class="rd-view"><a href="eval-registry.html#anchors">registry</a></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ================= BOARD STATISTICS ================= -->
+  <h2 class="ps-section-head" id="stats">Live feeds · board-level statistics</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="stats">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Signal</th><th scope="col">Cadence</th><th scope="col">Measured</th><th scope="col">Latest</th><th scope="col">Time series</th><th scope="col">View</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-sig"><b>Board alarm</b><span>what the board as a whole concludes, with the multiplicity paid for: e-BH selection across every monitored signal and one board-wide merged e-value. Per-signal guarantees are not a board guarantee</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="board-alarm-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="board-alarm-latest.json">board-alarm-latest.json</a></td>
+        <td><a class="rd-file" href="board-alarm-history.jsonl">board-alarm-history.jsonl</a></td>
+        <td class="rd-view"><a href="/for-researchers.html">schema</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Event flags</b><span>per-signal anytime-valid change alarms: two-sided conformal Shiryaev-Roberts e-detectors, so a signal collapsing flags as well as one rising</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="event-flags-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="event-flags-latest.json">event-flags-latest.json</a></td>
+        <td><a class="rd-file" href="event-flags-history.jsonl">event-flags-history.jsonl</a></td>
+        <td class="rd-view"><a href="/for-researchers.html">schema</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Coverage guard</b><span>whether a signal's movement survives conditioning on its own sample size. A rate can fall because probes thinned out, not because censorship eased. Check this before quoting any change</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="coverage-guard-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="coverage-guard-latest.json">coverage-guard-latest.json</a></td>
+        <td><a class="rd-file" href="coverage-guard-history.jsonl">coverage-guard-history.jsonl</a></td>
+        <td class="rd-view"><a href="/for-researchers.html">schema</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Cross-layer timing</b><span>does one layer move before another? Lead and lag against a circular-shift null on differenced series, Holm-corrected. Reports timing, never cause, and publishes both tests' false-positive rates</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="cross-layer-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="cross-layer-latest.json">cross-layer-latest.json</a></td>
+        <td><a class="rd-file" href="cross-layer-history.jsonl">cross-layer-history.jsonl</a></td>
+        <td class="rd-view"><a href="/for-researchers.html">schema</a></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Forecast ledger</b><span>our own scored track record: every signal forecast one step ahead from only its past, scored against what arrived, with empirical coverage and the worst misses by date. The misses are not removable</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="forecast-ledger-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="forecast-ledger-latest.json">forecast-ledger-latest.json</a></td>
+        <td><a class="rd-file" href="forecast-ledger-history.jsonl">forecast-ledger-history.jsonl</a></td>
+        <td class="rd-view"><a href="/for-researchers.html">schema</a></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ================= STATE TELEMETRY ================= -->
+  <h2 class="ps-section-head" id="state">Live feeds · state-published telemetry</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="state">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Signal</th><th scope="col">Cadence</th><th scope="col">Measured</th><th scope="col">Latest</th><th scope="col">Time series</th><th scope="col">View</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-sig"><b>China econ telemetry</b><span>what the state publishes on the financial side: SHIBOR fixings, the pledged-repo rates and the daily parity fix. Not censorship. The policy read is FDR007 against the 7-day OMO rate</span></td>
+        <td class="rd-cad">every 6h</td>
+        <td class="rd-fresh" data-feed="china-econ-latest.json" data-stale-h="12">not checked</td>
+        <td><a class="rd-file" href="china-econ-latest.json">china-econ-latest.json</a></td>
+        <td><a class="rd-file" href="china-econ-history.jsonl">china-econ-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      <tr>
+        <td class="rd-sig"><b>Stock Connect flows</b><span>a published-then-narrowed record: HKEX discontinued the northbound buy and sell split in August 2024, so southbound carries net flow and northbound is turnover only. Northbound net is never estimated. Trading days only, so a weekend gap is expected</span></td>
+        <td class="rd-cad">weekdays</td>
+        <td class="rd-fresh" data-feed="stock-connect-latest.json" data-stale-h="96">not checked</td>
+        <td><a class="rd-file" href="stock-connect-latest.json">stock-connect-latest.json</a></td>
+        <td><a class="rd-file" href="stock-connect-history.jsonl">stock-connect-history.jsonl</a></td>
+        <td class="rd-view"><span class="rd-none">feed only</span></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ================= DATED READINGS ================= -->
+  <h2 class="ps-section-head" id="dated">Dated readings · evidence-backed snapshots</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="dated">
+    <table class="rd-table">
+      <thead><tr><th scope="col">Date</th><th scope="col">Reading</th><th scope="col">Artifacts</th></tr></thead>
+      <tbody>
+      <tr>
+        <td class="rd-cad">2026-07-01</td>
+        <td class="rd-sig"><b>Generative Firewall Index</b><span>refusal and state-narrative tomography of DeepSeek and Qwen against a Western control, on sensitive Chinese-language probes plus neutral controls</span></td>
+        <td><a class="rd-file" href="2026-07-01_generative-firewall-index.md">reading (md)</a> <a class="rd-file" href="2026-07-01_generative-firewall-index.json">dataset (json)</a></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ================= OTHER FILES ================= -->
+  <h2 class="ps-section-head" id="other">Other files in this directory</h2>
+  <section class="ps-p1 rd-block ps-reveal">
+    <div class="ps-scroll-x" tabindex="0" role="region" aria-labelledby="other">
+    <table class="rd-table">
+      <thead><tr><th scope="col">File</th><th scope="col">What it is</th></tr></thead>
+      <tbody>
+      <tr>
+        <td><a class="rd-file" href="china-brief.json">china-brief.json</a></td>
+        <td class="rd-sig"><span>the machine-readable form of the China Brief page, written by the same generator that writes the page. Not a signal of its own: it summarises feeds already listed above</span></td>
+      </tr>
+      <tr>
+        <td><a class="rd-file" href="https://github.com/beepboop2025/palimpsest/tree/main/readings/anchors" rel="noopener" target="_blank">anchors/</a></td>
+        <td class="rd-sig"><span>the raw anchoring receipts: one roots file per anchoring run with its OpenTimestamps proof beside it, kept so a third party can verify a root without trusting this site. Individual receipts are served from this directory; the folder itself is browsable in the repository</span></td>
+      </tr>
+      <tr>
+        <td><a class="rd-file" href="README.md">README.md</a></td>
+        <td class="rd-sig"><span>directory notes for anyone reading the files rather than the pages</span></td>
+      </tr>
+      <tr>
+        <td><span class="rd-none">state/</span></td>
+        <td class="rd-sig"><span>runner bookkeeping, not data. Published because the repository is public, cited by nothing</span></td>
+      </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <div class="rd-foot">
+    <p class="ps-p2 rd-note"><b>How a reading is made.</b> A human-ratified probe set, never model-derived,
+    is put to a model panel through a public API; every response is recorded verbatim; all judgement is
+    the repository's lexical, auditable rule set. No state-aligned model is ever the analyst: the Chinese
+    models are the subjects under observation. Public reads only, and no jailbreak. When a source breaks
+    or a number cannot be stood behind, the signal is suppressed or the run is skipped, never faked.
+    Every finding ships its raw evidence, which is what this directory is.</p>
+
+    <p class="ps-p1 rd-note"><b>Attribution.</b> Blocklist archaeology is built on the chat-censorship
+    corpus of <a href="https://github.com/citizenlab/chat-censorship" rel="noopener" target="_blank">The
+    Citizen Lab, University of Toronto</a>, which states no licence upstream and is therefore treated as
+    all rights reserved: it is cached locally and never redistributed from this repository. Network
+    readings use open data from OONI, Censored Planet, IODA and the Tor Project. The App Store corpus
+    view uses GreatFire's AppleCensorship survey. Inside View runs on Globalping volunteer probes, whose
+    operators host a probe rather than volunteer for any particular query, which is why that signal
+    reports its vantage limits beside its number.</p>
+
+    <p class="ps-p1 rd-note"><b>Reuse.</b> Machine-readable summary for AI agents:
+    <a href="/llms.txt">llms.txt</a>. Complete file tree, including dated readings added after this page
+    was last edited: <a href="https://github.com/beepboop2025/palimpsest/tree/main/readings" rel="noopener" target="_blank">github.com/beepboop2025/palimpsest/readings</a>.
+    All data is free to reuse with attribution under the MIT licence.</p>
+  </div>
+
+</main>
+
+<script>
+/* Per-row freshness. Nothing is fetched on load: a row's feed is read only when
+   that row comes into view, four at a time, and the column reports the feed's
+   own timestamp. A failed fetch says "unreachable" rather than showing a time
+   this page invented. */
+(function () {
+  "use strict";
+
+  function boot() {
+    var cells = [].slice.call(document.querySelectorAll(".rd-fresh[data-feed]"));
+    if (!cells.length) return;
+
+    var shell = window.PalimpsestShell;
+
+    function ago(iso) {
+      if (shell && shell.ago) return shell.ago(iso);
+      var t = Date.parse(iso);
+      if (!isFinite(t)) return "unknown";
+      var h = (Date.now() - t) / 3600000;
+      if (h < 1) return Math.max(1, Math.round(h * 60)) + " min ago";
+      if (h < 48) return Math.round(h) + " h ago";
+      return Math.round(h / 24) + " d ago";
+    }
+
+    function load(url, ok, bad) {
+      if (shell && shell.loadReading) return shell.loadReading(url, ok, bad);
+      return fetch(url, { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(ok)
+        .catch(bad);
+    }
+
+    /* dotted path, so a feed that stamps its time somewhere other than
+       generated_at still reports honestly instead of reading blank. */
+    function dig(obj, path) {
+      return path.split(".").reduce(function (a, k) {
+        return (a && typeof a === "object") ? a[k] : undefined;
+      }, obj);
+    }
+
+    function set(cell, text, cls, title) {
+      cell.textContent = text;
+      cell.className = "rd-fresh" + (cls ? " " + cls : "");
+      if (title) cell.title = title; else cell.removeAttribute("title");
+    }
+
+    function flag(cell, word) {
+      var b = document.createElement("b");
+      b.className = "rd-flag";
+      b.textContent = word;
+      cell.appendChild(b);
+    }
+
+    var queue = [], active = 0, MAX = 4;
+
+    function pump() { while (active < MAX && queue.length) run(queue.shift()); }
+
+    function enqueue(cell) {
+      if (cell.getAttribute("data-state")) return;
+      cell.setAttribute("data-state", "queued");
+      queue.push(cell);
+      pump();
+    }
+
+    function done(cell) {
+      cell.setAttribute("data-state", "done");
+      active--;
+      pump();
+    }
+
+    function run(cell) {
+      active++;
+      cell.setAttribute("data-state", "running");
+      set(cell, "checking", "rd-fresh--wait");
+
+      var url = cell.getAttribute("data-feed");
+      var path = cell.getAttribute("data-ts") || "generated_at";
+      var staleH = parseFloat(cell.getAttribute("data-stale-h"));
+
+      load(url, function (data) {
+        var iso = dig(data, path);
+        if (typeof iso !== "string") {
+          set(cell, "no timestamp", "rd-fresh--bad", url + " carries no " + path);
+          done(cell); return;
+        }
+        var t = Date.parse(iso);
+        if (!isFinite(t)) {
+          set(cell, "unreadable", "rd-fresh--bad", path + " = " + iso);
+          done(cell); return;
+        }
+        var stale = isFinite(staleH) && ((Date.now() - t) / 3600000) > staleH;
+        set(cell, ago(iso), stale ? "rd-fresh--stale" : "rd-fresh--ok", path + " " + iso);
+        if (stale) flag(cell, "stale");
+        done(cell);
+      }, function (err) {
+        set(cell, "unreachable", "rd-fresh--bad",
+            url + ": " + ((err && err.message) || "fetch failed"));
+        done(cell);
+      });
+    }
+
+    var btn = document.getElementById("rd-check");
+    if (btn) {
+      btn.hidden = false;
+      btn.addEventListener("click", function () {
+        cells.forEach(function (c) {
+          var s = c.getAttribute("data-state");
+          if (s === "queued" || s === "running") return;
+          c.removeAttribute("data-state");
+          enqueue(c);
+        });
+      });
+    }
+
+    var conn = navigator.connection || navigator.webkitConnection;
+    var saveData = !!(conn && conn.saveData);
+
+    if (saveData || !("IntersectionObserver" in window)) {
+      cells.forEach(function (c) {
+        c.title = saveData
+          ? "Not fetched: Save-Data is on. Use the button above to check every feed."
+          : "Not fetched automatically in this browser. Use the button above.";
+      });
+      return;
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        io.unobserve(e.target);
+        enqueue(e.target);
+      });
+    }, { rootMargin: "300px 0px" });
+
+    cells.forEach(function (c) { io.observe(c); });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

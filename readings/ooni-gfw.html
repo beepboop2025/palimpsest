@@ -1,185 +1,1088 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Great Firewall — live network censorship · Palimpsest</title>
-<meta name="description" content="Live Great-Firewall network blocking in China, measured from outside via OONI's open data. Website, messenger and circumvention-tool anomaly rates, and the most-blocked sites right now.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Great Firewall, live network censorship · Palimpsest</title>
+<meta name="description" content="Live Great Firewall network blocking in China, read from outside via OONI's open measurements, with an independent Censored Planet cross-check kept on its own denominator. Website, messenger and circumvention anomaly rates, and the most-blocked sites right now.">
+<link rel="canonical" href="https://palimpsest.info/readings/ooni-gfw.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
-  :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:'JetBrains Mono',ui-monospace,monospace;line-height:1.5}
-  a{color:var(--cy);text-decoration:none}
-  .nav{position:sticky;top:0;z-index:9;display:flex;gap:12px;align-items:center;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap}
-  .nav .b{color:#fff;font-weight:700;letter-spacing:.18em}
-  .nav a{color:var(--mut);padding:6px 9px;border-radius:7px}
-  .nav a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .nav a.here{color:var(--cy);background:rgba(6,214,224,.11)}
-  .wrap{max-width:920px;margin:0 auto;padding:clamp(18px,5vw,40px)}
-  h1{font-size:clamp(20px,4vw,27px);margin:.2em 0 .1em;letter-spacing:-.01em}
-  .sub{color:var(--mut);font-size:13px;margin-bottom:26px}
-  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px}
-  .idx{font-size:66px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .idx small{font-size:20px;color:var(--dim);font-weight:400}
-  .band{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid;margin-top:8px}
-  .heroTxt{flex:1;min-width:220px}
-  .heroTxt .t{font-size:13px;color:var(--mut)}
-  .heroTxt .m{font-size:12px;color:var(--dim);margin-top:8px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:680px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
-  .card h2{font-size:12px;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
-  .row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px}
-  .row .lab{width:104px;color:var(--fg);flex:none}
-  .bar{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden}
-  .bar span{display:block;height:100%;border-radius:5px}
-  .row .pc{width:44px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums;flex:none}
-  .dlist{margin:0;padding:0;list-style:none}
-  .dlist li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
-  .dlist li:last-child{border:0}
-  .dlist .d{color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .dlist .p{color:var(--red);flex:none;font-variant-numeric:tabular-nums}
-  .foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.8}
-  .err{color:var(--amb);font-size:13px}
-  /* motion: data-ordered entrances via tikto-motion.js (signal, not decoration) */
-  .tkm-item{animation:tkm-rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--tkm-d,0ms)}
-  @keyframes tkm-rise{from{opacity:0;transform:translateY(9px)}}
-  @media (prefers-reduced-motion:reduce){.tkm-item{animation:none}}
+/* Page-specific only. Never redefines a --tk-* token or a .ps-* class. */
+
+/* ---- status strip: freshness, window, volume, source -------------------- */
+.gfw-status {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 9px 20px;
+  padding: 12px 16px; margin: 0 0 12px;
+  font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--tk-text-3);
+}
+.gfw-status__b { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.gfw-status b { color: var(--tk-text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.gfw-status a { color: var(--tk-text-2); text-decoration: underline; text-underline-offset: 2px; }
+.gfw-status a:hover { color: var(--tk-live); }
+
+/* ---- the funder line, on screen with the first finding ------------------ */
+.gfw-trust {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline;
+  padding: 13px 16px; margin: 0 0 12px;
+  font-size: 12.5px; color: var(--tk-text-2);
+}
+.gfw-trust p { margin: 0; max-width: 60ch; }
+.gfw-trust a { color: var(--tk-live); text-decoration: none; font-family: var(--tk-font-mono); font-size: 11.5px; }
+.gfw-trust a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- a finding: claim on the left, reading + evidence on the right ------ */
+.gfw-finding { margin: 0 0 clamp(46px, 7vw, 78px); }
+.gfw-claim p { color: var(--tk-text-2); font-size: 14.5px; margin: 0 0 12px; }
+.gfw-claim p:last-child { margin-bottom: 0; }
+
+/* the quotable number, plane 3 */
+.gfw-read { padding: 24px 26px; margin: 0 0 14px; }
+.gfw-read__k { font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 10px; }
+.gfw-read__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+.gfw-read__v {
+  font-size: clamp(40px, 7vw, 62px); font-weight: 800; line-height: 1;
+  letter-spacing: -.03em; color: var(--tk-text-0); font-variant-numeric: tabular-nums;
+}
+.gfw-read__u { font-size: 18px; font-weight: 400; color: var(--tk-text-4); letter-spacing: 0; }
+.gfw-read__t { margin: 14px 0 0; font-size: 14px; color: var(--tk-text-2); max-width: 56ch; }
+.gfw-read__denom {
+  margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--ps-edge-1);
+  font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3);
+  line-height: 1.7;
+}
+.gfw-read__denom b { color: var(--tk-text-1); font-weight: 600; }
+
+/* ---- the caveat the feed ships, carried under the reading --------------- */
+.gfw-caveat { padding: 15px 18px; margin: 0 0 14px; font-size: 13px; color: var(--tk-text-2); line-height: 1.65; }
+.gfw-caveat > b {
+  display: block; margin: 0 0 5px;
+  font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--tk-warning); font-weight: 600;
+}
+.gfw-caveat p { margin: 0 0 9px; }
+.gfw-caveat p:last-child { margin-bottom: 0; }
+.gfw-caveat .gfw-n { color: var(--tk-text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- evidence: one row per OONI test, denominator always visible -------- */
+.gfw-tests { display: grid; gap: 10px; }
+.gfw-test { padding: 15px 17px; }
+.gfw-test__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; margin: 0 0 11px; }
+.gfw-test__label { font-size: 14px; font-weight: 600; color: var(--tk-text-0); }
+.gfw-test__id { font-family: var(--tk-font-mono); font-size: 10.5px; color: var(--tk-text-4); }
+.gfw-test__spacer { flex: 1; min-width: 0; }
+.gfw-test__v { font-size: 15px; font-weight: 700; color: var(--tk-text-0); font-variant-numeric: tabular-nums; flex: none; }
+
+.gfw-track { height: 8px; border-radius: 5px; background: rgba(255,255,255,.055); border: 1px solid var(--ps-edge-1); overflow: hidden; }
+.gfw-fill { display: block; height: 100%; background: var(--tk-ok); }
+.gfw-fill--warning { background: var(--tk-warning); }
+.gfw-fill--critical { background: var(--tk-critical); }
+.gfw-denom { margin: 7px 0 0; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3); font-variant-numeric: tabular-nums; }
+.gfw-denom b { color: var(--tk-text-2); font-weight: 600; }
+.gfw-test__reading { margin: 8px 0 0; font-size: 12.5px; color: var(--tk-text-2); }
+
+/* A test with no CN measurements in the window gets no bar and no rate.
+   An empty track would read as zero percent, and zero percent reads as clean. */
+.gfw-nobar {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  min-height: 30px; padding: 6px 10px;
+  border: 1.5px dashed var(--tk-stale-line, rgba(100,116,139,.45));
+  border-radius: 7px;
+  background: repeating-linear-gradient(135deg,
+    rgba(133,147,168,.10) 0 9px, rgba(133,147,168,.028) 9px 18px);
+  font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--tk-stale); text-align: center;
+}
+
+/* ---- the most-blocked list --------------------------------------------- */
+.gfw-domains { display: grid; gap: 0; margin: 0; padding: 0 4px; list-style: none; }
+.gfw-domains li {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 9px 12px; border-bottom: 1px solid var(--ps-edge-1);
+  font-size: 12.5px;
+}
+.gfw-domains li:last-child { border-bottom: 0; }
+.gfw-domains .gfw-d {
+  flex: 1; min-width: 0; color: var(--tk-text-1);
+  font-family: var(--tk-font-mono); font-size: 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gfw-domains .gfw-c { flex: none; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4); font-variant-numeric: tabular-nums; }
+.gfw-domains .gfw-p { flex: none; width: 52px; text-align: right; color: var(--tk-critical); font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums; }
+
+/* ---- two instruments, held apart --------------------------------------- */
+.gfw-two { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); margin: 0 0 14px; }
+.gfw-inst { padding: 20px 22px; }
+.gfw-inst__k { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-live); margin: 0 0 9px; }
+.gfw-inst__v { font-size: clamp(30px, 4.6vw, 42px); font-weight: 800; line-height: 1; letter-spacing: -.028em; color: var(--tk-text-0); font-variant-numeric: tabular-nums; }
+.gfw-inst__u { font-size: 15px; font-weight: 400; color: var(--tk-text-4); letter-spacing: 0; }
+.gfw-inst__t { margin: 12px 0 0; font-size: 12.5px; color: var(--tk-text-2); line-height: 1.6; }
+.gfw-inst__d { margin: 12px 0 0; padding-top: 11px; border-top: 1px solid var(--ps-edge-1); font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3); line-height: 1.75; }
+.gfw-inst__d b { color: var(--tk-text-1); font-weight: 600; }
+
+/* the rule that stops the two being averaged into one headline */
+.gfw-nomerge { padding: 18px 20px; margin: 0 0 14px; }
+.gfw-nomerge h3 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 12px; font-weight: 600; }
+.gfw-eq {
+  font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-1);
+  line-height: 2; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.gfw-eq s { color: var(--tk-text-4); text-decoration-color: var(--tk-critical); }
+.gfw-eq .gfw-eq-x { color: var(--tk-text-4); }
+.gfw-nomerge > p { margin: 14px 0 0; font-size: 13.5px; color: var(--tk-text-2); max-width: var(--ps-measure); }
+
+/* ---- companion event log ------------------------------------------------ */
+.gfw-events { margin: 0; padding: 0 4px; list-style: none; }
+.gfw-events li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 11px;
+  padding: 10px 12px; border-bottom: 1px solid var(--ps-edge-1); font-size: 12.5px;
+}
+.gfw-events li:last-child { border-bottom: 0; }
+.gfw-events .gfw-ev-t { flex: 1; min-width: 180px; }
+.gfw-events .gfw-ev-t a { color: var(--tk-text-1); text-decoration: none; }
+.gfw-events .gfw-ev-t a:hover { color: var(--tk-live); text-decoration: underline; text-underline-offset: 3px; }
+.gfw-events .gfw-ev-k {
+  flex: none; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--ps-edge-2); color: var(--tk-text-3);
+}
+.gfw-events .gfw-ev-k--blocking { color: var(--tk-critical); border-color: var(--tk-critical-line); background: var(--tk-critical-bg); }
+.gfw-events .gfw-ev-k--circumvention { color: var(--tk-live); border-color: rgba(6,214,224,.3); background: rgba(6,214,224,.1); }
+.gfw-events .gfw-ev-k--mixed { color: var(--tk-warning); border-color: var(--tk-warning-line); background: var(--tk-warning-bg); }
+.gfw-events .gfw-ev-cn { flex: none; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .1em; padding: 2px 6px; border-radius: 4px; background: rgba(6,214,224,.13); color: var(--tk-live); border: 1px solid rgba(6,214,224,.28); }
+.gfw-events .gfw-ev-d { flex: none; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4); font-variant-numeric: tabular-nums; }
+.gfw-events .gfw-ev-note { flex: 1 1 100%; font-size: 11.5px; color: var(--tk-text-4); line-height: 1.6; }
+.gfw-events .gfw-ev-note code { font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4); overflow-wrap: anywhere; }
+
+.gfw-tally { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 12px; padding: 12px 16px; font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3); }
+.gfw-tally b { color: var(--tk-text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- method plane ------------------------------------------------------- */
+.gfw-method { padding: 22px 24px; margin: 0 0 12px; }
+.gfw-method h3 { font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-text-3); margin: 0 0 10px; font-weight: 600; }
+.gfw-method p { margin: 0 0 13px; font-size: 14px; color: var(--tk-text-2); max-width: var(--ps-measure); }
+.gfw-method p:last-child { margin-bottom: 0; }
+.gfw-method dl { margin: 0; font-size: 13px; }
+.gfw-method dt { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--tk-text-4); margin: 16px 0 5px; }
+.gfw-method dt:first-child { margin-top: 0; }
+.gfw-method dd { margin: 0; color: var(--tk-text-2); line-height: 1.7; max-width: var(--ps-measure); }
+
+/* ---- receipts and the closing band -------------------------------------- */
+.gfw-links { display: grid; gap: 9px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 0; padding: 0; list-style: none; }
+.gfw-links a { display: block; padding: 13px 15px; text-decoration: none; height: 100%; }
+.gfw-links b { display: block; font-size: 13px; color: var(--tk-text-0); font-weight: 600; }
+.gfw-links span { display: block; margin-top: 3px; font-size: 11.5px; color: var(--tk-text-3); line-height: 1.5; }
+
+.gfw-three { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 0 0 40px; padding: 0; list-style: none; }
+.gfw-three a { display: block; padding: 18px 20px; height: 100%; text-decoration: none; }
+.gfw-three .gfw-three__k { font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--tk-live); }
+.gfw-three b { display: block; margin: 7px 0 5px; font-size: 15px; color: var(--tk-text-0); font-weight: 700; }
+.gfw-three span { display: block; font-size: 12.5px; color: var(--tk-text-3); line-height: 1.55; }
+
+/* ---- states ------------------------------------------------------------- */
+.gfw-pending { font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-4); letter-spacing: .06em; }
+.gfw-error { display: none; padding: 18px 20px; margin: 0 0 30px; border-radius: var(--tk-radius-lg, 14px); background: var(--tk-critical-bg); border: 1px solid var(--tk-critical-line); }
+.gfw-error[data-shown] { display: block; }
+.gfw-error h2 { margin: 0 0 7px; font-size: 15px; color: var(--tk-critical); font-family: var(--tk-font-mono); letter-spacing: .06em; }
+.gfw-error p { margin: 0 0 8px; font-size: 13px; color: var(--tk-text-2); }
+.gfw-error code { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3); overflow-wrap: anywhere; }
+
+/* a companion feed that did not load says so in place, rather than vanishing */
+.gfw-down { padding: 15px 18px; font-size: 13px; color: var(--tk-text-2); line-height: 1.65; }
+.gfw-down b {
+  display: block; margin: 0 0 6px;
+  font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--tk-warning); font-weight: 600;
+}
+.gfw-down p { margin: 0 0 8px; }
+.gfw-down p:last-child { margin-bottom: 0; }
+.gfw-down code { font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4); overflow-wrap: anywhere; }
+
+/* Tiktó flips its surface ramp on the light theme but keeps the status ramp,
+   and --tk-stale is too pale on paper for something that carries a finding. */
+[data-tk-theme="light"] .gfw-nobar { color: #4a586e; border-color: rgba(74, 88, 110, .55); }
+[data-tk-theme="light"] .gfw-track { background: rgba(12, 20, 34, .06); }
+
+@media (max-width: 860px) {
+  .gfw-read { padding: 20px 18px; }
+  .gfw-domains .gfw-c { display: none; }
+}
+
+/* Staleness is a finding, so it wins over every local text colour. Declared
+   last on purpose: it has to out-rank .gfw-status b, .gfw-inst__d b and
+   .gfw-tally b, which are equally specific. */
+.gfw-warn, b.gfw-warn { color: var(--tk-warning); }
 </style>
 </head>
-<body>
-  <nav class="nav">
-    <span class="b">PALIMPSEST</span>
-    <a href="/">Home</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/generative-firewall-index.html">AI Firewall</a>
-    <a href="/readings/ooni-gfw.html" class="here">GFW Live</a>
-    <a href="/readings/bleedthrough.html">Injectors</a>
-    <a href="/for-researchers.html">Data</a>
-  </nav>
-  <div class="wrap">
-    <h1>Great Firewall — live network censorship</h1>
-    <div class="sub">What China's network firewall is blocking right now — measured from
-      <em>outside</em> China, by ingesting <a href="https://ooni.org/data/" target="_blank" rel="noopener">OONI</a>'s
-      open measurements taken by real probes inside the country. We observe; we do not probe.</div>
-
-    <div id="app"><p class="err">loading the live signal…</p></div>
-
-    <div id="cp"></div>
-
-    <div id="events"></div>
-
-    <div class="foot" id="foot"></div>
-  </div>
-
-<script src="/dashboards/assets/tikto-motion.js"></script>
-<script>
-// escape anything interpolated from the fetched JSON before it hits innerHTML.
-// the domain/test values originate from OONI's data, i.e. external input.
-const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtPct = r => r==null ? "—" : Math.round(r*100)+"%";
-const barColor = r => r==null?"#334":(r>=.6?"var(--red)":r>=.25?"var(--amb)":r>=.05?"#e0b83a":"var(--grn)");
-const bandFor = i => i==null?["—","#334"]:(i>=50?["SEVERE","var(--red)"]:i>=25?["HIGH","var(--amb)"]:i>=8?["ELEVATED","#e0b83a"]:["LOW","var(--grn)"]);
-
-fetch("/readings/ooni-gfw-latest.json?_="+Date.now())
-  .then(r=>r.ok?r.json():Promise.reject(r.status))
-  .then(render)
-  .catch(e=>{document.getElementById("app").innerHTML='<p class="err">signal unavailable right now (the observatory abstains rather than show a hollow reading). Error: '+e+'</p>';});
-
-function render(d){
-  const [bl,bc]=bandFor(d.gfw_index);
-  const tests=(d.tests||[]).map(t=>{
-    const w=t.available&&t.anomaly_rate!=null?Math.round(t.anomaly_rate*100):0;
-    return `<div class="row"><span class="lab">${esc(t.test)}</span>
-      <span class="bar"><span data-tkm-bar style="width:${w}%;background:${t.available?barColor(t.anomaly_rate):'#334'}"></span></span>
-      <span class="pc">${t.available?fmtPct(t.anomaly_rate):"n/a"}</span></div>`;
-  }).join("");
-  const doms=(d.top_blocked||[]).slice(0,15).map(x=>
-    `<li><span class="d">${esc(x.domain)}</span><span class="p">${fmtPct(x.anomaly_rate)}</span></li>`).join("")
-    || '<li><span class="d" style="color:var(--dim)">no per-domain breakdown this run</span></li>';
-
-  document.getElementById("app").innerHTML=`
-    <div class="hero">
-      <div>
-        <div class="idx"><span id="idxNum">${d.gfw_index==null?"—":Number(d.gfw_index)}</span><small>/100</small></div>
-        <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
-      </div>
-      <div class="heroTxt">
-        <div class="t">GFW pressure — measurement-weighted anomaly rate across ${Number(d.n_tests_with_data)||0} tests,
-          over ${Number(d.n_measurements||0).toLocaleString()} CN measurements in the last ${Number(d.window_days)||0} days.</div>
-        <div class="m">${esc(d.china_caveat)}</div>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html" aria-current="page"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="grid">
-      <div class="card"><h2>Blocking by service</h2>${tests}</div>
-      <div class="card"><h2>Most-blocked sites now</h2><ul class="dlist">${doms}</ul></div>
-    </div>`;
-
-  if (window.TiktoMotion) {
-    const app = document.getElementById("app");
-    if (d.gfw_index != null) TiktoMotion.countUp(document.getElementById("idxNum"), Number(d.gfw_index), { decimals: 0, dur: 1000 });
-    app.querySelectorAll(".row").forEach((r, i) => TiktoMotion.stagger(r, i, 45));
-    app.querySelectorAll(".dlist li").forEach((li, i) => TiktoMotion.stagger(li, i, 35));
-    TiktoMotion.growBars(app);
-  }
-
-  document.getElementById("foot").innerHTML=
-    `Source: ${esc(d.source)}. Method: ${esc(d.method)}.<br>`+
-    `Companion event log below © net4people/bbs contributors (public GitHub issues).<br>`+
-    `Generated ${esc(new Date(d.generated_at).toUTCString())} · window ${esc(d.since)} → ${esc(d.until)} · `+
-    `data © OONI, open data, reused with attribution. Palimpsest observes public measurements; it runs no probes of its own.`;
-}
-
-// second, independent method: Censored Planet (DNS/HTTP side-channel). Silent if absent.
-fetch("/readings/censored-planet-latest.json?_="+Date.now())
-  .then(r=>r.ok?r.json():Promise.reject(r.status))
-  .then(renderCP).catch(()=>{});
-
-function renderCP(c){
-  const rate = c.cn_interference_rate_pct;
-  document.getElementById("cp").innerHTML=`
-    <div class="card" style="margin-top:20px">
-      <h2>Independent cross-check — Censored Planet</h2>
-      <div class="row" style="align-items:flex-start">
-        <div style="flex:none;text-align:center;min-width:96px">
-          <div style="font-size:34px;font-weight:800;line-height:1;color:var(--cy)">${rate==null?"—":Number(rate)}<small style="font-size:14px;color:var(--dim)">%</small></div>
-          <div style="font-size:11px;color:var(--dim);margin-top:4px">CN interference</div>
-        </div>
-        <div style="flex:1;font-size:12.5px;color:var(--mut);min-width:220px">
-          A second, methodologically-independent measure — remote DNS/HTTP side-channels from 95k+ vantage points
-          (a different technique than OONI's probes). ${esc(c.persistence_note||"")}
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
         </div>
       </div>
-      <div class="foot" style="margin-top:12px;border:0;padding:0">${esc(c.note||"")}</div>
-    </div>`;
-}
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
 
-// companion qualitative signal: recent firewall / circumvention events from net4people/bbs
-const kindColor = k => ({blocking:"var(--red)",circumvention:"var(--cy)",mixed:"var(--amb)"}[k]||"var(--dim)");
-fetch("/readings/net4people-latest.json?_="+Date.now())
-  .then(r=>r.ok?r.json():Promise.reject(r.status))
-  .then(renderEvents).catch(()=>{});  // silent: the OONI signal stands alone if this is absent
+<main id="main" class="ps-wrap">
 
-function renderEvents(n){
-  const evs=(n.events||[]).slice(0,12).map(e=>{
-    const when=e.created_at?new Date(e.created_at).toISOString().slice(0,10):"";
-    const cn=e.china_tagged?'<span class="p" style="color:var(--cy)">CN</span>':'';
-    return `<li><span class="d"><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a></span>`+
-           `<span class="p" style="color:${kindColor(e.kind)}">${esc(e.kind)}</span>${cn}`+
-           `<span class="p" style="color:var(--dim)">${esc(when)}</span></li>`;
-  }).join("") || '<li><span class="d" style="color:var(--dim)">no recent events</span></li>';
-  document.getElementById("events").innerHTML=`
-    <div class="card" style="margin-top:20px">
-      <h2>Recent firewall &amp; circumvention events — net4people/bbs</h2>
-      <div style="font-size:12px;color:var(--dim);margin:-6px 0 12px">
-        ${Number(n.n_recent)||0} in ${Number(n.recent_days)||30} days ·
-        ${Number(n.n_blocking)||0} blocking · ${Number(n.n_circumvention)||0} circumvention ·
-        chatter ${esc(n.velocity_reading||"")}</div>
-      <ul class="dlist">${evs}</ul>
-    </div>`;
-}
+  <header style="padding: clamp(34px,6vw,64px) 0 0;">
+    <p class="ps-kicker">Signal · Great Firewall, live</p>
+    <h1 class="ps-h1">What the network firewall is blocking right now.</h1>
+    <p class="ps-lede">
+      China's network censorship, read from outside the country. We ingest OONI's open
+      measurements, taken by real probes inside China, and we run no probe of our own.
+      A second instrument, Censored Planet, is shown alongside as an independent check.
+      It is kept on its own denominator and never merged into a single figure.
+    </p>
+  </header>
+
+  <div class="gfw-error ps-p2" id="gfw-error" role="alert">
+    <h2>Reading could not be loaded</h2>
+    <p>This page publishes nothing when the feed does not load. There is no cached figure
+       and no placeholder, because a plausible looking number here would be worse than a
+       blank page.</p>
+    <p><code id="gfw-error-detail"></code></p>
+    <p><a href="/readings/ooni-gfw-latest.json" class="ps-btn ps-btn--ghost">Open the raw file directly</a></p>
+  </div>
+
+  <div class="gfw-status ps-p1 ps-reveal" id="gfw-status">
+    <span class="gfw-pending">loading reading</span>
+  </div>
+
+  <div class="gfw-trust ps-p1 ps-reveal">
+    <p>Palimpsest is a free public good. MIT licensed, developed in the open, never a
+       commercial product, and every finding on it ships the raw file it was computed from.</p>
+    <a href="/fund.html">What funding buys</a>
+    <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source on GitHub</a>
+  </div>
+
+  <hr class="ps-rule" style="margin: 40px 0;">
+
+  <!-- ============ FINDING 1 · PRESSURE INDEX ============================= -->
+  <section class="gfw-finding ps-band ps-reveal" aria-labelledby="gfw-h-index">
+    <div class="ps-pin gfw-claim">
+      <p class="ps-label">Finding 1 of 4</p>
+      <h2 class="ps-h2" id="gfw-h-index">Pressure across the whole test panel</h2>
+      <p>One measurement weighted figure over every OONI test method that produced Chinese
+         data in the window. It answers a narrow question: across everything volunteers
+         measured inside China, what share of measurements came back anomalous.</p>
+      <p>It is a pressure reading, not a count of blocked sites, and it moves with what
+         volunteers happened to test as well as with what the censor did.</p>
+    </div>
+    <div>
+      <div class="gfw-read ps-p3" id="gfw-read-index">
+        <p class="gfw-read__k">Great Firewall pressure index</p>
+        <div class="gfw-read__row">
+          <span class="gfw-read__v"><span class="gfw-pending">loading</span></span>
+        </div>
+      </div>
+
+      <div class="gfw-caveat ps-p1" id="gfw-caveat">
+        <b>Caveat carried from the feed</b>
+        <p><span class="gfw-pending">loading</span></p>
+      </div>
+
+      <h3 class="ps-label" style="margin: 22px 0 10px;">Per test evidence</h3>
+      <div class="gfw-tests" id="gfw-tests">
+        <p class="gfw-pending">loading reading</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FINDING 2 · MOST BLOCKED =============================== -->
+  <section class="gfw-finding ps-band ps-reveal" aria-labelledby="gfw-h-domains">
+    <div class="ps-pin gfw-claim">
+      <p class="ps-label">Finding 2 of 4</p>
+      <h2 class="ps-h2" id="gfw-h-domains">What was hit hardest</h2>
+      <p>The domains with the highest anomaly rate in the window, each shown with the counts
+         it was computed from. A domain measured twenty times and anomalous twenty times is
+         not the same evidence as one measured twice.</p>
+      <p>This list reflects the URLs OONI volunteers actually tested. It is not a ranking of
+         what China blocks most, and reading it that way would overstate it.</p>
+    </div>
+    <div>
+      <div class="ps-p1" style="border-radius: var(--tk-radius-lg, 14px); padding: 6px 0;">
+        <ul class="gfw-domains" id="gfw-domains">
+          <li><span class="gfw-d gfw-pending">loading reading</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FINDING 3 · TWO INSTRUMENTS ============================ -->
+  <section class="gfw-finding ps-band ps-reveal" aria-labelledby="gfw-h-cross">
+    <div class="ps-pin gfw-claim">
+      <p class="ps-label">Finding 3 of 4</p>
+      <h2 class="ps-h2" id="gfw-h-cross">Two instruments, two denominators</h2>
+      <p>OONI measures from probes run by volunteers inside China. Censored Planet measures
+         remotely, using DNS and HTTP side channels from tens of thousands of vantage points
+         outside it. Different technique, different population, different window.</p>
+      <p>Both detect Chinese interference. Their numbers are not comparable, and they are
+         never averaged, added or presented here as one figure.</p>
+      <p>What the agreement buys is corroboration, not precision.</p>
+    </div>
+    <div>
+      <div class="gfw-two">
+        <div class="gfw-inst ps-p3" id="gfw-inst-ooni">
+          <p class="gfw-inst__k">Instrument A · OONI</p>
+          <div class="gfw-inst__v"><span class="gfw-pending">loading</span></div>
+        </div>
+        <div class="gfw-inst ps-p3" id="gfw-inst-cp">
+          <p class="gfw-inst__k">Instrument B · Censored Planet</p>
+          <div class="gfw-inst__v"><span class="gfw-pending">loading</span></div>
+        </div>
+      </div>
+
+      <div class="gfw-nomerge ps-p2">
+        <h3>Why these are never one number</h3>
+        <p class="gfw-eq" id="gfw-eq"><span class="gfw-pending">loading denominators</span></p>
+        <p>Each figure is a share of a different thing. Combining them would produce a number
+           that describes no measurement anyone made.</p>
+      </div>
+
+      <div class="ps-p1" id="gfw-cp-notes" style="border-radius: var(--tk-radius-lg, 14px);"></div>
+    </div>
+  </section>
+
+  <!-- ============ FINDING 4 · COMPANION EVENT LOG ======================== -->
+  <section class="gfw-finding ps-band ps-reveal" aria-labelledby="gfw-h-events">
+    <div class="ps-pin gfw-claim">
+      <p class="ps-label">Finding 4 of 4</p>
+      <h2 class="ps-h2" id="gfw-h-events">What people are reporting</h2>
+      <p>The qualitative companion to the rates above: public issues opened on the net4people
+         forum, where operators and researchers report blocking events and circumvention
+         developments as they happen.</p>
+      <p>This is chatter, not measurement. It is useful for noticing a change before a rate
+         moves, and it proves nothing on its own.</p>
+    </div>
+    <div>
+      <div class="gfw-tally ps-p1" id="gfw-tally">
+        <span class="gfw-pending">loading</span>
+      </div>
+      <div class="ps-p1" style="border-radius: var(--tk-radius-lg, 14px); padding: 6px 0;">
+        <ul class="gfw-events" id="gfw-events">
+          <li><span class="gfw-ev-t gfw-pending">loading</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ METHOD ================================================= -->
+  <h2 class="ps-section-head" id="method">How each reading was made</h2>
+
+  <div class="gfw-method ps-p2 ps-reveal">
+    <h3>Stated by the collectors themselves</h3>
+    <dl id="gfw-method-dl">
+      <dt>Loading</dt>
+      <dd><span class="gfw-pending">loading</span></dd>
+    </dl>
+  </div>
+
+  <div class="gfw-method ps-p2 ps-reveal">
+    <h3>Why anomaly rate and not confirmed blocking</h3>
+    <p>OONI marks a measurement <em>confirmed</em> when it sees an unambiguous block page.
+       The Great Firewall rarely serves one. It injects a forged DNS answer or a TCP reset
+       instead, so the connection simply fails and nothing announces itself as censorship.</p>
+    <p>Against China, confirmed sits near zero while real blocking is widespread. Tracking
+       confirmed would report almost nothing. So this page tracks the anomaly rate, and
+       states plainly that an anomaly is evidence of interference rather than proof of a
+       policy decision.</p>
+  </div>
+
+  <div class="gfw-method ps-p2 ps-reveal">
+    <h3>We observe, we do not probe</h3>
+    <p>Every figure on this page is computed from data somebody else already published.
+       Palimpsest sends no request to a censored resource, runs no probe inside China, and
+       asks no person there to do anything. These readings are vantage insensitive: running
+       the collectors from anywhere produces the same numbers.</p>
+    <p>Watch the censor, never the censored.</p>
+  </div>
+
+  <!-- ============ RECEIPTS =============================================== -->
+  <h2 class="ps-section-head">Take the evidence with you</h2>
+  <ul class="gfw-links">
+    <li><a class="ps-p1" href="/readings/ooni-gfw-latest.json">
+      <b>ooni-gfw-latest.json</b>
+      <span>The file the pressure index, the per test rows and the domain list are rendered from.</span></a></li>
+    <li><a class="ps-p1" href="/readings/ooni-gfw-history.jsonl">
+      <b>ooni-gfw-history.jsonl</b>
+      <span>One line per round, appended and never rewritten.</span></a></li>
+    <li><a class="ps-p1" href="/readings/censored-planet-latest.json">
+      <b>censored-planet-latest.json</b>
+      <span>The independent cross check, on its own denominator.</span></a></li>
+    <li><a class="ps-p1" href="/readings/net4people-latest.json">
+      <b>net4people-latest.json</b>
+      <span>The companion event log, ingested from public GitHub issues.</span></a></li>
+    <li><a class="ps-p1" href="https://github.com/beepboop2025/palimpsest/blob/main/collectors/ooni_gfw.py" target="_blank" rel="noopener">
+      <b>collectors/ooni_gfw.py</b>
+      <span>How the index is weighted, and when a test is reported as unavailable instead of given a rate.</span></a></li>
+    <li><a class="ps-p1" href="https://ooni.org/data/" target="_blank" rel="noopener">
+      <b>OONI open data</b>
+      <span>The upstream source. Open data, reused with attribution.</span></a></li>
+  </ul>
+
+  <hr class="ps-rule" style="margin: 46px 0 34px;">
+
+  <ul class="gfw-three">
+    <li><a class="ps-p1" href="/readings/">
+      <span class="gfw-three__k">Observatory</span>
+      <b>China censorship observatory</b>
+      <span>Signals across the network, content and model layers, each publishing its own raw file. This page is one of them.</span></a></li>
+    <li><a class="ps-p1" href="/readings/eval-registry.html">
+      <span class="gfw-three__k">Registry</span>
+      <b>Verifiable eval registry</b>
+      <span>Pre-registered suites, hash chained, anchored outside our own infrastructure. A peer of the observatory, not a side feature.</span></a></li>
+    <li><a class="ps-p1" href="/fund.html">
+      <span class="gfw-three__k">Funding</span>
+      <b>A funded public good</b>
+      <span>MIT licensed and open from the first commit. Grants and donations pay for the collectors, the storage and the anchoring.</span></a></li>
+  </ul>
+
+  <p style="margin:0 0 60px;font-size:12px;color:var(--tk-text-4);max-width:var(--ps-measure);line-height:1.7">
+    Data from OONI, open data, reused with attribution. Censored Planet data from
+    data.censoredplanet.org. The companion event log is copyright net4people/bbs
+    contributors, read from public GitHub issues. No individual measurement is attributed
+    to anyone.
+  </p>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var URL_OONI = "/readings/ooni-gfw-latest.json";
+  var URL_CP   = "/readings/censored-planet-latest.json";
+  var URL_N4P  = "/readings/net4people-latest.json";
+
+  /* Refresh cadences, taken from .github/workflows/*.yml. Past twice the
+     cadence the freshness line becomes a warning, because staleness is a
+     finding rather than a detail. */
+  var STALE_H_OONI = 12;   /* pulls every 6 hours  */
+  var STALE_H_CP   = 48;   /* pulls once a day     */
+  var STALE_H_N4P  = 24;   /* pulls every 12 hours */
+
+  var NF = new Intl.NumberFormat("en-US");
+
+  /* shell.js is deferred, so it has not run when this script is parsed.
+     Every use of it resolves at call time, never at parse time. */
+  function shell() { return window.PalimpsestShell || null; }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function clear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
+  function byId(id) { return document.getElementById(id); }
+  function br() { return document.createElement("br"); }
+
+  function num(v) { return (typeof v === "number" && isFinite(v)) ? NF.format(v) : null; }
+
+  /* A fraction in 0..1 as a percentage string, or null when there is no rate.
+     Null is never coerced to zero anywhere in this file. */
+  function pct(frac, dec) {
+    if (typeof frac !== "number" || !isFinite(frac)) return null;
+    return (frac * 100).toFixed(dec == null ? 1 : dec) + "%";
+  }
+  function clampPct(frac) { return Math.max(0, Math.min(100, frac * 100)); }
+
+  function hoursSince(iso) {
+    var t = Date.parse(iso);
+    if (!isFinite(t)) return null;
+    return (Date.now() - t) / 3600000;
+  }
+
+  /* "3 h ago", plus an explicit STALE chip past twice the cadence. The chip
+     carries the state in words as well as in colour. */
+  function appendFreshness(parent, iso, staleH) {
+    var s = shell();
+    var when = (s && typeof iso === "string") ? s.ago(iso) : "unknown";
+    var h = typeof iso === "string" ? hoursSince(iso) : null;
+    var stale = (h == null || h > staleH);
+    var b = el("b", stale ? "gfw-warn" : null, when);
+    parent.appendChild(b);
+    if (stale) {
+      var chip = el("span", "tk-chip tk-chip--stale", "stale");
+      chip.title = "Older than twice the refresh cadence for this feed.";
+      parent.appendChild(chip);
+    }
+  }
+
+  /* The band the index falls in. The label is always rendered, so the state
+     never depends on colour alone. */
+  function bandFor(i) {
+    if (typeof i !== "number" || !isFinite(i)) return null;
+    if (i >= 50) return { label: "SEVERE", chip: "tk-chip tk-chip--critical" };
+    if (i >= 25) return { label: "HIGH", chip: "tk-chip tk-chip--warning" };
+    if (i >= 8)  return { label: "ELEVATED", chip: "tk-chip tk-chip--warning" };
+    return { label: "LOW", chip: "tk-chip tk-chip--ok" };
+  }
+  function fillClass(rate) {
+    if (rate >= 0.6) return "gfw-fill gfw-fill--critical";
+    if (rate >= 0.05) return "gfw-fill gfw-fill--warning";
+    return "gfw-fill";
+  }
+
+  /* ------------------------------------------------------- failure state -- */
+  function failPrimary(err) {
+    var box = byId("gfw-error"), detail = byId("gfw-error-detail");
+    if (detail) detail.textContent = URL_OONI + " : " + (err && err.message ? err.message : String(err));
+    if (box) box.setAttribute("data-shown", "");
+    /* Strip every pending placeholder so nothing on the page reads as a value. */
+    [].slice.call(document.querySelectorAll(".gfw-pending")).forEach(function (p) {
+      p.textContent = "no reading";
+    });
+  }
+
+  /* A companion feed that failed says so where it would have rendered. */
+  function down(container, name, url, err, why) {
+    if (!container) return;
+    clear(container);
+    var box = el("div", "gfw-down");
+    box.appendChild(el("b", null, name + " did not load"));
+    box.appendChild(el("p", null, why));
+    var p = el("p");
+    p.appendChild(el("code", null, url + " : " + (err && err.message ? err.message : String(err))));
+    box.appendChild(p);
+    container.appendChild(box);
+  }
+
+  /* =========================== OONI, the primary reading ================== */
+  function renderOoni(d) {
+    renderStatus(d);
+    renderIndex(d);
+    renderCaveat(d);
+    renderTests(d);
+    renderDomains(d);
+    renderInstrumentA(d);
+    setEqOoni(d);
+    addMethod("OONI aggregation API, probe_cc=CN", d.source, d.scope, d.method);
+  }
+
+  function renderStatus(d) {
+    var wrap = byId("gfw-status");
+    if (!wrap) return;
+    clear(wrap);
+
+    var f = el("div", "gfw-status__b");
+    f.appendChild(el("span", null, "Measured"));
+    appendFreshness(f, d.generated_at, STALE_H_OONI);
+    wrap.appendChild(f);
+
+    if (typeof d.since === "string" && typeof d.until === "string") {
+      var w = el("div", "gfw-status__b");
+      w.appendChild(el("span", null, "Window"));
+      var wd = num(d.window_days);
+      w.appendChild(el("b", null, d.since + " to " + d.until + (wd ? " (" + wd + " d)" : "")));
+      wrap.appendChild(w);
+    }
+
+    var m = num(d.n_measurements);
+    if (m) {
+      var mm = el("div", "gfw-status__b");
+      mm.appendChild(el("span", null, "CN measurements"));
+      mm.appendChild(el("b", null, m));
+      wrap.appendChild(mm);
+    }
+
+    var t = num(d.n_tests_with_data);
+    if (t) {
+      var tt = el("div", "gfw-status__b");
+      tt.appendChild(el("span", null, "Tests with data"));
+      tt.appendChild(el("b", null, t));
+      wrap.appendChild(tt);
+    }
+
+    var s = el("div", "gfw-status__b");
+    s.appendChild(el("span", null, "Raw"));
+    var a = el("a", null, "ooni-gfw-latest.json");
+    a.href = URL_OONI;
+    s.appendChild(a);
+    wrap.appendChild(s);
+  }
+
+  function renderIndex(d) {
+    var wrap = byId("gfw-read-index");
+    if (!wrap) return;
+    clear(wrap);
+    wrap.appendChild(el("p", "gfw-read__k", "Great Firewall pressure index"));
+
+    var row = el("div", "gfw-read__row");
+    var i = d.gfw_index;
+    var digits = null;
+    if (typeof i === "number" && isFinite(i)) {
+      var v = el("span", "gfw-read__v");
+      digits = el("span", null, i.toFixed(1));
+      v.appendChild(digits);
+      v.appendChild(el("span", "gfw-read__u", " / 100"));
+      row.appendChild(v);
+      var band = bandFor(i);
+      if (band) row.appendChild(el("span", band.chip, band.label));
+    } else {
+      row.appendChild(el("span", "gfw-read__v gfw-pending", "no index in this reading"));
+    }
+    wrap.appendChild(row);
+
+    var parts = [];
+    var t = num(d.n_tests_with_data), m = num(d.n_measurements), w = num(d.window_days);
+    if (t) parts.push(t + " test methods produced Chinese data");
+    if (m) parts.push(m + " measurements");
+    if (w) parts.push("a " + w + " day window");
+    if (parts.length) {
+      wrap.appendChild(el("p", "gfw-read__t",
+        "Measurement weighted anomaly rate across " + parts.join(", ") + "."));
+    }
+
+    var den = el("p", "gfw-read__denom");
+    den.appendChild(document.createTextNode("Denominator: "));
+    den.appendChild(el("b", null, "OONI measurements taken inside China during the window"));
+    den.appendChild(document.createTextNode(
+      ". This figure is not comparable with the Censored Planet reading below."));
+    wrap.appendChild(den);
+
+    var s = shell();
+    if (digits && s && typeof s.countUp === "function") s.countUp(digits, i, { decimals: 1, dur: 900 });
+  }
+
+  function renderCaveat(d) {
+    var wrap = byId("gfw-caveat");
+    if (!wrap) return;
+    if (typeof d.china_caveat !== "string" || !d.china_caveat) { wrap.hidden = true; return; }
+    clear(wrap);
+    wrap.appendChild(el("b", null, "Caveat carried from the feed"));
+    wrap.appendChild(el("p", null, d.china_caveat));
+  }
+
+  function renderTests(d) {
+    var wrap = byId("gfw-tests");
+    if (!wrap) return;
+    clear(wrap);
+    var tests = Array.isArray(d.tests) ? d.tests : [];
+    if (!tests.length) {
+      wrap.appendChild(el("p", "gfw-pending", "no per test breakdown in this reading"));
+      return;
+    }
+
+    tests.forEach(function (t) {
+      var card = el("div", "gfw-test ps-p2");
+
+      var head = el("div", "gfw-test__head");
+      head.appendChild(el("span", "gfw-test__label", t.label || t.test || "unnamed test"));
+      if (t.test) head.appendChild(el("span", "gfw-test__id", t.test));
+      head.appendChild(el("span", "gfw-test__spacer"));
+      var rate = (t.available === true) ? t.anomaly_rate : null;
+      var rateTxt = pct(rate);
+      head.appendChild(el("span", "gfw-test__v", rateTxt || "no rate"));
+      card.appendChild(head);
+
+      if (rateTxt) {
+        var track = el("div", "gfw-track");
+        var fill = el("span", fillClass(rate));
+        fill.style.width = clampPct(rate) + "%";
+        track.appendChild(fill);
+        card.appendChild(track);
+
+        var den = el("p", "gfw-denom");
+        var a = num(t.anomaly_count), c = num(t.measurement_count), f = num(t.failure_count);
+        var bits = [];
+        if (a != null && c != null) bits.push(a + " anomalous of " + c + " measurements");
+        if (f != null) bits.push(f + " failures");
+        den.appendChild(el("b", null, bits.length ? bits.join(" · ") : "counts not in this reading"));
+        card.appendChild(den);
+      } else {
+        var nb = el("div", "gfw-nobar");
+        nb.appendChild(el("span", null, "no measurements, no rate"));
+        card.appendChild(nb);
+      }
+
+      if (typeof t.reading === "string" && t.reading) {
+        card.appendChild(el("p", "gfw-test__reading", t.reading));
+      }
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderDomains(d) {
+    var wrap = byId("gfw-domains");
+    if (!wrap) return;
+    clear(wrap);
+    var rows = Array.isArray(d.top_blocked) ? d.top_blocked : [];
+    if (!rows.length) {
+      var li = el("li");
+      li.appendChild(el("span", "gfw-d", "no per domain breakdown in this reading"));
+      wrap.appendChild(li);
+      return;
+    }
+    rows.forEach(function (x) {
+      var li = el("li");
+      li.appendChild(el("span", "gfw-d", x.domain || "unnamed domain"));
+      var a = num(x.anomaly_count), c = num(x.measurement_count);
+      if (a != null && c != null) li.appendChild(el("span", "gfw-c", a + " / " + c));
+      li.appendChild(el("span", "gfw-p", pct(x.anomaly_rate, 0) || "no rate"));
+      wrap.appendChild(li);
+    });
+  }
+
+  function renderInstrumentA(d) {
+    var wrap = byId("gfw-inst-ooni");
+    if (!wrap) return;
+    clear(wrap);
+    wrap.className = "gfw-inst ps-p3";
+    wrap.appendChild(el("p", "gfw-inst__k", "Instrument A · OONI"));
+
+    var v = el("div", "gfw-inst__v");
+    if (typeof d.gfw_index === "number" && isFinite(d.gfw_index)) {
+      v.appendChild(document.createTextNode(d.gfw_index.toFixed(1)));
+      v.appendChild(el("span", "gfw-inst__u", " / 100"));
+    } else {
+      v.appendChild(el("span", "gfw-pending", "no reading"));
+    }
+    wrap.appendChild(v);
+
+    wrap.appendChild(el("p", "gfw-inst__t",
+      "Measurement weighted anomaly rate over OONI probe runs inside China."));
+
+    var dd = el("p", "gfw-inst__d");
+    dd.appendChild(document.createTextNode("Vantage: "));
+    dd.appendChild(el("b", null, "volunteer probes inside China"));
+    var w = num(d.window_days);
+    if (w) {
+      dd.appendChild(br());
+      dd.appendChild(document.createTextNode("Window: "));
+      dd.appendChild(el("b", null, w + " days"));
+    }
+    var m = num(d.n_measurements);
+    if (m) {
+      dd.appendChild(br());
+      dd.appendChild(document.createTextNode("Base: "));
+      dd.appendChild(el("b", null, m + " measurements"));
+    }
+    dd.appendChild(br());
+    dd.appendChild(document.createTextNode("Measured "));
+    appendFreshness(dd, d.generated_at, STALE_H_OONI);
+    wrap.appendChild(dd);
+  }
+
+  /* =========================== Censored Planet ============================ */
+  function renderCp(c) {
+    var wrap = byId("gfw-inst-cp");
+    if (wrap) {
+      clear(wrap);
+      wrap.className = "gfw-inst ps-p3";
+      wrap.appendChild(el("p", "gfw-inst__k", "Instrument B · Censored Planet"));
+
+      var v = el("div", "gfw-inst__v");
+      var r = c.cn_interference_rate_pct;
+      if (typeof r === "number" && isFinite(r)) {
+        v.appendChild(document.createTextNode(r.toFixed(2)));
+        v.appendChild(el("span", "gfw-inst__u", "%"));
+      } else {
+        v.appendChild(el("span", "gfw-pending", "no reading"));
+      }
+      wrap.appendChild(v);
+
+      wrap.appendChild(el("p", "gfw-inst__t",
+        "Chinese interference rate from remote DNS and HTTP side channels, Satellite and Hyperquack."));
+
+      var dd = el("p", "gfw-inst__d");
+      dd.appendChild(document.createTextNode("Vantage: "));
+      dd.appendChild(el("b", null, "remote side channels, outside China"));
+      var w = num(c.window_days);
+      if (w) {
+        dd.appendChild(br());
+        dd.appendChild(document.createTextNode("Window: "));
+        dd.appendChild(el("b", null, w + " days"));
+      }
+      if (typeof c.since === "string" && typeof c.until === "string") {
+        dd.appendChild(br());
+        dd.appendChild(document.createTextNode("Dates: "));
+        dd.appendChild(el("b", null, c.since + " to " + c.until));
+      }
+      var pts = num(c.series_points);
+      if (pts) {
+        dd.appendChild(br());
+        dd.appendChild(document.createTextNode("Daily points: "));
+        dd.appendChild(el("b", null, pts));
+      }
+      dd.appendChild(br());
+      dd.appendChild(document.createTextNode("Measured "));
+      appendFreshness(dd, c.generated_at, STALE_H_CP);
+      wrap.appendChild(dd);
+    }
+
+    setEqCp(c);
+
+    /* the notes this feed ships, both of them, in the feed's own words */
+    var notes = byId("gfw-cp-notes");
+    if (notes) {
+      clear(notes);
+      var box = el("div", "gfw-caveat");
+      box.appendChild(el("b", null, "Notes carried from the Censored Planet feed"));
+      if (typeof c.note === "string" && c.note) box.appendChild(el("p", null, c.note));
+
+      var ev = num(c.n_events);
+      if (ev != null) {
+        var p = el("p");
+        p.appendChild(document.createTextNode("Discrete alert events in the window: "));
+        p.appendChild(el("span", "gfw-n", ev));
+        p.appendChild(document.createTextNode("."));
+        box.appendChild(p);
+      }
+      if (typeof c.persistence_note === "string" && c.persistence_note) {
+        box.appendChild(el("p", null, c.persistence_note));
+      }
+      notes.appendChild(box);
+    }
+
+    addMethod("Censored Planet, open GraphQL API", c.source, c.scope, c.method);
+  }
+
+  /* The denominator block under "why these are never one number". Each line is
+     written only from a feed that actually loaded, so the page never asserts a
+     denominator for a reading it is not showing. */
+  var EQ = { a: null, b: null };
+  function setEqOoni(d) {
+    var w = num(d.window_days);
+    EQ.a = "OONI index       =  anomalous measurements / all CN measurements" + (w ? "  (" + w + " d)" : "");
+    renderEq();
+  }
+  function setEqCp(c) {
+    var w = num(c.window_days);
+    EQ.b = "Censored Planet  =  interfered observations / all CN side channel observations" + (w ? "  (" + w + " d)" : "");
+    renderEq();
+  }
+  function renderEq() {
+    var wrap = byId("gfw-eq");
+    if (!wrap) return;
+    clear(wrap);
+    if (!EQ.a && !EQ.b) {
+      wrap.appendChild(el("span", "gfw-pending", "no denominators to show"));
+      return;
+    }
+    if (EQ.a) { wrap.appendChild(document.createTextNode(EQ.a)); wrap.appendChild(br()); }
+    if (EQ.b) { wrap.appendChild(document.createTextNode(EQ.b)); wrap.appendChild(br()); }
+    wrap.appendChild(el("s", null, "one combined China censorship number"));
+    wrap.appendChild(el("span", "gfw-eq-x", "   never published here"));
+  }
+
+  /* =========================== net4people ================================= */
+  function renderEvents(n) {
+    var tally = byId("gfw-tally");
+    if (tally) {
+      clear(tally);
+      function stat(labelText, value) {
+        var s = el("span");
+        s.appendChild(document.createTextNode(labelText + " "));
+        s.appendChild(el("b", null, value));
+        return s;
+      }
+      var days = num(n.recent_days);
+      var rec = num(n.n_recent);
+      if (rec != null && days != null) tally.appendChild(stat("Issues in the last " + days + " days", rec));
+      else if (rec != null) tally.appendChild(stat("Issues in the recent window", rec));
+      var bl = num(n.n_blocking);
+      if (bl != null) tally.appendChild(stat("blocking", bl));
+      var ci = num(n.n_circumvention);
+      if (ci != null) tally.appendChild(stat("circumvention", ci));
+      if (typeof n.velocity_reading === "string" && n.velocity_reading) {
+        tally.appendChild(stat("chatter", n.velocity_reading));
+      }
+      var fr = el("span");
+      fr.appendChild(document.createTextNode("read "));
+      appendFreshness(fr, n.generated_at, STALE_H_N4P);
+      tally.appendChild(fr);
+    }
+
+    var wrap = byId("gfw-events");
+    if (!wrap) return;
+    clear(wrap);
+    var evs = Array.isArray(n.events) ? n.events : [];
+    if (!evs.length) {
+      var li0 = el("li");
+      li0.appendChild(el("span", "gfw-ev-t", "no events in this reading"));
+      wrap.appendChild(li0);
+    } else {
+      evs.forEach(function (e) {
+        var li = el("li");
+        var t = el("span", "gfw-ev-t");
+        var title = e.title || (e.number != null ? "issue " + e.number : "untitled issue");
+        if (typeof e.url === "string" && e.url.indexOf("https://") === 0) {
+          var a = el("a", null, title);
+          a.href = e.url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          t.appendChild(a);
+        } else {
+          t.appendChild(document.createTextNode(title));
+        }
+        li.appendChild(t);
+
+        if (typeof e.kind === "string" && e.kind) {
+          var kindCls = "gfw-ev-k";
+          if (e.kind === "blocking" || e.kind === "circumvention" || e.kind === "mixed") {
+            kindCls += " gfw-ev-k--" + e.kind;
+          }
+          li.appendChild(el("span", kindCls, e.kind));
+        }
+        if (e.china_tagged === true) li.appendChild(el("span", "gfw-ev-cn", "CN"));
+        if (typeof e.created_at === "string" && e.created_at.length >= 10) {
+          li.appendChild(el("span", "gfw-ev-d", e.created_at.slice(0, 10)));
+        }
+        wrap.appendChild(li);
+      });
+
+      /* The tally counts a recent window. The list is the most recent issues in
+         the feed, which reaches further back. Say so, rather than letting the
+         two look like the same set. */
+      var noteLi = el("li");
+      noteLi.appendChild(el("span", "gfw-ev-note",
+        "The counts above cover the recent window only. This list is the " +
+        NF.format(evs.length) + " most recent issues in the feed, which reaches further back."));
+      wrap.appendChild(noteLi);
+    }
+
+    addMethod("net4people/bbs public GitHub issues", n.source, n.scope, n.method);
+  }
+
+  /* =========================== method list ================================ */
+  var methodSeen = {};
+  function addMethod(title, source, scope, method) {
+    var dl = byId("gfw-method-dl");
+    if (!dl || methodSeen[title]) return;
+    methodSeen[title] = true;
+    if (!dl.hasAttribute("data-ready")) { clear(dl); dl.setAttribute("data-ready", ""); }
+
+    dl.appendChild(el("dt", null, title));
+    var dd = el("dd");
+    var lines = [];
+    if (typeof source === "string" && source) lines.push("Source: " + source);
+    if (typeof scope === "string" && scope) lines.push("Scope: " + scope);
+    if (typeof method === "string" && method) lines.push("Method: " + method);
+    if (!lines.length) lines.push("This feed did not state a source, scope or method.");
+    lines.forEach(function (line, i) {
+      if (i) dd.appendChild(br());
+      dd.appendChild(document.createTextNode(line));
+    });
+    dl.appendChild(dd);
+  }
+
+  /* =========================== boot ======================================= */
+  function load(url, onData, onError) {
+    var s = shell();
+    if (s && typeof s.loadReading === "function") return s.loadReading(url, onData, onError);
+    return fetch(url, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(onData)
+      .catch(onError);
+  }
+
+  function boot() {
+    load(URL_OONI, renderOoni, failPrimary);
+
+    load(URL_CP, renderCp, function (err) {
+      down(byId("gfw-inst-cp"), "Censored Planet cross check", URL_CP, err,
+        "The OONI reading stands on its own. The independent check is simply absent for " +
+        "this load, and no number is shown in its place.");
+      var wrap = byId("gfw-inst-cp");
+      if (wrap) wrap.className = "gfw-inst ps-p1";
+      renderEq();
+      down(byId("gfw-cp-notes"), "Censored Planet notes", URL_CP, err,
+        "The notes this feed ships could not be read, so none are shown.");
+    });
+
+    load(URL_N4P, renderEvents, function (err) {
+      var tally = byId("gfw-tally");
+      if (tally) {
+        clear(tally);
+        tally.appendChild(el("span", "gfw-warn", "companion event log did not load"));
+      }
+      var wrap = byId("gfw-events");
+      if (wrap) {
+        clear(wrap);
+        var li = el("li");
+        var note = el("span", "gfw-ev-note");
+        note.appendChild(document.createTextNode(
+          "The net4people event log could not be read, so no events are listed. "));
+        note.appendChild(el("code", null, URL_N4P + " : " + (err && err.message ? err.message : String(err))));
+        li.appendChild(note);
+        wrap.appendChild(li);
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
 </script>
 </body>
 </html>

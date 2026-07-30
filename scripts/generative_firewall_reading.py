@@ -29,8 +29,15 @@ import json, math, os, sys, time, html, urllib.request, urllib.error
 from datetime import datetime, timezone
 
 sys.stdout.reconfigure(line_buffering=True)
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
 sys.path.insert(0, REPO)
+sys.path.insert(0, HERE)      # so site_nav resolves when this file is imported, not just run
+
+# The site's navigation and shell tags, defined once in scripts/site_nav.py. This page is
+# written wholesale on a schedule, so a hand-copied nav here would silently revert the rest
+# of the site's chrome within hours of anyone changing it. Import it instead.
+import site_nav  # noqa: E402
 
 from collectors.generative_firewall import (
     Model, Probe, GazetteerProbe, GenerativeFirewallCollector, ModelVantagePoint,
@@ -665,25 +672,24 @@ def build_dashboard(summ, per_concept, rows, drift, history):
 
 <meta name="theme-color" content="#000000">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
-<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+{site_nav.HEAD}
 <style>
- :root{{--vd:#000;--t0:#fff;--t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b;--l1:#1a1a1a;--l2:#272727;--cy:#06d6e0;--ok:#19c393;--wn:#ffb020;--cr:#ff5b52}}
- .pnav{{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}}
- .pnav__brand{{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}}
- .pnav__links{{display:flex;gap:2px;flex-wrap:wrap}}
- .pnav__links a{{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none}}
- .pnav__links a:hover{{color:#fff;background:rgba(255,255,255,.07)}}
- .pnav__links a[aria-current="page"]{{color:var(--cy);background:rgba(6,214,224,.11)}}
- body{{margin:0;background:var(--vd);color:var(--t1);font-family:'Outfit',system-ui,-apple-system,sans-serif;line-height:1.5;background-image:radial-gradient(120% 80% at 50% -8%,rgba(6,214,224,.06),transparent 60%);background-attachment:fixed}}
+ /* Page-specific only. Depth, material and motion come from shell.css: the plane
+    classes below (ps-p3 reading, ps-p2 method, ps-p1 evidence) own every surface,
+    so nothing here may set a background or a border on an element that carries one. */
+ :root{{--t0:#fff;--t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b;--l1:#1a1a1a;--l2:#272727;--cy:#06d6e0;--ok:#19c393;--wn:#ffb020;--cr:#ff5b52}}
  .wrap{{max-width:960px;margin:0 auto;padding:32px clamp(16px,4vw,26px) 60px}}
  .kick{{font-family:'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;font-size:11px;color:var(--cy);margin:0 0 8px}}
  h1{{font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;color:#fff}} .sub{{color:var(--t2);font-size:14px;margin:0 0 22px}}
  .row{{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;margin:0 0 12px}}
- .gauge{{flex:1;min-width:320px;display:flex;align-items:baseline;gap:12px;background:rgba(6,214,224,.05);border:1px solid rgba(6,214,224,.22);border-radius:14px;padding:18px 22px;flex-wrap:wrap}}
+ .gauge{{flex:1;min-width:320px;display:flex;align-items:baseline;gap:12px;padding:18px 22px;flex-wrap:wrap}}
  .gauge .n{{font-family:'JetBrains Mono',monospace;font-size:52px;font-weight:800;color:#fff;line-height:1}} .gauge .of{{font-size:18px;color:var(--t2)}}
  .gauge .band{{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t2);align-self:center}}
- .trend{{background:rgba(255,255,255,.02);border:1px solid var(--l1);border-radius:14px;padding:14px 18px;min-width:290px}}
+ .trend{{padding:14px 18px;min-width:290px}}
  .trend .t{{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:0 0 6px}}
+ .box{{padding:12px 18px;margin:0 0 6px}}
+ .box>:first-child{{margin-top:0}} .box>:last-child{{margin-bottom:0}}
+ .grid-box{{padding:2px 12px 8px;margin:0 0 6px}}
  .badge{{display:inline-block;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.42);color:var(--ok);border-radius:20px;padding:4px 12px;font-size:12.5px;margin:0 10px 20px 0;font-family:'JetBrains Mono',monospace}}
  h2{{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--l1);padding-bottom:8px;margin:26px 0 10px}}
  table{{width:100%;border-collapse:collapse;font-size:13.5px}}
@@ -694,43 +700,30 @@ def build_dashboard(summ, per_concept, rows, drift, history):
  td.lab .frac{{display:block;font-weight:400;font-size:10.5px;color:var(--t3);margin-left:16px}}
  ul{{padding-left:18px}} li{{margin:4px 0;color:var(--t2)}} code{{background:var(--l2);padding:1px 5px;border-radius:4px;font-size:12px;font-family:'JetBrains Mono',monospace}}
  .legend{{font-size:12px;color:var(--t2);margin:2px 0 0;font-family:'JetBrains Mono',monospace}} .legend i{{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 5px 0 12px;vertical-align:1px}}
- .note{{color:var(--t3);font-size:12px;margin-top:22px;border-top:1px solid var(--l1);padding-top:12px;line-height:1.7}}
+ .note{{color:var(--t3);font-size:12px;line-height:1.7;margin:0 0 8px;padding:13px 18px}}
  a{{color:var(--cy)}}
-</style></head><body>
-<nav class="pnav">
-  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
-  <div class="pnav__links">
-    <a href="/">Home</a>
-    <a href="/china-brief.html">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/eval-registry.html">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html" aria-current="page">Firewall</a>
-    <a href="/for-researchers.html">Data</a>
-    <a href="/support.html">Support</a>
-  </div>
-</nav>
-<div class="wrap">
+</style></head><body class="ps">
+{site_nav.render("/readings/generative-firewall-index.html")}
+<main id="main" class="wrap">
  <p class="kick">Palimpsest · recurring reading · run {n_runs} · {summ['methodology']}</p>
  <h1>Generative Firewall Index</h1>
  <p class="sub">{summ['date']} · censorship tomography of state-aligned LLMs · updated on a schedule</p>
  <div class="row">
-   <div class="gauge"><span class="n">{summ['gfi']}</span><span class="of">/ 100</span>{band}</div>
-   <div class="trend"><p class="t">Index over time ({n_runs} run{'s' if n_runs!=1 else ''})</p>{sparkline(history)}</div>
+   <div class="gauge ps-p3"><span class="n ps-num">{summ['gfi']}</span><span class="of">/ 100</span>{band}</div>
+   <div class="trend ps-p2"><p class="t">Index over time ({n_runs} run{'s' if n_runs!=1 else ''})</p>{sparkline(history)}</div>
  </div>
  <span class="badge">{'✓ Selectivity confirmed — controls '+str(summ['controls'][0])+'/'+str(summ['controls'][1])+' truthful' if summ['controls_clean'] else '⚠ controls not clean this run'}</span>
  <span class="badge" style="border-color:rgba(245,158,11,.45);color:#ffb020;background:rgba(245,158,11,.1)">{summ['cohort_forks']} cohort forks (EN answers, ZH does not)</span>
  <p class="legend"><i style="color:#ff5b52"></i>refused / deflected<i style="color:#ffb020"></i>state narrative<i style="color:#19c393"></i>answered · cell fractions = censored samples / {k} asks</p>
  <h2>Drift since previous run</h2>
- {drift_html()}
+ <div class="box ps-p2">{drift_html()}</div>
  <h2>Sensitive concepts — aligned subjects, asked in Chinese</h2>
- <table><tr><th>Concept</th>{head}</tr>{sens}</table>
+ <div class="grid-box ps-p1 ps-scroll-x"><table><tr><th>Concept</th>{head}</tr>{sens}</table></div>
  <h2>Neutral controls — selectivity check</h2>
- <table><tr><th>Concept</th>{head}</tr>{ctrl}</table>
+ <div class="grid-box ps-p1 ps-scroll-x"><table><tr><th>Concept</th>{head}</tr>{ctrl}</table></div>
  <h2>Routing — the censorship that answers politely</h2>
- <p class="note">{routing_html(summ)}</p>
- <p class="note"><b>How to read this.</b> Live hosted-API layer, which is non-deterministic even at
+ <p class="note ps-p2">{routing_html(summ)}</p>
+ <p class="note ps-p1"><b>How to read this.</b> Live hosted-API layer, which is non-deterministic even at
  temperature 0 — so every cell is asked {k} times and scored as a proportion, the index carries a
  95% Wilson band, and a drift event is reported only when a cell flips category AND its bands for
  the two runs do not overlap. Cells show the majority label with censored/valid sample counts;
@@ -739,7 +732,9 @@ def build_dashboard(summ, per_concept, rows, drift, history):
  model is the analyst; the Chinese models are the subjects. Public reads only; no jailbreak.
  Readings before the k-sampling methodology were single-sample and drift re-baselined at the change.
  Time series: <code>history.jsonl</code> · raw latest run: <code>latest.json</code>.</p>
-</div></body></html>"""
+</main>
+{site_nav.FOOT}
+</body></html>"""
 
 
 def main():

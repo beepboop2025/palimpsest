@@ -1,0 +1,571 @@
+/* ============================================================================
+   PALIMPSEST SHELL — the layer system
+   ----------------------------------------------------------------------------
+   One stylesheet, one nav, one depth model, shared by every page on the site.
+   Layered on top of Tiktó (dashboards/assets/tikto.css), which owns the colour,
+   type and status tokens. This file owns DEPTH, MATERIAL and MOTION.
+
+   ── The design thesis ─────────────────────────────────────────────────────
+   Palimpsest is an instrument, not a brochure, so depth is not decoration here:
+   depth encodes epistemic distance. How far back a surface sits tells you how
+   far it is from something you can quote.
+
+     plane 0  ambient        the apparatus — atmosphere, never information
+     plane 1  evidence       raw files, probe lists, vantages, the receipts
+     plane 2  method         the components that produced a number
+     plane 3  reading        the number itself, the thing you may cite
+     plane 4  chrome         nav and controls, floating over all of it
+
+   Reading surfaces sit closest to the eye, are brightest, and carry the least
+   blur. Evidence sits furthest back. Scrolling moves you between planes rather
+   than merely down a document. That is the whole idea, and every rule below is
+   in service of it.
+
+   Motion follows Apple HIG: long gentle ease-outs, no bounce, 200–800ms, and
+   everything collapses to instant under prefers-reduced-motion. Nothing here
+   is load-bearing — the page is fully readable with CSS animation unsupported,
+   JS disabled, or motion reduced.
+   ========================================================================== */
+
+/* ============================ TOKENS ====================================== */
+:root {
+  /* ---- planes: each is a surface tint + a hairline + a shadow, together ----
+     Values sit on top of Tiktó's --tk-surface ramp so a page that already uses
+     Tiktó tokens does not fight this file. */
+  --ps-plane-0: transparent;
+  --ps-plane-1: rgba(255, 255, 255, 0.016);
+  --ps-plane-2: rgba(255, 255, 255, 0.030);
+  --ps-plane-3: rgba(255, 255, 255, 0.050);
+  --ps-plane-4: rgba(8, 10, 14, 0.72);
+
+  --ps-edge-1: rgba(255, 255, 255, 0.055);
+  --ps-edge-2: rgba(255, 255, 255, 0.085);
+  --ps-edge-3: rgba(255, 255, 255, 0.130);
+
+  /* Two-part shadows: a tight contact shadow plus a wide ambient one. A single
+     large blur reads as fog; the pair reads as an object resting on something. */
+  --ps-lift-1: 0 1px 2px rgba(0, 0, 0, .40), 0 4px 14px rgba(0, 0, 0, .28);
+  --ps-lift-2: 0 2px 4px rgba(0, 0, 0, .45), 0 14px 38px rgba(0, 0, 0, .40);
+  --ps-lift-3: 0 3px 6px rgba(0, 0, 0, .50), 0 28px 70px rgba(0, 0, 0, .55);
+
+  /* ---- materials: translucency + saturation boost, the frosted-glass recipe.
+     saturate() is what stops backdrop-filter looking like grey plastic. */
+  --ps-material: saturate(180%) blur(20px);
+  --ps-material-thin: saturate(160%) blur(10px);
+
+  /* ---- z-scale, named so nothing ever guesses a number again ---- */
+  --ps-z-ambient: 0;
+  --ps-z-content: 1;
+  --ps-z-raised: 10;
+  --ps-z-nav: 900;
+  --ps-z-flyout: 890;
+  --ps-z-scrim: 880;
+
+  /* ---- motion: Apple's curves. Standard is a long tail with no overshoot. --- */
+  --ps-ease: cubic-bezier(.28, .11, .32, 1);       /* the default: settles, never bounces */
+  --ps-ease-out: cubic-bezier(.16, 1, .3, 1);      /* entrances: fast start, long glide */
+  --ps-ease-in-out: cubic-bezier(.65, 0, .35, 1);  /* moves that leave and arrive */
+  --ps-t-fast: .18s;
+  --ps-t: .34s;
+  --ps-t-slow: .62s;
+  --ps-t-reveal: .78s;
+
+  --ps-nav-h: 52px;
+  --ps-measure: 68ch;   /* the line length prose is allowed to reach */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ps-t-fast: 1ms; --ps-t: 1ms; --ps-t-slow: 1ms; --ps-t-reveal: 1ms; }
+}
+
+/* Light theme: Tiktó flips its tokens on [data-tk-theme="light"]; the planes
+   have to flip too or every surface inverts into mud. */
+[data-tk-theme="light"] {
+  --ps-plane-1: rgba(12, 20, 34, 0.020);
+  --ps-plane-2: rgba(12, 20, 34, 0.036);
+  --ps-plane-3: rgba(255, 255, 255, 0.900);
+  --ps-plane-4: rgba(250, 251, 253, 0.780);
+  --ps-edge-1: rgba(12, 20, 34, 0.070);
+  --ps-edge-2: rgba(12, 20, 34, 0.110);
+  --ps-edge-3: rgba(12, 20, 34, 0.170);
+  --ps-lift-1: 0 1px 2px rgba(20, 30, 50, .06), 0 4px 14px rgba(20, 30, 50, .06);
+  --ps-lift-2: 0 2px 4px rgba(20, 30, 50, .08), 0 14px 38px rgba(20, 30, 50, .10);
+  --ps-lift-3: 0 3px 6px rgba(20, 30, 50, .10), 0 28px 70px rgba(20, 30, 50, .14);
+}
+
+/* ====================== CROSS-DOCUMENT TRANSITIONS ======================== */
+/* Page-to-page navigation cross-fades instead of flashing white. Supported
+   browsers only; everywhere else this rule is inert and navigation is normal. */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root) { animation: ps-vt-out .22s var(--ps-ease) both; }
+::view-transition-new(root) { animation: ps-vt-in .34s var(--ps-ease-out) both; }
+@keyframes ps-vt-out { to { opacity: 0; } }
+@keyframes ps-vt-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* The nav must not cross-fade with the page — it is furniture, it stays put. */
+.ps-nav { view-transition-name: ps-nav; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
+/* ============================ PAGE GROUND ================================= */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Anchor targets clear the sticky nav instead of hiding behind it. */
+:target, [id] { scroll-margin-top: calc(var(--ps-nav-h) + 18px); }
+
+body.ps {
+  margin: 0;
+  background: var(--tk-void, #000);
+  color: var(--tk-text-1, #e2e8f0);
+  font-family: var(--tk-font-display), system-ui, -apple-system, sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;               /* the page never scrolls sideways, ever */
+}
+
+/* ---- plane 0: the ambient field ------------------------------------------
+   Two fixed radial washes that drift very slightly with scroll. Fixed
+   attachment is what sells parallax without a single line of JS: the content
+   moves, the field does not. */
+body.ps::before {
+  content: "";
+  position: fixed;
+  inset: -10% -10% -10% -10%;
+  z-index: var(--ps-z-ambient);
+  pointer-events: none;
+  background:
+    radial-gradient(58% 42% at 50% -6%, rgba(6, 214, 224, .085), transparent 62%),
+    radial-gradient(46% 38% at 88% 12%, rgba(167, 139, 250, .050), transparent 60%),
+    radial-gradient(52% 44% at 6% 42%, rgba(6, 214, 224, .030), transparent 62%);
+  /* A faint grain kills the banding that big soft gradients get on OLED. */
+  opacity: .95;
+}
+
+/* Everything real sits above the field. */
+body.ps > *:not(.ps-nav) { position: relative; z-index: var(--ps-z-content); }
+
+.ps-wrap { max-width: 1020px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 28px); }
+.ps-wrap--narrow { max-width: 880px; }
+.ps-wrap--wide { max-width: 1240px; }
+
+/* ============================ NAVIGATION ================================== */
+/* Plane 4. Frosted, condenses on scroll, and groups 20-odd signals into five
+   flyouts because a flat link list stopped being navigable ten signals ago. */
+.ps-nav {
+  position: sticky; top: 0;
+  z-index: var(--ps-z-nav);
+  height: var(--ps-nav-h);
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 clamp(12px, 3.4vw, 26px);
+  background: var(--ps-plane-4);
+  border-bottom: 1px solid transparent;
+  font-family: var(--tk-font-mono), ui-monospace, monospace;
+  transition: border-color var(--ps-t) var(--ps-ease),
+              background var(--ps-t) var(--ps-ease),
+              box-shadow var(--ps-t) var(--ps-ease);
+}
+/* The frosting lives on a pseudo-element, not on .ps-nav itself, and that is
+   load-bearing rather than stylistic: backdrop-filter makes an element a
+   containing block for position:fixed descendants. With it on .ps-nav, the
+   mobile menu sheet and its scrim (both fixed, both children of the nav) would
+   resolve against a 52px-tall bar instead of the viewport — the scrim would
+   cover only the nav strip and the sheet would open in the wrong place.
+   On the pseudo, the blur is identical and the nav stops being a containing
+   block. Paints beneath the nav's own tint, which is what frosted glass is. */
+.ps-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  -webkit-backdrop-filter: var(--ps-material);
+  backdrop-filter: var(--ps-material);
+}
+/* Scrolled state — set by shell.js. The hairline and lift only appear once
+   there is content underneath to separate from. */
+.ps-nav[data-scrolled] {
+  border-bottom-color: var(--ps-edge-1);
+  box-shadow: var(--ps-lift-1);
+}
+
+.ps-nav__brand {
+  display: flex; align-items: center; gap: 9px;
+  color: var(--tk-text-0, #fff); font-weight: 700; font-size: 12px;
+  letter-spacing: .2em; text-decoration: none; white-space: nowrap;
+  transition: opacity var(--ps-t-fast) var(--ps-ease);
+}
+.ps-nav__brand:hover { opacity: .78; }
+.ps-nav__brand img { display: block; }
+
+.ps-nav__spacer { flex: 1; }
+
+.ps-nav__items { display: flex; align-items: center; gap: 1px; }
+
+/* A nav entry: either a plain link or a flyout trigger. */
+.ps-nav__item { position: relative; }
+.ps-nav__link {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--tk-text-2, #94a3b8);
+  font-size: 12px; letter-spacing: .02em;
+  padding: 7px 11px; border-radius: 8px;
+  text-decoration: none; white-space: nowrap;
+  background: transparent; border: 0; cursor: pointer;
+  font-family: inherit;
+  transition: color var(--ps-t-fast) var(--ps-ease),
+              background var(--ps-t-fast) var(--ps-ease);
+}
+.ps-nav__link:hover,
+.ps-nav__link:focus-visible { color: var(--tk-text-0, #fff); background: rgba(255,255,255,.07); }
+.ps-nav__link[aria-current="page"],
+.ps-nav__link[data-within] { color: var(--tk-live, #06d6e0); background: rgba(6,214,224,.11); }
+.ps-nav__link[aria-expanded="true"] { color: var(--tk-text-0,#fff); background: rgba(255,255,255,.09); }
+
+/* the disclosure chevron rotates rather than swapping glyphs */
+.ps-nav__chev {
+  width: 7px; height: 7px; flex: none; margin-left: 1px;
+  border-right: 1.4px solid currentColor; border-bottom: 1.4px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--ps-t) var(--ps-ease);
+}
+.ps-nav__link[aria-expanded="true"] .ps-nav__chev { transform: translateY(1px) rotate(-135deg); }
+
+/* ---- flyout: plane 4 material, opens beneath the bar ---- */
+.ps-flyout {
+  position: absolute; top: calc(100% + 7px); left: 50%;
+  z-index: var(--ps-z-flyout);
+  min-width: 290px; max-width: min(94vw, 380px);
+  padding: 9px;
+  background: var(--ps-plane-4);
+  -webkit-backdrop-filter: var(--ps-material);
+  backdrop-filter: var(--ps-material);
+  border: 1px solid var(--ps-edge-2);
+  border-radius: 14px;
+  box-shadow: var(--ps-lift-3);
+  /* closed state */
+  opacity: 0; visibility: hidden;
+  transform: translateX(-50%) translateY(-8px) scale(.97);
+  transform-origin: top center;
+  transition: opacity var(--ps-t) var(--ps-ease),
+              transform var(--ps-t) var(--ps-ease-out),
+              visibility 0s linear var(--ps-t);
+}
+.ps-nav__item[data-open] .ps-flyout {
+  opacity: 1; visibility: visible;
+  transform: translateX(-50%) translateY(0) scale(1);
+  transition-delay: 0s, 0s, 0s;
+}
+/* Keep the last flyouts on screen instead of bleeding off the right edge. */
+.ps-nav__item:nth-last-child(-n+2) .ps-flyout { left: auto; right: 0; transform: translateY(-8px) scale(.97); }
+.ps-nav__item:nth-last-child(-n+2)[data-open] .ps-flyout { transform: translateY(0) scale(1); }
+
+/* A two-column flyout for the pillar that has outgrown one list. Apple's
+   mega-menu move: widen rather than scroll, because a scrolling menu hides
+   exactly the items that are newest. */
+.ps-flyout--wide { min-width: 560px; max-width: min(94vw, 640px); }
+.ps-flyout__cols { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.ps-flyout--wide .ps-flyout__cols { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.ps-flyout__head {
+  font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--tk-text-4, #6f8098);
+  margin: 6px 0 3px; padding: 0 11px;
+}
+
+.ps-flyout__lede {
+  padding: 5px 11px 9px; margin: 0;
+  font-size: 11px; line-height: 1.5; color: var(--tk-text-3, #7d8ca3);
+  border-bottom: 1px solid var(--ps-edge-1); margin-bottom: 5px;
+}
+.ps-flyout a {
+  display: block; padding: 8px 11px; border-radius: 9px;
+  text-decoration: none; color: var(--tk-text-1, #e2e8f0);
+  transition: background var(--ps-t-fast) var(--ps-ease),
+              transform var(--ps-t-fast) var(--ps-ease);
+}
+.ps-flyout a:hover, .ps-flyout a:focus-visible { background: rgba(255,255,255,.075); }
+.ps-flyout a:active { transform: scale(.985); }
+.ps-flyout a[aria-current="page"] { background: rgba(6,214,224,.11); }
+.ps-flyout a b {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 600; color: var(--tk-text-0, #fff);
+  font-family: var(--tk-font-display);
+}
+.ps-flyout a span {
+  display: block; margin-top: 2px;
+  font-size: 11px; line-height: 1.45; color: var(--tk-text-3, #7d8ca3);
+  font-family: var(--tk-font-display);
+}
+/* "NEW" tag — earned by shipping, removed by hand when it stops being true. */
+.ps-tag {
+  font-family: var(--tk-font-mono); font-size: 8.5px; letter-spacing: .1em;
+  padding: 2px 5px; border-radius: 4px; flex: none;
+  background: rgba(6,214,224,.15); color: var(--tk-live, #06d6e0);
+  border: 1px solid rgba(6,214,224,.28); text-transform: uppercase;
+}
+.ps-tag--soon { background: rgba(100,116,139,.16); color: var(--tk-stale,#8593a8); border-color: rgba(100,116,139,.38); }
+
+/* ---- mobile: the bar collapses to a sheet ---- */
+.ps-nav__burger { display: none; }
+.ps-nav__scrim {
+  position: fixed; inset: 0; z-index: var(--ps-z-scrim);
+  background: rgba(0,0,0,.55);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--ps-t) var(--ps-ease), visibility 0s linear var(--ps-t);
+}
+body[data-ps-menu] .ps-nav__scrim { opacity: 1; visibility: visible; transition-delay: 0s; }
+
+@media (max-width: 940px) {
+  .ps-nav__burger {
+    display: inline-flex; flex-direction: column; justify-content: center; gap: 4px;
+    width: 34px; height: 30px; padding: 0 7px; border: 0; border-radius: 8px;
+    background: transparent; cursor: pointer;
+  }
+  .ps-nav__burger i {
+    display: block; height: 1.5px; background: var(--tk-text-1, #e2e8f0); border-radius: 2px;
+    transition: transform var(--ps-t) var(--ps-ease), opacity var(--ps-t-fast) var(--ps-ease);
+  }
+  body[data-ps-menu] .ps-nav__burger i:nth-child(1) { transform: translateY(5.5px) rotate(45deg); }
+  body[data-ps-menu] .ps-nav__burger i:nth-child(2) { opacity: 0; }
+  body[data-ps-menu] .ps-nav__burger i:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); }
+
+  .ps-nav__items {
+    position: fixed; top: var(--ps-nav-h); left: 0; right: 0;
+    max-height: calc(100dvh - var(--ps-nav-h));
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    z-index: var(--ps-z-flyout);
+    flex-direction: column; align-items: stretch; gap: 0;
+    padding: 10px clamp(12px, 4vw, 20px) 30px;
+    background: var(--ps-plane-4);
+    -webkit-backdrop-filter: var(--ps-material); backdrop-filter: var(--ps-material);
+    border-bottom: 1px solid var(--ps-edge-2);
+    box-shadow: var(--ps-lift-3);
+    transform: translateY(-12px); opacity: 0; visibility: hidden;
+    transition: opacity var(--ps-t) var(--ps-ease),
+                transform var(--ps-t) var(--ps-ease-out),
+                visibility 0s linear var(--ps-t);
+  }
+  body[data-ps-menu] .ps-nav__items {
+    transform: translateY(0); opacity: 1; visibility: visible; transition-delay: 0s;
+  }
+  .ps-nav__link { width: 100%; justify-content: space-between; padding: 11px 12px; font-size: 13px; }
+  /* On mobile the flyouts are not floating panels, they are inline sections. */
+  .ps-flyout {
+    position: static; opacity: 1; visibility: visible; transform: none;
+    min-width: 0; max-width: none; box-shadow: none; border: 0; border-radius: 0;
+    background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none;
+    padding: 0 0 6px 10px; margin: 0 0 4px;
+    border-left: 1px solid var(--ps-edge-1);
+    display: none;
+  }
+  .ps-nav__item[data-open] .ps-flyout { display: block; }
+  .ps-nav__item:nth-last-child(-n+2) .ps-flyout { right: auto; transform: none; }
+  .ps-flyout--wide { min-width: 0; max-width: none; }
+  .ps-flyout--wide .ps-flyout__cols { grid-template-columns: 1fr; gap: 0; }
+  .ps-flyout__lede { display: none; }
+}
+
+/* ============================ SURFACES ==================================== */
+/* The plane classes. A page composes depth out of these three and nothing else. */
+.ps-p1, .ps-p2, .ps-p3 {
+  border-radius: var(--tk-radius-lg, 14px);
+  border: 1px solid var(--ps-edge-1);
+  transition: transform var(--ps-t) var(--ps-ease-out),
+              border-color var(--ps-t) var(--ps-ease),
+              box-shadow var(--ps-t) var(--ps-ease),
+              background var(--ps-t) var(--ps-ease);
+}
+.ps-p1 { background: var(--ps-plane-1); box-shadow: none; }
+.ps-p2 { background: var(--ps-plane-2); border-color: var(--ps-edge-2); box-shadow: var(--ps-lift-1); }
+.ps-p3 {
+  background: var(--ps-plane-3); border-color: var(--ps-edge-2); box-shadow: var(--ps-lift-2);
+  -webkit-backdrop-filter: var(--ps-material-thin); backdrop-filter: var(--ps-material-thin);
+}
+
+/* Interactive surfaces rise toward the reader. 2px, not 8px — this is an
+   instrument, and a card that leaps looks like it is reporting something. */
+a.ps-p1:hover, a.ps-p2:hover, a.ps-p3:hover,
+.ps-lift:hover {
+  transform: translateY(-2px);
+  border-color: var(--ps-edge-3);
+  box-shadow: var(--ps-lift-2);
+}
+a.ps-p3:hover { box-shadow: var(--ps-lift-3); }
+.ps-lift:active, a.ps-p1:active, a.ps-p2:active, a.ps-p3:active { transform: translateY(0) scale(.995); }
+
+@media (prefers-reduced-motion: reduce) {
+  a.ps-p1:hover, a.ps-p2:hover, a.ps-p3:hover, .ps-lift:hover { transform: none; }
+}
+
+/* A hairline that fades at both ends, so sections separate without a hard rule. */
+.ps-rule {
+  height: 1px; border: 0; margin: 0;
+  background: linear-gradient(90deg, transparent, var(--ps-edge-2) 18%, var(--ps-edge-2) 82%, transparent);
+}
+
+/* ============================ SCROLL CHOREOGRAPHY ========================= */
+/* Native scroll-driven animation where the browser has it, IntersectionObserver
+   fallback where it does not, and instant everywhere under reduced-motion.
+   Content is visible by default; the animation only ever takes it away and
+   gives it back, so a failure mode is "no animation", never "no content". */
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ps-reveal {
+      animation: ps-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 2% cover 22%;
+    }
+    /* Sections that should feel like they settle into place from further back. */
+    .ps-reveal--deep {
+      animation: ps-rise-deep linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+    /* A band that dims and recedes as it leaves the top of the viewport —
+       the "page has depth" cue, borrowed straight from Apple product pages. */
+    .ps-recede {
+      animation: ps-recede linear both;
+      animation-timeline: view();
+      animation-range: exit -8% exit 100%;
+    }
+  }
+}
+
+@keyframes ps-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ps-rise-deep {
+  from { opacity: 0; transform: translateY(46px) scale(.972); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ps-recede {
+  from { opacity: 1; transform: none; }
+  to   { opacity: .35; transform: translateY(-14px) scale(.978); }
+}
+
+/* JS fallback: shell.js marks <html class="ps-js"> only when it will actually
+   drive the reveal, so no-JS never hides anything. */
+.ps-js .ps-fallback-reveal { opacity: 0; transform: translateY(22px); }
+.ps-js .ps-fallback-reveal.ps-in {
+  opacity: 1; transform: none;
+  transition: opacity var(--ps-t-reveal) var(--ps-ease-out),
+              transform var(--ps-t-reveal) var(--ps-ease-out);
+  transition-delay: var(--ps-d, 0ms);
+}
+
+/* Stagger for lists: a child's index becomes its delay, capped so a long list
+   never feels like it is loading. */
+.ps-stagger > * { --ps-d: calc(var(--ps-i, 0) * 46ms); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-js .ps-fallback-reveal { opacity: 1; transform: none; }
+}
+
+/* ---- pinned narrative: a heading holds while its evidence scrolls past ---- */
+.ps-pin { position: sticky; top: calc(var(--ps-nav-h) + 22px); align-self: start; }
+
+/* A two-column "claim on the left, evidence on the right" band. Collapses to a
+   single column on narrow screens, where the pin is released. */
+.ps-band { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: clamp(20px, 4vw, 52px); }
+@media (max-width: 860px) {
+  .ps-band { grid-template-columns: 1fr; gap: 18px; }
+  .ps-pin { position: static; }
+}
+
+/* ============================ TYPE ======================================== */
+.ps-kicker {
+  font-family: var(--tk-font-mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: .26em; text-transform: uppercase;
+  color: var(--tk-live, #06d6e0); margin: 0 0 12px;
+}
+.ps-h1 {
+  font-size: clamp(32px, 5.6vw, 54px); line-height: 1.03; font-weight: 800;
+  letter-spacing: -.028em; margin: 0 0 14px; color: var(--tk-text-0, #fff);
+  text-wrap: balance;
+}
+.ps-h2 {
+  font-size: clamp(22px, 3.2vw, 31px); line-height: 1.12; font-weight: 700;
+  letter-spacing: -.02em; margin: 0 0 10px; color: var(--tk-text-0, #fff);
+  text-wrap: balance;
+}
+.ps-lede { font-size: clamp(15px, 1.6vw, 17.5px); color: var(--tk-text-2, #94a3b8); max-width: var(--ps-measure); margin: 0 0 26px; text-wrap: pretty; }
+.ps-label {
+  font-family: var(--tk-font-mono); font-size: 10.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--tk-text-3, #7d8ca3); margin: 0 0 12px;
+}
+.ps-section-head {
+  font-family: var(--tk-font-mono); font-size: 11.5px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--tk-text-3, #7d8ca3);
+  padding-bottom: 9px; margin: 54px 0 16px;
+  border-bottom: 1px solid var(--ps-edge-1);
+}
+.ps-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+/* ============================ CONTROLS ==================================== */
+.ps-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--tk-font-mono); font-size: 12.5px; font-weight: 600;
+  padding: 9px 16px; border-radius: 9px; border: 1px solid transparent;
+  text-decoration: none; cursor: pointer;
+  background: var(--tk-live, #06d6e0); color: #04141a;
+  transition: transform var(--ps-t-fast) var(--ps-ease),
+              filter var(--ps-t-fast) var(--ps-ease),
+              border-color var(--ps-t-fast) var(--ps-ease),
+              color var(--ps-t-fast) var(--ps-ease);
+}
+.ps-btn:hover { filter: brightness(1.09); transform: translateY(-1px); }
+.ps-btn:active { transform: translateY(0) scale(.985); }
+.ps-btn--ghost {
+  background: transparent; color: var(--tk-text-1, #e2e8f0); border-color: var(--ps-edge-3);
+}
+.ps-btn--ghost:hover { border-color: var(--tk-live, #06d6e0); color: var(--tk-live, #06d6e0); filter: none; }
+
+@media (prefers-reduced-motion: reduce) { .ps-btn:hover { transform: none; } }
+
+/* A live dot that actually pulses, because "live" is a claim worth animating. */
+.ps-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: currentColor; box-shadow: 0 0 0 0 currentColor;
+}
+.ps-dot--live { animation: ps-pulse 2.6s var(--ps-ease-in-out) infinite; }
+@keyframes ps-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,.30); }
+  60%  { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+@media (prefers-reduced-motion: reduce) { .ps-dot--live { animation: none; } }
+
+/* ============================ ACCESSIBILITY =============================== */
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--tk-live, #06d6e0);
+  outline-offset: 2px; border-radius: 6px;
+}
+.ps-skip {
+  position: absolute; left: 10px; top: -60px; z-index: 1000;
+  padding: 9px 15px; border-radius: 9px;
+  background: var(--tk-live, #06d6e0); color: #04141a;
+  font-family: var(--tk-font-mono); font-size: 12.5px; font-weight: 700; text-decoration: none;
+  transition: top var(--ps-t) var(--ps-ease);
+}
+.ps-skip:focus { top: 9px; }
+.ps-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Wide content (tables, charts) scrolls inside its own box. The page body must
+   never scroll horizontally — that rule is enforced by body.ps overflow-x too. */
+.ps-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+
+/* Long pages: let the browser skip layout for offscreen sections. */
+.ps-defer { content-visibility: auto; contain-intrinsic-size: auto 620px; }
+
+/* Print: strip every plane back to paper. */
+@media print {
+  body.ps::before, .ps-nav { display: none !important; }
+  .ps-p1, .ps-p2, .ps-p3 { box-shadow: none !important; background: none !important; border-color: #ccc !important; }
+  .ps-reveal, .ps-fallback-reveal { opacity: 1 !important; transform: none !important; animation: none !important; }
+}

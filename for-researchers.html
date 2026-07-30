@@ -25,81 +25,212 @@
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
 
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
-  /* shared site nav (identical on every page) */
-  .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
-  .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
-  .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
-  .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-  .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
+  /* Page-local only. Nothing here redefines a --tk-* token or a .ps-* class.
+     The nav, the planes, the type scale and the motion come from the shell;
+     this file only styles the four things that are specific to a schema page:
+     the signal table, the file cards, the status pills and the code blocks. */
 
-  body{margin:0;background:var(--tk-void,#000);color:var(--tk-text-1,#e2e8f0);font-family:var(--tk-font-display),system-ui,-apple-system,sans-serif;line-height:1.55;background-image:radial-gradient(120% 80% at 50% -8%,rgba(6,214,224,.06),transparent 60%);background-attachment:fixed}
-  .wrap{max-width:880px;margin:0 auto;padding:40px clamp(18px,4vw,26px) 72px}
-  .kick{font-family:var(--tk-font-mono);letter-spacing:.26em;text-transform:uppercase;font-size:11px;color:var(--tk-live,#06d6e0);margin:0 0 12px}
-  h1{font-family:var(--tk-font-display);font-size:clamp(30px,5vw,40px);line-height:1.06;margin:0 0 12px;font-weight:800;letter-spacing:-.02em;color:#fff}
-  .lede{font-size:16px;color:var(--tk-text-2,#94a3b8);margin:0 0 22px;max-width:690px}
-  h2{font-family:var(--tk-font-mono);font-size:12px;color:var(--tk-text-3,#64748b);border-bottom:1px solid var(--tk-line-1,#1a1a1a);padding-bottom:8px;margin:40px 0 14px;letter-spacing:.14em;text-transform:uppercase}
-  p{color:var(--tk-text-2,#94a3b8);font-size:14.5px;max-width:700px}
-  a{color:var(--tk-live,#06d6e0)}
-  .nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 28px}
-  .btn{display:inline-block;background:var(--tk-live,#06d6e0);color:#04141a;font-weight:700;text-decoration:none;padding:9px 15px;border-radius:8px;font-size:13px;font-family:var(--tk-font-mono);letter-spacing:.02em}
-  .btn.ghost{background:transparent;color:var(--tk-text-1);border:1px solid var(--tk-line-3,#383838)}
-  .btn.ghost:hover{border-color:var(--tk-live);color:var(--tk-live)}
-  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 8px}
-  table{width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:13.5px}
-  .tscroll table{margin:0;min-width:620px}
-  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--tk-line-1,#1a1a1a);vertical-align:top}
-  th{color:var(--tk-text-3,#64748b);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-family:var(--tk-font-mono)}
-  td b{color:#fff}
-  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em;font-family:var(--tk-font-mono)}
-  .pill.live{background:rgba(6,214,224,.12);color:#06d6e0;border:1px solid rgba(6,214,224,.4)}
-  .pill.off{background:rgba(245,158,11,.12);color:#ffb020;border:1px solid rgba(245,158,11,.4)}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0}
-  @media(max-width:640px){.grid{grid-template-columns:1fr}}
-  .file{background:rgba(255,255,255,.02);border:1px solid var(--tk-line-1,#1a1a1a);border-radius:10px;padding:13px 15px;transition:border-color .15s}
-  .file:hover{border-color:var(--tk-line-3,#383838)}
-  .file a{font-weight:700;font-size:14px;word-break:break-all;font-family:var(--tk-font-mono)}
-  .file .d{color:var(--tk-text-3,#64748b);font-size:12.5px;margin-top:3px}
-  code,.mono{font-family:var(--tk-font-mono),ui-monospace,Menlo,monospace}
-  code{background:var(--tk-line-2,#272727);padding:1px 5px;border-radius:4px;font-size:12px}
-  pre{background:#0a0b0e;border:1px solid var(--tk-line-1,#1a1a1a);border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.5px;color:var(--tk-text-1,#e2e8f0);line-height:1.5;font-family:var(--tk-font-mono)}
-  ul{padding-left:18px} li{margin:7px 0;color:var(--tk-text-2,#94a3b8);font-size:14px;max-width:700px}
-  .note{background:rgba(6,214,224,.05);border:1px solid rgba(6,214,224,.2);border-radius:12px;padding:16px 18px;margin:14px 0;font-size:14px;color:var(--tk-text-1,#e2e8f0)}
-  .foot{color:var(--tk-text-3,#64748b);font-size:12.5px;margin-top:42px;border-top:1px solid var(--tk-line-1,#1a1a1a);padding-top:16px;max-width:700px;font-family:var(--tk-font-mono);line-height:1.7}
-  b{color:var(--tk-text-1,#e2e8f0)}
+  .fr-head { padding: clamp(32px, 6vw, 62px) 0 2px; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 0 6px; }
+
+  /* ---- prose. Scoped to unclassed elements so a .ps-* class always wins. ---- */
+  .fr p:not([class]) { color: var(--tk-text-2, #94a3b8); font-size: 14.5px; line-height: 1.62; max-width: 72ch; }
+  .fr ul:not([class]) { padding-left: 18px; margin: 8px 0 0; }
+  .fr li { margin: 8px 0; color: var(--tk-text-2, #94a3b8); font-size: 14px; line-height: 1.62; max-width: 72ch; }
+  .fr b { color: var(--tk-text-1, #e2e8f0); }
+  .fr a { color: var(--tk-live, #06d6e0); }
+  .fr .links { font-size: 13px; line-height: 2.1; color: var(--tk-text-3, #7d8ca3); max-width: 74ch; margin-top: 12px; }
+  .fr [hidden] { display: none !important; }
+
+  .fr code {
+    font-family: var(--tk-font-mono), ui-monospace, Menlo, monospace;
+    background: rgba(255, 255, 255, .06); padding: 1px 5px; border-radius: 4px;
+    font-size: 12px; color: var(--tk-text-1, #e2e8f0);
+  }
+  .fr pre {
+    padding: 14px 16px; overflow-x: auto; margin: 12px 0;
+    font-size: 12.5px; line-height: 1.55; color: var(--tk-text-1, #e2e8f0);
+    font-family: var(--tk-font-mono), ui-monospace, monospace;
+  }
+
+  /* ---- the signal table: evidence, so it stays on plane 1 ---- */
+  .fr-table { margin: 6px 0 8px; }
+  .fr table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 0; }
+  .fr-table table { min-width: 660px; }
+  .fr th, .fr td { text-align: left; padding: 11px 13px; border-bottom: 1px solid var(--ps-edge-1); vertical-align: top; }
+  .fr tr:last-child td { border-bottom: 0; }
+  .fr th {
+    color: var(--tk-text-4, #6f8098); font-weight: 600; font-size: 10px;
+    letter-spacing: .14em; text-transform: uppercase;
+    font-family: var(--tk-font-mono); white-space: nowrap;
+  }
+  .fr td { color: var(--tk-text-2, #94a3b8); line-height: 1.55; }
+  .fr td b { color: var(--tk-text-0, #fff); }
+
+  /* Status is never colour alone: the pill carries the word too. */
+  .pill {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 9px;
+    border-radius: 999px; letter-spacing: .08em;
+    font-family: var(--tk-font-mono); white-space: nowrap;
+  }
+  .pill.live { background: rgba(6, 214, 224, .12); color: var(--tk-live, #06d6e0); border: 1px solid rgba(6, 214, 224, .4); }
+  .pill.off { background: rgba(245, 158, 11, .12); color: var(--tk-warning, #ffb020); border: 1px solid rgba(245, 158, 11, .4); }
+
+  /* ---- the published files themselves: the receipts, plane 1 ---- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 0; }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  .file { padding: 13px 15px; }
+  .file a { font-weight: 700; font-size: 13.5px; word-break: break-all; font-family: var(--tk-font-mono); text-decoration: none; }
+  .file a:hover { text-decoration: underline; }
+  .file .d { color: var(--tk-text-3, #7d8ca3); font-size: 12.5px; margin-top: 4px; line-height: 1.55; }
+  .file .d code { font-size: 11px; }
+
+  /* ---- the scope caveat: loud, and it stays next to the data it qualifies ---- */
+  .note {
+    padding: 16px 18px; margin: 14px 0; max-width: 78ch;
+    border-left: 3px solid var(--tk-live, #06d6e0);
+    font-size: 14px; line-height: 1.65; color: var(--tk-text-1, #e2e8f0);
+  }
+
+  /* ---- forecast ledger: the reading on plane 3, its workings on plane 1 ---- */
+  .fc-reading { padding: clamp(18px, 3vw, 26px); margin-top: 14px; }
+  .fr .fc-head { font-size: 14px; line-height: 1.62; color: var(--tk-text-1, #e2e8f0); margin: 0 0 20px; max-width: 74ch; }
+  .fc-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 3vw, 30px); }
+  @media (max-width: 700px) { .fc-figs { grid-template-columns: 1fr; gap: 20px; } }
+  .fc-fig .n {
+    font-size: clamp(28px, 5vw, 44px); font-weight: 800; line-height: 1;
+    letter-spacing: -.03em; color: var(--tk-text-0, #fff);
+  }
+  .fc-fig .l {
+    font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--tk-text-3, #7d8ca3); margin-top: 11px;
+  }
+  .fc-fig .d { font-size: 12.5px; line-height: 1.5; color: var(--tk-text-2, #94a3b8); margin-top: 6px; }
+  .fc-fresh {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3, #7d8ca3);
+    margin: 22px 0 0; padding-top: 15px; border-top: 1px solid var(--ps-edge-1);
+  }
+  .fc-fresh[data-stale] { color: var(--tk-warning, #ffb020); }
+  .fc-fresh .ps-dot { color: var(--tk-live, #06d6e0); }
+  .fc-fresh[data-stale] .ps-dot { color: var(--tk-warning, #ffb020); }
+
+  .fc-err { padding: 15px 17px; margin-top: 10px; border-left: 3px solid var(--tk-warning, #ffb020); }
+  .fr .fc-err p { margin: 0; font-family: var(--tk-font-mono); font-size: 12px; line-height: 1.65; color: var(--tk-warning, #ffb020); max-width: 76ch; }
+  .fc-err a { color: inherit; }
+
+  .fc-table { margin-top: 10px; }
+  .fc-table table { min-width: 700px; }
+  .fc-table td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .fc-note { padding: 16px 18px; margin-top: 10px; }
+  .fr .fc-note h3 {
+    font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--tk-text-4, #6f8098); margin: 16px 0 7px; font-weight: 600;
+  }
+  .fr .fc-note h3:first-child { margin-top: 0; }
+  .fr .fc-note p { margin: 0 0 8px; font-size: 12px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3); max-width: 78ch; }
+  .fr .fc-note ul { margin: 0; padding-left: 17px; }
+  .fr .fc-note li { margin: 5px 0; font-size: 12px; line-height: 1.6; color: var(--tk-text-3, #7d8ca3); max-width: 78ch; }
+
+  .foot {
+    color: var(--tk-text-4, #6f8098); font-size: 11.5px; margin: 46px 0 60px;
+    border-top: 1px solid var(--ps-edge-1); padding-top: 18px; max-width: 76ch;
+    font-family: var(--tk-font-mono); line-height: 1.75;
+  }
 </style>
 </head>
-<body>
-<nav class="pnav">
-  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
-  <div class="pnav__links">
-    <a href="/">Home</a>
-    <a href="/china-brief.html">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/eval-registry.html">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html">Firewall</a>
-    <a href="/for-researchers.html" aria-current="page">Data</a>
-    <a href="/support.html">Support</a>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2" data-within="">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html" aria-current="page">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
   </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
 </nav>
-<div class="wrap">
+<!--/PS_NAV-->
 
-  <p class="kick">For researchers, journalists and analysts</p>
-  <h1>Palimpsest data and methods</h1>
-  <p class="lede">Palimpsest is an open, public-good observatory that measures how authoritarian states, and their state-aligned AI models, censor. It treats deletion as data and watches the censor, never the censored. Everything below is free to use and built to be cited. If a number is here, its raw evidence is here too.</p>
+<main id="main" class="ps-wrap fr">
 
-  <div class="nav">
-    <a class="btn" href="dashboards/ddti_observatory.html">Open the observatory</a>
-    <a class="btn ghost" href="readings/">Browse all data</a>
-    <a class="btn ghost" href="https://github.com/beepboop2025/palimpsest">Source code</a>
+  <header class="fr-head ps-recede">
+  <p class="ps-kicker">For researchers, journalists and analysts</p>
+  <h1 class="ps-h1">Palimpsest data and methods</h1>
+  <p class="ps-lede">Palimpsest is an open, public-good observatory that measures how authoritarian states, and their state-aligned AI models, censor. It treats deletion as data and watches the censor, never the censored. Everything below is free to use and built to be cited. If a number is here, its raw evidence is here too.</p>
+
+  <div class="btn-row">
+    <a class="ps-btn" href="/dashboards/ddti_observatory.html">Open the observatory</a>
+    <a class="ps-btn ps-btn--ghost" href="/readings/">Browse all data</a>
+    <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
   </div>
 
-  <h2>Live signals</h2>
+  </header>
+
+  <section class="ps-defer" id="signals">
+  <h2 class="ps-section-head">Live signals</h2>
   <p>Each signal recomputes on a fixed schedule and publishes a machine readable file plus a committed time series. Signals that would need a network vantage inside China are held back on purpose until that measurement can be verified, rather than published as a guess.</p>
-  <div class="tscroll">
+  <div class="fr-table ps-p1 ps-scroll-x ps-reveal">
   <table>
     <tr><th>Signal</th><th>What it measures</th><th>Source</th><th>Updated</th><th>Status</th></tr>
     <tr>
@@ -161,33 +292,39 @@
   </table>
   </div>
 
-  <h2>Get the data</h2>
+  </section>
+
+  <section class="ps-defer" id="data">
+  <h2 class="ps-section-head">Get the data</h2>
   <p>All files are plain JSON. The <code>*-latest.json</code> files hold the current snapshot; the <code>*-history.jsonl</code> files are append-only time series, one compact record per run, so you can chart a signal over time.</p>
-  <div class="grid">
-    <div class="file"><a href="readings/ddti-latest.json">ddti-latest.json</a><div class="d">DDTI snapshot: ranked terms with threat, attention, novelty, is_new, and source samples with links.</div></div>
-    <div class="file"><a href="readings/ddti-history.jsonl">ddti-history.jsonl</a><div class="d">DDTI time series: generated_at, n_terms, top_term, top_threat per run.</div></div>
-    <div class="file"><a href="readings/latest.json">latest.json</a><div class="d">Generative Firewall raw run: per-model, per-concept refusals, controls, and the GFI value.</div></div>
-    <div class="file"><a href="readings/history.jsonl">history.jsonl</a><div class="d">Generative Firewall time series: date, gfi, censored, total, controls.</div></div>
-    <div class="file"><a href="readings/gdelt-latest.json">gdelt-latest.json</a><div class="d">GDELT cross-signal: each DDTI term with global coverage volume and a containment or blackout label.</div></div>
-    <div class="file"><a href="readings/gdelt-history.jsonl">gdelt-history.jsonl</a><div class="d">GDELT time series: n_terms, containment and blackout counts, top term.</div></div>
-    <div class="file"><a href="readings/github-refuge-latest.json">github-refuge-latest.json</a><div class="d">GitHub-refuge: each watched mirror with status, pressure likelihood, fork and star novelty, and any matched takedown notices.</div></div>
-    <div class="file"><a href="readings/github-refuge-history.jsonl">github-refuge-history.jsonl</a><div class="d">GitHub-refuge time series: repos watched, present, and pressure events per run.</div></div>
-    <div class="file"><a href="readings/eval-registry.jsonl">eval-registry.jsonl</a><div class="d">The registry chain itself: every pre-registration and sealed run, hash-chained in order. This file is the tamper-evident record; verify it with <code>scripts/verify_eval_registry.py</code>.</div></div>
-    <div class="file"><a href="readings/eval-registry-latest.json">eval-registry-latest.json</a><div class="d">Registry summary: attestation counts, models audited, recent runs, Merkle root, head hash, verified flag.</div></div>
-    <div class="file"><a href="readings/refusal-drift-latest.json">refusal-drift-latest.json</a><div class="d">Frontier refusal drift: per-model suppression on the frozen benign probe set, refused probes, and drift versus the prior run.</div></div>
-    <div class="file"><a href="readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a><div class="d">Composite Erasure Index snapshot: per-layer readings (network, narrative, model) and the mean of reporting layers.</div></div>
-    <div class="file"><a href="readings/erasure-ledger.jsonl">erasure-ledger.jsonl</a><div class="d">The sealed erasure ledger: every observatory reading, hash-chained; verify with <code>scripts/verify_ledger.py</code>.</div></div>
-    <div class="file"><a href="readings/ooni-gfw-latest.json">ooni-gfw-latest.json</a><div class="d">GFW network signal: independent side-channel blocking measurements from OONI open data.</div></div>
-    <div class="file"><a href="readings/board-alarm-latest.json">board-alarm-latest.json</a><div class="d">What the board as a whole concludes, with the multiplicity paid for: e-BH selection across every monitored signal (false-discovery control under arbitrary dependence), a board-wide merged e-value, and how many of the network/content/model layers are elevated at once. Twelve per-signal guarantees are not a board guarantee; this file is the board one.</div></div>
-    <div class="file"><a href="readings/coverage-guard-latest.json">coverage-guard-latest.json</a><div class="d">Whether each signal's movement survives conditioning on its own sample size. A censorship rate can fall because probes thinned out rather than because censorship eased; verdicts are CONFIRMED, COVERAGE_CONFOUNDED or NO_MOVE, each with the fit and the raw-vs-conditional effect size. Check this before quoting any signal as a change.</div></div>
-    <div class="file"><a href="readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a><div class="d">Our own scored track record. Every signal forecast one step ahead from only its past (strictly prequential, never refit with hindsight), scored by the Weighted Interval Score against what actually arrived. Includes empirical coverage against nominal, skill against a baseline, and the worst misses by date — the misses are not removable.</div></div>
-    <div class="file"><a href="readings/cross-layer-latest.json">cross-layer-latest.json</a><div class="d">Does one layer of the apparatus move before another? Lead/lag between network, content and model signals against a circular-shift null on differenced series, Holm-corrected. Reports timing, never cause. Publishes the false-positive rates of the naive test (98%) and of this one (8%) so the choice of null is auditable.</div></div>
-    <div class="file"><a href="readings/event-flags-latest.json">event-flags-latest.json</a><div class="d">Per-signal anytime-valid change alarms: two-sided conformal Shiryaev-Roberts e-detectors, so a signal collapsing flags as well as one rising, with direction and effect size on every reading.</div></div>
-    <div class="file"><a href="readings/vantage-fusion-latest.json">vantage-fusion-latest.json</a><div class="d">OONI and Censored Planet fused into one GFW reading as an INTERVAL, not a point. When the two methods diverge the range widens and <code>single_rate_quotable</code> goes false, because a midpoint of two numbers that disagree is not an estimate.</div></div>
+  <div class="grid ps-stagger">
+    <div class="file ps-p1 ps-reveal"><a href="readings/ddti-latest.json">ddti-latest.json</a><div class="d">DDTI snapshot: ranked terms with threat, attention, novelty, is_new, and source samples with links.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/ddti-history.jsonl">ddti-history.jsonl</a><div class="d">DDTI time series: generated_at, n_terms, top_term, top_threat per run.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/latest.json">latest.json</a><div class="d">Generative Firewall raw run: per-model, per-concept refusals, controls, and the GFI value.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/history.jsonl">history.jsonl</a><div class="d">Generative Firewall time series: date, gfi, censored, total, controls.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/gdelt-latest.json">gdelt-latest.json</a><div class="d">GDELT cross-signal: each DDTI term with global coverage volume and a containment or blackout label.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/gdelt-history.jsonl">gdelt-history.jsonl</a><div class="d">GDELT time series: n_terms, containment and blackout counts, top term.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/github-refuge-latest.json">github-refuge-latest.json</a><div class="d">GitHub-refuge: each watched mirror with status, pressure likelihood, fork and star novelty, and any matched takedown notices.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/github-refuge-history.jsonl">github-refuge-history.jsonl</a><div class="d">GitHub-refuge time series: repos watched, present, and pressure events per run.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/eval-registry.jsonl">eval-registry.jsonl</a><div class="d">The registry chain itself: every pre-registration and sealed run, hash-chained in order. This file is the tamper-evident record; verify it with <code>scripts/verify_eval_registry.py</code>.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/eval-registry-latest.json">eval-registry-latest.json</a><div class="d">Registry summary: attestation counts, models audited, recent runs, Merkle root, head hash, verified flag.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/refusal-drift-latest.json">refusal-drift-latest.json</a><div class="d">Frontier refusal drift: per-model suppression on the frozen benign probe set, refused probes, and drift versus the prior run.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a><div class="d">Composite Erasure Index snapshot: per-layer readings (network, narrative, model) and the mean of reporting layers.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/erasure-ledger.jsonl">erasure-ledger.jsonl</a><div class="d">The sealed erasure ledger: every observatory reading, hash-chained; verify with <code>scripts/verify_ledger.py</code>.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/ooni-gfw-latest.json">ooni-gfw-latest.json</a><div class="d">GFW network signal: independent side-channel blocking measurements from OONI open data.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/board-alarm-latest.json">board-alarm-latest.json</a><div class="d">What the board as a whole concludes, with the multiplicity paid for: e-BH selection across every monitored signal (false-discovery control under arbitrary dependence), a board-wide merged e-value, and how many of the network/content/model layers are elevated at once. Twelve per-signal guarantees are not a board guarantee; this file is the board one.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/coverage-guard-latest.json">coverage-guard-latest.json</a><div class="d">Whether each signal's movement survives conditioning on its own sample size. A censorship rate can fall because probes thinned out rather than because censorship eased; verdicts are CONFIRMED, COVERAGE_CONFOUNDED or NO_MOVE, each with the fit and the raw-vs-conditional effect size. Check this before quoting any signal as a change.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a><div class="d">Our own scored track record. Every signal forecast one step ahead from only its past (strictly prequential, never refit with hindsight), scored by the Weighted Interval Score against what actually arrived. Includes empirical coverage against nominal, skill against a baseline, and the worst misses by date — the misses are not removable.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/cross-layer-latest.json">cross-layer-latest.json</a><div class="d">Does one layer of the apparatus move before another? Lead/lag between network, content and model signals against a circular-shift null on differenced series, Holm-corrected. Reports timing, never cause. Publishes the false-positive rates of the naive test (98%) and of this one (8%) so the choice of null is auditable.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/event-flags-latest.json">event-flags-latest.json</a><div class="d">Per-signal anytime-valid change alarms: two-sided conformal Shiryaev-Roberts e-detectors, so a signal collapsing flags as well as one rising, with direction and effect size on every reading.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/vantage-fusion-latest.json">vantage-fusion-latest.json</a><div class="d">OONI and Censored Planet fused into one GFW reading as an INTERVAL, not a point. When the two methods diverge the range widens and <code>single_rate_quotable</code> goes false, because a midpoint of two numbers that disagree is not an estimate.</div></div>
   </div>
   <p style="margin-top:10px">A machine-readable summary for AI agents lives at <a href="/llms.txt">llms.txt</a>. The full directory is at <a href="readings/">/readings</a>.</p>
 
-  <h2>How it is measured</h2>
+  </section>
+
+  <section class="ps-defer" id="method">
+  <h2 class="ps-section-head">How it is measured</h2>
   <ul>
     <li><b>Deletion as data.</b> Palimpsest reads public censorship records, ranks what is being scrubbed by a recency-weighted attention score, and flags terms that are newly sensitive against their own baseline. The DDTI method and its selectivity and novelty maths are documented in full.</li>
     <li><b>The generation layer.</b> The Generative Firewall probes state-aligned models on sensitive prompts in Chinese and English, and compares them to neutral Western control models, so a refusal reads as deliberate policy rather than a generic safety filter.</li>
@@ -202,21 +339,73 @@
     <a href="https://github.com/beepboop2025/palimpsest/blob/main/SAFETY.md">SAFETY.md</a>
   </p>
 
-  <h2>Scope and honest limits</h2>
-  <div class="note">Palimpsest publishes only what it can stand behind. It measures censor <b>attention</b>, which topics draw the most suppression effort, not a full deletion rate. The <b>velocity</b> signal, how fast a specific post is removed, needs a network vantage inside China to time deletions to the minute. Until that vantage is in place and verified, velocity stays suppressed by design. Nothing on this site is a modelled guess dressed up as a measurement.</div>
+  </section>
+
+  <section class="ps-defer" id="forecast">
+  <h2 class="ps-section-head">Our own misses</h2>
+  <p>Every signal on this board is also forecast one step ahead from only its own past, never refit with hindsight, and then scored against what actually arrived. The uncomfortable half is the point: the published interval either covered the next reading or it did not, and both counts are here. A forecast record with the misses taken out is worth nothing.</p>
+
+  <div class="fc-reading ps-p3 ps-reveal">
+    <p class="fc-head" data-fc="headline">The scored track record is read from <a href="readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a> when this page loads. Figures appear below once that file is read. If it cannot be read, this panel says so instead of showing a number.</p>
+
+    <div class="fc-figs" data-fc="figs" hidden>
+      <div class="fc-fig" data-fc="fig-forecasts" hidden>
+        <div class="n ps-num" data-fc="n-forecasts"></div>
+        <div class="l">forecasts scored</div>
+        <div class="d" data-fc="d-forecasts"></div>
+      </div>
+      <div class="fc-fig" data-fc="fig-coverage" hidden>
+        <div class="n ps-num" data-fc="n-coverage"></div>
+        <div class="l">empirical coverage</div>
+        <div class="d" data-fc="d-coverage"></div>
+      </div>
+      <div class="fc-fig" data-fc="fig-skill" hidden>
+        <div class="n ps-num" data-fc="n-skill"></div>
+        <div class="l">beat the baseline</div>
+        <div class="d" data-fc="d-skill"></div>
+      </div>
+    </div>
+
+    <p class="fc-fresh" data-fc="fresh" hidden><span class="ps-dot" aria-hidden="true"></span><span data-fc="fresh-text"></span></p>
+  </div>
+
+  <div class="fc-err ps-p1" data-fc="err" hidden></div>
+
+  <div class="fc-table ps-p1 ps-scroll-x" data-fc="table" hidden>
+    <table>
+      <thead>
+        <tr><th scope="col">Signal</th><th scope="col">Forecasts</th><th scope="col">Coverage</th><th scope="col">Gap</th><th scope="col">WIS</th><th scope="col">Beats baseline</th><th scope="col">Misses</th><th scope="col">Worst miss</th></tr>
+      </thead>
+      <tbody data-fc="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="fc-note ps-p1" data-fc="notes" hidden></div>
+
+  <p class="links">Raw: <a href="readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a> ·
+  <a href="readings/forecast-ledger-history.jsonl">forecast-ledger-history.jsonl</a> ·
+  <a href="readings/coverage-guard-latest.json">coverage-guard-latest.json</a></p>
+  </section>
+
+  <section class="ps-defer" id="limits">
+  <h2 class="ps-section-head">Scope and honest limits</h2>
+  <div class="note ps-p1 ps-reveal">Palimpsest publishes only what it can stand behind. It measures censor <b>attention</b>, which topics draw the most suppression effort, not a full deletion rate. The <b>velocity</b> signal, how fast a specific post is removed, needs a network vantage inside China to time deletions to the minute. Until that vantage is in place and verified, velocity stays suppressed by design. Nothing on this site is a modelled guess dressed up as a measurement.</div>
   <ul>
     <li>Every data point carries its source and timestamp. The DDTI terms link back to the original public articles.</li>
     <li>Palimpsest watches the censor, never the censored. It uses public reads only, stores nothing about private individuals, and never asks anyone inside a country to act.</li>
     <li>State-aligned AI models are subjects of measurement, never the analyst.</li>
   </ul>
 
-  <h2>How to cite</h2>
+  </section>
+
+  <section class="ps-defer" id="cite">
+  <h2 class="ps-section-head">How to cite</h2>
   <p>If you use this data in an article, report, or paper, a citation and a link back are appreciated. Please cite the accessed date, since the signals update continuously.</p>
-  <pre>Palimpsest (2026). Palimpsest Censorship Observatory and Verifiable Eval
+  <pre class="ps-p1">Palimpsest (2026). Palimpsest Censorship Observatory and Verifiable Eval
 Registry: DDTI, Generative Firewall Index, GDELT cross-signal, and sealed
 model evaluations [live dataset]. https://palimpsest.info
 (accessed YYYY-MM-DD).</pre>
-  <pre>@misc{palimpsest,
+  <pre class="ps-p1">@misc{palimpsest,
   title  = {Palimpsest Censorship Observatory and Verifiable Eval Registry},
   author = {Palimpsest},
   year   = {2026},
@@ -226,7 +415,10 @@ model evaluations [live dataset]. https://palimpsest.info
             registry with refusal drift}
 }</pre>
 
-  <h2>Reproducibility and provenance</h2>
+  </section>
+
+  <section class="ps-defer" id="provenance">
+  <h2 class="ps-section-head">Reproducibility and provenance</h2>
   <p>Palimpsest is fully open source under the MIT licence. The signals recompute inside public, auditable GitHub Actions, and every refresh is a timestamped commit in the repository, so the entire history of what was measured, and when, is public and verifiable. There is no private backend deciding the numbers.</p>
   <p>Two of the surfaces go further than the commit trail: the erasure ledger and the eval registry are hash-chained and Merkle-committed, so they stay verifiable even outside git. Clone the repo and run <code>python3 scripts/verify_ledger.py</code> or <code>python3 scripts/verify_eval_registry.py</code>; exit 0 means every seal recomputes and, for the registry, that every run referenced a probe set frozen before the model was queried. This constraint applies to us too. If we edited a published number, our own verifier would report the break.</p>
   <p>The roots are also deposited with parties we do not control. Every refresh that moves a root gets an Internet Archive snapshot of the served chain files and an OpenTimestamps stamp into Bitcoin (the <code>.ots</code> proofs live in <a href="https://github.com/beepboop2025/palimpsest/tree/main/readings/anchors">readings/anchors/</a> and verify with the standard client, against the blockchain, not against us; <a href="readings/anchors-latest.json">anchors-latest.json</a> is the currently stamped root). An independent witness on separate infrastructure re-verifies the served chains on a timer and alerts if any previously seen history changes; anyone can run one with <code>python3 ops/witness/palimpsest_witness.py</code>. Single attestations verify without downloading the chain via <code>python3 scripts/prove_inclusion.py &lt;seq&gt;</code>. The full layer-by-layer trust model, including what these layers cannot prove, is written down in <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">docs/INTEGRITY.md</a>.</p>
@@ -236,7 +428,10 @@ model evaluations [live dataset]. https://palimpsest.info
     <a href="https://github.com/beepboop2025/palimpsest/tree/main/.github/workflows">The pipelines</a>
   </p>
 
-  <h2>Read Chinese? We need four hours of your judgment</h2>
+  </section>
+
+  <section class="ps-defer" id="validation">
+  <h2 class="ps-section-head">Read Chinese? We need four hours of your judgment</h2>
   <p>The Generative Firewall Index labels every model answer with a transparent rule based classifier: refused, state narrative, or answered. A researcher whose work this instrument builds on asked us a fair question: would actual humans agree with those labels? We want to find out properly, and that part cannot be automated. We need two volunteer coders.</p>
   <p><b>The task.</b> We send you a short manual and a spreadsheet of 123 model answers, some Chinese, some English. Each one is a chatbot's answer to a question. Lengths vary a lot — a third of them are under 500 characters, the median is 988, and the longest is 3,587, so a few are a screen or two of reading. You read the answer and pick one of three labels. That's the whole job. Around four hours, alone, on your own schedule inside two weeks.</p>
   <p><b>Why 123 and not more.</b> The sampler asked for 60 refusals and 50 party-line answers and could only draw 5 and 28 — outright refusals and undisguised state-narrative answers are simply rare in the corpus the models produced. We shipped the shortfall rather than pad those cells with near misses, so agreement on the refused and party_line strata will carry wide uncertainty and we will report it that way. The exact targets, pool sizes, and shortfalls are recorded in <code>validation/out/manifest.json</code>.</p>
@@ -245,11 +440,236 @@ model evaluations [live dataset]. https://palimpsest.info
   <p><b>What you get.</b> Your name in the acknowledgments here and in the research paper this feeds, or full anonymity if you prefer. Either way, a public instrument that watches censorship gets a stronger spine because you read carefully for an afternoon.</p>
   <p>To volunteer, open a GitHub issue titled <a href="https://github.com/beepboop2025/palimpsest/issues/new?title=Validation%20coder">Validation coder</a> and say roughly where you are and how you come by your Chinese: native, degree, HSK, or grew up with it. First two qualified volunteers get the sheets.</p>
 
-  <h2>Work with us</h2>
+  </section>
+
+  <section class="ps-defer" id="contact">
+  <h2 class="ps-section-head">Work with us</h2>
   <p>If you are a reporter, researcher, or think tank and want a specific term tracked, a data extract, or help interpreting a signal, open an issue on <a href="https://github.com/beepboop2025/palimpsest/issues">GitHub</a>. Palimpsest is a public good and collaboration is welcome.</p>
+
+  </section>
 
   <p class="foot">Free and open source, developed in the open as a public good. Never a commercial product, and it never monetizes the people or topics it observes. The internet stays free because people keep measuring the dark.</p>
 
-</div>
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+/* ============================================================================
+   The forecast ledger, rendered from its own published file.
+   ----------------------------------------------------------------------------
+   Nothing here can invent a figure. Every number is read out of the JSON and a
+   field that is absent produces the words "not reported", never a zero and
+   never a dash that could be mistaken for a score. If the file cannot be read
+   at all, the panel says so and links to the raw file, because on this page a
+   plausible-looking blank would be a lie about our own accuracy.
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  var URL_ = "/readings/forecast-ledger-latest.json";
+  var STALE_HOURS = 12;          /* the pull runs every 6 hours */
+
+  function run() {
+    var S = window.PalimpsestShell;
+    var root = document.getElementById("forecast");
+    if (!S || !root) return;     /* shell.js absent: the static copy stands */
+
+    function $(k) { return root.querySelector('[data-fc="' + k + '"]'); }
+    function show(node) { if (node) node.removeAttribute("hidden"); }
+    function set(k, s) { var n = $(k); if (n) n.textContent = s; }
+    function num(v) { return (typeof v === "number" && isFinite(v)) ? v : null; }
+    function fixed(v, d) { var n = num(v); return n === null ? null : n.toFixed(d); }
+    function pct(v, d) { var n = num(v); return n === null ? null : (n * 100).toFixed(d) + "%"; }
+
+    function fail(reason) {
+      var box = $("err");
+      if (!box) return;
+      var p = document.createElement("p");
+      p.appendChild(document.createTextNode(reason + " No figure is shown, because a placeholder here would read like a score. The file is at "));
+      var a = document.createElement("a");
+      a.href = URL_;
+      a.textContent = "forecast-ledger-latest.json";
+      p.appendChild(a);
+      p.appendChild(document.createTextNode("."));
+      box.appendChild(p);
+      show(box);
+    }
+
+    function cell(row, value, mono) {
+      var td = document.createElement("td");
+      if (value === null || value === undefined || value === "") {
+        td.textContent = "not reported";
+      } else {
+        td.textContent = value;
+      }
+      if (mono) td.className = "n ps-num";
+      row.appendChild(td);
+    }
+
+    function noteBlock(box, heading, build) {
+      var h = document.createElement("h3");
+      h.textContent = heading;
+      box.appendChild(h);
+      build(box);
+    }
+
+    function render(d) {
+      /* ---- the three headline figures, each independent of the others ---- */
+      var painted = 0;
+      var nSignals = num(d.n_signals_scored);
+
+      var nForecasts = num(d.n_forecasts);
+      if (nForecasts !== null) {
+        S.countUp($("n-forecasts"), nForecasts, { decimals: 0 });
+        set("d-forecasts", nSignals === null
+          ? "one step ahead, on each signal's own cadence"
+          : "one step ahead across " + nSignals + " signals, each on its own cadence");
+        show($("fig-forecasts"));
+        painted++;
+      }
+
+      var cov = num(d.pooled_empirical_coverage);
+      var nom = num(d.nominal_coverage);
+      if (cov !== null) {
+        S.countUp($("n-coverage"), cov * 100, { decimals: 1, suffix: "%" });
+        set("d-coverage", nom === null
+          ? "of readings fell inside the published interval"
+          : "of readings fell inside the interval. The interval claims " + pct(nom, 0) + ".");
+        show($("fig-coverage"));
+        painted++;
+      }
+
+      var beat = num(d.n_beating_baseline);
+      if (beat !== null && nSignals !== null) {
+        S.countUp($("n-skill"), beat, { decimals: 0, suffix: " of " + nSignals });
+        set("d-skill", "signals where the adaptive band scored better than a fixed-quantile band");
+        show($("fig-skill"));
+        painted++;
+      }
+
+      if (painted) show($("figs"));
+
+      if (typeof d.headline === "string" && d.headline.trim()) {
+        set("headline", d.headline.trim());
+      }
+
+      /* ---- freshness is a finding, and it is stated in words ---- */
+      var fresh = $("fresh"), ftext = $("fresh-text");
+      if (fresh && ftext) {
+        var t = Date.parse(d.generated_at);
+        if (!isFinite(t)) {
+          ftext.textContent = "measurement time unknown";
+          fresh.setAttribute("data-stale", "");
+        } else {
+          var stale = (Date.now() - t) > STALE_HOURS * 3600000;
+          ftext.textContent = (stale ? "stale · last scored " : "scored ") + S.ago(d.generated_at)
+            + " · recomputed every 6 hours";
+          if (stale) fresh.setAttribute("data-stale", "");
+        }
+        show(fresh);
+      }
+
+      /* ---- per signal ---- */
+      var signals = d.signals && typeof d.signals === "object" ? d.signals : null;
+      var body = $("rows");
+      var rows = 0;
+      if (signals && body) {
+        Object.keys(signals).forEach(function (name) {
+          var s = signals[name] || {};
+          var tr = document.createElement("tr");
+          var th = document.createElement("td");
+          var b = document.createElement("b");
+          b.textContent = name;
+          th.appendChild(b);
+          tr.appendChild(th);
+          cell(tr, num(s.n_forecasts), true);
+          cell(tr, pct(s.empirical_coverage, 1), true);
+          var gap = num(s.coverage_gap_pp);
+          cell(tr, gap === null ? null : (gap > 0 ? "+" : "") + gap.toFixed(1) + " pp", true);
+          cell(tr, fixed(s.wis, 4), true);
+          cell(tr, typeof s.beats_baseline === "boolean" ? (s.beats_baseline ? "yes" : "no") : null);
+          cell(tr, num(s.n_misses), true);
+          var worst = Array.isArray(s.worst_misses) && s.worst_misses.length ? s.worst_misses[0] : null;
+          cell(tr, worst ? fixed(worst.miss_by, 2) : null, true);
+          body.appendChild(tr);
+          rows++;
+        });
+      }
+      if (rows) show($("table"));
+
+      /* ---- the workings, verbatim from the file ---- */
+      var notes = $("notes");
+      var wrote = false;
+      if (notes) {
+        if (typeof d.method === "string" && d.method.trim()) {
+          noteBlock(notes, "Method", function (box) {
+            var p = document.createElement("p");
+            p.textContent = d.method.trim();
+            box.appendChild(p);
+          });
+          wrote = true;
+        }
+        if (Array.isArray(d.caveats) && d.caveats.length) {
+          noteBlock(notes, "Caveats", function (box) {
+            var ul = document.createElement("ul");
+            d.caveats.forEach(function (c) {
+              if (typeof c !== "string" || !c.trim()) return;
+              var li = document.createElement("li");
+              li.textContent = c.trim();
+              ul.appendChild(li);
+            });
+            box.appendChild(ul);
+          });
+          wrote = true;
+        }
+        var excluded = d.excluded && typeof d.excluded === "object" ? Object.keys(d.excluded) : [];
+        if (excluded.length) {
+          noteBlock(notes, "Excluded from scoring", function (box) {
+            var ul = document.createElement("ul");
+            excluded.forEach(function (k) {
+              var li = document.createElement("li");
+              li.textContent = k + ": " + d.excluded[k];
+              ul.appendChild(li);
+            });
+            box.appendChild(ul);
+          });
+          wrote = true;
+        }
+        if (typeof d.not_yet_scoreable === "string" && d.not_yet_scoreable.trim()) {
+          noteBlock(notes, "Not yet scoreable", function (box) {
+            var p = document.createElement("p");
+            p.textContent = d.not_yet_scoreable.trim();
+            box.appendChild(p);
+          });
+          wrote = true;
+        }
+        if (wrote) show(notes);
+      }
+
+      if (!painted && !rows) {
+        fail("The forecast ledger loaded but carried none of the fields this panel reports.");
+      }
+    }
+
+    /* A render bug must not be reported as an unreachable feed, and it must not
+       leave a half-drawn panel looking like a finished reading either. */
+    S.loadReading(URL_, function (d) {
+      try {
+        render(d);
+      } catch (err) {
+        fail("The forecast ledger loaded but could not be rendered.");
+      }
+    }, function () {
+      fail("The forecast ledger could not be read.");
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else {
+    run();
+  }
+})();
+</script>
 </body>
 </html>

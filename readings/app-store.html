@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App Store Layer · Palimpsest</title>
+<meta name="description" content="Two views of App Store availability in China: our own live storefront panel comparing the CN and US catalogues, and GreatFire's whole-corpus census. Delisting is not network blocking, and this page measures only the app layer.">
+<link rel="canonical" href="https://palimpsest.info/readings/app-store.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  /* page-specific only: no token is redefined and no ps-* class is overridden */
+
+  .as-hero { padding: clamp(30px, 6vw, 62px) 0 8px; }
+  .as-trust {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+    font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3);
+    margin: 0 0 8px;
+  }
+  .as-trust a { color: var(--tk-text-2); text-decoration: none; border-bottom: 1px solid var(--ps-edge-2); }
+  .as-trust a:hover { color: var(--tk-live); border-bottom-color: currentColor; }
+
+  .as-fresh { display: flex; flex-wrap: wrap; gap: 9px; margin: 20px 0 0; }
+  .as-fresh__slot { display: inline-flex; align-items: center; gap: 8px; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3); }
+
+  /* ---- the caveat. It gets a plane of its own and a hard rule down the side,
+     because it is the one thing on the page a reader must not skim past. ---- */
+  .as-caveat {
+    margin: 30px 0 8px;
+    padding: clamp(20px, 3vw, 30px) clamp(18px, 3vw, 32px);
+    border-left: 3px solid var(--tk-critical);
+  }
+  .as-caveat__tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--tk-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--tk-critical);
+    margin: 0 0 12px;
+  }
+  .as-caveat h2 {
+    font-size: clamp(21px, 3vw, 29px); line-height: 1.14; font-weight: 800;
+    letter-spacing: -.02em; margin: 0 0 14px; color: var(--tk-text-0);
+    text-wrap: balance;
+  }
+  .as-caveat p { margin: 0 0 12px; max-width: var(--ps-measure); color: var(--tk-text-1); font-size: 15.5px; }
+  .as-caveat p:last-child { margin-bottom: 0; }
+  .as-caveat b { color: var(--tk-text-0); font-weight: 700; }
+  .as-caveat__both {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin: 18px 0 16px;
+  }
+  .as-caveat__both div {
+    padding: 14px 16px; border-radius: var(--tk-radius-md);
+    border: 1px solid var(--ps-edge-1); background: var(--ps-plane-1);
+  }
+  .as-caveat__both h3 {
+    font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--tk-text-4); margin: 0 0 7px; font-weight: 700;
+  }
+  .as-caveat__both p { font-size: 13.5px; color: var(--tk-text-2); margin: 0; }
+  @media (max-width: 700px) { .as-caveat__both { grid-template-columns: 1fr; } }
+
+  /* ---- the pairing: two instruments, two denominators ---- */
+  .as-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0 0; }
+  @media (max-width: 780px) { .as-pair { grid-template-columns: 1fr; } }
+  .as-pair__card { padding: 18px 20px 19px; }
+  .as-pair__card h3 { font-size: 15px; font-weight: 700; margin: 0 0 6px; color: var(--tk-text-0); }
+  .as-pair__card p { margin: 0 0 10px; font-size: 13.5px; color: var(--tk-text-2); }
+  .as-pair__card p:last-child { margin-bottom: 0; }
+  .as-pair__who {
+    font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--tk-text-4); margin: 0 0 9px;
+  }
+  .as-denom {
+    display: block; margin-top: 12px; padding-top: 11px;
+    border-top: 1px solid var(--ps-edge-1);
+    font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3);
+  }
+  .as-denom b { color: var(--tk-text-1); font-weight: 600; }
+
+  /* ---- claim column of each band ---- */
+  .as-claim h2 { margin-bottom: 12px; }
+  .as-claim p { font-size: 14px; color: var(--tk-text-2); margin: 0 0 12px; }
+  .as-claim__meta {
+    font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4);
+    line-height: 1.75; margin: 14px 0 0; padding-top: 12px;
+    border-top: 1px solid var(--ps-edge-1); word-break: break-word;
+  }
+  .as-claim__meta a { color: var(--tk-text-2); text-decoration: none; border-bottom: 1px solid var(--ps-edge-2); }
+  .as-claim__meta a:hover { color: var(--tk-live); }
+
+  /* ---- plane 3: the reading ---- */
+  .as-read { padding: clamp(20px, 3.4vw, 30px); margin: 0 0 16px; }
+  .as-read__fig {
+    font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums;
+    font-size: clamp(46px, 9vw, 76px); font-weight: 800; line-height: .94;
+    letter-spacing: -.035em; color: var(--tk-text-0);
+  }
+  .as-read__unit { font-size: .34em; font-weight: 600; color: var(--tk-text-3); letter-spacing: 0; }
+  .as-read__say { font-size: 15.5px; color: var(--tk-text-1); margin: 14px 0 0; max-width: var(--ps-measure); }
+  .as-read__frac {
+    font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums;
+    font-size: 12.5px; color: var(--tk-text-3); margin: 10px 0 0;
+  }
+  .as-read__frac b { color: var(--tk-text-1); font-weight: 600; }
+
+  /* ---- plane 2: method ---- */
+  .as-method { padding: 18px 20px; margin: 0 0 16px; }
+  .as-kv { display: grid; grid-template-columns: minmax(96px, auto) 1fr; gap: 7px 16px; margin: 0; }
+  .as-kv dt {
+    font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--tk-text-4); padding-top: 2px;
+  }
+  .as-kv dd {
+    margin: 0; font-size: 13.5px; color: var(--tk-text-1);
+    font-variant-numeric: tabular-nums; word-break: break-word;
+  }
+
+  /* ---- plane 1: evidence ---- */
+  .as-ev { padding: 16px 18px 6px; margin: 0 0 16px; }
+  .as-ev > .ps-label { margin-bottom: 10px; }
+  .as-tbl { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+  .as-tbl th {
+    text-align: left; font-family: var(--tk-font-mono); font-size: 9.5px; font-weight: 700;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--tk-text-4);
+    padding: 0 14px 9px 0; border-bottom: 1px solid var(--ps-edge-2); white-space: nowrap;
+  }
+  .as-tbl td {
+    padding: 9px 14px 9px 0; border-bottom: 1px solid var(--ps-edge-1);
+    color: var(--tk-text-1); vertical-align: middle;
+  }
+  .as-tbl tr:last-child td { border-bottom: 0; }
+  .as-tbl .as-app { font-weight: 600; color: var(--tk-text-0); white-space: nowrap; }
+  .as-tbl .as-cat, .as-tbl .as-mono {
+    font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .as-tbl td.as-num { font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums; text-align: right; padding-right: 18px; }
+
+  /* tag composition bars */
+  .as-bars { margin: 0; padding: 0; list-style: none; }
+  .as-bars li { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 13px; }
+  .as-bars .as-bar-lab { flex: none; width: 168px; color: var(--tk-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .as-bars .as-bar-track { flex: 1; min-width: 40px; height: 8px; border-radius: 5px; background: rgba(148, 163, 184, .14); overflow: hidden; }
+  .as-bars .as-bar-fill { display: block; height: 100%; border-radius: 5px; background: var(--tk-critical); }
+  .as-bars .as-bar-n { flex: none; width: 46px; text-align: right; font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums; color: var(--tk-text-2); }
+  @media (max-width: 560px) { .as-bars .as-bar-lab { width: 116px; } }
+
+  /* peer list */
+  .as-peers { margin: 0; padding: 0; list-style: none; counter-reset: none; }
+  .as-peers li {
+    display: flex; align-items: center; gap: 12px; padding: 8px 0;
+    border-bottom: 1px solid var(--ps-edge-1); font-size: 13px;
+  }
+  .as-peers li:last-child { border-bottom: 0; }
+  .as-peers .as-rank { flex: none; width: 26px; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-4); font-variant-numeric: tabular-nums; }
+  .as-peers .as-country { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .as-peers .as-pct { flex: none; font-family: var(--tk-font-mono); font-variant-numeric: tabular-nums; color: var(--tk-text-2); }
+  .as-peers li[data-self] .as-country, .as-peers li[data-self] .as-pct { color: var(--tk-live); font-weight: 600; }
+
+  /* the changes slot: visible whether or not anything changed */
+  .as-changes { padding: 16px 18px; margin: 0 0 16px; }
+  .as-changes ul { margin: 0; padding: 0; list-style: none; }
+  .as-changes li { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--ps-edge-1); font-size: 13px; }
+  .as-changes li:last-child { border-bottom: 0; }
+  .as-changes .as-quiet { font-size: 13.5px; color: var(--tk-text-2); margin: 0; }
+
+  /* caveat carried by the feed itself */
+  .as-verbatim {
+    margin: 0; padding: 13px 15px; border-radius: var(--tk-radius-md);
+    border: 1px solid var(--tk-critical-line); background: var(--tk-critical-bg);
+    font-size: 13px; color: var(--tk-text-1);
+  }
+  .as-verbatim span {
+    display: block; font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--tk-critical); margin-bottom: 6px; font-weight: 700;
+  }
+
+  .as-note { font-size: 12.5px; color: var(--tk-text-3); margin: 12px 0 0; max-width: var(--ps-measure); }
+
+  /* failure and loading states */
+  .as-state { padding: 18px 20px; }
+  .as-state h3 { font-size: 14px; margin: 10px 0 8px; color: var(--tk-text-0); font-weight: 700; }
+  .as-state p { font-size: 13px; color: var(--tk-text-2); margin: 0 0 8px; max-width: var(--ps-measure); }
+  .as-state code { font-family: var(--tk-font-mono); font-size: 11.5px; color: var(--tk-text-3); word-break: break-all; }
+
+  /* closing */
+  .as-close { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 18px 0 0; }
+  @media (max-width: 780px) { .as-close { grid-template-columns: 1fr; } }
+  .as-close a { display: block; padding: 17px 19px; text-decoration: none; }
+  .as-close h3 { font-size: 14px; margin: 0 0 6px; color: var(--tk-text-0); font-weight: 700; }
+  .as-close p { font-size: 13px; color: var(--tk-text-2); margin: 0; }
+
+  .as-foot {
+    margin: 46px 0 60px; padding-top: 18px; border-top: 1px solid var(--ps-edge-1);
+    font-family: var(--tk-font-mono); font-size: 11px; line-height: 1.9; color: var(--tk-text-4);
+  }
+  .as-foot a { color: var(--tk-text-3); text-decoration: none; border-bottom: 1px solid var(--ps-edge-1); }
+  .as-foot a:hover { color: var(--tk-live); }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0" data-within="">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html" aria-current="page"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap">
+
+  <header class="as-hero">
+    <p class="ps-kicker">Signal · App layer</p>
+    <h1 class="ps-h1">What the Chinese App Store will not offer you</h1>
+    <p class="ps-lede">Two instruments on the same layer. One is ours: a small panel of apps
+      we check every few hours against both the Chinese and the American storefront, built to
+      catch the day a specific app disappears. The other is GreatFire's census of the whole
+      catalogue, which is the only way to see what the removals are about. They answer
+      different questions, and their denominators are not the same number.</p>
+    <p class="as-trust">
+      <span>Open source, MIT licensed</span>
+      <span aria-hidden="true">·</span>
+      <span>every finding ships its raw evidence</span>
+      <span aria-hidden="true">·</span>
+      <a href="/for-researchers.html">Data and methods</a>
+      <span aria-hidden="true">·</span>
+      <a href="/support.html">Fund this work</a>
+    </p>
+    <div class="as-fresh">
+      <span class="as-fresh__slot">Panel:
+        <span id="freshPanel" class="tk-chip tk-chip--stale">loading</span></span>
+      <span class="as-fresh__slot">Corpus:
+        <span id="freshCorpus" class="tk-chip tk-chip--stale">loading</span></span>
+    </div>
+  </header>
+
+  <noscript>
+    <div class="as-state ps-p1" style="margin-top:22px">
+      <p class="ps-label">Readings load in the browser</p>
+      <p>Both readings on this page are fetched from their published JSON at load, so that
+        every figure comes from the file rather than from copy typed into the page. With
+        scripting off, read the files directly:
+        <a href="/readings/app-storefront-latest.json">app-storefront-latest.json</a> and
+        <a href="/readings/apple-censorship-latest.json">apple-censorship-latest.json</a>.
+        The caveat below applies to both, and needs no scripting to be true.</p>
+    </div>
+  </noscript>
+
+  <!-- =====================================================================
+       THE CAVEAT. Static prose, so it survives a failed fetch, and deliberately
+       carries no reveal animation so it can never render part-faded. The feed
+       ships its own wording too, and that is rendered verbatim further down.
+       ===================================================================== -->
+  <section class="as-caveat ps-p2" aria-labelledby="caveat-h">
+    <p class="as-caveat__tag"><span class="ps-dot" aria-hidden="true"></span>Read this before any number below</p>
+    <h2 id="caveat-h">Delisting is not network blocking</h2>
+    <p>These are two separate controls, applied by two separate parties, and they do not
+      line up. Apple removes an app from a storefront. The network blocks traffic. An app
+      can be subject to either, both, or neither, so a storefront reading tells you nothing
+      about whether anything is reachable.</p>
+    <div class="as-caveat__both">
+      <div>
+        <h3>Listed, and blocked anyway</h3>
+        <p><b>Facebook, X and YouTube</b> remain listed in the Chinese App Store. You can
+          download all three. None of them reaches its servers from a Chinese network.
+          The store says yes and the network says no.</p>
+      </div>
+      <div>
+        <h3>Present, and useless</h3>
+        <p>The converse also holds. An app can be sitting in the storefront, installable
+          and current, and still be unusable because the thing it talks to is unreachable,
+          throttled, or has been made to answer differently.</p>
+      </div>
+    </div>
+    <p><b>This page measures the app layer only.</b> It is a record of what a company was
+      compelled to withdraw from a catalogue. It is not a measure of what a person in China
+      can reach. For the network layer, see the
+      <a href="/readings/ooni-gfw.html">Great Firewall reading</a>. Reading one as if it were
+      the other is the single most common mistake made with this kind of data, and we would
+      rather lose the cleaner headline than let it happen here.</p>
+  </section>
+
+  <!-- ===================== the pairing, made explicit ===================== -->
+  <h2 class="ps-section-head" id="pairing">Two instruments, two denominators</h2>
+  <div class="as-pair ps-stagger">
+    <section class="as-pair__card ps-p1 ps-reveal" aria-labelledby="pair-a">
+      <p class="as-pair__who">Ours · first party · every 6 hours</p>
+      <h3 id="pair-a">Live storefront panel</h3>
+      <p>A hand-curated panel of apps checked against Apple's public lookup endpoint in the
+        Chinese storefront and the American one, with control apps in the panel to prove the
+        method is working before any reading is published. Its job is to notice a single
+        delisting on the day it happens, and to name it.</p>
+      <span class="as-denom">Denominator: <b id="denomPanel">the tracked apps in our own panel</b></span>
+    </section>
+    <section class="as-pair__card ps-p1 ps-reveal" aria-labelledby="pair-b">
+      <p class="as-pair__who">Third party · GreatFire · daily</p>
+      <h3 id="pair-b">Whole-corpus census</h3>
+      <p>GreatFire tests the catalogue at a scale we could not gather ourselves, across
+        every surveyed storefront, and tags a portion of what is missing. Its job is scale
+        and composition: not which app went, but what the removals are for, and how China
+        compares with everywhere else.</p>
+      <span class="as-denom">Denominator: <b id="denomCorpus">the apps GreatFire tested</b></span>
+    </section>
+  </div>
+  <p class="as-note" id="relationshipLine">The two are deliberately kept apart. The census
+    does not feed the panel's rate, and the panel does not adjust the census. The feed states
+    the relationship itself, and it is rendered verbatim with the census below.</p>
+
+  <!-- ===================== instrument 1: our panel ====================== -->
+  <h2 class="ps-section-head" id="panel">Our live panel · CN storefront against US</h2>
+  <section class="ps-band ps-defer" aria-labelledby="panel">
+    <div class="ps-pin as-claim">
+      <p class="ps-label">Reading</p>
+      <h2 class="ps-h2">How much of the panel the Chinese storefront will not carry</h2>
+      <p>The rate below is the share of tracked, comparable apps that Apple offers in the
+        American storefront and does not offer in the Chinese one. Control apps sit in the
+        panel to catch a broken method, and are excluded from the rate.</p>
+      <p class="as-claim__meta" id="panelMeta">Source and scope load with the reading.</p>
+    </div>
+
+    <div>
+      <div id="panelBody">
+        <div class="as-state ps-p1" id="panelLoading">
+          <p class="ps-label">Live panel</p>
+          <p>Loading the storefront reading from
+            <code>/readings/app-storefront-latest.json</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== instrument 2: the corpus ===================== -->
+  <h2 class="ps-section-head" id="corpus">Corpus scale · GreatFire's census</h2>
+  <section class="ps-band ps-defer" aria-labelledby="corpus">
+    <div class="ps-pin as-claim">
+      <p class="ps-label">Reading</p>
+      <h2 class="ps-h2">How much of the whole catalogue is missing, and what it is about</h2>
+      <p>A share of unavailable apps says how much is gone. The category tags say what the
+        removals were for, and the ordering of those tags is the finding. The peer ranking
+        is there because a share is only meaningful against the spread.</p>
+      <p class="as-claim__meta" id="corpusMeta">Source and scope load with the reading.</p>
+    </div>
+
+    <div>
+      <div id="corpusBody">
+        <div class="as-state ps-p1" id="corpusLoading">
+          <p class="ps-label">Census</p>
+          <p>Loading the corpus reading from
+            <code>/readings/apple-censorship-latest.json</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== what this is ===================== -->
+  <h2 class="ps-section-head" id="about">What Palimpsest is</h2>
+  <div class="as-close ps-stagger">
+    <a class="as-pair__card ps-p1 ps-reveal" href="/readings/index.html">
+      <h3>A censorship observatory</h3>
+      <p>Public reads only, on a schedule, with the raw file published beside every number.
+        Watch the censor, never the censored.</p>
+    </a>
+    <a class="as-pair__card ps-p1 ps-reveal" href="/readings/eval-registry.html">
+      <h3>A verifiable eval registry</h3>
+      <p>Pre-registered model evaluations, hash-chained, with chain roots anchored externally
+        so no result can be quietly revised.</p>
+    </a>
+    <a class="as-pair__card ps-p1 ps-reveal" href="/support.html">
+      <h3>A funded public good</h3>
+      <p>MIT licensed and developed in the open. Never a commercial product, and it never
+        monetizes the people or topics it observes.</p>
+    </a>
+  </div>
+
+  <footer class="as-foot">
+    <p>Raw evidence:
+      <a href="/readings/app-storefront-latest.json">app-storefront-latest.json</a> ·
+      <a href="/readings/app-storefront-history.jsonl">app-storefront-history.jsonl</a> ·
+      <a href="/readings/apple-censorship-latest.json">apple-censorship-latest.json</a> ·
+      <a href="/readings/apple-censorship-history.jsonl">apple-censorship-history.jsonl</a></p>
+    <p>The panel reads Apple's public iTunes lookup endpoint. The census is GreatFire's
+      AppleCensorship corpus, retrieved from their public API and reused with attribution.
+      Palimpsest runs no probes inside China and asks nobody there to act.</p>
+    <p>Code: <a href="https://github.com/beepboop2025/palimpsest" rel="noopener">github.com/beepboop2025/palimpsest</a>
+      · MIT licensed · every collector and every reading in this page is in that repository.</p>
+  </footer>
+
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script>
+(function () {
+  "use strict";
+
+  var PANEL_URL  = "/readings/app-storefront-latest.json";
+  var CORPUS_URL = "/readings/apple-censorship-latest.json";
+
+  /* Cadence from the workflows: the panel refreshes every 6 hours, the census
+     once a day. Past twice the cadence, freshness stops being a timestamp and
+     becomes a finding. */
+  var PANEL_STALE_H  = 12;
+  var CORPUS_STALE_H = 48;
+
+  /* Every string below originates outside this repo: app names come from Apple,
+     country and tag names from GreatFire. None of it is trusted. */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function byId(id) { return document.getElementById(id); }
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+
+  /* Binary floating point turns 0.6 * 100 into 60.000000000000014, and a
+     naive formatter would print that as "60.00". Settle to two decimals first,
+     then use only as many places as the settled value actually needs, so
+     nothing is invented by rounding up and nothing real is rounded away. */
+  function settle2(v) { return isNum(v) ? Math.round(v * 100) / 100 : v; }
+  function decFor(v) {
+    if (!isNum(v)) return 0;
+    if (Math.round(v) === v) return 0;
+    if (Math.round(v * 10) / 10 === v) return 1;
+    return 2;
+  }
+  function grp(v) { return isNum(v) ? v.toLocaleString("en-US") : null; }
+
+  /* A missing field is stated as missing. It is never drawn as zero. */
+  var ABSENT = '<span class="tk-chip tk-chip--stale">not in this reading</span>';
+  function orAbsent(html) { return html == null || html === "" ? ABSENT : html; }
+
+  function shell() { return window.PalimpsestShell; }
+
+  function freshChip(el, iso, staleHours) {
+    var S = shell();
+    var t = Date.parse(iso);
+    if (!isFinite(t)) {
+      el.className = "tk-chip tk-chip--warning";
+      el.textContent = "no timestamp";
+      return;
+    }
+    var hours = (Date.now() - t) / 3600000;
+    var stale = hours > staleHours;
+    el.className = "tk-chip " + (stale ? "tk-chip--warning" : "tk-chip--ok");
+    /* status is never colour alone: the word "stale" carries it too */
+    el.textContent = (S ? S.ago(iso) : new Date(t).toISOString()) + (stale ? " · stale" : "");
+    el.title = new Date(t).toUTCString();
+  }
+
+  function failBlock(label, url, err) {
+    return '<div class="as-state ps-p1">' +
+      '<p class="ps-label">' + esc(label) + '</p>' +
+      '<p><span class="tk-chip tk-chip--critical">signal unavailable</span></p>' +
+      '<h3>This reading did not load, so nothing is shown in its place.</h3>' +
+      '<p>The observatory abstains rather than display a plausible-looking number. ' +
+      'The other reading on this page is loaded independently and is unaffected.</p>' +
+      '<p><code>' + esc(url) + '</code> · <code>' + esc(err && err.message ? err.message : err) + '</code></p>' +
+      '<p><a class="ps-btn ps-btn--ghost" href="' + esc(url) + '">Open the raw file</a></p>' +
+      '</div>';
+  }
+
+  function stateChip(state) {
+    var s = String(state || "").toUpperCase();
+    var cls = "tk-chip--stale";
+    if (s === "DELISTED") cls = "tk-chip--critical";
+    else if (s === "AVAILABLE") cls = "tk-chip--ok";
+    else if (s === "UNKNOWN" || s === "UNTRACKABLE") cls = "tk-chip--stale";
+    return '<span class="tk-chip ' + cls + '">' + esc(s || "no state") + "</span>";
+  }
+
+  /* storefront_cn / storefront_control are result counts, or null when Apple
+     did not answer. Null is "no answer", which is not the same as "not there". */
+  function listedCell(v) {
+    if (v == null) return '<span class="as-mono">no answer</span>';
+    if (!isNum(v)) return '<span class="as-mono">unreadable</span>';
+    return v > 0 ? "listed" : "not listed";
+  }
+
+  /* ------------------------------------------------------------------ panel */
+  function renderPanel(d) {
+    var host = byId("panelBody");
+    var html = "";
+
+    /* --- plane 3: the number you may quote --- */
+    var rate = d.delisting_rate;
+    var pct = isNum(rate) ? settle2(rate * 100) : null;
+    html += '<section class="as-read ps-p3 ps-reveal" aria-labelledby="panelFigLab">';
+    html += '<p class="ps-label" id="panelFigLab">Delisting rate · tracked apps</p>';
+    if (pct == null) {
+      html += "<p>" + ABSENT + "</p>";
+    } else {
+      html += '<p class="as-read__fig ps-num"><span id="panelFig">' +
+        esc(pct.toFixed(decFor(pct))) + '</span><span class="as-read__unit">%</span></p>';
+    }
+    if (d.reading) html += '<p class="as-read__say">' + esc(d.reading) + "</p>";
+    var nd = grp(d.n_delisted), nt = grp(d.n_tracked);
+    html += '<p class="as-read__frac">' +
+      (nd != null && nt != null
+        ? "<b>" + esc(nd) + "</b> of <b>" + esc(nt) + "</b> tracked apps are offered in the US storefront and not in the Chinese one."
+        : ABSENT) +
+      "</p>";
+    html += "</section>";
+
+    /* --- plane 2: what produced it --- */
+    var ctl = d.control || {};
+    var ctlOk = String(ctl.state || "").toUpperCase() === "OK";
+    html += '<section class="as-method ps-p2 ps-reveal" aria-label="Method behind the panel reading">';
+    html += '<p class="ps-label">Method</p><dl class="as-kv">';
+    var panelLine = null;
+    if (isNum(d.panel_size) && isNum(d.n_tracked)) {
+      panelLine = esc(grp(d.panel_size)) + " apps in the panel, " +
+        esc(grp(d.n_tracked)) + " of them tracked for the rate and the rest held as controls";
+    } else if (isNum(d.panel_size)) {
+      panelLine = esc(grp(d.panel_size)) + " apps in the panel";
+    } else if (isNum(d.n_tracked)) {
+      panelLine = esc(grp(d.n_tracked)) + " apps tracked for the rate";
+    }
+    html += "<dt>Panel</dt><dd>" + orAbsent(panelLine) + "</dd>";
+    html += "<dt>Control</dt><dd>" +
+      '<span class="tk-chip ' + (ctlOk ? "tk-chip--ok" : "tk-chip--critical") + '">' +
+      esc(ctl.state || "no state") + "</span> " + esc(ctl.why || "") + "</dd>";
+    html += "<dt>Storefronts</dt><dd>cn compared against us, same numeric track id in both</dd>";
+    if (d.scope) html += "<dt>Scope</dt><dd>" + esc(d.scope) + "</dd>";
+    html += "</dl></section>";
+
+    /* --- the changes slot: it gets space whether or not anything moved --- */
+    var ch = Array.isArray(d.changes_since_last_reading) ? d.changes_since_last_reading : null;
+    html += '<section class="as-changes ps-p2 ps-reveal" aria-label="Changes since the previous reading">';
+    html += '<p class="ps-label">Changes since the previous reading</p>';
+    if (ch == null) {
+      html += "<p>" + ABSENT + "</p>";
+    } else if (ch.length === 0) {
+      html += '<p><span class="tk-chip tk-chip--ok">no change</span></p>';
+      html += '<p class="as-quiet">No app in the panel crossed between listed and delisted ' +
+        "between the previous reading and this one. That is a reading, not an absence of one: " +
+        "a catalogue that holds still is the normal state, and it is what makes a single " +
+        "transition legible when it happens.</p>";
+    } else {
+      html += "<ul>";
+      ch.forEach(function (e) {
+        var dir = String(e.direction || "").toLowerCase();
+        html += "<li>" +
+          '<span class="as-app">' + esc(e.app) + "</span>" +
+          '<span class="tk-chip ' + (dir === "delisted" ? "tk-chip--critical" : "tk-chip--ok") + '">' +
+          esc(e.direction || "changed") + "</span>" +
+          '<span class="as-mono">' + esc(e.from || "?") + " to " + esc(e.to || "?") + "</span>" +
+          '<span class="as-cat">' + esc(e.category || "") + "</span>" +
+          "</li>";
+      });
+      html += "</ul>";
+    }
+    html += "</section>";
+
+    /* --- plane 1: the evidence --- */
+    var apps = Array.isArray(d.apps) ? d.apps : [];
+    html += '<section class="as-ev ps-p1 ps-reveal" aria-label="Per-app evidence">';
+    html += '<p class="ps-label">Every app in the panel</p>';
+    if (!apps.length) {
+      html += "<p>" + ABSENT + "</p>";
+    } else {
+      html += '<div class="ps-scroll-x"><table class="as-tbl"><thead><tr>' +
+        "<th>App</th><th>Category</th><th>Role</th>" +
+        "<th>US storefront</th><th>CN storefront</th><th>State</th>" +
+        "</tr></thead><tbody>";
+      apps.forEach(function (a) {
+        html += "<tr>" +
+          '<td class="as-app">' + esc(a.name) + "</td>" +
+          '<td class="as-cat">' + esc(a.category || "") + "</td>" +
+          '<td class="as-cat">' + (a.control ? "control" : "tracked") + "</td>" +
+          '<td class="as-mono">' + listedCell(a.storefront_control) + "</td>" +
+          '<td class="as-mono">' + listedCell(a.storefront_cn) + "</td>" +
+          "<td>" + stateChip(a.state) + "</td>" +
+          "</tr>";
+      });
+      html += "</tbody></table></div>";
+    }
+
+    var dl = Array.isArray(d.delisted_apps) ? d.delisted_apps : null;
+    html += '<p class="as-note"><b>Delisted right now:</b> ' +
+      (dl == null ? ABSENT : (dl.length ? esc(dl.join(", ")) : "none in the panel")) + "</p>";
+
+    if (d.caveat) {
+      html += '<p class="as-verbatim" style="margin-top:14px"><span>Caveat carried by the feed, verbatim</span>' +
+        esc(d.caveat) + "</p>";
+    }
+    html += '<p class="as-note">Control apps are excluded from the rate. They are in the panel ' +
+      "to prove the lookup is working: if a control app stops answering in the Chinese " +
+      "storefront, the collector abstains instead of publishing.</p>";
+    html += "</section>";
+
+    host.innerHTML = html;
+
+    /* the published number arrives rather than simply being there */
+    var fig = byId("panelFig");
+    if (fig && pct != null && shell()) shell().countUp(fig, pct, { decimals: decFor(pct), dur: 900 });
+
+    var meta = byId("panelMeta");
+    if (meta) {
+      meta.innerHTML =
+        "Source: " + esc(d.source || "not stated") + "<br>" +
+        "Measured: " + esc(d.generated_at || "no timestamp") + "<br>" +
+        'Raw: <a href="' + PANEL_URL + '">latest json</a> · ' +
+        '<a href="/readings/app-storefront-history.jsonl">full history</a>';
+    }
+    var denom = byId("denomPanel");
+    if (denom && isNum(d.n_tracked) && isNum(d.panel_size)) {
+      denom.textContent = grp(d.n_tracked) + " tracked apps, out of a panel of " + grp(d.panel_size);
+    }
+
+    freshChip(byId("freshPanel"), d.generated_at, PANEL_STALE_H);
+    /* Deliberately not re-running PalimpsestShell.init(): it binds nav handlers,
+       and a second bind would make every flyout toggle twice per click. The
+       reveal on injected sections is CSS scroll-timeline where the browser has
+       it, and plain visible content where it does not, which is the safe way
+       round. */
+  }
+
+  /* ----------------------------------------------------------------- corpus */
+  function renderCorpus(d) {
+    var host = byId("corpusBody");
+    var c = d.country || {};
+    var html = "";
+
+    /* --- plane 3 --- */
+    var pct = isNum(d.unavailable_pct) ? settle2(d.unavailable_pct)
+            : (isNum(c.unavailable_pct) ? settle2(c.unavailable_pct) : null);
+    html += '<section class="as-read ps-p3 ps-reveal" aria-labelledby="corpusFigLab">';
+    html += '<p class="ps-label" id="corpusFigLab">Unavailable share · ' +
+      esc(c.country || c.code || "target storefront") + "</p>";
+    if (pct == null) {
+      html += "<p>" + ABSENT + "</p>";
+    } else {
+      html += '<p class="as-read__fig ps-num"><span id="corpusFig">' +
+        esc(pct.toFixed(decFor(pct))) + '</span><span class="as-read__unit">%</span></p>';
+    }
+    if (d.reading) html += '<p class="as-read__say">' + esc(d.reading) + "</p>";
+    var pr = d.peer_rank || {};
+    html += '<p class="as-read__frac">' +
+      (isNum(pr.rank) && isNum(pr.of)
+        ? "Ranked <b>" + esc(grp(pr.rank)) + "</b> of <b>" + esc(grp(pr.of)) + "</b> surveyed storefronts."
+        : ABSENT) +
+      "</p>";
+    html += "</section>";
+
+    /* --- plane 2 --- */
+    var ctl = d.control || {};
+    var ctlOk = String(ctl.state || "").toUpperCase() === "OK";
+    html += '<section class="as-method ps-p2 ps-reveal" aria-label="Method behind the census reading">';
+    html += '<p class="ps-label">Method</p><dl class="as-kv">';
+    html += "<dt>Tested</dt><dd>" + orAbsent(isNum(c.total_tested) ? esc(grp(c.total_tested)) + " apps" : null) + "</dd>";
+    html += "<dt>Unavailable</dt><dd>" + orAbsent(isNum(c.unavailable) ? esc(grp(c.unavailable)) + " apps" : null) + "</dd>";
+    html += "<dt>Deletions</dt><dd>" + orAbsent(isNum(c.deletions) ? esc(grp(c.deletions)) + " recorded" : null) + "</dd>";
+    html += "<dt>Control</dt><dd>" +
+      '<span class="tk-chip ' + (ctlOk ? "tk-chip--ok" : "tk-chip--critical") + '">' +
+      esc(ctl.state || "no state") + "</span> " + esc(ctl.why || "") + "</dd>";
+    if (d.scope) html += "<dt>Scope</dt><dd>" + esc(d.scope) + "</dd>";
+    html += "</dl></section>";
+
+    /* --- plane 2: composition. The ordering is the finding. --- */
+    var tags = (c.tags && typeof c.tags === "object") ? c.tags : null;
+    html += '<section class="as-method ps-p2 ps-reveal" aria-label="Category composition of removals">';
+    html += '<p class="ps-label">What the removals are tagged as</p>';
+    if (d.composition_reading) html += '<p class="as-read__say" style="font-size:14px;margin:0 0 14px">' +
+      esc(d.composition_reading) + "</p>";
+    var keys = tags ? Object.keys(tags) : [];
+    if (!keys.length) {
+      html += "<p>" + ABSENT + "</p>";
+    } else {
+      var vals = keys.map(function (k) { return isNum(tags[k]) ? tags[k] : 0; });
+      var max = Math.max.apply(null, vals);
+      var sum = vals.reduce(function (a, b) { return a + b; }, 0);
+      html += '<ul class="as-bars">';
+      keys.forEach(function (k) {
+        var v = tags[k];
+        var w = (max > 0 && isNum(v)) ? Math.max(1.5, (v / max) * 100) : 0;
+        html += "<li>" +
+          '<span class="as-bar-lab" title="' + esc(k) + '">' + esc(k) + "</span>" +
+          '<span class="as-bar-track"><span class="as-bar-fill" style="width:' + w.toFixed(1) + '%"></span></span>' +
+          '<span class="as-bar-n">' + (isNum(v) ? esc(grp(v)) : "?") + "</span>" +
+          "</li>";
+      });
+      html += "</ul>";
+      html += '<p class="as-note">These tags sum to ' + esc(grp(sum)) + ". That is far short of " +
+        (isNum(c.deletions) ? "the " + esc(grp(c.deletions)) + " recorded deletions " : "the recorded deletions ") +
+        (isNum(c.unavailable) ? "and the " + esc(grp(c.unavailable)) + " unavailable apps" : "and the unavailable count") +
+        ", so the tags describe the tagged subset and not the whole removed set. Read the " +
+        "ordering, which is a statement of priorities. Do not read the totals as coverage.</p>";
+    }
+    html += "</section>";
+
+    /* --- plane 1: evidence --- */
+    var top = Array.isArray(pr.top) ? pr.top : [];
+    html += '<section class="as-ev ps-p1 ps-reveal" aria-label="Peer storefronts">';
+    html += '<p class="ps-label">Where that share sits against other storefronts</p>';
+    if (!top.length) {
+      html += "<p>" + ABSENT + "</p>";
+    } else {
+      html += '<ul class="as-peers">';
+      top.forEach(function (row, i) {
+        var self = String(row.code || "").toUpperCase() === String(c.code || "").toUpperCase();
+        html += "<li" + (self ? " data-self" : "") + ">" +
+          '<span class="as-rank ps-num">' + (i + 1) + "</span>" +
+          '<span class="as-country">' + esc(row.country || row.code || "unnamed") +
+          (self ? " (this reading)" : "") + "</span>" +
+          '<span class="as-pct">' + (isNum(row.pct) ? esc(row.pct.toFixed(decFor(row.pct))) + "%" : "no share") + "</span>" +
+          "</li>";
+      });
+      html += "</ul>";
+      html += '<p class="as-note">The five highest shares among the surveyed storefronts. ' +
+        "A high share on its own says little. Against the spread it says more.</p>";
+    }
+
+    if (d.relationship) {
+      html += '<p class="as-verbatim" style="margin-top:14px"><span>Relationship to our panel, carried by the feed, verbatim</span>' +
+        esc(d.relationship) + "</p>";
+    }
+    html += '<p class="as-note">Corpus and tags are GreatFire\'s work, retrieved from their ' +
+      "public AppleCensorship API and reused with attribution. We did not test these apps " +
+      "and we do not restate their result as our own measurement.</p>";
+    html += "</section>";
+
+    host.innerHTML = html;
+
+    var fig = byId("corpusFig");
+    if (fig && pct != null && shell()) shell().countUp(fig, pct, { decimals: decFor(pct), dur: 900 });
+
+    var meta = byId("corpusMeta");
+    if (meta) {
+      meta.innerHTML =
+        "Source: " + esc(d.source || "not stated") + "<br>" +
+        "Measured: " + esc(d.generated_at || "no timestamp") + "<br>" +
+        'Raw: <a href="' + CORPUS_URL + '">latest json</a> · ' +
+        '<a href="/readings/apple-censorship-history.jsonl">full history</a>';
+    }
+    var denom = byId("denomCorpus");
+    if (denom && isNum(c.total_tested)) {
+      denom.textContent = grp(c.total_tested) + " apps tested by GreatFire";
+    }
+
+    freshChip(byId("freshCorpus"), d.generated_at, CORPUS_STALE_H);
+  }
+
+  /* Two independent loads. Neither failure touches the other. */
+  function start() {
+    var S = shell();
+    if (!S || !S.loadReading) {
+      byId("panelBody").innerHTML = failBlock("Live panel", PANEL_URL, "shell.js did not load");
+      byId("corpusBody").innerHTML = failBlock("Census", CORPUS_URL, "shell.js did not load");
+      return;
+    }
+    S.loadReading(PANEL_URL, renderPanel, function (err) {
+      byId("panelBody").innerHTML = failBlock("Live panel", PANEL_URL, err);
+      var chip = byId("freshPanel");
+      chip.className = "tk-chip tk-chip--critical";
+      chip.textContent = "did not load";
+    });
+    S.loadReading(CORPUS_URL, renderCorpus, function (err) {
+      byId("corpusBody").innerHTML = failBlock("Census", CORPUS_URL, err);
+      var chip = byId("freshCorpus");
+      chip.className = "tk-chip tk-chip--critical";
+      chip.textContent = "did not load";
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();
+</script>
+</body>
+</html>

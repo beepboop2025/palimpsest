@@ -14,167 +14,323 @@
 <meta property="og:url" content="https://palimpsest.info/support.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" type="image/svg+xml" href="brand/palimpsest-icon.svg">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
-  /* ── shared site nav (self-contained; identical on every page) ── */
-  .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;
-    padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
-  .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
-  .pnav__brand img{display:block}
-  .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
-  .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-  .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
+  /* Page-local only. Nothing here redefines a --tk-* token or a .ps-* class.
+     The nav, the planes, the type scale and the motion all come from the shell. */
 
-  body{margin:0;background:var(--tk-void,#000);color:var(--tk-text-1,#e2e8f0);
-    font-family:var(--tk-font-display),system-ui,-apple-system,sans-serif;line-height:1.55;
-    background-image:radial-gradient(120% 80% at 50% -8%, rgba(6,214,224,.06), transparent 60%);background-attachment:fixed}
-  .wrap{max-width:900px;margin:0 auto;padding:40px clamp(18px,4vw,26px) 72px}
-  .kick{font-family:var(--tk-font-mono);letter-spacing:.28em;text-transform:uppercase;font-size:11px;color:var(--tk-live,#06d6e0);margin:0 0 14px}
-  h1{font-family:var(--tk-font-display);font-size:clamp(30px,5.5vw,46px);line-height:1.06;margin:0 0 14px;font-weight:800;letter-spacing:-.02em;color:#fff}
-  .lede{font-size:16.5px;color:var(--tk-text-2,#94a3b8);margin:0 0 30px;max-width:680px}
-  h3{font-family:var(--tk-font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--tk-text-3);border-bottom:1px solid var(--tk-line-1);padding-bottom:8px;margin:40px 0 14px}
-  ul{padding-left:18px} li{margin:8px 0;color:var(--tk-text-2);font-size:14.5px}
-  a{color:var(--tk-live,#06d6e0)} b{color:var(--tk-text-1)}
-  .foot{color:var(--tk-text-3);font-size:12.5px;margin-top:38px;border-top:1px solid var(--tk-line-1);padding-top:16px;max-width:700px;font-family:var(--tk-font-mono);line-height:1.7}
+  .sp-head { padding: clamp(32px, 6vw, 64px) 0 2px; }
 
-  /* address cards */
-  .coins{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:720px){.coins{grid-template-columns:1fr}}
-  .coin{background:rgba(255,255,255,.02);border:1px solid var(--tk-line-1,#1a1a1a);border-radius:14px;padding:18px 20px;transition:border-color .15s}
-  .coin:hover{border-color:var(--tk-line-3,#383838)}
-  .coin .ct{display:flex;align-items:center;gap:8px;font-family:var(--tk-font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--tk-text-3);margin-bottom:10px}
-  .coin .dot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 8px currentColor}
-  .coin .net{color:var(--tk-text-3);font-size:11.5px;font-family:var(--tk-font-mono);margin:0 0 8px}
-  .addr{display:block;word-break:break-all;background:rgba(0,0,0,.45);border:1px solid var(--tk-line-1);border-radius:8px;padding:9px 11px;
-    font-family:var(--tk-font-mono);font-size:12px;color:var(--tk-text-1);line-height:1.5}
-  .coin .qr{width:120px;height:120px;border-radius:8px;display:block;margin:2px 0 12px}
-  .copy{margin-top:10px;background:transparent;color:var(--tk-live,#06d6e0);border:1px solid rgba(6,214,224,.35);border-radius:8px;
-    font-family:var(--tk-font-mono);font-size:11px;letter-spacing:.06em;padding:6px 14px;cursor:pointer;transition:background .15s,color .15s}
-  .copy:hover{background:rgba(6,214,224,.12)}
-  .copy.done{color:#04141a;background:var(--tk-live,#06d6e0);border-color:var(--tk-live)}
-  .caveat{color:var(--tk-text-3);font-size:12px;font-family:var(--tk-font-mono);margin-top:16px;max-width:680px;line-height:1.7}
+  /* ---- the two funding paths, so neither audience lands on the wrong one ---- */
+  .sp-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 4px; }
+  @media (max-width: 720px) { .sp-paths { grid-template-columns: 1fr; } }
+  .sp-path { display: block; padding: 16px 18px; text-decoration: none; color: inherit; }
+  .sp-path__k {
+    font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--tk-text-4, #6f8098); margin: 0 0 7px;
+  }
+  .sp-path b { display: block; font-size: 14.5px; font-weight: 700; color: var(--tk-text-0, #fff); }
+  .sp-path p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--tk-text-2, #94a3b8); }
+  .sp-path__go {
+    display: block; margin-top: 11px; font-family: var(--tk-font-mono);
+    font-size: 10.5px; letter-spacing: .07em; color: var(--tk-live, #06d6e0);
+  }
+  .sp-path--here .sp-path__go { color: var(--tk-text-4, #6f8098); }
+
+  /* ---- what a contribution funds: the receipts, so plane 1 ---- */
+  .sp-funds {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 10px;
+  }
+  .sp-funds li { margin: 0; padding: 15px 17px; font-size: 13px; line-height: 1.6; color: var(--tk-text-2, #94a3b8); }
+  .sp-funds b { color: var(--tk-text-0, #fff); }
+
+  .sp-why { font-size: 14px; line-height: 1.62; color: var(--tk-text-2, #94a3b8); max-width: 68ch; margin: 0 0 18px; }
+
+  /* ---- address cards ---- */
+  .coins { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 720px) { .coins { grid-template-columns: 1fr; } }
+  .coin { padding: 18px 20px; }
+  .coin .ct {
+    display: flex; align-items: center; gap: 8px; font-family: var(--tk-font-mono);
+    font-size: 10px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--tk-text-3, #7d8ca3); margin-bottom: 10px;
+  }
+  .coin .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+  .coin .net { color: var(--tk-text-3, #7d8ca3); font-size: 11.5px; font-family: var(--tk-font-mono); margin: 0 0 8px; }
+  .coin .qr { width: 120px; height: 120px; border-radius: 8px; display: block; margin: 2px 0 12px; max-width: 100%; }
+  .addr {
+    display: block; word-break: break-all;
+    background: rgba(0, 0, 0, .45); border: 1px solid var(--ps-edge-1);
+    border-radius: 8px; padding: 9px 11px;
+    font-family: var(--tk-font-mono); font-size: 12px; color: var(--tk-text-1, #e2e8f0); line-height: 1.5;
+  }
+  .copy {
+    margin-top: 10px; background: transparent; color: var(--tk-live, #06d6e0);
+    border: 1px solid rgba(6, 214, 224, .35); border-radius: 8px;
+    font-family: var(--tk-font-mono); font-size: 11px; letter-spacing: .06em;
+    padding: 6px 14px; cursor: pointer;
+    transition: background var(--ps-t-fast) var(--ps-ease), color var(--ps-t-fast) var(--ps-ease);
+  }
+  .copy:hover { background: rgba(6, 214, 224, .12); }
+  .copy.done { color: #04141a; background: var(--tk-live, #06d6e0); border-color: var(--tk-live, #06d6e0); }
+
+  /* ---- the send-it-wrong warning: unmissable, and it stays on plane 1 ---- */
+  .caveat { padding: 15px 17px; margin: 12px 0 0; }
+  .caveat p {
+    margin: 0; font-size: 12.5px; line-height: 1.7; max-width: 74ch;
+    font-family: var(--tk-font-mono); color: var(--tk-text-3, #7d8ca3);
+  }
+  .caveat .ps-label { margin-bottom: 7px; }
+
+  .sp-help { padding-left: 18px; margin: 0; }
+  .sp-help li { margin: 9px 0; color: var(--tk-text-2, #94a3b8); font-size: 14px; line-height: 1.6; max-width: 72ch; }
+  .sp-help b { color: var(--tk-text-0, #fff); }
+
+  a { color: var(--tk-live, #06d6e0); }
+
+  .foot {
+    color: var(--tk-text-4, #6f8098); font-size: 11.5px; margin: 46px 0 60px;
+    border-top: 1px solid var(--ps-edge-1); padding-top: 18px; max-width: 76ch;
+    font-family: var(--tk-font-mono); line-height: 1.75;
+  }
+  .foot a { color: var(--tk-text-2, #94a3b8); }
 </style>
 </head>
-<body>
-
-<nav class="pnav">
-  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
-  <div class="pnav__links">
-    <a href="/">Home</a>
-    <a href="/china-brief.html">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/eval-registry.html">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html">Firewall</a>
-    <a href="/for-researchers.html">Data</a>
-    <a href="/support.html" aria-current="page">Support</a>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
   </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
 </nav>
+<!--/PS_NAV-->
 
-<div class="wrap">
-  <p class="kick">No sponsor · no paywall · no ads</p>
-  <h1>Keep the observatory measuring</h1>
-  <p class="lede">Palimpsest has no institutional funder. Every signal on this site — the deletion
-  tracker, the Generative Firewall Index, the GDELT and refuge feeds — runs on infrastructure someone
-  has to pay for. If the measurements are useful to you, a contribution keeps them running and makes
-  them better: more vantage points, deeper archives, more models probed, faster refresh.</p>
+<main id="main" class="ps-wrap">
 
-  <h3>What a contribution funds</h3>
-  <ul>
-    <li><b>Vantage points.</b> Differential observation needs eyes in more than one place. Network
-    egress and residential vantage infrastructure is the single largest running cost.</li>
-    <li><b>Archival storage.</b> Deletion as data only works if the original was archived first.
-    Evidence snapshots grow every day and are never thrown away.</li>
-    <li><b>Model probes.</b> The Generative Firewall Index pays per query to probe state-aligned
-    models in two languages against control models.</li>
-    <li><b>Research-grade rigor.</b> Human validation studies, uncertainty bands, and replication
-    packaging so the data holds up in peer review, not just on a dashboard.</li>
-  </ul>
+  <header class="sp-head ps-recede">
+    <p class="ps-kicker">No sponsor · no paywall · no ads</p>
+    <h1 class="ps-h1">Keep the observatory measuring</h1>
+    <p class="ps-lede">Palimpsest has no institutional funder. Every signal on this site — the deletion
+    tracker, the Generative Firewall Index, the GDELT and refuge feeds — runs on infrastructure someone
+    has to pay for. If the measurements are useful to you, a contribution keeps them running and makes
+    them better: more vantage points, deeper archives, more models probed, faster refresh.</p>
 
-  <h3>Contribute</h3>
-  <p class="lede" style="margin-bottom:18px;font-size:14.5px">Contributions are accepted in crypto only.
-  That is deliberate: this project measures censors, and permissionless rails are the ones they cannot
-  lean on. No donor list is kept and nothing is tracked.</p>
+    <div class="sp-paths ps-stagger">
+      <div class="sp-path sp-path--here ps-p3">
+        <p class="sp-path__k">You are here</p>
+        <b>Individual support</b>
+        <p>Any amount, in crypto, with no account and no donor list. Nothing is asked in return and
+        nothing is withheld from anyone who gives nothing.</p>
+        <span class="sp-path__go">Addresses below</span>
+      </div>
+      <a class="sp-path ps-p2 ps-lift" href="/fund.html">
+        <p class="sp-path__k">Funding an institution can write</p>
+        <b>What a grant pays for</b>
+        <p>For grantmakers and technical funders: what the observatory costs to run, what a grant
+        buys, and how to reach the person who runs it.</p>
+        <span class="sp-path__go">Open the funder page <span aria-hidden="true">→</span></span>
+      </a>
+    </div>
+  </header>
 
-  <div class="coins">
-    <div class="coin">
-      <div class="ct"><span class="dot" style="color:#f7931a;background:#f7931a"></span>Bitcoin · BTC</div>
-      <p class="net">Bitcoin network only</p>
-            <img class="qr" src="/qr/pay-btc.svg" alt="QR code — Bitcoin address" width="120" height="120">
+  <section class="ps-defer">
+    <h2 class="ps-section-head">What a contribution funds</h2>
+    <ul class="sp-funds ps-stagger">
+      <li class="ps-p1 ps-reveal"><b>Vantage points.</b> Differential observation needs eyes in more than one place. Network
+      egress and residential vantage infrastructure is the single largest running cost.</li>
+      <li class="ps-p1 ps-reveal"><b>Archival storage.</b> Deletion as data only works if the original was archived first.
+      Evidence snapshots grow every day and are never thrown away.</li>
+      <li class="ps-p1 ps-reveal"><b>Model probes.</b> The Generative Firewall Index pays per query to probe state-aligned
+      models in two languages against control models.</li>
+      <li class="ps-p1 ps-reveal"><b>Research-grade rigor.</b> Human validation studies, uncertainty bands, and replication
+      packaging so the data holds up in peer review, not just on a dashboard.</li>
+    </ul>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">Contribute</h2>
+    <p class="sp-why">Contributions are accepted in crypto only.
+    That is deliberate: this project measures censors, and permissionless rails are the ones they cannot
+    lean on. No donor list is kept and nothing is tracked.</p>
+
+    <div class="coins ps-stagger">
+      <div class="coin ps-p2 ps-reveal">
+        <div class="ct"><span class="dot" style="color:#f7931a;background:#f7931a"></span>Bitcoin · BTC</div>
+        <p class="net">Bitcoin network only</p>
+        <img class="qr" src="/qr/pay-btc.svg" alt="QR code — Bitcoin address" width="120" height="120">
 <code class="addr" id="btc">bc1qjg836tkh4f60twad5l4fhh4tek2wje5x3avc3r</code>
-      <button class="copy" data-for="btc">copy address</button>
-    </div>
-    <div class="coin">
-      <div class="ct"><span class="dot" style="color:#8b9dff;background:#8b9dff"></span>Ethereum · ETH / USDC / USDT</div>
-      <p class="net">Ethereum mainnet · ERC-20</p>
-            <img class="qr" src="/qr/pay-evm.svg" alt="QR code — Ethereum / EVM address" width="120" height="120">
+        <button class="copy" type="button" data-for="btc" aria-live="polite" aria-label="Copy the Bitcoin address">copy address</button>
+      </div>
+      <div class="coin ps-p2 ps-reveal">
+        <div class="ct"><span class="dot" style="color:#8b9dff;background:#8b9dff"></span>Ethereum · ETH / USDC / USDT</div>
+        <p class="net">Ethereum mainnet · ERC-20</p>
+        <img class="qr" src="/qr/pay-evm.svg" alt="QR code — Ethereum / EVM address" width="120" height="120">
 <code class="addr" id="eth">0x5B4A78b7EFe482d1579E287dA6F0043f89cf0EA1</code>
-      <button class="copy" data-for="eth">copy address</button>
-    </div>
-    <div class="coin">
-      <div class="ct"><span class="dot" style="color:#14f195;background:#14f195"></span>Solana · SOL / USDC</div>
-      <p class="net">Solana network · SPL</p>
-            <img class="qr" src="/qr/pay-sol.svg" alt="QR code — Solana address" width="120" height="120">
+        <button class="copy" type="button" data-for="eth" aria-live="polite" aria-label="Copy the Ethereum address">copy address</button>
+      </div>
+      <div class="coin ps-p2 ps-reveal">
+        <div class="ct"><span class="dot" style="color:#14f195;background:#14f195"></span>Solana · SOL / USDC</div>
+        <p class="net">Solana network · SPL</p>
+        <img class="qr" src="/qr/pay-sol.svg" alt="QR code — Solana address" width="120" height="120">
 <code class="addr" id="sol">GSESNjnptegNExWRERN6w6niWcPH7WPh6aqdo9kje4UJ</code>
-      <button class="copy" data-for="sol">copy address</button>
-    </div>
-    <div class="coin">
-      <div class="ct"><span class="dot" style="color:#ff4d4d;background:#ff4d4d"></span>Tron · USDT / USDC</div>
-      <p class="net">Tron network · TRC-20</p>
-            <img class="qr" src="/qr/pay-trx.svg" alt="QR code — Tron address" width="120" height="120">
+        <button class="copy" type="button" data-for="sol" aria-live="polite" aria-label="Copy the Solana address">copy address</button>
+      </div>
+      <div class="coin ps-p2 ps-reveal">
+        <div class="ct"><span class="dot" style="color:#ff4d4d;background:#ff4d4d"></span>Tron · USDT / USDC</div>
+        <p class="net">Tron network · TRC-20</p>
+        <img class="qr" src="/qr/pay-trx.svg" alt="QR code — Tron address" width="120" height="120">
 <code class="addr" id="trx">TAAUBJ4qcQtBEp7atEiCcyiEY4qYF56Eaa</code>
-      <button class="copy" data-for="trx">copy address</button>
-    </div>
-    <div class="coin">
-      <div class="ct"><span class="dot" style="color:#0098ea;background:#0098ea"></span>TON · TON / USDT</div>
-      <p class="net">The Open Network</p>
-            <img class="qr" src="/qr/pay-ton.svg" alt="QR code — TON address" width="120" height="120">
+        <button class="copy" type="button" data-for="trx" aria-live="polite" aria-label="Copy the Tron address">copy address</button>
+      </div>
+      <div class="coin ps-p2 ps-reveal">
+        <div class="ct"><span class="dot" style="color:#0098ea;background:#0098ea"></span>TON · TON / USDT</div>
+        <p class="net">The Open Network</p>
+        <img class="qr" src="/qr/pay-ton.svg" alt="QR code — TON address" width="120" height="120">
 <code class="addr" id="ton">UQCDAd8-Kt_wdVlvwDUG6eD78bdHVq7TO8D8jce37-XYsY7J</code>
-      <button class="copy" data-for="ton">copy address</button>
-    </div>
-    <div class="coin">
-      <div class="ct"><span class="dot" style="color:#ff6600;background:#ff6600"></span>Monero · XMR</div>
-      <p class="net">Monero network — private by design</p>
-            <img class="qr" src="/qr/pay-xmr.svg" alt="QR code — Monero address" width="120" height="120">
+        <button class="copy" type="button" data-for="ton" aria-live="polite" aria-label="Copy the TON address">copy address</button>
+      </div>
+      <div class="coin ps-p2 ps-reveal">
+        <div class="ct"><span class="dot" style="color:#ff6600;background:#ff6600"></span>Monero · XMR</div>
+        <p class="net">Monero network — private by design</p>
+        <img class="qr" src="/qr/pay-xmr.svg" alt="QR code — Monero address" width="120" height="120">
 <code class="addr" id="xmr">44juwNHWxVhgPf6jp8BVqP8LSKwBbVm6rVoJ6d1Qhqd5AwRHhH5CNWSSQCbDNDvZuK6WcuJwT4wKt5csePngREkERtgPYs1</code>
-      <button class="copy" data-for="xmr">copy address</button>
+        <button class="copy" type="button" data-for="xmr" aria-live="polite" aria-label="Copy the Monero address">copy address</button>
+      </div>
     </div>
-  </div>
 
-  <p class="caveat">Verify the first and last characters after pasting. Send only on the network named
-  on each card; transfers on the wrong network are unrecoverable. Contributions are gifts to an
-  open-source project, not payments for a service, and are not tax deductible.</p>
+    <div class="caveat ps-p1">
+      <p class="ps-label">Before you send</p>
+      <p>Verify the first and last characters after pasting. Send only on the network named
+      on each card; transfers on the wrong network are unrecoverable. Contributions are gifts to an
+      open-source project, not payments for a service, and are not tax deductible.</p>
+    </div>
+  </section>
 
-  <h3>Other ways to help</h3>
-  <ul>
-    <li><b>Cite the data.</b> Palimpsest exists to be used. Cite it in research and journalism —
-    method and raw evidence are on the <a href="/for-researchers.html">data page</a>.</li>
-    <li><b>Contribute code or validation.</b> The project is MIT-licensed and developed in the open on
-    <a href="https://github.com/beepboop2025/palimpsest">GitHub</a>. Human coders for the classifier
-    validation study are especially welcome.</li>
-    <li><b>Spread the readings.</b> Every share of a live reading makes the measurement harder to
-    ignore and the commons harder to close.</li>
-  </ul>
+  <section class="ps-defer">
+    <h2 class="ps-section-head">Other ways to help</h2>
+    <ul class="sp-help">
+      <li><b>Cite the data.</b> Palimpsest exists to be used. Cite it in research and journalism —
+      method and raw evidence are on the <a href="/for-researchers.html">data page</a>.</li>
+      <li><b>Contribute code or validation.</b> The project is MIT-licensed and developed in the open on
+      <a href="https://github.com/beepboop2025/palimpsest">GitHub</a>. Human coders for the classifier
+      validation study are especially welcome.</li>
+      <li><b>Spread the readings.</b> Every share of a live reading makes the measurement harder to
+      ignore and the commons harder to close.</li>
+    </ul>
+  </section>
 
   <p class="foot">Free and open-source, developed in the open as a public good. Contributions fund
   measurement infrastructure only — the project never monetizes the people or topics it observes.
-  The internet stays free because people keep measuring the dark.</p>
-</div>
+  The internet stays free because people keep measuring the dark.
+  Institutions and grantmakers: <a href="/fund.html">what a grant pays for</a>.</p>
 
+</main>
+
+<script src="/assets/shell.js" defer></script>
 <script>
-  document.querySelectorAll("button.copy").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var text = document.getElementById(b.dataset.for).textContent;
-      navigator.clipboard.writeText(text).then(function () {
-        b.classList.add("done"); b.textContent = "copied";
-        setTimeout(function () { b.classList.remove("done"); b.textContent = "copy address"; }, 1400);
+  /* Copy to clipboard. The address in the DOM is the source of truth: this never
+     holds its own copy of an address, so there is exactly one place a character
+     could ever be wrong, and it is the one the reader can see and check.
+     If the clipboard API is unavailable or refused, the address is selected
+     instead so a manual copy still works, and the button says so. */
+  (function () {
+    function selectAddress(el) {
+      try {
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e) { /* selection is a convenience; the text is still on screen */ }
+    }
+
+    document.querySelectorAll("button.copy").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var el = document.getElementById(b.dataset.for);
+        if (!el) return;
+        var text = el.textContent;
+
+        function settle(ok) {
+          if (ok) b.classList.add("done");
+          b.textContent = ok ? "copied" : "select and copy";
+          setTimeout(function () {
+            b.classList.remove("done");
+            b.textContent = "copy address";
+          }, 1400);
+        }
+
+        if (!navigator.clipboard) { selectAddress(el); settle(false); return; }
+        navigator.clipboard.writeText(text).then(
+          function () { settle(true); },
+          function () { selectAddress(el); settle(false); }
+        );
       });
     });
-  });
+  })();
 </script>
 </body>
 </html>
