@@ -49,6 +49,7 @@ import socket
 import ssl
 from dataclasses import dataclass, field
 from functools import lru_cache
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -94,26 +95,57 @@ def is_genuine_read(obs: Observation) -> bool:
 # Block / interstitial markers (bilingual, deployment-extensible). Presence flips present=False
 # even on a 200 — a `根据相关法律法规` page or an `内容已删除` stub is SIGNAL, not an error to
 # swallow. Lexical and auditable by design: NO model judges this (Line 2). ASCII markers are
-# pre-lowercased; CJK markers are matched as-is (str.lower() is a no-op on them). Note `备案`/`ICP备`
-# are high-recall/low-precision (legit footers also file ICP) — deployment-tunable.
+# pre-lowercased; CJK markers are matched as-is (str.lower() is a no-op on them).
+#
+# `ICP备` and `备案` used to sit in this list, described as "high-recall/low-precision" and
+# "deployment-tunable". They were neither: ICP filing is MANDATORY for mainland hosting and the
+# filing number sits in the footer of essentially every page served from inside China
+# (`京ICP备12345678号-1`). So every genuine Chinese site classified as blocked, this collector
+# could never report a mainland object as present, and the failure was invisible because a
+# present=False carries a plausible reason. A marker that matches the entire population it is
+# meant to discriminate within is not low precision, it is no signal at all.
+#
+# What IS a real interstitial is the NEGATIVE form — a host refusing to serve an unfiled or
+# de-filed domain — so the two markers are replaced by the phrases those pages actually carry.
+# `未备案` is a substring of 域名未备案 / 该网站未备案 / 本网站未备案 and covers all three.
 _BLOCK_MARKERS = (
     # legal / regulatory replacement (a substitution, not a 404)
     ("根据相关法律法规", "legal-block"),
-    ("icp备", "legal-block"),
-    ("备案", "legal-block"),
+    # ICP filing REFUSED or revoked — the HOST declining to serve, which is a decision.
+    # Anchored to the refusal wording, never the bare negation `未备案`: that also matches
+    # every hosting-provider help article and ICP FAQ that DISCUSSES filing, which is the
+    # same over-broad-substring mistake one step down the road.
+    ("尚未进行备案", "icp-not-filed"),
+    ("未进行备案", "icp-not-filed"),
+    ("未完成备案", "icp-not-filed"),      # WeChat: 由于该网站未完成备案或未转入备案
+    ("网站未备案", "icp-not-filed"),      # subsumes 该网站未备案 / 本网站未备案
+    ("域名未备案", "icp-not-filed"),
+    ("备案号已注销", "icp-not-filed"),
+    ("备案已注销", "icp-not-filed"),
+    ("无备案信息", "icp-not-filed"),
+    ("该网站暂时无法进行访问", "icp-not-filed"),   # Aliyun's not-filed page, verbatim
     # explicit deletion
     ("已被删除", "deleted"),
     ("内容已删除", "deleted"),
     # generic access block
     ("无法访问", "block-marker"),
     ("该内容暂时无法显示", "block-marker"),
+    ("此内容暂时无法显示", "block-marker"),
     ("访问受限", "block-marker"),
-    ("access denied", "block-marker"),
     ("not available in your region", "block-marker"),
-    # not-found surfaces
-    ("error.html", "not-found"),
-    ("notfound", "not-found"),
 )
+# DELETED, and deliberately not replaced:
+#   ("error.html", "not-found") / ("notfound", "not-found")
+#     Matched minified JS and markup on ordinary pages — a `NotFoundRoute` in an SPA bundle
+#     or `<meta content="/error.html">` classified a healthy page as blocked. A real 404 is
+#     already caught twice over, structurally: the `status == 404` tell and the
+#     _MIN_PRESENT_LEN floor. Neither needed a substring scan to help.
+#   ("access denied", "block-marker")
+#     An anti-bot or auth-wall tell, not a censorship one, and this repo already says so:
+#     censorwatch/classifier.py maps it to UNKNOWN. Differencing a bot wall against a
+#     healthy POP forks on OUR credentials, not on a content decision. If it is ever
+#     reinstated it must abstain, which means adding its reason to BOTH _ABSTAIN_REASONS
+#     here and undertext.ABSTAIN_REASONS — not simply reappearing in this tuple.
 
 # Volatile CDN headers that differ at EVERY POP/request — recorded for the audit trail but
 # NEVER fingerprinted (fingerprinting them would fake a fork at every POP pair). The fingerprint
@@ -208,16 +240,69 @@ class Response:
     body: str = ""
 
 
+class _TextParser(HTMLParser):
+    """Visible page text only — script/style/template contents suppressed.
+
+    HTMLParser.handle_data DOES emit the contents of <script> and <style>, so a parser in
+    the shape of undertext._ItemParser would still hand a minified bundle to the marker
+    scan. The mute counter is the whole point of this class.
+    """
+
+    _SKIP = {"script", "style", "noscript", "template"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.buf: list[str] = []
+        self._mute = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() in self._SKIP:
+            self._mute += 1
+
+    def handle_endtag(self, tag):
+        if tag.lower() in self._SKIP and self._mute:
+            self._mute -= 1
+
+    def handle_data(self, data):
+        if not self._mute and data.strip():
+            self.buf.append(data)
+
+
+def visible_text(body: str) -> str:
+    """Text a reader would actually see. Fails soft to the raw body — a parse error must
+    degrade the scan, never crash a probe cycle (same contract as undertext.extract_items).
+
+    Attribute values need no special handling: handle_data never emits them, so
+    `<div class="page-notfound">` and `<meta content="/error.html">` cannot match a marker
+    however the marker list is later extended."""
+    if not body:
+        return ""
+    try:
+        p = _TextParser()
+        p.feed(body)
+        p.close()
+        return " ".join(p.buf)
+    except Exception:  # noqa: BLE001 — degrade to the raw body rather than fail the cycle
+        return body
+
+
 def classify(status: int, headers: dict, body: str):
     """Lexical/structural verdict for one edge response -> (present, reason, fp_text).
 
     THE ANALYST LAYER. No model judges anything here (Line 2): structural HTTP-status tells
-    first, then a bilingual block-marker scan of the BODY, then a min-length floor. The
-    fingerprint text is `normalize_body(body)` — BODY ONLY, so volatile CDN headers (Age,
+    first, then a bilingual block-marker scan of the VISIBLE TEXT, then a min-length floor.
+    The fingerprint text is `normalize_body(body)` — BODY ONLY, so volatile CDN headers (Age,
     X-Cache, Via, EagleId, X-NWS-*, Date) can never fake a fork. `headers` is accepted for the
-    auditable interface but intentionally NOT fingerprinted."""
+    auditable interface but intentionally NOT fingerprinted.
+
+    THE SCAN READS VISIBLE TEXT, NOT RAW BYTES. Scanning the whole document meant a marker
+    could match markup, attributes, URLs or a minified JS identifier — evidence about the
+    page's construction, not about any decision the edge made. That is what let `notfound`
+    fire on an SPA bundle. Routing the scan through normalize_body also inherits its 20,000
+    character cap, so a marker past that is missed; acceptable, because a block interstitial
+    is by definition a short page, and the cap is itself a false-positive defence."""
     fp_text = normalize_body(body)
-    low = (body or "").lower()
+    low = normalize_body(visible_text(body)).lower()
     # structural status tells (a 3xx whose Location differs by POP is an edge-rule fork)
     if 300 <= status < 400:
         return (False, "edge-rule", fp_text)
