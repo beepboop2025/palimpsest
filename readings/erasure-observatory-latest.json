@@ -1,8 +1,9 @@
 {
-  "generated_at": "2026-07-30T19:37:41.867050+00:00",
+  "generated_at": "2026-07-30T20:34:53.126845+00:00",
+  "method_version": 1,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 41.5,
+  "erasure_index": 41.4,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -13,12 +14,12 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 57.9,
+      "value": 57.8,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-07-30T14:37:32.064448+00:00",
-      "age_days": 0.21,
-      "age_hours": 5.0
+      "as_of": "2026-07-30T19:56:38.377704+00:00",
+      "age_days": 0.03,
+      "age_hours": 0.6
     },
     {
       "layer": "model",
@@ -28,7 +29,7 @@
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
       "as_of": "2026-07-30T09:25:58.129274+00:00",
-      "age_days": 0.42
+      "age_days": 0.46
     },
     {
       "layer": "narrative",
@@ -36,7 +37,7 @@
       "value": null,
       "status": "ARMED",
       "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
-      "reason": "live network not enabled (PALIMPSEST_LIVE / PALIMPSEST_PROXY unset)"
+      "reason": "only 0/10 entities were comparable (fetch_failed×10). A 403 here is the source refusing this client, which is not by itself evidence about geography"
     }
   ],
   "cross_checks": [
@@ -55,28 +56,28 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 95,
+    "entries": 97,
     "verified": true,
-    "merkle_root": "78c1aba0d1bf5b71f36f8ed01fc85fd0c1c6f262dee4bdaf6f7175d30d21d482",
-    "head_hash": "4a94ce8024b3e26ac7db7585cf6dd7beae8390d04fc8151ed2bdc85c50f12972",
+    "merkle_root": "6a35615cc24fe2ebfc985a8c6501c9af79152ffb7b27ec5cf40b86e1a31d8832",
+    "head_hash": "b933cf52425600737526bc52a5ab8403ab4250c1541de8aeb109c42681110421",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-30T19:37:41.867050+00:00",
+    "head_ts": "2026-07-30T20:34:53.126845+00:00",
     "by_source": {
-      "ooni-gfw": 77,
+      "ooni-gfw": 78,
       "generative-firewall": 2,
       "censored-planet": 15,
-      "baike-redaction": 1
+      "baike-redaction": 2
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 93,
-        "entry_hash": "6aa3a2b68ab51614d048cc5a9660f1c9218ea4c1ef70fb5b270481dd7ce1449b"
+        "seq": 95,
+        "entry_hash": "c86addb46883343e2eaec557855182e0259ca54f66f0dc6a50ab78bcb4d93391"
       },
       {
-        "source": "generative-firewall",
-        "seq": 94,
-        "entry_hash": "4a94ce8024b3e26ac7db7585cf6dd7beae8390d04fc8151ed2bdc85c50f12972"
+        "source": "baike-redaction",
+        "seq": 96,
+        "entry_hash": "b933cf52425600737526bc52a5ab8403ab4250c1541de8aeb109c42681110421"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
