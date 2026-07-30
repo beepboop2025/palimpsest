@@ -41,6 +41,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "bleedthrough-latest.json")
 HIST = os.path.join(READINGS, "bleedthrough-history.jsonl")
+
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
 STORE_DIR = os.path.join(ROOT, "data", "bleedthrough_baselines")
 
 TARGETS = os.getenv("BLEEDTHROUGH_TARGETS", os.path.join(ROOT, "config", "bleedthrough_targets.json"))
@@ -168,6 +175,7 @@ def main() -> None:
     now = datetime.now(timezone.utc)
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "signal": "bleedthrough",
         "title": "GFW injector fleet",
         "scope": ("apparatus-layer tomography of the Great Firewall's DNS-injector fleet: "
@@ -218,7 +226,10 @@ def main() -> None:
             prev = {}
     sig_keys = ("vantages_injecting", "distinct_pools", "max_process_count",
                 "pool_sampling_suspected", "events")
-    if not prev or any(prev.get(k) != out.get(k) for k in sig_keys):
+    # method_version is part of the comparison so a methodology correction reaches
+    # the published file even when every value is identical.
+    if (not prev or any(prev.get(k) != out.get(k) for k in sig_keys)
+            or prev.get("method_version") != METHOD_VERSION):
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:

@@ -46,6 +46,13 @@ MANIFEST = os.path.join(ROOT, "data", "citizenlab", "line", "manifest.json")
 OUT = os.path.join(READINGS, "blocklist-latest.json")
 HIST = os.path.join(READINGS, "blocklist-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 # How many newly-added terms ship as evidence in the published reading. Bounded on purpose:
 # see the publishing-scope note above.
 EVIDENCE_SAMPLE = 12
@@ -111,6 +118,7 @@ def main() -> dict:
 
     reading = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "method_version": METHOD_VERSION,
         "title": "Blocklist archaeology — newly-shipped censorship keywords",
         "scope": ("keywords newly present in successive LINE client blocklists; each addition "
                   "is a directive the platform labelled itself, not an inference from deletion"),

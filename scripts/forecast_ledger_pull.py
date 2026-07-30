@@ -17,6 +17,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "forecast-ledger-latest.json")
 HIST = os.path.join(READINGS, "forecast-ledger-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 
 def main() -> None:
     reading = build_reading(READINGS)
@@ -29,6 +36,7 @@ def main() -> None:
     # able to see the track record itself move over time.
     entry = {
         "generated_at": reading["generated_at"],
+        "method_version": METHOD_VERSION,
         "n_signals_scored": reading["n_signals_scored"],
         "n_forecasts": reading["n_forecasts"],
         "pooled_empirical_coverage": reading["pooled_empirical_coverage"],

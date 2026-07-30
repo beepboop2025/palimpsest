@@ -22,6 +22,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "in-path-interference-latest.json")
 HIST = os.path.join(READINGS, "in-path-interference-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 # CN measurement volume is uneven day to day; 90 days keeps the thinner tests
 # (torsf, echcheck) above the floor without smearing a real change beyond
 # recognition.
@@ -72,6 +79,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
         "window_days": WINDOW_DAYS,
         "scope": ("in-path tampering, real-time/circumvention transport health, and "
@@ -105,6 +113,9 @@ def main() -> None:
                or prev.get("transport_index") != transport
                or {b["test"] for b in prev.get("execution_blackouts", [])}
                != {b["test"] for b in blackouts})
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
 
     os.makedirs(READINGS, exist_ok=True)
     if changed or not prev:

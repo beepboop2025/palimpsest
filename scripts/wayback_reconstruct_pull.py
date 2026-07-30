@@ -42,6 +42,13 @@ WATCHLIST = os.path.join(ROOT, "config", "wayback_watchlist.json")
 OUT = os.path.join(READINGS, "wayback-latest.json")
 HIST = os.path.join(READINGS, "wayback-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 # Polite by construction: the CDX API is a shared public good. One request per URL, well under 1/s.
 _RATE_PER_SEC = 0.5
 _BURST = 2.0
@@ -110,6 +117,7 @@ def main() -> None:
     n_mutations = sum(1 for r in rows if r["event"] == MUTATION)
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
         "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with "
                  "archive-witnessed timestamps; velocity reported as an explicit capture bracket",

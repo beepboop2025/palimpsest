@@ -15,6 +15,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "net4people-latest.json")
 HIST = os.path.join(READINGS, "net4people-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 RECENT_DAYS = 30
 SHOW = 20
 
@@ -53,6 +60,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
         "scope": ("community log of China network-blocking events and circumvention "
                   "developments — the qualitative companion to the OONI anomaly signal"),
@@ -85,6 +93,9 @@ def main() -> None:
     changed = (not prev or
                (prev.get("events") or [{}])[0].get("number") != (out["events"] or [{}])[0].get("number") or
                prev.get("n_recent") != out["n_recent"])
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
     if changed:
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)

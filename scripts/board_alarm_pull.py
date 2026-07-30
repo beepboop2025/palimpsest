@@ -22,6 +22,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "board-alarm-latest.json")
 HIST = os.path.join(READINGS, "board-alarm-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. This driver rewrites the reading unconditionally, so it cannot
+# hide a method change; the projection guard below controls only whether a
+# HISTORY row is appended. Carried as provenance for anyone diffing two rows.
+METHOD_VERSION = 1
+
+
 
 def _state(reading: dict) -> dict:
     """The fields whose change is worth a history line."""
@@ -49,6 +56,7 @@ def main() -> None:
 
     if previous is None or _state(previous) != _state(reading):
         entry = {"generated_at": reading["generated_at"],
+        "method_version": METHOD_VERSION,
                  "board_e_value": reading["board_e_value"], **_state(reading)}
         with open(HIST, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")

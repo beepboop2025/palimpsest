@@ -18,6 +18,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "vantage-fusion-latest.json")
 HIST = os.path.join(READINGS, "vantage-fusion-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 
 def _load(name: str) -> dict:
     path = os.path.join(READINGS, name)
@@ -36,6 +43,7 @@ def main() -> None:
         "censored_planet": _load("censored-planet-latest.json"),
         "net4people": _load("net4people-latest.json"),
     })
+    reading["method_version"] = METHOD_VERSION
     if not reading.get("ok"):
         print("fusion abstained:", reading.get("reason"))
         return

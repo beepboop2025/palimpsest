@@ -39,6 +39,14 @@ REGISTRY = os.path.join(READINGS, "eval-registry.jsonl")
 OUT = os.path.join(READINGS, "refusal-drift-latest.json")
 HIST = os.path.join(READINGS, "refusal-drift-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# unconditionally, so unlike the write-if-changed drivers it has no risk of a
+# methodology correction failing to reach the published file. The version is
+# carried anyway as provenance: a reader comparing two history rows needs to know
+# whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 URL = "https://openrouter.ai/api/v1/chat/completions"
 SUITE = "frontier-overrefusal-v1"
 ABSTAIN_MAX = 0.34  # skip a model if more than this share of its probes could not be reached
@@ -166,6 +174,7 @@ def main() -> None:
 
     reading = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "title": "Frontier model refusal drift",
         "suite": SUITE,
         "scope": ("undisclosed behavioral change across frontier models: what each will no longer "

@@ -24,6 +24,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "weibo-hotsearch-latest.json")
 HIST = os.path.join(READINGS, "weibo-hotsearch-history.jsonl")
+
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
 DDTI = os.path.join(READINGS, "ddti-latest.json")
 GAZETTEER = os.path.join(ROOT, "config", "zh_censorship_gazetteer.json")
 
@@ -87,6 +94,7 @@ def main() -> None:
 
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "method_version": METHOD_VERSION,
         "source": ("Sina Weibo hot-search board via the MIT-licensed archive "
                    "github.com/justjavac/weibo-trending-hot-search "
                    "(hourly captures, per-day union; keyless raw fetch)"),

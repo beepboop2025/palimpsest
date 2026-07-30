@@ -26,6 +26,13 @@ DDTI_LATEST = os.path.join(READINGS, "ddti-latest.json")
 OUT = os.path.join(READINGS, "gdelt-latest.json")
 HIST = os.path.join(READINGS, "gdelt-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 
 def main() -> None:
     if not os.path.exists(DDTI_LATEST):
@@ -53,6 +60,7 @@ def main() -> None:
     now = datetime.now(timezone.utc)
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
         "scope": "cross-signal: domestic censorship attention vs global coverage volume",
         "ddti_generated_at": ddti.get("generated_at"),

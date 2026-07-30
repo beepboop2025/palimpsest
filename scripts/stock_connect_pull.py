@@ -23,6 +23,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "stock-connect-latest.json")
 HIST = os.path.join(READINGS, "stock-connect-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 WINDOW_DAYS = 14   # normal top-up window per cron run
 
 
@@ -84,6 +91,7 @@ def main() -> None:
     last_date = max(fresh)
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "method_version": METHOD_VERSION,
         "source": "HKEX Stock Connect daily statistics (keyless official prints)",
         "asof": last_date,
         "reading": fresh[last_date],

@@ -42,6 +42,13 @@ BASELINES = os.path.join(READINGS, "github-refuge-baselines.json")
 OUT = os.path.join(READINGS, "github-refuge-latest.json")
 HIST = os.path.join(READINGS, "github-refuge-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see. This driver rewrites
+# the reading unconditionally, so it cannot hide a method change behind an
+# unchanged number. Carried as provenance: a reader diffing two history rows
+# needs to know whether the method moved underneath them.
+METHOD_VERSION = 1
+
+
 # Polite by construction: a handful of REST reads per repo, well inside GitHub's
 # unauthenticated 60/hr as well as the 5000/hr a token grants.
 _RATE_PER_SEC = 1.0
@@ -129,6 +136,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "GitHub REST API (public pressure metadata only)",
         "scope": "pressure on censored-material refuge repos: takedowns, legal blocks, visibility drops, preservation bursts",
         "first_run": first_run,

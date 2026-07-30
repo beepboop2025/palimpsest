@@ -21,6 +21,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "apple-censorship-latest.json")
 HIST = os.path.join(READINGS, "apple-censorship-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 
 def _reading(country: dict, rank: dict | None) -> str:
     pct = country["unavailable_pct"]
@@ -53,6 +60,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "AppleCensorship (api2.applecensorship.com), GreatFire's App Store corpus",
         "scope": ("corpus-scale App Store availability for the Chinese storefront and the "
                   "category composition of what is removed"),
@@ -78,6 +86,9 @@ def main() -> None:
     changed = (prev.get("unavailable_pct") != out["unavailable_pct"]
                or (prev.get("country") or {}).get("unavailable") != country["unavailable"]
                or (prev.get("country") or {}).get("tags") != country["tags"])
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
 
     os.makedirs(READINGS, exist_ok=True)
     if changed or not prev:

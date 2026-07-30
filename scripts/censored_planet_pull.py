@@ -15,6 +15,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "censored-planet-latest.json")
 HIST = os.path.join(READINGS, "censored-planet-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 WINDOW_DAYS = 70   # CP publishes ~weekly; a wide window guarantees coverage
 
 
@@ -39,6 +46,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "Censored Planet (data.censoredplanet.org) — open GraphQL API",
         "scope": ("independent China censorship measurement — remote DNS/HTTP side-channel "
                   "from 95k+ vantage points (Satellite + Hyperquack), a different method than OONI"),
@@ -68,6 +76,9 @@ def main() -> None:
             prev = {}
     changed = any(prev.get(k) != out.get(k) for k in
                   ("cn_interference_rate_pct", "n_events", "events", "series_points"))
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
     if changed or not prev:
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)

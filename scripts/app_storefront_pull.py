@@ -23,6 +23,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "app-storefront-latest.json")
 HIST = os.path.join(READINGS, "app-storefront-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 
 def _band(rate: float) -> str:
     if rate >= 0.75:
@@ -84,6 +91,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
         "scope": ("app-layer availability: which apps are offered in the Chinese App "
                   "Store storefront versus the US one"),
@@ -105,6 +113,9 @@ def main() -> None:
                or {a["name"] for a in prev.get("apps", []) if a.get("state") == "DELISTED"}
                != {o["name"] for o in delisted}
                or bool(events))
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
 
     os.makedirs(READINGS, exist_ok=True)
     if changed or not prev:

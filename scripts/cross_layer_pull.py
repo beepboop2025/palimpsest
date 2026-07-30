@@ -16,6 +16,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "cross-layer-latest.json")
 HIST = os.path.join(READINGS, "cross-layer-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. This driver rewrites the reading unconditionally, so it cannot
+# hide a method change; the projection guard below controls only whether a
+# HISTORY row is appended. Carried as provenance for anyone diffing two rows.
+METHOD_VERSION = 1
+
+
 
 def _state(reading: dict) -> dict:
     return {"n_pairs_tested": reading.get("n_pairs_tested"),
@@ -25,6 +32,7 @@ def _state(reading: dict) -> dict:
 
 def main() -> None:
     reading = build_reading(READINGS)
+    reading["method_version"] = METHOD_VERSION
 
     previous = None
     if os.path.exists(OUT):

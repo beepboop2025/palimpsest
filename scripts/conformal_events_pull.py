@@ -19,6 +19,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "event-flags-latest.json")
 HIST = os.path.join(READINGS, "event-flags-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. This driver rewrites the reading unconditionally, so it cannot
+# hide a method change; the projection guard below controls only whether a
+# HISTORY row is appended. Carried as provenance for anyone diffing two rows.
+METHOD_VERSION = 1
+
+
 
 def _states(reading: dict) -> dict:
     return {k: v.get("state") for k, v in reading.get("signals", {}).items()}
@@ -42,6 +49,7 @@ def main() -> None:
     if previous is None or _states(previous) != _states(reading):
         entry = {
             "generated_at": reading["generated_at"],
+        "method_version": METHOD_VERSION,
             "states": _states(reading),
             "active": reading["active"],
         }

@@ -47,6 +47,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "baike-redaction-latest.json")
 HIST = os.path.join(READINGS, "baike-redaction-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 # Minimum comparable entities before we trust an index (else abstain).
 MIN_COMPARABLE = 4
 
@@ -146,6 +153,7 @@ def main() -> None:
 def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> dict:
     return {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "Baidu Baike (subject) vs Chinese Wikipedia (open-record control)",
         "scope": ("narrative erasure — contested encyclopedia entries silently forked from the "
                   "open record: sensitive terms excised, sourcing collapsed to state media, or absent"),
@@ -170,9 +178,13 @@ def _write(now, **kw) -> None:
             prev = json.load(open(OUT, encoding="utf-8"))
         except (ValueError, OSError):
             prev = {}
+    # method_version is part of the comparison so a methodology correction reaches
+    # the published file even when every value is identical — otherwise the site
+    # keeps asserting a method, and an abstain reason, that no longer apply.
     if (prev.get("rewrite_index") != out["rewrite_index"]
             or prev.get("status") != out["status"]
-            or prev.get("n_comparable") != out["n_comparable"]):
+            or prev.get("n_comparable") != out["n_comparable"]
+            or prev.get("method_version") != METHOD_VERSION):
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:

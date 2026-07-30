@@ -41,6 +41,13 @@ LEDGER = os.path.join(READINGS, "erasure-ledger.jsonl")
 OUT = os.path.join(READINGS, "erasure-observatory-latest.json")
 HIST = os.path.join(READINGS, "erasure-observatory-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 # The Generative Firewall reading refreshes daily (workflow: gfi-refresh.yml) and lands
 # in readings/latest.json. A week without a fresh one is a real measurement gap, not a
 # hiccup — past that we abstain rather than republish an old number as today's value.
@@ -320,6 +327,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "title": "Information Erasure Observatory",
         "thesis": ("The field measures access in the present tense. We measure erasure across "
                    "time — what was removed or rewritten — on three layers, and we seal our own "
@@ -355,6 +363,9 @@ def main() -> None:
     changed = (prev.get("erasure_index") != composite
                or prev_vals != cur_vals
                or (prev.get("integrity") or {}).get("head_hash") != ledger_summary["head_hash"])
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
     if changed:
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)

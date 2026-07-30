@@ -18,6 +18,13 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "ooni-gfw-latest.json")
 HIST = os.path.join(READINGS, "ooni-gfw-history.jsonl")
 
+# Bumped when the METHOD changes in a way a reader must see, even if the numbers
+# do not move. Write-if-changed compares readings, so without this a methodology
+# correction that leaves the values identical never reaches the published file and
+# the site keeps asserting a method it no longer uses.
+METHOD_VERSION = 1
+
+
 WINDOW_DAYS = 7   # CN measurement volume is uneven; a 7d window keeps the rate stable
 
 
@@ -66,6 +73,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
         "scope": ("live Great Firewall network blocking — website, messenger and "
                   "circumvention-tool reachability, measured inside China by OONI Probe"),
@@ -93,6 +101,9 @@ def main() -> None:
             prev = {}
     sig_keys = ("gfw_index", "n_tests_with_data", "tests", "top_blocked")
     changed = any(prev.get(k) != out.get(k) for k in sig_keys)
+    # A method correction must reach the published file even when every value is
+    # identical, or the site keeps asserting a method it no longer uses.
+    changed = changed or prev.get("method_version") != METHOD_VERSION
     if changed or not prev:
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)
