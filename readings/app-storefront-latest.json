@@ -1,0 +1,134 @@
+{
+  "generated_at": "2026-07-30T19:18:03.674062+00:00",
+  "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
+  "scope": "app-layer availability: which apps are offered in the Chinese App Store storefront versus the US one",
+  "caveat": "delisting is NOT network blocking. Facebook, X and YouTube remain listed in the Chinese storefront while unreachable there; the apps that get removed are the ones that would still work over a VPN",
+  "control": {
+    "state": "OK",
+    "why": "2 control app(s) present in both storefronts; 10 tracked app(s) comparable"
+  },
+  "delisting_rate": 0.6,
+  "reading": "much of the tracked catalogue is unavailable in the Chinese storefront",
+  "n_tracked": 10,
+  "n_delisted": 6,
+  "delisted_apps": [
+    "Proton VPN",
+    "Onion Browser",
+    "Signal",
+    "WhatsApp",
+    "Telegram",
+    "The New York Times"
+  ],
+  "changes_since_last_reading": [],
+  "panel_size": 12,
+  "apps": [
+    {
+      "name": "Proton VPN",
+      "track_id": 1437005085,
+      "category": "CIRCUMVENTION",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 0,
+      "state": "DELISTED"
+    },
+    {
+      "name": "Onion Browser",
+      "track_id": 519296448,
+      "category": "CIRCUMVENTION",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 0,
+      "state": "DELISTED"
+    },
+    {
+      "name": "Signal",
+      "track_id": 874139669,
+      "category": "SECURE_MESSAGING",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 0,
+      "state": "DELISTED"
+    },
+    {
+      "name": "WhatsApp",
+      "track_id": 310633997,
+      "category": "SECURE_MESSAGING",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 0,
+      "state": "DELISTED"
+    },
+    {
+      "name": "Telegram",
+      "track_id": 686449807,
+      "category": "SECURE_MESSAGING",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 0,
+      "state": "DELISTED"
+    },
+    {
+      "name": "The New York Times",
+      "track_id": 284862083,
+      "category": "NEWS",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 0,
+      "state": "DELISTED"
+    },
+    {
+      "name": "Facebook",
+      "track_id": 284882215,
+      "category": "SOCIAL",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 1,
+      "state": "AVAILABLE"
+    },
+    {
+      "name": "X",
+      "track_id": 333903271,
+      "category": "SOCIAL",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 1,
+      "state": "AVAILABLE"
+    },
+    {
+      "name": "YouTube",
+      "track_id": 544007664,
+      "category": "SOCIAL",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 1,
+      "state": "AVAILABLE"
+    },
+    {
+      "name": "Wikipedia",
+      "track_id": 324715238,
+      "category": "REFERENCE",
+      "control": false,
+      "storefront_control": 1,
+      "storefront_cn": 1,
+      "state": "AVAILABLE"
+    },
+    {
+      "name": "WeChat",
+      "track_id": 414478124,
+      "category": "CONTROL",
+      "control": true,
+      "storefront_control": 1,
+      "storefront_cn": 1,
+      "state": "AVAILABLE"
+    },
+    {
+      "name": "Alipay",
+      "track_id": 333206289,
+      "category": "CONTROL",
+      "control": true,
+      "storefront_control": 1,
+      "storefront_cn": 1,
+      "state": "AVAILABLE"
+    }
+  ]
+}
