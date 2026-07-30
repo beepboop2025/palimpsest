@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-30T03:47:20.075209+00:00",
-  "board_e_value": 9.791,
+  "generated_at": "2026-07-30T09:20:22.914617+00:00",
+  "board_e_value": 10.423,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
@@ -11,27 +11,27 @@
   },
   "layers": {
     "network": {
-      "e": 16.844,
+      "e": 16.641,
       "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
-        "censored_planet": 46.783,
+        "censored_planet": 47.466,
         "ioda_outages": 1.0,
-        "ooni_gfw": 17.061,
-        "tor_bridge_cn": 2.531
+        "ooni_gfw": 15.383,
+        "tor_bridge_cn": 2.715
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 4.149,
+      "e": 5.449,
       "n_signals": 5,
       "state": "calm",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 2.649,
-        "ddti_threat": 8.49,
-        "gdelt_containment": 3.785,
+        "ddti_novelty": 2.608,
+        "ddti_threat": 14.839,
+        "gdelt_containment": 3.978,
         "github_refuge": 4.818,
         "weibo_suppression": 1.0
       },
@@ -52,30 +52,30 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 17.0605,
-      "n": 84,
+      "e": 15.3835,
+      "n": 85,
       "direction": "down",
       "robust_z": -1.12,
       "driver_side": "down",
-      "readings_since_alarm": 33,
+      "readings_since_alarm": 34,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 8.4901,
-      "n": 164,
+      "e": 14.8391,
+      "n": 165,
       "direction": "up",
-      "robust_z": 1.51,
+      "robust_z": 1.21,
       "driver_side": "up",
-      "readings_since_alarm": 40,
+      "readings_since_alarm": 41,
       "n_alarms_in_history": 2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 2.6489,
-      "n": 164,
+      "e": 2.6078,
+      "n": 165,
       "direction": "down",
       "robust_z": null,
       "driver_side": "down",
@@ -85,10 +85,10 @@
     },
     "censored_planet": {
       "state": "calm",
-      "e": 46.7835,
-      "n": 15,
+      "e": 47.4663,
+      "n": 16,
       "direction": "down",
-      "robust_z": -1.81,
+      "robust_z": -1.46,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -96,11 +96,11 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 3.7853,
-      "n": 93,
-      "direction": "down",
-      "robust_z": -1.35,
-      "driver_side": "down",
+      "e": 3.9782,
+      "n": 94,
+      "direction": "up",
+      "robust_z": 0.67,
+      "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
@@ -139,19 +139,19 @@
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "e": 2.531,
-      "n": 384,
+      "e": 2.7145,
+      "n": 385,
       "direction": "up",
       "robust_z": 0.6,
       "driver_side": "down",
-      "readings_since_alarm": 79,
+      "readings_since_alarm": 80,
       "n_alarms_in_history": 6,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 43,
+      "n": 44,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -162,7 +162,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 42,
+      "n": 43,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
