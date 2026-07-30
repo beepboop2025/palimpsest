@@ -345,11 +345,59 @@ SIGNALS = {
 }
 
 
+# How long a signal's newest row may be before the board stops treating it as current.
+# 5x the committed refresh interval, so a single missed run is normal and a dead collector
+# is not. Derived from the crons in .github/workflows/<signal>-refresh.yml, named here so
+# the number and the schedule it comes from stay side by side.
+#
+# WHY THIS EXISTS. _load_series used to return bare floats, discarding every timestamp, so
+# a history file that stopped being appended to weeks ago was indistinguishable from one
+# that is actively flat — and a flat series reads as CALM. The board would report "all
+# signals within their own history" over a collector that had been dead for a fortnight,
+# which is the most reassuring possible way to be wrong. Verified live on 2026-07-31:
+# circumvention-demand-history.jsonl was 93h old (bound 120h — inside, but only just) and
+# vantage-fusion-history.jsonl was 365h old.
+MAX_AGE_HOURS = {
+    "ooni_gfw": 30.0,              # ooni-gfw-refresh.yml       every 6h
+    "ddti_threat": 15.0,           # ddti-refresh.yml           every 3h
+    "ddti_novelty": 15.0,
+    "censored_planet": 120.0,      # censored-planet-refresh.yml    daily
+    "gdelt_containment": 30.0,     # gdelt-refresh.yml          every 6h
+    "github_refuge": 60.0,         # github-refuge-refresh.yml  every 12h
+    "refusal_drift": 30.0,         # inside erasure-refresh.yml every 6h
+    "bleedthrough_pools": 168.0,   # prober is manual/opt-in — a week, deliberately loose
+    "bleedthrough_capacity": 168.0,
+    "tor_bridge_cn": 120.0,        # circumvention-demand-refresh.yml  daily
+    "weibo_suppression": 30.0,     # weibo-hotsearch-refresh.yml   every 6h
+    "ioda_outages": 30.0,          # ioda-outages-refresh.yml   every 6h
+}
+
+
+def _row_timestamp(record: dict):
+    """When a history row was written, as an aware datetime, or None if it says nothing."""
+    for key in ("generated_at", "as_of", "at", "date"):
+        v = record.get(key)
+        if isinstance(v, str) and v:
+            try:
+                t = datetime.fromisoformat(v)
+            except ValueError:
+                continue
+            return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+    return None
+
+
 def _load_series(readings_dir: Path, filename: str, extract) -> list[float]:
+    """Values only — kept for callers that do not care when the rows were written."""
+    return [v for v, _ts in _load_series_dated(readings_dir, filename, extract)]
+
+
+def _load_series_dated(readings_dir: Path, filename: str, extract) -> list[tuple]:
+    """(value, timestamp|None) per row, in file order. The timestamp is what lets the board
+    tell a genuinely flat signal from a collector that stopped writing."""
     path = readings_dir / filename
     if not path.exists():
         return []
-    out: list[float] = []
+    out: list[tuple] = []
     with path.open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -361,7 +409,7 @@ def _load_series(readings_dir: Path, filename: str, extract) -> list[float]:
                 continue  # a torn line must not kill the whole signal
             v = extract(record)
             if isinstance(v, (int, float)):
-                out.append(float(v))
+                out.append((float(v), _row_timestamp(record)))
     return out
 
 
@@ -370,10 +418,28 @@ def build_reading(readings_dir: str | Path) -> dict:
     calibrated 'is anything happening?' answer."""
     readings_dir = Path(readings_dir)
     signals = {}
+    now = datetime.now(timezone.utc)
     for name, (filename, extract, meaning) in SIGNALS.items():
-        series = _load_series(readings_dir, filename, extract)
+        dated = _load_series_dated(readings_dir, filename, extract)
+        series = [v for v, _ in dated]
         if not series:
             signals[name] = {"state": "no_data", "n": 0, "meaning": meaning}
+            continue
+        # STALE BEFORE CALM. A signal whose newest row is past its bound is not evidence
+        # that nothing is happening; it is the absence of evidence, and calling it calm is
+        # the fabricated-measurement bug in its most flattering form.
+        newest = next((ts for _v, ts in reversed(dated) if ts is not None), None)
+        age_h = (now - newest).total_seconds() / 3600.0 if newest else None
+        bound = MAX_AGE_HOURS.get(name)
+        if bound is not None and (age_h is None or age_h > bound):
+            signals[name] = {
+                "state": "stale", "n": len(series), "meaning": meaning,
+                "age_hours": round(age_h, 1) if age_h is not None else None,
+                "bound_hours": bound,
+                "reason": (f"newest row is {age_h:.1f}h old, past the {bound:.0f}h bound"
+                           if age_h is not None else
+                           "history rows carry no usable timestamp, so currency cannot be shown"),
+            }
             continue
         r = analyze_series(series)
         signals[name] = {
@@ -381,10 +447,16 @@ def build_reading(readings_dir: str | Path) -> dict:
             "stat": r["stat"],
             "n": r["n"],
             "n_alarms_in_history": len(r["alarm_indices"]),
+            "age_hours": round(age_h, 1) if age_h is not None else None,
             "meaning": meaning,
         }
     active = sorted(
         n for n, s in signals.items() if s.get("state") in ("watch", "alarm"))
+    # Named separately so "nothing is elevated" can never be read without also seeing how
+    # much of the board was actually reporting when that was said.
+    stale = sorted(n for n, s in signals.items() if s.get("state") == "stale")
+    dark = sorted(n for n, s in signals.items() if s.get("state") == "no_data")
+    reporting = len(SIGNALS) - len(stale) - len(dark)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "method": (
@@ -401,9 +473,14 @@ def build_reading(readings_dir: str | Path) -> dict:
         ),
         "signals": signals,
         "active": active,
+        "stale": stale,
+        "no_data": dark,
+        "n_reporting": reporting,
+        "n_signals": len(SIGNALS),
         "headline": (
-            "all signals within their own history"
-            if not active else
-            "elevated: " + ", ".join(active)
+            ("elevated: " + ", ".join(active)) if active else
+            (f"no signal elevated, but only {reporting} of {len(SIGNALS)} signals are reporting"
+             if (stale or dark) else
+             "all signals within their own history")
         ),
     }

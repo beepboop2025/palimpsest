@@ -115,7 +115,13 @@ def test_thresholds_sane():
 # ── reading over real repo files ────────────────────────────────────────────────
 
 def test_build_reading_over_fixture_dir(tmp_path):
-    quiet = [{"gfw_index": 50 + (i % 3)} for i in range(30)]
+    # Rows carry timestamps because the board now bounds recency: an undated history
+    # cannot be shown to be current, so it reads "stale" rather than "calm". The fixture
+    # was always implicitly claiming these rows were recent; now it says so.
+    from datetime import datetime, timedelta, timezone
+    _now = datetime.now(timezone.utc)
+    quiet = [{"generated_at": (_now - timedelta(hours=(29 - i) * 6)).isoformat(),
+              "gfw_index": 50 + (i % 3)} for i in range(30)]
     with open(tmp_path / "ooni-gfw-history.jsonl", "w") as fh:
         for r in quiet:
             fh.write(json.dumps(r) + "\n")
