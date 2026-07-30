@@ -33,6 +33,10 @@ closely enough, becomes a sensor for what a state most fears.
   authoritarian information space is a lexicon, not a rewrite.*
 - **Safety as executable code.** Kill-switch, rate ceiling, hash-chained audit. The thing
   it watches is the censor, never the censored.
+- **A machine-readable front door.** The whole board is callable over the Model Context
+  Protocol at `https://api.seiche.info/palimpsest/mcp`, so an AI assistant answering "what is
+  being blocked right now?" can read today's measurement instead of its training data. Four
+  read-only tools over the already-published readings — see [MCP-SERVER.md](MCP-SERVER.md).
 
 ## The architecture of a commons
 

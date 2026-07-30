@@ -125,7 +125,7 @@ apparatus events) for the site.
 ## 9. Status
 
 Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedthrough.py`,
-31 tests). Shipped:
+38 tests). Shipped:
 
 - Legs 1 & 3 (fleet enumeration + regional divergence) over stateless UDP DNS.
 - **Both transports** — direct (fleet size) and open-resolver fallback (pool/regional).

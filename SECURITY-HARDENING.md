@@ -1,15 +1,21 @@
 # Security hardening: threat model and defences
 
-Palimpsest is an **outbound** measurement tool. It reads public, sometimes adversarial
-surfaces (Chinese web feeds, state-aligned model APIs) and turns deletion into data. It
-exposes **no inbound service**: there is no listener, no login, no port for anyone to attack.
-So the security question is not "can someone hack back in" — nothing is listening. The real
-questions are narrower and answerable in code:
+Palimpsest is overwhelmingly an **outbound** measurement tool. It reads public, sometimes
+adversarial surfaces (Chinese web feeds, state-aligned model APIs) and turns deletion into
+data. The collection and analysis paths listen on nothing at all.
+
+It does, however, ship and publicly advertise **one inbound service**: the MCP server
+(`mcp/palimpsest_mcp.py`, advertised in `server.json` and reachable at
+`https://api.seiche.info/palimpsest/mcp`), which re-serves the already-published readings to
+LLM agents. That is a real listener and it belongs in the threat model, so §1(e) states it
+explicitly rather than letting "no inbound surface" stand as a blanket claim. The security
+questions are therefore:
 
 - Can a hostile server weaponise *our own client* against us?
 - If a collector box is compromised, how large is the blast radius?
-- Can our one secret (an API key) be turned into a bigger loss?
+- Can our secrets (two of them — §4) be turned into a bigger loss?
 - Can a censor feed us fake data and poison the measurement?
+- What can someone do to the one inbound listener we do expose?
 
 This document states each risk plainly and points at the exact code that answers it. It sits
 alongside [SAFETY.md](SAFETY.md) (source protection) and [docs/ETHICS.md](docs/ETHICS.md)
@@ -21,9 +27,10 @@ only**, and **no Beijing-aligned model is ever the analyst**.
 
 ## 1. Threat model
 
-The adversary is the surface we read, plus whoever might reach a collector box. There is no
-inbound attack surface to defend, so the threats are all about *what a response can do to us*
-and *what a compromise can reach*.
+The adversary is the surface we read, whoever might reach a collector box, and whoever sends
+requests to the published MCP endpoint. Most of the threats are about *what a response can do
+to us* and *what a compromise can reach*; §1(e) covers the one direction that runs the other
+way.
 
 **(a) A hostile server weaponising our client.** A server we GET from can answer however it
 likes. The concrete abuses:
@@ -39,30 +46,81 @@ likes. The concrete abuses:
   filesystem or another service.
 
 **(b) Blast radius of a compromised collector.** A collector box sits at an egress seam and
-holds one API key. If it is compromised, the exposure should stop at that box: it must not
+holds both secrets (§4). If it is compromised, the exposure should stop at that box: it must not
 reach the operator's other projects, vaults, keys, or identity, and its egress must not be
 traceable to a person inside the censoring jurisdiction.
 
-**(c) Secret exposure.** The one secret is an OpenRouter API key used by the live Generative
-Firewall reading. A leaked key means an attacker can spend against it. The goal is that this
-costs a capped bill, never an account takeover or a pivot into anything else.
+**(c) Secret exposure.** There are two secrets (inventoried in §4): an OpenRouter API key used
+by the live model readings, and the optional `PALIMPSEST_PROXY` egress-seam URL. A leaked API
+key means an attacker can spend against it; a leaked proxy URL exposes the egress path itself.
+The goal is that the first costs a capped bill, never an account takeover or a pivot into
+anything else, and that the second is treated as sensitive infrastructure, not a config value.
 
 **(d) Data poisoning.** A censor who notices they are being measured can feed fake deletions
 or fake "still live" answers to skew the index. This is a *measurement-integrity* threat, not
 a code-execution one, and it is handled by the detection design (control-post probing,
 multi-observation confirmation, fail-soft abstention) rather than by the fetch layer.
 
-What is explicitly **not** in the model: inbound intrusion (no service), and "hacking back"
-(out of scope by design — see §6).
+**(e) The one inbound surface: the MCP server.** `mcp/palimpsest_mcp.py` is a stdlib
+JSON-RPC 2.0 listener that exposes the published signals as agent tools. Threat-modelled
+honestly, it is a small surface but not a zero one:
+
+- **What it can do.** Four read-only tools. Every one of them GETs a fixed URL from a
+  hard-coded allow-list (the `SIGNALS` dict maps a caller-supplied *name* to a path we chose;
+  a caller can never supply a URL) and returns the JSON already served publicly at
+  `palimpsest.info`. It writes nothing, holds no secret, touches no database, and has no
+  authentication because there is nothing behind it that is not already public.
+- **What it cannot do.** No tool reaches a collector, the ledger, the proxy seam, or any key.
+  The process is stateless apart from a ten-minute in-memory cache; killing it loses nothing.
+  It binds `127.0.0.1` and is reached only through a reverse proxy with a path allow-list, so
+  the internet never speaks to the Python process directly.
+- **What is left.** Resource exhaustion (an unauthenticated caller can make us fetch and
+  parse), which is the reverse proxy's job to rate-limit; and the general prompt-injection
+  risk that any MCP tool carries, bounded here by the fact that the content we hand an agent
+  is our own published measurement JSON rather than arbitrary fetched web text.
+
+The read-only, already-public nature of the payload is what keeps this surface honest: an
+attacker who fully compromised the MCP process would learn nothing that is not on the website,
+and could only lie to agents about readings they can verify against `palimpsest.info` and the
+hash chain. Reader-facing documentation of the server itself is in
+[docs/MCP-SERVER.md](docs/MCP-SERVER.md).
+
+What is explicitly **not** in the model: "hacking back" (out of scope by design — see §6).
 
 ---
 
 ## 2. Client self-defence — `core/safe_fetch.py`
 
-Every outbound read that touches an untrusted surface goes through `safe_fetch()`. It is
-standard-library only, so the whole defence is auditable in one short file. Any refusal raises
-a `FetchError` (or a subclass), which the caller treats as an **abstention**, never a false
-zero (see §5).
+**State this accurately, because the gap matters.** `core/safe_fetch.py` is a written, tested,
+standard-library-only hardened fetch — and as of this writing **no collector calls it**. Grep
+the tree: the only importer of `safe_fetch()` is `tests/test_safe_fetch.py`. It is the intended
+egress chokepoint, not the current one.
+
+What the live reads actually do today: a plain `urllib.request.urlopen`, or an
+`httpx.AsyncClient` on the async paths. Most carry a timeout and about half carry an explicit
+byte cap; TLS is verified because that is urllib's and httpx's default. None of them get the
+SSRF/private-address guard, the per-redirect re-validation, the IP pinning against DNS
+rebinding, the decompression-bomb cap, or the scheme allow-list.
+
+Rather than restate that inventory in prose where it would rot, it is **kept as a test**:
+[`tests/test_egress_policy.py`](tests/test_egress_policy.py) scans every first-party directory
+for direct-egress call sites and fails unless each one is listed with a one-line justification.
+That list is the authoritative, current inventory of un-hardened egress — each entry a named
+piece of attack surface, with the honest reason it has not moved (async-only path, a POST body
+this GET-only fetch cannot carry, a deliberately pinned-IP CDN probe that is structurally
+outside the design, a loopback Ollama backend the SSRF guard would correctly refuse). Shrinking
+that list *is* the migration; growing it silently is not possible, because a new un-hardened
+call site fails the suite.
+
+Two things keep the gap survivable in the meantime. Every live read is an anonymous request to
+a **hard-coded, first-party-chosen URL** — no collector fetches a URL supplied by the surface it
+is reading, which is what makes the missing SSRF guard a latent risk rather than an open door.
+And nothing fetched is ever executed (§5). Until the list empties, read the rest of this section
+as a description of a capability that exists and is tested, not of a control that is deployed.
+
+What `safe_fetch()` provides once a caller does use it is below. It is standard-library only, so
+the whole defence is auditable in one short file. Any refusal raises a `FetchError` (or a
+subclass), which the caller treats as an **abstention**, never a false zero (see §5).
 
 The exception hierarchy is the contract:
 
@@ -108,15 +166,32 @@ and timeout still hold.
 These defences are pinned by offline tests in
 [`tests/test_safe_fetch.py`](tests/test_safe_fetch.py): loopback and metadata IPs are refused,
 non-http schemes are rejected, an oversized body raises `ResponseTooLarge`, and a real gzip
-bomb (≈1 MB from under 2 KB on the wire) is rejected by the decompression cap.
+bomb (≈1 MB from under 2 KB on the wire) is rejected by the decompression cap. Those tests
+exercise the module directly — they prove the guard works, not that anything is behind it.
 
-**No-dangerous-sinks guard (CI).** [`tests/test_no_dangerous_sinks.py`](tests/test_no_dangerous_sinks.py)
+**No-dangerous-sinks guard.** [`tests/test_no_dangerous_sinks.py`](tests/test_no_dangerous_sinks.py)
 scans every collection/processing path (`collectors`, `processors`, `core`, `censorwatch`,
-`api`, `storage`, `scripts`) and **fails the build** if a code-execution sink is ever
+`api`, `storage`, `scripts`) and **fails the test suite** if a code-execution sink is ever
 introduced: `eval`/`exec`, `pickle.load(s)`, `marshal.load(s)`, `subprocess.*`,
 `os.system`/`os.popen`, `__import__`, `yaml.load`, or `shell=True`. This turns "we never
 execute fetched bytes" from a promise into a test. (`compile`/`re.compile` are excluded; a
 mention in a comment is documentation, not a sink.)
+
+"Fails the test suite" is the accurate phrasing, and the suite is now a gate rather than
+advice: [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs
+`pytest tests/ censorwatch/tests/` on every push and every pull request. Before that workflow
+existed, every guard test here — this one and the egress-policy inventory above — could only
+fail on a contributor's laptop, which is documentation rather than a guard. Locally the same
+gate is one command:
+
+```bash
+PYTHONPATH=. python3 -m pytest tests/ -q
+```
+
+(see [CONTRIBUTING.md](CONTRIBUTING.md); the two suites and their two different counts are
+described there). Note what CI does *not* do: it holds no secrets and makes no network reads,
+because none of the guard tests need any. The data-refresh workflows, which do hold secrets,
+run on schedule and never on `pull_request`.
 
 ---
 
@@ -125,7 +200,8 @@ mention in a comment is documentation, not a sink.)
 Two independent goals: keep egress clean, and keep a compromise contained.
 
 **Egress and sandboxing.** A live collector should run in a disposable, least-privilege
-container: **no inbound ports** (there is no service to expose), outbound-only, and nothing
+container: **no inbound ports** (a collector has no service to expose — the MCP server of
+§1(e) is a separate process and must stay separate), outbound-only, and nothing
 mounted from the host beyond what the run needs. When it is done, throw it away. Operational
 scaffolding lives under [`ops/`](ops/): the launchd scheduling for the recurring reading, and a
 hardened non-root, read-only, capability-dropped container at [`ops/docker/`](ops/docker/) — the
@@ -139,10 +215,10 @@ identifiable person**; that line is stated in [docs/ETHICS.md](docs/ETHICS.md) a
 [SAFETY.md](SAFETY.md) and is a hard rule, not a preference. The seam is also the single place
 where egress can be swapped, rate-limited, or cut.
 
-**Blast-radius containment.** The collector box should hold only what it needs: the code, one
-scoped key (§4), and its own working files. It must be separated from the operator's other
-projects, private vaults, and unrelated credentials, so that compromising the box yields a
-censorship collector and a capped API key — nothing more. The most sensitive collection path
+**Blast-radius containment.** The collector box should hold only what it needs: the code, the
+two scoped secrets (§4), and its own working files. It must be separated from the operator's
+other projects, private vaults, and unrelated credentials, so that compromising the box yields
+a censorship collector, a capped API key, and the egress-seam URL — nothing more. The most sensitive collection path
 (CensorWatch deletion detection) is additionally feature-flagged and writes to its own
 database tables, inert unless `CENSORWATCH_ENABLED` is set (see SAFETY.md).
 
@@ -150,15 +226,25 @@ database tables, inert unless `CENSORWATCH_ENABLED` is set (see SAFETY.md).
 
 ## 4. Secret scoping and rotation
 
-There is exactly one secret: the OpenRouter API key for the live Generative Firewall reading.
+There are **two** secrets, and one of them is stored in two places. Get the inventory right
+before touching either, because rotating only the copy you remember silently breaks live
+publishing.
 
-**Where it lives.** Only in a local, git-ignored env file: `~/.config/palimpsest/gfi.env`,
-mode `0600`, exporting `OPENROUTER_API_KEY`. It is **never** committed. `scripts/run_gfi.sh`
-sources it at runtime and nothing else reads it from disk; `ops/install_schedule.sh` refuses
-to install the scheduled agent if the file is missing. The stdlib analytical core never needs
-a key at all — only the live ops runner
-(`scripts/generative_firewall_reading.py`) does, and it **fails loud** if the key is unset
-rather than emitting a false reading.
+| Secret | What it is | Where it is stored | What reads it |
+| --- | --- | --- | --- |
+| `OPENROUTER_API_KEY` | OpenRouter API key for the live model readings | **(1)** local git-ignored env file `~/.config/palimpsest/gfi.env`, mode `0600` · **(2)** a **GitHub Actions repository secret** on `beepboop2025/palimpsest` | locally: `scripts/run_gfi.sh` → `scripts/generative_firewall_reading.py` · in Actions: `gfi-refresh.yml`, `erasure-refresh.yml`, `gfi-validation-sample.yml` |
+| `PALIMPSEST_PROXY` | URL of the optional outside-the-wall egress seam (§3) | operator environment on the collector box · a **GitHub Actions repository secret**, injected by `erasure-refresh.yml` | any collector that honours the seam (`collectors/baike_redaction.py`, `collectors/undertext.py`) |
+
+`PALIMPSEST_PROXY` is a secret in the source-safety sense as much as the security sense: it
+names the egress path, and an egress path is operational information about how the observatory
+reaches a censored network. Treat it with the same care as the API key.
+
+Neither value is ever committed. The workflows that carry `OPENROUTER_API_KEY` run only on
+`schedule` and `workflow_dispatch`, never on `pull_request`, so a fork's code can never read
+it. The stdlib analytical core needs no key at all — only the live ops runners do, and they
+**fail loud** if the key is unset rather than emitting a false reading;
+`ops/install_schedule.sh` refuses to install the scheduled agent if the local env file is
+missing.
 
 **Scope it so a leak is capped.** Use a **dedicated, low-spend, rotatable** key for this box:
 
@@ -168,17 +254,31 @@ rather than emitting a false reading.
 
 A compromised box then means a capped charge, not an account takeover or a pivot.
 
-**Rotation steps.**
+**Rotating `OPENROUTER_API_KEY` — both copies, in this order.** Skipping step 3 leaves the
+daily published readings running on a key you revoked in step 4, and the next `gfi-refresh`
+run fails silently as an abstention rather than an alert.
 
 1. Create a new key in the OpenRouter dashboard with the same low spend cap.
-2. Update the secret in place, preserving permissions:
+2. Update the **local** copy in place, preserving permissions:
    `printf 'export OPENROUTER_API_KEY=%s\n' "$NEW" > ~/.config/palimpsest/gfi.env && chmod 600 ~/.config/palimpsest/gfi.env`
-3. Revoke the old key in the dashboard.
-4. Trigger one reading to confirm (`zsh scripts/run_gfi.sh`) and check
-   `readings/state/gfi.log` for a clean run.
+3. Update the **GitHub Actions repository secret** — the copy that publishes:
+   `gh secret set OPENROUTER_API_KEY --repo beepboop2025/palimpsest --body "$NEW"`
+   (or Settings → Secrets and variables → Actions → `OPENROUTER_API_KEY` → Update).
+   This one secret feeds `gfi-refresh.yml`, `erasure-refresh.yml` and
+   `gfi-validation-sample.yml`; updating it covers all three.
+4. Revoke the old key in the dashboard.
+5. Confirm **both** paths, not just the local one:
+   - local: `zsh scripts/run_gfi.sh`, then check `readings/state/gfi.log` for a clean run;
+   - Actions: `gh workflow run gfi-refresh.yml --repo beepboop2025/palimpsest` and check that
+     the run produces a real reading rather than an abstention.
 
-Rotate on any suspected exposure, on operator change, and on a routine schedule. Rotation is
-cheap because only one file and one dashboard entry are involved.
+**Rotating `PALIMPSEST_PROXY`.** Same shape, fewer steps: stand up the new egress path, update
+the operator environment on the box, update the Actions secret
+(`gh secret set PALIMPSEST_PROXY --repo beepboop2025/palimpsest`), confirm one
+`erasure-refresh` run, then tear the old path down. Never leave the old path live "just in
+case" — a stale egress route is exactly the thing that gets attributed later.
+
+Rotate on any suspected exposure, on operator change, and on a routine schedule.
 
 **Kill switch.** Independent of the key, the governance layer (`core/governance.py`) provides
 a fail-safe halt: creating the kill file (default `./.palimpsest_halt`) or setting

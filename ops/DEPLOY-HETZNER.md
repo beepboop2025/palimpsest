@@ -205,11 +205,38 @@ flag unset, those tasks stay inert by design.
 
 ---
 
-## 7. The weekly GFI reading
+## 7. The GFI reading on a private instance
 
-The GFI reading is a separate, single-purpose, locked-down container (non-root,
-read-only rootfs, no ports) — keep it that way rather than folding it into beat.
-On Linux, replace the macOS launchd agent with a systemd timer.
+> **Read this before you copy anything below.**
+>
+> **The canonical Generative Firewall reading does not run on this box.** It runs
+> **daily** in GitHub Actions from
+> [`.github/workflows/gfi-refresh.yml`](../.github/workflows/gfi-refresh.yml)
+> (`cron: "23 6 * * *"`, ~06:23 UTC), on the public repository, using the
+> `OPENROUTER_API_KEY` repository secret. That workflow is what publishes
+> `readings/latest.json`, `readings/history.jsonl` and the reading's HTML page to
+> `palimpsest.info`. Its schedule and its logs are public, which is the entire point:
+> the README's claim that **no hidden server publishes** is only true while that stays
+> true.
+>
+> This section exists for one narrower case: an operator running a **private
+> instance** of Palimpsest — their own vantage, their own key, their own readings,
+> off the public record. That is a legitimate thing to do and the container below is
+> how to do it safely.
+>
+> **Do not push a box-produced `readings/` tree to the canonical repository.** Doing
+> so publishes a reading whose provenance nobody outside your machine can inspect,
+> contradicts the public-schedule claim, and races the daily Actions run for the same
+> files. If you have a private instance, keep it on its own fork or its own remote and
+> never point its push at `beepboop2025/palimpsest`. If you want a reading published
+> canonically, run the workflow — `gh workflow run gfi-refresh.yml` — not this box.
+
+With that settled: on a private instance the GFI reading should be a separate,
+single-purpose, locked-down container (non-root, read-only rootfs, no ports) — keep it
+that way rather than folding it into beat. On Linux, replace the macOS launchd agent
+with a systemd timer. Pick whatever cadence your own quota allows; the weekly timer
+below is a conservative default for a private box, not a mirror of the canonical daily
+schedule.
 
 Put the OpenRouter key where the GFI compose expects it:
 
@@ -255,8 +282,9 @@ systemctl list-timers palimpsest-gfi.timer     # confirm next run
 sudo systemctl start palimpsest-gfi.service     # run once now to test
 ```
 
-The reading writes into `readings/`; commit and push it so the public time
-series stays in git (Step 8).
+The reading writes into `readings/`. On a private instance, commit it to **your own**
+remote if you want a time series (Step 8) — never to the canonical repository, per the
+warning at the top of this section.
 
 ---
 
@@ -265,15 +293,20 @@ series stays in git (Step 8).
 Three things carry state: the `pgdata` volume, the `readings/` tree, and the
 `data/` tree.
 
-- **readings/** is the auditable public artifact. Push it to GitHub on a timer:
+- **readings/** is the auditable artifact. On the canonical repository it is published
+  by the GitHub Actions refresh workflows and nothing else — leave it alone here. On a
+  **private instance**, if you want your own time series, push it to **your own remote**
+  on a timer:
 
   ```bash
-  # /etc/cron.d/palimpsest-publish  (as deploy)
+  # /etc/cron.d/palimpsest-publish  (as deploy) — PRIVATE INSTANCE ONLY.
+  # `origin` must NOT be beepboop2025/palimpsest. See the warning in Step 7.
   30 9 * * 1  cd /home/deploy/palimpsest && git add readings && \
     git -c user.name=palimpsest -c user.email=bot@palimpsest \
     commit -m "readings: weekly update" -q && git push -q || true
   ```
-  Use a deploy key or a fine-grained PAT scoped to this repo for the push.
+  Use a deploy key or a fine-grained PAT scoped to *your* repo for the push. Confirm the
+  target before enabling the cron: `git remote -v`.
 
 - **Postgres** — nightly dump kept 14 days:
 

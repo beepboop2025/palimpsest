@@ -94,7 +94,7 @@ scored as an explicit **abstention**, never a false zero.
 Terms come from three deterministic, auditable sources, unioned (`extract_terms()`):
 1. CDT's own editorial `<category>` tags (a free, curated topic signal);
 2. quoted/bracketed entity spans in headlines (`《…》`, `「…」`, `"…"`) — the censored term itself;
-3. substring matches against the **62-term Chinese censorship gazetteer**
+3. substring matches against the **154-term Chinese censorship gazetteer**
    (`config/zh_censorship_gazetteer.json`) and a small canonical English entity list.
 
 Matching is substring-based (never `\b`, which does not anchor on CJK). No statistical NER

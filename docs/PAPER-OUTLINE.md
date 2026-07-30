@@ -54,7 +54,13 @@ system observes the censor, never the censored.
 - `processors/ddti_index.py`, `processors/fear_index.py`, `processors/forecaster.py`
 - `config/zh_censorship_gazetteer.json` (154 terms, evidence-grounded), `config/regions/`
 - `config/validation_events.json`, `scripts/validate_ddti.py`, `docs/VALIDATION.md`
-- Full test suite (62 passing), zero-install demo.
+- Full test suite, zero-install demo. Two distinct commands, two distinct counts — do not
+  quote one figure for both:
+  `PYTHONPATH=. python3 -m pytest tests/ -q` runs the analytical core on a bare stdlib
+  Python 3 (no install step, which is the reproducibility claim), while
+  `PYTHONPATH=. python3 -m pytest tests/ censorwatch/tests/ -q` inside a virtualenv with
+  `requirements.txt` adds the deletion-detector suite and reports a higher number.
+  Both are green; take the count from the run, not from this page.
 
 ## Honest limitations to state up front (reviewers reward this)
 - Selectivity is censor-*attention allocation*, not a true deletion *rate* (no denominator yet).

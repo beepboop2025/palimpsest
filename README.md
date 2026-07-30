@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-439%20passing-brightgreen.svg)
+![tests](https://img.shields.io/badge/tests-629%20passing-brightgreen.svg)
 ![verify](https://img.shields.io/badge/verify-offline%2C%20one%20command-06d6e0.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
@@ -22,13 +22,14 @@ pointed at two places where the record gets rewritten in the dark:
 - **The [Verifiable Eval Registry](docs/EVAL-REGISTRY.md).** AI evaluation results, sealed at
   publication. The questions are frozen and hash-committed *before* any model is queried, every
   result is chained to the one before it, and a single edited number fails verification. Chinese
-  state-aligned models and Western frontier models sit on the same frozen questions, watched over
-  time for what they quietly stop answering. Not a lab, not a government, not us: if we edited a
-  published number, our own verifier would report the break.
+  state-aligned models and Western frontier models are held to the same tamper-evident,
+  pre-registered machinery, each on its own frozen suite, watched over time for what they quietly
+  stop answering. Not a lab, not a government, not us: if we edited a published number, our own
+  verifier would report the break.
 - **The Censorship Observatory.** Authoritarian deletion, measured as data. It archives public
   posts, watches for when they are scrubbed, and turns what a state is burying into a live, openly
-  licensed early-warning signal for journalists, researchers, and human rights defenders. Eight
-  signals refresh on their own, every number tracing back to public evidence.
+  licensed early-warning signal for journalists, researchers, and human rights defenders.
+  Twenty-one signals refresh on their own, unattended, every number tracing back to public evidence.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
 
@@ -49,11 +50,14 @@ names the break. That is the entire idea: you do not have to trust the operator,
 > A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
 > Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
 
-![The Verifiable Eval Registry, live: sealed runs of Chinese and Western frontier models side by side, chain intact, with the frontier refusal-drift panel](docs/img/eval-registry.png)
+![The Verifiable Eval Registry, live: sealed runs of Chinese state-aligned and Western frontier models, each on its own frozen suite, chain intact, with the frontier refusal-drift panel](docs/img/eval-registry.png)
 
-> *The registry, live. Chinese state-aligned and Western frontier models on the same frozen probes,
-> every run sealed and pre-registered, chain intact. The drift panel has already caught a real event:
-> one Western model newly refusing a benign legal question its peers answer.*
+> *The registry, live. Chinese state-aligned and Western frontier models under one tamper-evident,
+> pre-registered machinery, each family on its own frozen suite, every run sealed, chain intact. The
+> drift panel catches real events: as of the 11 July 2026 panel it had recorded one Western model
+> refusing a benign legal question its three peers answered, on a probe set frozen before any of
+> them was queried. Later readings are their own sealed entries; the panel is a moving record, not
+> a fixed claim.*
 
 ![Palimpsest DDTI Observatory — the Censorship Fear Index and the selectivity / novelty signals](docs/img/observatory.png)
 
@@ -123,10 +127,13 @@ A public, tamper-evident record of AI-model evaluations. See **[docs/EVAL-REGIST
   verifier, so results cannot be cherry-picked or p-hacked after the answers exist.
 - **Sealed at publication.** Each result is hash-chained to its predecessor and fingerprinted by a
   Merkle root. Edit a published number and `scripts/verify_eval_registry.py` reports the break.
-- **The first live audit: cross-lab refusal drift.** The registry already holds Chinese
-  state-aligned models and Western frontier models (OpenAI, Anthropic, Meta, Mistral) on the *same
-  frozen questions*, tracked release over release for what a model quietly stops answering, an
-  undisclosed behavioral change no changelog admits.
+- **The first live audit: cross-lab refusal drift.** The registry runs two separate frozen suites
+  with no model in common: `cn-sensitive-generative-firewall-v1` (DeepSeek, Qwen) and
+  `frontier-overrefusal-v1` (OpenAI, Anthropic, Meta, Mistral). No model has ever been run under
+  both. What is shared is the machinery, not the questions: the *same* tamper-evident,
+  pre-registered apparatus audits a state-aligned model and a Western frontier model, each on its
+  own frozen suite, tracked run over run for what a model quietly stops answering, an undisclosed
+  behavioral change no changelog admits.
 
 ```bash
 python3 scripts/verify_eval_registry.py     # chain integrity + the pre-registration rule
@@ -165,9 +172,13 @@ Reproduce it: `PYTHONPATH=. python3 scripts/validate_ddti.py`. See
 
 ### Live signals (auto-published)
 
-[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Eight independent
-signals refresh on their own schedules via GitHub Actions on this repo, so every run, its code, and
-its output are publicly auditable (the badges above are live run status). No hidden server publishes.
+[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Twenty-one
+independent observatory signals refresh on their own schedules via GitHub Actions on this repo, so
+every run, its code, and its output are publicly auditable (the badges above are live run status).
+No hidden server publishes. The Verifiable Eval Registry auto-publishes two further feeds of its own
+([`readings/eval-registry-latest.json`](readings/eval-registry-latest.json) and
+[`readings/refusal-drift-latest.json`](readings/refusal-drift-latest.json)), for twenty-three
+self-refreshing feeds in all.
 
 | Signal | What it measures | Cadence | Feed |
 | --- | --- | --- | --- |
@@ -179,6 +190,19 @@ its output are publicly auditable (the badges above are live run status). No hid
 | **Weibo hot-search join** | The allowed-attention denominator: DDTI terms deleted-yet-trending (contained) vs deleted-and-invisible (suppressed), gazetteer breakthroughs, withdrawal watch, the pinned state-headline series | Every 6 hours | [`readings/weibo-hotsearch-latest.json`](readings/weibo-hotsearch-latest.json) |
 | **Circumvention demand** | Tor bridge users from China (demand to climb the wall) + the per-transport split whose regime shifts fingerprint new GFW classifiers | Daily | [`readings/circumvention-demand-latest.json`](readings/circumvention-demand-latest.json) |
 | **IODA outages** | Shutdown-scale connectivity events for CN from three independent global instruments (BGP, active probing, darknet) | Every 6 hours | [`readings/ioda-outages-latest.json`](readings/ioda-outages-latest.json) |
+| **Baike redaction-diff** | Narrative erasure: contested encyclopedia entries silently forked from the open record, Baidu Baike against Chinese Wikipedia as control | Every 6 hours | [`readings/baike-redaction-latest.json`](readings/baike-redaction-latest.json) |
+| **Erasure Observatory** | The roll-up index across the erasure layers: what was removed or rewritten over time, layer by layer, with the cross-checks shown | Every 6 hours | [`readings/erasure-observatory-latest.json`](readings/erasure-observatory-latest.json) |
+| **OONI GFW** | Great Firewall network blocking measured *inside* China by OONI Probe: website, messenger and circumvention-tool reachability (we ingest their aggregate, we never probe) | Every 6 hours | [`readings/ooni-gfw-latest.json`](readings/ooni-gfw-latest.json) |
+| **Censored Planet** | The independent remote vantage: DNS/HTTP side-channel interference for CN from 95k+ vantage points (Satellite + Hyperquack), a different method than OONI | Daily | [`readings/censored-planet-latest.json`](readings/censored-planet-latest.json) |
+| **net4people** | The qualitative companion to the anomaly signals: the community log of China blocking events and circumvention developments | Every 12 hours | [`readings/net4people-latest.json`](readings/net4people-latest.json) |
+| **Vantage fusion** | One coverage-weighted network reading from the disagreeing vantages, with an interval and an explicit CONTESTED state when in-country and remote differ | Every 6 hours | [`readings/vantage-fusion-latest.json`](readings/vantage-fusion-latest.json) |
+| **China econ benchmarks** | Official CFETS published benchmarks, the keyless macro backdrop against which information-control moves are read | Every 6 hours | [`readings/china-econ-latest.json`](readings/china-econ-latest.json) |
+| **Stock Connect** | HKEX Stock Connect daily statistics: the cross-border flow print, a second non-information channel that reacts to the same events | Weekdays, after the HK print | [`readings/stock-connect-latest.json`](readings/stock-connect-latest.json) |
+| **Event flags** | Per-signal conformal e-detector: is a signal outside its *own* history right now, with an anytime-valid false-flag guarantee | Every 6 hours | [`readings/event-flags-latest.json`](readings/event-flags-latest.json) |
+| **Board alarm** | The board-wide merge of those e-detectors, with e-BH selection at alpha 0.1 controlling false discoveries under arbitrary dependence | Every 6 hours | [`readings/board-alarm-latest.json`](readings/board-alarm-latest.json) |
+| **Coverage guard** | The anti-artefact check: whether a signal's movement is explained by its own measurement coverage rather than by the world | Every 6 hours | [`readings/coverage-guard-latest.json`](readings/coverage-guard-latest.json) |
+| **Cross-layer coupling** | Lagged coupling between layers against a circular-shift null; abstains loudly until enough overlapping history is earned | Every 6 hours | [`readings/cross-layer-latest.json`](readings/cross-layer-latest.json) |
+| **Forecast ledger** | The scoreboard on ourselves: strictly prequential one-step forecasts per signal, scored against what actually happened | Every 6 hours | [`readings/forecast-ledger-latest.json`](readings/forecast-ledger-latest.json) |
 
 Every value is provenance-tracked to its source document, and a signal abstains rather than
 fabricates when its source returns nothing. Nothing is published without evidence. Researcher docs,
@@ -251,9 +275,12 @@ PYTHONPATH=. python3 scripts/validate_ddti.py       # retrodiction backtest (6/6
 PYTHONPATH=. python3 scripts/fear_index_demo.py     # Fear Index across documented events
 PYTHONPATH=. python3 scripts/forecaster_demo.py     # the censorship forecaster (a "called shot")
 
-# Tests:
+# Tests, core (stdlib only, no install, no venv):
+PYTHONPATH=. python3 -m pytest tests/ -q                      # 629 passing, 2 skipped
+
+# Tests, full (adds the censorwatch layer, which needs the dependencies):
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-PYTHONPATH=. python3 -m pytest tests/ censorwatch/tests/ -q   # 371 passing
+PYTHONPATH=. python3 -m pytest tests/ censorwatch/tests/ -q   # 677 passing
 ```
 
 The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
@@ -267,16 +294,21 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/EVAL-REGISTRY.md](docs/EVAL-REGISTRY.md) | The Verifiable Eval Registry: pre-registration, sealing, and how to verify it |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |
-| [docs/NEW-METHODS.md](docs/NEW-METHODS.md) | The observation surfaces (Generative Firewall, CDN-edge, Blocklist, Silence, GitHub-refuge, Baike) |
+| [docs/NEW-METHODS.md](docs/NEW-METHODS.md) | The observation surfaces (Generative Firewall, CDN-edge, Blocklist, Silence, GitHub-refuge, Baike, Wayback Reconstruction) |
 | [docs/UNDERTEXT.md](docs/UNDERTEXT.md) | Active differential tomography, many-vantage divergence as signal |
 | [docs/OSINT_SOURCES.md](docs/OSINT_SOURCES.md) | Every public source, how it is accessed, what it yields, its limits |
 | [docs/ETHICS.md](docs/ETHICS.md) · [SAFETY.md](SAFETY.md) · [CONTRIBUTING.md](CONTRIBUTING.md) | Threat model, do-no-harm rules, and the safety-review gate |
 
 ## Status and license
 
-Developed in the open as a public good. Free and open source; it is not a commercial product and
-never monetizes the people or topics it observes. Licensed under the [MIT License](LICENSE) so other
-tools can freely build on the feeds and reuse the measurement and sealing layers.
+Developed in the open as a public good. This is past the prototype stage and short of a finished
+product: twenty-three feeds refresh unattended on public CI, the sealed chains verify offline from a
+clean clone, and the whole thing runs without anyone touching it. What it is not yet is
+independently replicated, externally witnessed at scale, or in-country. Those are named openly in
+[docs/INTEGRITY.md](docs/INTEGRITY.md) and in the built-versus-not table above rather than smoothed
+over. Free and open source; it is not a commercial product and never monetizes the people or topics
+it observes. Licensed under the [MIT License](LICENSE) so other tools can freely build on the feeds
+and reuse the measurement and sealing layers.
 
 ## Acknowledgements and prior art
 

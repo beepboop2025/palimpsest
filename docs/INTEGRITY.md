@@ -26,11 +26,26 @@ date the old root, and any witness would name the rewritten entry.
 
 - **Lying at capture time.** The chain proves what was sealed, not that the
   sealed reading was true. If the collector recorded a false response, the
-  chain faithfully preserves the falsehood. Mitigations live upstream:
-  runs commit a `responses_hash` over the full raw responses so a re-run can
-  be compared; probes are pre-registered so results cannot be cherry-picked
-  after the answers exist; the classifier is a transparent lexical rule under
-  human validation (see the coder study), not an unauditable model.
+  chain faithfully preserves the falsehood.
+  Be precise about what `responses_hash` actually commits to: it is a sha256
+  over the *derived labels*, not over the raw model output. For the frontier
+  refusal-drift suite that is the `{probe_id: answered|refused}` map
+  (`scripts/refusal_drift_pull.py`); for the Generative Firewall suite it is
+  the `{concept: aligned_state}` map (`scripts/eval_registry_ingest.py`). The
+  raw model text is **not** published anywhere in this repository, so nobody —
+  including us — can recompute the label from the response it came from.
+  The consequence, stated plainly: **a systematically mislabelled response is
+  not caught by the chain.** If the lexical classifier calls a hedged answer a
+  refusal, the chain seals that mistake perfectly and verifies clean forever
+  after. Everything the chain proves is downstream of the label; nothing in
+  layers 1 to 6 audits the label itself.
+  What does audit it lives outside the chain: probes are pre-registered so
+  results cannot be cherry-picked after the answers exist; the classifier is a
+  transparent lexical rule anyone can read and re-run; and the **human coder
+  study** (`validation/CODEBOOK.md` and the coding sheets under
+  `validation/out/`) exists precisely to measure how often that rule disagrees
+  with two independent humans reading the same response text.
+  That study, not the hash chain, is the evidence that the labels are right.
 - **The window between seal and first anchor.** History could in principle be
   rewritten in the gap before any external party has seen it, at most one
   anchor cadence (currently 6 hours) after sealing. Older history is

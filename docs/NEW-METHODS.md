@@ -1,4 +1,4 @@
-# New methods — six observation surfaces
+# New methods — seven observation surfaces
 
 > Every method here is one more angle on the same body. UNDERTEXT taught the platform to read
 > censorship as *divergence* across `observation = f(query × geo × cohort × surface × time)`.
@@ -9,7 +9,7 @@
 
 This is a companion to [UNDERTEXT.md](UNDERTEXT.md). Read that first: it defines the vantage
 tensor, `content_key` / `normalize_body`, the `DivergenceDetector`, the `JsonBaselineStore`,
-and `divergence_to_observation()` — the shared machinery all six methods reuse rather than
+and `divergence_to_observation()` — the shared machinery all seven methods reuse rather than
 re-derive.
 
 ## The two lines (non-negotiable, held by every method here)
@@ -258,7 +258,7 @@ signal.
 | Baike Redaction-Diff | a state encyclopedia | selectivity + mutation (state rewrite) | injected fetch (`PALIMPSEST_PROXY` seam) |
 | Wayback Reconstruction | the Internet Archive capture timeline | velocity (deletion bracket) + mutation (silent redaction) | **live** — injected CDX fetch (public archive) |
 
-All six are **standard-library only** in their analytical core, fully unit-testable offline with
+All seven are **standard-library only** in their analytical core, fully unit-testable offline with
 an injected fake fetch / generate, and each emits into the DDTI index and gazetteer-evolution
 pipeline through the *same* adapter UNDERTEXT already uses. Nothing here reaches real Chinese
 infrastructure until a deployer explicitly injects a live source and clears the governance gate.

@@ -46,10 +46,23 @@ These are out of scope by design, not oversights (see [docs/ETHICS.md](docs/ETHI
 
 ## Running the tests
 
+These are **two different suites with two different requirements**, and quoting one suite's
+pass count for the other is a recurring source of wrong numbers in the docs. Keep them apart:
+
 ```bash
+# 1. The observatory's own suite. Bare stdlib Python 3, no install step at all —
+#    that "runs on a clean interpreter" property is part of the reproducibility claim.
 PYTHONPATH=. python3 -m pytest tests/ -q              # governance + evolution + cross-signal
+
+# 2. The deletion detector's suite. NEEDS the installed dependencies (pandas et al.),
+#    so run it in a virtualenv after `pip install -r requirements.txt`.
 PYTHONPATH=. python3 -m pytest censorwatch/tests/ -q  # deletion-detector safety logic
 ```
+
+Running both together (`pytest tests/ censorwatch/tests/ -q`, inside the virtualenv) is what
+CI does — see [`.github/workflows/tests.yml`](.github/workflows/tests.yml), which gates every
+push and pull request. Take counts from the run you actually did, and say which command you
+ran when you quote one.
 
 New logic should come with offline tests. If a feature can only be exercised against a live
 network or a database, isolate the pure logic so *it* can be tested, and say in the PR what
