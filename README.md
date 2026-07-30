@@ -26,9 +26,10 @@ pointed at two places where the record gets rewritten in the dark:
   pre-registered machinery, each on its own frozen suite, watched over time for what they quietly
   stop answering. Not a lab, not a government, not us: if we edited a published number, our own
   verifier would report the break.
-- **The Censorship Observatory.** Authoritarian deletion, measured as data. It archives public
-  posts, watches for when they are scrubbed, and turns what a state is burying into a live, openly
-  licensed early-warning signal for journalists, researchers, and human rights defenders.
+- **The Censorship Observatory.** Authoritarian deletion, measured as data. It reads the public
+  record of what has been scrubbed, rewritten or blocked — across the network, the encyclopedia and
+  the model — and turns what a state is burying into a live, openly licensed early-warning signal
+  for journalists, researchers, and human rights defenders.
   Twenty-six signals refresh on their own, unattended, every number tracing back to public evidence.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
@@ -151,15 +152,34 @@ measurement ([OONI](https://ooni.org/), [GreatFire](https://en.greatfire.org/),
 ([China Digital Times](https://chinadigitaltimes.net/)); it ingests their public data and shares
 its own back.
 
-**The method: treat the censor as a sensor.** Palimpsest archives a public post the moment it
-appears, then returns to see whether it survived. From the stream of disappearances it computes the
-**Deletion-Differential Threat Index (DDTI)**:
+**The method: treat the censor as a sensor.** Palimpsest reads the public record of what has
+already been removed — China Digital Times' curated deletion and directive coverage, alongside the
+network and model layers — and computes the **Deletion-Differential Threat Index (DDTI)** from what
+the censor chose to touch:
 
-| Signal | Question it answers |
-| --- | --- |
-| **Selectivity** | What is being targeted, which terms and topics draw censor attention. |
-| **Novelty** | Which sensitive terms are surfacing for the first time, or bursting after quiet. |
-| **Velocity** | How fast posts are deleted. A sudden acceleration signals an event being contained. |
+| Signal | Question it answers | Status |
+| --- | --- | --- |
+| **Selectivity** | What is being targeted, which terms and topics draw censor attention. | Live |
+| **Novelty** | Which sensitive terms are surfacing for the first time, or bursting after quiet. | Live |
+| **Velocity** | How fast posts are deleted. A sudden acceleration signals an event being contained. | **Not published** |
+
+Velocity is listed because it is the third thing you would want and the second thing we would
+publish, not because it is available. A CDT item carries an editorial date, not a deletion
+timestamp, so no latency is derivable from this source and the reading omits it rather than
+estimating it. Measuring it needs the archive-and-recheck instrument below.
+
+The index is therefore **attention allocation, not a deletion rate** — the reading says so in its
+own `scope` field: `censor_attention_allocation (numerator-only; not a true deletion rate)`. It
+ranks what drew the censor's attention; it does not claim to know what share of posts on a topic
+were removed, because that denominator is not observable from outside.
+
+**What is built but not running.** The `censorwatch` package implements the archive-and-recheck
+method properly: capture a public post as it appears, re-check it on an age-tiered schedule, and
+confirm a deletion only after repeated consistent observations. It is feature-flagged
+(`CENSORWATCH_ENABLED`), has never been enabled in production, and has archived zero posts. It
+needs an in-country egress path to be meaningful, which the project does not have. Until then this
+is a description of an instrument, not of a running signal, and nothing on the board is derived
+from it.
 
 The DDTI distils into a single, auditable **0–100 Censorship Fear Index**, how hard is the state
 working to bury things right now, reported component by component, never a black box.

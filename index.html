@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Palimpsest · censorship observatory + verifiable AI eval registry</title>
-<meta name="description" content="Palimpsest measures how authoritarian states and their AI models censor, and seals AI evaluation results into a tamper-evident public registry that nobody can revise after publication. Open source. Watch the censor, never the censored.">
-<meta name="keywords" content="AI evaluation registry, verifiable evals, tamper-evident, refusal drift, authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OSINT censorship">
+<meta name="description" content="Palimpsest measures censorship in China at the network, content and model layers, including a vantage measured from inside the country, and seals AI evaluation results into a tamper-evident public registry that nobody can revise after publication. Free, MIT licensed, open source. Watch the censor, never the censored.">
+<meta name="keywords" content="AI evaluation registry, verifiable evals, tamper-evident, refusal drift, authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, DNS injection, middlebox interference, App Store censorship, blocklist keywords, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OONI, OSINT censorship">
 <meta name="author" content="Palimpsest">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="https://palimpsest.info/">
@@ -14,6 +14,7 @@
 <meta name="theme-color" content="#0a0a0c">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Palimpsest">
@@ -23,7 +24,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
 <meta property="og:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
-<meta property="og:description" content="Measures how authoritarian states and their AI models censor, and seals AI evaluation results so nobody can revise them after publication. Not a lab, not a government, not us. Open-source public good.">
+<meta property="og:description" content="Three things, one instrument. A censorship observatory measuring what China removes at the network, content and model layers, including a vantage from inside the country. A registry that seals AI evaluations so nobody can revise them afterwards. A free public good, MIT licensed.">
 <meta property="og:url" content="https://palimpsest.info/">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta property="og:image:width" content="1200">
@@ -32,7 +33,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
-<meta name="twitter:description" content="Deletion as data, and AI evaluations sealed so nobody can revise them after publication. A live record of what states and models are engineered to hide.">
+<meta name="twitter:description" content="What the apparatus removed, measured at the network, content and model layers, plus AI evaluations sealed so nobody can revise them after publication. Free and open source.">
 <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
 <!-- Structured data: declares Palimpsest as a citable Dataset + Organization for AI/search engines -->
@@ -46,7 +47,7 @@
       "name": "Palimpsest",
       "url": "https://palimpsest.info/",
       "sameAs": ["https://github.com/beepboop2025/palimpsest"],
-      "description": "Open-source public-good observatory that measures authoritarian and AI-model censorship by treating deletion as data."
+      "description": "Open-source public-good observatory that measures authoritarian and AI-model censorship by treating deletion as data, and that seals its own AI evaluation results into a tamper-evident public registry."
     },
     {
       "@type": "WebSite",
@@ -60,26 +61,31 @@
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#dataset",
       "name": "Palimpsest Censorship Observatory Dataset",
-      "description": "Continuously updated measurements of authoritarian censorship: (1) deletion-as-data, archived public posts watched for scrubbing, ranked by censor attention and novelty, validated against six documented censorship events; and (2) the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite, against neutral controls, in Chinese and English. Every finding ships its raw evidence.",
+      "description": "Continuously updated measurements of censorship in China across three layers. Network layer: DNS answers forged for censored domains as seen by probes inside mainland China, HTTP rewriting by in-path middleboxes and circumvention transport health from OONI, App Store availability in the Chinese storefront, and website, messenger and circumvention-tool blocking rates. Content layer: deletion as data, archived public posts watched for scrubbing and ranked by censor attention and novelty, validated against six documented censorship events, plus keywords newly present in successive client blocklists. Model layer: the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite against neutral controls, in Chinese and English. Every finding ships its raw evidence.",
       "url": "https://palimpsest.info/",
-      "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censor attention"],
+      "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censor attention", "DNS injection", "middlebox interference", "App Store censorship", "blocklist keywords", "Great Firewall", "OONI"],
+      "measurementTechnique": ["OONI aggregation of open measurement data", "volunteer DNS probes inside mainland China compared against an out-of-country control arm", "Apple iTunes storefront lookup, Chinese storefront versus control", "diffing successive client blocklist versions from the Citizen Lab chat-censorship corpus", "archived public posts checked for later removal", "probing state-aligned language models on a frozen sensitive prompt set against neutral controls"],
       "creator": { "@id": "https://palimpsest.info/#org" },
       "publisher": { "@id": "https://palimpsest.info/#org" },
       "isAccessibleForFree": true,
       "license": "https://opensource.org/licenses/MIT",
       "spatialCoverage": "China",
       "temporalCoverage": "2026-05/..",
-      "distribution": {
-        "@type": "DataDownload",
-        "encodingFormat": "application/json",
-        "contentUrl": "https://palimpsest.info/readings/latest.json"
-      }
+      "distribution": [
+        { "@type": "DataDownload", "name": "Deletion-as-data corpus", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/latest.json" },
+        { "@type": "DataDownload", "name": "Inside View, DNS forgery seen from inside China", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/inside-view-latest.json" },
+        { "@type": "DataDownload", "name": "In-Path Interference, middlebox and transport health", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/in-path-interference-latest.json" },
+        { "@type": "DataDownload", "name": "App Store Layer, Chinese storefront availability", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/app-storefront-latest.json" },
+        { "@type": "DataDownload", "name": "Blocklist Archaeology, newly shipped censorship keywords", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/blocklist-latest.json" },
+        { "@type": "DataDownload", "name": "Great Firewall network blocking rates", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/ooni-gfw-latest.json" },
+        { "@type": "DataDownload", "name": "Erasure Observatory composite index", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/erasure-observatory-latest.json" }
+      ]
     },
     {
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#eval-registry",
       "name": "Palimpsest Verifiable Eval Registry",
-      "description": "A tamper-evident, pre-registered public record of AI model evaluations. The probe set is frozen and its hash sealed before any model is queried, every result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. It runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1, covering Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1, covering Western frontier models (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Both families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and refusal drift is the diff against that model's own previous sealed run. Anyone can recompute the chain offline from the public repository.",
+      "description": "A tamper-evident, pre-registered public record of AI model evaluations. The probe set is frozen and its hash sealed before any model is queried, every result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root whose roots are deposited outside our own infrastructure at the Internet Archive and OpenTimestamps. It runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1, covering Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1, covering Western frontier models (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Both families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and refusal drift is the diff against that model's own previous sealed run. Anyone can recompute the chain offline from the public repository.",
       "url": "https://palimpsest.info/readings/eval-registry.html",
       "keywords": ["AI evaluation registry", "verifiable evals", "tamper-evident", "pre-registration", "hash chain", "Merkle root", "refusal drift", "over-refusal", "AI transparency", "frontier model evaluation", "LLM refusal measurement"],
       "creator": { "@id": "https://palimpsest.info/#org" },
@@ -87,11 +93,10 @@
       "isAccessibleForFree": true,
       "license": "https://opensource.org/licenses/MIT",
       "temporalCoverage": "2026-07/..",
-      "distribution": {
-        "@type": "DataDownload",
-        "encodingFormat": "application/x-ndjson",
-        "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl"
-      }
+      "distribution": [
+        { "@type": "DataDownload", "name": "Sealed registry, append-only", "encodingFormat": "application/x-ndjson", "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl" },
+        { "@type": "DataDownload", "name": "Registry head state", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json" }
+      ]
     }
   ]
 }
@@ -110,7 +115,7 @@
       "name": "What is Palimpsest?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Palimpsest is a free, open-source public-good observatory that measures how authoritarian states censor by treating deletion as data. It archives public posts, watches for their scrubbing, and ranks what the censor is most focused on right now. It also measures the generative firewall: how often state-aligned AI models refuse or rewrite sensitive answers. It watches the censor, never the censored, and ships raw evidence with every finding."
+        "text": "Palimpsest is three things built on one instrument. It is a free, open-source observatory that measures how authoritarian states censor, at the network, content and model layers. It is a verifiable AI eval registry, where evaluation results are sealed the moment they publish so nobody can revise them afterwards. And it is a public good: MIT licensed, free to read, funded by grants and individuals rather than by customers. It watches the censor, never the censored, and ships raw evidence with every finding."
       }
     },
     {
@@ -118,7 +123,15 @@
       "name": "What is the Palimpsest censorship observatory measuring?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Two things. First, deletion as data: which topics the Chinese censor is most actively scrubbing right now, ranked by censor attention and novelty and validated against six documented censorship events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large language models refuse or rewrite, tested in Chinese and English against neutral Western control models to prove the suppression is deliberate and selective."
+        "text": "Removal, on three layers. The network layer: DNS answers forged for censored domains, HTTP rewritten in transit by in-path middleboxes, circumvention transports degraded, apps missing from the Chinese App Store storefront, and website and messenger blocking rates. The content layer: deletion as data, which topics the Chinese censor is most actively scrubbing right now, ranked by censor attention and novelty and validated against six documented censorship events, plus the keywords newly added to successive client blocklists. The model layer: the Generative Firewall Index, the share of sensitive answers that state-aligned large language models refuse or rewrite, tested in Chinese and English against neutral control models. Each layer has its own vantage and its own failure modes, so each is reported separately and cross-checked against the others."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does Palimpsest measure from inside China?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The Inside View signal uses volunteer Globalping probes inside mainland China to resolve a fixed panel of censored and control domains. An answer received inside China is treated as forged when it shares no address with the answer the same round received outside China, so no list of forged addresses has to be hardcoded and a rotating injector pool is still caught. Everything else on the site looks at the firewall from outside. This looks out from inside it. The constraint is real and stated with every reading: the in-China probes sit on datacentre networks, so this is filtering as experienced on Chinese cloud networks, which is not necessarily what a household sees, and a forged answer proves on-path DNS interference rather than national filtering on its own."
       }
     },
     {
@@ -126,7 +139,7 @@
       "name": "What is China censoring right now?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Palimpsest tracks this live. It archives public Chinese posts, detects when they are deleted, and ranks the topics drawing the most censor attention as a real-time censorship index. The live readings and raw JSON evidence are published at palimpsest.info, updated continuously."
+        "text": "Palimpsest tracks this live. It reads China Digital Times' curated record of removed posts and leaked propaganda directives, and ranks the topics drawing the most censor attention as a live censorship index — attention allocation, not a deletion rate. Alongside it, the network signals show which domains are being answered with forged DNS, which apps have left the Chinese storefront, and which keywords the platform blocklists have newly started to carry. The live readings and raw JSON evidence are published here at palimpsest.info, updated continuously."
       }
     },
     {
@@ -142,7 +155,7 @@
       "name": "What is the Verifiable Eval Registry?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The questions are frozen and sealed before any model is queried, each result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not frozen first, or a number edited after publication, fails verification. It currently runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1 for the Western frontier panel (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese state-aligned models and Western frontier models are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and anyone can recompute the chain from the public repository."
+        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The questions are frozen and sealed before any model is queried, each result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not frozen first, or a number edited after publication, fails verification. It currently runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1 for the Western frontier panel (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese state-aligned models and Western frontier models are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and anyone can recompute the chain from the public repository. Chain roots are also deposited outside our own infrastructure, at the Internet Archive and via OpenTimestamps onto Bitcoin, so the record does not rest on our word."
       }
     },
     {
@@ -152,206 +165,984 @@
         "@type": "Answer",
         "text": "Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public good. It is never a commercial product and never monetizes the people or topics it observes. Its code, method, and raw evidence are all public on GitHub at github.com/beepboop2025/palimpsest."
       }
+    },
+    {
+      "@type": "Question",
+      "name": "How is Palimpsest funded?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "By grants and individual contributions, not by customers. There is no paid tier, no supporter-only data and no gate, and there will not be one. Funding pays for the unglamorous parts: probe credits, model API calls for the frozen eval suites, storage for the evidence, and the maintenance that keeps a collector honest when a source changes shape. Everything it produces is published the moment it exists, under MIT, to everyone at once."
+      }
     }
   ]
 }
 </script>
 
-<link rel="icon" type="image/svg+xml" href="brand/palimpsest-icon.svg">
-<!-- Tikto design system: shared fonts (Outfit + JetBrains Mono) + colour tokens, so the
-     landing page reads as one product with the observatory. -->
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
 <style>
-  /* ── shared site nav (self-contained; identical on every page) ── */
-  .pnav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;gap:14px;
-    padding:11px clamp(14px,4vw,26px);background:rgba(6,7,9,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid rgba(255,255,255,.08);font-family:'JetBrains Mono',ui-monospace,monospace}
-  .pnav__brand{display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.18em;text-decoration:none}
-  .pnav__brand img{display:block}
-  .pnav__links{display:flex;gap:2px;flex-wrap:wrap}
-  .pnav__links a{color:#8ca0b3;font-size:12px;letter-spacing:.03em;padding:6px 10px;border-radius:7px;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-  .pnav__links a:hover{color:#fff;background:rgba(255,255,255,.07)}
-  .pnav__links a[aria-current="page"]{color:#06d6e0;background:rgba(6,214,224,.11)}
+  /* Page-specific only. Nothing here redefines a token or a ps-* class. */
 
-  /* ── landing layout, on Tikto tokens ── */
-  body{margin:0;background:var(--tk-void,#000);color:var(--tk-text-1,#e2e8f0);
-    font-family:var(--tk-font-display),system-ui,-apple-system,sans-serif;line-height:1.55;
-    background-image:radial-gradient(120% 80% at 50% -8%, rgba(6,214,224,.06), transparent 60%);background-attachment:fixed}
-  .wrap{max-width:900px;margin:0 auto;padding:40px clamp(18px,4vw,26px) 72px}
-  .kick{font-family:var(--tk-font-mono);letter-spacing:.28em;text-transform:uppercase;font-size:11px;color:var(--tk-live,#06d6e0);margin:0 0 14px}
-  .logo{width:60px;height:60px;display:block;margin:0 0 18px;filter:drop-shadow(0 6px 22px rgba(0,0,0,.45))}
-  h1{font-family:var(--tk-font-display);font-size:clamp(34px,6vw,52px);line-height:1.04;margin:0 0 14px;font-weight:800;letter-spacing:-.02em;color:#fff}
-  .lede{font-size:17px;color:var(--tk-text-2,#94a3b8);margin:0 0 30px;max-width:670px}
-  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0}
-  @media(max-width:720px){.cards{grid-template-columns:1fr}}
-  .card{background:rgba(255,255,255,.02);border:1px solid var(--tk-line-1,#1a1a1a);border-radius:14px;padding:20px 22px;transition:border-color .15s,transform .15s}
-  .card:hover{border-color:var(--tk-line-3,#383838);transform:translateY(-2px)}
-  .card .ct{display:flex;align-items:center;gap:8px;font-family:var(--tk-font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--tk-text-3);margin-bottom:10px}
-  .card .dot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 8px currentColor}
-  .card h2{margin:0 0 7px;font-size:18.5px;color:#fff;font-weight:700}
-  .card p{margin:0 0 16px;color:var(--tk-text-2);font-size:13.5px}
-  .btn{display:inline-block;background:var(--tk-live,#06d6e0);color:#04141a;font-weight:700;text-decoration:none;padding:9px 15px;border-radius:8px;font-size:13px;font-family:var(--tk-font-mono);letter-spacing:.02em}
-  .btn.ghost{background:transparent;color:var(--tk-text-1);border:1px solid var(--tk-line-3)}
-  .btn.ghost:hover{border-color:var(--tk-live);color:var(--tk-live)}
-  h3{font-family:var(--tk-font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--tk-text-3);border-bottom:1px solid var(--tk-line-1);padding-bottom:8px;margin:40px 0 14px}
-  ul{padding-left:18px} li{margin:8px 0;color:var(--tk-text-2);font-size:14.5px}
-  a{color:var(--tk-live,#06d6e0)}
-  .links a{display:inline-block;margin:0 16px 8px 0;font-size:14px}
-  .faq .q{font-weight:700;color:#fff;font-size:15px;margin:20px 0 5px}
-  .faq .a{color:var(--tk-text-2);font-size:14px;margin:0;max-width:680px}
-  .foot{color:var(--tk-text-3);font-size:12.5px;margin-top:38px;border-top:1px solid var(--tk-line-1);padding-top:16px;max-width:700px;font-family:var(--tk-font-mono);line-height:1.7}
-  b{color:var(--tk-text-1)}
+  /* ---- hero ----
+     Block padding only. A `padding` shorthand here would land after shell.css
+     at equal specificity and quietly cancel .ps-wrap's gutter, which shows up
+     as the hero touching the screen edge on a phone. */
+  .hero { padding-top: clamp(40px, 7vh, 76px); padding-bottom: clamp(26px, 4vh, 44px); }
+  .hero__logo { width: 56px; height: 56px; display: block; margin: 0 0 20px;
+                filter: drop-shadow(0 6px 22px rgba(0,0,0,.45)); }
+  .hero__note { font-family: var(--tk-font-mono); font-size: 11px; line-height: 1.6;
+                color: var(--tk-text-4); margin: 18px 0 0; max-width: 62ch; }
+
+  /* ---- the three doors ---- */
+  .doors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+           gap: 14px; margin: 30px 0 0; }
+  @media (max-width: 860px) { .doors { grid-template-columns: 1fr; } }
+  .door { display: flex; flex-direction: column; padding: 18px 20px 16px;
+          text-decoration: none; color: inherit; min-height: 236px; }
+  .door__k { display: flex; align-items: center; gap: 7px; margin: 0 0 9px;
+             font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
+             text-transform: uppercase; color: var(--tk-text-3); }
+  .door__t { font-size: 19px; line-height: 1.2; font-weight: 700; letter-spacing: -.015em;
+             color: var(--tk-text-0); margin: 0 0 8px; }
+  .door__b { font-size: 13px; line-height: 1.55; color: var(--tk-text-2); margin: 0 0 16px; }
+  .door__go { margin: auto 0 0; padding-top: 14px; font-family: var(--tk-font-mono);
+              font-size: 10.5px; letter-spacing: .07em; color: var(--tk-live);
+              border-top: 1px solid var(--ps-edge-1); }
+
+  /* ---- a figure and the sentence it fails back to ---- */
+  .stat { margin: 0 0 14px; min-height: 62px; }
+  .stat__line { display: flex; align-items: baseline; gap: 2px; }
+  .stat__fig { font-size: 34px; line-height: 1; font-weight: 800; letter-spacing: -.025em;
+               color: var(--tk-text-0); }
+  .stat__unit { font-size: 14px; font-weight: 600; color: var(--tk-text-3); }
+  .stat__cap { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.45;
+               color: var(--tk-text-3); }
+  .stat__static { display: block; font-size: 12.5px; line-height: 1.5; color: var(--tk-text-3); }
+  .stat__err { display: block; margin-top: 6px; font-family: var(--tk-font-mono);
+               font-size: 10.5px; color: var(--tk-warning); }
+  .stat__err a { color: inherit; }
+  .stat--sm .stat__fig { font-size: 27px; }
+  .stat--sm { min-height: 0; margin-bottom: 10px; }
+
+  .fresh { display: inline-flex; align-items: center; gap: 6px;
+           font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .08em;
+           text-transform: uppercase; color: var(--tk-text-4); }
+  .fresh.is-stale { color: var(--tk-warning); }
+
+  /* ---- pillar bands ---- */
+  .pillar { padding-top: 8px; padding-bottom: 44px; }   /* block only, see .hero */
+  .claim__lede { font-size: 14.5px; line-height: 1.6; color: var(--tk-text-2); margin: 0 0 18px; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 9px; }
+  .stack { display: grid; gap: 12px; }
+
+  /* ---- signal cards ---- */
+  .lead { display: block; padding: 22px 24px 20px; text-decoration: none; color: inherit; }
+  .lead__t { font-size: 21px; font-weight: 700; letter-spacing: -.015em;
+             color: var(--tk-text-0); margin: 0 0 12px; }
+  .lead__b { font-size: 13.5px; line-height: 1.6; color: var(--tk-text-2); margin: 0; max-width: 60ch; }
+
+  .sig-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 12px; }
+  .sig { display: flex; flex-direction: column; padding: 16px 17px 15px;
+         text-decoration: none; color: inherit; }
+  .sig__k { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 7px;
+            font-family: var(--tk-font-mono); font-size: 9px; letter-spacing: .15em;
+            text-transform: uppercase; color: var(--tk-text-4); }
+  .sig__t { font-size: 15px; font-weight: 700; color: var(--tk-text-0); margin: 0 0 9px; }
+  .sig__b { font-size: 12.5px; line-height: 1.55; color: var(--tk-text-2); margin: 0 0 10px; }
+  .sig__f { margin: auto 0 0; padding-top: 10px; border-top: 1px solid var(--ps-edge-1); }
+
+  /* ---- evidence and caveat strips (plane 1) ---- */
+  .note { padding: 15px 17px; }
+  .note__h { font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
+             text-transform: uppercase; color: var(--tk-text-4); margin: 0 0 8px; }
+  .note p + .note__h { margin-top: 14px; }
+  .note p { font-size: 12px; line-height: 1.6; color: var(--tk-text-3); margin: 0 0 8px; max-width: 74ch; }
+  .note p:last-child { margin-bottom: 0; }
+  .note code { font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-1);
+               background: rgba(255,255,255,.05); padding: 1px 5px; border-radius: 5px; }
+  .note a { color: var(--tk-live); }
+  .filelist { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; }
+  .filelist a { font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-2);
+                text-decoration: none; border-bottom: 1px solid var(--ps-edge-2); }
+  .filelist a:hover { color: var(--tk-live); border-bottom-color: var(--tk-live); }
+
+  /* ---- method + faq ---- */
+  .method { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .method div { padding: 16px 17px; }
+  .method h3 { font-size: 14.5px; font-weight: 700; color: var(--tk-text-0); margin: 0 0 7px; }
+  .method p { font-size: 12.5px; line-height: 1.55; color: var(--tk-text-2); margin: 0; }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 16px 0 0; }
+  .links a { font-size: 13px; color: var(--tk-live); text-decoration: none; }
+  .links a:hover { text-decoration: underline; }
+
+  .faq h3 { font-size: 15.5px; font-weight: 700; color: var(--tk-text-0); margin: 22px 0 6px; }
+  .faq p { font-size: 14px; line-height: 1.62; color: var(--tk-text-2); margin: 0; max-width: 74ch; }
+  .faq a { color: var(--tk-live); }
+
+  .foot { margin: 46px 0 60px; padding-top: 18px; border-top: 1px solid var(--ps-edge-1);
+          font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.75;
+          color: var(--tk-text-4); max-width: 76ch; }
+  .foot a { color: var(--tk-text-2); }
 </style>
 </head>
-<body>
-
-<nav class="pnav">
-  <a class="pnav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
-  <div class="pnav__links">
-    <a href="/" aria-current="page">Home</a>
-    <a href="/china-brief.html">Brief</a>
-    <a href="/dashboards/ddti_observatory.html">Observatory</a>
-    <a href="/dashboards/ddti_dashboard.html">Monitor</a>
-    <a href="/readings/erasure-observatory.html">Erasure</a>
-    <a href="/readings/eval-registry.html">Eval Registry</a>
-    <a href="/readings/generative-firewall-index.html">Firewall</a>
-    <a href="/for-researchers.html">Data</a>
-    <a href="/support.html">Support</a>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
   </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
 </nav>
+<!--/PS_NAV-->
 
-<div class="wrap">
-  <img class="logo" src="brand/palimpsest-icon.svg" alt="Palimpsest logo" width="60" height="60">
-  <p class="kick">Open-source · public good · MIT</p>
-  <h1>Palimpsest</h1>
-  <p class="lede">An open observatory that measures how authoritarian states censor, and a sealed public
-  registry of AI evaluation results. Deletion is treated as data. Every result seals the moment it goes up,
-  hash-chained, so nobody can revise it afterwards. Not a lab, not a government, not us. It watches the
-  censor, never the censored, and every number traces to public evidence.</p>
+<main id="main">
 
-  <div class="cards">
-    <div class="card" data-tkm style="--tkm-d:0ms">
-      <div class="ct"><span class="dot" style="color:#37c88b"></span>Sealed · independently verifiable</div>
-      <h2>Verifiable Eval Registry</h2>
-      <p>AI evaluations nobody can revise after publication. Questions frozen before any model is asked,
-      every result hash-chained. Chinese state-aligned and Western frontier models on the same record,
-      each on its own frozen suite, watched for refusal drift over time.</p>
-      <a class="btn" href="/readings/eval-registry.html">Open the registry &rarr;</a>
+  <!-- ══ HERO: pick your door ═══════════════════════════════════════════ -->
+  <header class="hero ps-wrap ps-recede">
+    <img class="hero__logo" src="/brand/palimpsest-icon.svg" alt="Palimpsest logo" width="56" height="56">
+    <p class="ps-kicker">Open source · public good · MIT</p>
+    <h1 class="ps-h1">Palimpsest</h1>
+    <p class="ps-lede">Three things, one instrument. An observatory that measures what the Chinese
+    censorship apparatus removes, at the network, content and model layers. A registry that seals AI
+    evaluations the moment they publish, so nobody, including us, can revise a result afterwards. And a
+    free public good, funded by people who think this should exist rather than by anyone who buys it.
+    It watches the censor, never the censored.</p>
+
+    <div class="doors ps-stagger">
+
+      <a class="door ps-p3 ps-reveal" href="#censorship">
+        <p class="door__k"><span class="ps-dot ps-dot--live" style="color:var(--tk-live)" aria-hidden="true"></span>Censorship observatory</p>
+        <h2 class="door__t">What the apparatus removed</h2>
+        <p class="door__b">Network, content and model layers, cross-checked against each other, including
+        a vantage measured from inside mainland China.</p>
+        <p class="stat" data-stat="hero-erasure">
+          <span class="stat__static">A composite index across the three layers of erasure, recomputed
+          every six hours from the layer signals underneath it.</span>
+        </p>
+        <p class="door__go"><span class="fresh" data-fresh="hero-erasure">reading the feed</span><br>
+        For researchers, journalists and OSINT <span aria-hidden="true">↓</span></p>
+      </a>
+
+      <a class="door ps-p3 ps-reveal" href="#evals">
+        <p class="door__k"><span class="ps-dot ps-dot--live" style="color:var(--tk-ok)" aria-hidden="true"></span>Verifiable AI eval registry</p>
+        <h2 class="door__t">Evaluations nobody can revise</h2>
+        <p class="door__b">Questions frozen and hashed before any model is asked. Every result
+        hash-chained, the whole record fingerprinted, the roots deposited outside our own infrastructure.</p>
+        <p class="stat" data-stat="hero-evals">
+          <span class="stat__static">An append-only record of sealed evaluations, recomputable offline
+          by anyone who clones the repository.</span>
+        </p>
+        <p class="door__go"><span class="fresh" data-fresh="hero-evals">reading the feed</span><br>
+        For labs, eval and safety researchers <span aria-hidden="true">↓</span></p>
+      </a>
+
+      <a class="door ps-p3 ps-reveal" href="#public-good">
+        <p class="door__k"><span class="ps-dot" style="color:var(--tk-watch)" aria-hidden="true"></span>A funded public good</p>
+        <h2 class="door__t">Free to read, free to rebuild</h2>
+        <p class="door__b">Developed in the open. Never a commercial product, and it never monetizes the
+        people or the topics it observes.</p>
+        <p class="stat">
+          <span class="stat__line"><span class="stat__fig">MIT</span></span>
+          <span class="stat__cap">Licensed for reuse. No paid tier, no supporter-only data, nothing sold.</span>
+        </p>
+        <p class="door__go"><span class="fresh">grants and individuals</span><br>
+        For grantmakers and donors <span aria-hidden="true">↓</span></p>
+      </a>
+
     </div>
-    <div class="card" data-tkm style="--tkm-d:55ms">
-      <div class="ct"><span class="dot" style="color:#a78bfa"></span>Live · every 6 hours</div>
-      <h2>Erasure Observatory</h2>
-      <p>What the record lost, measured across three layers: network, narrative, and model. Each reading
-      seals into a tamper-evident ledger, so our own history cannot be quietly rewritten either.</p>
-      <a class="btn" href="/readings/erasure-observatory.html">See the ledger &rarr;</a>
+
+    <p class="hero__note">Every figure on this page is fetched from its published JSON when the page
+    loads. If a feed cannot be read you get the plain sentence instead of a number, never a zero and
+    never a placeholder that looks like a reading.</p>
+  </header>
+
+  <div class="ps-wrap"><hr class="ps-rule"></div>
+
+  <!-- ══ 01 · CENSORSHIP OBSERVATORY ════════════════════════════════════ -->
+  <section class="pillar ps-wrap ps-defer" id="censorship">
+    <p class="ps-section-head">01 / Censorship observatory</p>
+
+    <div class="ps-band">
+      <div class="ps-pin">
+        <h2 class="ps-h2">Three layers, one apparatus</h2>
+        <p class="claim__lede">Censorship is usually measured as access, in the present tense. Palimpsest
+        measures removal across time: what the network drops, what the content layer scrubs, and what the
+        model will no longer say. Each layer has its own vantage and its own failure modes, so each is
+        reported on its own terms and cross-checked against the others rather than averaged into one
+        confident number.</p>
+        <div class="btn-row">
+          <a class="ps-btn" href="/china-brief.html">Read the China Brief</a>
+          <a class="ps-btn ps-btn--ghost" href="/readings/">All readings</a>
+        </div>
+      </div>
+
+      <div class="stack">
+
+        <!-- the reading that leads the pillar -->
+        <a class="lead ps-p3 ps-reveal--deep" href="/readings/inside-view.html">
+          <p class="sig__k">Network layer<span class="ps-tag">new</span>Inside vantage</p>
+          <h3 class="lead__t">Inside View</h3>
+          <p class="stat" data-stat="sig-inside">
+            <span class="stat__static">Volunteer probes inside mainland China resolve a fixed panel of
+            censored and control domains, and the forged share is published each run.</span>
+          </p>
+          <p class="lead__b">An answer received inside China counts as forged when it shares no address
+          with the answer the control arm received outside China in the same round. No forged-address
+          list is hardcoded, because the injector pool rotates. Everything else on this site looks at the
+          firewall from outside. This looks out from inside it.</p>
+          <p class="sig__f"><span class="fresh" data-fresh="sig-inside">reading the feed</span></p>
+        </a>
+
+        <div class="ps-p1 note ps-reveal">
+          <p class="note__h">Control arm, this round</p>
+          <p data-field="inside-why">The control arm reports which censored domains showed injection in
+          the most recent round.</p>
+          <p class="note__h">What this reading does not prove</p>
+          <p>The in-China probes are volunteer hosted and sit on datacentre networks, so this measures
+          filtering as experienced on Chinese cloud networks, which is not necessarily what a household
+          sees. A volunteer running a probe did not consent to have a home connection emit queries for
+          censored domains, so the household pool is left alone and the cost is stated instead of hidden.
+          A forged answer proves on-path DNS interference. It does not prove national filtering on its
+          own, so a domain forged inside a single network is reported as a single operator rather than as
+          blocked.</p>
+        </div>
+
+        <!-- the other three signals that shipped with it -->
+        <div class="sig-grid ps-stagger ps-reveal">
+
+          <a class="sig ps-p2" href="/readings/in-path-interference.html">
+            <p class="sig__k">Network layer<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">In-Path Interference</h3>
+            <p class="stat stat--sm" data-stat="sig-inpath">
+              <span class="stat__static">HTTP rewritten in transit, and the health of the transports
+              people use to get around it, from OONI measurements in China.</span>
+            </p>
+            <p class="sig__b">Rates are computed over completed tests only. A method that never completes
+            a single run has no anomaly rate, so it is reported as a blackout rather than drawn as zero,
+            which is the louder finding of the two.</p>
+            <p class="sig__b" data-field="inpath-exec">Measurement methods that cannot execute inside
+            China are listed with each reading.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-inpath">reading the feed</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/app-store.html">
+            <p class="sig__k">App layer<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">App Store Layer</h3>
+            <p class="stat stat--sm" data-stat="sig-appstore">
+              <span class="stat__static">Our own live panel compares the Chinese storefront against a
+              control storefront, app by app, and records each delisting event.</span>
+            </p>
+            <p class="stat stat--sm" data-stat="sig-apple">
+              <span class="stat__static">GreatFire's corpus supplies the scale and the composition of
+              what is removed, which our panel is far too small to see.</span>
+            </p>
+            <p class="sig__b">Delisting is not network blocking. Facebook, X and YouTube stay listed in
+            the Chinese storefront while being unreachable there. The apps that get removed are the ones
+            that would still work over a VPN.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-appstore">reading the feed</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/blocklist.html">
+            <p class="sig__k">Content layer<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">Blocklist Archaeology</h3>
+            <p class="stat stat--sm" data-stat="sig-blocklist">
+              <span class="stat__static">Keywords newly present in successive client blocklists, each
+              addition dated to the version that first shipped it.</span>
+            </p>
+            <p class="sig__b">Every other signal here infers a directive from what disappeared. This one
+            reads the directive itself: the censor's own keyword list, telling you what it started caring
+            about and when.</p>
+            <p class="sig__b">Corpus: The Citizen Lab, University of Toronto,
+            chat-censorship. No licence file upstream and no stated terms, so it is treated as all rights
+            reserved, cached locally and never redistributed from this repository.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-blocklist">reading the feed</span></p>
+          </a>
+
+        </div>
+
+        <!-- the standing signals -->
+        <div class="sig-grid ps-stagger ps-reveal">
+
+          <a class="sig ps-p2" href="/readings/ooni-gfw.html">
+            <p class="sig__k">Network layer</p>
+            <h3 class="sig__t">Great Firewall</h3>
+            <p class="stat stat--sm" data-stat="sig-gfw">
+              <span class="stat__static">Website, messenger and circumvention-tool reachability inside
+              China, read from OONI's already-aggregated open data.</span>
+            </p>
+            <p class="sig__b">The firewall blocks by connection reset and DNS injection without serving a
+            block page, so OONI's confirmed count stays near zero for China. We track anomaly rate and
+            say so rather than reporting a reassuring zero.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-gfw">reading the feed</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/erasure-observatory.html">
+            <p class="sig__k">All three layers</p>
+            <h3 class="sig__t">Erasure Observatory</h3>
+            <p class="stat stat--sm" data-stat="sig-erasure">
+              <span class="stat__static">Each composite reading is sealed into a hash-chained ledger, so
+              our own history cannot be quietly rewritten either.</span>
+            </p>
+            <p class="sig__b">The composite index, plus the layer-by-layer breakdown and the independent
+            cross-checks that either confirm a layer or contradict it. A layer that is armed but not yet
+            reporting is shown as armed, not as zero.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-erasure">reading the feed</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/dashboards/ddti_observatory.html">
+            <p class="sig__k">Content layer</p>
+            <h3 class="sig__t">DDTI Observatory</h3>
+            <p class="sig__b">Deletion as data: the public record of what was scrubbed, ranked by
+            censor attention and novelty, and validated against six documented censorship events.</p>
+            <p class="sig__b">The full command surface, with the fear index, the live topic network and
+            the ranked censor targets in one view. The deletion tracker also runs on its own board, the
+            Live Monitor.</p>
+            <p class="sig__f"><span class="fresh">refreshed every three hours</span></p>
+          </a>
+
+        </div>
+
+        <div class="sig-grid ps-stagger ps-reveal">
+
+          <a class="sig ps-p2" href="/dashboards/ddti_observatory.html#gdeltCard">
+            <p class="sig__k">Cross-signal</p>
+            <h3 class="sig__t">Censored at home, loud abroad</h3>
+            <p class="sig__b">Which censored topics the world's press is covering heavily at the moment
+            they are being scrubbed at home. Containment, made visible: the gap between what a domestic
+            audience can see and what everyone else can.</p>
+            <p class="sig__f"><span class="fresh">refreshed every six hours</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/dashboards/ddti_observatory.html#refugeCard">
+            <p class="sig__k">Preservation</p>
+            <h3 class="sig__t">Pressure on the mirrors</h3>
+            <p class="sig__b">The repositories that shelter censored material, from 996.ICU to
+            nCovMemory, watched for takedowns, legal blocks, visibility drops and defensive preservation
+            bursts. Public pressure metadata only.</p>
+            <p class="sig__f"><span class="fresh">refreshed twice a day</span></p>
+          </a>
+
+        </div>
+
+        <div class="ps-p1 note ps-reveal">
+          <p class="note__h">Raw evidence</p>
+          <p>Every figure above is published as JSON alongside a history file, under the same MIT licence
+          as the code. Nothing on this site asks you to take a number on trust.</p>
+          <ul class="filelist">
+            <li><a href="/readings/inside-view-latest.json">inside-view</a></li>
+            <li><a href="/readings/in-path-interference-latest.json">in-path-interference</a></li>
+            <li><a href="/readings/app-storefront-latest.json">app-storefront</a></li>
+            <li><a href="/readings/apple-censorship-latest.json">apple-censorship</a></li>
+            <li><a href="/readings/blocklist-latest.json">blocklist</a></li>
+            <li><a href="/readings/ooni-gfw-latest.json">ooni-gfw</a></li>
+            <li><a href="/readings/erasure-observatory-latest.json">erasure-observatory</a></li>
+            <li><a href="/readings/ddti-latest.json">ddti</a></li>
+            <li><a href="/readings/gdelt-latest.json">gdelt</a></li>
+            <li><a href="/readings/github-refuge-latest.json">github-refuge</a></li>
+            <li><a href="/readings/latest.json">deletion corpus</a></li>
+            <li><a href="/dashboards/ddti_dashboard.html">live monitor</a></li>
+            <li><a href="/for-researchers.html">data and methods</a></li>
+          </ul>
+        </div>
+
+      </div>
     </div>
-    <div class="card" data-tkm style="--tkm-d:110ms">
-      <div class="ct"><span class="dot" style="color:#06d6e0"></span>Live · every 3 hours</div>
-      <h2>DDTI Observatory</h2>
-      <p>The full command surface: the censorship fear index, a live topic network, ranked censor targets,
-      and the GDELT and GitHub-refuge signals in one view.</p>
-      <a class="btn" href="/dashboards/ddti_observatory.html">Open observatory &rarr;</a>
+  </section>
+
+  <div class="ps-wrap"><hr class="ps-rule"></div>
+
+  <!-- ══ 02 · VERIFIABLE AI EVAL REGISTRY ═══════════════════════════════ -->
+  <section class="pillar ps-wrap ps-defer" id="evals">
+    <p class="ps-section-head">02 / Verifiable AI eval registry</p>
+
+    <div class="ps-band">
+      <div class="ps-pin">
+        <h2 class="ps-h2">A result that cannot be quietly revised</h2>
+        <p class="claim__lede">An evaluation you can edit after the fact is a press release. Here the
+        probe set is frozen and its hash sealed before any model is queried, every result is chained to
+        the one before it, and the whole record is fingerprinted by a Merkle root. A number changed after
+        publication breaks the chain, and anyone can recompute the chain offline to find out. That
+        applies to us as much as to anyone we measure.</p>
+        <div class="btn-row">
+          <a class="ps-btn" href="/readings/eval-registry.html">Open the registry</a>
+          <a class="ps-btn ps-btn--ghost" href="/readings/generative-firewall-index.html">Firewall Index</a>
+        </div>
+      </div>
+
+      <div class="stack">
+
+        <a class="lead ps-p3 ps-reveal--deep" href="/readings/eval-registry.html">
+          <p class="sig__k">Model layer · sealed record</p>
+          <h3 class="lead__t">The registry, right now</h3>
+          <p class="stat" data-stat="sig-registry">
+            <span class="stat__static">An append-only record of pre-registered evaluation runs across
+            two frozen suites, verified on every publish.</span>
+          </p>
+          <p class="lead__b">Merkle root <code data-field="merkle">loads from the sealed registry</code></p>
+          <p class="sig__f"><span class="fresh" data-fresh="sig-registry">reading the feed</span></p>
+        </a>
+
+        <div class="sig-grid ps-stagger ps-reveal">
+
+          <a class="sig ps-p2" href="/readings/generative-firewall-index.html">
+            <p class="sig__k">Frozen suite</p>
+            <h3 class="sig__t">cn-sensitive-generative-firewall-v1</h3>
+            <p class="sig__b">What a state-aligned model refuses or rewrites on sensitive prompts, in
+            Chinese and English, against neutral controls.</p>
+            <p class="sig__b">Panel: deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct.</p>
+            <p class="sig__f"><span class="fresh">sealed on every run</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/eval-registry.html#drift">
+            <p class="sig__k">Frozen suite</p>
+            <h3 class="sig__t">frontier-overrefusal-v1</h3>
+            <p class="sig__b">What a Western frontier model quietly stops answering. Drift is the diff
+            against that model's own previous sealed run, on the same frozen benign probes.</p>
+            <p class="sig__b">Panel: openai/gpt-4o-mini, anthropic/claude-3-haiku,
+            meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo.</p>
+            <p class="sig__f"><span class="fresh">sealed on every run</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/eval-registry.html#anchors">
+            <p class="sig__k">External anchors</p>
+            <h3 class="sig__t">Not resting on our word</h3>
+            <p class="sig__b">Chain roots are deposited outside our own infrastructure, at the Internet
+            Archive and through OpenTimestamps onto Bitcoin, so a root cannot be backdated even by the
+            people who run this site.</p>
+            <p class="sig__f"><span class="fresh">anchored on a schedule</span></p>
+          </a>
+
+        </div>
+
+        <div class="ps-p1 note ps-reveal">
+          <p class="note__h">Check it yourself</p>
+          <p>Clone the repository and run <code>python3 scripts/verify_eval_registry.py</code>. It
+          recomputes every hash link and the Merkle root from the raw
+          <a href="/readings/eval-registry.jsonl">eval-registry.jsonl</a> without touching the network.
+          The two suites share no model, so neither family can be graded on a rubric built for the other,
+          and the pre-registration hash proves the questions were fixed before the answers existed.</p>
+          <p>The registry does not prove a model is good or bad. It proves the questions were frozen
+          first and the answers were not edited afterwards. Everything beyond that is interpretation, and
+          the interpretation is published with the evidence attached.</p>
+        </div>
+
+      </div>
     </div>
-    <div class="card" data-tkm style="--tkm-d:165ms">
-      <div class="ct"><span class="dot" style="color:#19c393"></span>Live · daily</div>
-      <h2>Generative Firewall Index</h2>
-      <p>What a state's AI is engineered to hide: the share of sensitive answers state-aligned models
-      refuse or rewrite, against neutral controls, in Chinese and English.</p>
-      <a class="btn" href="/readings/generative-firewall-index.html">View the index &rarr;</a>
+  </section>
+
+  <div class="ps-wrap"><hr class="ps-rule"></div>
+
+  <!-- ══ 03 · A FUNDED PUBLIC GOOD ══════════════════════════════════════ -->
+  <section class="pillar ps-wrap ps-defer" id="public-good">
+    <p class="ps-section-head">03 / A funded public good</p>
+
+    <div class="ps-band">
+      <div class="ps-pin">
+        <h2 class="ps-h2">Somebody has to pay for the boring part</h2>
+        <p class="claim__lede">Palimpsest is free to read and MIT licensed, and there is no paid tier
+        behind any of it. What it costs is unglamorous: probe credits, model API calls for the frozen
+        eval suites, storage for the evidence, and the maintenance that keeps a collector honest when a
+        source quietly changes shape. Funding buys continuity, which is the only thing a longitudinal
+        record actually needs.</p>
+        <div class="btn-row">
+          <a class="ps-btn" href="/fund.html">Fund the observatory</a>
+          <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="sig-grid ps-stagger ps-reveal">
+
+          <div class="sig ps-p2">
+            <p class="sig__k">What funding buys</p>
+            <h3 class="sig__t">More vantage, longer memory</h3>
+            <p class="sig__b">More measurement vantages, longer retention of the raw evidence,
+            human-validated labels behind the classifiers, and the unexciting maintenance that stops a
+            live signal rotting into a stale one.</p>
+          </div>
+
+          <div class="sig ps-p2">
+            <p class="sig__k">What it will never be</p>
+            <h3 class="sig__t">Not a product</h3>
+            <p class="sig__b">Never a commercial product, and it never monetizes the people or the topics
+            it observes. Public reads only. No person inside is ever asked to act, and no state-aligned
+            model is ever the analyst.</p>
+          </div>
+
+          <div class="sig ps-p2">
+            <p class="sig__k">What a funder gets</p>
+            <h3 class="sig__t">Everything, immediately</h3>
+            <p class="sig__b">The same thing everyone else gets, at the same moment: raw JSON, the method
+            documents, the code, and the forecast ledger including the calls we got wrong. There is no
+            supporter tier because there is nothing to withhold.</p>
+          </div>
+
+        </div>
+
+        <div class="ps-p1 note ps-reveal">
+          <p class="note__h">Reuse it</p>
+          <p>Code, method and evidence are MIT licensed. Feeds are stable URLs under
+          <a href="/readings/">/readings/</a>, each with a history file beside it, and the citation is in
+          <a href="https://github.com/beepboop2025/palimpsest/blob/main/CITATION.cff" target="_blank" rel="noopener">CITATION.cff</a>.
+          If you are building on this and something is missing, the useful thing to say is which field
+          you needed. See <a href="/for-researchers.html">data and methods</a> for the shape of each feed.</p>
+        </div>
+
+      </div>
     </div>
-    <div class="card" data-tkm style="--tkm-d:220ms">
-      <div class="ct"><span class="dot" style="color:#ff5b52"></span>Live · every 6 hours</div>
-      <h2>Censored at home, loud abroad</h2>
-      <p>The GDELT cross-signal: which censored topics the world's press covers heavily while they are
-      being scrubbed at home. Containment, made visible.</p>
-      <a class="btn ghost" href="/dashboards/ddti_observatory.html#gdeltCard">See the signal &rarr;</a>
+  </section>
+
+  <!-- ══ METHOD ═════════════════════════════════════════════════════════ -->
+  <section class="ps-wrap ps-defer" id="method">
+    <p class="ps-section-head">How it works</p>
+    <div class="method ps-stagger ps-reveal">
+      <div class="ps-p2">
+        <h3>Deletion as data</h3>
+        <p>Archive public posts, watch for their scrubbing, rank what the censor is most focused on right
+        now. Validated against six documented censorship events rather than asserted.</p>
+      </div>
+      <div class="ps-p2">
+        <h3>The generation layer</h3>
+        <p>Probe state-aligned models and record their refusals and state-narrative substitutions, in
+        Chinese and English, against neutral Western controls so selectivity is provable.</p>
+      </div>
+      <div class="ps-p2">
+        <h3>The sealed registry</h3>
+        <p>Pre-register, hash-chain, anchor externally. A lab, a government, or Palimpsest itself cannot
+        revise a published number without breaking a chain anyone can recompute.</p>
+      </div>
+      <div class="ps-p2">
+        <h3>Safety as architecture</h3>
+        <p>Public reads only. No person inside is ever asked to act, no state-aligned model is ever the
+        analyst, and every finding ships its raw evidence.</p>
+      </div>
     </div>
-    <div class="card" data-tkm style="--tkm-d:275ms">
-      <div class="ct"><span class="dot" style="color:#4aa3ff"></span>Live · twice a day</div>
-      <h2>Pressure on the mirrors</h2>
-      <p>GitHub-refuge watches the repos that shelter censored material, 996.ICU to nCovMemory, for
-      takedowns, legal blocks, and defensive preservation bursts.</p>
-      <a class="btn ghost" href="/dashboards/ddti_observatory.html#refugeCard">See the watch &rarr;</a>
-    </div>
+    <p class="links">
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener">How it is measured</a>
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener">Integrity model</a>
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener">Validation</a>
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener">Ethics and safety</a>
+      <a href="/for-researchers.html#forecast">Our own misses</a>
+      <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </section>
+
+  <!-- ══ FAQ ════════════════════════════════════════════════════════════
+       Kept word-for-word in parity with the FAQPage schema above. Edit both
+       or neither: Google drops the rich result when they diverge. -->
+  <section class="ps-wrap ps-defer faq" id="faq">
+    <p class="ps-section-head">Frequently asked</p>
+
+    <h3>What is Palimpsest?</h3>
+    <p>Palimpsest is three things built on one instrument. It is a free, open-source observatory that
+    measures how authoritarian states censor, at the network, content and model layers. It is a verifiable
+    AI eval registry, where evaluation results are sealed the moment they publish so nobody can revise
+    them afterwards. And it is a public good: MIT licensed, free to read, funded by grants and individuals
+    rather than by customers. It watches the censor, never the censored, and ships raw evidence with every
+    finding.</p>
+
+    <h3>What is the Palimpsest censorship observatory measuring?</h3>
+    <p>Removal, on three layers. The network layer: DNS answers forged for censored domains, HTTP
+    rewritten in transit by in-path middleboxes, circumvention transports degraded, apps missing from the
+    Chinese App Store storefront, and website and messenger blocking rates. The content layer: deletion as
+    data, which topics the Chinese censor is most actively scrubbing right now, ranked by censor attention
+    and novelty and validated against six documented censorship events, plus the keywords newly added to
+    successive client blocklists. The model layer: the Generative Firewall Index, the share of sensitive
+    answers that state-aligned large language models refuse or rewrite, tested in Chinese and English
+    against neutral control models. Each layer has its own vantage and its own failure modes, so each is
+    reported separately and cross-checked against the others.</p>
+
+    <h3>What does Palimpsest measure from inside China?</h3>
+    <p>The Inside View signal uses volunteer Globalping probes inside mainland China to resolve a fixed
+    panel of censored and control domains. An answer received inside China is treated as forged when it
+    shares no address with the answer the same round received outside China, so no list of forged
+    addresses has to be hardcoded and a rotating injector pool is still caught. Everything else on the
+    site looks at the firewall from outside. This looks out from inside it. The constraint is real and
+    stated with every reading: the in-China probes sit on datacentre networks, so this is filtering as
+    experienced on Chinese cloud networks, which is not necessarily what a household sees, and a forged
+    answer proves on-path DNS interference rather than national filtering on its own.</p>
+
+    <h3>What is China censoring right now?</h3>
+    <p>Palimpsest tracks this live. It reads China Digital Times' curated record of removed posts and
+    leaked propaganda directives, and ranks the topics drawing the most censor attention as a
+    live censorship index — attention allocation, not a deletion rate. Alongside it, the
+    network signals show which domains are being answered with forged DNS, which apps have left the
+    Chinese storefront, and which keywords the platform blocklists have newly started to carry. The live
+    readings and raw JSON evidence are published here at palimpsest.info, updated continuously.</p>
+
+    <h3>What is the Generative Firewall Index?</h3>
+    <p>The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It
+    records how often state-aligned large language models refuse or substitute state-narrative answers on
+    sensitive prompts, in Chinese and English, against neutral control models. A high index means the
+    model is selectively suppressing truthful answers by design, not by accident.</p>
+
+    <h3>What is the Verifiable Eval Registry?</h3>
+    <p>The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The
+    questions are frozen and sealed before any model is queried, each result is hash-chained to the one
+    before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not
+    frozen first, or a number edited after publication, fails verification. It currently runs two separate
+    frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the Chinese
+    state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1
+    for the Western frontier panel (openai/gpt-4o-mini, anthropic/claude-3-haiku,
+    meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese state-aligned models and Western
+    frontier models are held to the same tamper-evident, pre-registered machinery, each on its own frozen
+    suite, and anyone can recompute the chain from the
+    <a href="https://github.com/beepboop2025/palimpsest">public repository</a>. Chain roots are also
+    deposited outside our own infrastructure, at the Internet Archive and via OpenTimestamps onto Bitcoin,
+    so the record does not rest on our word.</p>
+
+    <h3>Is Palimpsest free and open source?</h3>
+    <p>Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public good. It
+    is never a commercial product and never monetizes the people or topics it observes. Its code, method,
+    and raw evidence are all public on
+    <a href="https://github.com/beepboop2025/palimpsest">GitHub at github.com/beepboop2025/palimpsest</a>.</p>
+
+    <h3>How is Palimpsest funded?</h3>
+    <p>By grants and individual contributions, not by customers. There is no paid tier, no supporter-only
+    data and no gate, and there will not be one. Funding pays for the unglamorous parts: probe credits,
+    model API calls for the frozen eval suites, storage for the evidence, and the maintenance that keeps a
+    collector honest when a source changes shape. Everything it produces is published the moment it
+    exists, under MIT, to everyone at once.</p>
+  </section>
+
+  <div class="ps-wrap">
+    <p class="foot">Free and open source, developed in the open as a public good. Never a commercial
+    product, and it never monetizes the people or topics it observes. Watch the censor, never the
+    censored. The internet stays free because people keep measuring the dark.<br>
+    <a href="/readings/">Readings</a> · <a href="/for-researchers.html">Data and methods</a> ·
+    <a href="/fund.html">Fund it</a> ·
+    <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">GitHub</a></p>
   </div>
 
-  <p style="margin:18px 0 0"><a class="btn ghost" href="/for-researchers.html">For researchers &amp; journalists: data &amp; methods &rarr;</a></p>
+</main>
 
-  <h3>What it does</h3>
-  <ul>
-    <li><b>Deletion as data.</b> Archives public posts, watches for their scrubbing, and ranks what the
-    censor is most focused on right now. Validated against six documented censorship events.</li>
-    <li><b>The generation layer.</b> Probes state-aligned LLMs and records their refusals and
-    state-narrative substitutions, in Chinese and English, against Western controls.</li>
-    <li><b>The sealed registry.</b> Every evaluation is pre-registered and hash-chained the moment it is
-    published. A lab, a government, or Palimpsest itself cannot revise a number afterwards, and anyone
-    can recompute the chain to check. Western frontier models now sit on the same record as the
-    state-aligned ones, watched for what they quietly stop answering.</li>
-    <li><b>Safety as architecture.</b> Public reads only, no person inside is ever asked to act, and no
-    state-aligned model is ever the analyst. Every finding ships its raw evidence.</li>
-  </ul>
+<script src="/assets/shell.js" defer></script>
+<script>
+/* ============================================================================
+   Live figures for the home page.
+   ----------------------------------------------------------------------------
+   Each slot ships a plain English sentence in the markup. A figure only ever
+   REPLACES that sentence, and only when every field its caption names is
+   actually present in the JSON. If a feed is unreachable, or a field the
+   caption depends on is missing, the sentence stays and a small notice says the
+   live figure could not be read. Nothing here can render a zero, a dash, or a
+   plausible-looking placeholder, which on this site would be worse than showing
+   no number at all.
+   ========================================================================== */
+(function () {
+  "use strict";
 
-  <h3>Explore</h3>
-  <p class="links">
-    <a href="for-researchers.html"><b>For researchers &amp; journalists: data &amp; methods &rarr;</b></a>
-    <a href="https://github.com/beepboop2025/palimpsest">Source code &amp; method (GitHub)</a>
-    <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md">How it is measured</a>
-    <a href="https://github.com/beepboop2025/palimpsest/blob/main/SECURITY-HARDENING.md">Security &amp; safety</a>
-    <a href="readings/">All readings</a>
-    <a href="support.html">Support the observatory</a>
-  </p>
+  function run() {
+    var S = window.PalimpsestShell;
+    if (!S) return;                       /* shell.js absent: static copy stands */
 
-  <h3>Frequently asked</h3>
-  <div class="faq">
-    <p class="q">What is Palimpsest?</p>
-    <p class="a">Palimpsest is a free, open-source public-good observatory that measures how authoritarian
-    states censor by treating deletion as data. It archives public posts, watches for their scrubbing, and
-    ranks what the censor is most focused on right now. It also measures the generative firewall: how often
-    state-aligned AI models refuse or rewrite sensitive answers. It watches the censor, never the censored,
-    and ships raw evidence with every finding.</p>
+    var HOUR = 3600000;
+    var $ = function (sel) { return document.querySelector(sel); };
 
-    <p class="q">What is the Palimpsest censorship observatory measuring?</p>
-    <p class="a">Two things. First, deletion as data: which topics the Chinese censor is most actively
-    scrubbing right now, ranked by censor attention and novelty and validated against six documented
-    censorship events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large
-    language models refuse or rewrite, tested in Chinese and English against neutral Western control models
-    to prove the suppression is deliberate and selective.</p>
+    /* A field that must be a real finite number, or the whole reading is refused. */
+    function need(v) {
+      if (typeof v !== "number" || !isFinite(v)) throw new Error("figure missing");
+      return v;
+    }
+    function grp(n) { return n.toLocaleString("en-US"); }
 
-    <p class="q">What is China censoring right now?</p>
-    <p class="a">Palimpsest tracks this live. It archives public Chinese posts, detects when they are
-    deleted, and ranks the topics drawing the most censor attention as a real-time censorship index. The
-    live readings and raw JSON evidence are published here, updated continuously.</p>
+    function paint(slot, spec) {
+      if (!slot) throw new Error("slot missing");
+      var line = document.createElement("span");
+      line.className = "stat__line";
+      var fig = document.createElement("span");
+      fig.className = "stat__fig ps-num";
+      fig.textContent = "";
+      line.appendChild(fig);
+      if (spec.unit) {
+        var u = document.createElement("span");
+        u.className = "stat__unit";
+        u.textContent = spec.unit;
+        line.appendChild(u);
+      }
+      var cap = document.createElement("span");
+      cap.className = "stat__cap";
+      cap.textContent = spec.cap;
+      slot.textContent = "";
+      slot.appendChild(line);
+      slot.appendChild(cap);
+      S.countUp(fig, spec.value, { decimals: spec.decimals || 0 });
+    }
 
-    <p class="q">What is the Generative Firewall Index?</p>
-    <p class="a">The Generative Firewall Index is a live measure of what a state's AI is engineered to hide.
-    It records how often state-aligned large language models refuse or substitute state-narrative answers on
-    sensitive prompts, in Chinese and English, against neutral control models. A high index means the model
-    is selectively suppressing truthful answers by design, not by accident.</p>
+    function fail(sel, url) {
+      var slot = $(sel);
+      if (!slot || slot.querySelector(".stat__fig") || slot.querySelector(".stat__err")) return;
+      var e = document.createElement("span");
+      e.className = "stat__err";
+      e.textContent = "live figure unavailable · ";
+      var a = document.createElement("a");
+      a.href = url;
+      a.textContent = "raw JSON";
+      e.appendChild(a);
+      slot.appendChild(e);
+    }
 
-    <p class="q">What is the Verifiable Eval Registry?</p>
-    <p class="a">The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations.
-    The questions are frozen and sealed before any model is queried, each result is hash-chained to the
-    one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were
-    not frozen first, or a number edited after publication, fails verification. It currently runs two
-    separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the
-    Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and
-    frontier-overrefusal-v1 for the Western frontier panel (openai/gpt-4o-mini,
-    anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese
-    state-aligned models and Western frontier models are held to the same tamper-evident, pre-registered
-    machinery, each on its own frozen suite, and anyone can recompute the chain from the
-    <a href="https://github.com/beepboop2025/palimpsest">public repository</a>.</p>
+    /* Freshness is a finding: past twice the cadence it is styled as a warning
+       and says so in words, never in colour alone. */
+    function freshen(sel, iso, staleHours) {
+      var node = $(sel);
+      if (!node) return;
+      var t = Date.parse(iso);
+      if (!isFinite(t)) {
+        node.textContent = "measurement time unknown";
+        node.classList.add("is-stale");
+        return;
+      }
+      var stale = (Date.now() - t) > staleHours * HOUR;
+      node.textContent = (stale ? "stale · last measured " : "measured ") + S.ago(iso);
+      node.classList.toggle("is-stale", stale);
+    }
+    function freshFail(sel) {
+      var node = $(sel);
+      if (!node) return;
+      node.textContent = "feed unreachable";
+      node.classList.add("is-stale");
+    }
 
-    <p class="q">Is Palimpsest free and open source?</p>
-    <p class="a">Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public
-    good. It is never a commercial product and never monetizes the people or topics it observes. Its code,
-    method, and raw evidence are all public on <a href="https://github.com/beepboop2025/palimpsest">GitHub</a>.</p>
-  </div>
+    function text(sel, value) {
+      var node = $(sel);
+      if (node && typeof value === "string" && value.trim()) node.textContent = value.trim();
+    }
 
-  <p class="foot">Free and open-source, developed in the open as a public good. It is never a commercial
-  product and never monetizes the people or topics it observes. The internet stays free because people
-  keep measuring the dark.</p>
-</div>
-<script src="/dashboards/assets/tikto-motion.js"></script>
-<script>TiktoMotion.init()</script>
+    var FEEDS = [
+      {
+        /* Erasure Observatory: the hero composite, and the ledger it seals into. */
+        url: "/readings/erasure-observatory-latest.json",
+        slots: ["[data-stat='hero-erasure']", "[data-stat='sig-erasure']"],
+        fresh: [["[data-fresh='hero-erasure']", 12], ["[data-fresh='sig-erasure']", 12]],
+        ok: function (d) {
+          var reporting = (d.layers_contributing || []).length;
+          var total = (d.layers || []).length;
+          if (!reporting || !total) throw new Error("layers missing");
+          paint($("[data-stat='hero-erasure']"), {
+            value: need(d.erasure_index), decimals: 1, unit: "/100",
+            cap: "Erasure Index, " + reporting + " of " + total + " layers reporting"
+          });
+          var integ = d.integrity || {};
+          paint($("[data-stat='sig-erasure']"), {
+            value: need(integ.entries), decimals: 0,
+            cap: "sealed ledger entries, " +
+                 (integ.verified === true ? "chain verifies" : "chain does not verify")
+          });
+        }
+      },
+      {
+        /* The registry head: sealed records, runs, suites, root. */
+        url: "/readings/eval-registry-latest.json",
+        slots: ["[data-stat='hero-evals']", "[data-stat='sig-registry']"],
+        fresh: [["[data-fresh='hero-evals']", 12], ["[data-fresh='sig-registry']", 12]],
+        ok: function (d) {
+          var models = (d.models || []).length;
+          if (!models) throw new Error("model panel missing");
+          paint($("[data-stat='hero-evals']"), {
+            value: need(d.attestations), decimals: 0,
+            cap: "sealed records across " + models + " models, " +
+                 (d.verified === true ? "chain verifies" : "chain does not verify")
+          });
+          paint($("[data-stat='sig-registry']"), {
+            value: need(d.runs), decimals: 0,
+            cap: "sealed evaluation runs across " + need(d.preregistrations) +
+                 " pre-registered suites and " + models + " models"
+          });
+          if (typeof d.merkle_root === "string" && d.merkle_root.length > 24) {
+            text("[data-field='merkle']", d.merkle_root.slice(0, 24) + "…");
+          }
+        }
+      },
+      {
+        /* Inside View: the forged share, seen from inside. */
+        url: "/readings/inside-view-latest.json",
+        slots: ["[data-stat='sig-inside']"],
+        fresh: [["[data-fresh='sig-inside']", 12]],
+        ok: function (d) {
+          var blocked = need(d.n_censored_blocked);
+          var answered = need(d.n_censored_answered);
+          paint($("[data-stat='sig-inside']"), {
+            value: need(d.block_rate) * 100, decimals: 0, unit: "%",
+            cap: blocked + " of " + answered +
+                 " censored domains that answered from inside China came back forged"
+          });
+          if (d.control) text("[data-field='inside-why']", d.control.why);
+        }
+      },
+      {
+        /* In-path interference: rates over completed tests, blackouts named. */
+        url: "/readings/in-path-interference-latest.json",
+        slots: ["[data-stat='sig-inpath']"],
+        fresh: [["[data-fresh='sig-inpath']", 12]],
+        ok: function (d) {
+          var transport = need(d.transport_index);
+          var days = need(d.window_days);
+          paint($("[data-stat='sig-inpath']"), {
+            value: need(d.middlebox_index), decimals: 1, unit: "%",
+            cap: "of completed HTTP probes were rewritten in transit over a " + days +
+                 " day window. Circumvention transports: " + transport.toFixed(1) + "% anomalous"
+          });
+          var out = d.execution_blackouts || [];
+          if (out.length) {
+            var names = out.map(function (t) { return t.test; }).filter(Boolean);
+            if (names.length === out.length) {
+              text("[data-field='inpath-exec']",
+                   out.length + (out.length === 1 ? " measurement method" : " measurement methods") +
+                   " never completed a single run in China this window: " + names.join(", ") + ".");
+            }
+          }
+        }
+      },
+      {
+        /* Our own storefront panel. */
+        url: "/readings/app-storefront-latest.json",
+        slots: ["[data-stat='sig-appstore']"],
+        fresh: [["[data-fresh='sig-appstore']", 12]],
+        ok: function (d) {
+          var delisted = need(d.n_delisted);
+          var tracked = need(d.n_tracked);
+          paint($("[data-stat='sig-appstore']"), {
+            value: need(d.delisting_rate) * 100, decimals: 0, unit: "%",
+            cap: delisted + " of " + tracked +
+                 " apps on our own tracked panel are not offered in the Chinese storefront"
+          });
+        }
+      },
+      {
+        /* GreatFire's corpus: scale and composition, a separate measurement. */
+        url: "/readings/apple-censorship-latest.json",
+        slots: ["[data-stat='sig-apple']"],
+        ok: function (d) {
+          var country = d.country || {};
+          var peer = d.peer_rank || {};
+          var tested = need(country.total_tested);
+          var rank = need(peer.rank);
+          var of = need(peer.of);
+          paint($("[data-stat='sig-apple']"), {
+            value: need(d.unavailable_pct), decimals: 1, unit: "%",
+            cap: "of " + grp(tested) + " apps tested by GreatFire are unavailable in China, " +
+                 (rank === 1 ? "the highest of " + grp(of) + " storefronts surveyed"
+                             : "ranked " + rank + " of " + grp(of) + " storefronts surveyed")
+          });
+        }
+      },
+      {
+        /* Blocklist archaeology. Attribution is mandatory, so the card carries it
+           statically and this only sharpens the wording when the feed is readable. */
+        url: "/readings/blocklist-latest.json",
+        slots: ["[data-stat='sig-blocklist']"],
+        fresh: [["[data-fresh='sig-blocklist']", 336]],
+        ok: function (d) {
+          var versions = need(d.n_versions);
+          var app = typeof d.app === "string" && d.app ? d.app.toUpperCase() : "client";
+          paint($("[data-stat='sig-blocklist']"), {
+            value: need(d.n_additions), decimals: 0,
+            cap: "keywords newly present across " + versions + " successive " + app +
+                 " blocklist versions"
+          });
+        }
+      },
+      {
+        /* Great Firewall, outside-in. */
+        url: "/readings/ooni-gfw-latest.json",
+        slots: ["[data-stat='sig-gfw']"],
+        fresh: [["[data-fresh='sig-gfw']", 12]],
+        ok: function (d) {
+          var n = need(d.n_measurements);
+          var days = need(d.window_days);
+          paint($("[data-stat='sig-gfw']"), {
+            value: need(d.gfw_index), decimals: 1, unit: "/100",
+            cap: "GFW Index over " + grp(n) + " OONI measurements in a " + days + " day window"
+          });
+        }
+      }
+    ];
+
+    FEEDS.forEach(function (feed) {
+      S.loadReading(feed.url, function (d) {
+        /* The feed answered, so freshness is knowable even if a figure is not:
+           report it first, then let any missing field fail only its own slot. */
+        (feed.fresh || []).forEach(function (f) { freshen(f[0], d.generated_at, f[1]); });
+        try {
+          feed.ok(d);
+        } catch (err) {
+          feed.slots.forEach(function (sel) { fail(sel, feed.url); });
+        }
+      }, function () {
+        feed.slots.forEach(function (sel) { fail(sel, feed.url); });
+        (feed.fresh || []).forEach(function (f) { freshFail(f[0]); });
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else {
+    run();
+  }
+})();
+</script>
 </body>
 </html>
