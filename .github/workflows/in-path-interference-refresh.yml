@@ -1,0 +1,52 @@
+name: Refresh In-Path Interference signal
+
+# Middlebox tampering, real-time/circumvention transport health, and the
+# measurement methods that cannot execute inside China at all, from OONI's
+# public CN aggregation.
+#
+# Deliberately separate from ooni-gfw-refresh: that signal's index only means
+# something if its test set stays fixed, so these tests get their own reading
+# rather than silently redefining a published number.
+#
+# Vantage-insensitive, keyless, stdlib-only: we ingest OONI's already-aggregated
+# open data and probe nothing ourselves.
+
+on:
+  schedule:
+    - cron: "29 */6 * * *"     # every 6 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: in-path-interference-refresh
+  cancel-in-progress: false
+
+jobs:
+  in-path-interference:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Pull OONI CN middlebox/transport/execution families
+        run: python -m scripts.in_path_interference_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/in-path-interference-latest.json readings/in-path-interference-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: In-Path Interference refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

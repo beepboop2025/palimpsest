@@ -1,0 +1,128 @@
+{
+  "generated_at": "2026-07-30T19:25:24.794825+00:00",
+  "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
+  "window_days": 90,
+  "scope": "in-path tampering, real-time/circumvention transport health, and measurement methods that cannot execute inside China",
+  "method": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
+  "control": {
+    "state": "OK",
+    "why": "5 of 7 tests have enough completed measurements to support a rate"
+  },
+  "middlebox_index": 1.54,
+  "middlebox_reading": "1.5% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
+  "transport_index": 32.3,
+  "transport_reading": "32.3% anomalous — transports partly degraded",
+  "execution_blackouts": [
+    {
+      "test": "dnscheck",
+      "label": "DNS-integrity test completion",
+      "measurement_count": 71259
+    },
+    {
+      "test": "echcheck",
+      "label": "Encrypted Client Hello test completion",
+      "measurement_count": 259
+    }
+  ],
+  "execution_reading": "2 measurement method(s) never completed a single run in China this window: dnscheck, echcheck",
+  "tests": [
+    {
+      "test": "http_header_field_manipulation",
+      "family": "MIDDLEBOX",
+      "label": "HTTP headers rewritten in transit",
+      "available": true,
+      "why": null,
+      "measurement_count": 5187,
+      "completed_count": 5187,
+      "failure_count": 0,
+      "anomaly_count": 86,
+      "anomaly_rate": 0.0166,
+      "execution_failure_rate": 0.0,
+      "never_completes": false
+    },
+    {
+      "test": "http_invalid_request_line",
+      "family": "MIDDLEBOX",
+      "label": "malformed request lines normalised in transit",
+      "available": true,
+      "why": null,
+      "measurement_count": 5260,
+      "completed_count": 5260,
+      "failure_count": 0,
+      "anomaly_count": 75,
+      "anomaly_rate": 0.0143,
+      "execution_failure_rate": 0.0,
+      "never_completes": false
+    },
+    {
+      "test": "stunreachability",
+      "family": "TRANSPORT",
+      "label": "STUN servers unreachable (real-time voice / WebRTC)",
+      "available": true,
+      "why": null,
+      "measurement_count": 39539,
+      "completed_count": 39539,
+      "failure_count": 0,
+      "anomaly_count": 12404,
+      "anomaly_rate": 0.3137,
+      "execution_failure_rate": 0.0,
+      "never_completes": false
+    },
+    {
+      "test": "vanilla_tor",
+      "family": "TRANSPORT",
+      "label": "stock Tor bootstrap",
+      "available": true,
+      "why": null,
+      "measurement_count": 3884,
+      "completed_count": 528,
+      "failure_count": 3356,
+      "anomaly_count": 500,
+      "anomaly_rate": 0.947,
+      "execution_failure_rate": 0.8641,
+      "never_completes": false
+    },
+    {
+      "test": "torsf",
+      "family": "TRANSPORT",
+      "label": "Tor via Snowflake",
+      "available": true,
+      "why": null,
+      "measurement_count": 103,
+      "completed_count": 103,
+      "failure_count": 0,
+      "anomaly_count": 72,
+      "anomaly_rate": 0.699,
+      "execution_failure_rate": 0.0,
+      "never_completes": false
+    },
+    {
+      "test": "dnscheck",
+      "family": "EXECUTION",
+      "label": "DNS-integrity test completion",
+      "available": false,
+      "why": "only 0 completed measurement(s); below the 100 floor for a rate",
+      "measurement_count": 71259,
+      "completed_count": 0,
+      "failure_count": 71259,
+      "anomaly_count": 0,
+      "anomaly_rate": null,
+      "execution_failure_rate": 1.0,
+      "never_completes": true
+    },
+    {
+      "test": "echcheck",
+      "family": "EXECUTION",
+      "label": "Encrypted Client Hello test completion",
+      "available": false,
+      "why": "only 0 completed measurement(s); below the 100 floor for a rate",
+      "measurement_count": 259,
+      "completed_count": 0,
+      "failure_count": 259,
+      "anomaly_count": 0,
+      "anomaly_rate": null,
+      "execution_failure_rate": 1.0,
+      "never_completes": true
+    }
+  ]
+}

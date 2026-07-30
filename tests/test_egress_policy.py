@@ -125,6 +125,9 @@ _ALLOWED = {
     "collectors/app_storefront.py":
         "GET Apple's keyless iTunes lookup API; fixed well-known host, uncapped body read — "
         "plain migration candidate.",
+    "collectors/in_path_interference.py":
+        "GET the OONI aggregation API through an injectable opener, with a 429 backoff loop "
+        "that any migration must preserve; same shape and same blocker as ooni_gfw.py.",
 
     # ── core / censorwatch: the async fetch machinery ──────────────────────────────────────
     "core/safe_fetch.py":
