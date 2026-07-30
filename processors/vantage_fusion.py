@@ -55,6 +55,20 @@ WEIGHTS = {
 DIVERGENCE_PP = 20.0          # OONI vs CP gap (percentage points) that is "contested"
 AGREEMENT_SPAN = 60.0         # spread at which agreement hits 0 (pp), for scaling
 
+# A vantage that is PRESENT BUT OLD is more dangerous than one that is missing. A missing
+# vantage is already handled honestly below (absent from the dict, renormalizing the weights
+# rather than scoring as calm). A stale one parses, carries a plausible rate, and fuses at
+# full coverage weight while describing a week that has already gone by — so a feed that
+# died quietly keeps propping up a "corroborated" reading forever.
+#
+# Each bound is roughly four to six of that vantage's own refresh cycles: long enough that a
+# single missed run is not an outage, short enough that a dead feed cannot pass as current.
+MAX_AGE_HOURS = {
+    "ooni": 36.0,             # ooni-gfw-refresh.yml: every 6h
+    "censored_planet": 96.0,  # censored-planet-refresh.yml: once daily
+    "net4people": 48.0,       # net4people-refresh.yml: twice daily
+}
+
 
 def _clamp01(x: float) -> float:
     return max(0.0, min(1.0, x))
@@ -85,12 +99,60 @@ def _qualitative(readings: dict) -> dict:
             "n_recent": int(n_recent), "blocking_share": round(share, 3)}
 
 
-def fuse(readings: dict) -> dict:
+def _age_hours(reading: dict, now: datetime):
+    """Hours since the reading was generated, or None if it carries no usable date."""
+    ts = (reading or {}).get("generated_at")
+    if not isinstance(ts, str):
+        return None
+    try:
+        t = datetime.fromisoformat(ts)
+    except ValueError:
+        return None
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return (now - t).total_seconds() / 3600.0
+
+
+def _drop_stale(readings: dict, now: datetime) -> tuple[dict, dict]:
+    """Split the vantages into those current enough to fuse and those that are not.
+
+    An excluded vantage is treated exactly like an absent one — the weights renormalize
+    over whoever is left — but the exclusion is REPORTED rather than silent, so a reader
+    can see the fused number rests on fewer methods than usual.
+    """
+    usable, excluded = {}, {}
+    for name, reading in readings.items():
+        if not reading:
+            continue
+        age = _age_hours(reading, now)
+        bound = MAX_AGE_HOURS.get(name)
+        if age is None:
+            excluded[name] = {"reason": "undated",
+                              "detail": "no usable generated_at — cannot be shown to be current"}
+        elif bound is not None and age > bound:
+            excluded[name] = {"reason": "stale", "age_hours": round(age, 1),
+                              "bound_hours": bound, "as_of": reading.get("generated_at")}
+        else:
+            usable[name] = reading
+    return usable, excluded
+
+
+def fuse(readings: dict, *, now: datetime | None = None) -> dict:
     """readings: {ooni, censored_planet, net4people} -> latest reading dicts
-    (any may be missing). Returns the fused index + corroboration."""
+    (any may be missing). Returns the fused index + corroboration.
+
+    A vantage older than its MAX_AGE_HOURS bound is excluded and reported, never fused
+    in as though it described today.
+    """
+    now = now or datetime.now(timezone.utc)
+    readings, excluded = _drop_stale(readings, now)
     rates = _normalize(readings)
     if not rates:
-        return {"ok": False, "reason": "no quantitative vantage reported — nothing to fuse"}
+        reason = "no quantitative vantage reported — nothing to fuse"
+        if excluded:
+            reason = ("no quantitative vantage is current enough to fuse — "
+                      + ", ".join(f"{k} {v['reason']}" for k, v in sorted(excluded.items())))
+        return {"ok": False, "reason": reason, "excluded_vantages": excluded}
 
     # coverage-weighted mean over the vantages actually present
     wsum = sum(WEIGHTS[k] for k in rates)
@@ -174,6 +236,7 @@ def fuse(readings: dict) -> dict:
         "divergence_pp": round(divergence, 1) if divergence is not None else None,
         "vantages": {k: round(v, 1) for k, v in sorted(rates.items())},
         "weights_used": {k: WEIGHTS[k] for k in rates},
+        "excluded_vantages": excluded,
         "net4people": q,
         "qualitative_flag": qual_flag,
         "verdict": verdict,
