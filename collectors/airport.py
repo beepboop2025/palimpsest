@@ -91,6 +91,29 @@ AIRPORT_GONE = "airport_gone"
 _MAX_ADDS_PER_AIRPORT = 25   # bound per-cycle volume so a churny corpus can't flood DDTI
 _MAX_FORK_OBS = 50
 
+# ── not-observed is not observed-absent ───────────────────────────────────────────────
+# AIRPORT_GONE is the takedown signal (§8.1) and scores 0.7 — "high". It used to fire on a
+# single absence from the current snapshot, and a live fetch that raised was silently dropped
+# from that snapshot, so ANY transient network error minted a high-severity fake takedown.
+# The second half was worse: the store then saved the partial snapshot, erasing that
+# operator's baseline, so the next successful fetch was treated as a first sighting and the
+# real BLOCK_ADDED / BLOCK_REMOVED history for that operator was destroyed permanently. One
+# dropped TCP connection cost a fabricated finding AND the genuine signal behind it.
+#
+# Two guards, both the house pattern applied here rather than a new idiom:
+#   * a source reports what it could not READ (see `unreadable()`), and an unread operator is
+#     carried forward untouched — the same distinction cdn_edge draws with _ABSTAIN_REASONS
+#     and is_genuine_read: an abstention is the absence of an observation, never evidence.
+#   * a disappearance must be seen GONE_CONFIRMATIONS times running before it is published,
+#     which is censorwatch's confirmations rule (a post is deleted only after N consecutive
+#     confirmed-GONE observations) applied to operators instead of posts.
+GONE_CONFIRMATIONS = 2
+
+# A previously substantial blocklist collapsing to nothing is not how an operator behaves; it
+# is how a challenge page, a login wall, or a truncated response parses. Treat it as unread
+# rather than emitting a full sweep of BLOCK_REMOVED and flattening the baseline.
+_EMPTY_COLLAPSE_MIN = 5
+
 # conservative bare-domain extractor for the live path (audit pages list domains/regex)
 _DOMAIN_RE = re.compile(r"\b([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)\b", re.I)
 
@@ -159,14 +182,25 @@ class LiveAirportSource:
         self._fetch = fetch
         self._kill = kill_switch
         self._rate = rate_ceiling
+        self._unreadable: set = set()
+
+    def unreadable(self) -> set:
+        """Operator ids we TRIED to read on the last snapshot() and could not.
+
+        The load-bearing distinction: absent-from-the-snapshot used to mean both "this
+        operator is gone" and "we never got a reply", and cartograph could not tell them
+        apart, so it published the first interpretation of the second event."""
+        return set(self._unreadable)
 
     def snapshot(self) -> dict:
+        self._unreadable = set()
         if not self.airports or self._fetch is None:
             logger.info("airport live source: no airports / no fetch — idle")
             return {}
         out = {}
         for a in self.airports:
             url = a.get("audit_url")
+            aid = str(a.get("id"))
             if not url:
                 continue
             if self._kill is not None:
@@ -175,11 +209,13 @@ class LiveAirportSource:
                 self._rate.acquire()
             try:
                 text = self._fetch(url)
-            except Exception as e:                  # block / cap / network — skip, never crash
-                logger.info("airport %s audit fetch failed (%s)", a.get("id"), type(e).__name__)
+            except Exception as e:                  # block / cap / network — NOT a takedown
+                logger.info("airport %s audit fetch failed (%s) — recorded unread, not gone",
+                            aid, type(e).__name__)
+                self._unreadable.add(aid)
                 continue
-            domains = sorted({m.group(1).lower() for m in _DOMAIN_RE.finditer(text)})
-            out[str(a.get("id"))] = {"template": a.get("template", ""), "blocklist": domains}
+            domains = sorted({m.group(1).lower() for m in _DOMAIN_RE.finditer(text or "")})
+            out[aid] = {"template": a.get("template", ""), "blocklist": domains}
         return out
 
 
@@ -273,14 +309,38 @@ def cartograph(source, store, *, now: float = None) -> list[dict]:
     if not current:
         logger.info("airport cartography: empty snapshot — idle")
         return []
-    previous = store.load()
+    # Ids the source tried and failed to read this cycle. Sources that cannot fail this way
+    # (the offline corpus: either the whole file reads or it does not) need not implement it.
+    unreadable = set(getattr(source, "unreadable", lambda: frozenset())() or ())
+    # A leading underscore is metadata, never an operator (the corpus carries "_comment").
+    previous = {k: v for k, v in store.load().items() if not str(k).startswith("_")}
     consensus = _consensus(current)
     obs: list[dict] = []
+    carried: dict = {}          # baselines preserved for operators we did NOT observe
 
     # 1) per-airport time deltas vs the last snapshot
     for aid, rec in current.items():
         now_bl = set(rec.get("blocklist", []))
         prev_bl = set((previous.get(aid) or {}).get("blocklist", []))
+        if not now_bl and len(prev_bl) >= _EMPTY_COLLAPSE_MIN:
+            # Read something, but not a blocklist. Publishing this would emit a sweep of
+            # BLOCK_REMOVED for every target at once and then save the empty list as the
+            # new baseline, so the filters would "come back" as BLOCK_ADDED next cycle.
+            #
+            # But suppression cannot be permanent, or an operator that genuinely wiped its
+            # published rules — plausibly what a compliance change or a takedown looks like —
+            # becomes a blind spot we never revisit. So the collapse is COUNTED, and once it
+            # persists past the same confirmation bar a takedown must clear, it is believed
+            # and the removals are published. Abstain, then decide; never abstain forever.
+            streak = int((previous.get(aid) or {}).get("collapse_streak") or 0) + 1
+            if streak < GONE_CONFIRMATIONS:
+                logger.info("airport %s: blocklist collapsed %d -> 0 (%d/%d) — holding baseline",
+                            aid, len(prev_bl), streak, GONE_CONFIRMATIONS)
+                carried[aid] = {**(previous.get(aid) or {}), "collapse_streak": streak}
+                unreadable.add(aid)
+                continue
+            logger.warning("airport %s: blocklist empty on %d consecutive reads — believing it",
+                           aid, streak)
         if not prev_bl:
             continue                                # first sighting: baseline only, no noise
         for d in sorted(now_bl - prev_bl)[:_MAX_ADDS_PER_AIRPORT]:
@@ -288,9 +348,24 @@ def cartograph(source, store, *, now: float = None) -> list[dict]:
         for d in sorted(prev_bl - now_bl)[:_MAX_ADDS_PER_AIRPORT]:
             obs.append(_observation(BLOCK_REMOVED, aid, d, consensus.get(d, 0.0), "filter lifted", now))
 
-    # 2) operators that vanished — takedown / churn signal (§8.1)
+    # 2) operators that vanished — takedown / churn signal (§8.1).
+    # Only an operator we actually LOOKED AT and did not find is a candidate, and only after
+    # GONE_CONFIRMATIONS consecutive sightings of its absence. Until then its baseline is
+    # carried forward, so a recovery resumes the real diff instead of restarting from zero.
     for aid in previous.keys() - current.keys():
-        obs.append(_observation(AIRPORT_GONE, aid, "-", 0.0, "operator disappeared", now))
+        prev_rec = previous.get(aid) or {}
+        if aid in unreadable:
+            carried[aid] = prev_rec                 # never observed — nothing to report
+            continue
+        streak = int(prev_rec.get("missing_streak") or 0) + 1
+        if streak >= GONE_CONFIRMATIONS:
+            obs.append(_observation(
+                AIRPORT_GONE, aid, "-", 0.0,
+                f"operator absent on {streak} consecutive checks", now))
+            continue                                # confirmed: stop tracking it
+        logger.info("airport %s absent (%d/%d confirmations) — holding baseline",
+                    aid, streak, GONE_CONFIRMATIONS)
+        carried[aid] = {**prev_rec, "missing_streak": streak}
 
     # 3) operator forks: SEED-sensitive targets the fleet disagrees on (bounded)
     forks = 0
@@ -302,8 +377,19 @@ def cartograph(source, store, *, now: float = None) -> list[dict]:
             if forks >= _MAX_FORK_OBS:
                 break
 
-    store.save(current)
-    logger.info("airport cartography: %d observation(s) over %d airport(s)", len(obs), len(current))
+    # An operator seen again has a clean slate; one we never read keeps whatever streak it had.
+    merged = {**carried}
+    for aid, rec in current.items():
+        if aid in unreadable:
+            merged.setdefault(aid, previous.get(aid) or rec)
+            continue
+        merged[aid] = {**rec, "missing_streak": 0, "collapse_streak": 0}
+    for aid in unreadable:
+        if aid not in merged and aid in previous:
+            merged[aid] = previous[aid]
+    store.save(merged)
+    logger.info("airport cartography: %d observation(s) over %d airport(s); %d unread, baseline held",
+                len(obs), len(current), len(unreadable))
     return obs
 
 
@@ -321,7 +407,7 @@ class AirportCartographer:
         return cartograph(self.source, self.store)
 
 
-if __name__ == "__main__":  # offline demo: two rounds, watch a new block + a fork fall out
+if __name__ == "__main__":  # offline demo: watch a new block, a fork, and a CONFIRMED takedown
     import tempfile
     d = tempfile.mkdtemp()
     corpus = os.path.join(d, "c.json")
@@ -334,4 +420,8 @@ if __name__ == "__main__":  # offline demo: two rounds, watch a new block + a fo
     json.dump({"A": {"template": "v2board", "blocklist": ["minghui.org", "rfa.org", "epochtimes.com"]}},
               open(corpus, "w"))
     r2 = cartograph(src, store)
-    print("round2:", [(o["deletion_signal"], o["terms"]) for o in r2])  # block_added + airport_gone
+    # block_added only: B's absence is on its first confirmation, so the takedown is HELD
+    print("round2:", [(o["deletion_signal"], o["terms"]) for o in r2])
+    r3 = cartograph(src, store)
+    # B absent a second consecutive time -> airport_gone is published now, not on a single miss
+    print("round3:", [(o["deletion_signal"], o["title"]) for o in r3])

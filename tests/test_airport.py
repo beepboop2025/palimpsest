@@ -47,6 +47,14 @@ def test_operator_fork_and_consensus():
 
 
 def test_block_added_and_airport_gone_across_cycles():
+    """A new filter publishes immediately; a takedown must be confirmed first.
+
+    This test used to assert AIRPORT_GONE on B's FIRST absence. That is the behaviour that
+    made a dropped connection indistinguishable from a takedown, so the assertion moved
+    rather than the bug: BLOCK_ADDED is a diff between two things we read and stands on one
+    observation, while AIRPORT_GONE is an inference from something we did NOT read and needs
+    GONE_CONFIRMATIONS of them — the same rule censorwatch applies before calling a post
+    deleted."""
     tmp = tempfile.mkdtemp()
     src, path = _corpus(tmp, {
         "A": {"template": "v2board", "blocklist": ["minghui.org", "rfa.org"]},
@@ -54,14 +62,25 @@ def test_block_added_and_airport_gone_across_cycles():
     })
     store = AirportSnapshotStore(os.path.join(tmp, "snap.json"))
     cartograph(src, store)                  # round 1: baseline
-    # round 2: A newly blocks epochtimes; B disappears
+    # round 2: A newly blocks epochtimes; B disappears for the first time
     json.dump({"A": {"template": "v2board",
                      "blocklist": ["minghui.org", "rfa.org", "epochtimes.com"]}}, open(path, "w"))
     obs = cartograph(src, store)
     kinds = {o["deletion_signal"] for o in obs}
-    assert BLOCK_ADDED in kinds and AIRPORT_GONE in kinds
+    assert BLOCK_ADDED in kinds
+    assert AIRPORT_GONE not in kinds        # one absence is not yet a takedown
     added = [o for o in obs if o["deletion_signal"] == BLOCK_ADDED][0]
     assert added["terms"] == ["epochtimes.com"]
+
+    # round 3: B is absent a second consecutive time — now it is a finding
+    obs3 = cartograph(src, store)
+    gone = [o for o in obs3 if o["deletion_signal"] == AIRPORT_GONE]
+    assert len(gone) == 1
+    assert "B" in gone[0]["title"]
+    assert gone[0]["severity"] == "high"
+
+    # and it is reported exactly once, not on every subsequent cycle
+    assert not [o for o in cartograph(src, store) if o["deletion_signal"] == AIRPORT_GONE]
 
 
 def test_seed_routing_and_scoring():
