@@ -17,6 +17,10 @@ runs: the first run only records presence, and pressure events fall out on later
 Vantage note: GitHub's API is read from outside the wall, so this is
 vantage-insensitive — it measures pressure ON the refuge, from a safe vantage.
 Standard-library only. Read-only: never writes to GitHub.
+
+Governance-gated (kill switch + rate ceiling), like every runner that reaches the
+network: PALIMPSEST_HALT (or the kill file) stops this scheduled job dead without a
+redeploy, and the token bucket keeps the API reads polite by construction.
 """
 from __future__ import annotations
 
@@ -26,12 +30,22 @@ from datetime import datetime, timezone
 
 from collectors.github_refuge import GitHubRefugeCollector, github_fetch
 
+try:
+    from core.governance import KillSwitch, RateCeiling
+except Exception:  # pragma: no cover - governance is always present, but stay fail-soft
+    KillSwitch = RateCeiling = None
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
 WATCHLIST = os.path.join(ROOT, "config", "github_refuge_watchlist.json")
 BASELINES = os.path.join(READINGS, "github-refuge-baselines.json")
 OUT = os.path.join(READINGS, "github-refuge-latest.json")
 HIST = os.path.join(READINGS, "github-refuge-history.jsonl")
+
+# Polite by construction: a handful of REST reads per repo, well inside GitHub's
+# unauthenticated 60/hr as well as the 5000/hr a token grants.
+_RATE_PER_SEC = 1.0
+_BURST = 3.0
 
 
 class FileBaselineStore:
@@ -92,10 +106,17 @@ def main() -> None:
     store = FileBaselineStore(BASELINES)
     first_run = not os.path.exists(BASELINES)
 
+    # Governance BEFORE the first outbound read: the kill switch can halt this
+    # CI-scheduled job instantly, and the rate ceiling bounds the request rate.
+    kill = KillSwitch() if KillSwitch else None
+    rate = RateCeiling(rate=_RATE_PER_SEC, capacity=_BURST) if RateCeiling else None
+
     collector = GitHubRefugeCollector(
         {"watchlist": watchlist},
         fetch=fetch,
         baseline_store=store,
+        kill_switch=kill,
+        rate_ceiling=rate,
     )
     result = collector.scan()
     store.save()  # persist presence/counts for next run's takedown + burst detection

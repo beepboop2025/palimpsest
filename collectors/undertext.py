@@ -222,6 +222,29 @@ COHORT_FORK = "cohort_fork"  # same query+time, two cohorts disagree (shadowban 
 PLATFORM_FORK = "platform_fork"  # same topic, two platforms, narrative diverges (Douyin/TikTok)
 
 
+# ── liveness gate: an abstention is the ABSENCE of an observation, never evidence ──────
+# Reasons a vantage records when NO content read happened — a transport failure, a missing
+# seam, or an inert no-fetch posture. Such a non-observation must NEVER be differenced.
+# Differencing one against a healthy vantage fabricates a GEO_FORK; feeding one to the time
+# detector on a present->absent flip fabricates a DELETION — i.e. a broken socket published
+# as the censor deleting something, precisely the false positive SAFETY rule 4 forbids.
+# Everything a real response produces (404s, block interstitials, legal-replacement pages) IS
+# a genuine content decision and stays in. collectors/cdn_edge.py enforces the same line at
+# its round driver; this is the module-level version every DivergenceDetector inherits.
+ABSTAIN_REASONS = frozenset({"inert-no-fetch", "no-edge-ip", "fetch-error", "transport-error"})
+
+
+def is_genuine_read(obs) -> bool:
+    """True iff `obs` is an actual content read we can stand behind, False if it is an
+    error/abstain non-observation. Auditable from the recorded features alone: an explicit
+    `features['abstain']` flag, or a `features['reason']` in ABSTAIN_REASONS — the same
+    evidence a vantage already records. Line: fail loud, never fake a finding from an error."""
+    f = getattr(obs, "features", None) or {}
+    if f.get("abstain") is True:
+        return False
+    return f.get("reason") not in ABSTAIN_REASONS
+
+
 @dataclass
 class Divergence:
     kind: str
@@ -265,7 +288,14 @@ class DivergenceDetector:
 
     def observe(self, obs: Observation):
         """Compare against the same-key baseline, update the baseline, and return any
-        time-divergence (deletion / mutation), else None."""
+        time-divergence (deletion / mutation), else None.
+
+        An abstention (transport failure / inert vantage — see is_genuine_read) is dropped
+        here: it returns None AND leaves the baseline untouched. Recording it would both
+        fabricate a DELETION now and corrupt the baseline, so the next healthy read would
+        read as a resurrection. Only genuine content reads are ever differenced."""
+        if not is_genuine_read(obs):
+            return None
         key = obs.observation_key()
         prev = self._baseline(key)
         self._remember(key, obs)
@@ -284,10 +314,16 @@ class DivergenceDetector:
     @staticmethod
     def cross_vantage(batch: list) -> list:
         """Within one round (same probe, same time), flag geo/cohort forks: vantages that
-        disagree on presence or content reveal differential serving."""
+        disagree on presence or content reveal differential serving.
+
+        Abstentions are excluded first (see is_genuine_read), so a single vantage whose
+        fetch merely failed can never be differenced against a healthy one and reported as
+        a localized block."""
         out = []
         by_probe: dict[str, list] = {}
         for o in batch:
+            if not is_genuine_read(o):
+                continue
             by_probe.setdefault(o.probe.query, []).append(o)
         for obs_list in by_probe.values():
             for i in range(len(obs_list)):
@@ -399,6 +435,9 @@ class WebVantagePoint:
     (`require_live()`) and an optional rate ceiling (`acquire()`), so active probing is
     polite and instantly haltable. `fetch` is injectable for testing; the default uses
     stdlib urllib through the optional `PALIMPSEST_PROXY` egress seam.
+
+    A fetch that fails ABSTAINS (features={"abstain": True, "reason": "fetch-error"}) rather
+    than reporting absence — a network error is not a deletion.
     """
 
     def __init__(self, geo: str, cohort: str, *, surfaces: list = None, proxy: str = None,
@@ -423,9 +462,16 @@ class WebVantagePoint:
             try:
                 body = self._fetch(url)
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+                # A transport failure is NOT a censorship finding. Abstain — record the
+                # non-observation with an explicit abstain flag (the cdn_edge._abstain
+                # pattern) so is_genuine_read excludes it from BOTH cross_vantage() and the
+                # time detector. Emitting a bare present=False here is what turned one flaky
+                # socket into a critical-severity DELETION: the censor blamed for our network.
+                # The row is still RETURNED, so the failure is visible in the audit trail.
                 logger.info("vantage %s probe %r fetch failed (%s)",
                             v.tag(), probe.query, type(e).__name__)
-                out.append(Observation(probe, v, present=False, content_fp=""))
+                out.append(Observation(probe, v, present=False, content_fp="",
+                                       features={"abstain": True, "reason": "fetch-error"}))
                 continue
             # AutoScraper path: if the surface declares an item_selector, fingerprint the
             # SET OF RESULT ITEMS rather than the chrome-laden whole body (far fewer false

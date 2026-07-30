@@ -19,6 +19,10 @@ HONESTY / FAIL-LOUD (load-bearing):
 
 Vantage-insensitive, stdlib-only. Judgement is lexical and auditable (see the
 collector). Run live with PALIMPSEST_LIVE=1 (open infra) or PALIMPSEST_PROXY=<egress>.
+
+Governance-gated (kill switch + rate ceiling): PALIMPSEST_HALT (or the kill file)
+stops this runner dead with no redeploy, and the token bucket keeps the two public
+encyclopedias' reads polite by construction.
 """
 from __future__ import annotations
 
@@ -34,12 +38,21 @@ if ROOT not in sys.path:
 from collectors.baike_redaction import BaikeRedactionWatch, Entity, _default_fetch  # noqa: E402
 from collectors.baike_redaction import ENCYCLOPEDIA_FORK  # noqa: E402
 
+try:
+    from core.governance import KillSwitch, RateCeiling  # noqa: E402
+except Exception:  # pragma: no cover - governance is always present, but stay fail-soft
+    KillSwitch = RateCeiling = None
+
 READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "baike-redaction-latest.json")
 HIST = os.path.join(READINGS, "baike-redaction-history.jsonl")
 
 # Minimum comparable entities before we trust an index (else abstain).
 MIN_COMPARABLE = 4
+
+# Polite by construction: two reads per entity against two public encyclopedias.
+_RATE_PER_SEC = 0.5
+_BURST = 2.0
 
 # Curated contested-entity canon: widely documented public censorship subjects only.
 # domain = DDTI hint. (lemma_id left blank; a disambiguation landing abstains per-entity.)
@@ -73,10 +86,17 @@ def main() -> None:
                        comparable=0, forks=0, results=[])
         return
 
+    # Governance BEFORE the first outbound read: the kill switch can halt this runner
+    # instantly, and the rate ceiling bounds the request rate.
+    kill = KillSwitch() if KillSwitch else None
+    rate = RateCeiling(rate=_RATE_PER_SEC, capacity=_BURST) if RateCeiling else None
+
     watch = BaikeRedactionWatch(
         proxy=proxy,
         baike_fetch=lambda u: _short_fetch(u, proxy),
         wiki_fetch=lambda u: _short_fetch(u, proxy),
+        kill_switch=kill,
+        rate_ceiling=rate,
     )
 
     results = []
