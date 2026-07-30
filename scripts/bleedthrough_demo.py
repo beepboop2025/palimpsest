@@ -52,19 +52,26 @@ def main() -> None:
         TargetVantage("shanghai.dark",  "CN-SH", "AS4812"),
         TargetVantage("beijing.dark",   "CN-BJ", "AS4808"),
         TargetVantage("guangdong.dark", "CN-GD", "AS4134"),
+        # three Henan targets, not two: regional_divergence now requires a divergent region
+        # to carry >= 3 probed targets of its own before it will make the claim.
         TargetVantage("henan.dark.1",   "CN-HA", "AS4837"),
         TargetVantage("henan.dark.2",   "CN-HA", "AS4837"),
+        TargetVantage("henan.dark.3",   "CN-HA", "AS4837"),
     ]
     pools = {"shanghai.dark": NATIONAL, "beijing.dark": NATIONAL, "guangdong.dark": NATIONAL,
-             "henan.dark.1": HENAN, "henan.dark.2": HENAN}
+             "henan.dark.1": HENAN, "henan.dark.2": HENAN, "henan.dark.3": HENAN}
 
     store = FleetBaselineStore()
+    # kill_switch=None is explicit and safe here: this demo's transport is canned, so the
+    # round emits no datagrams. run_round requires the keyword so a LIVE caller cannot omit
+    # it by accident.
     # round 1 — seed the baseline (Beijing at 2 injectors); no events on first sight
-    run_round(probe, vantages, store=store, burst=12,
+    run_round(probe, vantages, store=store, burst=12, kill_switch=None,
               transport=_transport(pools, {ip: 2 for ip in pools}))
-    # round 2 — Beijing scales to 3 injectors (capacity_shift); Henan pool diverges from the
-    # national baseline (regional_firewall ×2). This is the reading we publish.
-    r = run_round(probe, vantages, store=store, burst=12,
+    # round 2 — Beijing scales to 3 injectors (capacity_shift); the Henan REGION's pool
+    # diverges from the national baseline (regional_firewall ×1 — one event per region, not
+    # per target IP). This is the reading we publish.
+    r = run_round(probe, vantages, store=store, burst=12, kill_switch=None,
                   transport=_transport(pools, {**{ip: 2 for ip in pools}, "beijing.dark": 3}))
     sig = r["signal"]
 

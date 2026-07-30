@@ -90,7 +90,15 @@ injection = f( censored-domain × target-vantage × time )
 - `pool_rotation` — the forged-IP pool changed at a vantage (routine maintenance intel).
 - `capacity_shift` — process count changed (injectors added / removed / rebooted).
 - `injector_silent` — a vantage that was injecting has gone quiet (path change / outage).
-- `regional_firewall_candidate` — a province diverges from the national baseline.
+- `regional_firewall_candidate` — a province diverges from the national baseline. Heavily
+  guarded, because the naive version of this check is worthless: a vantage's `pool_hash` is
+  a hash of the forged IPs that ONE target happened to *sample* from a rotating pool, so
+  per-target comparison flags nearly every target. `regional_divergence` therefore compares
+  **per-region unions** (`region_pools`), requires the national baseline to be shared by more
+  than one region, requires a divergent region to hold ≥3 probed targets, and skips bare
+  national labels (`CN`) that name a backbone AS rather than a province. The runner adds a
+  second layer: if per-target pool hashes are near-unique it strips these events entirely and
+  publishes `pool_sampling_suspected: true`. A single-vantage round correctly emits none.
 
 Events map onto the existing DDTI observation schema via `event_to_observation`, so
 BLEEDTHROUGH becomes the *network-apparatus* front-end to the passive DDTI loop already
@@ -107,6 +115,9 @@ apparatus events) for the site.
 - **Dark-IP targets**, not live services. Curated sink IPs inside Chinese prefixes.
 - **Governance-gated.** The kill switch (`core/governance.py`) halts probing instantly; the
   rate ceiling keeps it polite. Enforced in `InjectionProbe.measure`, verified by tests.
+  `run_round` takes `kill_switch` as a **required** keyword with no default, so a live runner
+  cannot omit it by accident — a startup-only check would leave the whole multi-thousand-probe
+  round unstoppable. `bleedthrough_curate` arms it per control query too.
 - **Prober IPs get burned** by sustained scanning; the transport is proxy/rotation-ready, so
   the probing VPs stay disposable and beepboop2025 stays unattached.
 
@@ -121,6 +132,14 @@ apparatus events) for the site.
    ethics as contested; that is the boundary, and BLEEDTHROUGH stays well inside it.
 3. **Fleet estimation is a floor, not a census** — process count is a lower bound (each
    injector answers once per query); it under-counts if an injector stays silent in a burst.
+   The reading carries `process_count_semantics: "floor"` and the page renders `≥N`, so the
+   single most quotable number cannot be read as a fleet capacity.
+4. **One prober is not a regional instrument** — observed censorship varies with the network
+   path, and an ephemeral source port per query means consecutive probes may take different
+   ECMP paths to the same target (arXiv:2406.19304). A single-vantage round can therefore
+   support "injection observed, pool membership, a floor on parallel responses", but **not**
+   regional or provincial divergence. `provenance.vantage_count` and
+   `provenance.flow_id_policy` are published so a reader can check this rather than assume it.
 
 ## 9. Status
 
@@ -158,13 +177,20 @@ execute from a **deployment-controlled, rotating prober outside China**, and is 
 a curated list (it refuses the shipped placeholder). If nothing injects in a round it abstains
 rather than publish a hollow board.
 
-Going live is now **one script** on a controlled, rotating VPS outside China (never CI, never
-your home machine, never the Hetzner box — the script refuses the box):
+Going live is **one script** on a controlled, rotating VPS outside China (never CI, never your
+home machine). The Hetzner box is **refused by default** — it is not disposable and its IP is
+published in the `api.seiche.info` A record — but the refusal is overridable on purpose, since
+a non-ideal vantage that runs beats an ideal one that never does:
 
 ```
 BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
+# on the box, accepting the exposure above:
+BLEEDTHROUGH_LIVE=1 BLEEDTHROUGH_ALLOW_BOX=1 bash ops/bleedthrough_prober.sh
 # cron, every 6h:  17 */6 * * *  cd /opt/palimpsest && BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
 ```
+
+Either way the published reading records only a **coarse** vantage kind, never the host name.
+
 
 That runs three stages end to end:
 

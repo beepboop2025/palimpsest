@@ -43,6 +43,8 @@ from collectors.bleedthrough import (
     open_resolver_transport,
     parse_response,
     regional_divergence,
+    region_pools,
+    distinct_region_pools,
     run_round,
     to_signal,
 )
@@ -165,13 +167,16 @@ def test_injector_going_silent_detected():
 # ── regional divergence (the wall-behind-a-wall detector) ──────────────────────────────
 
 def test_regional_divergence_flags_the_odd_province():
+    """Three named provinces share the national pool; a fourth diverges with a full group of
+    its own. Note the baseline must be held by more than one REGION, and the divergent
+    region needs >= 3 targets — a lone odd target can no longer masquerade as a region."""
     q = InjectorProbe("x.org")
     nat = _fleet(["4.36.66.178", "8.7.198.45"])
-    national = [InjectionProbe(transport=nat, burst=6).measure(q, TargetVantage(f"20.0.0.{i}", "CN"))
-                for i in range(3)]
-    henan = InjectionProbe(transport=_fleet(["1.2.3.4", "5.6.7.8"]), burst=6).measure(
-        q, TargetVantage("101.0.0.1", "CN-HA"))
-    events = regional_divergence(national + [henan])
+    fps = [InjectionProbe(transport=nat, burst=6).measure(q, TargetVantage(f"20.0.{p}.{i}", prov))
+           for p, prov in enumerate(("CN-SH", "CN-BJ", "CN-GD")) for i in range(3)]
+    fps += [InjectionProbe(transport=_fleet(["1.2.3.4", "5.6.7.8"]), burst=6).measure(
+        q, TargetVantage(f"101.0.0.{i}", "CN-HA")) for i in range(3)]
+    events = regional_divergence(fps)
     assert len(events) == 1
     assert events[0].kind == REGIONAL_FIREWALL and "CN-HA" in events[0].detail
 
@@ -179,7 +184,7 @@ def test_regional_divergence_flags_the_odd_province():
 def test_regional_divergence_needs_quorum():
     q = InjectorProbe("x.org")
     two = [InjectionProbe(transport=_fleet(["a", "b"]), burst=4).measure(q, TargetVantage("1.1.1.1"))]
-    assert regional_divergence(two) == []   # < 3 vantages → no claim
+    assert regional_divergence(two) == []   # < 3 regions → no claim
 
 
 # ── governance gating (kill switch + rate ceiling) ─────────────────────────────────────
@@ -279,15 +284,18 @@ def test_open_resolver_transport_end_to_end_via_prober():
 
 def test_open_resolver_path_surfaces_regional_divergence():
     q = InjectorProbe("torproject.org")
-    national = {ip: {"torproject.org": ["8.7.198.45", "2.1.1.2"]}
-                for ip in ("20.0.0.1", "20.0.0.2", "20.0.0.3")}
-    henan = {"101.0.0.1": {"torproject.org": ["1.2.3.4", "5.6.7.8"]}}
+    nat_ips = [f"20.0.{p}.{i}" for p in range(3) for i in range(3)]
+    hn_ips = [f"101.0.0.{i}" for i in range(3)]
+    national = {ip: {"torproject.org": ["8.7.198.45", "2.1.1.2"]} for ip in nat_ips}
+    henan = {ip: {"torproject.org": ["1.2.3.4", "5.6.7.8"]} for ip in hn_ips}
     clean = {"torproject.org": set()}   # nothing is legitimate → every answer is a forgery
     tx_nat = open_resolver_transport(exchange=_resolver_exchange(national), clean_answers=clean)
     tx_hn = open_resolver_transport(exchange=_resolver_exchange(henan), clean_answers=clean)
-    fps = [InjectionProbe(transport=tx_nat, burst=3).measure(q, TargetVantage(ip, "CN"))
-           for ip in national]
-    fps.append(InjectionProbe(transport=tx_hn, burst=3).measure(q, TargetVantage("101.0.0.1", "CN-HA")))
+    provs = ("CN-SH", "CN-BJ", "CN-GD")
+    fps = [InjectionProbe(transport=tx_nat, burst=3).measure(q, TargetVantage(ip, provs[k // 3]))
+           for k, ip in enumerate(nat_ips)]
+    fps += [InjectionProbe(transport=tx_hn, burst=3).measure(q, TargetVantage(ip, "CN-HA"))
+            for ip in hn_ips]
     events = regional_divergence(fps)
     assert len(events) == 1 and events[0].kind == REGIONAL_FIREWALL and "CN-HA" in events[0].detail
 
@@ -350,18 +358,82 @@ def test_json_fleet_store_roundtrips_and_persists_rotation(tmp_path):
 
 # ── round runner (the deployment entrypoint) ───────────────────────────────────────────
 
-def test_run_round_emits_signal_events_and_observations():
-    q = InjectorProbe("torproject.org", ddti="CIRCUMVENTION")
-    targets = [TargetVantage(f"20.0.0.{i}", "CN") for i in range(3)]
-    targets.append(TargetVantage("101.0.0.1", "CN-HA"))
-    # national trio share a pool; the Henan target diverges -> a regional event
+NATIONAL_POOL = ["8.7.198.45", "2.1.1.2"]
+HENAN_POOL = ["1.2.3.4", "5.6.7.8"]
+
+
+def _provinces(spec):
+    """spec = {province: (n_targets, pool)} -> (targets, transport)."""
+    targets, pool_of = [], {}
+    for prov, (n, pool) in spec.items():
+        for i in range(n):
+            ip = f"{prov.replace('-', '')}.{i}"
+            targets.append(TargetVantage(ip, prov, "AS4837"))
+            pool_of[ip] = pool
+
     def transport(domain, ip):
-        pool = ["1.2.3.4", "5.6.7.8"] if ip == "101.0.0.1" else ["8.7.198.45", "2.1.1.2"]
-        return [RawInjection(pool[0]), RawInjection(pool[1])]
-    out = run_round(q, targets, transport=transport, store=FleetBaselineStore(), burst=4)
-    assert out["signal"]["vantages_injecting"] == 4
-    assert any(e.kind == REGIONAL_FIREWALL for e in out["events"])
+        return [RawInjection(pool_of[ip][0]), RawInjection(pool_of[ip][1])]
+    return targets, transport
+
+
+def test_run_round_emits_signal_events_and_observations():
+    """A properly-powered regional claim: three provinces share the national pool, a fourth
+    diverges with enough targets of its own to be called a region."""
+    q = InjectorProbe("torproject.org", ddti="CIRCUMVENTION")
+    targets, transport = _provinces({
+        "CN-SH": (3, NATIONAL_POOL), "CN-BJ": (3, NATIONAL_POOL),
+        "CN-GD": (3, NATIONAL_POOL), "CN-HA": (3, HENAN_POOL),
+    })
+    out = run_round(q, targets, transport=transport, store=FleetBaselineStore(),
+                    kill_switch=None, burst=4)
+    assert out["signal"]["vantages_injecting"] == 12
+    regional = [e for e in out["events"] if e.kind == REGIONAL_FIREWALL]
+    # exactly ONE event, for the REGION — not one per diverging target IP
+    assert len(regional) == 1 and regional[0].vantage_tag == "CN-HA/AS4837"
     assert out["observations"] and out["observations"][0]["source"].startswith("bleedthrough:")
+
+
+def test_regional_divergence_abstains_when_every_region_samples_a_different_pool():
+    """The 216-dark-target failure mode: per-target sampling of a rotating pool makes every
+    region's pool unique, so there is no shared national baseline and no claim is possible."""
+    targets, transport = _provinces({
+        "CN-SH": (3, ["1.1.1.1", "1.1.1.2"]), "CN-BJ": (3, ["2.2.2.1", "2.2.2.2"]),
+        "CN-GD": (3, ["3.3.3.1", "3.3.3.2"]), "CN-HA": (3, ["4.4.4.1", "4.4.4.2"]),
+    })
+    out = run_round(InjectorProbe("x.org"), targets, transport=transport,
+                    kill_switch=None, burst=4)
+    assert [e for e in out["events"] if e.kind == REGIONAL_FIREWALL] == []
+
+
+def test_regional_divergence_skips_bare_national_bucket_and_thin_regions():
+    # "CN" is a backbone AS label, not a province; CN-HA here has only 2 targets (< 3)
+    targets, transport = _provinces({
+        "CN-SH": (3, NATIONAL_POOL), "CN-BJ": (3, NATIONAL_POOL),
+        "CN": (3, HENAN_POOL), "CN-HA": (2, HENAN_POOL),
+    })
+    out = run_round(InjectorProbe("x.org"), targets, transport=transport,
+                    kill_switch=None, burst=4)
+    assert [e for e in out["events"] if e.kind == REGIONAL_FIREWALL] == []
+
+
+def test_region_pools_unions_targets_and_counts_pools_per_region_not_per_target():
+    targets, transport = _provinces({
+        "CN-SH": (3, NATIONAL_POOL), "CN-HA": (3, HENAN_POOL),
+    })
+    out = run_round(InjectorProbe("x.org"), targets, transport=transport,
+                    kill_switch=None, burst=4)
+    fps = out["fingerprints"]
+    assert set(region_pools(fps)) == {"CN-SH/AS4837", "CN-HA/AS4837"}
+    # 6 targets, but only 2 pools — the count must not scale with the sample size
+    assert len(fps) == 6 and distinct_region_pools(fps) == 2
+
+
+def test_run_round_requires_the_kill_switch_keyword():
+    """Omitting it must be a TypeError, so a live runner cannot forget to arm the halt."""
+    import pytest
+    with pytest.raises(TypeError):
+        run_round(InjectorProbe("x.org"), [TargetVantage("20.0.0.1")],
+                  transport=_fleet(["8.7.198.45"]), burst=2)
 
 
 def test_run_round_honours_kill_switch(tmp_path):

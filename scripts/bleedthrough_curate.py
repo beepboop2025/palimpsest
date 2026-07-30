@@ -68,7 +68,10 @@ def main() -> None:
     seed = os.getenv("BLEEDTHROUGH_SEED")
     rng = random.Random(int(seed)) if seed is not None else random.Random()
 
+    kill = KillSwitch()
+
     def exchange(domain, ip):
+        kill.require_live()                   # halt mid-curation, not just at startup
         rate.acquire()                        # one token per benign control query
         return _dns_exchange(domain, ip, wait=WAIT)
 

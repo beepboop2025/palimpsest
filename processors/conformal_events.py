@@ -314,14 +314,17 @@ SIGNALS = {
     ),
     "bleedthrough_pools": (
         "bleedthrough-history.jsonl",
-        # ignore demo rows so a placeholder demo can't seed a false baseline
-        lambda r: None if r.get("demo") else r.get("distinct_pools"),
-        "distinct GFW injector pools — a jump signals regional fragmentation",
+        # ignore demo rows so a placeholder demo can't seed a false baseline, and rounds where
+        # the forged-IP pool was sampled rather than enumerated — there the count tracks the
+        # target sample size, not the censor, and would read as fragmentation
+        lambda r: None if (r.get("demo") or r.get("pool_sampling_suspected"))
+        else r.get("distinct_pools"),
+        "distinct GFW injector pools, counted per region — a jump signals fragmentation",
     ),
     "bleedthrough_capacity": (
         "bleedthrough-history.jsonl",
         lambda r: None if r.get("demo") else r.get("max_process_count"),
-        "peak parallel injector processes — fleet capacity on a border path",
+        "floor on peak parallel injector responses to one query — not a fleet capacity",
     ),
     "tor_bridge_cn": (
         "circumvention-demand-history.jsonl",

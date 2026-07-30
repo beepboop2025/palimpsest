@@ -28,7 +28,9 @@ from datetime import datetime, timezone
 from collectors.bleedthrough import (
     JsonFleetStore,
     FleetBaselineStore,
+    REGIONAL_FIREWALL,
     _udp_transport,
+    distinct_region_pools,
     load_targets,
     open_resolver_transport,
     run_round,
@@ -44,10 +46,41 @@ STORE_DIR = os.path.join(ROOT, "data", "bleedthrough_baselines")
 TARGETS = os.getenv("BLEEDTHROUGH_TARGETS", os.path.join(ROOT, "config", "bleedthrough_targets.json"))
 RATE_PER_SEC = float(os.getenv("BLEEDTHROUGH_RATE", "5"))   # polite default; deployment tunes
 BURST = int(os.getenv("BLEEDTHROUGH_BURST", "24"))
+WAIT_S = float(os.getenv("BLEEDTHROUGH_WAIT", "1.2"))       # listen window per query, recorded
+
+# Provenance of the prober itself. Deliberately COARSE: the exact host is operator-only. A
+# reading that named the box would bind this prober to the public api.seiche.info A record,
+# which is exactly the linkage ops/bleedthrough_prober.sh refuses by default.
+VANTAGE_KIND = os.getenv("BLEEDTHROUGH_VANTAGE_KIND", "single fixed-IP VPS outside China")
+VANTAGE_COUNTRY = os.getenv("BLEEDTHROUGH_VANTAGE_COUNTRY") or None
+
+# A round is one prober, however many targets it probes. Recorded so no reader can mistake
+# the target count for a count of observation points.
+VANTAGE_COUNT = 1
 
 
 def _truthy(v: str) -> bool:
     return (v or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _code_version() -> str | None:
+    """Best-effort commit id, read straight off .git — no subprocess (a flagged sink), and
+    None when the prober runs from an exported tree with no .git, which is honest."""
+    git = os.path.join(ROOT, ".git")
+    try:
+        head = open(os.path.join(git, "HEAD"), encoding="utf-8").read().strip()
+        if not head.startswith("ref:"):
+            return head[:40] or None
+        ref = head.split(":", 1)[1].strip()
+        try:
+            return open(os.path.join(git, ref), encoding="utf-8").read().strip()[:40] or None
+        except OSError:
+            for line in open(os.path.join(git, "packed-refs"), encoding="utf-8"):
+                if line.rstrip().endswith(" " + ref):
+                    return line.split(" ", 1)[0][:40]
+    except OSError:
+        return None
+    return None
 
 
 def _refuse(msg: str) -> None:
@@ -82,28 +115,55 @@ def main() -> None:
     conf = load_targets(TARGETS)
     probe, dark, resolver = conf["probe"], conf["dark"], conf["resolver"]
     rate = RateCeiling(rate=RATE_PER_SEC)
+    # Armed PER PROBE, not merely checked once above: a round is thousands of datagrams over
+    # roughly an hour, and a startup-only gate leaves that whole window unstoppable.
+    kill = KillSwitch()
     store = FleetBaselineStore(store=JsonFleetStore(STORE_DIR))
 
     fingerprints, events = [], []
     # direct-injection round (fleet size) over dark IPs
     if dark:
         r = run_round(probe, dark, transport=_udp_transport, store=store,
-                      rate_ceiling=rate, burst=BURST)
+                      kill_switch=kill, rate_ceiling=rate, burst=BURST)
         fingerprints += r["fingerprints"]
         events += r["events"]
     # open-resolver fallback round (pool / regional) over live resolvers
     if resolver:
         rt = open_resolver_transport(clean_answers=conf.get("clean_answers"))
-        r = run_round(probe, resolver, transport=rt, store=store, rate_ceiling=rate, burst=BURST)
+        r = run_round(probe, resolver, transport=rt, store=store,
+                      kill_switch=kill, rate_ceiling=rate, burst=BURST)
         fingerprints += r["fingerprints"]
         events += r["events"]
 
     injecting = [fp for fp in fingerprints if fp.pool_hash]
-    # Honesty guard: no injection observed anywhere → abstain (channel may be down / list stale)
+    # Honesty guard 1: no injection observed anywhere → abstain (channel may be down / list stale)
     if not injecting:
-        print("BLEEDTHROUGH: no injection observed on any vantage this round "
+        print("BLEEDTHROUGH: no injection observed on any target this round "
               "(channel down / list stale / all silent) — abstaining, not publishing.")
         return
+
+    # Honesty guard 2: when per-target pool hashes are near-unique, the censor's forged-IP
+    # pool is being SAMPLED rather than enumerated at this burst. Per-target pools are then
+    # not comparable to each other and any regional reading is sampling noise, so strip the
+    # regional claims and record that we did. This is the failure mode a single prober over
+    # many dark targets actually produces; regional_divergence guards it too, and this is the
+    # second layer in case a future caller bypasses that one.
+    sampled_pools = len({fp.pool_hash for fp in injecting}) >= 0.5 * len(injecting)
+    if sampled_pools:
+        dropped = sum(1 for e in events if e.kind == REGIONAL_FIREWALL)
+        events = [e for e in events if e.kind != REGIONAL_FIREWALL]
+        print(f"BLEEDTHROUGH: pool hashes are near-unique across targets — the pool is "
+              f"sampled, not enumerated, at burst {BURST}; regional divergence is not "
+              f"identifiable this round. Dropped {dropped} regional event(s).")
+
+    # transports: `ran: False` with a null count, never 0 — "did not run" is not "measured zero"
+    transports = {
+        "direct": {"ran": bool(dark), "targets": len(dark) or None},
+        "open_resolver": {"ran": bool(resolver), "targets": len(resolver) or None},
+    }
+    legs = [name for name, key in (("direct injection over dark IPs", "direct"),
+                                   ("open-resolver fallback", "open_resolver"))
+            if transports[key]["ran"]]
 
     now = datetime.now(timezone.utc)
     out = {
@@ -111,15 +171,40 @@ def main() -> None:
         "signal": "bleedthrough",
         "title": "GFW injector fleet",
         "scope": ("apparatus-layer tomography of the Great Firewall's DNS-injector fleet: "
-                  "size, forged-IP pools, regional divergence, and operational events"),
+                  "forged-IP pools, a floor on parallel injector responses, and operational "
+                  "events, measured from outside China"),
+        # Computed from what actually ran this round — a hardcoded sentence would misdescribe
+        # the first round whose transport mix differs.
         "method": ("the censor as sensor — benign stateless UDP DNS probes provoke the GFW's "
                    "own injectors to answer; we fingerprint the fleet from the forgeries. "
-                   "Direct transport = fleet size; open-resolver fallback = pool/regional."),
+                   f"Transport this round: {' + '.join(legs)}. "
+                   "Injector count is a FLOOR, not a census: each injector answers a given "
+                   "query at most once, so a silent injector is undercounted."),
         "probe_domain": probe.domain,
+        # NB: these count TARGET IPs probed, not observation points. There is one prober;
+        # see provenance.vantage_count.
         "vantages_probed": len(fingerprints),
         "vantages_injecting": len(injecting),
-        "distinct_pools": len({fp.pool_hash for fp in injecting}),
+        "distinct_pools": distinct_region_pools(injecting),
+        "distinct_pools_basis": "union of forged IPs per region, not per-target samples",
         "max_process_count": max((fp.process_count for fp in injecting), default=0),
+        "process_count_semantics": "floor",
+        "pool_sampling_suspected": sampled_pools,
+        "provenance": {
+            "vantage_count": VANTAGE_COUNT,
+            "vantage_kind": VANTAGE_KIND,
+            "vantage_country": VANTAGE_COUNTRY,
+            "flow_id_policy": "ephemeral source port per query (paths not pinned)",
+            "burst": BURST,
+            "rate_per_sec": RATE_PER_SEC,
+            "wait_s": WAIT_S,
+            "queries_attempted": sum(fp.n_probes for fp in fingerprints),
+            "transports": transports,
+            "code_version": _code_version(),
+            "caveat": ("single-vantage round: observed censorship varies with network path, "
+                       "so cross-region comparisons from one prober are not identifiable "
+                       "(cf. arXiv:2406.19304)."),
+        },
         "events": [{"kind": e.kind, "vantage": e.vantage_tag, "detail": e.detail,
                     "severity": e.severity()} for e in events],
     }
@@ -131,21 +216,29 @@ def main() -> None:
             prev = json.load(open(OUT, encoding="utf-8"))
         except (ValueError, OSError):
             prev = {}
-    sig_keys = ("vantages_injecting", "distinct_pools", "max_process_count", "events")
+    sig_keys = ("vantages_injecting", "distinct_pools", "max_process_count",
+                "pool_sampling_suspected", "events")
     if not prev or any(prev.get(k) != out.get(k) for k in sig_keys):
         with open(OUT, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
+                # denominator alongside the numerator, so a later baseline cannot compare
+                # rounds of different sizes as though they were the same measurement
+                "vantages_probed": out["vantages_probed"],
                 "vantages_injecting": out["vantages_injecting"],
                 "distinct_pools": out["distinct_pools"],
                 "max_process_count": out["max_process_count"],
+                "pool_sampling_suspected": out["pool_sampling_suspected"],
+                "vantage_count": VANTAGE_COUNT,
+                "burst": BURST,
                 "n_events": len(events),
             }, ensure_ascii=False) + "\n")
 
-    print(f"=== BLEEDTHROUGH — {len(injecting)}/{len(fingerprints)} vantages injecting, "
-          f"{out['distinct_pools']} distinct pools, max processes {out['max_process_count']} ===")
+    print(f"=== BLEEDTHROUGH — {len(injecting)}/{len(fingerprints)} target IPs injecting "
+          f"from {VANTAGE_COUNT} prober, {out['distinct_pools']} distinct pool(s), "
+          f"injector floor >={out['max_process_count']} ===")
     for e in events:
         print(f"  [{e.severity()}] {e.kind} — {e.vantage_tag}: {e.detail}")
 

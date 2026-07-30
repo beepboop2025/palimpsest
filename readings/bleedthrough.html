@@ -100,11 +100,17 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const sevColor = s => ({high:"var(--red)",medium:"var(--amb)",low:"var(--grn)"}[s]||"var(--dim)");
 const kindLabel = k => ({regional_firewall_candidate:"regional firewall",pool_rotation:"pool rotation",
   capacity_shift:"capacity shift",injector_silent:"injector silent"}[k]||k);
-// fleet-pressure band from distinct pools (fragmentation) + high-severity events
+// render a count, but never turn "not measured" into a confident 0
+const num = v => (v===null||v===undefined||v==="") ? "—" : Number(v);
+// fleet-pressure band from distinct pools (fragmentation) + high-severity events.
+// When the reading says the forged-IP pool was SAMPLED rather than enumerated, the pool
+// count tracks how many targets we probed rather than how many pools the censor runs, so it
+// must not colour the board — otherwise every large round reads as fragmentation.
 const bandFor = d => {
   const frag = (d.distinct_pools||0), hi = (d.events||[]).filter(e=>e.severity==="high").length;
-  if (hi>=1 || frag>=3) return ["FRAGMENTING","var(--red)"];
-  if (frag===2 || (d.events||[]).length) return ["SHIFTING","var(--amb)"];
+  const fragUsable = !d.pool_sampling_suspected;
+  if (hi>=1 || (fragUsable && frag>=3)) return ["FRAGMENTING","var(--red)"];
+  if ((fragUsable && frag===2) || (d.events||[]).length) return ["SHIFTING","var(--amb)"];
   return ["STABLE","var(--grn)"];
 };
 
@@ -122,6 +128,7 @@ fetch("/readings/bleedthrough-latest.json?_="+Date.now())
 
 function render(d){
   if (d.demo) document.getElementById("demoBadge").style.display="block";
+  const p = d.provenance || {};
   const [bl,bc]=bandFor(d);
   const events=(d.events||[]).map(e=>`
     <li class="tkm-item"><span class="sev" style="color:${sevColor(e.severity)}">${esc(e.severity)}</span>
@@ -133,23 +140,28 @@ function render(d){
   document.getElementById("app").innerHTML=`
     <div class="hero">
       <div>
-        <div class="idx"><span id="idxNum">${Number(d.max_process_count)||0}</span><small> injectors</small></div>
+        <div class="idx"><small style="font-size:26px;color:var(--dim)">≥</small><span id="idxNum">${Number(d.max_process_count)||0}</span><small> injectors</small></div>
         <span class="band" style="color:${bc};border-color:${bc}">${bl}</span>
       </div>
       <div class="heroTxt">
-        <div class="t">Peak parallel injector processes seen on a single border path, across
-          ${Number(d.vantages_injecting)||0} of ${Number(d.vantages_probed)||0} vantages that answered,
-          probing <b>${esc(d.probe_domain)}</b>.</div>
-        <div class="m">${esc(d.method)}</div>
+        <div class="t">A <b>lower bound</b> on parallel injector responses to a single query:
+          each injector answers a given query at most once, so a silent one is undercounted.
+          Measured from <b>${num(p.vantage_count)} prober</b> outside China across
+          ${Number(d.vantages_injecting)||0} of ${Number(d.vantages_probed)||0} target IPs that
+          answered, probing <b>${esc(d.probe_domain)}</b>.</div>
       </div>
     </div>
+    ${d.pool_sampling_suspected ? `<div class="demo" style="display:block">◆ POOL SAMPLED, NOT ENUMERATED —
+      at this burst each target sees only part of the censor's rotating forged-IP pool, so
+      per-region pools are not comparable and no regional claim is made this round.</div>` : ""}
     <div class="stats">
       <div class="stat tkm-item"><div class="n">${Number(d.vantages_injecting)||0}<small style="font-size:15px;color:var(--dim)">/${Number(d.vantages_probed)||0}</small></div>
-        <div class="l">Vantages injecting</div><div class="d">involuntary sensors that answered</div></div>
-      <div class="stat tkm-item"><div class="n">${Number(d.distinct_pools)||0}</div>
-        <div class="l">Distinct forged pools</div><div class="d">&gt;1 hints regional fragmentation</div></div>
-      <div class="stat tkm-item"><div class="n">${Number(d.max_process_count)||0}</div>
-        <div class="l">Max injector processes</div><div class="d">fleet capacity on one path</div></div>
+        <div class="l">Target IPs injecting</div><div class="d">dark addresses the GFW answered for</div></div>
+      <div class="stat tkm-item"><div class="n">${d.pool_sampling_suspected ? "—" : num(d.distinct_pools)}</div>
+        <div class="l">Distinct forged pools</div><div class="d">${d.pool_sampling_suspected
+          ? "not identifiable at this burst" : "counted per region, not per target"}</div></div>
+      <div class="stat tkm-item"><div class="n">≥${Number(d.max_process_count)||0}</div>
+        <div class="l">Injector processes (floor)</div><div class="d">per-query answer floor; the fleet is at least this large</div></div>
     </div>
     <div class="card">
       <h2>Apparatus events this round</h2>
@@ -163,9 +175,20 @@ function render(d){
     app.querySelectorAll(".elist li").forEach((li,i)=>TiktoMotion.stagger(li,i,45));
   }
 
+  const prov = [
+    p.vantage_count!=null ? `${esc(p.vantage_count)} prober (${esc(p.vantage_kind||"undisclosed")})` : null,
+    p.burst!=null ? `burst ${esc(p.burst)}` : null,
+    p.rate_per_sec!=null ? `${esc(p.rate_per_sec)} q/s ceiling` : null,
+    p.queries_attempted!=null ? `${esc(p.queries_attempted)} queries` : null,
+    p.flow_id_policy ? esc(p.flow_id_policy) : null,
+    p.code_version ? `code ${esc(String(p.code_version).slice(0,10))}` : null,
+  ].filter(Boolean).join(" · ");
+
   document.getElementById("foot").innerHTML=
     `Method: ${esc(d.method)}<br>`+
     `Scope: ${esc(d.scope)}<br>`+
+    (prov ? `Provenance: ${prov}<br>` : "")+
+    (p.caveat ? `<span style="color:var(--amb)">Caveat: ${esc(p.caveat)}</span><br>` : "")+
     `Generated ${esc(new Date(d.generated_at).toUTCString())}. `+
     `Probes are benign, stateless UDP DNS only (no residual censorship, dark-IP targets, governance-gated). `+
     `Palimpsest measures the censor; it never operates a circumvention service. `+

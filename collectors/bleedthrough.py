@@ -315,23 +315,78 @@ class FleetBaselineStore:
         return None
 
 
-def regional_divergence(fingerprints: list) -> list:
-    """Given one round of fingerprints across provinces, flag provinces whose pool diverges
-    from the national baseline (the modal pool_hash). A lone divergent province is the
-    Henan-style 'wall behind a wall' candidate — a firewall operating autonomously behind
-    the GFW. Needs >= 3 vantages so a single odd reading cannot masquerade as a region."""
-    tagged = [fp for fp in fingerprints if fp.pool_hash]
-    if len(tagged) < 3:
+# Bare national labels: these tag a backbone AS (Chinanet, China169, China Mobile), not a
+# province, so a "regional" claim keyed on them would be meaningless.
+NATIONAL_BUCKETS = frozenset({"CN", ""})
+
+
+def _region_of(vantage_tag: str) -> str:
+    """The region key of a vantage tag ("ip@province/asn" -> "province/asn")."""
+    return vantage_tag.split("@", 1)[-1]
+
+
+def region_pools(fingerprints: list) -> dict:
+    """Aggregate per-target fingerprints into per-REGION forged-IP pools.
+
+    This exists because `pool_hash` is an exact content address of the forged IPs that ONE
+    target happened to draw from the censor's rotating pool during its burst. Two targets
+    sitting behind the identical injector disagree whenever they drew different subsets,
+    which at realistic burst sizes is nearly always. Comparing per-target hashes therefore
+    compares sampling noise, not the censor. The apparatus-level quantity is the UNION of
+    what every target in a region saw, so aggregate first and compare afterwards.
+    """
+    groups = {}
+    for fp in fingerprints:
+        if fp.pool:
+            groups.setdefault(_region_of(fp.vantage_tag), set()).update(fp.pool)
+    return {region: tuple(sorted(ips)) for region, ips in groups.items()}
+
+
+def distinct_region_pools(fingerprints: list) -> int:
+    """How many distinct forged-IP pools the censor appears to run, counted per region
+    rather than per target — so it measures the apparatus and not the sample size."""
+    return len({content_key(*pool) for pool in region_pools(fingerprints).values()})
+
+
+def regional_divergence(fingerprints: list, *, min_group: int = 3) -> list:
+    """Flag a REGION whose aggregated forged-IP pool diverges from the national baseline —
+    the Henan-style 'wall behind a wall' candidate, a firewall operating autonomously
+    behind the GFW.
+
+    Guarded against the sampling artefact that otherwise makes this claim worthless:
+      - pools are aggregated per region, never compared per target IP (see `region_pools`);
+      - the national baseline must be SHARED BY MORE THAN ONE region before anything can be
+        said to diverge from it (otherwise every region is its own modal class and the
+        comparison is vacuous);
+      - a divergent region needs `min_group` probed targets of its own;
+      - bare national buckets are skipped, since they label a backbone AS, not a province.
+    With a single prober and per-target pool sampling this correctly emits nothing, which is
+    the honest answer: one vantage cannot separate a provincial firewall from a path
+    difference (cf. arXiv:2406.19304 on routing-induced censorship variation).
+    """
+    members = {}
+    for fp in fingerprints:
+        if fp.pool:
+            members.setdefault(_region_of(fp.vantage_tag), []).append(fp)
+    pools = region_pools(fingerprints)
+    if len(pools) < 3:
         return []
-    modal_hash, _ = Counter(fp.pool_hash for fp in tagged).most_common(1)[0]
+    hashes = {region: content_key(*pool) for region, pool in pools.items()}
+    modal_hash, modal_n = Counter(hashes.values()).most_common(1)[0]
+    if modal_n < 2:
+        return []            # no shared baseline — divergence is not identifiable
     out = []
-    for fp in tagged:
-        if fp.pool_hash != modal_hash:
-            province = fp.vantage_tag.split("@", 1)[-1].split("/", 1)[0]
-            out.append(ApparatusEvent(
-                REGIONAL_FIREWALL, fp.vantage_tag,
-                f"province {province} pool diverges from national baseline",
-                {"pool_hash": modal_hash}, fp.to_baseline()))
+    for region in sorted(pools):
+        if hashes[region] == modal_hash:
+            continue
+        if region.split("/", 1)[0] in NATIONAL_BUCKETS:
+            continue
+        if len(members.get(region, ())) < min_group:
+            continue
+        out.append(ApparatusEvent(
+            REGIONAL_FIREWALL, region,
+            f"prefixes in {region} diverge from the national baseline pool",
+            {"pool_hash": modal_hash}, {"pool_hash": hashes[region]}))
     return out
 
 
@@ -715,14 +770,20 @@ def to_signal(events: list, fingerprints: list) -> dict:
     }
 
 
-def run_round(probe: InjectorProbe, targets: list, *, transport, store=None,
-              kill_switch=None, rate_ceiling=None, burst: int = 24) -> dict:
+def run_round(probe: InjectorProbe, targets: list, *, transport, kill_switch, store=None,
+              rate_ceiling=None, burst: int = 24) -> dict:
     """One measurement round: probe every target once, fingerprint each, then fold the
     results two ways — longitudinally (pool rotation / capacity / silence, via the baseline
     store) and cross-sectionally (regional divergence). Returns the fingerprints, the
     apparatus events, the emitted signal card, and DDTI observations. This is the top-level
     entrypoint a deployment-controlled prober calls; it never touches disk or the network
-    itself (transport + store are injected), so it is fully offline-testable."""
+    itself (transport + store are injected), so it is fully offline-testable.
+
+    `kill_switch` is a REQUIRED keyword with no default: a live round is thousands of
+    datagrams aimed at a hostile state system, and the halt must be armed per probe, not
+    merely checked once at startup. Omitting it is a TypeError by design. An offline caller
+    with a canned transport passes `kill_switch=None` explicitly, which makes the choice
+    visible in review instead of silently inherited from a default."""
     prober = InjectionProbe(transport=transport, kill_switch=kill_switch,
                             rate_ceiling=rate_ceiling, burst=burst)
     fingerprints = [prober.measure(probe, t) for t in targets]
