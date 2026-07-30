@@ -83,6 +83,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install pytest only
+        # NOT -r requirements.txt. These tests are stdlib-only by design — verified against a
+        # venv containing nothing but pytest — so the full install would cost more than the
+        # tests do and would couple this job to dependencies it does not use.
+        run: pip install --quiet pytest
+
       - name: Validate what is actually published
         run: |
           python -m pytest -q \
