@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-30T20:34:53.126845+00:00",
-  "method_version": 1,
+  "generated_at": "2026-07-30T20:52:36.906012+00:00",
+  "method_version": 2,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
   "erasure_index": 41.4,
@@ -18,8 +18,8 @@
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
       "as_of": "2026-07-30T19:56:38.377704+00:00",
-      "age_days": 0.03,
-      "age_hours": 0.6
+      "age_days": 0.04,
+      "age_hours": 0.9
     },
     {
       "layer": "model",
@@ -29,7 +29,7 @@
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
       "as_of": "2026-07-30T09:25:58.129274+00:00",
-      "age_days": 0.46
+      "age_days": 0.48
     },
     {
       "layer": "narrative",
@@ -45,15 +45,20 @@
       "name": "Censored Planet interference",
       "value": 4.45,
       "unit": "%",
+      "as_of": "2026-07-30T07:55:58.718648+00:00",
+      "age_hours": 12.9,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
       "name": "Firewall event velocity",
       "value": 0.59,
       "unit": "x",
+      "as_of": "2026-07-29T14:56:25.607807+00:00",
+      "age_hours": 29.9,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
+  "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
     "entries": 97,
@@ -68,18 +73,7 @@
       "censored-planet": 15,
       "baike-redaction": 2
     },
-    "sealed_this_run": [
-      {
-        "source": "ooni-gfw",
-        "seq": 95,
-        "entry_hash": "c86addb46883343e2eaec557855182e0259ca54f66f0dc6a50ab78bcb4d93391"
-      },
-      {
-        "source": "baike-redaction",
-        "seq": 96,
-        "entry_hash": "b933cf52425600737526bc52a5ab8403ab4250c1541de8aeb109c42681110421"
-      }
-    ],
+    "sealed_this_run": [],
     "verify_cmd": "python3 scripts/verify_ledger.py",
     "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped"
   },

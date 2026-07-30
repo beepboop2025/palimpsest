@@ -45,7 +45,13 @@ HIST = os.path.join(READINGS, "erasure-observatory-history.jsonl")
 # do not move. Write-if-changed compares readings, so without this a methodology
 # correction that leaves the values identical never reaches the published file and
 # the site keeps asserting a method it no longer uses.
-METHOD_VERSION = 1
+#
+# 2 (2026-07-31): every input is now bounded for freshness, not just the two that got
+# caught — the narrative layer and both cross-checks previously published with no bound
+# and no as_of at all. Values are unchanged today because everything is currently fresh,
+# which is precisely the case this counter exists for: without the bump the site would
+# keep serving a reading that does not carry the freshness fields it now guarantees.
+METHOD_VERSION = 2
 
 
 # The Generative Firewall reading refreshes daily (workflow: gfi-refresh.yml) and lands
@@ -63,9 +69,27 @@ GF_STALE_AFTER_DAYS = 7
 # cadence changes, it changes in one file.
 try:
     from processors.vantage_fusion import MAX_AGE_HOURS as _FUSION_MAX_AGE_HOURS
-    NETWORK_STALE_AFTER_HOURS = float(_FUSION_MAX_AGE_HOURS["ooni"])
 except Exception:  # noqa: BLE001 — this script must run standalone from a bare checkout
-    NETWORK_STALE_AFTER_HOURS = 36.0
+    _FUSION_MAX_AGE_HOURS = {"ooni": 36.0, "censored_planet": 96.0, "net4people": 48.0}
+NETWORK_STALE_AFTER_HOURS = float(_FUSION_MAX_AGE_HOURS.get("ooni", 36.0))
+
+# EVERY input this runner reads gets a bound, not just the two that got caught.
+# The model layer earned its bound by publishing a 29-day-old number; the network layer had
+# none until it was noticed sitting beside it. The narrative layer and BOTH cross-checks
+# still had none after that — the same instance-not-class failure, twice more, in the file
+# that had just been fixed for it. So the bound now comes from a table with an entry per
+# input, and _bounded_reading() below is the single path all of them go through: adding a
+# fourth input without an entry is a KeyError at import, not a silent unbounded publish.
+#
+# censored_planet and net4people were already bounded in vantage_fusion's table and this
+# runner simply was not consulting it. Baike has no cron of its own — it refreshes inside
+# erasure-refresh.yml every 6h — so it takes the same bound as the other 6-hourly input.
+INPUT_MAX_AGE_HOURS = {
+    "ooni-gfw-latest.json": NETWORK_STALE_AFTER_HOURS,
+    "baike-redaction-latest.json": 36.0,
+    "censored-planet-latest.json": float(_FUSION_MAX_AGE_HOURS.get("censored_planet", 96.0)),
+    "net4people-latest.json": float(_FUSION_MAX_AGE_HOURS.get("net4people", 48.0)),
+}
 # Candidate GF readings, live file first. The dated
 # readings/<date>_generative-firewall-index.json files are FROZEN one-off publications
 # kept only as an explicit fallback — they are never "now".
@@ -136,6 +160,26 @@ def _reading_as_of(doc: dict | None) -> str | None:
     return None
 
 
+def _bounded_reading(name: str, now: datetime) -> tuple[dict | None, str | None, float | None, bool]:
+    """Load a reading and judge its freshness against its declared bound.
+
+    Returns (doc, as_of, age_hours, fresh). `fresh` is True only when the reading exists,
+    carries a usable timestamp, AND is inside its bound — so an undatable reading is never
+    treated as current, and neither is a missing one.
+
+    THE POINT OF THE KeyError. INPUT_MAX_AGE_HOURS[name] is a hard lookup on purpose. Every
+    freshness bug in this file so far has been an input that nobody remembered to bound, so
+    the failure mode for a NEW input must be a loud crash at the moment it is added, not a
+    number quietly published as today's."""
+    bound = INPUT_MAX_AGE_HOURS[name]
+    doc = _load(name)
+    as_of = _reading_as_of(doc)
+    age_days = _age_days(as_of, now)
+    age_hours = age_days * 24.0 if age_days is not None else None
+    fresh = bool(doc) and age_hours is not None and age_hours <= bound
+    return doc, as_of, age_hours, fresh
+
+
 def _stale_layer(layer: str, title: str, detail: str, *, reading: str, value: float,
                  as_of: str | None, age_hours: float | None, bound_hours: float) -> dict:
     """A layer we can read but cannot show to be current. Withheld, with its true as-of
@@ -182,6 +226,7 @@ def main() -> None:
     now = datetime.now(timezone.utc)
     layers: list[dict] = []
     cross_checks: list[dict] = []
+    withheld_cross: list[dict] = []
     sealed: list[dict] = []
 
     # ---- NETWORK erasure: OONI Great Firewall index (0-100) --------------
@@ -277,7 +322,7 @@ def main() -> None:
     # baike_redaction.py is armed; its reading is published as baike-redaction-latest.json
     # once its first sealed pull runs (needs the outside-the-wall egress seam). Until then
     # we report it ABSENT with a reason rather than fake a number.
-    baike = _load("baike-redaction-latest.json")
+    baike, b_as_of, b_age_hours, b_fresh = _bounded_reading("baike-redaction-latest.json", now)
     b_index = (baike or {}).get("rewrite_index")
     # Seal whatever the narrative instrument recorded — a real index OR an honest abstain
     # (both are timestamped provenance of what we saw and tried).
@@ -285,7 +330,8 @@ def main() -> None:
         e = sealed_ledger.append_seal(LEDGER, "baike-redaction", baike, now=now)
         if e:
             sealed.append({"source": "baike-redaction", "seq": e["seq"], "entry_hash": e["entry_hash"]})
-    if baike and isinstance(b_index, (int, float)):
+    b_readable = isinstance(b_index, (int, float)) and not isinstance(b_index, bool)
+    if b_readable and b_fresh:
         layers.append({
             "layer": "narrative",
             "title": "Narrative erasure",
@@ -293,7 +339,21 @@ def main() -> None:
             "value": round(float(b_index), 1),
             "source": "Baike redaction-diff vs Chinese Wikipedia",
             "reading": "baike-redaction-latest.json",
+            "as_of": b_as_of,
+            "age_days": round(b_age_hours / 24.0, 2),
+            "age_hours": round(b_age_hours, 1),
         })
+    elif b_readable:
+        # Readable but not current. This branch had never existed: a Baike index that went
+        # stale would have published as today's number, which is precisely the bug the model
+        # layer was fixed for — sitting unfixed two layers down in the same function.
+        layers.append(_stale_layer(
+            "narrative", "Narrative erasure",
+            "encyclopedia entries rewritten to the state line — sensitive terms excised, "
+            "sourcing collapsed to state media",
+            reading="baike-redaction-latest.json", value=float(b_index),
+            as_of=b_as_of, age_hours=b_age_hours,
+            bound_hours=INPUT_MAX_AGE_HOURS["baike-redaction-latest.json"]))
     else:
         # surface the instrument's own reason when it published one, else the generic armed note
         reason = ((baike or {}).get("reason")
@@ -304,17 +364,33 @@ def main() -> None:
                        "reason": reason})
 
     # ---- cross-checks (different scales, not folded into the composite) ---
-    cp = _load("censored-planet-latest.json")
-    if cp and isinstance(cp.get("cn_interference_rate_pct"), (int, float)):
-        cross_checks.append({"name": "Censored Planet interference", "value": cp["cn_interference_rate_pct"],
-                             "unit": "%", "note": "independent DNS/HTTP side-channel, confirms network layer"})
+    # A cross-check is a corroborating number a reader weighs against the layers, so a stale
+    # one is a stale claim — it had no bound at all. Both are dropped rather than shown when
+    # they cannot be dated or are past their bound, and the drop is stated so the absence
+    # reads as an abstention rather than as the check having been forgotten.
+    cp, cp_as_of, cp_age, cp_fresh = _bounded_reading("censored-planet-latest.json", now)
+    cp_val = (cp or {}).get("cn_interference_rate_pct")
+    if isinstance(cp_val, (int, float)) and not isinstance(cp_val, bool):
+        if cp_fresh:
+            cross_checks.append({"name": "Censored Planet interference", "value": cp_val,
+                                 "unit": "%", "as_of": cp_as_of, "age_hours": round(cp_age, 1),
+                                 "note": "independent DNS/HTTP side-channel, confirms network layer"})
+        else:
+            withheld_cross.append({"name": "Censored Planet interference", "as_of": cp_as_of,
+                                   "withheld_value": cp_val, "status": "STALE" if cp_age else "UNDATED"})
         e = sealed_ledger.append_seal(LEDGER, "censored-planet", cp, now=now)
         if e:
             sealed.append({"source": "censored-planet", "seq": e["seq"], "entry_hash": e["entry_hash"]})
-    n4p = _load("net4people-latest.json")
-    if n4p and isinstance(n4p.get("velocity"), (int, float)):
-        cross_checks.append({"name": "Firewall event velocity", "value": n4p["velocity"],
-                             "unit": "x", "note": "community-logged blocking/circumvention rate vs baseline"})
+    n4p, n4p_as_of, n4p_age, n4p_fresh = _bounded_reading("net4people-latest.json", now)
+    n4p_val = (n4p or {}).get("velocity")
+    if isinstance(n4p_val, (int, float)) and not isinstance(n4p_val, bool):
+        if n4p_fresh:
+            cross_checks.append({"name": "Firewall event velocity", "value": n4p_val,
+                                 "unit": "x", "as_of": n4p_as_of, "age_hours": round(n4p_age, 1),
+                                 "note": "community-logged blocking/circumvention rate vs baseline"})
+        else:
+            withheld_cross.append({"name": "Firewall event velocity", "as_of": n4p_as_of,
+                                   "withheld_value": n4p_val, "status": "STALE" if n4p_age else "UNDATED"})
 
     # ---- composite: mean of the layers that actually reported ------------
     contributing = [l for l in layers if isinstance(l.get("value"), (int, float))]
@@ -337,6 +413,10 @@ def main() -> None:
         "layers_contributing": [l["layer"] for l in contributing],
         "layers": layers,
         "cross_checks": cross_checks,
+        # Cross-checks withheld for staleness. An empty list means every check was fresh;
+        # a silent absence would read as "we never had that check", which is a different
+        # and much more flattering claim than "we had it and it went stale".
+        "cross_checks_withheld": withheld_cross,
         "integrity": {
             "ledger": "readings/erasure-ledger.jsonl",
             "entries": ledger_summary["entries"],

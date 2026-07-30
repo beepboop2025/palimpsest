@@ -190,3 +190,81 @@ def test_both_layers_stale_yields_no_index_rather_than_a_made_up_one(tmp_path, m
 
     assert out["layers_contributing"] == []
     assert out["erasure_index"] is None
+
+
+# ── the class, not the instances ─────────────────────────────────────────────
+# The tests above were written for the model and network layers, and this file's own
+# docstring claimed to "pin the rule at the level of the class". It did not: the narrative
+# layer and BOTH cross-checks still had no bound and no as_of at all, in the same function,
+# after the network layer was fixed. Same instance-not-class failure, two layers down.
+# These tests are about the TABLE, so a fourth input cannot be added unbounded.
+
+def test_every_input_this_runner_reads_is_bounded():
+    """The registry assertion. _bounded_reading does a hard dict lookup, so an input added
+    without an entry is a KeyError at run time rather than a silent unbounded publish — this
+    pins that the known inputs are all present and that the table is not empty."""
+    t = erasure_pull.INPUT_MAX_AGE_HOURS
+    assert set(t) == {
+        "ooni-gfw-latest.json", "baike-redaction-latest.json",
+        "censored-planet-latest.json", "net4people-latest.json",
+    }, "an input was added or removed without updating this guard"
+    assert all(isinstance(v, float) and v > 0 for v in t.values())
+
+
+def test_a_stale_narrative_layer_is_withheld_not_published_as_today(tmp_path, monkeypatch):
+    """The branch that did not exist. A readable but old Baike index used to publish as the
+    current narrative value — the exact bug the model layer was fixed for."""
+    d = str(tmp_path)
+    _write(d, "baike-redaction-latest.json",
+           {"generated_at": _hours_ago(24 * 30), "rewrite_index": 71.0})
+    _point_at(monkeypatch, d)
+
+    out = _run(d)
+    nar = _layer(out, "narrative")
+
+    assert nar["value"] is None
+    assert nar["status"] == "STALE"
+    assert nar["withheld_value"] == 71.0
+    assert "narrative" not in out["layers_contributing"]
+
+
+def test_a_fresh_narrative_layer_publishes_and_dates_itself(tmp_path, monkeypatch):
+    d = str(tmp_path)
+    _write(d, "baike-redaction-latest.json",
+           {"generated_at": _hours_ago(2), "rewrite_index": 71.0})
+    _point_at(monkeypatch, d)
+
+    nar = _layer(_run(d), "narrative")
+
+    assert nar["value"] == 71.0
+    assert nar["as_of"] is not None and nar["age_hours"] < 3
+
+
+def test_a_stale_cross_check_is_dropped_and_the_drop_is_stated(tmp_path, monkeypatch):
+    """A cross-check is a corroborating claim a reader weighs against the layers, so a stale
+    one is a stale claim. Silently omitting it would read as 'we never had that check'."""
+    d = str(tmp_path)
+    _write(d, "censored-planet-latest.json",
+           {"generated_at": _hours_ago(24 * 20), "cn_interference_rate_pct": 4.45})
+    _point_at(monkeypatch, d)
+
+    out = _run(d)
+
+    assert [c["name"] for c in out["cross_checks"]] == []
+    withheld = out["cross_checks_withheld"]
+    assert len(withheld) == 1
+    assert withheld[0]["withheld_value"] == 4.45
+    assert withheld[0]["status"] == "STALE"
+
+
+def test_a_fresh_cross_check_carries_its_age(tmp_path, monkeypatch):
+    d = str(tmp_path)
+    _write(d, "censored-planet-latest.json",
+           {"generated_at": _hours_ago(3), "cn_interference_rate_pct": 4.45})
+    _point_at(monkeypatch, d)
+
+    out = _run(d)
+
+    assert out["cross_checks_withheld"] == []
+    cc = out["cross_checks"][0]
+    assert cc["value"] == 4.45 and cc["as_of"] and cc["age_hours"] < 4
