@@ -1,15 +1,16 @@
 """Self-defence tests for core/safe_fetch — the guard functions must refuse a hostile server.
 
-All offline: SSRF validation, scheme allowlist, size cap, and the decompression-bomb guard
-are exercised directly, with no network and no live server.
+All offline: SSRF validation, scheme allowlist, size cap, the decompression-bomb guard and
+the redirect loop are exercised directly, with no network and no live server.
 """
 import zlib
 
 import pytest
 
+import core.safe_fetch as sf
 from core.safe_fetch import (
     _validate_public, _read_capped, _maybe_decompress, safe_fetch,
-    BlockedAddressError, ResponseTooLarge, FetchError,
+    BlockedAddressError, ResponseTooLarge, FetchError, TooManyRedirects,
 )
 
 
@@ -96,3 +97,119 @@ def test_decompress_identity_passthrough():
     raw = b"not compressed"
     assert _maybe_decompress(raw, None, max_bytes=1000) == raw
     assert _maybe_decompress(raw, "identity", max_bytes=1000) == raw
+
+
+# ── redirect loop: the documented SSRF defence, driven by a fake server ──────────────────
+# The checks above stop a hostile URL we were *handed*. The harder attack is a URL that
+# looks fine and then answers `302 Location: http://169.254.169.254/…` — the server making
+# our own client attack our own network. The defence is that EVERY hop re-runs
+# _validate_public, and the only way to prove that hop runs is to actually redirect. These
+# tests stand in a fake http.client-shaped connection for the real socket, so a hostile
+# server is simulated with no network and no listener.
+#
+# The starting URL is a public IP LITERAL so _validate_public resolves it offline (numeric
+# hosts need no DNS) while remaining the genuine, unpatched guard.
+PUBLIC_LITERAL = "http://93.184.216.34/start"
+
+
+class _FakeRedirectResponse:
+    def __init__(self, status, location):
+        self.status = status
+        self._location = location
+
+    def getheader(self, name, default=None):
+        if name.lower() == "location":
+            return self._location
+        return default
+
+    def read(self, n):  # pragma: no cover - a redirect response is never read
+        return b""
+
+
+class _FakeConn:
+    """Shaped like the http.client connection _connect returns: request / getresponse / close."""
+
+    def __init__(self, response):
+        self._response = response
+        self.closed = False
+
+    def request(self, method, path, headers=None):
+        self.requested = (method, path)
+
+    def getresponse(self):
+        return self._response
+
+    def close(self):
+        self.closed = True
+
+
+def test_redirect_to_internal_address_is_blocked(monkeypatch):
+    """A hostile public server answers 302 -> cloud metadata. The next hop must be refused
+    before a single byte is requested from 169.254.169.254."""
+    opened = []
+
+    def fake_connect(scheme, host, ip, port, timeout, ctx):
+        opened.append(host)
+        conn = _FakeConn(_FakeRedirectResponse(302, "http://169.254.169.254/latest/meta-data/"))
+        return conn
+
+    monkeypatch.setattr(sf, "_connect", fake_connect)
+    with pytest.raises(BlockedAddressError):
+        safe_fetch(PUBLIC_LITERAL, timeout=1.0)
+    # exactly one connection: to the innocent-looking first host. The metadata service was
+    # never contacted, because validation happens before _connect on every hop.
+    assert opened == ["93.184.216.34"]
+
+
+@pytest.mark.parametrize("location", [
+    "http://127.0.0.1/admin",        # loopback
+    "http://10.0.0.1/internal",      # RFC1918
+    "http://[::1]/admin",            # IPv6 loopback
+])
+def test_redirect_to_any_non_public_address_is_blocked(monkeypatch, location):
+    monkeypatch.setattr(
+        sf, "_connect",
+        lambda *a, **k: _FakeConn(_FakeRedirectResponse(302, location)),
+    )
+    with pytest.raises(BlockedAddressError):
+        safe_fetch(PUBLIC_LITERAL, timeout=1.0)
+
+
+def test_redirect_budget_is_enforced(monkeypatch):
+    """An endless redirect chain that stays on a legitimate public host still terminates:
+    the hop counter raises TooManyRedirects rather than looping forever."""
+    hops = {"n": 0}
+
+    def fake_connect(scheme, host, ip, port, timeout, ctx):
+        hops["n"] += 1
+        # relative Location keeps us on the same public literal, so only the budget can stop it
+        return _FakeConn(_FakeRedirectResponse(302, f"/hop{hops['n']}"))
+
+    monkeypatch.setattr(sf, "_connect", fake_connect)
+    with pytest.raises(TooManyRedirects):
+        safe_fetch(PUBLIC_LITERAL, timeout=1.0, max_redirects=3)
+    assert hops["n"] == 4  # the initial request plus exactly max_redirects follows
+
+
+def test_redirect_without_location_is_refused(monkeypatch):
+    monkeypatch.setattr(
+        sf, "_connect",
+        lambda *a, **k: _FakeConn(_FakeRedirectResponse(302, None)),
+    )
+    with pytest.raises(FetchError):
+        safe_fetch(PUBLIC_LITERAL, timeout=1.0)
+
+
+def test_connection_is_closed_even_when_a_hop_is_refused(monkeypatch):
+    """The refusal must not leak the socket it was holding — the `finally: conn.close()`."""
+    conns = []
+
+    def fake_connect(scheme, host, ip, port, timeout, ctx):
+        conn = _FakeConn(_FakeRedirectResponse(302, "http://169.254.169.254/"))
+        conns.append(conn)
+        return conn
+
+    monkeypatch.setattr(sf, "_connect", fake_connect)
+    with pytest.raises(BlockedAddressError):
+        safe_fetch(PUBLIC_LITERAL, timeout=1.0)
+    assert conns and all(c.closed for c in conns)

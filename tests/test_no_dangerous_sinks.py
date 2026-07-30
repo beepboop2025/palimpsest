@@ -8,7 +8,14 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SCANNED_DIRS = ["collectors", "processors", "core", "censorwatch", "api", "storage", "scripts"]
+# Every directory holding first-party code that touches the network or the data it returns.
+# mcp/ (the MCP server that serves readings to model clients), demo/ (the ten-second demo the
+# README tells a stranger to run) and ops/ (the independent witness) all fetch, so all three
+# are in scope. ops/witness is DELIBERATELY a separate from-scratch implementation — it must
+# be able to check the observatory without sharing the observatory's code — so it is scanned
+# here but never refactored to import from core/.
+SCANNED_DIRS = ["collectors", "processors", "core", "censorwatch", "api", "storage", "scripts",
+                "mcp", "demo", "ops"]
 
 # Real call sites, not substrings of longer identifiers. `compile`/`re.compile` are fine and
 # excluded; `eval(`/`exec(` as bare calls are not.

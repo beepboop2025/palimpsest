@@ -67,6 +67,38 @@ def test_responses_tamper_is_caught():
     assert not ok
 
 
+def test_unknown_kind_is_rejected_even_when_its_hash_recomputes():
+    # The subtler attack: an insider with write access appends a well-formed, correctly
+    # hashed line of a kind verify() does not know. The chain itself is intact — seq,
+    # prev_hash and entry_hash all check out — so hash verification alone would wave it
+    # through. Only the kind allowlist stops it, and it must, because an unrecognised kind
+    # is by definition an attestation whose rules nobody enforced.
+    p = _registry()
+    reg.preregister(p, PROBES)
+    reg._append(p, {"ts": "2026-01-01T00:00:00+00:00", "kind": "result",  # not RUN
+                    "probe_set_hash": "0" * 64, "model": "m", "metrics": {"score": 99.9}})
+    entries = reg.read_ledger(p)
+    # the forged line's own hash is genuinely correct — the attacker did their arithmetic
+    core = {k: entries[1][k] for k in entries[1] if k != "entry_hash"}
+    assert reg._entry_hash(core) == entries[1]["entry_hash"]
+    ok, problems = reg.verify(entries)
+    assert not ok
+    assert any("unknown kind" in x for x in problems), problems
+
+
+def test_attestation_missing_its_kind_is_rejected():
+    # The other smuggling route: drop the field verify() dispatches on, hoping an absent
+    # kind means "no rule applies". It must be reported as malformed, not skipped.
+    p = _registry()
+    pr = reg.preregister(p, PROBES)
+    reg.submit_run(p, probe_set_hash=pr["probe_set_hash"], model="m", responses={"q": "a"})
+    entries = reg.read_ledger(p)
+    del entries[1]["kind"]
+    ok, problems = reg.verify(entries)
+    assert not ok
+    assert any("malformed attestation" in x for x in problems), problems
+
+
 def test_reorder_answers_before_questions_is_caught():
     # swap so the run precedes its pre-registration -> rule violation
     p = _registry()

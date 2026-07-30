@@ -7,6 +7,7 @@ injected clock), no external state beyond a tmp_path file.
 """
 
 import os
+from pathlib import Path
 
 from core.governance import AuditChain, KillSwitch, RateCeiling
 
@@ -36,6 +37,25 @@ def test_killswitch_env_override(tmp_path, monkeypatch):
     ks = KillSwitch(path=str(tmp_path / "halt"), env_var="PALIMPSEST_HALT_TEST_VAR")
     monkeypatch.setenv("PALIMPSEST_HALT_TEST_VAR", "1")
     assert ks.is_halted() is True
+
+
+def test_killswitch_fails_safe_when_the_gate_is_unreadable(tmp_path, monkeypatch):
+    """The direction of failure is the whole point. If the gate file cannot be read — a
+    permissions change, a dead mount, a full-disk stat error — the switch must read as
+    HALTED, so collection stops rather than continuing unchecked because nobody could tell.
+    The comfortable bug would be to treat an unreadable gate as absent."""
+    def _boom(self):
+        raise OSError("gate unreadable")
+
+    ks = KillSwitch(path=str(tmp_path / "halt"), env_var="PALIMPSEST_HALT_TEST_UNSET")
+    monkeypatch.delenv("PALIMPSEST_HALT_TEST_UNSET", raising=False)
+    monkeypatch.setattr(Path, "exists", _boom)
+    assert ks.is_halted() is True
+    try:
+        ks.require_live()
+        assert False, "require_live must refuse when the gate cannot be read"
+    except RuntimeError:
+        pass
 
 
 # ── RateCeiling ──────────────────────────────────────────────────────────────
@@ -91,6 +111,28 @@ def test_audit_chain_detects_tampering(tmp_path):
     result = ac.verify()
     assert result["ok"] is False
     assert result["broken_at"] == 1
+
+
+def test_audit_chain_detects_a_dropped_middle_entry(tmp_path):
+    """Deletion is the attack an append-only log exists to catch: quietly removing the
+    record of an action leaves a log that still *looks* like a clean sequence. It is caught
+    because every surviving entry commits to its own index and to its predecessor's hash,
+    so the entries after the hole no longer sit where they say they do."""
+    p = tmp_path / "audit.jsonl"
+    ac = AuditChain(path=str(p))
+    ac.append("kill_switch.engage", {"reason": "drill"})
+    ac.append("gazetteer.propose", {"term": "散步"})       # the record to be disappeared
+    ac.append("gazetteer.ratify", {"term": "散步", "by": "curator"})
+    assert ac.verify() == {"ok": True, "length": 3, "broken_at": None}
+
+    lines = p.read_text().splitlines()
+    del lines[1]
+    p.write_text("\n".join(lines) + "\n")
+
+    result = ac.verify()
+    assert result["ok"] is False
+    assert result["length"] == 2
+    assert result["broken_at"] == 1   # the entry that slid up into the hole
 
 
 def test_audit_chain_hmac_makes_forgery_fail(tmp_path):

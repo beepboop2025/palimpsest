@@ -1,0 +1,56 @@
+name: Tests
+
+# The test suite, run as a gate rather than as advice. Until this existed, every
+# guard test in the repo — including tests/test_no_dangerous_sinks.py, which is the
+# thing standing between a future edit and a code-execution sink on a collection
+# path — could only fail on someone's laptop. A guard that cannot fail the build is
+# documentation, not a guard.
+#
+# Two suites, one command:
+#   tests/            — the observatory's own suite (stdlib-only by design, so it
+#                       also runs on a bare interpreter with no install step).
+#   censorwatch/tests — the velocity leg's suite, which DOES need the installed
+#                       dependencies (pandas et al.); it is only meaningful after
+#                       `pip install -r requirements.txt`, which is why this
+#                       workflow installs before running rather than relying on the
+#                       stdlib-only invocation the README documents for local use.
+#
+# No secrets, no network reads: nothing here collects data. The suites are offline.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    # The data-refresh workflows push bot commits marked [skip ci]; those touch only
+    # published readings and never the code under test, so re-running the suite on
+    # them would burn minutes to re-prove the previous commit. GitHub honours the
+    # marker natively for pushes — this makes the intent explicit and readable, and
+    # is a no-op for pull_request events (head_commit is absent there, so the guard
+    # evaluates false and the job runs).
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install runtime + test dependencies
+        # censorwatch/tests need these; tests/ deliberately does not.
+        run: pip install --quiet -r requirements.txt
+
+      - name: Run the full suite
+        run: python -m pytest tests/ censorwatch/tests/ -q
