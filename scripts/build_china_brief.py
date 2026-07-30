@@ -110,6 +110,47 @@ table{max-width:100%}
 """
 
 
+def _canonicalise_history() -> bool:
+    """Rewrite the novelty baseline to the only part of it that is load-bearing.
+
+    demo.save_history() restamps `last_seen` on EVERY term on EVERY run. That is harmless for
+    a local demo and pathological for a committed file: this baseline is tracked so novelty
+    survives across runs, so a 6-hourly refresh would commit a 134-line pure-timestamp diff
+    four times a day, forever, burying the one event that actually matters — a term appearing
+    for the first time.
+
+    Neither timestamp is ever read. demo.score_terms decides `is_new` from `term not in
+    history`, i.e. from the presence of the KEY alone; `first_seen` and `last_seen` are
+    write-only. So the committed form keeps sorted keys and `first_seen` (cheap, stable, and
+    genuinely informative) and drops `last_seen`, which was pure churn. The file now changes
+    only when the term set changes, which is exactly the signal.
+
+    Returns True if the file changed on disk.
+    """
+    path = demo.HISTORY_PATH
+    try:
+        with open(path, encoding="utf-8") as fh:
+            before = fh.read()
+    except OSError:
+        before = ""
+    try:
+        history = json.loads(before) if before else {}
+    except json.JSONDecodeError:
+        history = {}
+
+    canonical = {
+        term: {"first_seen": meta.get("first_seen")}
+        for term, meta in sorted(history.items())
+        if isinstance(meta, dict)
+    }
+    text = json.dumps(canonical, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    if text == before:
+        return False
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    return True
+
+
 def build() -> dict:
     items, reachable = [], 0
     for url in demo.CDT_FEEDS:
@@ -130,6 +171,7 @@ def build() -> dict:
     history = demo.load_history()
     ranked = demo.score_terms(articles, history)
     demo.save_history(history, ranked)
+    baseline_changed = _canonicalise_history()
     econ = demo.economic_stress(articles)
 
     with tempfile.TemporaryDirectory() as td:
@@ -157,6 +199,7 @@ def build() -> dict:
         "n_articles": len(articles),
         "n_terms": len(ranked),
         "n_new_terms": sum(1 for r in ranked if r["is_new"]),
+        "novelty_baseline_changed": baseline_changed,
         "economic_stress_pct": econ["pct"],
         "top_terms": [{"term": r["term"], "domain": r["domain"],
                        "threat": round(r["threat"], 2), "is_new": bool(r["is_new"])}
