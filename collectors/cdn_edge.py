@@ -109,8 +109,11 @@ def is_genuine_read(obs: Observation) -> bool:
 # de-filed domain — so the two markers are replaced by the phrases those pages actually carry.
 # `未备案` is a substring of 域名未备案 / 该网站未备案 / 本网站未备案 and covers all three.
 _BLOCK_MARKERS = (
-    # legal / regulatory replacement (a substitution, not a 404)
-    ("根据相关法律法规", "legal-block"),
+    # legal / regulatory replacement (a substitution, not a 404). Only the LONG form stands
+    # alone: `根据相关法律法规和政策` is the interstitial's own wording (ddti_probe scores it
+    # 0.97, and censorwatch's weibo_censored fixture carries it verbatim). The short
+    # preamble on its own is handled by _LEGAL_CONJUNCTION below — see why there.
+    ("根据相关法律法规和政策", "legal-block"),
     # ICP filing REFUSED or revoked — the HOST declining to serve, which is a decision.
     # Anchored to the refusal wording, never the bare negation `未备案`: that also matches
     # every hosting-provider help article and ICP FAQ that DISCUSSES filing, which is the
@@ -146,6 +149,21 @@ _BLOCK_MARKERS = (
 #     healthy POP forks on OUR credentials, not on a content decision. If it is ever
 #     reinstated it must abstain, which means adding its reason to BOTH _ABSTAIN_REASONS
 #     here and undertext.ABSTAIN_REASONS — not simply reappearing in this tuple.
+
+# A CONJUNCTION, not a substring — the last member of the over-broad family.
+# `根据相关法律法规` on its own is also standard PRC privacy-policy boilerplate
+# ("我们会根据相关法律法规的要求保留您的信息…"), so as a bare marker it would classify the
+# privacy page of any compliant Chinese site as censored. But length cannot separate the two
+# — a privacy policy sails past _MIN_PRESENT_LEN — and dropping the short form entirely
+# would miss the real notices that use it.
+#
+# What actually separates them is the verb. A censorship interstitial pairs the legal
+# preamble with something being WITHHELD; a privacy policy pairs it with an obligation being
+# met. So both halves must appear in the visible text. Still lexical, still auditable, still
+# no model judging anything — a conjunction of two substring scans instead of one.
+_LEGAL_PREAMBLES = ("根据相关法律法规", "根据国家法律法规", "根据法律法规", "根据当地法律法规")
+_WITHHELD_PHRASES = ("无法显示", "无法查看", "暂时无法", "未予显示", "不予显示",
+                     "无法访问", "已被删除", "已删除", "内容已隐藏", "不予展示")
 
 # Volatile CDN headers that differ at EVERY POP/request — recorded for the audit trail but
 # NEVER fingerprinted (fingerprinting them would fake a fork at every POP pair). The fingerprint
@@ -316,10 +334,14 @@ def classify(status: int, headers: dict, body: str):
         return (False, "server-error", fp_text)
     if status < 200 or status >= 300:
         return (False, f"http-{status}", fp_text)
-    # 2xx: a block/interstitial page can still arrive as a 200 — scan the body
+    # 2xx: a block/interstitial page can still arrive as a 200 — scan the visible text
     for marker, reason in _BLOCK_MARKERS:
         if marker in low:
             return (False, reason, fp_text)
+    # the two-part legal tell: a regulatory preamble AND something withheld
+    if (any(p in low for p in _LEGAL_PREAMBLES)
+            and any(w in low for w in _WITHHELD_PHRASES)):
+        return (False, "legal-block", fp_text)
     if len(fp_text) < _MIN_PRESENT_LEN:
         return (False, "too-short", fp_text)
     return (True, "served", fp_text)

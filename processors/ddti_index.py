@@ -65,6 +65,28 @@ CURRENT_WINDOW_DAYS = 3      # what counts as "now"
 HISTORY_WINDOW_DAYS = 30     # baseline period for burst/novelty
 HALF_LIFE_DAYS = 2.0         # attention decay: a 2-day-old deletion counts half
 NOVELTY_WEIGHT = 1.5         # how hard novelty amplifies attention (the key knob)
+# Evidence shrinkage on the novelty CLAIM — OFF by default, opted into per surface.
+#
+# novelty=1.0 is granted to any term absent from the history band, whether it was seen once
+# or twenty times in the current window. On a sampled stream that is wrong: for a term seen
+# once, "absent from history" is what you would expect by chance from any rare term, and is
+# not evidence the term became sensitive. Scaling the claim by
+# recent_count / (recent_count + k) fixes it — n=1 -> 0.50, n=2 -> 0.67, n=8 -> 0.89 — which
+# is censorwatch's _MIN_SPIKE_COUNT rule ("never flag a spike on a single deletion") as a
+# curve rather than a cliff: the singleton stays ranked, it just stops outranking a term with
+# eight sightings behind it.
+#
+# BUT IT IS ONLY VALID WHERE recent_count IS A SAMPLE SIZE, and on this board it often is not.
+# In blocklist archaeology a term is added exactly once BY CONSTRUCTION — a keyword shipped in
+# version N+1 of a censorship client is a dated directive, a census of one, not a thin sample —
+# so shrinking it would damp every term identically and understate a fact we know completely.
+# Same for the airport surface, where each divergence is emitted once per cycle.
+#
+# So the default is 0.0 (no shrinkage, previous behaviour exactly) and the CDT deletion stream
+# — the one surface where recent_count really is a sample — opts in at its call site. A shared
+# processor changing what it claims for every consumer at once is how the last several bugs
+# on this board happened.
+NOVELTY_EVIDENCE_K = 0.0
 TOP_N = 25
 ALERT_THREAT_THRESHOLD = 3.0  # push terms above this to the alert stream
 
@@ -165,6 +187,7 @@ def compute_selectivity_novelty(
     history_window_days: int = HISTORY_WINDOW_DAYS,
     half_life_days: float = HALF_LIFE_DAYS,
     novelty_weight: float = NOVELTY_WEIGHT,
+    novelty_evidence_k: float = NOVELTY_EVIDENCE_K,
     top_n: int = TOP_N,
     domain_map: dict = None,
 ) -> dict:
@@ -226,12 +249,18 @@ def compute_selectivity_novelty(
         recent_rate = s["recent_count"] / current_window_days
         is_new = s["hist_count"] == 0
         if is_new:
-            novelty = 1.0
+            raw_novelty = 1.0
             burst_ratio = None
         else:
             burst_ratio = recent_rate / baseline_rate if baseline_rate > 0 else float("inf")
             excess = max(0.0, burst_ratio - 1.0)
-            novelty = excess / (1.0 + excess)  # bounded to [0,1)
+            raw_novelty = excess / (1.0 + excess)  # bounded to [0,1)
+        # How much evidence stands behind the novelty claim. A burst ratio computed from a
+        # single sighting is as thin as a first-ever sighting, so both are shrunk the same
+        # way rather than special-casing is_new.
+        evidence = s["recent_count"] / (s["recent_count"] + novelty_evidence_k) \
+            if novelty_evidence_k > 0 else 1.0
+        novelty = raw_novelty * evidence
         threat = combine_threat(s["attention"], novelty, novelty_weight)
         ranked.append({
             "term": term,
@@ -239,6 +268,10 @@ def compute_selectivity_novelty(
             "threat": round(threat, 4),
             "attention": round(s["attention"], 4),
             "novelty": round(novelty, 4),
+            # The unshrunk claim and the weight it carries, published separately so the
+            # ranking can be audited rather than taken on trust.
+            "novelty_raw": round(raw_novelty, 4),
+            "novelty_evidence": round(evidence, 4),
             "burst_ratio": (round(burst_ratio, 2) if burst_ratio not in (None, float("inf")) else burst_ratio),
             "is_new": is_new,
             "recent_count": s["recent_count"],
@@ -251,7 +284,8 @@ def compute_selectivity_novelty(
     return {
         "generated_at": now.isoformat(),
         "window": {"current_days": current_window_days, "history_days": history_window_days,
-                   "half_life_days": half_life_days, "novelty_weight": novelty_weight},
+                   "half_life_days": half_life_days, "novelty_weight": novelty_weight,
+                   "novelty_evidence_k": novelty_evidence_k},
         "scope": "censor_attention_allocation (numerator-only; not a true deletion rate)",
         "n_observations_used": n_used,
         "n_terms": len(ranked),

@@ -157,3 +157,42 @@ def test_a_real_interstitial_inside_markup_is_still_caught():
     body = '<html><body><div class="tip"><h1>根据相关法律法规，该内容无法显示</h1></div></body></html>'
     present, reason, _ = classify(200, {}, body)
     assert present is False and reason == "legal-block"
+
+
+# ── the legal preamble: the last member of the over-broad family ─────────────
+# `根据相关法律法规` alone is also standard PRC privacy-policy boilerplate, and unlike the ICP
+# footer it cannot be separated by length — a privacy policy sails past the min-length floor.
+# What separates them is the verb: an interstitial pairs the preamble with something WITHHELD,
+# a privacy policy pairs it with an obligation being met. Hence a conjunction.
+
+def test_a_privacy_policy_mentioning_the_law_is_not_a_block():
+    body = ("<p>隐私政策：我们会根据相关法律法规的要求保留您的个人信息，"
+            "并在法定期限内予以保存。</p>" + "<p>" + "条款内容说明。" * 80 + "</p>")
+    present, reason, _ = classify(200, {}, body)
+    assert present is True, f"a compliant site's privacy page is not censorship (got {reason})"
+
+
+def test_the_preamble_alone_on_a_long_page_is_not_a_block():
+    body = "<p>根据相关法律法规</p><p>" + "其他正常内容。" * 80 + "</p>"
+    assert classify(200, {}, body)[0] is True
+
+
+def test_both_real_interstitial_wordings_still_block():
+    """Short form (preamble + withheld verb) and long form (the fixture's own wording).
+    Tightening must not have bought precision by going blind to the real notices."""
+    for body in (
+        "根据相关法律法规，该内容无法显示",
+        "根据相关法律法规和政策,此内容暂时无法显示。",
+        "根据法律法规，本页内容未予显示",
+    ):
+        present, reason, _ = classify(200, {}, body)
+        assert present is False, f"{body!r} must still block"
+        assert reason == "legal-block", f"{body!r} -> {reason}"
+
+
+def test_a_legal_notice_naming_a_deletion_reports_the_deletion():
+    """First match wins, and the more specific reason is the better one: a notice that says
+    the post was removed is `deleted`, not the generic `legal-block`. Both are present=False,
+    so nothing downstream changes — only the evidence gets sharper."""
+    present, reason, _ = classify(200, {}, "根据相关法律法规，该微博已被删除")
+    assert present is False and reason == "deleted"

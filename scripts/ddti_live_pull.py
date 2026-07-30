@@ -376,6 +376,12 @@ async def main():
         observations, now, current_window_days=45,
         history_window_days=FEED_HISTORY_DAYS, top_n=30,
         domain_map=dmap,
+        # This surface, and only this one, opts into evidence shrinkage on novelty. CDT's feed
+        # is a SAMPLE of what the censor touched, so a term seen once is thin evidence and must
+        # not outrank one seen eight times purely because neither appears in the history band.
+        # Surfaces where a single sighting is a complete fact — blocklist version diffs, airport
+        # cycles — deliberately leave it off. See NOVELTY_EVIDENCE_K.
+        novelty_evidence_k=1.0,
     )
     index["source_feeds"] = reachability
     index["feed_health"] = health
