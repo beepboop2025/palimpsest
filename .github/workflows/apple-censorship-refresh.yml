@@ -1,0 +1,55 @@
+name: Refresh Apple Censorship census
+
+# GreatFire's whole App Store corpus (~108k apps) for the Chinese storefront,
+# and the CATEGORY COMPOSITION of what is removed — VPN, Tibet, Uyghur, LGBTQ+,
+# News Media. The composition is the finding: a raw unavailability percentage
+# says how much is gone, the tags say what the removals were for.
+#
+# Complements app-storefront-refresh rather than duplicating it. That one is our
+# own live panel and catches an individual delisting the day it happens; this is
+# scale and composition, and does not feed that signal's rate.
+#
+# Daily rather than 6-hourly: GreatFire's corpus scan does not move hourly, and
+# polling it faster would be noise plus load on a volunteer project.
+#
+# Vantage-insensitive, keyless, stdlib-only.
+
+on:
+  schedule:
+    - cron: "37 5 * * *"       # once a day
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apple-censorship-refresh
+  cancel-in-progress: false
+
+jobs:
+  apple-censorship:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Pull the AppleCensorship corpus and publish the census
+        run: python -m scripts.apple_censorship_pull
+
+      - name: Commit & push if the census changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/apple-censorship-latest.json readings/apple-censorship-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: Apple Censorship census refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

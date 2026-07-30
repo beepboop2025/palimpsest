@@ -128,6 +128,9 @@ _ALLOWED = {
     "collectors/in_path_interference.py":
         "GET the OONI aggregation API through an injectable opener, with a 429 backoff loop "
         "that any migration must preserve; same shape and same blocker as ooni_gfw.py.",
+    "collectors/apple_censorship.py":
+        "GET GreatFire's keyless AppleCensorship dashboard API through an injectable opener; "
+        "fixed well-known host, uncapped body read — plain migration candidate.",
 
     # ── core / censorwatch: the async fetch machinery ──────────────────────────────────────
     "core/safe_fetch.py":

@@ -25,10 +25,12 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "inside-view-latest.json")
 HIST = os.path.join(READINGS, "inside-view-history.jsonl")
 
-# Globalping allows 250 unauthenticated probe-credits/hour; a full panel round
-# costs len(PANEL) * (CN_PROBES + CONTROL_PROBES). Refuse to start a round that
-# cannot finish rather than publish a half-measured panel.
-CREDIT_BUDGET = 250
+# Globalping allows 250 unauthenticated probe-credits per rolling hour. A full
+# panel round costs len(PANEL) * (CN_PROBES + CONTROL_PROBES) = 49, so the
+# 6-hourly cadence spends 196/day against a 250/hour ceiling and no pre-flight
+# budget check is needed. If the budget is exhausted anyway, RateLimited is
+# raised mid-panel and the round abstains whole rather than publishing the
+# domains that happened to be measured before the wall.
 
 
 def _band(rate: float) -> str:
