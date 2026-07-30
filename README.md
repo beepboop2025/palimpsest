@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
-![tests](https://img.shields.io/badge/tests-629%20passing-brightgreen.svg)
+[![tests](https://github.com/beepboop2025/palimpsest/actions/workflows/tests.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/tests.yml)
 ![verify](https://img.shields.io/badge/verify-offline%2C%20one%20command-06d6e0.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
@@ -276,11 +276,11 @@ PYTHONPATH=. python3 scripts/fear_index_demo.py     # Fear Index across document
 PYTHONPATH=. python3 scripts/forecaster_demo.py     # the censorship forecaster (a "called shot")
 
 # Tests, core (stdlib only, no install, no venv):
-PYTHONPATH=. python3 -m pytest tests/ -q                      # 629 passing, 2 skipped
+PYTHONPATH=. python3 -m pytest tests/ -q                      # stdlib only, no install needed
 
 # Tests, full (adds the censorwatch layer, which needs the dependencies):
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-PYTHONPATH=. python3 -m pytest tests/ censorwatch/tests/ -q   # 677 passing
+PYTHONPATH=. python3 -m pytest tests/ censorwatch/tests/ -q   # adds the velocity-leg suite
 ```
 
 The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
