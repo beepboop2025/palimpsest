@@ -5,6 +5,54 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Verifiable Eval Registry · Palimpsest</title>
 <meta name="description" content="Tamper-evident, pre-registered AI model evaluations. The questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised or cherry-picked. Any model, any suite. Evals you can prove were not gamed.">
+<link rel="canonical" href="https://palimpsest.info/readings/eval-registry.html">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Verifiable Eval Registry · Palimpsest">
+<meta property="og:description" content="AI evaluations you can prove were not gamed. Questions frozen before the model is queried, every result hash-chained and externally anchored.">
+<meta property="og:url" content="https://palimpsest.info/readings/eval-registry.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Verifiable Eval Registry · Palimpsest">
+<meta name="twitter:description" content="AI evaluations you can prove were not gamed. Questions frozen before the model is queried, every result hash-chained and externally anchored.">
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+
+<meta name="theme-color" content="#06070a">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
+<meta name="apple-mobile-web-app-title" content="Palimpsest">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "@id": "https://palimpsest.info/readings/eval-registry.html#dataset",
+  "name": "Palimpsest Verifiable Eval Registry",
+  "description": "Pre-registered, hash-chained AI model evaluations. Each probe set is hashed and sealed into an append-only chain before any model is queried; each run records the model, a hash of its full responses and its metrics, and must reference a probe set frozen earlier. Anyone can recompute the chain offline with the standard library alone. Roots are anchored outside the project's own infrastructure via Internet Archive snapshots and OpenTimestamps.",
+  "url": "https://palimpsest.info/readings/eval-registry.html",
+  "keywords": ["AI evaluation", "pre-registration", "tamper-evident log", "hash chain", "refusal drift", "LLM censorship", "model audit"],
+  "creator": { "@id": "https://palimpsest.info/#org" },
+  "publisher": { "@id": "https://palimpsest.info/#org" },
+  "isAccessibleForFree": true,
+  "license": "https://opensource.org/licenses/MIT",
+  "distribution": [
+    {
+      "@type": "DataDownload",
+      "encodingFormat": "application/json",
+      "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json"
+    },
+    {
+      "@type": "DataDownload",
+      "encodingFormat": "application/x-ndjson",
+      "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl"
+    }
+  ]
+}
+</script>
 <style>
   :root{--bg:#06070a;--panel:#0d1016;--line:rgba(255,255,255,.09);--fg:#e7edf3;--mut:#8ca0b3;--dim:#64748b;--cy:#06d6e0;--red:#ff5b52;--amb:#f4b740;--grn:#37c88b;--vio:#a78bfa}
   *{box-sizing:border-box}
@@ -36,6 +84,9 @@
   td.model{color:#fff}
   td.rate{color:var(--amb);font-variant-numeric:tabular-nums;text-align:right}
   td.hash{color:var(--dim);font-size:11px}
+  /* wide tables scroll inside their own box; the page itself never scrolls sideways */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tw table{min-width:560px}
   .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:12.5px}
   .kv .k{color:var(--mut)} .kv .v{color:var(--fg);word-break:break-all}
   .cmd{margin-top:14px;background:#04050a;border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12px;color:var(--cy);overflow-x:auto}
@@ -68,8 +119,8 @@
       registry removes that move. The questions are frozen before any model is queried, and every
       result seals into a hash chain the moment it is published. After that, nobody can revise it.
       Not a lab, not a government, not us. Chinese state-aligned models and Western frontier models
-      sit here side by side, on the same frozen questions, watched over time for what they quietly
-      stop answering. Recompute the chain yourself.</div>
+      are held here to the same machinery, each on its own frozen suite, watched over time for what
+      they quietly stop answering. Recompute the chain yourself.</div>
 
     <div id="app"><div class="err">Loading the registry…</div></div>
 
@@ -98,17 +149,34 @@
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
   ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = (v, d=1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : "–";
+// A count is printed only when it was actually measured. Never zero-fill.
+const cnt = v => (typeof v === "number" && isFinite(v)) ? String(v) : "–";
+// Abstentions: published when recorded, otherwise derived from the frozen set
+// size minus the probes this model actually scored. If neither is available the
+// cell abstains rather than implying zero.
+function abstained(o, frozen){
+  if (typeof o.n_abstained === "number" && isFinite(o.n_abstained)) return String(o.n_abstained);
+  if (typeof frozen === "number" && isFinite(frozen) &&
+      typeof o.n_probes === "number" && isFinite(o.n_probes) && frozen >= o.n_probes)
+    return String(frozen - o.n_probes);
+  return "–";
+}
 
 function render(d){
   const verified = d.verified === true;
   const runs = Array.isArray(d.recent_runs) ? d.recent_runs : [];
-  const rows = runs.map(r => `<tr>
+  const rows = runs.map(r => {
+    const m = r.metrics || {};
+    return `<tr>
       <td class="model">${esc(r.model)}</td>
       <td>${esc(r.suite)}</td>
-      <td class="rate">${num((r.metrics||{}).suppression_rate_pct)}%</td>
+      <td class="rate">${num(m.suppression_rate_pct)}%</td>
+      <td class="rate">${cnt(m.n_probes)}</td>
+      <td class="rate">${abstained(m)}</td>
       <td class="hash">${esc(r.probe_set_hash)}…</td>
       <td class="hash">${esc(r.responses_hash)}…</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 
   document.getElementById("app").innerHTML = `
     <div class="stat">
@@ -120,9 +188,14 @@ function render(d){
 
     <div class="card">
       <h2>Recent runs</h2>
-      ${rows ? `<table>
-        <tr><th>model</th><th>suite</th><th>suppression</th><th>probe set</th><th>responses</th></tr>
-        ${rows}</table>`
+      ${rows ? `<div class="tw"><table>
+        <tr><th>model</th><th>suite</th><th>suppression</th><th>n scored</th><th>abstained</th><th>probe set</th><th>responses</th></tr>
+        ${rows}</table></div>
+        <div style="color:var(--dim);font-size:11.5px;margin-top:10px">Every rate carries its own
+        denominator: <b>n scored</b> is how many probes in that run returned a usable response and
+        therefore produced the percentage beside it, and <b>abstained</b> is how many were dropped
+        because the response was unusable. Runs of the same suite can differ in n, so the rates are
+        not directly comparable without reading both columns.</div>`
         : `<div style="color:var(--dim);font-size:12px">no runs recorded yet</div>`}
     </div>
 
@@ -138,7 +211,10 @@ function render(d){
         <div class="k">head hash</div><div class="v">${esc(d.head_hash || "–")}</div>
         <div class="k">external anchors</div><div class="v" id="anchors">checking…</div>
       </div>
-      <div class="cmd">$ git clone the repo &nbsp;&amp;&amp;&nbsp; python3 scripts/verify_eval_registry.py&nbsp; # recompute + check pre-registration</div>
+      <div class="cmd">$ git clone https://github.com/beepboop2025/palimpsest &amp;&amp; cd palimpsest<br>$ python3 scripts/verify_eval_registry.py</div>
+      <div style="color:var(--dim);font-size:11.5px;margin-top:8px">Recomputes the chain and checks
+      that every run references a probe set frozen before it. Standard library only — no install, no
+      key, no account.</div>
     </div>`;
   if (window.TiktoMotion) {
     document.querySelectorAll(".stat .n").forEach((n, i) => {
@@ -192,11 +268,14 @@ function renderDrift(d){
     : (d.model ? [{model:d.model, suppression_rate_pct:d.suppression_rate_pct,
                    refused_now:d.refused_now, drift_vs_prior:d.drift_vs_prior}] : []);
   if(!models.length) return;
+  const frozen = d.n_probes;
   const rows = models.map(m => {
     const refused = Array.isArray(m.refused_now) ? m.refused_now : [];
     return `<tr>
       <td class="model">${esc(m.model)}</td>
       <td class="rate">${num(m.suppression_rate_pct)}%</td>
+      <td class="rate">${cnt(m.n_probes)}</td>
+      <td class="rate">${abstained(m, frozen)}</td>
       <td>${refused.length ? refused.map(esc).join(", ") : "&ndash;"}</td>
       <td style="color:var(--dim)">${driftLine(m)}</td>
     </tr>`;
@@ -204,11 +283,11 @@ function renderDrift(d){
   document.getElementById("drift").innerHTML = `
     <div class="card">
       <h2>Frontier refusal drift · undisclosed behavioral change (${esc(models.length)} models)</h2>
-      <table>
-        <tr><th>model</th><th>refuses</th><th>refused probes</th><th>drift vs last run</th></tr>
+      <div class="tw"><table>
+        <tr><th>model</th><th>refuses</th><th>n scored</th><th>abstained</th><th>refused probes</th><th>drift vs last run</th></tr>
         ${rows}
-      </table>
-      <div style="color:var(--dim);font-size:11.5px;margin-top:10px">The same frozen set of ${esc(d.n_probes)} benign, legitimate questions, put to each frontier model across time. New refusals (answered then refused) are erasure events. Every run is sealed into the registry above, so a model that quietly stops answering a question is caught and cannot be un-recorded. Drift shows once a model has a second run to compare.</div>
+      </table></div>
+      <div style="color:var(--dim);font-size:11.5px;margin-top:10px">One frozen set of benign, legitimate questions${(typeof frozen === "number" && isFinite(frozen)) ? ` (${esc(frozen)} probes)` : ""}, put to each frontier model across time. A model's rate is computed over the probes it actually returned a usable response to, which is the <b>n scored</b> column, not over the whole set — the models do not all share one denominator, so read each rate against its own n. <b>Abstained</b> is the remainder, dropped rather than counted either way. New refusals (answered then refused) are erasure events. Every run is sealed into the registry above, so a model that quietly stops answering a question is caught and cannot be un-recorded. Drift shows once a model has a second run to compare.</div>
     </div>`;
   if (window.TiktoMotion)
     document.querySelectorAll("#drift table tr").forEach((r, i) => TiktoMotion.stagger(r, i, 40));

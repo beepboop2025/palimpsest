@@ -4,6 +4,22 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PALIMPSEST · DDTI — Censor Attention Monitor</title>
+<meta name="description" content="A live threat board of what Chinese censors are spending capacity on right now. Terms are ranked by censor attention × novelty from the China Digital Times 404 archive and Minitrue directives — the numerator only, never presented as a true deletion rate." />
+<link rel="canonical" href="https://palimpsest.info/dashboards/ddti_dashboard.html" />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Palimpsest" />
+<meta property="og:title" content="DDTI Censor Attention Monitor · Palimpsest" />
+<meta property="og:description" content="What the censorship apparatus is spending capacity on, right now — terms ranked by attention × novelty, with the deleted headlines behind each one." />
+<meta property="og:url" content="https://palimpsest.info/dashboards/ddti_dashboard.html" />
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="DDTI Censor Attention Monitor · Palimpsest" />
+<meta name="twitter:description" content="What the censorship apparatus is spending capacity on, right now — terms ranked by attention × novelty, with the deleted headlines behind each one." />
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png" />
+
 <meta name="theme-color" content="#0a0a0c" />
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg" />
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -106,6 +122,10 @@
 
   /* ── layout ── */
   .grid{display:grid; grid-template-columns:1fr 320px; gap:28px; align-items:start}
+  /* grid items default to min-width:auto, so one nowrap redacted headline can
+     force the whole 1fr track past the viewport. Pin them to 0 so the track
+     stays inside the screen and the ellipsis below actually engages. */
+  .grid > *{min-width:0}
   @media(max-width:900px){.grid{grid-template-columns:1fr}}
   .section-h{
     display:flex; align-items:baseline; gap:14px; margin:0 0 16px;
@@ -170,6 +190,7 @@
     position:relative; font-size:11.5px; color:var(--bone); padding:5px 9px;
     background:var(--redact); border-left:2px solid var(--signal-deep);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:default;
+    min-width:0; max-width:100%;
   }
   /* Redaction overlay removed — row content is always visible, no hover needed. */
   .leak::after{ display:none; }
@@ -210,6 +231,7 @@
     <a href="/dashboards/ddti_observatory.html">Observatory</a>
     <a href="/dashboards/ddti_dashboard.html" aria-current="page">Monitor</a>
     <a href="/readings/generative-firewall-index.html">Firewall</a>
+    <a href="/readings/eval-registry.html">Evals</a>
     <a href="/for-researchers.html">Data</a>
     <a href="/support.html">Support</a>
   </div>

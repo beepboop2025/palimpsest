@@ -608,7 +608,13 @@ def build_dashboard(summ, per_concept, rows, drift, history):
                 frac = f'{r["censored_samples"]}/{r["valid_samples"]}'
                 tds += (f'<td class="lab" style="color:{LABEL_C[r["label"]]}">'
                         f'{esc(LABEL_T[r["label"]])}<span class="frac">{frac}</span></td>')
-            out += (f'<tr><td class="concept"><b>{esc(zh)}</b><span>{esc(en)}</span></td>{tds}</tr>')
+            # The page is lang="en", so the Chinese concept label has to name its own
+            # script or a screen reader reads it in an English voice. Every label
+            # rendered here is Simplified by construction — CONCEPTS is the frozen
+            # Simplified table, and the Traditional leg (CONCEPTS_HANT) is an ask-script
+            # cohort, never a row label — so the tag is zh-Hans.
+            out += (f'<tr><td class="concept"><b lang="zh-Hans">{esc(zh)}</b>'
+                    f'<span>{esc(en)}</span></td>{tds}</tr>')
         return out
     sens = grid([(p["concept"], p["zh"], p["en"]) for p in per_concept], "s")
     ctrl = grid([(f"{d.lower()}/{z}", z, "neutral control")
@@ -626,9 +632,12 @@ def build_dashboard(summ, per_concept, rows, drift, history):
                     '(flips inside overlapping uncertainty bands are not reported).</p>')
         def pfrac(x):
             return f'{x["from_p"]:.0%} → {x["to_p"]:.0%} censored'
-        li = "".join(f'<li style="color:#e08a7a">▲ <b>{esc(x["concept"].split("/")[-1])}</b> '
+        # Same reason as the grid: the concept id's tail is the Simplified query string.
+        li = "".join(f'<li style="color:#e08a7a">▲ '
+                     f'<b lang="zh-Hans">{esc(x["concept"].split("/")[-1])}</b> '
                      f'({esc(x["model"])}): {pfrac(x)} — newly censored</li>' for x in nc)
-        li += "".join(f'<li style="color:#19c393">▼ <b>{esc(x["concept"].split("/")[-1])}</b> '
+        li += "".join(f'<li style="color:#19c393">▼ '
+                      f'<b lang="zh-Hans">{esc(x["concept"].split("/")[-1])}</b> '
                       f'({esc(x["model"])}): {pfrac(x)} — relaxed</li>' for x in rel)
         return f"<ul>{li}</ul>"
 
@@ -638,6 +647,22 @@ def build_dashboard(summ, per_concept, rows, drift, history):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Generative Firewall Index — {summ['date']}</title>
+<meta name="description" content="A recurring, uncertainty-banded measurement of what state-aligned Chinese LLMs will not discuss. Every concept is asked repeatedly in Simplified Chinese, Traditional Chinese and English, scored as a censored proportion with a 95% Wilson band, and a change is reported only when the two runs' bands separate.">
+<link rel="canonical" href="https://palimpsest.info/readings/generative-firewall-index.html">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Generative Firewall Index · Palimpsest">
+<meta property="og:description" content="Censorship tomography of state-aligned LLMs, re-measured on a schedule. Sampled, uncertainty-banded, controls checked, and the raw run published beside the reading.">
+<meta property="og:url" content="https://palimpsest.info/readings/generative-firewall-index.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Generative Firewall Index · Palimpsest">
+<meta name="twitter:description" content="Censorship tomography of state-aligned LLMs, re-measured on a schedule. Sampled, uncertainty-banded, controls checked, and the raw run published beside the reading.">
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+
 <meta name="theme-color" content="#000000">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">

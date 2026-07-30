@@ -1,7 +1,7 @@
 /* Palimpsest service worker — network-first so the observatory always shows the
    freshest censorship data when online, and falls back to the last cached copy
    only when offline. Never serve stale data to a connected user. */
-const CACHE = "palimpsest-v2";
+const CACHE = "palimpsest-v3";
 const SHELL = [
   "/",
   "/dashboards/ddti_observatory.html",
@@ -26,14 +26,21 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const req = e.request;
-  if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== "GET" || url.origin !== location.origin) return;
+  // Several signal pages bust their own cache with ?_=<timestamp>. Keyed by the
+  // full URL those would mint a fresh entry on every load — the cache grows
+  // without bound and the offline fallback never matches the next request. Key
+  // every entry by origin + pathname instead, and read it back ignoring search,
+  // so the last good copy is still there when the reader goes offline.
+  const key = url.origin + url.pathname;
   e.respondWith(
     fetch(req)
       .then((res) => {
         const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        caches.open(CACHE).then((c) => c.put(key, copy)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(req))
+      .catch(() => caches.match(req, { ignoreSearch: true }))
   );
 });

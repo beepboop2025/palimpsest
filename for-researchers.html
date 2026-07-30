@@ -46,7 +46,9 @@
   .btn{display:inline-block;background:var(--tk-live,#06d6e0);color:#04141a;font-weight:700;text-decoration:none;padding:9px 15px;border-radius:8px;font-size:13px;font-family:var(--tk-font-mono);letter-spacing:.02em}
   .btn.ghost{background:transparent;color:var(--tk-text-1);border:1px solid var(--tk-line-3,#383838)}
   .btn.ghost:hover{border-color:var(--tk-live);color:var(--tk-live)}
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:6px 0 8px}
   table{width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:13.5px}
+  .tscroll table{margin:0;min-width:620px}
   th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--tk-line-1,#1a1a1a);vertical-align:top}
   th{color:var(--tk-text-3,#64748b);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-family:var(--tk-font-mono)}
   td b{color:#fff}
@@ -75,6 +77,8 @@
     <a href="/">Home</a>
     <a href="/dashboards/ddti_observatory.html">Observatory</a>
     <a href="/dashboards/ddti_dashboard.html">Monitor</a>
+    <a href="/readings/erasure-observatory.html">Erasure</a>
+    <a href="/readings/eval-registry.html">Eval Registry</a>
     <a href="/readings/generative-firewall-index.html">Firewall</a>
     <a href="/for-researchers.html" aria-current="page">Data</a>
     <a href="/support.html">Support</a>
@@ -94,6 +98,7 @@
 
   <h2>Live signals</h2>
   <p>Each signal recomputes on a fixed schedule and publishes a machine readable file plus a committed time series. Signals that would need a network vantage inside China are held back on purpose until that measurement can be verified, rather than published as a guess.</p>
+  <div class="tscroll">
   <table>
     <tr><th>Signal</th><th>What it measures</th><th>Source</th><th>Updated</th><th>Status</th></tr>
     <tr>
@@ -126,7 +131,7 @@
     </tr>
     <tr>
       <td><b>Eval Registry</b><br>sealed model evaluations</td>
-      <td>Pre-registered, hash-chained audits of Chinese state-aligned and Western frontier models on the same frozen probes, including refusal drift over time. Results cannot be revised after sealing; anyone can recompute the chain.</td>
+      <td>Pre-registered, hash-chained audits of Chinese state-aligned and Western frontier models, including refusal drift over time. The registry runs two separate frozen suites and no model has ever been run under both — <code>cn-sensitive-generative-firewall-v1</code> covers the state-aligned models, <code>frontier-overrefusal-v1</code> covers the Western frontier panel. The two families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite; they are not scored against a shared question set. Results cannot be revised after sealing; anyone can recompute the chain.</td>
       <td>Public model APIs</td>
       <td>every 6 hours</td>
       <td><span class="pill live">LIVE</span></td>
@@ -153,6 +158,7 @@
       <td><span class="pill off">SUPPRESSED</span></td>
     </tr>
   </table>
+  </div>
 
   <h2>Get the data</h2>
   <p>All files are plain JSON. The <code>*-latest.json</code> files hold the current snapshot; the <code>*-history.jsonl</code> files are append-only time series, one compact record per run, so you can chart a signal over time.</p>
@@ -222,7 +228,7 @@ model evaluations [live dataset]. https://palimpsest.info
   <h2>Reproducibility and provenance</h2>
   <p>Palimpsest is fully open source under the MIT licence. The signals recompute inside public, auditable GitHub Actions, and every refresh is a timestamped commit in the repository, so the entire history of what was measured, and when, is public and verifiable. There is no private backend deciding the numbers.</p>
   <p>Two of the surfaces go further than the commit trail: the erasure ledger and the eval registry are hash-chained and Merkle-committed, so they stay verifiable even outside git. Clone the repo and run <code>python3 scripts/verify_ledger.py</code> or <code>python3 scripts/verify_eval_registry.py</code>; exit 0 means every seal recomputes and, for the registry, that every run referenced a probe set frozen before the model was queried. This constraint applies to us too. If we edited a published number, our own verifier would report the break.</p>
-  <p>The roots are also deposited with parties we do not control. Every refresh that moves a root gets an Internet Archive snapshot of the served chain files and an OpenTimestamps stamp into Bitcoin (the <code>.ots</code> proofs live in <a href="readings/anchors/">readings/anchors/</a> and verify with the standard client, against the blockchain, not against us). An independent witness on separate infrastructure re-verifies the served chains on a timer and alerts if any previously seen history changes; anyone can run one with <code>python3 ops/witness/palimpsest_witness.py</code>. Single attestations verify without downloading the chain via <code>python3 scripts/prove_inclusion.py &lt;seq&gt;</code>. The full layer-by-layer trust model, including what these layers cannot prove, is written down in <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">docs/INTEGRITY.md</a>.</p>
+  <p>The roots are also deposited with parties we do not control. Every refresh that moves a root gets an Internet Archive snapshot of the served chain files and an OpenTimestamps stamp into Bitcoin (the <code>.ots</code> proofs live in <a href="https://github.com/beepboop2025/palimpsest/tree/main/readings/anchors">readings/anchors/</a> and verify with the standard client, against the blockchain, not against us; <a href="readings/anchors-latest.json">anchors-latest.json</a> is the currently stamped root). An independent witness on separate infrastructure re-verifies the served chains on a timer and alerts if any previously seen history changes; anyone can run one with <code>python3 ops/witness/palimpsest_witness.py</code>. Single attestations verify without downloading the chain via <code>python3 scripts/prove_inclusion.py &lt;seq&gt;</code>. The full layer-by-layer trust model, including what these layers cannot prove, is written down in <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">docs/INTEGRITY.md</a>.</p>
   <p class="links">
     <a href="https://github.com/beepboop2025/palimpsest">Repository</a> ·
     <a href="https://github.com/beepboop2025/palimpsest/commits/main">Commit history (audit trail)</a> ·
@@ -231,7 +237,8 @@ model evaluations [live dataset]. https://palimpsest.info
 
   <h2>Read Chinese? We need four hours of your judgment</h2>
   <p>The Generative Firewall Index labels every model answer with a transparent rule based classifier: refused, state narrative, or answered. A researcher whose work this instrument builds on asked us a fair question: would actual humans agree with those labels? We want to find out properly, and that part cannot be automated. We need two volunteer coders.</p>
-  <p><b>The task.</b> We send you a short manual and a spreadsheet of about 200 short texts, some Chinese, some English. Each one is a chatbot's answer to a question. You read the answer and pick one of three labels. That's the whole job. Around four hours, alone, on your own schedule inside two weeks.</p>
+  <p><b>The task.</b> We send you a short manual and a spreadsheet of 123 model answers, some Chinese, some English. Each one is a chatbot's answer to a question. Lengths vary a lot — a third of them are under 500 characters, the median is 988, and the longest is 3,587, so a few are a screen or two of reading. You read the answer and pick one of three labels. That's the whole job. Around four hours, alone, on your own schedule inside two weeks.</p>
+  <p><b>Why 123 and not more.</b> The sampler asked for 60 refusals and 50 party-line answers and could only draw 5 and 28 — outright refusals and undisguised state-narrative answers are simply rare in the corpus the models produced. We shipped the shortfall rather than pad those cells with near misses, so agreement on the refused and party_line strata will carry wide uncertainty and we will report it that way. The exact targets, pool sizes, and shortfalls are recorded in <code>validation/out/manifest.json</code>.</p>
   <p><b>Who.</b> Anyone who reads Chinese fluently. Any nationality, no technical background, the manual carries everything you need. One hard restriction: if you are currently in mainland China or Hong Kong, please do not volunteer. The texts touch politically sensitive topics, and no dataset is worth risk to you.</p>
   <p><b>The rules.</b> Work alone, no comparing notes with the other coder until you are both done, and no AI help of any kind. If a machine assists the judgment, the study measures nothing. The entire point is unaided human agreement.</p>
   <p><b>What you get.</b> Your name in the acknowledgments here and in the research paper this feeds, or full anonymity if you prefer. Either way, a public instrument that watches censorship gets a stronger spine because you read carefully for an afternoon.</p>

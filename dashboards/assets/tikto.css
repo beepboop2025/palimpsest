@@ -28,12 +28,15 @@
   --tk-line-2: #272727;
   --tk-line-3: #383838;
 
-  /* text ramp — white down to muted slate */
+  /* text ramp — white down to muted slate. Every step clears WCAG AA (4.5:1)
+     against every surface it is used on, down to --tk-surface-3 (#151515):
+     text-2 7.12, text-3 5.35, text-4 4.54. text-4 carries chart footnotes,
+     axis labels and section labels, so it is a legibility floor, not decoration. */
   --tk-text-0: #ffffff;
   --tk-text-1: #e2e8f0;
   --tk-text-2: #94a3b8;
-  --tk-text-3: #64748b;
-  --tk-text-4: #475569;
+  --tk-text-3: #7d8ca3;
+  --tk-text-4: #6f8098;
 
   /* THE accent — "live / act here". Used with discipline so it always means something. */
   --tk-live:      #06d6e0;
@@ -86,8 +89,10 @@
   --tk-text-0: #0a1322;
   --tk-text-1: #1c2738;
   --tk-text-2: #45556b;
-  --tk-text-3: #66758c;
-  --tk-text-4: #8a98ac;
+  /* same AA floor as the dark ramp, measured against --tk-surface-3 (#ecf0f4):
+     text-2 6.63, text-3 5.53, text-4 4.79. */
+  --tk-text-3: #52607a;
+  --tk-text-4: #5c6a80;
   --tk-live:      #0892b8;
   --tk-live-dim:  #0b6e8c;
   --tk-live-glow: rgba(8, 146, 184, 0.22);
@@ -317,10 +322,20 @@ html.tk, body.tk { background: #000; }
   .tkm .tkm-item { animation: none; }
 }
 
-/* visible keyboard focus everywhere (quality floor) */
-.tk :where(button, a, [tabindex]):focus-visible {
+/* visible keyboard focus everywhere (quality floor) — inputs included, so the
+   range sliders and the command line are reachable without a mouse */
+.tk :where(button, a, input, [tabindex]):focus-visible {
   outline: 2px solid var(--tk-live); outline-offset: 2px; border-radius: 4px;
 }
+/* sliders keep their pill shape while showing the ring */
+.tk-slider:focus-visible {
+  outline: 2px solid var(--tk-live); outline-offset: 3px; border-radius: 999px;
+}
+.tk-terminal input:focus-visible { outline: 2px solid var(--tk-live); outline-offset: 2px; }
+/* pointer focus stays quiet; the ring is for keyboard navigation only */
+.tk :where(button, a, input, [tabindex]):focus:not(:focus-visible),
+.tk-slider:focus:not(:focus-visible),
+.tk-terminal input:focus:not(:focus-visible) { outline: none; }
 
 /* ============================ OPERATOR SURFACES =========================== */
 .tk-panel {
@@ -349,7 +364,6 @@ html.tk, body.tk { background: #000; }
   height: 6px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--tk-line-3), var(--tk-live));
-  outline: none;
 }
 .tk-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -385,7 +399,6 @@ html.tk, body.tk { background: #000; }
   flex: 1;
   min-width: 0;
   border: 0;
-  outline: none;
   background: transparent;
   color: var(--tk-text-1);
   font-family: var(--tk-font-mono);

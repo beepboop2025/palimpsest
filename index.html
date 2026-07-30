@@ -60,9 +60,9 @@
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#dataset",
       "name": "Palimpsest Censorship Observatory Dataset",
-      "description": "Continuously updated measurements of authoritarian censorship plus a verifiable AI evaluation registry: (1) deletion-as-data, archived public posts watched for scrubbing, ranked by what the censor focuses on now, validated against six documented censorship events; (2) the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite, against neutral controls, in Chinese and English; and (3) the Verifiable Eval Registry, pre-registered, hash-chained model evaluations of Chinese and Western frontier models that cannot be revised after publication, including refusal drift over time. Every finding ships its raw evidence.",
+      "description": "Continuously updated measurements of authoritarian censorship: (1) deletion-as-data, archived public posts watched for scrubbing, ranked by censor attention and novelty, validated against six documented censorship events; and (2) the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite, against neutral controls, in Chinese and English. Every finding ships its raw evidence.",
       "url": "https://palimpsest.info/",
-      "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censorship velocity"],
+      "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censor attention"],
       "creator": { "@id": "https://palimpsest.info/#org" },
       "publisher": { "@id": "https://palimpsest.info/#org" },
       "isAccessibleForFree": true,
@@ -73,6 +73,24 @@
         "@type": "DataDownload",
         "encodingFormat": "application/json",
         "contentUrl": "https://palimpsest.info/readings/latest.json"
+      }
+    },
+    {
+      "@type": "Dataset",
+      "@id": "https://palimpsest.info/#eval-registry",
+      "name": "Palimpsest Verifiable Eval Registry",
+      "description": "A tamper-evident, pre-registered public record of AI model evaluations. The probe set is frozen and its hash sealed before any model is queried, every result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. It runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1, covering Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1, covering Western frontier models (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Both families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and refusal drift is the diff against that model's own previous sealed run. Anyone can recompute the chain offline from the public repository.",
+      "url": "https://palimpsest.info/readings/eval-registry.html",
+      "keywords": ["AI evaluation registry", "verifiable evals", "tamper-evident", "pre-registration", "hash chain", "Merkle root", "refusal drift", "over-refusal", "AI transparency", "frontier model evaluation", "LLM refusal measurement"],
+      "creator": { "@id": "https://palimpsest.info/#org" },
+      "publisher": { "@id": "https://palimpsest.info/#org" },
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "temporalCoverage": "2026-07/..",
+      "distribution": {
+        "@type": "DataDownload",
+        "encodingFormat": "application/x-ndjson",
+        "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl"
       }
     }
   ]
@@ -100,7 +118,7 @@
       "name": "What is the Palimpsest censorship observatory measuring?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Two things. First, deletion as data: which topics the Chinese censor is most actively scrubbing right now, measured as censorship velocity and validated against six documented censorship events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large language models refuse or rewrite, tested in Chinese and English against neutral Western control models to prove the suppression is deliberate and selective."
+        "text": "Two things. First, deletion as data: which topics the Chinese censor is most actively scrubbing right now, ranked by censor attention and novelty and validated against six documented censorship events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large language models refuse or rewrite, tested in Chinese and English against neutral Western control models to prove the suppression is deliberate and selective."
       }
     },
     {
@@ -108,7 +126,7 @@
       "name": "What is China censoring right now?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Palimpsest tracks this live. It archives public Chinese posts, detects when they are deleted, and ranks the topics being scrubbed fastest as a real-time censorship index. The live readings and raw JSON evidence are published at palimpsest.info, updated continuously."
+        "text": "Palimpsest tracks this live. It archives public Chinese posts, detects when they are deleted, and ranks the topics drawing the most censor attention as a real-time censorship index. The live readings and raw JSON evidence are published at palimpsest.info, updated continuously."
       }
     },
     {
@@ -124,7 +142,7 @@
       "name": "What is the Verifiable Eval Registry?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The questions are frozen and sealed before any model is queried, each result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not frozen first, or a number edited after publication, fails verification. It currently holds sealed audits of Chinese state-aligned models and Western frontier models side by side, on the same frozen questions, and anyone can recompute the chain from the public repository."
+        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The questions are frozen and sealed before any model is queried, each result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not frozen first, or a number edited after publication, fails verification. It currently runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1 for the Western frontier panel (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese state-aligned models and Western frontier models are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and anyone can recompute the chain from the public repository."
       }
     },
     {
@@ -216,7 +234,7 @@
       <h2>Verifiable Eval Registry</h2>
       <p>AI evaluations nobody can revise after publication. Questions frozen before any model is asked,
       every result hash-chained. Chinese state-aligned and Western frontier models on the same record,
-      side by side, watched for refusal drift over time.</p>
+      each on its own frozen suite, watched for refusal drift over time.</p>
       <a class="btn" href="/readings/eval-registry.html">Open the registry &rarr;</a>
     </div>
     <div class="card" data-tkm style="--tkm-d:55ms">
@@ -293,15 +311,15 @@
 
     <p class="q">What is the Palimpsest censorship observatory measuring?</p>
     <p class="a">Two things. First, deletion as data: which topics the Chinese censor is most actively
-    scrubbing right now, measured as censorship velocity and validated against six documented censorship
-    events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large
+    scrubbing right now, ranked by censor attention and novelty and validated against six documented
+    censorship events. Second, the Generative Firewall Index: the share of sensitive answers that state-aligned large
     language models refuse or rewrite, tested in Chinese and English against neutral Western control models
     to prove the suppression is deliberate and selective.</p>
 
     <p class="q">What is China censoring right now?</p>
     <p class="a">Palimpsest tracks this live. It archives public Chinese posts, detects when they are
-    deleted, and ranks the topics being scrubbed fastest as a real-time censorship index. The live readings
-    and raw JSON evidence are published here, updated continuously.</p>
+    deleted, and ranks the topics drawing the most censor attention as a real-time censorship index. The
+    live readings and raw JSON evidence are published here, updated continuously.</p>
 
     <p class="q">What is the Generative Firewall Index?</p>
     <p class="a">The Generative Firewall Index is a live measure of what a state's AI is engineered to hide.
@@ -313,9 +331,13 @@
     <p class="a">The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations.
     The questions are frozen and sealed before any model is queried, each result is hash-chained to the
     one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were
-    not frozen first, or a number edited after publication, fails verification. It currently holds sealed
-    audits of Chinese state-aligned models and Western frontier models side by side, on the same frozen
-    questions, and anyone can recompute the chain from the
+    not frozen first, or a number edited after publication, fails verification. It currently runs two
+    separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the
+    Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and
+    frontier-overrefusal-v1 for the Western frontier panel (openai/gpt-4o-mini,
+    anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese
+    state-aligned models and Western frontier models are held to the same tamper-evident, pre-registered
+    machinery, each on its own frozen suite, and anyone can recompute the chain from the
     <a href="https://github.com/beepboop2025/palimpsest">public repository</a>.</p>
 
     <p class="q">Is Palimpsest free and open source?</p>
