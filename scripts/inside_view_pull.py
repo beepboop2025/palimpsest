@@ -25,6 +25,14 @@ READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "inside-view-latest.json")
 HIST = os.path.join(READINGS, "inside-view-history.jsonl")
 
+# Bumped whenever the METHOD changes in a way a reader must see, even if the
+# numbers do not move. Write-if-changed compares readings, so without this a
+# methodology correction that leaves block_rate at 1.0 would never reach the
+# published file — the site would keep advertising the superseded method and the
+# superseded vantage list. v2: in-China probes pinned to datacenter ASNs, and a
+# single-ASN result no longer counts as blocked.
+METHOD_VERSION = 2
+
 # Globalping allows 250 unauthenticated probe-credits per rolling hour. A full
 # panel round costs len(PANEL) * (CN_PROBES + CONTROL_PROBES) = 49, so the
 # 6-hourly cadence spends 196/day against a 250/hour ceiling and no pre-flight
@@ -106,6 +114,7 @@ def main() -> None:
 
     out = {
         "generated_at": now.isoformat(),
+        "method_version": METHOD_VERSION,
         "source": "Globalping (api.globalping.io) volunteer probes inside mainland China",
         "scope": ("DNS answers received by probes INSIDE China for a fixed panel of "
                   "censored and benign domains, classified against a same-round "
@@ -148,7 +157,11 @@ def main() -> None:
     # finding does not manufacture a commit and a false sense of movement.
     changed = (prev.get("block_rate") != out["block_rate"]
                or (prev.get("control") or {}).get("state") != control["state"]
-               or prev.get("n_censored_blocked") != out["n_censored_blocked"])
+               or prev.get("n_censored_blocked") != out["n_censored_blocked"]
+               # A method correction must reach the published file even when the
+               # numbers are identical, or the site keeps advertising a method
+               # and a vantage list that no longer apply.
+               or prev.get("method_version") != METHOD_VERSION)
 
     os.makedirs(READINGS, exist_ok=True)
     if changed or not prev:
