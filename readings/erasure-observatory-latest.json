@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-30T14:32:57.089842+00:00",
+  "generated_at": "2026-07-30T19:37:41.867050+00:00",
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 49.0,
+  "erasure_index": 41.5,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -15,15 +15,20 @@
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
       "value": 57.9,
       "source": "OONI aggregation (probe_cc=CN)",
-      "reading": "ooni-gfw-latest.json"
+      "reading": "ooni-gfw-latest.json",
+      "as_of": "2026-07-30T14:37:32.064448+00:00",
+      "age_days": 0.21,
+      "age_hours": 5.0
     },
     {
       "layer": "model",
       "title": "Model erasure",
       "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
-      "value": 40.0,
+      "value": 25.0,
       "source": "Generative Firewall (aligned LLM panel)",
-      "reading": "2026-07-01_generative-firewall-index.json"
+      "reading": "latest.json",
+      "as_of": "2026-07-30T09:25:58.129274+00:00",
+      "age_days": 0.42
     },
     {
       "layer": "narrative",
@@ -50,23 +55,28 @@
   ],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 93,
+    "entries": 95,
     "verified": true,
-    "merkle_root": "44955c36e7404a62305cc5ab0ee76edf381dd76950024437802c8e0f6012a71b",
-    "head_hash": "d6417885ab0fc5831ba72dbaec5837e40162a91a20ba388ff92333ab598c2c30",
+    "merkle_root": "78c1aba0d1bf5b71f36f8ed01fc85fd0c1c6f262dee4bdaf6f7175d30d21d482",
+    "head_hash": "4a94ce8024b3e26ac7db7585cf6dd7beae8390d04fc8151ed2bdc85c50f12972",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-30T14:32:57.089842+00:00",
+    "head_ts": "2026-07-30T19:37:41.867050+00:00",
     "by_source": {
-      "ooni-gfw": 76,
-      "generative-firewall": 1,
+      "ooni-gfw": 77,
+      "generative-firewall": 2,
       "censored-planet": 15,
       "baike-redaction": 1
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 92,
-        "entry_hash": "d6417885ab0fc5831ba72dbaec5837e40162a91a20ba388ff92333ab598c2c30"
+        "seq": 93,
+        "entry_hash": "6aa3a2b68ab51614d048cc5a9660f1c9218ea4c1ef70fb5b270481dd7ce1449b"
+      },
+      {
+        "source": "generative-firewall",
+        "seq": 94,
+        "entry_hash": "4a94ce8024b3e26ac7db7585cf6dd7beae8390d04fc8151ed2bdc85c50f12972"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
