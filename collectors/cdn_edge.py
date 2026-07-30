@@ -83,7 +83,42 @@ _MAX_BYTES = 8 * 1024 * 1024
 # findings that would flow unchanged into the DDTI index. Everything classify() emits (incl.
 # 4xx / 451 / block-markers) IS a genuine response from the edge — a real content decision that
 # legitimately forks — and stays in. Line: fail loud not silent; never fake a finding from an error.
-_ABSTAIN_REASONS = frozenset({"inert-no-fetch", "no-edge-ip", "fetch-error"})
+_ABSTAIN_REASONS = frozenset({"inert-no-fetch", "no-edge-ip", "fetch-error", "wall",
+                              # A near-empty 200 is a truncated response, a JS shell or an
+                              # interstitial skeleton — it is not content, and it is not
+                              # evidence of a block either. It used to resolve to a finding,
+                              # so one empty response at one POP forked against a healthy POP
+                              # and invented a GEO_FORK. censorwatch reached this conclusion
+                              # first: "a 200 with a near-empty body is an interstitial, not
+                              # real content" -> UNKNOWN. Same reasoning, same verdict.
+                              "too-short"})
+
+# Anti-bot / auth / rate-limit walls. These arrive as a 200 with a full body, so without an
+# explicit check they sail past every status tell and get classified "served" — the edge's
+# CAPTCHA reported as the customer's content. Found by running this classifier over
+# censorwatch's fixture corpus: captcha.html and login_wall.html both came back
+# (present=True, "served").
+#
+# A wall is NOT a content decision. It is the edge declining to talk to US, so it is
+# evidence about our own credentials, not about censorship. Reporting it present fabricates
+# "the content is fine"; reporting it absent fabricates a block. Either way, differencing a
+# walled POP against a healthy one invents a GEO_FORK. So a wall ABSTAINS — reason "wall",
+# which is in _ABSTAIN_REASONS above, so is_genuine_read drops it from both the cross-POP
+# comparison and the time detector.
+#
+# censorwatch/classifier.py reached this conclusion first and maps the same pages to
+# UNKNOWN; its _ANTIBOT_MARKERS is the sibling of this list, and a test pins the two
+# together so a marker added to one cannot silently miss the other.
+_WALL_MARKERS = (
+    # captcha / human verification
+    "验证码", "访问验证", "安全验证", "滑动验证", "拖动滑块", "geetest", "captcha",
+    # login / auth walls
+    "请登录", "登录后查看", "立即登录", "passport.weibo", "sign in to", "log in to continue",
+    # rate-limit / WAF interstitials
+    "访问频率过高", "请求过于频繁", "您的访问出错了", "访问过于频繁",
+    "just a moment", "cf-browser-verification", "checking your browser",
+    "attention required", "access denied",
+)
 
 
 def is_genuine_read(obs: Observation) -> bool:
@@ -334,7 +369,13 @@ def classify(status: int, headers: dict, body: str):
         return (False, "server-error", fp_text)
     if status < 200 or status >= 300:
         return (False, f"http-{status}", fp_text)
-    # 2xx: a block/interstitial page can still arrive as a 200 — scan the visible text
+    # 2xx: WALLS FIRST. A captcha or login wall arrives as a 200 with a full body, so it
+    # must be caught before the block-marker scan and before the length floor or it reads as
+    # served content. It abstains rather than resolving either way — see _WALL_MARKERS.
+    for marker in _WALL_MARKERS:
+        if marker in low:
+            return (False, "wall", fp_text)
+    # a block/interstitial page can also arrive as a 200 — scan the visible text
     for marker, reason in _BLOCK_MARKERS:
         if marker in low:
             return (False, reason, fp_text)

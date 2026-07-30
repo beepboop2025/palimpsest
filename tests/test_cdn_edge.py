@@ -106,9 +106,18 @@ def test_block_marker_pop_forks_against_clean_pop():
     pops = [Pop("SG", ("198.51.100.30",)), Pop("LAX", ("198.51.100.40",))]
     clean = "正文内容 " * 80
 
+    # A REALISTIC interstitial. The old fixture was the bare 7-character preamble
+    # `根据相关法律法规`, which only ever forked because the marker was over-broad: the
+    # preamble alone is also PRC privacy-policy boilerplate, and a 7-char body is below the
+    # length floor. A real legal interstitial names what was withheld and has a page around
+    # it, so that is what this now serves.
+    interstitial = ("<html><body><div class=\"tip\">"
+                    "根据相关法律法规，该内容无法显示。" + "请返回首页。" * 30 +
+                    "</div></body></html>")
+
     def fake(host, path, ip):
         # SG clean, LAX shows a 200 legal interstitial
-        return _resp(200, clean) if ip == "198.51.100.30" else _resp(200, "根据相关法律法规")
+        return _resp(200, clean) if ip == "198.51.100.30" else _resp(200, interstitial)
 
     _, divs, _ = probe_object(TARGET, pops, fetch=fake)
     assert any(d.kind == GEO_FORK for d in divs)

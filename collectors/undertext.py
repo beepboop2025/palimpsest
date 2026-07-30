@@ -231,7 +231,13 @@ PLATFORM_FORK = "platform_fork"  # same topic, two platforms, narrative diverges
 # Everything a real response produces (404s, block interstitials, legal-replacement pages) IS
 # a genuine content decision and stays in. collectors/cdn_edge.py enforces the same line at
 # its round driver; this is the module-level version every DivergenceDetector inherits.
-ABSTAIN_REASONS = frozenset({"inert-no-fetch", "no-edge-ip", "fetch-error", "transport-error"})
+# "wall" — a captcha / login / rate-limit interstitial. It arrives as a healthy 200, so it
+# resolves to neither present nor absent: it is the edge declining to talk to US, evidence
+# about our credentials rather than about censorship. It must appear in BOTH abstain sets
+# (here and cdn_edge._ABSTAIN_REASONS) because two different gates read them — this one
+# inside DivergenceDetector.observe/cross_vantage, the other in probe_object.
+ABSTAIN_REASONS = frozenset({"inert-no-fetch", "no-edge-ip", "fetch-error", "transport-error",
+                             "wall", "too-short"})
 
 
 def is_genuine_read(obs) -> bool:

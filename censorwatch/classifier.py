@@ -35,6 +35,16 @@ except Exception as _e:  # pragma: no cover
     _cn_classify = None
     logger.warning("[censorwatch] ddti_probe.classify_post_status unavailable: %s", _e)
 
+# Visible-text extraction, shared with cdn_edge so the two classifiers cannot disagree about
+# what "the page says". Same lazily-safe import discipline as above: if the collector stack is
+# absent this degrades to scanning the raw body, which is the OLD behaviour — noisier, never
+# less safe, and it keeps this module importable on its own.
+try:
+    from collectors.cdn_edge import visible_text as _visible
+except Exception as _e:  # pragma: no cover
+    _visible = lambda t: t or ""  # noqa: E731
+    logger.warning("[censorwatch] cdn_edge.visible_text unavailable, scanning raw body: %s", _e)
+
 # ── Outside-China interstitials → UNKNOWN (NOT a deletion) ───────────
 # These pages typically return HTTP 200, so they MUST be caught before the
 # deletion-marker check or they masquerade as a live post.
@@ -94,9 +104,17 @@ def classify_state(
     # 2) Interstitials FIRST (they return 200 and would otherwise read as alive).
     if final_url and any(h in final_url.lower() for h in _WALL_URL_HINTS):
         return LivenessState.UNKNOWN, f"wall_redirect:{final_url[:80]}"
-    low = text.lower()
+    # Scan VISIBLE TEXT, not raw bytes. Eastmoney's list pages load their login widget from
+    # `//cfgpassport2.eastmoney.com/captcha/scripts/em_capt.js`, so the raw body of every
+    # healthy guba page contains the substring "captcha" inside a script src. Scanning bytes
+    # therefore marked the whole source UNKNOWN forever: the liveness probe could never
+    # return LIVE, so no deletion could ever be confirmed and the velocity signal would have
+    # been silent no matter how much was actually being scrubbed. Found by running this
+    # classifier over the 184k guba_list.html fixture that had been sitting beside it.
+    visible = _visible(text)
+    low = visible.lower()
     for m in _ANTIBOT_MARKERS:
-        if m in text or m in low:
+        if m in visible or m in low:
             return LivenessState.UNKNOWN, f"antibot_marker:{m}"
     if status == 200 and len(text.strip()) < _MIN_BODY_CHARS:
         return LivenessState.UNKNOWN, "empty_body"

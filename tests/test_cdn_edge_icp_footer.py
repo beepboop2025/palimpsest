@@ -125,10 +125,22 @@ def test_an_attribute_pointing_at_an_error_page_is_not_a_block():
     assert present is True, f"a meta attribute is not a block (got {reason})"
 
 
-def test_english_prose_containing_access_denied_is_not_a_block():
+def test_english_prose_containing_access_denied_abstains_rather_than_accusing():
+    """`access denied` moved out of the block markers and into the WALL markers, so prose
+    containing it no longer produces a censorship finding — it abstains.
+
+    That is deliberate, and it is a trade with a real cost: an article discussing access
+    control is excluded from the cross-POP comparison, so a genuine block at another POP
+    would not fork against it. A missed detection. The alternative was what it did before —
+    publishing that page as censored — and this project's asymmetry is settled: fabricating
+    is fatal, missing is survivable. The list is shared with censorwatch and pinned in sync
+    by tests/test_classifiers_share_one_corpus.py."""
+    from collectors.cdn_edge import _ABSTAIN_REASONS
+
     body = _long_clean_page("<p>Access denied users will be redirected to the help centre.</p>")
     present, reason, _ = classify(200, {}, body)
-    assert present is True, f"prose about access denial is not a block (got {reason})"
+    assert present is False and reason in _ABSTAIN_REASONS, (
+        f"must abstain, not accuse (got present={present} reason={reason})")
 
 
 def test_style_blocks_cannot_trigger_markers_either():
