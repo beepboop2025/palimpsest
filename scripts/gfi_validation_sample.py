@@ -12,7 +12,18 @@ Outputs (to validation/out/, git-ignored; the CI workflow uploads them as artifa
   coding_sheet.csv   — BLIND: id, ask language, question, full response. No model, no label.
   coding_sheet_2.csv — identical copy for the second coder.
   answer_key.jsonl   — machine label + model/concept/cue evidence per id. Coders must not read.
-  manifest.json      — strata targets vs achieved (shortfalls are stated, never papered over).
+  manifest.json      — strata targets vs achieved (shortfalls are stated, never papered over),
+                       plus the DESIGN WEIGHTS the draw implies (see below).
+
+The draw is deliberately DISPROPORTIONATE: rare strata are taken near-exhaustively while the
+huge `answered` pool is thinned. A rate computed on the raw sample is therefore not a rate on
+the population of responses. So the manifest records, per stratum, both the pool size and how
+many rows were actually drawn, and the resulting Horvitz-Thompson weight
+
+    stratum_weights[s] = pool_sizes[s] / drawn[s]
+
+which scripts/gfi_validation_agreement.py applies before any precision/recall number is read
+as a population figure. A stratum with nothing drawn gets weight None, never a stand-in value.
 
 Fails LOUD: no key -> exit 2; a stratum shortfall is printed and recorded in the manifest.
 Stdlib only. Reuses the reading runner's fetch path so the sample is drawn from exactly the
@@ -103,11 +114,12 @@ def stratify(records):
             pools["near_boundary"].append(r)
         elif r["machine_label"] in pools:
             pools[r["machine_label"]].append(r)
-    sample, shortfalls = [], {}
+    sample, shortfalls, drawn = [], {}, {}
     for stratum, want in TARGETS.items():
         pool = pools[stratum]
         rng.shuffle(pool)
         got = pool[:want]
+        drawn[stratum] = len(got)          # the sampling denominator for this stratum's weight
         if len(got) < want:
             shortfalls[stratum] = {"wanted": want, "got": len(got)}
             print(f"SHORTFALL: stratum {stratum} wanted {want}, pool had {len(got)}", flush=True)
@@ -117,10 +129,19 @@ def stratify(records):
     rng.shuffle(sample)                    # blind: strata must not be inferable from order
     for n, r in enumerate(sample, 1):
         r["id"] = f"VAL-{n:03d}"
-    return sample, {s: len(p) for s, p in pools.items()}, shortfalls
+    return sample, {s: len(p) for s, p in pools.items()}, drawn, shortfalls
 
 
-def write_outputs(sample, pool_sizes, shortfalls):
+def design_weights(pool_sizes, drawn):
+    """Horvitz-Thompson weight per stratum: how many population rows each drawn row stands for.
+
+    Undefined when nothing was drawn from a stratum — that is None, never 0 and never 1.
+    """
+    return {s: (pool_sizes[s] / n if n else None) for s, n in drawn.items()}
+
+
+def write_outputs(sample, pool_sizes, drawn, shortfalls):
+    weights = design_weights(pool_sizes, drawn)
     os.makedirs(OUT_DIR, exist_ok=True)
     sheet = os.path.join(OUT_DIR, "coding_sheet.csv")
     with open(sheet, "w", newline="", encoding="utf-8") as f:
@@ -139,11 +160,18 @@ def write_outputs(sample, pool_sizes, shortfalls):
     with open(os.path.join(OUT_DIR, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump({"generated_at": datetime.now(timezone.utc).isoformat(),
                    "k_per_cell": K, "seed": SEED, "targets": TARGETS,
-                   "pool_sizes": pool_sizes, "achieved": len(sample),
+                   "pool_sizes": pool_sizes, "drawn": drawn,
+                   "stratum_weights": weights,
+                   "weighting_note": ("disproportionate stratified draw: apply "
+                                      "stratum_weights[s] = pool_sizes[s] / drawn[s] before "
+                                      "reading any rate as a population figure"),
+                   "achieved": len(sample),
                    "shortfalls": shortfalls,
                    "panel": [m.model_id for m in PANEL],
                    "codebook": "validation/CODEBOOK.md"}, f, ensure_ascii=False, indent=2)
     print(f"wrote {len(sample)} rows -> {OUT_DIR} (sheet, sheet_2, answer_key, manifest)")
+    print("stratum weights (pool/drawn): " + ", ".join(
+        f"{s}={'n/a' if w is None else round(w, 3)}" for s, w in sorted(weights.items())))
 
 
 def main():
@@ -156,8 +184,8 @@ def main():
         print(f"FATAL: only {len(records)} usable responses — collection too thin for a "
               f"defensible sample, aborting", file=sys.stderr)
         return 3
-    sample, pool_sizes, shortfalls = stratify(records)
-    write_outputs(sample, pool_sizes, shortfalls)
+    sample, pool_sizes, drawn, shortfalls = stratify(records)
+    write_outputs(sample, pool_sizes, drawn, shortfalls)
     return 0
 
 

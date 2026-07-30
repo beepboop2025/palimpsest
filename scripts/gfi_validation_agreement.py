@@ -2,17 +2,30 @@
 
 Usage:
   python scripts/gfi_validation_agreement.py \
-      --coder1 validation/out/coding_sheet.csv \
-      --coder2 validation/out/coding_sheet_2.csv \
-      --key    validation/out/answer_key.jsonl \
-      [--report validation/out/agreement_report.json]
+      --coder1   validation/out/coding_sheet.csv \
+      --coder2   validation/out/coding_sheet_2.csv \
+      --key      validation/out/answer_key.jsonl \
+      --manifest validation/out/manifest.json \
+      [--report  validation/out/agreement_report.json]
 
 Reports, in order:
+  0. COVERAGE — how many of the answer key's rows each coder actually labelled, and how many
+     they share. A one-sided shortfall (one coder took half the sheet) is a study failure, not
+     a smaller n: with no shared rows there is no agreement to compute and the run is fatal.
   1. HUMAN vs HUMAN — Cohen's kappa on the 3-label set. If humans cannot agree with each
      other, the construct is fuzzy and machine scores are moot (say so, loudly).
   2. MACHINE vs HUMAN CONSENSUS — precision / recall / F1 per label, machine graded against
      rows where both coders agree. Disagreement rows are listed for adjudication and are
      EXCLUDED from the consensus (never resolved silently in the machine's favour).
+
+Two numbers are printed for (2), never one:
+  * RAW SAMPLE COUNTS — unweighted tallies over the coded rows. These describe the SAMPLE.
+  * POPULATION ESTIMATE — the same quantities under Horvitz-Thompson weights
+    w_s = pool_size[s] / drawn[s] read from the sampler's manifest. The sample is drawn
+    disproportionately (rare strata near-exhaustively, the large `answered` pool thinned), so
+    an unweighted recall reads high by a wide margin. The weighted figure is the one that
+    describes the population of responses; both are shown so the correction is auditable, and
+    the weighted figure is None — never silently the raw one — when the manifest is absent.
 
 The published claim this feeds: if party_line precision holds and recall is modest, the index
 is a FLOOR on narrative substitution — an undercount, disclosed as such.
@@ -48,29 +61,100 @@ def read_key(path):
     return out
 
 
+def read_manifest_weights(path):
+    """Design weights w_s = pool_size[s] / drawn[s] from the sampler's manifest.
+
+    The validation sample is disproportionately stratified, so every drawn row stands for a
+    different number of population rows. Refuses to guess: a manifest without pool_sizes and
+    drawn counts is fatal rather than silently weight-1.
+    """
+    with open(path, encoding="utf-8") as f:
+        m = json.load(f)
+    pools, drawn = m.get("pool_sizes") or {}, m.get("drawn") or {}
+    if not pools or not drawn:
+        sys.exit(f"FATAL: {path} carries no pool_sizes/drawn counts — it predates weighted "
+                 f"scoring. Re-draw with scripts/gfi_validation_sample.py, or run without "
+                 f"--manifest and quote only the raw sample counts.")
+    weights = {}
+    for s, n in drawn.items():
+        if s not in pools:
+            sys.exit(f"FATAL: {path}: stratum {s!r} has a draw count but no pool size")
+        if n:                              # nothing drawn: no weight is defined, and no row
+            weights[s] = pools[s] / n      # from that stratum can reach the analysis anyway
+    return weights, pools, drawn
+
+
 def cohens_kappa(pairs):
-    """pairs: list of (label1, label2)."""
+    """pairs: list of (label1, label2). Returns (raw agreement, kappa).
+
+    kappa is None when chance agreement is 1.0 — i.e. both coders used one and the same single
+    label throughout. There is then no agreement-beyond-chance to measure, and reporting 1.000
+    would state a perfect result where the statistic is 0/0.
+    """
     n = len(pairs)
+    if not n:
+        raise ValueError("cohens_kappa: no paired rows")
     po = sum(1 for a, b in pairs if a == b) / n
     c1, c2 = Counter(a for a, _ in pairs), Counter(b for _, b in pairs)
     pe = sum((c1[l] / n) * (c2[l] / n) for l in LABELS)
-    return po, (po - pe) / (1 - pe) if pe < 1 else 1.0
+    return po, ((po - pe) / (1 - pe) if pe < 1 else None)
 
 
-def prf(machine, gold):
-    """Per-label precision/recall/F1 of machine labels against gold consensus."""
+def _ratio(num, den):
+    """A rate, or None when the denominator is empty. 0/n is 0.0 — a real, measured zero."""
+    return num / den if den else None
+
+
+def _f1(p, r):
+    """Harmonic mean of precision and recall. Undefined only if either input is undefined;
+    p == r == 0.0 is a genuine, measured 0.0 and is reported as such."""
+    if p is None or r is None:
+        return None
+    return 2 * p * r / (p + r) if p + r else 0.0
+
+
+def _rnd(x, places=3):
+    return round(x, places) if x is not None else None
+
+
+def prf(machine, gold, strata=None, weights=None):
+    """Per-label precision/recall/F1 of machine labels against gold consensus.
+
+    tp/fp/fn and the top-level precision/recall/f1 are RAW SAMPLE COUNTS — they describe the
+    coded rows, not the population, because the sample is disproportionately stratified.
+
+    When `strata` (id -> stratum) and `weights` (stratum -> w_s) are supplied, each row is also
+    accumulated with its Horvitz-Thompson weight w_s = pool_size[s] / drawn[s], giving the
+    population estimate under "weighted". If a single row's stratum has no weight the weighted
+    estimate is None for every label — an unweighted number is never passed off as a weighted
+    one, and the raw counts are never replaced.
+    """
+    weighted_ok = bool(strata) and bool(weights) and all(
+        strata.get(i) in weights for i in gold)
     out = {}
     for l in LABELS:
-        tp = sum(1 for i in gold if machine.get(i) == l and gold[i] == l)
-        fp = sum(1 for i in gold if machine.get(i) == l and gold[i] != l)
-        fn = sum(1 for i in gold if machine.get(i) != l and gold[i] == l)
-        p = tp / (tp + fp) if tp + fp else None
-        r = tp / (tp + fn) if tp + fn else None
-        f1 = (2 * p * r / (p + r)) if p and r else None
-        out[l] = {"tp": tp, "fp": fp, "fn": fn,
-                  "precision": round(p, 3) if p is not None else None,
-                  "recall": round(r, 3) if r is not None else None,
-                  "f1": round(f1, 3) if f1 is not None else None}
+        tp = fp = fn = 0
+        wtp = wfp = wfn = 0.0
+        for i in gold:
+            m, g = machine.get(i), gold[i]
+            is_tp, is_fp, is_fn = (m == l and g == l), (m == l and g != l), (m != l and g == l)
+            tp, fp, fn = tp + is_tp, fp + is_fp, fn + is_fn
+            if weighted_ok:
+                w = weights[strata[i]]
+                wtp, wfp, wfn = wtp + w * is_tp, wfp + w * is_fp, wfn + w * is_fn
+        p, r = _ratio(tp, tp + fp), _ratio(tp, tp + fn)
+        rec = {"basis": "raw sample counts (unweighted)",
+               "tp": tp, "fp": fp, "fn": fn,
+               "precision": _rnd(p), "recall": _rnd(r), "f1": _rnd(_f1(p, r))}
+        if weighted_ok:
+            wp, wr = _ratio(wtp, wtp + wfp), _ratio(wtp, wtp + wfn)
+            rec["weighted"] = {"basis": "Horvitz-Thompson, w_s = pool_size[s] / drawn[s]",
+                               "tp": round(wtp, 2), "fp": round(wfp, 2), "fn": round(wfn, 2),
+                               "precision": _rnd(wp), "recall": _rnd(wr),
+                               "f1": _rnd(_f1(wp, wr))}
+        else:
+            rec["weighted"] = None
+        out[l] = rec
     return out
 
 
@@ -79,19 +163,53 @@ def main():
     ap.add_argument("--coder1", required=True)
     ap.add_argument("--coder2", required=True)
     ap.add_argument("--key", required=True)
+    ap.add_argument("--manifest", default=None,
+                    help="sampler manifest.json; supplies the stratum weights without which "
+                         "no rate here is a population rate")
     ap.add_argument("--report", default=None)
     args = ap.parse_args()
 
     c1, c2, key = read_sheet(args.coder1), read_sheet(args.coder2), read_key(args.key)
-    ids = sorted(set(c1) & set(c2) & set(key))
+    weights = pools = drawn = None
+    if args.manifest:
+        weights, pools, drawn = read_manifest_weights(args.manifest)
+
+    # COVERAGE: a coder who labelled only part of the sheet must be visible as such, not
+    # absorbed into a quietly smaller n.
+    k1, k2 = set(c1) & set(key), set(c2) & set(key)
+    ids = sorted(k1 & k2)
+    print(f"\nCOVERAGE (answer key holds {len(key)} rows):")
+    print(f"  coder1 labelled {len(k1)} ({len(key) - len(k1)} unlabelled)")
+    print(f"  coder2 labelled {len(k2)} ({len(key) - len(k2)} unlabelled)")
+    print(f"  coded by BOTH   {len(ids)}  (only coder1: {len(k1 - k2)}, "
+          f"only coder2: {len(k2 - k1)})")
+    for name, sheet in (("coder1", c1), ("coder2", c2)):
+        stray = set(sheet) - set(key)
+        if stray:
+            print(f"  WARNING: {name} has {len(stray)} labelled ids absent from the answer key "
+                  f"(e.g. {sorted(stray)[:3]}) — wrong sheet, or an edited id column?")
+    if not ids:
+        sys.exit("FATAL: the two coders share NO coded rows. Inter-rater agreement is not "
+                 "defined on a split sheet — double coding means both coders label the SAME "
+                 "rows independently, not half each. Re-issue the full sheet to both coders. "
+                 "No agreement, consensus or machine score is computed.")
     if len(ids) < len(key):
-        print(f"note: {len(key) - len(ids)} of {len(key)} rows lack labels from both coders "
+        print(f"  note: {len(key) - len(ids)} of {len(key)} rows lack labels from both coders "
               f"and are excluded", flush=True)
+    if min(len(k1), len(k2)) < 0.8 * max(len(k1), len(k2)):
+        print("  WARNING: the two coders' coverage is lopsided — one of them left a large part "
+              "of the sheet blank. Agreement measured only where they overlap can flatter a "
+              "study that was never fully coded.")
 
     pairs = [(c1[i], c2[i]) for i in ids]
     po, kappa = cohens_kappa(pairs)
-    print(f"\nHUMAN vs HUMAN (n={len(ids)}): raw agreement {po:.1%}, Cohen's kappa {kappa:.3f}")
-    if kappa < 0.6:
+    kappa_txt = "UNDEFINED" if kappa is None else f"{kappa:.3f}"
+    print(f"\nHUMAN vs HUMAN (n={len(ids)}): raw agreement {po:.1%}, Cohen's kappa {kappa_txt}")
+    if kappa is None:
+        print("  WARNING: kappa is undefined — both coders used a single identical label for "
+              "every row, so chance agreement is 1.0 and there is no agreement beyond chance "
+              "to measure. The sample carries no discrimination; do not quote a kappa.")
+    elif kappa < 0.6:
         print("  WARNING: kappa < 0.6 — humans do not reliably agree; sharpen the codebook "
               "and re-code BEFORE quoting any machine-agreement number.")
 
@@ -102,12 +220,31 @@ def main():
     machine = {i: key[i]["machine_label"] for i in consensus}
     # near-boundary rows were machine-labelled "answered"; the key's stratum field keeps them
     # visible so a party_line recall miss can be traced back to the boundary design.
-    scores = prf(machine, consensus)
-    print(f"\nMACHINE vs CONSENSUS (n={len(consensus)} agreed rows):")
+    strata = {i: key[i].get("stratum") for i in consensus}
+    analysed = Counter(s for s in strata.values() if s is not None)
+    scores = prf(machine, consensus, strata=strata, weights=weights)
+    weighted_ok = scores[LABELS[0]]["weighted"] is not None
+
+    print(f"\nMACHINE vs CONSENSUS (n={len(consensus)} agreed rows)")
+    print("  RAW SAMPLE COUNTS — describe the coded sample, NOT the population of responses:")
     for l in LABELS:
         s = scores[l]
-        print(f"  {l:<11} precision={s['precision']} recall={s['recall']} f1={s['f1']} "
+        print(f"    {l:<11} precision={s['precision']} recall={s['recall']} f1={s['f1']} "
               f"(tp={s['tp']} fp={s['fp']} fn={s['fn']})")
+    if weighted_ok:
+        print("  POPULATION ESTIMATE — Horvitz-Thompson, w_s = pool_size[s] / drawn[s]:")
+        print("    weights: " + ", ".join(
+            f"{s}={weights[s]:.3f} ({pools[s]}/{drawn[s]}, {analysed.get(s, 0)} analysed)"
+            for s in sorted(weights)))
+        for l in LABELS:
+            s = scores[l]["weighted"]
+            print(f"    {l:<11} precision={s['precision']} recall={s['recall']} f1={s['f1']} "
+                  f"(weighted tp={s['tp']} fp={s['fp']} fn={s['fn']})")
+    else:
+        print("  POPULATION ESTIMATE: UNAVAILABLE — no usable stratum weights (pass "
+              "--manifest validation/out/manifest.json). The raw counts above are all that "
+              "was measured; on this disproportionate draw they overstate recall, so do NOT "
+              "publish them as rates over responses.")
     if disagreements:
         print(f"\n{len(disagreements)} rows need adjudication (excluded from consensus):")
         for d in disagreements[:10]:
@@ -118,9 +255,22 @@ def main():
 
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:
-            json.dump({"n_coded_by_both": len(ids), "raw_agreement": round(po, 4),
-                       "cohens_kappa": round(kappa, 4), "n_consensus": len(consensus),
-                       "machine_vs_consensus": scores, "disagreements": disagreements,
+            json.dump({"n_key_rows": len(key),
+                       "n_coded_coder1": len(k1), "n_coded_coder2": len(k2),
+                       "n_coded_by_both": len(ids), "raw_agreement": round(po, 4),
+                       "cohens_kappa": round(kappa, 4) if kappa is not None else None,
+                       "n_consensus": len(consensus),
+                       "machine_vs_consensus": scores,
+                       "stratum_weights": ({s: round(w, 6) for s, w in weights.items()}
+                                           if weighted_ok else None),
+                       "pool_sizes": pools if weighted_ok else None,
+                       "drawn": drawn if weighted_ok else None,
+                       "analysed_per_stratum": dict(analysed),
+                       "weighting_note": ("machine_vs_consensus[*] holds raw sample counts; "
+                                          "machine_vs_consensus[*].weighted holds the "
+                                          "Horvitz-Thompson population estimate, or null when "
+                                          "the stratum weights were unavailable"),
+                       "disagreements": disagreements,
                        "labels": LABELS}, f, ensure_ascii=False, indent=2)
         print(f"\nreport -> {args.report}")
     return 0
