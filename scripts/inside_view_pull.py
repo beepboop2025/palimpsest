@@ -153,8 +153,6 @@ def main() -> None:
         except (OSError, json.JSONDecodeError):
             prev = {}
 
-    # Write only when the answer changed, so a run that reproduces yesterday's
-    # finding does not manufacture a commit and a false sense of movement.
     changed = (prev.get("block_rate") != out["block_rate"]
                or (prev.get("control") or {}).get("state") != control["state"]
                or prev.get("n_censored_blocked") != out["n_censored_blocked"]
@@ -163,10 +161,25 @@ def main() -> None:
                # and a vantage list that no longer apply.
                or prev.get("method_version") != METHOD_VERSION)
 
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a finding that holds still — which is exactly
+    # what sustained blocking looks like — stopped refreshing generated_at, and
+    # the observatory ended up labelling its own healthy signal stale. Silence
+    # from a censor and silence from a dead collector are not the same claim.
+    # So every round that survives the control gate publishes its own
+    # observation time, and last_changed_at carries the movement. The history
+    # file stays gated on change, so the movement record never fills with
+    # heartbeats and no false sense of movement is manufactured.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
     os.makedirs(READINGS, exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
     if changed or not prev:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -178,8 +191,9 @@ def main() -> None:
         print(f"inside-view: {control['state']} — block_rate={block_rate} "
               f"({len(blocked)}/{len(answered)} censored domains forged)")
     else:
-        print(f"inside-view: unchanged ({control['state']}, "
-              f"block_rate={block_rate}) — not rewriting")
+        print(f"inside-view: unchanged since {out['last_changed_at']} "
+              f"({control['state']}, block_rate={block_rate}) — "
+              f"republished with this round's observation time, history untouched")
 
 
 if __name__ == "__main__":
