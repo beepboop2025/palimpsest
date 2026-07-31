@@ -96,9 +96,25 @@ def main() -> None:
     # A method correction must reach the published file even when every value is
     # identical, or the site keeps asserting a method it no longer uses.
     changed = changed or prev.get("method_version") != METHOD_VERSION
-    if changed:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
+
+    # "When did we last look" and "when did the board last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a quiet stretch on net4people/bbs — no new top
+    # issue, the same 30-day count — stopped refreshing generated_at, and the
+    # observatory ended up labelling its own healthy signal stale. A quiet arms
+    # race and a dead ingest are not the same claim, and the quiet one is the more
+    # interesting reading of the two. So every round that actually got issues back
+    # publishes its own observation time, and last_changed_at carries the movement.
+    # The history file stays gated on change, because that file is what velocity is
+    # computed against and a heartbeat is not an event.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+    if changed or not prev:
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -106,6 +122,9 @@ def main() -> None:
                 "n_circumvention": n_circ, "velocity": velocity,
                 "top_number": (out["events"] or [{}])[0].get("number"),
             }, ensure_ascii=False) + "\n")
+    else:
+        print(f"net4people: unchanged since {out['last_changed_at']} — republished "
+              f"with this round's observation time, history untouched")
 
     print(f"=== net4people/bbs — {n_recent} events/{RECENT_DAYS}d "
           f"({n_block} blocking, {n_circ} circumvention); velocity {velocity} ===")

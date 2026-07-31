@@ -436,7 +436,9 @@ def main() -> None:
                               "loss was not itself edited afterward'."),
     }
 
-    # write-if-changed (composite, layer values, or ledger head moved)
+    # Did the answer move? (composite, layer values, or ledger head). This is no
+    # longer the gate on writing the reading — it is the gate on the history file
+    # and on last_changed_at below.
     prev = _load("erasure-observatory-latest.json") or {}
     prev_vals = [(l.get("layer"), l.get("value")) for l in prev.get("layers", [])]
     cur_vals = [(l.get("layer"), l.get("value")) for l in layers]
@@ -446,9 +448,28 @@ def main() -> None:
     # A method correction must reach the published file even when every value is
     # identical, or the site keeps asserting a method it no longer uses.
     changed = changed or prev.get("method_version") != METHOD_VERSION
-    if changed:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
+
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a composite that holds still — which is exactly
+    # what a settled erasure regime looks like — stopped refreshing generated_at,
+    # and the front page labelled its own healthy hero signal stale past the
+    # 12-hour cadence mark. Silence from a censor and silence from a dead runner
+    # are not the same claim. So every round publishes its own observation time
+    # and last_changed_at carries the movement. Nothing else about the round is
+    # invented: an absent layer is still ABSENT, a stale one still withheld, and
+    # a round where no layer reported still republishes a null index rather than
+    # a number. The history file stays gated on change, so the movement record
+    # never fills with heartbeats.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
+    os.makedirs(READINGS, exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+    if changed or not prev:
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -467,6 +488,11 @@ def main() -> None:
         print(f"  {l['layer']:<10} {v}  {l['title']}")
     print(f"  ledger: {ledger_summary['entries']} entries, verified={ledger_summary['verified']}, "
           f"root={ledger_summary['merkle_root'][:16]}…")
+    if prev and not changed:
+        # Worth saying out loud in the run log, so an operator reading it knows the
+        # file was rewritten on purpose and not because something moved.
+        print(f"  unchanged since {out['last_changed_at']} — republished with this "
+              f"round's observation time, history untouched")
     if not ledger_summary["verified"]:
         print("  !! LEDGER INTEGRITY BROKEN:")
         for p in ledger_summary["problems"]:

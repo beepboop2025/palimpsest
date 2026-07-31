@@ -79,15 +79,37 @@ def main() -> None:
     # A method correction must reach the published file even when every value is
     # identical, or the site keeps asserting a method it no longer uses.
     changed = changed or prev.get("method_version") != METHOD_VERSION
+
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a finding that holds still — and China's
+    # interference rate is a persistent baseline, which is the whole point of
+    # this signal — stopped refreshing generated_at, and the observatory ended up
+    # labelling its own healthy signal stale. Silence from a censor and silence
+    # from a dead collector are not the same claim. So every round that survives
+    # the honesty guard publishes its own observation time, and last_changed_at
+    # carries the movement. The history file stays gated on change, so the
+    # movement record never fills with heartbeats and no false sense of movement
+    # is manufactured. The fallback to the previous generated_at is what lets a
+    # file published before this field existed backfill honestly.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
     if changed or not prev:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
                 "cn_interference_rate_pct": rate,
                 "n_events": len(events),
             }, ensure_ascii=False) + "\n")
+    else:
+        print(f"censored-planet: unchanged since {out['last_changed_at']} "
+              f"(interference {rate}%, {len(events)} events) — republished with "
+              "this round's observation time, history untouched")
 
     print(f"=== Censored Planet — CN interference {rate}% "
           f"({len(events)} alert events, {len(series)} series pts) ===")

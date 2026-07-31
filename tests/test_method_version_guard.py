@@ -1,25 +1,30 @@
 """Guard test: a methodology correction must be able to reach the published file.
 
-Every signal driver here uses write-if-changed — it compares the new reading against
-the one on disk and skips the write when the values match. That is right for
-avoiding a commit every six hours that says nothing.
+Signal drivers used to use write-if-changed — compare the new reading against the
+one on disk, skip the write when the values match. It looked like the right way to
+avoid a commit every six hours that says nothing.
 
-It has one failure mode, and it is quiet. When a METHOD changes but the numbers do
-not, the guard sees no difference and skips the write, so the site keeps serving the
-old reading: old method text, old caveats, old vantage list. The published file then
-describes a method that is no longer the one that produced it.
+It had two failure modes, and both were quiet.
 
-This is not hypothetical. `inside_view` was corrected to stop drawing household
-probes for censored queries and to require two ASNs before a blocking verdict. Both
-changes left `block_rate` at 1.0, the guard said "unchanged", and the site kept
-advertising the superseded method and the very vantage list the fix existed to
-remove. The fix reached the file only after METHOD_VERSION joined the comparison.
+The first: when a METHOD changes but the numbers do not, the comparison sees no
+difference and skips the write, so the site keeps serving old method text, old
+caveats, an old vantage list. Not hypothetical. `inside_view` was corrected to stop
+drawing household probes for censored queries and to require two ASNs before a
+blocking verdict; both left `block_rate` at 1.0, the guard said "unchanged", and the
+site kept advertising the very vantage list the fix existed to remove. That reached
+the file only once METHOD_VERSION joined the comparison.
 
-So: any driver that guards its write must carry a METHOD_VERSION and must consult it
-in that guard. Drivers that rewrite unconditionally cannot have this bug, and are
-exempt from the comparison requirement — but still declare the constant, because a
-reader diffing two history rows needs to know whether the method moved underneath
-them.
+The second killed the approach. A reading that is never rewritten cannot say "I
+looked and nothing changed". index.html renders generated_at as
+"stale · last measured", so a finding that held still — which is what sustained
+censorship looks like — read on the public site as a collector that had died. The
+fleet therefore moved to publishing every round that survives its control gate,
+with last_changed_at carrying the movement and history files still gated on change.
+
+What this file now pins: every publishing driver declares a METHOD_VERSION and
+emits it into the reading, no driver reintroduces the conditional write, and the
+detector that decides which shape a driver has still works. If a conditional writer
+ever comes back, the method_version comparison requirement applies to it again.
 
 Standard-library only; this reads source text and never imports the drivers.
 """
@@ -107,9 +112,58 @@ def test_every_publishing_driver_emits_the_method_version_into_the_reading():
     )
 
 
-def test_at_least_one_driver_of_each_kind_exists():
-    """If either branch of the classification empties out, the assertions above
-    stop testing what they claim to."""
-    kinds = [_writes_conditionally(t) for _, t in _drivers()]
-    assert any(kinds), "no driver writes its reading conditionally — check the detector"
-    assert not all(kinds), "no driver writes unconditionally — check the detector"
+_FIXTURE_CONDITIONAL = '''
+def main():
+    out = {"generated_at": now}
+    if changed or not prev:
+        with open(OUT, "w", encoding="utf-8") as f:
+            json.dump(out, f)
+'''
+
+_FIXTURE_UNCONDITIONAL = '''
+def main():
+    out = {"generated_at": now}
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f)
+'''
+
+
+def test_the_detector_still_tells_the_two_shapes_apart():
+    """This used to be asserted against the live drivers: at least one of each
+    kind had to exist, so neither branch of the classification could quietly
+    empty out and make the assertions above vacuous.
+
+    That premise died when the fleet moved to unconditional writes. Every driver
+    is now the same shape, so sampling the codebase can no longer prove the
+    detector works — it would only prove they all look alike, which is exactly
+    what a broken detector also reports. Pin it to fixtures instead, and the
+    guard keeps its teeth no matter what the fleet happens to look like.
+    """
+    assert _writes_conditionally(_FIXTURE_CONDITIONAL), (
+        "the detector no longer recognises a write nested inside an if — the "
+        "conditional-writer assertions above would silently pass for everything")
+    assert not _writes_conditionally(_FIXTURE_UNCONDITIONAL), (
+        "the detector calls a plain function-body write conditional — it would "
+        "demand a method_version comparison that has nothing to guard")
+
+
+def test_no_driver_writes_its_reading_conditionally():
+    """The invariant the fleet now holds, and the reason the class above is empty.
+
+    A driver that only rewrote its reading when the values moved could not say
+    "I looked and nothing changed". index.html renders generated_at as
+    "stale · last measured", so a finding that held still — sustained blocking,
+    a door that stays shut — read on the public site as a collector that had
+    died. Silence from a censor and silence from a dead collector are not the
+    same claim.
+
+    So every driver now publishes each round that survives its control gate, and
+    carries last_changed_at for the movement. History files stay gated on change;
+    a heartbeat is not an event. If a new driver reintroduces the old shape this
+    fails, and the method_version assertion above starts applying to it again.
+    """
+    offenders = [p.name for p, t in _drivers() if _writes_conditionally(t)]
+    assert not offenders, (
+        "driver(s) rewrite their reading only when the values move, so a round "
+        "that observed no change cannot be distinguished from a round that never "
+        f"ran, and the site will call them stale: {offenders}")

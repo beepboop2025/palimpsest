@@ -3,8 +3,9 @@ into one calibrated anomaly rate with a corroboration measure, and publish
 readings/vantage-fusion-latest.json.
 
 Pure recomputation over the committed vantage readings (no network), so anyone
-can reproduce the fused number offline. History appends only when the fused
-index or confidence tier changes materially, not every cycle.
+can reproduce the fused number offline. The reading is rewritten every cycle and
+carries last_changed_at; history appends only when the fused index or confidence
+tier changes materially, not every cycle.
 """
 from __future__ import annotations
 
@@ -49,14 +50,33 @@ def main() -> None:
         return
 
     previous = _load("vantage-fusion-latest.json")
-    with open(OUT, "w", encoding="utf-8") as fh:
-        json.dump(reading, fh, indent=2, ensure_ascii=False)
-        fh.write("\n")
 
     moved = (
         previous.get("confidence") != reading["confidence"]
         or abs((previous.get("fused_index") or 0) - reading["fused_index"]) >= 2.0
     )
+
+    # "When did we last look" and "when did the fused answer last move" are
+    # different questions, and this file only ever answered the first. The
+    # reading has always been rewritten every cycle, so generated_at is honest
+    # about the observation time — but with nothing carrying the movement, a
+    # freshly stamped file reads as though the fused index had just moved when
+    # in fact it has held its ground for weeks. A refreshed timestamp on a still
+    # number is news the measurement did not report. So generated_at keeps this
+    # round's observation time and last_changed_at carries the movement, gated
+    # on the same materiality test the history file uses so the two can never
+    # tell different stories. Files published before this field existed fall
+    # back to their own generated_at, which is the honest reading of when they
+    # last moved. Nothing about the abstain paths changes: a round that never
+    # got a fused number still returns above without writing anything.
+    reading["last_changed_at"] = (
+        reading["generated_at"] if (moved or not previous)
+        else (previous.get("last_changed_at") or previous.get("generated_at")))
+
+    with open(OUT, "w", encoding="utf-8") as fh:
+        json.dump(reading, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+
     if moved:
         entry = {"generated_at": reading["generated_at"],
                  "fused_index": reading["fused_index"],
@@ -67,7 +87,8 @@ def main() -> None:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
         print("logged:", entry["fused_index"], entry["confidence"])
     else:
-        print("no material change")
+        print(f"no material change since {reading['last_changed_at']} — "
+              f"republished with this round's observation time, history untouched")
     print(reading["verdict"])
 
 

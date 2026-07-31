@@ -229,10 +229,28 @@ def main() -> None:
                 "pool_sampling_suspected", "events")
     # method_version is part of the comparison so a methodology correction reaches
     # the published file even when every value is identical.
-    if (not prev or any(prev.get(k) != out.get(k) for k in sig_keys)
-            or prev.get("method_version") != METHOD_VERSION):
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
+    changed = (any(prev.get(k) != out.get(k) for k in sig_keys)
+               or prev.get("method_version") != METHOD_VERSION)
+
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a fleet that holds still — which is exactly what
+    # a stable injector deployment looks like — stopped refreshing generated_at,
+    # and the observatory ended up labelling its own healthy signal stale. A quiet
+    # apparatus and a dead prober are not the same claim. So every round that gets
+    # past the honesty guards publishes its own observation time, and
+    # last_changed_at carries the movement. The history file stays gated on change,
+    # so the movement record never fills with heartbeats and no false sense of
+    # rotation is manufactured. Falling back to the previous generated_at lets a
+    # file published before this field existed backfill honestly.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+    if changed or not prev:
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -247,6 +265,9 @@ def main() -> None:
                 "burst": BURST,
                 "n_events": len(events),
             }, ensure_ascii=False) + "\n")
+    else:
+        print(f"BLEEDTHROUGH: fleet unchanged since {out['last_changed_at']} — "
+              f"republished with this round's observation time, history untouched")
 
     print(f"=== BLEEDTHROUGH — {len(injecting)}/{len(fingerprints)} target IPs injecting "
           f"from {VANTAGE_COUNT} prober, {out['distinct_pools']} distinct pool(s), "

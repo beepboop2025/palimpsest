@@ -3,7 +3,8 @@ public aggregation API and publish readings/ooni-gfw-latest.json.
 
 Vantage-insensitive (ingests already-aggregated OONI open data; probes nothing
 itself), key-less, standard-library only. Mirrors the GDELT/DDTI pull pattern:
-collect -> honesty-guard/abstain -> write-if-changed -> append history.
+collect -> honesty-guard/abstain -> publish the reading -> append history on
+movement only.
 """
 from __future__ import annotations
 
@@ -19,9 +20,10 @@ OUT = os.path.join(READINGS, "ooni-gfw-latest.json")
 HIST = os.path.join(READINGS, "ooni-gfw-history.jsonl")
 
 # Bumped when the METHOD changes in a way a reader must see, even if the numbers
-# do not move. Write-if-changed compares readings, so without this a methodology
-# correction that leaves the values identical never reaches the published file and
-# the site keeps asserting a method it no longer uses.
+# do not move. The movement test compares readings, so without this a methodology
+# correction that leaves the values identical would never earn a history line and
+# the record would show the numbers carrying on under a method that had in fact
+# been replaced.
 METHOD_VERSION = 1
 
 
@@ -91,8 +93,8 @@ def main() -> None:
     }
     os.makedirs(READINGS, exist_ok=True)
 
-    # write-if-changed on the substantive fields (ignore the timestamp) so an
-    # unchanged board doesn't churn a commit every run
+    # Movement test on the substantive fields only (the timestamp is ignored),
+    # because it is movement that earns a history line.
     prev = {}
     if os.path.exists(OUT):
         try:
@@ -101,12 +103,29 @@ def main() -> None:
             prev = {}
     sig_keys = ("gfw_index", "n_tests_with_data", "tests", "top_blocked")
     changed = any(prev.get(k) != out.get(k) for k in sig_keys)
-    # A method correction must reach the published file even when every value is
-    # identical, or the site keeps asserting a method it no longer uses.
+    # A method correction counts as movement even when every value is identical,
+    # because the same number produced a different way is a different claim and
+    # the history has to record where the switch happened.
     changed = changed or prev.get("method_version") != METHOD_VERSION
+
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answered only the second, so a finding that holds still — which is exactly
+    # what a stable Great Firewall looks like — stopped refreshing generated_at,
+    # and the observatory ended up labelling its own healthy signal stale. A
+    # censor holding a steady line and a collector that died are not the same
+    # claim. So every round that gets past the abstain guard publishes its own
+    # observation time, and last_changed_at carries the movement. The history
+    # file stays gated on change, so the movement record never fills with
+    # heartbeats and no false sense of movement is manufactured.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
     if changed or not prev:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -115,6 +134,9 @@ def main() -> None:
                 "n_tests_with_data": out["n_tests_with_data"],
                 "top_blocked": (top[0]["domain"] if top else None),
             }, ensure_ascii=False) + "\n")
+    else:
+        print(f"OONI GFW: unchanged since {out['last_changed_at']} — republished "
+              "with this round's observation time, history untouched")
 
     print(f"=== OONI GFW signal — index {gfw_index} "
           f"({out['n_measurements']} CN measurements, {len(usable)}/{len(tests)} tests) ===")

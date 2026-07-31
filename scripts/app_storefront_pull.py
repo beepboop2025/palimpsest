@@ -117,10 +117,25 @@ def main() -> None:
     # identical, or the site keeps asserting a method it no longer uses.
     changed = changed or prev.get("method_version") != METHOD_VERSION
 
+    # "When did we last look" and "when did the catalogue last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a catalogue that holds still — which is the
+    # normal state here, and the very stillness that makes one delisting legible —
+    # stopped refreshing generated_at, and the observatory ended up labelling its
+    # own healthy signal stale. A door that stays shut and a collector that died
+    # are not the same claim. So every round that survives the control gate
+    # publishes its own observation time, and last_changed_at carries the
+    # movement. The history file stays gated on change, because that file is the
+    # record of when each door closed and a heartbeat is not a closing.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
     os.makedirs(READINGS, exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
     if changed or not prev:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -134,7 +149,9 @@ def main() -> None:
             msg += " | " + "; ".join(f"{e['app']} {e['direction']}" for e in events)
         print(msg)
     else:
-        print(f"app-storefront: unchanged (rate={rate}) — not rewriting")
+        print(f"app-storefront: unchanged since {out['last_changed_at']} "
+              f"(rate={rate}) — republished with this round's observation time, "
+              f"history untouched")
 
 
 if __name__ == "__main__":
