@@ -318,6 +318,7 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | Document | What it covers |
 | --- | --- |
 | [docs/INTEGRITY.md](docs/INTEGRITY.md) | The layered trust model, what each layer defends against, and what none of them can do |
+| [docs/DETECTIONS.md](docs/DETECTIONS.md) | What the instrument has actually caught, dated, with what each finding does not establish |
 | [docs/EVAL-REGISTRY.md](docs/EVAL-REGISTRY.md) | The Verifiable Eval Registry: pre-registration, sealing, and how to verify it |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |
