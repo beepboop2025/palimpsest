@@ -23,9 +23,11 @@ OUT = os.path.join(READINGS, "in-path-interference-latest.json")
 HIST = os.path.join(READINGS, "in-path-interference-history.jsonl")
 
 # Bumped when the METHOD changes in a way a reader must see, even if the numbers
-# do not move. Write-if-changed compares readings, so without this a methodology
-# correction that leaves the values identical never reaches the published file and
-# the site keeps asserting a method it no longer uses.
+# do not move. The reading itself is now rewritten every round, so the method text
+# always reaches the published file; what this constant buys is the movement
+# record. Without it a methodology correction that leaves the indices identical
+# would append no history row, and a reader diffing two rows would have no way to
+# tell that the method moved underneath them.
 METHOD_VERSION = 1
 
 
@@ -113,14 +115,32 @@ def main() -> None:
                or prev.get("transport_index") != transport
                or {b["test"] for b in prev.get("execution_blackouts", [])}
                != {b["test"] for b in blackouts})
-    # A method correction must reach the published file even when every value is
-    # identical, or the site keeps asserting a method it no longer uses.
+    # A method correction must reach the movement record even when every value is
+    # identical, or a reader diffing two history rows never learns the method moved.
     changed = changed or prev.get("method_version") != METHOD_VERSION
 
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a finding that holds still — and a middlebox
+    # rate that sits at the same number for weeks is exactly what a stably
+    # deployed device looks like — stopped refreshing generated_at, and the
+    # observatory ended up labelling its own healthy signal stale. A quiet path
+    # and a dead collector are not the same claim. So every round that survives
+    # the control gate publishes its own observation time, and last_changed_at
+    # carries the movement. The history file stays gated on change, so the
+    # movement record never fills with heartbeats and no false sense of movement
+    # is manufactured. The fallback to the previous generated_at is for files
+    # published before this field existed: their last write WAS their last
+    # movement, so that timestamp is the honest answer.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
     os.makedirs(READINGS, exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
     if changed or not prev:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -131,8 +151,9 @@ def main() -> None:
         print(f"in-path-interference: middlebox={middlebox} transport={transport} "
               f"blackouts={[b['test'] for b in blackouts]}")
     else:
-        print(f"in-path-interference: unchanged (middlebox={middlebox}, "
-              f"transport={transport}) — not rewriting")
+        print(f"in-path-interference: unchanged since {out['last_changed_at']} "
+              f"(middlebox={middlebox}, transport={transport}) — republished with "
+              f"this round's observation time, history untouched")
 
 
 if __name__ == "__main__":

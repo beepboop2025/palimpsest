@@ -48,9 +48,11 @@ OUT = os.path.join(READINGS, "baike-redaction-latest.json")
 HIST = os.path.join(READINGS, "baike-redaction-history.jsonl")
 
 # Bumped when the METHOD changes in a way a reader must see, even if the numbers
-# do not move. Write-if-changed compares readings, so without this a methodology
-# correction that leaves the values identical never reaches the published file and
-# the site keeps asserting a method it no longer uses.
+# do not move. The reading itself is now rewritten every round that looked, so the
+# method text can no longer be stranded on disk; what this still buys is the
+# movement record — a methodology correction that leaves the values identical is a
+# real change to what the number means, and it earns its own history row rather
+# than passing as another quiet republication.
 METHOD_VERSION = 1
 
 
@@ -101,7 +103,7 @@ def main() -> None:
     if not live:
         print("baike-redaction: inert (set PALIMPSEST_LIVE=1 or PALIMPSEST_PROXY) — abstaining")
         _write_abstain(now, reason="live network not enabled (PALIMPSEST_LIVE / PALIMPSEST_PROXY unset)",
-                       comparable=0, forks=0, results=[])
+                       comparable=0, forks=0, results=[], observed=False)
         return
 
     # Governance BEFORE the first outbound read: the kill switch can halt this runner
@@ -209,7 +211,7 @@ def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> 
     }
 
 
-def _write(now, **kw) -> None:
+def _write(now, *, observed: bool = True, **kw) -> None:
     out = _base(now, **kw)
     prev = {}
     if os.path.exists(OUT):
@@ -220,21 +222,53 @@ def _write(now, **kw) -> None:
     # method_version is part of the comparison so a methodology correction reaches
     # the published file even when every value is identical — otherwise the site
     # keeps asserting a method, and an abstain reason, that no longer apply.
-    if (prev.get("rewrite_index") != out["rewrite_index"]
-            or prev.get("status") != out["status"]
-            or prev.get("n_comparable") != out["n_comparable"]
-            or prev.get("method_version") != METHOD_VERSION):
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
+    changed = (prev.get("rewrite_index") != out["rewrite_index"]
+               or prev.get("status") != out["status"]
+               or prev.get("n_comparable") != out["n_comparable"]
+               or prev.get("method_version") != METHOD_VERSION)
+
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a finding that holds still — a stable rewrite
+    # index, or an abstain that keeps abstaining for the same reason — stopped
+    # refreshing generated_at, and the observatory ended up labelling its own
+    # healthy signal stale. A state encyclopedia that keeps its entries forked and
+    # a collector that died are not the same claim. So every round that actually
+    # went and looked publishes its own observation time, and last_changed_at
+    # carries the movement. The history file stays gated on change, so the
+    # movement record never fills with heartbeats.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
+    # An inert round never opened a socket, so it has no observation time to offer
+    # and stamping one would date the file to a look that never happened. It keeps
+    # the old write-if-changed behaviour: it may record that we have stopped
+    # looking, but it may not pass itself off as a fresh look.
+    if not observed and not (changed or not prev):
+        return
+
+    os.makedirs(READINGS, exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
+    if changed or not prev:
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({"generated_at": out["generated_at"], "rewrite_index": out["rewrite_index"],
                                 "status": out["status"], "n_comparable": out["n_comparable"],
                                 "n_forked": out["n_forked"]}, ensure_ascii=False) + "\n")
+    else:
+        print(f"baike-redaction: unchanged since {out['last_changed_at']} "
+              f"(status={out['status']}, rewrite_index={out['rewrite_index']}) — "
+              f"republished with this round's observation time, history untouched")
 
 
-def _write_abstain(now, *, reason, comparable, forks, results) -> None:
+def _write_abstain(now, *, reason, comparable, forks, results, observed: bool = True) -> None:
+    # An abstain is this collector's reading, not the absence of one: rewrite_index
+    # stays null and the reason travels with it. So a repeated abstain gets the same
+    # heartbeat as a repeated number — the null is republished, never a fabricated value.
     _write(now, rewrite_index=None, status="insufficient_data", reason=reason,
-           comparable=comparable, forks=forks, results=results)
+           comparable=comparable, forks=forks, results=results, observed=observed)
 
 
 if __name__ == "__main__":

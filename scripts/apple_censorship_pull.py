@@ -22,9 +22,10 @@ OUT = os.path.join(READINGS, "apple-censorship-latest.json")
 HIST = os.path.join(READINGS, "apple-censorship-history.jsonl")
 
 # Bumped when the METHOD changes in a way a reader must see, even if the numbers
-# do not move. Write-if-changed compares readings, so without this a methodology
-# correction that leaves the values identical never reaches the published file and
-# the site keeps asserting a method it no longer uses.
+# do not move. The reading is republished every round now, but the comparison
+# below still decides last_changed_at and the history row, so without this a
+# methodology correction that leaves the values identical would land silently and
+# be dated as though nothing about the finding had moved.
 METHOD_VERSION = 1
 
 
@@ -86,14 +87,30 @@ def main() -> None:
     changed = (prev.get("unavailable_pct") != out["unavailable_pct"]
                or (prev.get("country") or {}).get("unavailable") != country["unavailable"]
                or (prev.get("country") or {}).get("tags") != country["tags"])
-    # A method correction must reach the published file even when every value is
-    # identical, or the site keeps asserting a method it no longer uses.
+    # A method correction is movement even when every value is identical: the
+    # numbers mean something different afterwards, so it has to date the reading
+    # and earn a history row rather than passing as a quiet heartbeat.
     changed = changed or prev.get("method_version") != METHOD_VERSION
 
+    # "When did we last look" and "when did the answer last move" are different
+    # questions, and a reader has to be able to tell them apart. Write-if-changed
+    # answers only the second, so a census that holds still — and a corpus of
+    # 108,000 apps holds still for weeks at a time — stopped refreshing
+    # generated_at, and the observatory ended up labelling its own healthy signal
+    # stale. Silence from a censor and silence from a dead collector are not the
+    # same claim. So every round that survives the control gate publishes its own
+    # observation time, and last_changed_at carries the movement. The history
+    # file stays gated on change, so the movement record never fills with
+    # heartbeats and no false sense of movement is manufactured.
+    out["last_changed_at"] = (
+        out["generated_at"] if (changed or not prev)
+        else (prev.get("last_changed_at") or prev.get("generated_at")))
+
     os.makedirs(READINGS, exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
     if changed or not prev:
-        with open(OUT, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({
                 "generated_at": out["generated_at"],
@@ -107,7 +124,9 @@ def main() -> None:
               f"({country['unavailable']:,}/{country['total_tested']:,}), "
               f"tags={list(country['tags'])[:4]}")
     else:
-        print(f"apple-censorship: unchanged ({country['unavailable_pct']}%) — not rewriting")
+        print(f"apple-censorship: unchanged since {out['last_changed_at']} "
+              f"({country['unavailable_pct']}%) — republished with this round's "
+              f"observation time, history untouched")
 
 
 if __name__ == "__main__":
