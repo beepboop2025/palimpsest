@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T20:07:14.379302+00:00",
+  "generated_at": "2026-07-31T04:14:05.267155+00:00",
   "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
   "n_pairs_tested": 0,
   "n_confirmed": 0,
@@ -10,14 +10,14 @@
         "ddti_novelty",
         "ooni_gfw"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
         "ddti_novelty",
         "refusal_drift"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
@@ -31,14 +31,14 @@
         "ddti_threat",
         "ooni_gfw"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
         "ddti_threat",
         "refusal_drift"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
@@ -52,14 +52,14 @@
         "gdelt_containment",
         "ooni_gfw"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
         "gdelt_containment",
         "refusal_drift"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
@@ -73,14 +73,14 @@
         "github_refuge",
         "ooni_gfw"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
         "github_refuge",
         "refusal_drift"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
@@ -94,7 +94,7 @@
         "ooni_gfw",
         "refusal_drift"
       ],
-      "reason": "overlap 19d, need 20d"
+      "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
     },
     {
       "pair": [
@@ -113,5 +113,6 @@
     "PRELIMINARY: overlapping histories are weeks, not years. A lead/lag claim from this much daily data is a hypothesis worth watching, not a finding — overlap_days is published on every pair so the reader can judge",
     "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
     "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
-  ]
+  ],
+  "method_version": 1
 }

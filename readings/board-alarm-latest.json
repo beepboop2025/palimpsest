@@ -1,51 +1,50 @@
 {
-  "generated_at": "2026-07-30T20:07:14.170648+00:00",
-  "board_e_value": 79.63,
+  "generated_at": "2026-07-31T04:14:05.051929+00:00",
+  "board_e_value": 8.025,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
-    "selected": [
-      "ddti_novelty"
-    ],
+    "selected": [],
     "alpha": 0.1,
-    "k": 1,
-    "n_tested": 10,
-    "threshold": 100.0
+    "k": 0,
+    "n_tested": 9,
+    "threshold": null
   },
   "layers": {
     "network": {
-      "e": 16.337,
+      "e": 15.297,
       "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 47.466,
         "ioda_outages": 1.0,
-        "ooni_gfw": 14.167,
+        "ooni_gfw": 10.007,
         "tor_bridge_cn": 2.715
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 145.645,
-      "n_signals": 5,
+      "e": 2.402,
+      "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 712.513,
-        "ddti_threat": 7.094,
-        "gdelt_containment": 3.725,
-        "github_refuge": 3.895,
+        "ddti_threat": 3.225,
+        "gdelt_containment": 2.598,
+        "github_refuge": 2.787,
         "weibo_suppression": 1.0
       },
-      "recent_alarms": []
+      "recent_alarms": [
+        "ddti_novelty"
+      ]
     },
     "model": {
-      "e": 2.721,
+      "e": 1.43,
       "n_signals": 1,
       "state": "calm",
       "corroborated": false,
       "signals": {
-        "refusal_drift": 2.721
+        "refusal_drift": 1.43
       },
       "recent_alarms": []
     }
@@ -54,39 +53,41 @@
     "content"
   ],
   "layer_coincidence": 1,
-  "recently_fired": [],
+  "recently_fired": [
+    "ddti_novelty"
+  ],
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 14.1674,
-      "n": 87,
+      "e": 10.0067,
+      "n": 88,
       "direction": "down",
-      "robust_z": -1.2,
+      "robust_z": -1.05,
       "driver_side": "down",
-      "readings_since_alarm": 36,
+      "readings_since_alarm": 37,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 7.0942,
-      "n": 171,
+      "e": 3.2251,
+      "n": 173,
       "direction": "down",
-      "robust_z": -0.51,
-      "driver_side": "up",
-      "readings_since_alarm": 47,
+      "robust_z": -0.7,
+      "driver_side": "down",
+      "readings_since_alarm": 49,
       "n_alarms_in_history": 2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
-      "state": "watch",
-      "e": 712.5131,
-      "n": 171,
+      "state": "warming_up",
+      "e": 0.0,
+      "n": 173,
       "direction": "down",
       "robust_z": null,
-      "driver_side": "down",
-      "readings_since_alarm": null,
-      "n_alarms_in_history": 0,
+      "driver_side": null,
+      "readings_since_alarm": 1,
+      "n_alarms_in_history": 1,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -102,10 +103,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 3.7247,
-      "n": 96,
-      "direction": "up",
-      "robust_z": 0.67,
+      "e": 2.5978,
+      "n": 98,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -113,19 +114,19 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 3.8947,
-      "n": 49,
-      "direction": "up",
-      "robust_z": 0.67,
-      "driver_side": "up",
+      "e": 2.7868,
+      "n": 50,
+      "direction": "down",
+      "robust_z": -0.67,
+      "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
       "state": "calm",
-      "e": 2.7211,
-      "n": 76,
+      "e": 1.4303,
+      "n": 78,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -157,7 +158,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 46,
+      "n": 47,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -168,7 +169,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 45,
+      "n": 46,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
