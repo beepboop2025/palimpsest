@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-31T18:10:49.490666+00:00",
+  "generated_at": "2026-07-31T20:05:47.180835+00:00",
   "method_version": 2,
   "source": "Globalping (api.globalping.io) volunteer probes inside mainland China",
   "scope": "DNS answers received by probes INSIDE China for a fixed panel of censored and benign domains, classified against a same-round control arm outside China",
@@ -20,27 +20,27 @@
     {
       "domain": "torproject.org",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 5 answering vantages [Beijing (AS37963), Beijing (AS45090), Guangzhou (AS55990), Nanjing (AS45090), Shenzhen (AS37963)]"
+      "detail": "forged from all 5 answering vantages [Beijing (AS45090), Beijing (AS55990), Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963)]"
     },
     {
       "domain": "rsf.org",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 5 answering vantages [Beijing (AS37963), Beijing (AS45090), Beijing (AS55990), Shenzhen (AS37963), Tianjin (AS45090)]"
+      "detail": "forged from all 5 answering vantages [Beijing (AS45090), Beijing (AS55990), Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963)]"
     },
     {
       "domain": "www.hrw.org",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 5 answering vantages [Beijing (AS37963), Beijing (AS45090), Guangzhou (AS55990), Nanjing (AS45090), Shenzhen (AS37963)]"
+      "detail": "forged from all 5 answering vantages [Beijing (AS45090), Beijing (AS55990), Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963)]"
     },
     {
       "domain": "zh.wikipedia.org",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 5 answering vantages [Beijing (AS37963), Beijing (AS55990), Nanjing (AS45090), Shanghai (AS45090), Shenzhen (AS37963)]"
+      "detail": "forged from all 4 answering vantages [Beijing (AS45090), Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963)]"
     },
     {
       "domain": "wikileaks.org",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 5 answering vantages [Beijing (AS37963), Beijing (AS45090), Guangzhou (AS45090), Guangzhou (AS55990), Shenzhen (AS37963)]"
+      "detail": "forged from all 5 answering vantages [Beijing (AS45090), Beijing (AS55990), Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963)]"
     }
   ],
   "domains": [
@@ -63,7 +63,7 @@
       "forged_fraction": 1.0,
       "vantages": [
         {
-          "city": "Nanjing",
+          "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
@@ -81,12 +81,12 @@
           ]
         },
         {
-          "city": "Guangzhou",
+          "city": "Beijing",
           "asn": 55990,
           "network": "Huawei Cloud Service data center",
           "state": "forged",
           "answers": [
-            "162.125.18.133"
+            "4.36.66.178"
           ]
         },
         {
@@ -95,16 +95,16 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "209.145.54.50"
+            "202.181.7.85"
           ]
         },
         {
-          "city": "Beijing",
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "202.160.128.195"
+            "108.160.169.178"
           ]
         }
       ]
@@ -126,12 +126,12 @@
       "forged_fraction": 1.0,
       "vantages": [
         {
-          "city": "Beijing",
+          "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "199.59.148.247"
+            "108.160.170.43"
           ]
         },
         {
@@ -140,7 +140,7 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "128.121.146.228"
+            "31.13.96.194"
           ]
         },
         {
@@ -149,25 +149,25 @@
           "network": "Huawei Cloud Service data center",
           "state": "forged",
           "answers": [
-            "199.59.149.202"
-          ]
-        },
-        {
-          "city": "Tianjin",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.59.148.247"
+            "128.242.245.253"
           ]
         },
         {
           "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "199.59.150.39"
+          ]
+        },
+        {
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "199.59.148.6"
+            "69.30.25.21"
           ]
         }
       ]
@@ -187,39 +187,12 @@
       "forged_fraction": 1.0,
       "vantages": [
         {
-          "city": "Nanjing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "66.220.149.32"
-          ]
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "202.160.129.37"
-          ]
-        },
-        {
           "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "128.242.240.29"
-          ]
-        },
-        {
-          "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "69.63.180.173"
+            "199.96.63.177"
           ]
         },
         {
@@ -228,7 +201,34 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "114.43.24.59"
+            "31.13.83.2"
+          ]
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "forged",
+          "answers": [
+            "173.236.182.137"
+          ]
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "128.242.250.155"
+          ]
+        },
+        {
+          "city": "Shanghai",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "45.114.11.238"
           ]
         }
       ]
@@ -242,45 +242,18 @@
       ],
       "control_probes": 2,
       "n_vantages": 5,
-      "n_forged": 5,
+      "n_forged": 4,
       "n_clean": 0,
-      "n_silent": 0,
+      "n_silent": 1,
       "forged_fraction": 1.0,
       "vantages": [
         {
-          "city": "Nanjing",
+          "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "199.59.148.20"
-          ]
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "199.59.148.20"
-          ]
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "199.16.158.12"
-          ]
-        },
-        {
-          "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "31.13.112.9"
+            "31.13.94.10"
           ]
         },
         {
@@ -289,7 +262,32 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.106.4"
+            "31.13.112.9"
+          ]
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "silent",
+          "answers": []
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "199.59.148.96"
+          ]
+        },
+        {
+          "city": "Shanghai",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "31.13.112.9"
           ]
         }
       ]
@@ -314,34 +312,7 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "199.59.149.201"
-          ]
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "104.244.43.231"
-          ]
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "108.160.165.9"
-          ]
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "108.160.163.102"
+            "162.125.32.9"
           ]
         },
         {
@@ -350,7 +321,34 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "74.86.3.208"
+            "31.13.81.4"
+          ]
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "forged",
+          "answers": [
+            "199.96.62.41"
+          ]
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "199.59.149.236"
+          ]
+        },
+        {
+          "city": "Shanghai",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "202.160.128.195"
           ]
         }
       ]
@@ -360,18 +358,19 @@
       "expected_censored": false,
       "ddti": null,
       "control_answers": [
+        "0.0.0.0",
         "1.0.0.1",
         "1.1.1.1"
       ],
       "control_probes": 2,
       "n_vantages": 5,
       "n_forged": 0,
-      "n_clean": 5,
-      "n_silent": 0,
+      "n_clean": 4,
+      "n_silent": 1,
       "forged_fraction": 0.0,
       "vantages": [
         {
-          "city": "Nanjing",
+          "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -394,14 +393,11 @@
           "city": "Beijing",
           "asn": 55990,
           "network": "Huawei Cloud Service data center",
-          "state": "clean",
-          "answers": [
-            "1.0.0.1",
-            "1.1.1.1"
-          ]
+          "state": "silent",
+          "answers": []
         },
         {
-          "city": "Shanghai",
+          "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -411,7 +407,7 @@
           ]
         },
         {
-          "city": "Beijing",
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "clean",
@@ -438,7 +434,7 @@
       "forged_fraction": 0.0,
       "vantages": [
         {
-          "city": "Tianjin",
+          "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -448,7 +444,7 @@
           ]
         },
         {
-          "city": "Beijing",
+          "city": "Shenzhen",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "clean",
@@ -478,7 +474,7 @@
           ]
         },
         {
-          "city": "Shenzhen",
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "clean",
