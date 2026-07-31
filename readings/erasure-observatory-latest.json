@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-31T09:17:24.365233+00:00",
+  "generated_at": "2026-07-31T14:36:55.655054+00:00",
   "method_version": 2,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 41.5,
+  "erasure_index": 42.5,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -17,19 +17,19 @@
       "value": 58.0,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-07-31T03:56:16.810511+00:00",
+      "as_of": "2026-07-31T09:20:33.000269+00:00",
       "age_days": 0.22,
-      "age_hours": 5.4
+      "age_hours": 5.3
     },
     {
       "layer": "model",
       "title": "Model erasure",
       "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
-      "value": 25.0,
+      "value": 27.0,
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
-      "as_of": "2026-07-30T09:25:58.129274+00:00",
-      "age_days": 0.99
+      "as_of": "2026-07-31T09:36:29.058052+00:00",
+      "age_days": 0.21
     },
     {
       "layer": "narrative",
@@ -46,7 +46,7 @@
       "value": 4.43,
       "unit": "%",
       "as_of": "2026-07-31T08:18:49.371751+00:00",
-      "age_hours": 1.0,
+      "age_hours": 6.3,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
@@ -54,35 +54,35 @@
       "value": 0.59,
       "unit": "x",
       "as_of": "2026-07-31T04:04:44.341585+00:00",
-      "age_hours": 5.2,
+      "age_hours": 10.5,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 99,
+    "entries": 101,
     "verified": true,
-    "merkle_root": "446d7ba73800e2a06ff7c34c16ab293f45092e007919f37cfbbf30113190f888",
-    "head_hash": "cf9e360cc3c090539b70a7fbc582ba5d5e726f6e1eec64d0f0de0d2f9619a32c",
+    "merkle_root": "9de4990ee995bac5475a3ada7e8129a6c2640faea2636239cbc68d0653d32ace",
+    "head_hash": "b95261d2cd61fc7416b8faa2bb12694f020b9f54f7b265cee7b4194974822dd4",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-07-31T09:17:24.365233+00:00",
+    "head_ts": "2026-07-31T14:36:55.655054+00:00",
     "by_source": {
-      "ooni-gfw": 79,
-      "generative-firewall": 2,
+      "ooni-gfw": 80,
+      "generative-firewall": 3,
       "censored-planet": 16,
       "baike-redaction": 2
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 97,
-        "entry_hash": "bc78376901201993a60c7748a86fc9f6464a632ce84f0da063fbde337ef3644b"
+        "seq": 99,
+        "entry_hash": "6d69279a8a8a16f8f96bf647ceb6954271c014711203c0abae418af31a9abfcd"
       },
       {
-        "source": "censored-planet",
-        "seq": 98,
-        "entry_hash": "cf9e360cc3c090539b70a7fbc582ba5d5e726f6e1eec64d0f0de0d2f9619a32c"
+        "source": "generative-firewall",
+        "seq": 100,
+        "entry_hash": "b95261d2cd61fc7416b8faa2bb12694f020b9f54f7b265cee7b4194974822dd4"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
