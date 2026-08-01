@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-01T04:04:52.506835+00:00",
+  "generated_at": "2026-08-01T07:56:04.863516+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
@@ -8,7 +8,7 @@
       "stat": 2.6428,
       "n": 92,
       "n_alarms_in_history": 1,
-      "age_hours": 0.1,
+      "age_hours": 4.0,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
@@ -16,7 +16,7 @@
       "stat": 4.8177,
       "n": 179,
       "n_alarms_in_history": 2,
-      "age_hours": 0.2,
+      "age_hours": 4.1,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
@@ -24,23 +24,23 @@
       "stat": 0.0,
       "n": 179,
       "n_alarms_in_history": 1,
-      "age_hours": 0.2,
+      "age_hours": 4.1,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
       "state": "calm",
-      "stat": 59.8991,
-      "n": 17,
+      "stat": 109.7811,
+      "n": 18,
       "n_alarms_in_history": 0,
-      "age_hours": 19.8,
+      "age_hours": 0.1,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 6.9479,
-      "n": 101,
+      "stat": 4.7116,
+      "n": 102,
       "n_alarms_in_history": 0,
-      "age_hours": 7.9,
+      "age_hours": 3.8,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,16 +48,14 @@
       "stat": 6.1553,
       "n": 52,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 3.9,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
-      "state": "calm",
-      "stat": 4.9451,
+      "state": "closed",
       "n": 81,
-      "n_alarms_in_history": 0,
-      "age_hours": 8.2,
-      "meaning": "cross-lab model suppression rate, averaged over the audited panel"
+      "meaning": "cross-lab model suppression rate, averaged over the audited panel (v1 series, closed at the 2026-08-01 method break — the live detector for the v2 suite is its own churn monitor)",
+      "closed": "closed 2026-08-01 at the v1→v2 method break: v2 measures family refusal rates (a different estimand) and appends history only on label movement; the live model-layer signal is refusal_churn — the v2 suite's own anytime-valid churn monitor"
     },
     "bleedthrough_pools": {
       "state": "no_data",
@@ -71,10 +69,10 @@
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "stat": 2.9979,
-      "n": 386,
+      "stat": 2.4169,
+      "n": 387,
       "n_alarms_in_history": 6,
-      "age_hours": 100.1,
+      "age_hours": 79.9,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
@@ -82,7 +80,7 @@
       "stat": 1.0,
       "n": 51,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 3.9,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
@@ -90,17 +88,31 @@
       "stat": 1.0,
       "n": 50,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 4.0,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
+    },
+    "refusal_churn": {
+      "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
+      "e": null,
+      "n_models": 0,
+      "models": {},
+      "state": "no_data",
+      "n_rows": 0,
+      "reason": "no churn log yet — the v2 suite writes one row per model per comparable run, and needs two runs to compare"
     }
   },
   "active": [],
   "stale": [],
   "no_data": [
     "bleedthrough_capacity",
-    "bleedthrough_pools"
+    "bleedthrough_pools",
+    "refusal_churn"
   ],
-  "n_reporting": 10,
-  "n_signals": 12,
-  "headline": "no signal elevated, but only 10 of 12 signals are reporting"
+  "closed": [
+    "refusal_drift"
+  ],
+  "n_reporting": 9,
+  "n_signals": 13,
+  "n_open": 12,
+  "headline": "no signal elevated, but only 9 of 12 signals are reporting"
 }
