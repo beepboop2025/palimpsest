@@ -191,3 +191,18 @@ def test_a_geo_split_domain_reaches_no_regional_verdict():
                  {"DE": ["1.1.1.1"], "NL": ["2.2.2.2"]},
                  [["9.9.9.9"], ["8.8.8.8"]])
     assert regional_divergence(o)["verdict"] == "INSUFFICIENT"
+
+
+def test_no_cdn_geodns_domain_sits_in_the_panel_while_the_classifier_is_ip_based():
+    """github.com read forged from every vantage in its one live round, which
+    would have published "GitHub is blocked in China". It is not: China was
+    answered 20.205.243.166 (AS8075 MICROSOFT), GitHub's own Asia-Pacific
+    endpoint, against a control of 140.82.121.4 (AS36459 GITHUB). Same owner,
+    different PoP, no censor.
+
+    Until forgery is decided by origin-AS rather than by address, a domain that
+    runs its own regional PoPs cannot be told apart from an injected one, so it
+    must stay out of the panel. Re-add it with the AS comparison, not before.
+    """
+    geodns = {"github.com", "www.microsoft.com", "azure.com", "cloudflare.com"}
+    assert not geodns & {e["domain"] for e in PANEL}

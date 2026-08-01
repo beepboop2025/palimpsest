@@ -140,13 +140,26 @@ PANEL = [
     #     is a within-site comparison rather than two unrelated domains.
     #   archive.org      — reported blocked and unblocked repeatedly; own
     #     infrastructure, no mainland PoP.
-    #   github.com       — infrastructure the country's own developers depend
-    #     on, historically interfered with rather than blocked. Expected clean;
-    #     a forged verdict here would be the event, not the noise.
     #   duckduckgo.com   — reported intermittently blocked since 2014.
+    #
+    # github.com was here for one round and is deliberately removed, because it
+    # is the counter-example that shows what this classifier still cannot do.
+    # It read forged from all thirteen vantages, which would have published
+    # "GitHub is blocked in China" — false. The control arm answered 140.82.121.4
+    # (AS36459, GITHUB); China answered 20.205.243.166, which is AS8075 MICROSOFT,
+    # GitHub's own Asia-Pacific endpoint. Legitimate GeoDNS, no censor involved.
+    # The two European controls could not catch it because they agree with each
+    # other and both sit on the same PoP.
+    #
+    # What separates that from a real block is not the address, it is who OWNS
+    # the address. en.wikipedia.org resolved inside China to AS13414 TWITTER and
+    # AS32934 FACEBOOK; archive.org to Facebook and Twitter ranges. A Wikimedia
+    # domain answering with Twitter's addresses is injection and nothing else.
+    # So the discriminator this panel actually needs is origin-AS comparison:
+    # same owner as the control means GeoDNS, unrelated owner means injection.
+    # Until that exists, a CDN-fronted domain does not belong in the panel.
     {"domain": "en.wikipedia.org", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
     {"domain": "archive.org", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
-    {"domain": "github.com", "censored": True, "role": "boundary", "ddti": "CIRCUMVENTION"},
     {"domain": "duckduckgo.com", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
 
     # Negative controls: globally constant answers, must read clean from inside.
