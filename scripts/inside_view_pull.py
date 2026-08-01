@@ -17,7 +17,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-from collectors.inside_view import (PANEL, RateLimited, control_state,
+from collectors.inside_view import (PANEL, RateLimited, _role, control_state,
                                     observe_panel, regional_divergence)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -77,7 +77,10 @@ def main() -> None:
         print(f"inside-view: DEGRADED — {control['why']} — abstaining, not publishing")
         return
 
-    censored = [o for o in observations if o["expected_censored"]]
+    # The headline rate is over the measurement set only. Boundary domains are an
+    # open experiment and are reported beside it, so adding one cannot move a
+    # number that has been tracked across previous readings.
+    censored = [o for o in observations if _role(o) == "measurement"]
     answered = [o for o in censored
                 if (o["n_forged"] or 0) + (o["n_clean"] or 0) > 0]
 
@@ -102,15 +105,40 @@ def main() -> None:
     # Regional divergence is an enrichment layer, not a precondition. Until it
     # is implemented the signal still publishes, and says plainly that the layer
     # is pending rather than silently omitting it.
+    #
+    # It runs over the boundary set as well as the measurement set, because the
+    # measurement set is saturated by construction: five permanently-blocked
+    # domains can only ever return UNIFORM_BLOCKED, so the layer had nothing to
+    # find. Provincial filtering, the thing REGIONAL exists to name, can only
+    # appear on a domain whose treatment actually varies.
+    graded = [o for o in observations
+              if _role(o) in ("measurement", "boundary")
+              and (o["n_forged"] or 0) + (o["n_clean"] or 0) > 0]
     regional, regional_status = [], "reporting"
-    for o in answered:
+    for o in graded:
         try:
-            regional.append({"domain": o["domain"], **regional_divergence(o)})
+            regional.append({"domain": o["domain"], "role": _role(o),
+                             **regional_divergence(o)})
         except NotImplementedError:
             regional_status = ("armed, not yet reporting — regional_divergence() "
                                "is unimplemented in collectors/inside_view.py")
             regional = []
             break
+
+    # Boundary domains report beside the headline, never inside it. A domain that
+    # the control arm could not pin down is named as such rather than counted.
+    boundary = [{
+        "domain": o["domain"],
+        "n_forged": o["n_forged"],
+        "n_clean": o["n_clean"],
+        "geo_variable": o.get("geo_variable", False),
+        "state": ("undetermined, the control arm disagreed with itself"
+                  if o.get("geo_variable") else
+                  "blocked from every answering vantage" if o["n_clean"] == 0 and o["n_forged"]
+                  else "clean from every answering vantage" if o["n_forged"] == 0 and o["n_clean"]
+                  else "split across vantages" if o["n_forged"] and o["n_clean"]
+                  else "no classifiable answer this round"),
+    } for o in observations if _role(o) == "boundary"]
 
     out = {
         "generated_at": now.isoformat(),
@@ -142,6 +170,12 @@ def main() -> None:
         "panel_size": len(PANEL),
         "regional_status": regional_status,
         "regional": regional,
+        "boundary": boundary,
+        "boundary_note": (
+            "domains whose treatment is reported to vary, measured beside the "
+            "headline panel and deliberately excluded from the block rate. They "
+            "are where a REGIONAL verdict can appear at all; the measurement set "
+            "is long-blocked by design and saturates at uniform"),
         "domains": observations,
     }
 

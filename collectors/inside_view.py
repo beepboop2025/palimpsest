@@ -59,7 +59,13 @@ USER_AGENT = ("palimpsest.info observatory (censorship research; "
 
 # Unauthenticated Globalping allows 250 probe-credits/hour. One probe = one
 # credit, so a round costs len(PANEL) * (CN_PROBES + CONTROL_PROBES).
-CN_PROBES = 5
+# 28 of Globalping's ~55 mainland probes sit on the three cloud ASNs below,
+# spread across ten cities (Beijing, Chengdu, Chongqing, Guangzhou, Guiyang,
+# Nanjing, Shanghai, Shenzhen, Tianjin, Wuhan). Drawing 5 of those 28 sampled
+# four coastal cities and could not tell "filtering is uniform" apart from "we
+# only looked at the coast" — which is the one question REGIONAL exists to
+# answer. 14 covers half the pool and every city that hosts more than one probe.
+CN_PROBES = 14
 CONTROL_PROBES = 2
 CONTROL_COUNTRIES = ["DE", "NL"]
 
@@ -105,15 +111,47 @@ MIN_DISTINCT_ASNS = 2
 #
 # The controls below resolve to fixed anycast constants (1.1.1.1, 8.8.8.8) that
 # are the same address everywhere on earth, so they cannot geo-split.
+# Three roles, because they answer different questions and must not be mixed:
+#
+#   measurement — long-blocked domains. They carry the headline block rate, and
+#                 that rate is comparable over time only if this set is stable.
+#   boundary    — domains whose treatment is reported to VARY, by region or over
+#                 time. They are where a REGIONAL verdict can actually fire: a
+#                 panel of permanently-blocked domains is saturated by
+#                 construction and can only ever return UNIFORM_BLOCKED. These
+#                 are excluded from the headline rate, so adding one does not
+#                 silently move a number anyone has been tracking, and a forged
+#                 boundary domain does NOT degrade the round the way a forged
+#                 control does. They are an open question, not a claim.
+#   control     — globally constant answers that must read clean from inside.
 PANEL = [
-    {"domain": "torproject.org", "censored": True, "ddti": "CIRCUMVENTION"},
-    {"domain": "rsf.org", "censored": True, "ddti": "INFORMATION"},
-    {"domain": "www.hrw.org", "censored": True, "ddti": "INFORMATION"},
-    {"domain": "zh.wikipedia.org", "censored": True, "ddti": "INFORMATION"},
-    {"domain": "wikileaks.org", "censored": True, "ddti": "INFORMATION"},
+    {"domain": "torproject.org", "censored": True, "role": "measurement", "ddti": "CIRCUMVENTION"},
+    {"domain": "rsf.org", "censored": True, "role": "measurement", "ddti": "INFORMATION"},
+    {"domain": "www.hrw.org", "censored": True, "role": "measurement", "ddti": "INFORMATION"},
+    {"domain": "zh.wikipedia.org", "censored": True, "role": "measurement", "ddti": "INFORMATION"},
+    {"domain": "wikileaks.org", "censored": True, "role": "measurement", "ddti": "INFORMATION"},
+
+    # Boundary. Each is here for a stated reason, and none is China-CDN-fronted,
+    # because a domain with a mainland PoP legitimately answers differently
+    # inside China and would read as forged for reasons that have nothing to do
+    # with a censor. The geo-split guard in observe_domain() is the backstop.
+    #   en.wikipedia.org — the language differential. zh is in the measurement
+    #     set above; the editions were blocked at different times, so the pair
+    #     is a within-site comparison rather than two unrelated domains.
+    #   archive.org      — reported blocked and unblocked repeatedly; own
+    #     infrastructure, no mainland PoP.
+    #   github.com       — infrastructure the country's own developers depend
+    #     on, historically interfered with rather than blocked. Expected clean;
+    #     a forged verdict here would be the event, not the noise.
+    #   duckduckgo.com   — reported intermittently blocked since 2014.
+    {"domain": "en.wikipedia.org", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
+    {"domain": "archive.org", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
+    {"domain": "github.com", "censored": True, "role": "boundary", "ddti": "CIRCUMVENTION"},
+    {"domain": "duckduckgo.com", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
+
     # Negative controls: globally constant answers, must read clean from inside.
-    {"domain": "one.one.one.one", "censored": False, "ddti": None},
-    {"domain": "dns.google", "censored": False, "ddti": None},
+    {"domain": "one.one.one.one", "censored": False, "role": "control", "ddti": None},
+    {"domain": "dns.google", "censored": False, "role": "control", "ddti": None},
 ]
 
 
@@ -199,17 +237,40 @@ def observe_domain(entry: dict, *, create=_create, collect=_collect) -> dict:
     control = [r for r in (collect(ctl_id) if ctl_id else [])]
     inside = [r for r in (collect(cn_id) if cn_id else [])]
 
-    truth = set()
+    # The control arm is two countries, and whether they AGREE is itself a
+    # measurement. Forgery here means "shares no address with the control", so a
+    # domain that legitimately answers differently by region reads as forged for
+    # reasons that have nothing to do with a censor. That is not hypothetical:
+    # www.baidu.com was the first negative control and tripped the gate on the
+    # first live round for exactly this reason.
+    #
+    # Two European control probes sitting close together are a weak test, but a
+    # cheap one: if even THEY disagree completely, the domain geo-splits and a
+    # Chinese probe differing from both proves nothing. Say so and classify
+    # nothing, rather than publish a blocking verdict the method cannot support.
+    by_country = {}
     for r in control:
-        truth |= _answers(r)
+        c = ((r.get("probe") or {}).get("country")) or "?"
+        by_country.setdefault(c, set()).update(_answers(r))
+    answering = [s for s in by_country.values() if s]
+    geo_variable = len(answering) >= 2 and not set.intersection(*answering)
 
-    vantages, forged_n, clean_n, silent_n = [], 0, 0, 0
+    truth = set()
+    for s in answering:
+        truth |= s
+
+    vantages, forged_n, clean_n, silent_n, geo_n = [], 0, 0, 0, 0
     for r in inside:
         probe = r.get("probe") or {}
         got = _answers(r)
         if not got:
             state = "silent"
             silent_n += 1
+        elif geo_variable:
+            # Deliberately not counted as forged OR clean: both would be claims
+            # the control arm cannot support this round.
+            state = "geo_variable"
+            geo_n += 1
         elif truth and not (got & truth):
             state = "forged"
             forged_n += 1
@@ -232,13 +293,17 @@ def observe_domain(entry: dict, *, create=_create, collect=_collect) -> dict:
     return {
         "domain": domain,
         "expected_censored": entry["censored"],
+        "role": entry.get("role", "measurement" if entry["censored"] else "control"),
         "ddti": entry.get("ddti"),
         "control_answers": sorted(truth),
         "control_probes": len(control),
+        "control_countries": sorted(c for c, s in by_country.items() if s),
+        "geo_variable": geo_variable,
         "n_vantages": len(inside),
         "n_forged": forged_n,
         "n_clean": clean_n,
         "n_silent": silent_n,
+        "n_geo_variable": geo_n,
         "forged_fraction": round(forged_n / answered, 3) if answered else None,
         "vantages": vantages,
     }
@@ -250,6 +315,14 @@ def observe_panel(panel: list = None, *, create=_create, collect=_collect) -> li
 
 
 # ── control gate ──────────────────────────────────────────────────────────────
+
+def _role(observation: dict) -> str:
+    """Role of an observation, tolerating readings made before roles existed."""
+    r = observation.get("role")
+    if r:
+        return r
+    return "measurement" if observation.get("expected_censored") else "control"
+
 
 def control_state(observations: list) -> dict:
     """Decide whether this round is trustworthy at all, BEFORE any reading is
@@ -265,8 +338,13 @@ def control_state(observations: list) -> dict:
       DEGRADED — a benign control read forged, or too little answered to judge.
                  The classifier is untrustworthy this round.
     """
-    censored = [o for o in observations if o["expected_censored"]]
-    benign = [o for o in observations if not o["expected_censored"]]
+    # By ROLE, not by expected_censored. Boundary domains are expected to be
+    # censored sometimes, which is the point of them, so a forged boundary domain
+    # is a finding rather than evidence the classifier broke. Reading them as
+    # benign controls would degrade the round every time one of them was blocked;
+    # reading them as measurement would let an experiment move the headline rate.
+    censored = [o for o in observations if _role(o) == "measurement"]
+    benign = [o for o in observations if _role(o) == "control"]
 
     benign_forged = [o["domain"] for o in benign if (o["n_forged"] or 0) > 0]
     usable = [o for o in observations if (o["n_forged"] or 0) + (o["n_clean"] or 0) > 0]
