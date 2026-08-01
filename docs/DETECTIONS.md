@@ -29,6 +29,16 @@ handling of it, was heavily censored at the time.
 **What arrived afterwards.** On 27 July 2026, seven days later, China Digital
 Times published its documentation of that week's censored anniversary essays.
 
+```mermaid
+timeline
+    title The detection, dated — every timestamp is a public commit
+    2026-07-20 : GFW index prints 60.8, its record high (04:10 UTC)
+               : Detector raises WATCH (09:45 UTC, commit 609d39b)
+    2026-07-21 : Detector raises ALARM, the only one in its history (03:59 UTC, commit 03d1524)
+               : Designed post-alarm reset (09:16 UTC)
+    2026-07-27 : China Digital Times publishes the censored anniversary essays
+```
+
 ### The evidence
 
 | What | Where | Value |

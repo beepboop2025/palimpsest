@@ -5,6 +5,20 @@ after the fact. This document says exactly what enforces that, layer by
 layer, who each layer defends against, and what none of them can do. A trust
 claim without a threat model is marketing; this is the threat model.
 
+```mermaid
+flowchart LR
+    R["reading / eval result"] --> E["sealed entry<br/>commits to its predecessor"]
+    E --> M["Merkle root<br/>one fingerprint for the record"]
+    M --> G["public git history<br/>force-push blocked"]
+    M --> A["Internet Archive<br/>dated snapshot"]
+    M --> B["OpenTimestamps<br/>onto Bitcoin"]
+    M --> W["independent witness<br/>separate infrastructure"]
+```
+
+A value edited after sealing breaks every hash link to its right, and each box in
+the bottom row is held by someone who is not us. The table below says exactly what
+each layer proves and who would have to be defeated to fake it.
+
 ## The layers
 
 | # | Layer | What it proves | Who has to be defeated to fake it |

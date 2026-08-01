@@ -12,6 +12,17 @@ about. Aggregated over many posts, these reconstruct the censor's revealed prior
 topics the apparatus spends effort suppressing, how that effort shifts, and how fast it
 moves. The DDTI decomposes this into three legs.
 
+```mermaid
+flowchart LR
+    CDT["public deletion record<br/>(CDT, curated)"] --> T["term extraction<br/>frozen gazetteer"]
+    T --> S["selectivity<br/>recency-weighted attention"]
+    T --> N["novelty<br/>vs the term's own baseline"]
+    T -. "suppressed until in-China<br/>egress is verified" .-> V["velocity<br/>deletion speed"]
+    S --> D["DDTI threat ranking"]
+    N --> D
+    D --> G["validation gates<br/>six documented events"]
+```
+
 ### Selectivity — *what is being targeted*
 
 For each candidate term, selectivity is the recency-weighted volume of censor attention it
