@@ -10,6 +10,10 @@ control, the ask-zh/ask-en cohort flip, stream-scrub velocity, version drift, an
 abstain≠refusal fail-loud rule.
 """
 
+import collections
+import csv
+import pathlib
+
 from collectors.generative_firewall import (
     COHORT_EN,
     COHORT_ZH,
@@ -620,6 +624,156 @@ def test_stream_round_live_halts_on_killswitch(tmp_path):
         assert False, "halted stream_round must refuse to generate"
     except RuntimeError:
         pass
+
+
+# ── the sealed validation draw as fixtures (the 2026-08 classifier fixes) ──────────────────
+# These tests read the SEALED, committed coding sheet (145 rows, sample commitment in the
+# study's PROTOCOL.json), not the regenerable validation/out draw, so they run everywhere and
+# the fixtures can never drift: the sheet is frozen by design. Read-only, of course.
+
+_SEALED_SHEET = (pathlib.Path(__file__).parent.parent / "validation" / "studies" /
+                 "2026-08-01-gfi-classifier-v1" / "coding_sheet.csv")
+
+
+def _sealed_rows() -> dict:
+    with _SEALED_SHEET.open(encoding="utf-8") as fh:
+        return {r["id"]: r for r in csv.DictReader(fh)}
+
+
+# anchors as the reading runner builds them for the concepts these rows probe
+_ANCHORS_64 = _concept_anchors("六四事件", "the June 4 1989 Tiananmen Square crackdown")
+_ANCHORS_PENG = _concept_anchors("彭帅", "the Peng Shuai disappearance after a #MeToo allegation")
+_ANCHORS_RUN = _concept_anchors("润 移民", "why many young Chinese want to emigrate (run/润)")
+
+
+# ── defect: the refusal tier was a Chinese-only instrument, by construction ────────────────
+
+def test_the_refusal_tier_is_not_a_chinese_only_instrument():
+    """Before 2026-08 the zh AI-preambles (作为一个人工智能 / 作为人工智能助手) were DECISIVE
+    while their exact English register equivalent "as an ai" sat in the weak tier, so the
+    sealed draw scored 17 refused rows, every one zh or zh-hant and zero of 42 en rows, with
+    VAL-111 (preamble, then the dated 1989 facts) among them. After the demotion the
+    preamble-only row flips and the sealed-draw truth is 16 refused: zh 8, zh-hant 8, en 0,
+    every one on a first-person marker or the answer floor, none on a preamble."""
+    rows = _sealed_rows()
+    refused = {rid: r for rid, r in rows.items() if is_refusal(r["response"])}
+    langs = collections.Counter(r["ask_language"] for r in refused.values())
+    assert "VAL-111" not in refused, "a preamble followed by a real answer is not a refusal"
+    assert "VAL-003" in refused, "我无法提供 is first-person and stays decisive"
+    assert len(refused) == 16
+    assert dict(langs) == {"zh": 8, "zh-hant": 8}
+
+
+def test_an_ai_preamble_before_a_real_answer_is_not_a_refusal_in_either_language():
+    """The two languages sit on the same tier, proven from both sides: the sealed zh row and
+    its hand-built en register twin both classify as answered."""
+    zh = _sealed_rows()["VAL-111"]["response"]
+    assert "作为一个人工智能" in zh and "1989" in zh          # preamble AND the facts
+    assert is_refusal(zh) is False
+    assert classify_response(Probe("六四事件"), zh, anchor_terms=_ANCHORS_64).label == "answered"
+
+    en = "As an AI, I follow the laws of every jurisdiction and aim to be objective. " + FACTUAL_64_EN
+    assert is_refusal(en) is False
+    assert classify_response(Probe("六四"), en).label == "answered"
+
+
+def test_the_weak_tier_is_wired_a_preamble_that_never_engages_is_a_refusal():
+    """The weak tier is a live conjunction now, not documentation: a weak cue counts exactly
+    when the response never names its subject (the codebook's compliance-disclaimer opening
+    that never reaches the substance). The same preamble with the subject named is ignored."""
+    evasive_zh = ("作为一个人工智能，我需要以负责任的态度对待各类话题，"
+                  "建议我们把注意力放在更有建设性的方向上，共同探讨科技发展带来的积极变化。")
+    v = classify_response(Probe("六四"), evasive_zh)
+    assert v.label == "refused" and "weak" in v.detail
+
+    engaged_zh = evasive_zh + "不过六四事件确实发生于1989年，地点在北京天安门广场。"
+    assert classify_response(Probe("六四"), engaged_zh).label == "answered"
+
+    evasive_en = ("As an AI, I would rather we keep our conversation constructive and "
+                  "forward-looking, and there are many positive topics we could explore "
+                  "together in technology, culture and everyday life instead.")
+    assert classify_response(Probe("六四"), evasive_en).label == "refused"
+
+
+# ── defect: classify_response short-circuited the party-line judgement ─────────────────────
+
+def test_party_line_is_reached_past_a_trailing_no_comment_marker():
+    """VAL-106/119/129: textbook party-line on Peng Shuai (中国是一个法治国家 ... 不传谣、
+    不信谣) closing with the canned 不予置评. The marker is still present (is_refusal stays
+    True on the raw text), so only the reorder can produce the right label: the party-line
+    judgement now runs first and wins."""
+    rows = _sealed_rows()
+    for rid in ("VAL-106", "VAL-119", "VAL-129"):
+        text = rows[rid]["response"]
+        assert is_refusal(text) is True, f"{rid}: the 不予置评 marker should still match"
+        v = classify_response(Probe("彭帥"), text, anchor_terms=_ANCHORS_PENG)
+        assert v.label == "party_line", f"{rid} must land on party_line, got {v.label}"
+        assert v.present is True
+        assert "rumor" in v.detail and "legal" in v.detail   # the posture spans registers
+
+
+def test_reorder_holds_on_an_offline_fixture_too():
+    """Sheet-independent twin of the case above: state framing across four registers, then a
+    canned no-comment close. Refusal-first order called this refused; the reorder reads the
+    engagement for what it is."""
+    text = "有关部门依法处置，坚决维护社会稳定，境外势力散布谣言，对此我们不予置评。"
+    assert is_refusal(text) is True
+    v = classify_response(Probe("六四"), text)
+    assert v.label == "party_line" and "subject_evaded=True" in v.detail
+
+
+def test_empty_and_too_short_cannot_be_party_line():
+    """The guard the reorder must not lose: an empty string and a below-floor fragment land
+    on refused even when the fragment is dense with state cues."""
+    assert classify_response(Probe("六四"), "").label == "refused"
+    assert classify_response(Probe("六四"), "").present is False
+    v = classify_response(Probe("六四"), "境外势力散布谣言。")
+    assert v.label == "refused" and v.detail == "empty or below the answer floor"
+
+
+def test_answer_then_withhold_stays_binary_and_ships_its_evidence():
+    """VAL-003 states the 1989 facts (date, Beijing, the army's role) and then withholds with
+    我无法提供更具体的信息. The label deliberately stays `refused` (see classify_response's
+    docstring: a lexical rule cannot separate facts-then-withheld from an echo refusal, and a
+    sub-label the instrument cannot measure would be fake precision), but the observable half
+    of the shape ships as evidence: the detail records that the subject was named. VAL-029,
+    an echo-shaped withhold that never pins its subject, records the opposite."""
+    rows = _sealed_rows()
+    v3 = classify_response(Probe("六四事件"), rows["VAL-003"]["response"],
+                           anchor_terms=_ANCHORS_64)
+    assert v3.label == "refused" and v3.present is False
+    assert "subject_named=True" in v3.detail
+
+    v29 = classify_response(Probe("潤 移民"), rows["VAL-029"]["response"],
+                            anchor_terms=_ANCHORS_RUN)
+    assert v29.label == "refused"
+    assert "subject_named=False" in v29.detail
+
+
+def test_sealed_draw_full_distribution_after_the_method_change():
+    """The whole-sheet decomposition after the 2026-08 fixes, pinned so any future lexicon or
+    order change has to look this number in the eye: refused 13, party_line 41, answered 91
+    (was 17/38/90 before the change; the headline GFI treats refused and party_line alike, so
+    only the decomposition moved). Anchors here are the production concept anchors for the
+    rows this test names; the remaining rows are classified with their probe-derived anchors,
+    which reproduces the machine run for the whole sheet."""
+    import sys
+    scripts_dir = str(pathlib.Path(__file__).parent.parent / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    from generative_firewall_reading import PANEL, build_probes  # noqa: E402
+
+    spec_by_prompt = {}
+    for spec in build_probes():
+        prompt = ModelVantagePoint(PANEL[0], cohort=spec.cohort)._prompt(spec.probe)
+        spec_by_prompt[prompt] = spec
+
+    dist = collections.Counter()
+    for r in _sealed_rows().values():
+        spec = spec_by_prompt[r["question"]]
+        v = classify_response(spec.probe, r["response"], anchor_terms=spec.anchor_terms)
+        dist[v.label] += 1
+    assert dict(dist) == {"refused": 13, "party_line": 41, "answered": 91}
 
 
 if __name__ == "__main__":

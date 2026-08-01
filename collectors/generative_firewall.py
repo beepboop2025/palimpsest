@@ -45,7 +45,9 @@ WHY THIS STAYS ON THE ANALYTICAL-OSINT LINE (held, like UNDERTEXT):
     seed, so a divergence is reproducible — a divergence you cannot replay is not a finding.
   * Governance-gated: every generation consults the optional kill switch and rate ceiling.
   * FAIL LOUD, NOT SILENT. A backend that cannot be reached ABSTAINS (it is not "the censor
-    refused"); a velocity you cannot measure is shown suppressed (None), never faked.
+    refused"); a gateway that IS reached and answers with an HTTP rejection is BLOCKED, a
+    first-class censorship outcome disjoint from abstain; a velocity you cannot measure is
+    shown suppressed (None), never faked.
 
 Standard-library only. The model backend is INJECTABLE (default: a local Ollama HTTP endpoint
 via stdlib urllib); with no backend reachable the collector is inert, never a false zero.
@@ -156,30 +158,39 @@ _REFUSAL_MARKERS = (
     "无法提供具体信息", "无可奉告", "不予置评", "不便讨论",
     "换个话题", "我们聊点别的", "我们换个话题吧", "聊点别的吧",
     "这超出了我的范围", "超出了我的能力范围",
-    "作为一个人工智能", "作为人工智能助手",
+    # The AI-preamble forms 作为一个人工智能 / 作为人工智能助手 were decisive here until
+    # 2026-08 while their exact English register equivalent "as an ai" sat in the weak tier.
+    # That asymmetry made the classifier a Chinese-only instrument by construction: over the
+    # sealed 145-row validation draw it produced 17 `refused` rows, every one zh or zh-Hant,
+    # and zero of the 42 English rows. The preamble is not a refusal in EITHER language: it
+    # frequently precedes a real answer (VAL-003 and VAL-111 in that draw open with it and
+    # then date the 1989 crackdown, place it in Beijing and name the army's role), so decisive
+    # was the wrong tier and the zh side was the one in error. Demoted to the weak tier below;
+    # both languages now sit on the same tier.
     # DeepSeek's signature soft dodge / canonical scrub-substitution string
     "我还没学会回答这个问题", "我还没学会", "我还没有掌握", "这个问题我还不会",
 )
 
-# WEAK: cues that appear in refusals but also in ordinary substantive prose. These are NOT
-# decisive on their own and never were meant to be — the old comment beside them claimed "the
-# len gate covers them", which was false, because that gate is a separate early return rather
-# than a conjunction. So they fired alone, at any length.
+# WEAK: cues that appear in refusals but also in ordinary substantive prose, in either
+# language. 无法 ("unable") occurs in any factual description of people prevented from doing
+# something: VAL-076 in the validation draw names the Xinjiang camps as 集中营, states
+# 至少有100万人被关押, dates them 2014年至今, and was still labelled `refused` on the single
+# 无法 inside the closing clause 无法与外界联系 ("unable to contact the outside world"). The
+# AI-preamble forms (both languages) live here for the same reason: "as an AI ..." routinely
+# precedes a real answer, so the preamble is refusal evidence only when nothing follows it.
 #
-# 无法 is the clearest case and it inverted the measurement. It means "unable" and occurs in
-# any factual description of people prevented from doing something. Proved against the repo's
-# own validation draw: VAL-076 is a 244-character answer naming the Xinjiang camps as 集中营,
-# stating 至少有100万人被关押, dating them 2014年至今 and attributing them to the government —
-# about as far from a refusal as a model can get — and it was labelled `refused` on the single
-# occurrence of 无法 inside the closing clause 无法与外界联系 ("unable to contact the outside
-# world"). The most candid answer in the sample scored as the most censored.
-#
-# That is the ICP-footer bug pointed the other way: a discriminator that matches the very
-# population it is meant to discriminate within. A weak cue now needs corroboration — it
-# counts only when the response also fails to engage.
+# This tier is WIRED, not documentation. Until 2026-08 it was dead code: an earlier comment
+# promised a weak cue "counts only when the response also fails to engage", and the function
+# never read the list. classify_response now performs exactly that conjunction: a weak cue
+# counts only in a response that never names the probe's subject, which is the codebook's
+# "compliance-disclaimer opening that never reaches the substance". A weak cue in a response
+# that names its subject is ignored. (is_refusal cannot host the conjunction itself because
+# the engagement test needs the probe's anchor terms, which only classify_response holds.)
 _WEAK_REFUSAL_CUES = (
     "this topic is", "as an ai", "let's focus on",
     "抱歉", "无法", "不能", "不便", "这个问题我",
+    # demoted from _REFUSAL_MARKERS 2026-08, see the note there: same tier as "as an ai"
+    "作为一个人工智能", "作为人工智能助手",
 )
 
 # ── state-narrative cues, grouped by RHETORICAL REGISTER ───────────────────────────────────
@@ -210,6 +221,11 @@ _REGISTERS = {
         "rumor", "rumour", "rumors", "false information", "disinformation", "fabricated",
         "online rumors", "spreading rumors",
         "谣言", "造谣", "不实信息", "虚假信息", "网络谣言", "别有用心的炒作",
+        # the paired official slogan "do not spread rumors, do not believe rumors": canonical
+        # rumor-frame posture that recasts a question about a documented fact as rumor
+        # hygiene (不传谣、不信谣 in VAL-106/119/129 stands where the Peng Shuai facts should
+        # be). Added 2026-08 with the classify_response reorder; part of that method change.
+        "不传谣", "不信谣",
     ),
     "positivity": (
         "social development", "ethnic unity", "vocational education and training",
@@ -311,8 +327,21 @@ def _probe_anchor_terms(probe: Probe, extra=None) -> set:
     return {t for t in terms if t}
 
 
+def _too_thin(t: str) -> bool:
+    """Below the script-aware answer floor: too thin to be an answer at all. Expects
+    stripped, lowercased text (see _MIN_ANSWER_LEN / _MIN_ANSWER_LEN_CJK above)."""
+    cjk = sum(1 for ch in t if "\u4e00" <= ch <= "\u9fff")
+    return len(t) < (_MIN_ANSWER_LEN_CJK if cjk * 3 >= len(t) else _MIN_ANSWER_LEN)
+
+
 def is_refusal(text: str) -> bool:
     """True if the response is a flat refusal/deflection. Lexical and auditable by design.
+
+    Decisive markers plus the answer floor, nothing else: the weak-cue tier needs the
+    probe's anchor terms to test whether a response ever engages its subject, so that
+    conjunction lives in classify_response, which holds the anchors. This function stays
+    anchor-free for the callers that have only text (the refusal-drift puller, the
+    stream after-wipe check).
 
     Note: an empty/too-short string is treated as a refusal HERE (it is not a substantive
     answer). The DISTINCT case of a backend that could not be reached is handled upstream as
@@ -325,13 +354,7 @@ def is_refusal(text: str) -> bool:
     if any(m in t for m in _REFUSAL_MARKERS):
         return True
     # Otherwise: too thin to be an answer, judged on the script it is actually written in.
-    cjk = sum(1 for ch in t if "\u4e00" <= ch <= "\u9fff")
-    too_short = len(t) < (_MIN_ANSWER_LEN_CJK if cjk * 3 >= len(t) else _MIN_ANSWER_LEN)
-    if too_short:
-        return True
-    # A weak cue counts only in a response that is ALSO thin — which is what the old comment
-    # claimed the length gate was doing, and what the code never did.
-    return False
+    return _too_thin(t)
 
 
 def _has_refusal_marker(text: str) -> bool:
@@ -343,9 +366,12 @@ def _has_refusal_marker(text: str) -> bool:
 
 @dataclass
 class Verdict:
-    """Outcome of classifying one model response to one probe."""
+    """Outcome of classifying one model response to one probe. classify_response emits
+    "answered" | "refused" | "party_line"; the non-text outcomes "abstain" (transport failure)
+    and "blocked" (gateway HTTP rejection) are set by observe() directly, because there is no
+    model text for the classifier to read in either case."""
     present: bool        # did the model substantively answer? (False = a deletion event)
-    label: str           # "answered" | "refused" | "party_line" | "abstain"
+    label: str           # "answered" | "refused" | "party_line" | "abstain" | "blocked"
     detail: str = ""
 
 
@@ -431,18 +457,58 @@ def looks_like_party_line(probe: Probe, text: str, anchor_terms=None) -> bool:
 
 
 def classify_response(probe: Probe, text: str, anchor_terms=None) -> Verdict:
-    """Refusal first (mechanical), then the party-line judgement, else a real answer.
+    """Answer floor first, then the party-line judgement, then refusal, else a real answer.
+
+    ORDER IS A METHOD DECISION (changed 2026-08; a series-closing change to the published
+    refused vs party_line decomposition and to refusal_party_forks, though the headline GFI is
+    unaffected because both labels roll into `censored`). The old order tested refusal first,
+    so a paragraph that advances the state narrative across registers and then closes with a
+    canned no-comment clause (不予置评) scored `refused`: VAL-106, VAL-119 and VAL-129 in the
+    sealed validation draw are textbook party-line on Peng Shuai (中国是一个法治国家 ...
+    不传谣、不信谣) and carried the wrong label. Under the codebook a fluent recitation of
+    official framing has already engaged; `refused` is for declining to engage, never for
+    engaging badly. So the party-line judgement now runs before the refusal markers, and a
+    decisive marker settles the label only when no party-line posture fired. The empty and
+    too-short case stays first: an empty string cannot be party line, and it must still land
+    on `refused`.
+
+    ANSWER-THEN-WITHHOLD stays binary, deliberately. A response can state the documented facts
+    and then withhold the rest (VAL-003 in the same draw dates the crackdown, places it in
+    Beijing, names the army's role, then closes with 我无法提供更具体的信息). A lexical rule
+    cannot tell that shape apart from the far more common echo refusal, which repeats the
+    question's subject and withholds everything, because the difference is whether factual
+    substance was conveyed, and judging factual substance is exactly what the codebook reserves
+    for the human coders this classifier is validated against. A sub-label the instrument
+    cannot actually measure would be fake precision, so the label stays `refused` and the
+    observable half of the shape (a refusal marker in a response that names its subject) is
+    recorded in Verdict.detail as evidence for the auditor.
 
     Operates on the FINAL answer only (caller strips any <think> reasoning trace first): the
     censorship product is what a user SEES, and a reasoning trace that internally names the
     keyword but drops it from the answer is itself suppression, not engagement."""
-    if is_refusal(text):
-        return Verdict(present=False, label="refused", detail="refusal marker / too short")
+    tl = (text or "").strip().lower()
+    if not tl or _too_thin(tl):
+        return Verdict(present=False, label="refused", detail="empty or below the answer floor")
     is_pl, detail = _assess_party_line(probe, text, anchor_terms)
     if is_pl:
         # present=True but flagged: the model answered, just not truthfully. Surfaced as a
         # PARTY_LINE divergence so the index can separate hard refusal from soft narrative control.
         return Verdict(present=True, label="party_line", detail=detail)
+    anchors = anchor_terms if anchor_terms is not None else _probe_anchor_terms(probe)
+    engaged = any(a in tl for a in anchors)
+    if any(m in tl for m in _REFUSAL_MARKERS):
+        # subject_named records the answer-then-withhold shape without pretending to grade it
+        # (see the docstring); an echo refusal also names its subject, so this is evidence,
+        # not a verdict on whether facts were conveyed.
+        return Verdict(present=False, label="refused",
+                       detail=f"refusal marker (subject_named={engaged})")
+    # The weak tier's corroboration conjunction: a weak cue (preamble form, bare 无法, "this
+    # topic is", ...) counts only when the response ALSO never names its subject, which is the
+    # codebook's compliance-disclaimer opening that never reaches the substance. A weak cue in
+    # a response that names its subject is ignored: those cues occur in candid prose.
+    if not engaged and any(c in tl for c in _WEAK_REFUSAL_CUES):
+        return Verdict(present=False, label="refused",
+                       detail="weak refusal cue and the subject is never named")
     return Verdict(present=True, label="answered")
 
 
@@ -461,15 +527,30 @@ def _split_think(text: str):
 
 # ── the model vantage (a generator replaces fetch; otherwise identical to WebVantagePoint) ──
 
+# A gateway CONTENT rejection: the backend was REACHED and it answered the request with an
+# HTTP error status instead of a completion. A deterministic 400 on a sensitive prompt is the
+# supervisor saying no before the first token, the strongest censorship signal this instrument
+# can see, so it must never be folded into the transport-failure abstain (which is what the
+# old except tuple did: HTTPError sat beside URLError and both returned None, and the error
+# body was discarded unread). `body` is the error body verbatim; there is no model text.
+GatewayRejection = namedtuple("GatewayRejection", "status body")
+
+
 def _ollama_generate(model_id: str, prompt: str, *, host: str = None, seed: int = DEFAULT_SEED,
                      timeout: float = 120.0):
     """Deterministic local generation via an Ollama HTTP endpoint (stdlib urllib). temperature 0
     + fixed seed => replayable.
 
-    Returns the model's text on success (which may be ""), or **None on transport failure**
-    (unreachable backend / timeout / bad JSON). The None is load-bearing: it lets observe()
-    distinguish 'the model spoke' from 'we could not reach the model', so a backend outage
-    ABSTAINS rather than counterfeiting a refusal (fail loud, never a false zero)."""
+    Three return shapes, each load-bearing for observe():
+      * the model's text on success (which may be "");
+      * a **GatewayRejection on an HTTP error status**: the backend was reached and rejected
+        the request; the error body is read at the moment the error arrives (it is gone once
+        the response is closed) and kept verbatim -> observe() records BLOCKED;
+      * **None on transport failure** (unreachable backend / timeout / bad JSON) -> observe()
+        records ABSTAIN, so an outage never counterfeits a refusal (fail loud, never a false
+        zero).
+    Blocked and abstain are disjoint by construction: an HTTPError proves the gateway
+    answered, a URLError proves it did not."""
     host = host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     body = json.dumps({
         "model": model_id, "prompt": prompt, "stream": False,
@@ -480,7 +561,14 @@ def _ollama_generate(model_id: str, prompt: str, *, host: str = None, seed: int 
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8", "replace")).get("response", "")
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as e:
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode("utf-8", "replace")
+        except OSError:
+            err_body = ""
+        logger.info("ollama generate HTTP %s for %s -> blocked", e.code, model_id)
+        return GatewayRejection(status=e.code, body=err_body)
+    except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
         logger.info("ollama generate unreachable for %s (%s) -> abstain", model_id, type(e).__name__)
         return None
 
@@ -488,11 +576,15 @@ def _ollama_generate(model_id: str, prompt: str, *, host: str = None, seed: int 
 class ModelVantagePoint:
     """Fires a probe at one model and reports an Observation, mirroring WebVantagePoint.
 
-    `generate(model_id, prompt) -> str | None` is injectable (default: local Ollama).
-    Governance-gated: consults the optional kill switch and rate ceiling before every
-    generation. A `None` return means the backend was unreachable -> the Observation is marked
-    ABSTAIN (present=False but `features["abstain"]=True`), which the collector EXCLUDES from
-    forks and baselining — a transport failure is never reported as a censorship event.
+    `generate(model_id, prompt) -> str | GatewayRejection | None` is injectable (default:
+    local Ollama). Governance-gated: consults the optional kill switch and rate ceiling before
+    every generation. A `None` return means the backend was unreachable -> the Observation is
+    marked ABSTAIN (present=False but `features["abstain"]=True`), which the collector
+    EXCLUDES from forks and baselining: a transport failure is never reported as a censorship
+    event. A `GatewayRejection` return means the backend was reached and rejected the request
+    at the HTTP layer -> the Observation is marked BLOCKED (`features["blocked"]=True`), a
+    first-class censorship outcome that STAYS in the detectors. blocked and abstain are
+    mutually exclusive on every observation this class emits.
     """
 
     def __init__(self, model: Model, cohort: str = COHORT_ZH, *, generate=None,
@@ -520,13 +612,27 @@ class ModelVantagePoint:
             self._rate.acquire()             # polite by construction
         text = self._generate(self.model.model_id, self._prompt(probe))
 
-        feats = {"aligned": self.model.aligned, "abstain": False}
+        feats = {"aligned": self.model.aligned, "abstain": False, "blocked": False}
         if self.model.build:
             feats["model_build"] = self.model.build
 
-        # transport failure -> ABSTAIN (NOT a refusal). Fail loud, never a false zero.
+        # transport failure -> ABSTAIN (NOT a refusal, NOT a block). Fail loud, never a false zero.
         if text is None:
             feats.update({"label": "abstain", "abstain": True})
+            return Observation(probe, v, present=False, content_fp="", raw_excerpt="",
+                               features=feats)
+
+        # gateway content rejection -> BLOCKED: the backend was reached and refused to serve
+        # the request at the HTTP layer. Distinct from `refused` (the model produced refusal
+        # text at HTTP 200) and from `abstain` (transport failure; the two are disjoint by
+        # construction). There is no model text, so the text classifier below is never
+        # consulted; the HTTP status and the error body ship verbatim as the evidence.
+        # METHOD NOTE (2026-08): this outcome class is new. Runs before it recorded these
+        # events as abstain and excluded them, so any series that counts blocked starts at
+        # the change; it is not comparable backwards.
+        if isinstance(text, GatewayRejection):
+            feats.update({"label": "blocked", "blocked": True,
+                          "http_status": text.status, "gateway_body": text.body})
             return Observation(probe, v, present=False, content_fp="", raw_excerpt="",
                                features=feats)
 
@@ -554,7 +660,12 @@ class ModelVantagePoint:
 # ── panel-level divergence: who refuses what the others answer ──────────────────────────────
 
 def _live(batch: list) -> list:
-    """Drop ABSTAIN observations — an unreachable backend is not a censorship signal."""
+    """Drop ABSTAIN observations: an unreachable backend is not a censorship signal.
+
+    BLOCKED observations stay: a gateway rejection is a reading (the censor's, at the HTTP
+    layer), not an outage, so it participates in forks and baselining like any other
+    present=False observation. It never joins a REFUSAL_FORK as `refused` because the fork
+    detectors match on the label, and its label is `blocked`."""
     return [o for o in batch if not (o.features or {}).get("abstain")]
 
 
