@@ -647,6 +647,23 @@
             <p class="sig__f"><span class="fresh" data-fresh="sig-believability">first reading 18 Aug</span></p>
           </a>
 
+          <a class="sig ps-p2" href="/readings/#state">
+            <p class="sig__k">State telemetry<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">Two prices for one currency</h3>
+            <p class="stat stat--sm" data-stat="sig-fixgap">
+              <span class="stat__static">The daily rate the state sets for the yuan, against the rate
+              an independent central bank observes the same day.</span>
+            </p>
+            <p class="sig__b">Every morning the PBOC publishes a central parity, the price it says is
+            right, and the market spends the day agreeing or pulling against it. Read beside the ECB's
+            own reference rate for the same day, the gap is a daily quantitative measure of that
+            tension.</p>
+            <p class="sig__b">Economic backdrop rather than censorship, and deliberately kept off the
+            alarm board. It is here because the same apparatus that curates a statistic also sets a
+            price, and this one can be checked from outside.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-fixgap">reading the feed</span></p>
+          </a>
+
         </div>
 
         <div class="ps-p1 note ps-reveal">
@@ -1097,6 +1114,23 @@
                  " censored domains that answered from inside China came back forged"
           });
           if (d.control) text("[data-field='inside-why']", d.control.why);
+        }
+      },
+      {
+        /* The fix gap: signed, and scaled against the band the state itself
+           allows, so the number means something without a chart. */
+        url: "/readings/cny-fix-gap-latest.json",
+        slots: ["[data-stat='sig-fixgap']"],
+        fresh: [["[data-fresh='sig-fixgap']", 96]],
+        ok: function (d) {
+          var gap = need(d.gap_pct);
+          var band = need(d.band_pct);
+          paint($("[data-stat='sig-fixgap']"), {
+            value: Math.abs(gap), decimals: 2, unit: "%",
+            cap: "the market priced the yuan " + (gap < 0 ? "stronger" : "weaker") +
+                 " than the state's fix on " + d.asof + ", inside a band of plus or minus " +
+                 band + "%"
+          });
         }
       },
       {

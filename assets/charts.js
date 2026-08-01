@@ -135,6 +135,25 @@
   }
 
   /* ----------------------------------------------------------- fetching ---- */
+  /* When a history row was written. Signals that log a heartbeat carry
+     generated_at; signals keyed by the DATA date (one row per trading day or
+     per release) carry `date` instead and deliberately have no run stamp.
+     Reading only generated_at silently DISCARDED every row of those files, so
+     a chart pointed at them could never draw and would fail as though the
+     feed were empty. This is the same precedence the board applies in
+     processors/conformal_events._row_timestamp, so both consumers of a
+     history file now agree on when its rows happened. */
+  function rowTime(o) {
+    for (const k of ["generated_at", "as_of", "at", "date"]) {
+      const v = o[k];
+      if (typeof v === "string" && v) {
+        const t = Date.parse(v);
+        if (isFinite(t)) return t;
+      }
+    }
+    return NaN;
+  }
+
   const CACHE = {};
   function loadHistory(url) {
     if (CACHE[url]) return CACHE[url];
@@ -147,10 +166,10 @@
           if (!s) continue;
           try {
             const o = JSON.parse(s);
-            if (o && typeof o === "object" && o.generated_at) rows.push(o);
+            if (o && typeof o === "object" && isFinite(rowTime(o))) rows.push(o);
           } catch (e) { /* a torn line is skipped, never guessed at */ }
         }
-        rows.sort((a, b) => Date.parse(a.generated_at) - Date.parse(b.generated_at));
+        rows.sort((a, b) => rowTime(a) - rowTime(b));
         return rows;
       });
     return CACHE[url];
@@ -309,7 +328,7 @@
       const series = cfg.series.map((s, i) => ({
         label: s.label, dec: s.dec != null ? s.dec : cfg.dec,
         color: colors[i],
-        pts: rows.map(r => ({ t: Date.parse(r.generated_at), v: num(pick(r, s.key)) }))
+        pts: rows.map(r => ({ t: rowTime(r), v: num(pick(r, s.key)) }))
                  .filter(p => isFinite(p.t))
       }));
       const master = series[0].pts.filter(p => p.v != null);
@@ -585,7 +604,7 @@
   function spark(node, cfg) {
     const t = tokens();
     loadHistory(cfg.url).then(rows => {
-      const pts = rows.map(r => ({ t: Date.parse(r.generated_at), v: num(pick(r, cfg.key)) }))
+      const pts = rows.map(r => ({ t: rowTime(r), v: num(pick(r, cfg.key)) }))
                       .filter(p => isFinite(p.t) && p.v != null)
                       .slice(-(cfg.n || 40));
       if (pts.length < (cfg.min || 6)) return;
