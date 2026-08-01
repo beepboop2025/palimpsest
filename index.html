@@ -74,6 +74,9 @@
       "distribution": [
         { "@type": "DataDownload", "name": "Deletion-as-data corpus", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/latest.json" },
         { "@type": "DataDownload", "name": "Inside View, DNS forgery seen from inside China", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/inside-view-latest.json" },
+        { "@type": "DataDownload", "name": "Data darkness, publication-cadence watch over official Chinese data surfaces", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/data-darkness-latest.json" },
+        { "@type": "DataDownload", "name": "Silence Index, pre-emptive silence over topics loud abroad", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/silence-index-latest.json" },
+        { "@type": "DataDownload", "name": "CNY fix gap, the PBOC daily fix against an independent reference rate", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/cny-fix-gap-latest.json" },
         { "@type": "DataDownload", "name": "In-Path Interference, middlebox and transport health", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/in-path-interference-latest.json" },
         { "@type": "DataDownload", "name": "App Store Layer, Chinese storefront availability", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/app-storefront-latest.json" },
         { "@type": "DataDownload", "name": "Blocklist Archaeology, newly shipped censorship keywords", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/blocklist-latest.json" },
@@ -590,12 +593,71 @@
 
         </div>
 
+        <div class="sig-grid ps-stagger ps-reveal">
+
+          <a class="sig ps-p2" href="/readings/#content">
+            <p class="sig__k">Withholding layer<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">Data darkness</h3>
+            <p class="stat stat--sm" data-stat="sig-darkness">
+              <span class="stat__static">Seven official Chinese publication surfaces, watched daily for
+              the moment they stop publishing.</span>
+            </p>
+            <p class="sig__b">Deletion leaves a scar to count. Withholding leaves nothing: when Beijing
+            suspended the youth-unemployment series in 2023, no page was removed, the numbers simply
+            stopped appearing. This watches the shelves instead of the record: PBOC open-market
+            announcements, the monetary-authority balance sheet, the FX settlement series behind every
+            hidden-intervention estimate, the interbank benchmarks, and the physical-economy monthlies
+            scored against the state's own published release calendar.</p>
+            <p class="sig__b">A surface this vantage cannot reach is reported unreachable, never as
+            darkness. Our own network trouble is not evidence about Beijing.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-darkness">reading the feed</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/#content">
+            <p class="sig__k">Content layer<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">Silence Index</h3>
+            <p class="stat stat--sm" data-stat="sig-silence">
+              <span class="stat__static">Topics loud abroad and absent at home, scored against the
+              domestic attention record.</span>
+            </p>
+            <p class="sig__b">The cleanest censorship leaves a hole where coverage should be, not a scar.
+            A directive not to report produces no deletion to count, so this reads the shape of the
+            absence instead, the pattern of Peng Shuai and the suspended statistics.</p>
+            <p class="sig__b">A topic China never covered being quiet at home is disinterest, not
+            suppression. Without a coupling baseline or gazetteer corroboration the reading abstains, and
+            a round that could not measure records nothing rather than reporting calm.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-silence">reading the feed</span></p>
+          </a>
+
+          <a class="sig ps-p2" href="/readings/#state">
+            <p class="sig__k">State credibility<span class="ps-tag">new</span></p>
+            <h3 class="sig__t">The believability read</h3>
+            <p class="stat stat--sm" data-stat="sig-believability">
+              <span class="stat__static">The Li Keqiang composite against the headline claim, computed
+              monthly from the state's own releases.</span>
+            </p>
+            <p class="sig__b">In 2007 Li Keqiang told the US ambassador that GDP figures are man-made and
+            unreliable, and named the three series he watched instead: electricity, rail freight, bank
+            lending. This computes exactly that composite, live, and compares it to the headline the
+            state publishes for the same month.</p>
+            <p class="sig__b">A services economy legitimately uses less electricity per yuan, so the
+            published statistic is drift against the gap's own history with its uncertainty band, never a
+            raw level. A missing component abstains the composite rather than quietly reweighting it.
+            Method, critiques and the counterpoint are published beside it.</p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-believability">first reading 18 Aug</span></p>
+          </a>
+
+        </div>
+
         <div class="ps-p1 note ps-reveal">
           <p class="note__h">Raw evidence</p>
           <p>Every figure above is published as JSON alongside a history file, under the same MIT licence
           as the code. Nothing on this site asks you to take a number on trust.</p>
           <ul class="filelist">
             <li><a href="/readings/inside-view-latest.json">inside-view</a></li>
+            <li><a href="/readings/data-darkness-latest.json">data-darkness</a></li>
+            <li><a href="/readings/silence-index-latest.json">silence-index</a></li>
+            <li><a href="/readings/cny-fix-gap-latest.json">cny-fix-gap</a></li>
             <li><a href="/readings/in-path-interference-latest.json">in-path-interference</a></li>
             <li><a href="/readings/app-storefront-latest.json">app-storefront</a></li>
             <li><a href="/readings/apple-censorship-latest.json">apple-censorship</a></li>
@@ -1038,6 +1100,76 @@
         }
       },
       {
+        /* Data darkness: how late China's official surfaces are against their own
+           rhythm. Unreachable surfaces are excluded upstream, so the index is
+           always a mean over surfaces that actually answered. */
+        url: "/readings/data-darkness-latest.json",
+        slots: ["[data-stat='sig-darkness']"],
+        fresh: [["[data-fresh='sig-darkness']", 48]],
+        ok: function (d) {
+          var watched = need(d.n_series_watched);
+          var reporting = need(d.n_series_reporting);
+          paint($("[data-stat='sig-darkness']"), {
+            value: need(d.darkness_index), decimals: 2,
+            cap: "mean staleness across " + reporting + " of " + watched +
+                 " official publication surfaces, each scored against its own cadence" +
+                 (d.unreachable && d.unreachable.length
+                   ? ". Unreachable this round: " + d.unreachable.join(", ") : "")
+          });
+        }
+      },
+      {
+        /* Silence Index: a blind round publishes nothing rather than calm, so the
+           front page states how much was actually scored. */
+        url: "/readings/silence-index-latest.json",
+        slots: ["[data-stat='sig-silence']"],
+        fresh: [["[data-fresh='sig-silence']", 24]],
+        ok: function (d) {
+          var considered = need(d.n_topics_considered);
+          var scored = need(d.n_scored);
+          if (scored > 0) {
+            paint($("[data-stat='sig-silence']"), {
+              value: need(d.n_blackout), decimals: 0,
+              cap: "topics loud abroad and absent from the domestic board, out of " +
+                   scored + " scored of " + considered + " under deletion pressure"
+            });
+          } else {
+            paint($("[data-stat='sig-silence']"), {
+              value: considered, decimals: 0,
+              cap: "topics under deletion pressure this round. None could be scored " +
+                   "against the domestic record, so the reading abstains rather than " +
+                   "reporting calm"
+            });
+          }
+        }
+      },
+      {
+        /* Believability: the composite abstains unless every canonical component
+           answered, and claims no drift until it has a baseline. */
+        url: "/readings/believability-latest.json",
+        slots: ["[data-stat='sig-believability']"],
+        fresh: [["[data-fresh='sig-believability']", 1100]],
+        /* Monthly, first round on the 18th. Clear this once it publishes. */
+        pending: true,
+        ok: function (d) {
+          if (typeof d.gap === "number" && isFinite(d.gap)) {
+            paint($("[data-stat='sig-believability']"), {
+              value: d.gap, decimals: 2, unit: " pts",
+              cap: "between the headline claim and the state's own physical telemetry for " +
+                   d.asof + (d.label === "warming_up"
+                     ? ". Drift is not scored until the gap has a baseline of its own"
+                     : "")
+            });
+          } else {
+            paint($("[data-stat='sig-believability']"), {
+              value: need(d.n_components_present), decimals: 0,
+              cap: "of " + need(d.n_components_required) + " canonical components answered for " +
+                   d.asof + ", so the composite abstains rather than reweighting itself"
+            });
+          }
+        }
+      },
+      {
         /* In-path interference: rates over completed tests, blackouts named. */
         url: "/readings/in-path-interference-latest.json",
         slots: ["[data-stat='sig-inpath']"],
@@ -1137,6 +1269,11 @@
           feed.slots.forEach(function (sel) { fail(sel, feed.url); });
         }
       }, function () {
+        /* A feed that has not had its first scheduled round yet is not a
+           failure: saying "unavailable" there would report a working
+           instrument as broken. Such a feed declares `pending`, and its card
+           keeps the static sentence it already carries. */
+        if (feed.pending) return;
         feed.slots.forEach(function (sel) { fail(sel, feed.url); });
         (feed.fresh || []).forEach(function (f) { freshFail(f[0]); });
       });
