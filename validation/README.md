@@ -24,7 +24,8 @@ method statement forbids routing judgement through a model anywhere in this path
 `validation/CODEBOOK.md` requires coders to be blind to machine labels.
 
 So the labelling step is the one part of this repository that a person has to do. Two
-people, about 35 minutes each.
+people, about four hours each: the frozen draw is 145 rows at a median of 683 characters
+per response, and careful reading runs a minute or two per row, not seconds.
 
 ## Running it
 

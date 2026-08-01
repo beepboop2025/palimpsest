@@ -99,7 +99,7 @@ NAV = [
                     ("https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md",
                      "Integrity model", "What sealing does and does not prove"),
                     ("https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md",
-                     "Validation", "Human-coded ground truth against the classifier"),
+                     "Validation", "The DDTI scorer retrodicted against six documented events"),
                     ("https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md",
                      "Ethics and safety", "Watch the censor, never the censored"),
                     ("/for-researchers.html#forecast", "Our own misses",

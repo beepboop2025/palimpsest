@@ -162,7 +162,7 @@
             <p class="ps-flyout__head">How it works</p>
             <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
             <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
-            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
             <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
             <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
           </div>
@@ -544,12 +544,17 @@
         validated by that exercise is stated in the same document.
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md">docs/VALIDATION.md</a>.</li>
         <li><b>The human coding study is published as unfinished</b>
-        The sampler, the codebook, the answer key and the two coding sheets for the
-        generative firewall labels are in the repository, drawn with a disclosed seed and
-        with the shortfalls in the rare cells recorded rather than hidden. The two coder
-        pass has not been run, so no inter rater agreement figure is published and none is
-        claimed. Funding that study is one of the things this page is asking for.
-        <a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">The codebook</a>,
+        The sampler, the codebook and the frozen blind sheet for the generative firewall
+        labels are in the repository, drawn with a disclosed seed and with the shortfalls
+        in the rare cells recorded rather than hidden. The answer key is deliberately
+        withheld until both coders finish, because it carries the machine label for every
+        row; its digest is published now, so the key released afterwards is checkable
+        against a commitment that predates the labels, and CI recomputes the seal on the
+        published sheet every run. The two coder pass has not been run, so no inter rater
+        agreement figure is published and none is claimed. Funding that study is one of
+        the things this page is asking for.
+        <a href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">The frozen study</a>,
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">the codebook</a>,
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/gfi_validation_agreement.py">the agreement script that is waiting on coders</a>.</li>
       </ul>
     </div>
@@ -665,10 +670,12 @@
       <div class="ps-p2 f-card">
         <h3>04 &middot; Human validation studies</h3>
         <p>Machine labels are not evidence until humans have checked them. The sampling
-        frame, codebook and answer key for the generative firewall labels are already
-        written and published. What is missing is paid coder time, which is the difference
-        between a plausible index and a validated one, and the reason no agreement figure
-        appears anywhere on this site.</p>
+        frame and codebook for the generative firewall labels are already written and
+        published; the answer key is withheld until coding finishes, with its digest
+        published so the eventual release is checkable against a commitment that predates
+        the labels. What is missing is paid coder time, which is the difference between a
+        plausible index and a validated one, and the reason no agreement figure appears
+        anywhere on this site.</p>
         <div class="ps-p1 f-receipt">
           <p>The gap, stated plainly: two independent coders have not yet worked the
           published sheets, so inter rater agreement is unmeasured and every model derived

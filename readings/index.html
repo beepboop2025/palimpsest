@@ -45,7 +45,7 @@
 .rd-table { width: 100%; min-width: 940px; border-collapse: collapse; font-size: 13.5px; }
 .rd-table th {
   text-align: left; white-space: nowrap; padding: 11px 13px;
-  font-family: var(--tk-font-mono); font-size: 9.5px; font-weight: 600;
+  font-family: var(--tk-font-mono); font-size: 10px; font-weight: 600;
   letter-spacing: .15em; text-transform: uppercase; color: var(--tk-text-4, #6f8098);
   border-bottom: 1px solid var(--ps-edge-2);
 }
@@ -82,8 +82,56 @@
 .rd-fresh--bad { color: var(--tk-critical, #ff5b52); }
 .rd-flag {
   display: inline-block; margin-left: 6px; padding: 1px 4px; border-radius: 4px;
-  border: 1px solid currentColor; font-size: 8.5px; font-weight: 700;
+  border: 1px solid currentColor; font-size: 10px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
+}
+
+/* ---- phones: the directory stops being a table -------------------------
+   Six columns need 940px, so on a phone every row was a 940px pan just to
+   reach the file links — the whole point of this page. Below 700px each row
+   becomes a labelled card. The header row is hidden from sight but stays in
+   the accessibility tree, and each cell grows its own label from the class
+   it already carries, so no row markup changed and none can drift. */
+@media (max-width: 700px) {
+  .rd-block { overflow: visible; }
+  .rd-block .ps-scroll-x { overflow-x: visible; }
+  .rd-table { min-width: 0; display: block; }
+  .rd-table thead {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .rd-table tbody, .rd-table tr, .rd-table td { display: block; }
+  .rd-table tr { padding: 15px 0 17px; border-top: 1px solid var(--ps-edge-1); }
+  .rd-table tbody tr:first-child { border-top: 0; }
+  .rd-table td { border-top: 0; padding: 3px 0; }
+  .rd-table .rd-sig { padding-bottom: 7px; }
+  .rd-table .rd-sig span { max-width: none; }
+
+  .rd-table td.rd-cad::before { content: "Cadence"; }
+  .rd-table td.rd-fresh::before { content: "Measured"; }
+  .rd-table td:nth-child(4):not([class])::before { content: "Latest"; }
+  .rd-table td:nth-child(5):not([class])::before { content: "Series"; }
+  .rd-table td.rd-view::before { content: "View"; }
+  .rd-table td.rd-pend::before { content: "Status"; }
+  .rd-table td.rd-cad::before, .rd-table td.rd-fresh::before,
+  .rd-table td.rd-view::before, .rd-table td.rd-pend::before,
+  .rd-table td:nth-child(4):not([class])::before,
+  .rd-table td:nth-child(5):not([class])::before {
+    display: inline-block; min-width: 76px; vertical-align: top;
+    font-family: var(--tk-font-mono); font-size: 9.5px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--tk-text-4, #6f8098);
+  }
+  /* The pending note is prose, not a value: let it start on its own line. */
+  .rd-table td.rd-pend::before { display: block; margin-bottom: 3px; }
+  .rd-table td.rd-pend { padding-top: 8px; }
+}
+
+/* ---- fingers need room, mice keep the density -------------------------- */
+@media (pointer: coarse) {
+  .rd-file { padding: 8px 10px; margin: 3px 2px 3px 0; font-size: 12px; }
+  .rd-view a { display: inline-block; padding: 8px 0; }
+  .rd-jump { gap: 8px; }
+  .rd-jump a { padding: 10px 12px; font-size: 11.5px; }
 }
 
 /* A signal with no file yet says so across the file columns. */
@@ -156,7 +204,7 @@
             <p class="ps-flyout__head">How it works</p>
             <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
             <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
-            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>Human-coded ground truth against the classifier</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
             <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
             <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
           </div>

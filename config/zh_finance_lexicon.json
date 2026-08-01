@@ -1,12 +1,12 @@
 {
   "_meta": {
-    "purpose": "Chinese financial lexicon for Weibo hot-search relevance filtering and sentiment enrichment.",
-    "generated_by": "Kimi Code (Moonshot kimi-for-coding) — delegated for native Chinese-language domain knowledge",
+    "purpose": "Chinese financial and policy vocabulary used as candidate terms when extracting censored topics from deletion feeds.",
+    "generated_by": "Kimi Code (Moonshot kimi-for-coding), delegated for native Chinese-language domain knowledge",
     "consumed_by": [
-      "collectors/weibo_hotsearch.py :: _is_financially_relevant",
-      "processors/sentiment.py :: Chinese hawkish/dovish/sector detection (pending)"
+      "processors/zh_finance.py :: load_lexicon (the loader)",
+      "scripts/ddti_live_pull.py :: pull, which passes the loaded lexicon to processors/ddti_index.py :: extract_terms (reads finance_keywords, hawkish_keywords, dovish_keywords, sector_keywords)"
     ],
-    "note": "denylist OVERRIDES finance_keywords (excludes false positives like 经济适用男)."
+    "note": "denylist lists hot-search false positives (经济适用男 and similar) but currently has NO consumer: extract_terms does not consult it. Kept as data for a future relevance filter; if you wire one, update this field."
   },
   "finance_keywords": ["A股", "港股", "美股", "央行", "降准", "降息", "加息", "人民币", "楼市", "通胀", "牛市", "熊市", "股灾", "IPO", "沪指", "深指", "创业板", "科创板", "北交所", "港股通", "美联储", "汇率", "黄金", "原油", "比特币", "区块链", "基金", "理财", "保险", "银行", "房地产", "国债", "地方债", "社融", "M2", "CPI", "PPI", "GDP", "上市公司", "财报", "券商", "证监会", "金融监管"],
   "denylist": ["经济适用男", "经济适用女", "房车", "房车生活", "房车旅行", "房车改装", "零花钱", "压岁钱", "钱包", "省钱攻略", "钱多多", "富二代", "房奴"],
