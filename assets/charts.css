@@ -114,6 +114,10 @@
 .pc-cell[data-state="warming_up"] { background: var(--tk-surface-4); color: var(--tk-text-3); }
 .pc-cell[data-state="no_data"], .pc-cell[data-state="absent"] {
   background: transparent; border: 1px solid var(--tk-line-1); }
+.pc-cell[data-state="quiet"] { background: var(--tk-surface-3); }
+.pc-cell[data-state="calibrating"] { background: var(--tk-surface-4); color: var(--tk-text-3); }
+.pc-cell[data-state="stale"] { background: var(--tk-surface-4); color: var(--tk-text-3); }
+.pc-cell[data-state="closed"] { background: var(--tk-surface-4); color: var(--tk-text-4); }
 .pc-cell[data-state="watch"] { background: var(--tk-watch-bg); color: var(--tk-watch);
   border: 1px solid var(--tk-watch-line); font-weight: 700; }
 .pc-cell[data-state="alarm"] { background: var(--tk-critical-bg); color: var(--tk-critical);

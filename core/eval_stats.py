@@ -198,9 +198,17 @@ CAL_MISS = 0.025
 # the alarm threshold its magnitude means nothing a reader can use; the cap keeps it a
 # finite float so it survives JSON, comparisons and e_bh instead of becoming "inf".
 E_CAP = 1e12
+# Burn-in for the churn monitor, shared by the puller that writes the churn log and the
+# board processor that reads it. One number in one place: if the two disagreed, the board
+# would report "monitoring" while the instrument still considered itself calibrating (or
+# the reverse), and both readings would be wrong in a way no test of either side catches.
+# Twenty pairs is five days at the six-hourly cadence; the length is a power decision —
+# p0 is an upper confidence bound, so a short burn-in leaves it too loose to ever flag a
+# realistic policy shift. See churn_monitor below.
+CHURN_BURN_IN = 20
 
 
-def churn_monitor(flip_pairs: list[tuple[int, int]], burn_in: int = 20) -> dict:
+def churn_monitor(flip_pairs: list[tuple[int, int]], burn_in: int = CHURN_BURN_IN) -> dict:
     """The standing drift alarm for one model on one frozen probe set.
 
     Input: one (flips, compared) pair per ADJACENT run pair, oldest first — flips is

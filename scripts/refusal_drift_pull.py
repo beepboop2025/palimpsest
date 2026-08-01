@@ -110,11 +110,10 @@ PANEL = [m.strip() for m in os.environ.get("REFUSAL_DRIFT_MODELS", "").split(","
          if m.strip()] or DEFAULT_PANEL
 
 # Burn-in for the churn monitor: the first N adjacent-run pairs calibrate each model's
-# own serving noise and are excluded from testing. Twenty pairs is five days at the
-# six-hourly cadence, and the length is a power decision rather than a formality: p0 is
-# an upper confidence bound, so a short burn-in leaves it so loose that no realistic
-# policy shift falls outside the null. See core.eval_stats.churn_monitor.
-CHURN_BURN_IN = 20
+# own serving noise and are excluded from testing. The number lives in core.eval_stats
+# (CHURN_BURN_IN) because the board processor that READS the churn log must agree with
+# this writer on where calibration ends — see the comment there.
+CHURN_BURN_IN = st.CHURN_BURN_IN
 
 
 def _query(key: str, model: str, prompt: str) -> str | None:

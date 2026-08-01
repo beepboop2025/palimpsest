@@ -26,7 +26,13 @@ HIST = os.path.join(READINGS, "board-alarm-history.jsonl")
 # do not move. This driver rewrites the reading unconditionally, so it cannot
 # hide a method change; the projection guard below controls only whether a
 # HISTORY row is appended. Carried as provenance for anyone diffing two rows.
-METHOD_VERSION = 1
+#   1 — conformal signals only; a stale or frozen series kept contributing its
+#       last e-value to the family indefinitely.
+#   2 — refusal_drift closed at the v1→v2 method break; refusal_churn (the v2
+#       suite's own anytime-valid churn e-process, panel-merged) is the model
+#       layer's live signal; signals past their MAX_AGE_HOURS bound report
+#       stale and contribute no e-value.
+METHOD_VERSION = 2
 
 
 

@@ -22,7 +22,12 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-from processors.conformal_events import MAX_AGE_HOURS, SIGNALS, build_reading
+from processors.conformal_events import (
+    CLOSED_SIGNALS,
+    MAX_AGE_HOURS,
+    SIGNALS,
+    build_reading,
+)
 
 
 def _hours_ago(h: float) -> str:
@@ -103,9 +108,14 @@ def test_the_headline_says_how_much_of_the_board_was_reporting(tmp_path):
 
     assert r["active"] == []
     assert r["n_reporting"] == 1
-    assert r["n_signals"] == len(SIGNALS)
-    assert "1 of 12 signals are reporting" in r["headline"]
-    assert r["headline"] != "all signals within their own history"
+    # +1: the non-conformal refusal_churn signal joined this per-signal surface
+    assert r["n_signals"] == len(SIGNALS) + 1
+    # the denominator is the OPEN signals: a series closed at a method break is
+    # the record of an era, not a signal that could have been reporting today
+    n_open = len(SIGNALS) + 1 - len(CLOSED_SIGNALS)
+    assert r["n_open"] == n_open
+    assert f"1 of {n_open} signals are reporting" in r["headline"]
+    assert "within their own history" not in r["headline"]
 
 
 def test_an_empty_board_never_reports_calm(tmp_path):
@@ -114,6 +124,10 @@ def test_an_empty_board_never_reports_calm(tmp_path):
     r = build_reading(tmp_path)
 
     assert r["n_reporting"] == 0
-    assert len(r["no_data"]) == len(SIGNALS)
-    assert r["headline"] != "all signals within their own history"
-    assert "0 of 12 signals are reporting" in r["headline"]
+    # every OPEN signal is dark (conformal ones plus refusal_churn); the closed
+    # one reports "closed", not "no_data"
+    n_open = len(SIGNALS) + 1 - len(CLOSED_SIGNALS)
+    assert len(r["no_data"]) == n_open
+    assert sorted(r["closed"]) == sorted(CLOSED_SIGNALS)
+    assert "within their own history" not in r["headline"]
+    assert f"0 of {n_open} signals are reporting" in r["headline"]

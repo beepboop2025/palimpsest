@@ -18,8 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from processors.board_alarm import CADENCE_PER_DAY
-from processors.conformal_events import SIGNALS
+from processors.board_alarm import CADENCE_PER_DAY, SIGNAL_FILES
+from processors.conformal_events import CLOSED_SIGNALS
 
 REPO = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO / ".github" / "workflows"
@@ -105,13 +105,20 @@ def test_runs_per_day_parses_known_expressions(expr, expected):
 
 # ── the invariant ──────────────────────────────────────────────────────────────
 
-def test_every_signal_has_a_declared_cadence():
-    assert set(CADENCE_PER_DAY) == set(SIGNALS)
+def test_every_open_board_signal_has_a_declared_cadence():
+    """CADENCE_PER_DAY covers exactly the signals that can still produce readings:
+    every open signal the board consumes (conformal or not), and no closed one — a
+    series that will never append again has no readings-per-day, and publishing one
+    would convert the guarantee through a fiction."""
+    open_board_signals = set(SIGNAL_FILES) - set(CLOSED_SIGNALS)
+    assert set(CADENCE_PER_DAY) == open_board_signals
 
 
 def test_declared_cadence_matches_the_committed_crons():
     checked = []
-    for signal, (history_filename, _extract, _meaning) in sorted(SIGNALS.items()):
+    for signal, history_filename in sorted(SIGNAL_FILES.items()):
+        if signal in CLOSED_SIGNALS:
+            continue  # closed series make no cadence claim to verify
         wf = producing_workflow(history_filename)
         if wf is None:
             assert signal in NO_COMMITTED_CRON, (
@@ -128,14 +135,16 @@ def test_declared_cadence_matches_the_committed_crons():
             f"{wf.name} runs {actual}/day ({', '.join(crons)})")
         checked.append(signal)
     # a test that quietly stops checking anything is worse than no test
-    assert len(checked) >= len(SIGNALS) - len(NO_COMMITTED_CRON)
+    assert len(checked) >= len(SIGNAL_FILES) - len(CLOSED_SIGNALS) - len(NO_COMMITTED_CRON)
 
 
-def test_refusal_drift_cadence_is_the_erasure_workflow_not_daily():
-    """Regression: refusal_drift is refreshed inside erasure-refresh.yml, every
-    six hours. It was declared 1.0/day, overstating readings-to-false-alarm by
-    exactly 4x on the board's published conversion."""
-    wf = producing_workflow(SIGNALS["refusal_drift"][0])
+def test_refusal_churn_cadence_is_the_erasure_workflow_not_daily():
+    """Regression, inherited from the v1 signal it replaced: the churn log is
+    written inside erasure-refresh.yml, every six hours. Its predecessor was once
+    declared 1.0/day, overstating readings-to-false-alarm by exactly 4x on the
+    board's published conversion. The churn LOG is a per-run heartbeat, so cron
+    cadence == append cadence (unlike the movement-gated findings history)."""
+    wf = producing_workflow(SIGNAL_FILES["refusal_churn"])
     assert wf is not None and wf.name == "erasure-refresh.yml"
-    assert CADENCE_PER_DAY["refusal_drift"] == 4.0
+    assert CADENCE_PER_DAY["refusal_churn"] == 4.0
     assert sum(runs_per_day(c) for c in workflow_crons(wf)) == pytest.approx(4.0)

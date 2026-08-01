@@ -23,7 +23,11 @@ HIST = os.path.join(READINGS, "event-flags-history.jsonl")
 # do not move. This driver rewrites the reading unconditionally, so it cannot
 # hide a method change; the projection guard below controls only whether a
 # HISTORY row is appended. Carried as provenance for anyone diffing two rows.
-METHOD_VERSION = 1
+#   1 — conformal signals only.
+#   2 — refusal_drift closed at the v1→v2 method break; refusal_churn (the v2
+#       refusal suite's own anytime-valid churn e-process) joins the reading
+#       with states calibrating/quiet/watch/alarm.
+METHOD_VERSION = 2
 
 
 

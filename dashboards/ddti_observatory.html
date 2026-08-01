@@ -866,7 +866,8 @@ document.getElementById("themeBtn").onclick = (e) => {
     bleedthrough_pools: "Bleedthrough pools", bleedthrough_capacity: "Bleedthrough capacity",
     ddti_threat: "DDTI threat", ddti_novelty: "DDTI novelty",
     gdelt_containment: "GDELT containment", github_refuge: "GitHub refuge",
-    weibo_suppression: "Weibo suppression", refusal_drift: "Refusal drift"
+    weibo_suppression: "Weibo suppression", refusal_churn: "Refusal churn (v2)",
+    refusal_drift: "Refusal drift (v1, closed)"
   };
   function rows(keys) {
     return keys.map(function (k) { return { key: k, label: LABELS[k] || k }; });
@@ -883,7 +884,7 @@ document.getElementById("themeBtn").onclick = (e) => {
           "ioda_outages", "tor_bridge_cn", "bleedthrough_pools", "bleedthrough_capacity"]) },
         { label: "Content layer", rows: rows(["ddti_threat", "ddti_novelty",
           "gdelt_containment", "github_refuge", "weibo_suppression"]) },
-        { label: "Model layer", rows: rows(["refusal_drift"]) }
+        { label: "Model layer", rows: rows(["refusal_churn", "refusal_drift"]) }
       ]
     });
     var cal = document.getElementById("calPanel");

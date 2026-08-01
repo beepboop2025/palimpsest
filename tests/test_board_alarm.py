@@ -8,6 +8,7 @@ corroborate itself.
 """
 import json
 import random
+from datetime import datetime, timedelta, timezone
 
 from processors.board_alarm import (
     FDR_ALPHA,
@@ -105,19 +106,26 @@ def test_absent_layer_reports_no_data_not_calm():
 
 
 def test_every_registered_signal_belongs_to_exactly_one_layer():
-    from processors.conformal_events import SIGNALS
+    from processors.board_alarm import SIGNAL_FILES
     assigned = [s for members in LAYERS.values() for s in members]
     assert len(assigned) == len(set(assigned)), "a signal is in two layers"
-    for name in SIGNALS:
+    for name in SIGNAL_FILES:  # the conformal registry plus the churn signal
         assert name in assigned, f"{name} is monitored but assigned to no layer"
+    for name in assigned:
+        assert name in SIGNAL_FILES, f"{name} is in a layer but nothing produces it"
 
 
 # ── whole reading ───────────────────────────────────────────────────────────────
 
 def _write(tmp_path, filename, rows):
+    """Rows stamped fresh: the board now refuses to treat a row it cannot date —
+    or one past its signal's MAX_AGE_HOURS bound — as evidence, so an undated
+    fixture would test the stale path instead of the one it means to."""
+    now = datetime.now(timezone.utc)
     with open(tmp_path / filename, "w", encoding="utf-8") as fh:
-        for r in rows:
-            fh.write(json.dumps(r) + "\n")
+        for i, r in enumerate(rows):
+            stamped = {"generated_at": (now - timedelta(minutes=len(rows) - i)).isoformat(), **r}
+            fh.write(json.dumps(stamped) + "\n")
 
 
 def test_build_reading_over_calm_fixtures_reports_nothing_happening(tmp_path):

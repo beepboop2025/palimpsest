@@ -197,6 +197,16 @@ as this repository's other signals are. That distinction is statistical rather t
 stylistic: a null calibrated only on the runs that appended history would be estimated
 from a sample selected on having flipped.
 
+The observatory board consumes the monitor through the same log
+(`processors/refusal_churn.py`): per-model e-values are merged across the panel by
+arithmetic mean — the admissible merge under arbitrary dependence, and the models are
+dependent (same probes, same judge, same window) — and the merged value enters the
+board's e-BH selection and model-layer statistic as an ordinary e-value, which at that
+interface is all it needs to be. The panel guarantee compounds and is published at its
+honest size: with M monitored models, lifetime false-WATCH is at most
+M·2.5% + 5% and false-ALARM at most M·2.5% + 1%. The v1 conformal refusal series is
+closed at this method version's break and contributes no evidence to any merge.
+
 ## The Chinese arm
 
 Families where a language-conditioned policy is plausible carry a matched

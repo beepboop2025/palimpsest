@@ -605,7 +605,8 @@
      legend and by glyph + colour in the cell, never colour alone.
      cfg = { url, groups: [{label, rows:[{key,label}]}], maxRuns }
      ======================================================================== */
-  const GLYPH = { alarm: "▲", watch: "◆", no_data: "–", absent: "" };
+  const GLYPH = { alarm: "▲", watch: "◆", no_data: "–", absent: "",
+                  stale: "×", closed: "■" };
   function raster(host, cfg) {
     loadHistory(cfg.url).then(all => {
       const runs = all.slice(-(cfg.maxRuns || 60));

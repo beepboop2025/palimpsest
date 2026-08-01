@@ -283,6 +283,21 @@ def refusal_suppression_rate(record: dict) -> float | None:
 
 
 # ── the observatory's signal registry ───────────────────────────────────────────
+
+# Signals whose series ended at a method break. A closed series is neither stale (the
+# collector did not die — the instrument was retired) nor evidence (a frozen statistic
+# must not sit in the evidence family forever, quietly steadying the board mean with a
+# number nothing can ever update). Both build_readings report "closed" with the note,
+# and board_alarm excludes closed signals from every merge and from the FDR family.
+CLOSED_SIGNALS = {
+    "refusal_drift": (
+        "closed 2026-08-01 at the v1→v2 method break: v2 measures family refusal "
+        "rates (a different estimand) and appends history only on label movement; "
+        "the live model-layer signal is refusal_churn — the v2 suite's own "
+        "anytime-valid churn monitor"
+    ),
+}
+
 # signal -> (history file, extractor(record) -> float | None, meaning of "high")
 SIGNALS = {
     "ooni_gfw": (
@@ -436,6 +451,12 @@ def build_reading(readings_dir: str | Path) -> dict:
     for name, (filename, extract, meaning) in SIGNALS.items():
         dated = _load_series_dated(readings_dir, filename, extract)
         series = [v for v, _ in dated]
+        if name in CLOSED_SIGNALS:
+            # CLOSED BEFORE STALE: a retired instrument is not a dead collector, and
+            # reporting it stale forever would read as breakage instead of history.
+            signals[name] = {"state": "closed", "n": len(series), "meaning": meaning,
+                             "closed": CLOSED_SIGNALS[name]}
+            continue
         if not series:
             signals[name] = {"state": "no_data", "n": 0, "meaning": meaning}
             continue
@@ -464,13 +485,28 @@ def build_reading(readings_dir: str | Path) -> dict:
             "age_hours": round(age_h, 1) if age_h is not None else None,
             "meaning": meaning,
         }
+
+    # The refusal-churn signal is NOT conformal — it is the v2 refusal suite's own
+    # anytime-valid e-process, read from the per-run churn log — but this reading is
+    # the observatory's per-signal surface, and a monitored signal missing from it
+    # reads as not monitored. Its states (calibrating/quiet/watch/alarm, plus the
+    # shared no_data/stale) flow into the same history projection the raster draws.
+    # Imported at call time, not module top: refusal_churn borrows merge_e from here.
+    from processors.refusal_churn import read_signal as _read_churn
+    signals["refusal_churn"] = _read_churn(readings_dir, now=now)
+
     active = sorted(
         n for n, s in signals.items() if s.get("state") in ("watch", "alarm"))
     # Named separately so "nothing is elevated" can never be read without also seeing how
     # much of the board was actually reporting when that was said.
     stale = sorted(n for n, s in signals.items() if s.get("state") == "stale")
     dark = sorted(n for n, s in signals.items() if s.get("state") == "no_data")
-    reporting = len(SIGNALS) - len(stale) - len(dark)
+    closed = sorted(n for n, s in signals.items() if s.get("state") == "closed")
+    # a closed series is out of the denominator: it is history, not a signal that
+    # could be reporting today. Every count derives from the signals dict itself,
+    # so the two detector families cannot drift out of the arithmetic.
+    n_open = len(signals) - len(closed)
+    reporting = n_open - len(stale) - len(dark)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "method": (
@@ -489,12 +525,14 @@ def build_reading(readings_dir: str | Path) -> dict:
         "active": active,
         "stale": stale,
         "no_data": dark,
+        "closed": closed,
         "n_reporting": reporting,
-        "n_signals": len(SIGNALS),
+        "n_signals": len(signals),
+        "n_open": n_open,
         "headline": (
             ("elevated: " + ", ".join(active)) if active else
-            (f"no signal elevated, but only {reporting} of {len(SIGNALS)} signals are reporting"
+            (f"no signal elevated, but only {reporting} of {n_open} signals are reporting"
              if (stale or dark) else
-             "all signals within their own history")
+             "all open signals within their own history")
         ),
     }
