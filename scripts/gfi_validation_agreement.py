@@ -30,8 +30,13 @@ Two numbers are printed for (2), never one:
 The published claim this feeds: if party_line precision holds and recall is modest, the index
 is a FLOOR on narrative substitution — an undercount, disclosed as such.
 """
-import argparse, csv, json, sys
+import argparse, csv, json, os, sys
 from collections import Counter
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core import agreement as agr            # noqa: E402  Krippendorff alpha + bootstrap
+from core import eval_registry as reg        # noqa: E402  the pre-registration check
+from core.sealed_ledger import _sha256       # noqa: E402
 
 LABELS = ("refused", "party_line", "answered")
 
@@ -158,6 +163,42 @@ def prf(machine, gold, strata=None, weights=None):
     return out
 
 
+def check_preregistration(sheet_path):
+    """Verify this exact sample was frozen in the chain BEFORE any label existed.
+
+    Recomputes the row commitments the way scripts/validation_preregister.py does — a
+    digest over (question, response) per id, excluding label and notes because those did
+    not exist at freeze time — and looks for a matching pre-registration. A mismatch means
+    the sheet in hand is not the sheet that was frozen: rows added, dropped, reworded, or
+    a different draw entirely. That is not a warning, because a study whose sample moved
+    after registration has lost the only property registration confers.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    registry = os.path.join(root, "readings", "eval-registry.jsonl")
+    rows = []
+    with open(sheet_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            rid = (row.get("id") or "").strip()
+            if rid:
+                body = (row.get("question") or "") + "\x1f" + (row.get("response") or "")
+                rows.append(f"{rid}\t{_sha256(body.encode('utf-8'))}")
+    psh = reg.probe_set_hash(sorted(rows))
+    frozen = [e for e in reg.read_ledger(registry)
+              if e.get("kind") == reg.PREREGISTRATION and e.get("probe_set_hash") == psh]
+    if not frozen:
+        print("FATAL: this sample is not pre-registered. The commitment computed from the "
+              f"sheet is {psh[:16]} and no preregistration in the chain matches it, so either "
+              "the study was never frozen or the sheet changed after it was. Run "
+              "scripts/validation_preregister.py BEFORE coding, and if coding has already "
+              "happened against an unfrozen sample, say so when reporting the result.",
+              file=sys.stderr)
+        return 4
+    e = frozen[-1]
+    print(f"PRE-REGISTRATION: sealed at seq {e['seq']} on {e['ts'][:19]}Z, "
+          f"{e.get('n_probes')} rows, commitment {psh[:16]} — sample unchanged since the freeze")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--coder1", required=True)
@@ -167,7 +208,16 @@ def main():
                     help="sampler manifest.json; supplies the stratum weights without which "
                          "no rate here is a population rate")
     ap.add_argument("--report", default=None)
+    ap.add_argument("--require-preregistration", action="store_true",
+                    help="refuse to report unless this exact sample is frozen in the eval "
+                         "registry. The whole point of pre-registering a study is that its "
+                         "results are only quotable if the freeze happened first.")
     args = ap.parse_args()
+
+    if args.require_preregistration:
+        rc = check_preregistration(args.coder1)
+        if rc:
+            return rc
 
     c1, c2, key = read_sheet(args.coder1), read_sheet(args.coder2), read_key(args.key)
     weights = pools = drawn = None
@@ -203,15 +253,27 @@ def main():
 
     pairs = [(c1[i], c2[i]) for i in ids]
     po, kappa = cohens_kappa(pairs)
+
+    # Krippendorff's alpha is the primary coefficient and carries the interval. Kappa is
+    # reported beside it because reviewers look for it, but where they part company alpha
+    # is the one to believe: kappa builds chance agreement from each coder's own marginals,
+    # which inflates it whenever one label dominates — and `answered` dominates this draw
+    # by 489 to 17. A point estimate on ~145 rows is also not a measurement, hence the
+    # bootstrap over units.
+    codings = {i: [c1[i], c2[i]] for i in ids}
+    rep = agr.agreement_report(codings, labels=LABELS)
+    ci = rep["krippendorff_alpha_ci95"]
     kappa_txt = "UNDEFINED" if kappa is None else f"{kappa:.3f}"
-    print(f"\nHUMAN vs HUMAN (n={len(ids)}): raw agreement {po:.1%}, Cohen's kappa {kappa_txt}")
-    if kappa is None:
-        print("  WARNING: kappa is undefined — both coders used a single identical label for "
-              "every row, so chance agreement is 1.0 and there is no agreement beyond chance "
-              "to measure. The sample carries no discrimination; do not quote a kappa.")
-    elif kappa < 0.6:
-        print("  WARNING: kappa < 0.6 — humans do not reliably agree; sharpen the codebook "
-              "and re-code BEFORE quoting any machine-agreement number.")
+    alpha_txt = "UNDEFINED" if rep["krippendorff_alpha"] is None else f"{rep['krippendorff_alpha']:.3f}"
+    print(f"\nHUMAN vs HUMAN (n={len(ids)})")
+    print(f"  raw agreement           {po:.1%}")
+    print(f"  Krippendorff's alpha    {alpha_txt}"
+          + (f"   95% CI [{ci[0]:.3f}, {ci[1]:.3f}]" if ci else "   (interval unavailable)"))
+    print(f"  Cohen's kappa           {kappa_txt}   (reported for familiarity; see below)")
+    print(f"  verdict: {rep['verdict']['band'].upper()} — {rep['verdict']['reading']}")
+    if not rep["verdict"]["usable"]:
+        print("  Machine scores below are therefore NOT publishable as established figures. "
+              "They are printed so the failure can be diagnosed, not quoted.")
 
     consensus = {i: c1[i] for i in ids if c1[i] == c2[i]}
     disagreements = [{"id": i, "coder1": c1[i], "coder2": c2[i],
@@ -259,6 +321,10 @@ def main():
                        "n_coded_coder1": len(k1), "n_coded_coder2": len(k2),
                        "n_coded_by_both": len(ids), "raw_agreement": round(po, 4),
                        "cohens_kappa": round(kappa, 4) if kappa is not None else None,
+                       # The primary reliability result, with its interval and the verdict
+                       # against the pre-registered bar. Carried whole so a consumer of this
+                       # file cannot pick the coefficient out and drop the band it falls in.
+                       "reliability": rep,
                        "n_consensus": len(consensus),
                        "machine_vs_consensus": scores,
                        "stratum_weights": ({s: round(w, 6) for s, w in weights.items()}

@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Blind coder — Palimpsest classifier validation</title>
+<!--
+  A LOCAL, OFFLINE coding interface for validation/CODEBOOK.md. Open it with a file:// URL;
+  it makes no network requests and there is nothing here to serve.
+
+  It exists because the study did not get done. The apparatus has been ready since 9 July
+  and the sheets sat at zero labels, which is what happens when the task is 145 rows of
+  long-form Chinese in a spreadsheet cell. Friction is a methodological problem when it
+  stops the only evidence that the classifier is right from ever being collected.
+
+  Blindness is enforced by construction rather than by discipline:
+    * it loads ONLY the coding sheet, which carries no model, no stratum and no machine
+      label. answer_key.jsonl is never read, and nothing here can reach it.
+    * it holds one response on screen at a time, so a coder cannot pattern-match across
+      rows or drift into labelling by comparison.
+    * progress is kept in this browser only (localStorage, keyed by coder), so the two
+      coders cannot see each other even on one machine.
+  The one rule it cannot enforce: do not open answer_key.jsonl, and do not discuss rows
+  with the other coder until both of you have exported.
+-->
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --line:#252c36; --text:#e2e8f0; --dim:#8b97a8;
+    --accent:#6ea8fe; --refused:#f0883e; --party:#d2a8ff; --answered:#56d364;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f7f9; --panel:#fff; --line:#d8dee6; --text:#1c2128; --dim:#57606a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif}
+  header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);
+         padding:10px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  header b{font-weight:600}
+  .bar{flex:1;min-width:140px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--accent);width:0}
+  main{max-width:860px;margin:0 auto;padding:22px 18px 140px}
+  .meta{color:var(--dim);font-size:13px;margin:0 0 8px;display:flex;gap:16px;flex-wrap:wrap}
+  .q{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+     border-radius:6px;padding:14px 16px;margin:0 0 14px;white-space:pre-wrap;font-size:14px}
+  .r{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;
+     white-space:pre-wrap;font-size:16px;line-height:1.75;min-height:120px}
+  .r:lang(zh){font-size:17px;line-height:1.9}
+  footer{position:fixed;bottom:0;left:0;right:0;background:var(--panel);
+         border-top:1px solid var(--line);padding:12px 18px}
+  .btns{max-width:860px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;font-size:14px;padding:9px 14px;border-radius:6px;cursor:pointer;
+         border:1px solid var(--line);background:var(--bg);color:var(--text)}
+  button:hover{border-color:var(--accent)}
+  button.lab{font-weight:600;min-width:150px;text-align:left}
+  button.lab kbd{background:var(--line);border-radius:3px;padding:1px 6px;margin-right:8px;
+                 font:12px/1 ui-monospace,monospace}
+  button[data-l=refused]{border-color:var(--refused)} button[data-l=refused].on{background:var(--refused);color:#111}
+  button[data-l=party_line]{border-color:var(--party)} button[data-l=party_line].on{background:var(--party);color:#111}
+  button[data-l=answered]{border-color:var(--answered)} button[data-l=answered].on{background:var(--answered);color:#111}
+  input[type=text]{font:inherit;font-size:14px;padding:9px 12px;border-radius:6px;flex:1;min-width:180px;
+                   border:1px solid var(--line);background:var(--bg);color:var(--text)}
+  .drop{border:2px dashed var(--line);border-radius:8px;padding:34px;text-align:center;color:var(--dim)}
+  .drop.hot{border-color:var(--accent)}
+  .warn{background:#3d2b16;border:1px solid var(--refused);border-radius:6px;padding:12px 14px;
+        margin:0 0 16px;font-size:14px}
+  @media (prefers-color-scheme: light){ .warn{background:#fff4e5} }
+  a{color:var(--accent)}
+  .hide{display:none}
+  code{font:13px/1.5 ui-monospace,monospace;background:var(--line);padding:1px 5px;border-radius:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <b>Blind coder</b>
+  <span id="who" class="meta" style="margin:0"></span>
+  <div class="bar"><i id="fill"></i></div>
+  <span id="count" class="meta" style="margin:0">no sheet loaded</span>
+  <button id="export">Export CSV</button>
+</header>
+
+<main>
+  <section id="setup">
+    <div class="warn">
+      <b>Before you start.</b> Read <code>validation/CODEBOOK.md</code> first — the three labels
+      have a specific decision order and the <code>refused</code> / <code>party_line</code>
+      boundary is the whole difficulty. Do <b>not</b> open <code>answer_key.jsonl</code>, and do
+      not discuss any row with the other coder until you have both exported. Looking up what
+      actually happened in an event is expected; identifying which model wrote a response is not.
+    </div>
+    <p>Load <code>validation/out/coding_sheet.csv</code> (coder 1) or
+       <code>coding_sheet_2.csv</code> (coder 2). Nothing leaves this browser.</p>
+    <p class="meta">Your name or initials, so the two sheets cannot be confused:</p>
+    <p><input type="text" id="coder" placeholder="coder id, e.g. MR" autocomplete="off"></p>
+    <div class="drop" id="drop">
+      <p><b>Drop the CSV here</b>, or <input type="file" id="file" accept=".csv"></p>
+    </div>
+    <p class="meta" id="resume"></p>
+  </section>
+
+  <section id="work" class="hide">
+    <p class="meta">
+      <span id="pos"></span><span id="lang"></span><span id="done"></span>
+    </p>
+    <div class="q" id="q"></div>
+    <div class="r" id="r"></div>
+  </section>
+
+  <section id="finished" class="hide">
+    <h2>All rows labelled</h2>
+    <p>Export the CSV and save it over the sheet you loaded. Then, and only then, compare with
+       the other coder:</p>
+    <p><code>python3 scripts/gfi_validation_agreement.py --require-preregistration</code></p>
+    <p class="meta">Rows you flagged with a note are the ones to adjudicate together.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="btns" id="controls">
+    <button class="lab" data-l="refused"><kbd>1</kbd>refused</button>
+    <button class="lab" data-l="party_line"><kbd>2</kbd>party_line</button>
+    <button class="lab" data-l="answered"><kbd>3</kbd>answered</button>
+    <input type="text" id="note" placeholder="note (optional) — flag anything you were torn on">
+    <button id="back"># back</button>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var LABELS = ["refused","party_line","answered"];
+  var rows = [], i = 0, coder = "", fileName = "";
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---- CSV parsing. Quoted fields with embedded newlines and doubled quotes are the
+     norm here, because the responses are multi-paragraph, so this is a real parser and
+     not a split on commas. ---- */
+  function parseCSV(text){
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);   // strip BOM
+    var out = [], row = [], cell = "", q = false, i = 0;
+    while (i < text.length){
+      var c = text[i];
+      if (q){
+        if (c === '"'){
+          if (text[i+1] === '"'){ cell += '"'; i += 2; continue; }
+          q = false; i++; continue;
+        }
+        cell += c; i++; continue;
+      }
+      if (c === '"'){ q = true; i++; continue; }
+      if (c === ','){ row.push(cell); cell = ""; i++; continue; }
+      if (c === '\r'){ i++; continue; }
+      if (c === '\n'){ row.push(cell); out.push(row); row = []; cell = ""; i++; continue; }
+      cell += c; i++;
+    }
+    if (cell !== "" || row.length){ row.push(cell); out.push(row); }
+    return out.filter(function(r){ return r.length > 1 || (r[0]||"").trim() !== ""; });
+  }
+
+  function toCSV(recs){
+    var head = ["id","ask_language","question","response","label","notes"];
+    var esc = function(v){
+      v = v == null ? "" : String(v);
+      return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+    };
+    return head.join(",") + "\n" +
+      recs.map(function(r){
+        return head.map(function(h){ return esc(r[h]); }).join(",");
+      }).join("\n") + "\n";
+  }
+
+  /* ---- persistence: per coder AND per sheet, so loading the other coder's file cannot
+     silently inherit your labels. ---- */
+  function key(){ return "palimpsest.coding." + coder + "." + fileName; }
+  function save(){
+    try{
+      localStorage.setItem(key(), JSON.stringify({
+        at: new Date().toISOString(), i: i,
+        labels: rows.map(function(r){ return [r.label||"", r.notes||""]; })
+      }));
+    }catch(e){ /* private browsing: coding still works, resume does not */ }
+  }
+  function restore(){
+    try{
+      var raw = localStorage.getItem(key());
+      if (!raw) return false;
+      var d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.labels) || d.labels.length !== rows.length) return false;
+      d.labels.forEach(function(p, n){ rows[n].label = p[0]; rows[n].notes = p[1]; });
+      i = Math.min(d.i || 0, rows.length - 1);
+      return true;
+    }catch(e){ return false; }
+  }
+
+  function load(text, name){
+    var table = parseCSV(text);
+    if (!table.length){ alert("That file has no rows."); return; }
+    var head = table[0].map(function(h){ return h.trim(); });
+    var need = ["id","question","response"];
+    for (var n = 0; n < need.length; n++){
+      if (head.indexOf(need[n]) < 0){
+        alert("This does not look like a coding sheet: no '" + need[n] + "' column.");
+        return;
+      }
+    }
+    if (head.indexOf("machine_label") >= 0 || head.indexOf("stratum") >= 0){
+      alert("This file carries machine labels. That is the answer key, not a coding sheet — "
+            + "loading it would destroy the blindness the study depends on. Aborting.");
+      return;
+    }
+    rows = table.slice(1).map(function(r){
+      var o = {};
+      head.forEach(function(h, n){ o[h] = r[n] == null ? "" : r[n]; });
+      o.label = o.label || ""; o.notes = o.notes || "";
+      return o;
+    }).filter(function(o){ return (o.id||"").trim() !== ""; });
+    fileName = name || "sheet";
+    var resumed = restore();
+    if (!resumed){
+      /* jump to the first unlabelled row, so a partly-filled CSV continues where it stopped */
+      var f = rows.findIndex(function(r){ return !r.label; });
+      i = f < 0 ? rows.length - 1 : f;
+    }
+    $("setup").classList.add("hide");
+    $("work").classList.remove("hide");
+    $("who").textContent = coder + " · " + fileName + (resumed ? " · resumed" : "");
+    render();
+  }
+
+  function render(){
+    var n = rows.filter(function(r){ return r.label; }).length;
+    $("count").textContent = n + " / " + rows.length + " labelled";
+    $("fill").style.width = (100 * n / rows.length) + "%";
+    if (n === rows.length && rows[i] && rows[i].label){
+      $("finished").classList.remove("hide");
+    } else {
+      $("finished").classList.add("hide");
+    }
+    var r = rows[i];
+    if (!r) return;
+    $("pos").textContent = r.id + "  ·  row " + (i+1) + " of " + rows.length;
+    $("lang").textContent = r.ask_language ? "asked in " + r.ask_language : "";
+    $("done").textContent = r.label ? "already labelled " + r.label : "";
+    $("q").textContent = r.question;
+    var box = $("r");
+    box.textContent = r.response;
+    /* Tag the language so the CJK type rules apply; the sheet records the ask language. */
+    box.setAttribute("lang", /^zh/.test(r.ask_language||"") ? "zh" : "en");
+    $("note").value = r.notes || "";
+    Array.prototype.forEach.call(document.querySelectorAll("button.lab"), function(b){
+      b.classList.toggle("on", b.dataset.l === r.label);
+    });
+    $("back").textContent = i > 0 ? "← back" : "← back";
+    $("back").disabled = i === 0;
+    window.scrollTo(0, 0);
+  }
+
+  function setLabel(l){
+    if (!rows[i]) return;
+    rows[i].label = l;
+    rows[i].notes = $("note").value.trim();
+    save();
+    if (i < rows.length - 1){ i++; }
+    render();
+  }
+
+  /* ---- wiring ---- */
+  Array.prototype.forEach.call(document.querySelectorAll("button.lab"), function(b){
+    b.addEventListener("click", function(){ setLabel(b.dataset.l); });
+  });
+  $("back").addEventListener("click", function(){
+    if (i > 0){ rows[i].notes = $("note").value.trim(); i--; save(); render(); }
+  });
+  document.addEventListener("keydown", function(e){
+    if (e.target.tagName === "INPUT") {
+      if (e.key === "Enter" && rows.length && !$("work").classList.contains("hide")){
+        rows[i].notes = $("note").value.trim(); save();
+      }
+      return;
+    }
+    if (!rows.length) return;
+    if (e.key === "1") setLabel("refused");
+    else if (e.key === "2") setLabel("party_line");
+    else if (e.key === "3") setLabel("answered");
+    else if (e.key === "ArrowLeft" || e.key === "Backspace"){ e.preventDefault(); $("back").click(); }
+    else if (e.key === "ArrowRight" && i < rows.length - 1){ i++; render(); }
+  });
+
+  $("coder").addEventListener("input", function(){ coder = this.value.trim(); });
+  function readFile(f){
+    if (!coder){ alert("Enter your coder id first, so the two sheets cannot be confused."); return; }
+    var fr = new FileReader();
+    fr.onload = function(){ load(String(fr.result), f.name); };
+    fr.readAsText(f, "utf-8");
+  }
+  $("file").addEventListener("change", function(){ if (this.files[0]) readFile(this.files[0]); });
+  var drop = $("drop");
+  ["dragenter","dragover"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("hot"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove("hot"); });
+  });
+  drop.addEventListener("drop", function(e){
+    if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+  });
+
+  $("export").addEventListener("click", function(){
+    if (!rows.length){ alert("Nothing loaded."); return; }
+    if (rows[i]) { rows[i].notes = $("note").value.trim(); save(); }
+    var missing = rows.filter(function(r){ return !r.label; }).length;
+    if (missing && !confirm(missing + " rows are still unlabelled. Export anyway? Agreement is "
+        + "only measured where both coders labelled the same row, so a partly-coded sheet "
+        + "shrinks the study rather than failing it.")) return;
+    var blob = new Blob([toCSV(rows)], {type:"text/csv;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.replace(/\.csv$/i, "") + ".coded." + coder + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  /* Offer a resume hint if this browser already holds partial work. */
+  try{
+    var found = [];
+    for (var n = 0; n < localStorage.length; n++){
+      var k = localStorage.key(n);
+      if (k && k.indexOf("palimpsest.coding.") === 0) found.push(k.slice(18));
+    }
+    if (found.length){
+      $("resume").textContent = "This browser holds partial work for: " + found.join(", ")
+        + ". Enter the same coder id and load the same file to continue.";
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
