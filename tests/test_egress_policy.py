@@ -89,6 +89,21 @@ _ALLOWED = {
     "collectors/china_econ.py":
         "GET the keyless CFETS chinamoney portal; plain migration candidate — no SSRF/redirect "
         "guard and no size cap on the body today.",
+    "collectors/data_darkness.py":
+        "GET six fixed official listing surfaces (www.pbc.gov.cn OMO announcements and "
+        "Money & Banking Statistics directory, www.safe.gov.cn settlement page, "
+        "www.stats.gov.cn zxfb firehose and release calendar, www.nra.gov.cn rail listing) "
+        "with a 2 MiB read cap; fixed government hosts, redirects followed without "
+        "re-validation — plain migration candidate.",
+    "collectors/cny_fix_gap.py":
+        "GET the ECB eurofxref daily XML and two Bank of Canada Valet CSVs with a 2 MiB "
+        "read cap; fixed central-bank hosts, redirects followed without re-validation — "
+        "plain migration candidate.",
+    "collectors/lkq_telemetry.py":
+        "two-step GET (listing then article) of NBS English press releases, the PBC "
+        "monthly financial statistics report and NRA rail news with a 4 MiB read cap; "
+        "fixed government hosts, redirects followed without re-validation — plain "
+        "migration candidate.",
     "collectors/circumvention_demand.py":
         "GET Tor Metrics CSV; plain migration candidate — body read is uncapped today.",
     "collectors/gdelt_cross_signal.py":

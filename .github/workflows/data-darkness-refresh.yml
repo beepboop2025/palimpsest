@@ -1,0 +1,53 @@
+name: Refresh Data darkness watch
+
+# Publication-cadence watch over seven official Chinese data surfaces:
+# pbc.gov.cn OMO announcements and the Money & Banking Statistics directory
+# (monetary-authority balance sheet block), the safe.gov.cn bank FX
+# settlement page, the repo's own CFETS benchmark history, the stats.gov.cn
+# energy and industrial monthlies (scored against the state's own release
+# calendar), and nra.gov.cn rail freight. The signal is days-late against
+# each surface's own rhythm — the withholding complement to the deletion
+# signals, scoped as future work in docs/VALIDATION.md and live here.
+# Stdlib-only, vantage-insensitive — runs correctly from a GitHub runner (no
+# box egress). Daily after the Beijing business day; the OMO announcement
+# lands in the Beijing morning, so 10:07 UTC reads a settled day.
+
+on:
+  schedule:
+    - cron: "7 10 * * *"       # daily, minute offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-darkness-refresh
+  cancel-in-progress: false
+
+jobs:
+  data-darkness:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Read the publication surfaces and publish the data-darkness signal
+        run: python -m scripts.data_darkness_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/data-darkness-latest.json readings/data-darkness-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: data darkness refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

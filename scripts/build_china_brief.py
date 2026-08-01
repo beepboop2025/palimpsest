@@ -76,6 +76,11 @@ PROVENANCE = """<div class="prov ps-p1" role="note">
   component cannot be measured from outside the wall and is suppressed across the platform
   rather than estimated. Attention and novelty are reachable and are what you see here.
   Every figure traces to a public source, and the reading states the moment it was taken.</p>
+  <p><strong>Sibling project.</strong> <a href="https://seiche.info/">Seiche</a> is this page's
+  mirror image: a free funding-stress terminal for US money markets, possible because the Fed
+  publishes its plumbing every week. Palimpsest works the opposite case, a state that curates
+  what may be known. Both read the same China money-market benchmarks, collected keyless by
+  this project and consumed by Seiche's CHINA row.</p>
   <p class="prov__links">Full method in
   <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/METHODOLOGY.md">METHODOLOGY.md</a>
   · the deeper board is the <a href="/dashboards/ddti_observatory.html">Observatory</a>

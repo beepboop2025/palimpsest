@@ -206,12 +206,12 @@ Reproduce it: `PYTHONPATH=. python3 scripts/validate_ddti.py`. See
 
 ### Live signals (auto-published)
 
-[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Twenty-six
+[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Thirty
 independent observatory signals refresh on their own schedules via GitHub Actions on this repo, so
 every run, its code, and its output are publicly auditable (the badges above are live run status).
 No hidden server publishes. The Verifiable Eval Registry auto-publishes two further feeds of its own
 ([`readings/eval-registry-latest.json`](readings/eval-registry-latest.json) and
-[`readings/refusal-drift-latest.json`](readings/refusal-drift-latest.json)), for twenty-eight
+[`readings/refusal-drift-latest.json`](readings/refusal-drift-latest.json)), for thirty-two
 self-refreshing feeds in all.
 
 | Signal | What it measures | Cadence | Feed |
@@ -232,6 +232,10 @@ self-refreshing feeds in all.
 | **net4people** | The qualitative companion to the anomaly signals: the community log of China blocking events and circumvention developments | Every 12 hours | [`readings/net4people-latest.json`](readings/net4people-latest.json) |
 | **Vantage fusion** | One coverage-weighted network reading from the disagreeing vantages, with an interval and an explicit CONTESTED state when in-country and remote differ | Every 6 hours | [`readings/vantage-fusion-latest.json`](readings/vantage-fusion-latest.json) |
 | **China econ benchmarks** | Official CFETS published benchmarks, the keyless macro backdrop against which information-control moves are read | Every 6 hours | [`readings/china-econ-latest.json`](readings/china-econ-latest.json) |
+| **Data darkness** | The withholding watch: days-late against their own rhythm for seven official Chinese publication surfaces (PBOC OMO announcements, the monetary-authority balance-sheet block, SAFE settlement data, CFETS benchmarks, the NBS energy and industrial monthlies scored against the state's own release calendar, and rail freight) — the complement to deletion-as-data | Daily | [`readings/data-darkness-latest.json`](readings/data-darkness-latest.json) |
+| **Silence Index** | Pre-emptive silence: DDTI topics loud abroad while absent from the domestic board, with a china-nexus gate and a non-bypassable corroboration guard so local disinterest never reads as blackout | Every 6 hours | [`readings/silence-index-latest.json`](readings/silence-index-latest.json) |
+| **CNY fix gap** | Two prices for one currency: the PBOC's daily USD/CNY fix against an independent same-day reference (ECB, cross-checked via Bank of Canada) — the market agreeing or pulling against the state's price | Daily | [`readings/cny-fix-gap-latest.json`](readings/cny-fix-gap-latest.json) |
+| **Believability read** | The Li Keqiang composite (loans 40% / electricity 40% / rail freight 20%, from the state's own releases) against the headline, published as drift with an uncertainty band — method in [docs/BELIEVABILITY.md](docs/BELIEVABILITY.md) | Monthly | [`readings/believability-latest.json`](readings/believability-latest.json) |
 | **Stock Connect** | HKEX Stock Connect daily statistics: the cross-border flow print, a second non-information channel that reacts to the same events | Weekdays, after the HK print | [`readings/stock-connect-latest.json`](readings/stock-connect-latest.json) |
 | **Event flags** | Per-signal conformal e-detector: is a signal outside its *own* history right now, with an anytime-valid false-flag guarantee | Every 6 hours | [`readings/event-flags-latest.json`](readings/event-flags-latest.json) |
 | **Board alarm** | The board-wide merge of those e-detectors, with e-BH selection at alpha 0.1 controlling false discoveries under arbitrary dependence | Every 6 hours | [`readings/board-alarm-latest.json`](readings/board-alarm-latest.json) |

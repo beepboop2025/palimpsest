@@ -1,0 +1,49 @@
+name: Refresh Silence Index
+
+# Pre-emptive silence: topics loud abroad while absent from the domestic
+# board — the censorship that leaves no deletion to count (Peng Shuai, the
+# youth-unemployment suspension). Scores the live DDTI terms against GDELT
+# global volume with the weibo hot-search join as the permitted domestic
+# proxy; every guard rail (china-nexus gate, corroboration requirement,
+# abstain-over-fabricate) lives in processors/silence_index.py. Stdlib-only,
+# keyless, vantage-insensitive — runs correctly from a GitHub runner.
+
+on:
+  schedule:
+    - cron: "33 */6 * * *"     # every 6 hours, offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: silence-index-refresh
+  cancel-in-progress: false
+
+jobs:
+  silence-index:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Score pre-emptive silence and publish the silence-index signal
+        run: python -m scripts.silence_index_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/silence-index-latest.json readings/silence-index-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: silence index refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

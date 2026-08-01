@@ -371,6 +371,20 @@ SIGNALS = {
         lambda r: r.get("events_started_yesterday"),
         "shutdown-scale connectivity events detected by IODA's instruments",
     ),
+    "data_darkness": (
+        "data-darkness-history.jsonl",
+        lambda r: r.get("darkness_index"),
+        "official Chinese data surfaces late against their own publication "
+        "rhythm — the withholding complement to the deletion signals (PBOC "
+        "OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, "
+        "NBS energy and industrial monthlies, rail freight)",
+    ),
+    "silence_blackouts": (
+        "silence-index-history.jsonl",
+        lambda r: r.get("n_blackout"),
+        "topics loud abroad while absent from the domestic board — "
+        "pre-emptive silence, the censorship that leaves no deletion to count",
+    ),
 }
 
 
@@ -399,6 +413,8 @@ MAX_AGE_HOURS = {
     "tor_bridge_cn": 120.0,        # circumvention-demand-refresh.yml  daily
     "weibo_suppression": 30.0,     # weibo-hotsearch-refresh.yml   every 6h
     "ioda_outages": 30.0,          # ioda-outages-refresh.yml   every 6h
+    "data_darkness": 120.0,        # data-darkness-refresh.yml     daily
+    "silence_blackouts": 30.0,     # silence-index-refresh.yml     every 6h
 }
 
 

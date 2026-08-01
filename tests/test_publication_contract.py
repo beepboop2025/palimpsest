@@ -64,6 +64,12 @@ CONTRACT = {
     # registered before its first round lands — see PENDING below
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
+    "data-darkness":        _d("generated_at", ["source", "method_note"],
+                               "n_series_watched"),
+    "silence-index":        _d("generated_at", ["source", "method_note"],
+                               "n_topics_considered"),
+    "believability":        _d("generated_at", ["source", "method_note"],
+                               "n_components_required"),
 
     # ── readings with no population to count, each with its reason ────────────
     "china-econ": _d(
@@ -74,6 +80,11 @@ CONTRACT = {
         "generated_at", ["source"],
         reason="publishes the HKEX daily flow print, a single official value per day; "
                "a denominator would be invented, not measured."),
+    "cny-fix-gap": _d(
+        "generated_at", ["source", "method_note"],
+        reason="publishes one derived daily divergence between two official prices "
+               "(the PBOC fix and an independent reference rate); there is no sample "
+               "and no population to be a denominator of."),
     "circumvention-demand": _d(
         "generated_at", ["source", "method_note"],
         reason="publishes Tor bridge-user levels from the Tor metrics series; the value "
@@ -154,6 +165,20 @@ PENDING = {
     # unpublished until a multi-vantage round exists; see docs/BLEEDTHROUGH.md and the worked
     # case in docs/INTEGRITY.md.
     "bleedthrough",
+    # DATA-DARKNESS watches China's official financial publication surfaces for
+    # withholding (the gap docs/VALIDATION.md names). Built and registered ahead of its
+    # first scheduled round; remove from here the moment the first reading commits.
+    "data-darkness",
+    # SILENCE-INDEX operationalises processors/silence_index.py (built and tested since
+    # it landed, wired by scripts/silence_index_pull.py). Registered ahead of its first
+    # scheduled round; remove from here the moment the first reading commits.
+    "silence-index",
+    # CNY-FIX-GAP: spot-vs-fix divergence, backdrop family. Registered ahead of its
+    # first scheduled round; remove from here the moment the first reading commits.
+    "cny-fix-gap",
+    # BELIEVABILITY: the Li Keqiang composite vs the headline, monthly. Registered
+    # ahead of its first scheduled round; remove once the first reading commits.
+    "believability",
 }
 
 

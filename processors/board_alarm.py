@@ -89,6 +89,12 @@ LAYERS = {
     "content": (
         "ddti_threat", "ddti_novelty", "weibo_suppression",
         "gdelt_containment", "github_refuge",
+        # Withholding is the complement of deletion-as-data on the same wall —
+        # what may be known — so it sits in the content layer. If withholding
+        # signals multiply, a dedicated layer is an editorial decision that
+        # must also touch the three-layer copy in index.html and the README.
+        "data_darkness",
+        "silence_blackouts",
     ),
     "model": (
         # refusal_churn is the live signal: the v2 suite's own anytime-valid churn
@@ -139,6 +145,7 @@ CADENCE_PER_DAY = {
     "censored_planet": 1.0, "gdelt_containment": 4.0, "github_refuge": 2.0,
     "refusal_churn": 4.0, "bleedthrough_pools": 4.0, "bleedthrough_capacity": 4.0,
     "tor_bridge_cn": 1.0, "weibo_suppression": 4.0, "ioda_outages": 4.0,
+    "data_darkness": 1.0, "silence_blackouts": 4.0,
 }
 
 # Board-level signal -> history file, for every signal the board consumes: the

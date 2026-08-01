@@ -1,0 +1,49 @@
+name: Refresh CNY fix gap
+
+# Two prices for one currency: the PBOC's 09:15 Beijing USD/CNY central
+# parity (already collected by the china-econ signal) against the ECB's
+# same-day reference rate (USD/CNY derived as EURCNY/EURUSD), cross-checked
+# via Bank of Canada. Economic backdrop, not censorship — published as a
+# reading, kept off the alarm board. Runs daily after the ECB file lands
+# (~16:00 CET; 17:03 UTC clears it in winter and summer). Stdlib-only,
+# keyless, vantage-insensitive.
+
+on:
+  schedule:
+    - cron: "3 17 * * *"       # daily, minute offset from the other signals
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cny-fix-gap-refresh
+  cancel-in-progress: false
+
+jobs:
+  cny-fix-gap:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Read both legs and publish the cny-fix-gap signal
+        run: python -m scripts.cny_fix_gap_pull
+
+      - name: Commit & push if the signal changed
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/cny-fix-gap-latest.json readings/cny-fix-gap-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: cny fix gap refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git pull --rebase origin main || true
+            git push
+          fi

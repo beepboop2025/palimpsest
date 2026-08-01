@@ -78,6 +78,20 @@ GUARDED = {
         lambda r: r.get("n_terms"),
         "terms carried into the GDELT cross-signal",
     ),
+    "data_darkness": (
+        "data-darkness-history.jsonl",
+        lambda r: r.get("darkness_index"),
+        lambda r: r.get("n_reporting"),
+        "official surfaces reachable from this vantage this round — the index "
+        "is a mean over whichever surfaces answered, so a vantage losing one "
+        "surface shifts composition and the guard must own that",
+    ),
+    "silence_blackouts": (
+        "silence-index-history.jsonl",
+        lambda r: r.get("n_blackout"),
+        lambda r: r.get("n_scored"),
+        "topics actually scored this round (not abstained, not out of scope)",
+    ),
     "weibo_suppression": (
         "weibo-hotsearch-history.jsonl",
         lambda r: r.get("suppressed_invisible"),

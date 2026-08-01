@@ -109,7 +109,9 @@ SIGNALS = {
         "Baidu Baike redaction activity: what is being quietly edited or erased"),
     "china-econ": (
         "/readings/china-econ-latest.json",
-        "China economic-data availability and revision watch"),
+        "China money-market benchmarks pulled keyless from CFETS chinamoney: "
+        "full SHIBOR curve, FR/FDR pledged-repo fixings (FDR007 is the public "
+        "DR007 proxy) and the USD/CNY central parity fix"),
     "gdelt": (
         "/readings/gdelt-latest.json",
         "global event-tone reading over censorship and information-control news"),
