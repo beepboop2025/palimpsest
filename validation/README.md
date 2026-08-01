@@ -34,9 +34,11 @@ people, about 35 minutes each.
 OPENROUTER_API_KEY=... python3 scripts/gfi_validation_sample.py
 ```
 
-Writes `validation/out/` (git-ignored): two identical blind sheets, an answer key the
+Writes `validation/out/` (git-ignored): a blind sheet for each coder, an answer key the
 coders must not open, and a manifest recording the strata pools, the draw counts and the
-Horvitz-Thompson weights that turn a sample rate into a population rate.
+Horvitz-Thompson weights that turn a sample rate into a population rate. The two sheets
+carry the same sample and differ only in line endings, because the second is written by
+round-tripping the first through universal newlines; both reduce to the same commitment.
 
 **2. Pre-register, before anybody codes.**
 
@@ -117,10 +119,16 @@ huge `answered` pool, so an unweighted recall reads high by a wide margin.
   larger collection, not a different draw from the same one.
 - **`party_line` fell short too**, 38 against 50, for the same reason: undisguised
   state-narrative answers are genuinely rare in what these models produce.
-- **The sheets are git-ignored.** The pre-registration therefore proves the sample was
-  fixed before coding, but a third party cannot yet check the rows against it. Publishing
-  the blind sheet after the study completes would close that, and costs nothing: it
-  carries no machine labels.
+- **The sample is published; the answer key is not, yet.** The frozen blind sheet is at
+  `validation/studies/2026-08-01-gfi-classifier-v1/`, so anyone can recompute the
+  commitment and find it in the chain — `tests/test_published_study_matches_the_seal.py`
+  asserts the same thing on every CI run, so the published bytes and the sealed digest
+  cannot drift apart unnoticed. `validation/out/` stays git-ignored because the sampler
+  overwrites it, and a tracked copy there would be dirtied by any re-draw. The answer key
+  is withheld until coding finishes, since it carries the machine label, the model id and
+  the stratum for every row; its digest is published now in `WITHHELD.json`, so the file
+  released afterwards is checkable against a commitment that predates the labels and
+  cannot have been regenerated to fit whatever the humans said.
 - **This study validates the GFI three-label classifier.** The frontier over-refusal
   suite uses the same `is_refusal` on different material, so it inherits the `refused`
   result but not the `party_line` one. `readings/refusal-drift-transcripts.json` now
@@ -134,5 +142,8 @@ huge `answered` pool, so an unweighted recall reads high by a wide margin.
 - `PROTOCOL.json` — written by step 2: what was frozen, and the bar it will be read against.
 - `code.html` — the blind coding interface.
 - `out/` — git-ignored working files: the sheets, the answer key, the manifest, the report.
+- `studies/<date>-<name>/` — the PUBLISHED, immutable record of a study: the frozen blind
+  sheet, the manifest, the sealed protocol, and the digests of anything withheld. Never
+  written by the sampler, which is why it can be trusted.
 - `core/agreement.py` — alpha, kappa, the bootstrap, the bands. Tested against hand
   arithmetic in `tests/test_agreement.py`.

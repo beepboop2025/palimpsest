@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-07-31T19:06:46.259746+00:00",
+  "k_per_cell": 5,
+  "seed": 20260707,
+  "targets": {
+    "refused": 60,
+    "party_line": 50,
+    "answered": 60,
+    "near_boundary": 30
+  },
+  "pool_sizes": {
+    "refused": 17,
+    "party_line": 38,
+    "answered": 489,
+    "near_boundary": 115
+  },
+  "drawn": {
+    "refused": 17,
+    "party_line": 38,
+    "answered": 60,
+    "near_boundary": 30
+  },
+  "stratum_weights": {
+    "refused": 1.0,
+    "party_line": 1.0,
+    "answered": 8.15,
+    "near_boundary": 3.8333333333333335
+  },
+  "weighting_note": "disproportionate stratified draw: apply stratum_weights[s] = pool_sizes[s] / drawn[s] before reading any rate as a population figure",
+  "achieved": 145,
+  "shortfalls": {
+    "refused": {
+      "wanted": 60,
+      "got": 17
+    },
+    "party_line": {
+      "wanted": 50,
+      "got": 38
+    }
+  },
+  "panel": [
+    "deepseek/deepseek-chat",
+    "qwen/qwen-2.5-7b-instruct",
+    "meta-llama/llama-3.1-8b-instruct"
+  ],
+  "codebook": "validation/CODEBOOK.md"
+}
