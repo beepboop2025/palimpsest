@@ -29,7 +29,17 @@ HIST = os.path.join(READINGS, "weibo-hotsearch-history.jsonl")
 # the reading unconditionally, so it cannot hide a method change behind an
 # unchanged number. Carried as provenance: a reader diffing two history rows
 # needs to know whether the method moved underneath them.
-METHOD_VERSION = 1
+#   1: any gazetteer substring hit on a board title counted as a breakthrough.
+#   2: hits are sense-gated (2026-08-01). A term whose everyday sense dominates
+#      the board counts only when its title context does not read as that
+#      everyday sense, and every gated-out hit ships in the reading as
+#      sense_filtered rather than being dropped in silence. See _SENSE_RULES in
+#      collectors/weibo_hotsearch.py for the rule and its stated recall cost.
+#      All four breakthroughs in the last v1 reading were everyday-sense
+#      artifacts, so a fall in the count across this boundary is the method
+#      moving and not the board getting cleaner. The breakthrough series closes
+#      here rather than being re-baselined.
+METHOD_VERSION = 2
 
 DDTI = os.path.join(READINGS, "ddti-latest.json")
 GAZETTEER = os.path.join(ROOT, "config", "zh_censorship_gazetteer.json")
