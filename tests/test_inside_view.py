@@ -34,9 +34,24 @@ def _stub(control_answers, cn_probe_answers):
     return create, collect
 
 
+def _fake_owner(ips):
+    """Offline stand-in for the Cymru lookup: the first octet is the owner, so
+    1.1.1.1 and 1.0.0.1 are the same network and 9.9.9.9 is a different one."""
+    out = {}
+    for ip in ips:
+        octet = str(ip).split(".")[0]
+        if not octet.isdigit():
+            continue
+        out[str(ip)] = {"asn": int(octet) * 1000,
+                        "name": f"NET{octet} - Test Network {octet}, XX",
+                        "prefix": f"{octet}.0.0.0/8"}
+    return out
+
+
 def _observe(entry, control_answers, cn_probe_answers):
     create, collect = _stub(control_answers, cn_probe_answers)
-    return observe_domain(entry, create=create, collect=collect)
+    return observe_domain(entry, create=create, collect=collect,
+                          resolve=_fake_owner)
 
 
 CENSORED = {"domain": "torproject.org", "censored": True, "ddti": "CIRCUMVENTION"}

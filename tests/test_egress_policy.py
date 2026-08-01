@@ -122,6 +122,12 @@ _ALLOWED = {
         "in-China probes; fixed well-known host, uncapped body read, no redirect "
         "re-validation. Migration needs safe_fetch's request-body path (same blocker as "
         "censored_planet.py), so it is a candidate once that lands, not before.",
+    "collectors/origin_as.py":
+        "Raw TCP to whois.cymru.com:43, the keyless public IP-to-AS service, to learn who "
+        "announces an address before deciding whether an answer was injected. Not HTTP at "
+        "all, so safe_fetch does not apply: whois/43 is plaintext by protocol, carries no "
+        "TLS to verify and no redirects to re-validate. Sends only addresses already present "
+        "in a published reading, and a failure raises rather than degrading the verdict.",
     "collectors/app_storefront.py":
         "GET Apple's keyless iTunes lookup API; fixed well-known host, uncapped body read — "
         "plain migration candidate.",

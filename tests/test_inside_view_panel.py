@@ -48,9 +48,24 @@ def _stub(control_by_country, cn_probe_answers):
     return create, collect
 
 
+def _fake_owner(ips):
+    """Offline stand-in for the Cymru lookup: the first octet is the owner, so
+    1.1.1.1 and 1.0.0.1 are the same network and 9.9.9.9 is a different one."""
+    out = {}
+    for ip in ips:
+        octet = str(ip).split(".")[0]
+        if not octet.isdigit():
+            continue
+        out[str(ip)] = {"asn": int(octet) * 1000,
+                        "name": f"NET{octet} - Test Network {octet}, XX",
+                        "prefix": f"{octet}.0.0.0/8"}
+    return out
+
+
 def _observe(entry, control_by_country, cn_probe_answers):
     create, collect = _stub(control_by_country, cn_probe_answers)
-    return observe_domain(entry, create=create, collect=collect)
+    return observe_domain(entry, create=create, collect=collect,
+                          resolve=_fake_owner)
 
 
 # ── the geo-split guard ───────────────────────────────────────────────────────
@@ -193,16 +208,16 @@ def test_a_geo_split_domain_reaches_no_regional_verdict():
     assert regional_divergence(o)["verdict"] == "INSUFFICIENT"
 
 
-def test_no_cdn_geodns_domain_sits_in_the_panel_while_the_classifier_is_ip_based():
+def test_the_panel_keeps_its_own_counter_example():
     """github.com read forged from every vantage in its one live round, which
     would have published "GitHub is blocked in China". It is not: China was
     answered 20.205.243.166 (AS8075 MICROSOFT), GitHub's own Asia-Pacific
     endpoint, against a control of 140.82.121.4 (AS36459 GITHUB). Same owner,
     different PoP, no censor.
 
-    Until forgery is decided by origin-AS rather than by address, a domain that
-    runs its own regional PoPs cannot be told apart from an injected one, so it
-    must stay out of the panel. Re-add it with the AS comparison, not before.
+    It is deliberately kept in the panel now that a round can adjudicate it: its
+    Asia edge answers for github.com and nothing else, so no injector evidence
+    attaches and it cannot be reported blocked. If the method ever regresses,
+    this domain is where it shows up first, in public, on the live board.
     """
-    geodns = {"github.com", "www.microsoft.com", "azure.com", "cloudflare.com"}
-    assert not geodns & {e["domain"] for e in PANEL}
+    assert "github.com" in {e["domain"] for e in PANEL}

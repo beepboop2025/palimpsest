@@ -51,6 +51,9 @@ import time
 import urllib.error
 import urllib.request
 
+from collectors.origin_as import (OriginASUnavailable, asns_of, injection_pool,
+                                  origin_as, owners_of)
+
 log = logging.getLogger(__name__)
 
 API = "https://api.globalping.io/v1/measurements"
@@ -142,25 +145,21 @@ PANEL = [
     #     infrastructure, no mainland PoP.
     #   duckduckgo.com   — reported intermittently blocked since 2014.
     #
-    # github.com was here for one round and is deliberately removed, because it
-    # is the counter-example that shows what this classifier still cannot do.
-    # It read forged from all thirteen vantages, which would have published
-    # "GitHub is blocked in China" — false. The control arm answered 140.82.121.4
-    # (AS36459, GITHUB); China answered 20.205.243.166, which is AS8075 MICROSOFT,
-    # GitHub's own Asia-Pacific endpoint. Legitimate GeoDNS, no censor involved.
-    # The two European controls could not catch it because they agree with each
-    # other and both sit on the same PoP.
-    #
-    # What separates that from a real block is not the address, it is who OWNS
-    # the address. en.wikipedia.org resolved inside China to AS13414 TWITTER and
-    # AS32934 FACEBOOK; archive.org to Facebook and Twitter ranges. A Wikimedia
-    # domain answering with Twitter's addresses is injection and nothing else.
-    # So the discriminator this panel actually needs is origin-AS comparison:
-    # same owner as the control means GeoDNS, unrelated owner means injection.
-    # Until that exists, a CDN-fronted domain does not belong in the panel.
+    #   github.com       — the counter-example, kept deliberately. It read
+    #     forged from all thirteen vantages under address comparison, which
+    #     would have published "GitHub is blocked in China". It is back because
+    #     the round can now answer it: its Asia edge answers for github.com and
+    #     nothing else, so no injector evidence attaches to it and it cannot be
+    #     called blocked. It is the panel's live regression test.
+    # The control answered 140.82.121.4 (AS36459 GITHUB); China answered
+    # 20.205.243.166, which is AS8075 MICROSOFT — GitHub's own Asia-Pacific
+    # endpoint. Ownership alone does not settle it either, since Microsoft
+    # fronts GitHub and the two ASNs genuinely differ. What settles it is reuse:
+    # see collectors/origin_as.py.
     {"domain": "en.wikipedia.org", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
     {"domain": "archive.org", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
     {"domain": "duckduckgo.com", "censored": True, "role": "boundary", "ddti": "INFORMATION"},
+    {"domain": "github.com", "censored": True, "role": "boundary", "ddti": "CIRCUMVENTION"},
 
     # Negative controls: globally constant answers, must read clean from inside.
     {"domain": "one.one.one.one", "censored": False, "role": "control", "ddti": None},
@@ -234,11 +233,12 @@ def _answers(result: dict) -> set:
     return out
 
 
-def observe_domain(entry: dict, *, create=_create, collect=_collect) -> dict:
+def observe_domain(entry: dict, *, create=_create, collect=_collect,
+                   resolve=origin_as) -> dict:
     """Measure one domain from inside China against a control arm.
 
-    `create` and `collect` are injected so the whole classification path is
-    testable offline with no network.
+    `create`, `collect` and `resolve` are injected so the whole classification
+    path is testable offline with no network.
     """
     domain = entry["domain"]
 
@@ -266,40 +266,85 @@ def observe_domain(entry: dict, *, create=_create, collect=_collect) -> dict:
         c = ((r.get("probe") or {}).get("country")) or "?"
         by_country.setdefault(c, set()).update(_answers(r))
     answering = [s for s in by_country.values() if s]
-    geo_variable = len(answering) >= 2 and not set.intersection(*answering)
 
     truth = set()
     for s in answering:
         truth |= s
 
+    # Ownership, not addresses. An address that differs from the control is the
+    # question, never the answer: a regional edge and an injected reply both
+    # differ. Who ANNOUNCES the address separates them, so the origin AS of
+    # every address in the round is resolved in one query before anything is
+    # classified. See collectors/origin_as.py for the case that forced this.
+    inside_ips = set()
+    for r in inside:
+        inside_ips |= _answers(r)
+    owner = {}
+    owner_known = False
+    if truth and inside_ips - truth:
+        try:
+            owner = resolve(truth | inside_ips)
+            owner_known = True
+        except OriginASUnavailable:
+            # Deliberately NOT falling back to address comparison. That fallback
+            # is precisely the bug this replaced, and a quiet return to it would
+            # republish the same false verdict the next time the service blinked.
+            owner_known = False
+
+    control_asns = asns_of(truth, owner)
+
+    # The control arm is two countries and whether they agree is a measurement.
+    # Compared by owner rather than by address, so two probes landing on
+    # different edges of the same network no longer read as disagreement.
+    if owner_known and len(answering) >= 2:
+        per_country = [asns_of(s, owner) for s in answering]
+        per_country = [a for a in per_country if a]
+        geo_variable = len(per_country) >= 2 and not set.intersection(*per_country)
+    else:
+        geo_variable = len(answering) >= 2 and not set.intersection(*answering)
+
     vantages, forged_n, clean_n, silent_n, geo_n = [], 0, 0, 0, 0
+    undetermined_n = 0
     for r in inside:
         probe = r.get("probe") or {}
         got = _answers(r)
         if not got:
             state = "silent"
             silent_n += 1
+        elif got & truth:
+            # Same address as the control. Nothing to adjudicate.
+            state = "clean"
+            clean_n += 1
         elif geo_variable:
-            # Deliberately not counted as forged OR clean: both would be claims
-            # the control arm cannot support this round.
             state = "geo_variable"
             geo_n += 1
-        elif truth and not (got & truth):
-            state = "forged"
-            forged_n += 1
-        elif truth:
+        elif not truth:
+            state = "unclassified"
+        elif not owner_known:
+            # The addresses differ and we cannot say who owns them. That is an
+            # open question, not a blocking verdict.
+            state = "undetermined"
+            undetermined_n += 1
+        elif asns_of(got, owner) & control_asns:
+            # Different address, same network: a regional edge of the same
+            # service, so nothing to explain. Cheap and settled here.
             state = "clean"
             clean_n += 1
         else:
-            # No control truth: we cannot classify, and guessing here is exactly
-            # the failure this collector exists to avoid.
-            state = "unclassified"
+            # Differs from the control and is not the same network. Provisional:
+            # a regional edge fronted by a different company looks identical to
+            # an injected reply from one domain's vantage point. finalize_panel()
+            # demotes this to undetermined unless the round can show the address
+            # belongs to an injector pool.
+            state = "forged"
+            forged_n += 1
         vantages.append({
             "city": probe.get("city"),
             "asn": probe.get("asn"),
             "network": probe.get("network"),
             "state": state,
             "answers": sorted(got),
+            "answer_owners": sorted(owners_of(got, owner)) if owner_known else [],
         })
 
     answered = forged_n + clean_n
@@ -311,20 +356,93 @@ def observe_domain(entry: dict, *, create=_create, collect=_collect) -> dict:
         "control_answers": sorted(truth),
         "control_probes": len(control),
         "control_countries": sorted(c for c, s in by_country.items() if s),
+        "control_owners": sorted(owners_of(truth, owner)) if owner_known else [],
+        "ownership_resolved": owner_known,
         "geo_variable": geo_variable,
         "n_vantages": len(inside),
         "n_forged": forged_n,
         "n_clean": clean_n,
         "n_silent": silent_n,
         "n_geo_variable": geo_n,
+        "n_undetermined": undetermined_n,
         "forged_fraction": round(forged_n / answered, 3) if answered else None,
         "vantages": vantages,
     }
 
 
-def observe_panel(panel: list = None, *, create=_create, collect=_collect) -> list:
-    return [observe_domain(e, create=create, collect=collect)
-            for e in (panel if panel is not None else PANEL)]
+def finalize_panel(observations: list, *, resolve=origin_as) -> list:
+    """Settle the vantages observe_domain() could not, using the whole round.
+
+    A single domain cannot tell an injected reply from a regional edge run by
+    another company: both differ from the control and both belong to somebody
+    else. The round can. An address returned for several unrelated domains, and
+    for none of them outside China, is the injector reusing its pool, and the
+    networks that pool draws from give away the addresses seen only once.
+
+    A "differs" vantage therefore becomes FORGED only with that evidence behind
+    it. Without it the vantage stays undetermined, which is the deliberate
+    choice: mere difference is not proof, and treating it as proof is what
+    published "GitHub is blocked in China".
+    """
+    # Nothing provisional means nothing to settle, and the round should not
+    # reach for a network service it has no question for.
+    pending = any(v["state"] == "forged"
+                  for o in observations for v in (o.get("vantages") or []))
+    ips = set()
+    if pending:
+        for o in observations:
+            ips |= set(o.get("control_answers") or [])
+            for v in o.get("vantages") or []:
+                ips |= set(v.get("answers") or [])
+    try:
+        owner = resolve(ips) if ips else {}
+    except OriginASUnavailable:
+        owner = {}
+
+    pool = injection_pool(observations, owner)
+
+    for o in observations:
+        forged = clean = undet = 0
+        for v in o.get("vantages") or []:
+            if v["state"] == "forged":
+                got = set(v.get("answers") or [])
+                hit = got & pool["addresses"]
+                asn_hit = {owner[i]["asn"] for i in got if i in owner} & pool["asns"]
+                if hit or asn_hit:
+                    v["state"] = "forged"
+                    others = sorted({d for i in hit for d in pool["evidence"][i]
+                                     if d != o["domain"]})
+                    v["why"] = (
+                        f"answered with an address the same round returned for "
+                        f"{', '.join(others)}" if others else
+                        f"answered from a network this round's injector drew from "
+                        f"({', '.join(sorted(owners_of(got, owner))) or 'unknown'})")
+                else:
+                    # Demoted. Difference alone is not proof, and treating it as
+                    # proof is what published "GitHub is blocked in China".
+                    v["state"] = "undetermined"
+                    v["why"] = ("differs from the control and shows no sign of the "
+                                "injector's pool; a regional edge cannot be ruled out")
+            if v["state"] == "forged":
+                forged += 1
+            elif v["state"] == "clean":
+                clean += 1
+            elif v["state"] == "undetermined":
+                undet += 1
+        o["n_forged"], o["n_clean"], o["n_undetermined"] = forged, clean, undet
+        answered = forged + clean
+        o["forged_fraction"] = round(forged / answered, 3) if answered else None
+        o["pool_evidence"] = sorted(
+            {i for v in o.get("vantages") or [] for i in (v.get("answers") or [])}
+            & pool["addresses"])
+    return observations
+
+
+def observe_panel(panel: list = None, *, create=_create, collect=_collect,
+                  resolve=origin_as) -> list:
+    obs = [observe_domain(e, create=create, collect=collect, resolve=resolve)
+           for e in (panel if panel is not None else PANEL)]
+    return finalize_panel(obs, resolve=resolve)
 
 
 # ── control gate ──────────────────────────────────────────────────────────────
