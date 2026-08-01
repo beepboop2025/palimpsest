@@ -897,7 +897,8 @@ document.getElementById("themeBtn").onclick = (e) => {
     var cal = document.getElementById("calPanel");
     if (cal) C.calibration(cal, {
       url: "../readings/forecast-ledger-history.jsonl",
-      labels: LABELS
+      labels: LABELS,
+      shareTitle: "Forecast calibration · empirical coverage per signal"
     });
   }
   if (document.readyState === "loading") {

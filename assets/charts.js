@@ -545,6 +545,16 @@
         series.map(s => { const q = s.pts[i]; return q && q.v != null ? fmtVal(q.v, s.dec, "") : "—"; }))),
       "table view · " + series[0].pts.length + " readings");
 
+    shareKit(host, {
+      kind: "canvas",
+      node: cv,
+      title: cfg.shareTitle || cfg.ariaTitle,
+      legend: series.map(s => ({ label: s.label, color: s.color })),
+      axis: { left: fmtD(t0), right: (stale ? "stale · last " : "") + fmtD(t1) },
+      clock: "data through " + fmtD(t1),
+      dataUrl: cfg.url
+    });
+
     /* hover + keyboard: the reader aims at a date, never at a 2px line */
     function idxAt(clientX) {
       const r = cv.getBoundingClientRect();
@@ -719,6 +729,8 @@
         ". A row is committed only when some flag changes, so columns are events, not equal " +
         "steps of time — hover any cell for its date. A short strip is a young instrument, " +
         "not a quiet country."));
+
+      shareKit(host, { title: cfg.shareTitle, dataUrl: cfg.url });
     }).catch(() => failNote(host, cfg.url));
   }
 
@@ -784,6 +796,8 @@
         " frozen benign probes × " + models.length + " models. " +
         (drifted ? drifted + " model(s) newly refused a probe this run."
                  : "No model newly refused a probe this run — the grid is the evidence either way.")));
+
+      shareKit(host, { title: cfg.shareTitle, dataUrl: cfg.url });
     }).catch(() => failNote(host, cfg.url));
   }
 
@@ -1051,6 +1065,15 @@
           agg.unknown.join(", ") + "."));
       }
 
+      shareKit(host, {
+        kind: "canvas",
+        node: cv,
+        title: cfg.shareTitle,
+        note: "dot size = observations · fill = share of determinate answers forged",
+        clock: d.generated_at ? "round sealed " + String(d.generated_at).slice(0, 10) : null,
+        dataUrl: cfg.url
+      });
+
       if ("ResizeObserver" in window) {
         let raf = 0;
         new ResizeObserver(() => {
@@ -1184,7 +1207,293 @@
         " across " + (d.n_forecasts != null ? d.n_forecasts : "—") +
         " scored forecasts, against a " + Math.round(nominal * 100) + "% target. " +
         "A signal beating the climatology baseline earned its interval; one under it is said so here."));
+
+      shareKit(host, {
+        kind: "svg",
+        node: svg,
+        title: cfg.shareTitle,
+        clock: isFinite(rowTime(d)) ? "scored through " + fmtD(rowTime(d)) : null,
+        dataUrl: cfg.url
+      });
     }).catch(() => failNote(host, cfg.url));
+  }
+
+  /* ========================================================= SHARE KIT =====
+     Every chart can leave the page as a self-describing PNG: its title, its
+     legend, the exact pixels on screen, and a footer that cites the page AND
+     the raw data file — a screenshot that carries its own provenance. DOM
+     grids (raster, drift matrix) get a copy-link only; a redrawn imitation
+     of them would not be the published grid, so it is not offered.
+     ======================================================================== */
+  function guessTitle(host, given) {
+    if (given) return given;
+    let n = host.previousElementSibling;
+    while (n) {
+      if (/^H[1-4]$/.test(n.tagName)) return n.textContent.trim();
+      n = n.previousElementSibling;
+    }
+    const sec = host.closest("section, article, main");
+    const h = sec && sec.querySelector("h1, h2, h3");
+    return h ? h.textContent.trim() : document.title;
+  }
+  function pageLink(host) {
+    const base = location.origin + location.pathname;
+    return host.id ? base + "#" + host.id : base + location.hash;
+  }
+  function absUrl(u) {
+    try { return new URL(u, location.href).href; } catch (e) { return u; }
+  }
+  function slugOf(s) {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+            .slice(0, 48) || "chart";
+  }
+
+  /* The on-page surfaces are translucent washes over the void, so the first
+     painted ancestor is NOT a usable export ground — a PNG filled with
+     rgba(255,255,255,.03) is a transparent image. Flatten the whole ancestor
+     stack (host up through body and html) over an opaque dark base instead,
+     so the export ground is exactly what the reader's eye sees. */
+  function exportSurface(host) {
+    const parse = c => {
+      const m = /rgba?\(([^)]+)\)/.exec(c || "");
+      if (!m) return null;
+      const p = m[1].split(",").map(parseFloat);
+      return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+    };
+    const layers = [];
+    let n = host;
+    while (n) {
+      const c = parse(getComputedStyle(n).backgroundColor);
+      if (c && c.a > 0) layers.push(c);
+      n = n.parentElement;
+    }
+    let r = 14, g = 14, b = 14; /* #0e0e0e when nothing paints at all */
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const c = layers[i];
+      r = c.r * c.a + r * (1 - c.a);
+      g = c.g * c.a + g * (1 - c.a);
+      b = c.b * c.a + b * (1 - c.a);
+    }
+    return "rgb(" + Math.round(r) + "," + Math.round(g) + "," + Math.round(b) + ")";
+  }
+  function stampName(title) {
+    const d = new Date();
+    return "palimpsest-" + slugOf(title) + "-" + d.getUTCFullYear() +
+           pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + ".png";
+  }
+
+  /* An SVG chart is styled by charts.css; a serialized copy loses that, so
+     the computed styles are inlined onto a clone before rasterising. */
+  function svgImage(svg) {
+    return new Promise((res, rej) => {
+      const clone = svg.cloneNode(true);
+      const src = [svg].concat([].slice.call(svg.querySelectorAll("*")));
+      const dst = [clone].concat([].slice.call(clone.querySelectorAll("*")));
+      const PROPS = ["fill", "stroke", "stroke-width", "stroke-dasharray",
+                     "font-family", "font-size", "font-weight", "opacity",
+                     "text-anchor", "letter-spacing"];
+      for (let i = 0; i < src.length; i++) {
+        const cs = getComputedStyle(src[i]);
+        let style = "";
+        for (const p of PROPS) {
+          const v = cs.getPropertyValue(p);
+          if (v) style += p + ":" + v + ";";
+        }
+        if (style) dst[i].setAttribute("style", style);
+      }
+      const vb = svg.viewBox.baseVal;
+      clone.setAttribute("width", vb.width);
+      clone.setAttribute("height", vb.height);
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      const img = new Image();
+      img.onload = () => res({ img, w: vb.width, h: vb.height });
+      img.onerror = () => rej(new Error("svg rasterise failed"));
+      img.src = "data:image/svg+xml;charset=utf-8," +
+                encodeURIComponent(new XMLSerializer().serializeToString(clone));
+    });
+  }
+
+  /* Compose the card. cfgS: { title, node, kind, legend, axis, note, clock,
+     dataUrl, host }. Returns a Promise<canvas>. */
+  function composeCard(cfgS) {
+    const t = tokens();
+    const EX = 2; /* supersample — crisp after every platform recompress */
+    const drawInto = (chartW, chartH, paint) => {
+      const pad = 20;
+      const W = Math.max(560, chartW + pad * 2);
+      const innerW = W - pad * 2;
+      const drawH = Math.round(chartH * (innerW / chartW));
+      const titleY = 28;
+      const legendY = cfgS.legend && cfgS.legend.length ? titleY + 18 : titleY;
+      const chartY = legendY + 12;
+      const axisY = cfgS.axis ? chartY + drawH + 14 : chartY + drawH;
+      const noteY = cfgS.note ? axisY + 16 : axisY;
+      const ruleY = noteY + 12;
+      const f1Y = ruleY + 16;
+      const f2Y = f1Y + 14;
+      const H = f2Y + 12;
+
+      const cv = document.createElement("canvas");
+      cv.width = W * EX;
+      cv.height = H * EX;
+      const ctx = cv.getContext("2d");
+      ctx.scale(EX, EX);
+
+      ctx.fillStyle = exportSurface(cfgS.host);
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = t.grid;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+      ctx.fillStyle = t.text1;
+      ctx.font = "600 13px " + t.mono;
+      ctx.fillText(cfgS.title, pad, titleY);
+      ctx.font = "9px " + t.mono;
+      ctx.fillStyle = t.text3;
+      const mark = "PALIMPSEST · palimpsest.info";
+      ctx.fillText(mark, W - pad - ctx.measureText(mark).width, titleY);
+
+      if (cfgS.legend && cfgS.legend.length) {
+        ctx.font = "9.5px " + t.mono;
+        let lx = pad;
+        for (const s of cfgS.legend) {
+          ctx.fillStyle = s.color;
+          ctx.fillRect(lx, legendY - 6, 9, 3);
+          lx += 14;
+          ctx.fillStyle = t.text2;
+          ctx.fillText(s.label, lx, legendY);
+          lx += ctx.measureText(s.label).width + 16;
+        }
+      }
+
+      paint(ctx, pad, chartY, innerW, drawH);
+
+      ctx.font = "9px " + t.mono;
+      if (cfgS.axis) {
+        ctx.fillStyle = t.text4;
+        ctx.fillText(cfgS.axis.left, pad, axisY);
+        ctx.fillText(cfgS.axis.right,
+          W - pad - ctx.measureText(cfgS.axis.right).width, axisY);
+      }
+      if (cfgS.note) {
+        ctx.fillStyle = t.text4;
+        ctx.fillText(cfgS.note, pad, noteY);
+      }
+
+      ctx.strokeStyle = t.grid;
+      ctx.beginPath();
+      ctx.moveTo(pad, ruleY + 0.5);
+      ctx.lineTo(W - pad, ruleY + 0.5);
+      ctx.stroke();
+
+      ctx.fillStyle = t.text2;
+      ctx.fillText(pageLink(cfgS.host).replace(/^https?:\/\//, ""), pad, f1Y);
+      const ex = "exported " + fmtDT(Date.now());
+      ctx.fillStyle = t.text4;
+      ctx.fillText(ex, W - pad - ctx.measureText(ex).width, f1Y);
+      if (cfgS.dataUrl) {
+        ctx.fillText("data: " + absUrl(cfgS.dataUrl).replace(/^https?:\/\//, ""), pad, f2Y);
+      }
+      if (cfgS.clock) {
+        ctx.fillText(cfgS.clock, W - pad - ctx.measureText(cfgS.clock).width, f2Y);
+      }
+      return cv;
+    };
+
+    if (cfgS.kind === "svg") {
+      return svgImage(cfgS.node).then(({ img, w, h }) =>
+        drawInto(w, h, (ctx, x, y, dw, dh) => ctx.drawImage(img, x, y, dw, dh)));
+    }
+    const cv = cfgS.node;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    return Promise.resolve(drawInto(
+      Math.round(cv.width / dpr), Math.round(cv.height / dpr),
+      (ctx, x, y, dw, dh) => ctx.drawImage(cv, x, y, dw, dh)));
+  }
+
+  function cardBlob(cfgS) {
+    return composeCard(cfgS).then(cv => new Promise((res, rej) =>
+      cv.toBlob(b => b ? res(b) : rej(new Error("toBlob failed")), "image/png")));
+  }
+  function downloadPng(cfgS) {
+    return cardBlob(cfgS).then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = stampName(cfgS.title);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    });
+  }
+
+  function shareKit(host, cfgS) {
+    cfgS.host = host;
+    cfgS.title = guessTitle(host, cfgS.title);
+
+    const row = el("div", "pc-share");
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "share this chart");
+    const note = el("span", "pc-share__note");
+    note.setAttribute("role", "status");
+    let noteTimer = 0;
+    const say = msg => {
+      note.textContent = msg;
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(() => { note.textContent = ""; }, 2200);
+    };
+    const btn = (label, fn, title) => {
+      if (row.childNodes.length) row.appendChild(el("span", "pc-share__dot", "·"));
+      const b = el("button", null, label);
+      b.type = "button";
+      if (title) b.title = title;
+      b.addEventListener("click", fn);
+      row.appendChild(b);
+    };
+
+    if (cfgS.kind) {
+      btn("download png", () => {
+        downloadPng(cfgS).then(() => say("png saved"), () => say("export failed"));
+      }, "download this chart as a png card");
+      btn("copy image", () => {
+        /* Safari accepts a clipboard write only when the ClipboardItem is
+           built synchronously in the gesture, with the blob as a promise. */
+        let wrote = false;
+        try {
+          if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+            navigator.clipboard.write([new ClipboardItem({ "image/png": cardBlob(cfgS) })])
+              .then(() => say("image copied"),
+                    () => downloadPng(cfgS).then(() => say("copy blocked · png saved"),
+                                                 () => say("export failed")));
+            wrote = true;
+          }
+        } catch (e) { /* fall through to the download */ }
+        if (!wrote) {
+          downloadPng(cfgS).then(() => say("copy blocked · png saved"),
+                                 () => say("export failed"));
+        }
+      }, "copy the chart image to the clipboard");
+      let shareable = false;
+      try {
+        shareable = !!(navigator.canShare && navigator.canShare({
+          files: [new File([new Uint8Array(1)], "x.png", { type: "image/png" })]
+        }));
+      } catch (e) { shareable = false; }
+      if (shareable) {
+        btn("share", () => {
+          cardBlob(cfgS).then(blob => navigator.share({
+            files: [new File([blob], stampName(cfgS.title), { type: "image/png" })],
+            title: cfgS.title,
+            text: pageLink(host)
+          })).catch(e => { if (!e || e.name !== "AbortError") say("share failed"); });
+        }, "share the chart image");
+      }
+    }
+    btn("copy link", () => {
+      navigator.clipboard.writeText(pageLink(host))
+        .then(() => say("link copied"), () => say("copy blocked"));
+    }, "copy a link to this chart");
+    row.appendChild(note);
+    host.appendChild(row);
   }
 
   /* ------------------------------------------------------------- boot ----- */
@@ -1197,6 +1506,6 @@
 
   window.PalimpsestCharts = {
     loadHistory, loadJson, trend, spark, autowire, raster,
-    driftMatrix, vantageMap, operatorStrip, calibration, tokens
+    driftMatrix, vantageMap, operatorStrip, calibration, tokens, shareKit
   };
 })();
