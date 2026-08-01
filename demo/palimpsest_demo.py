@@ -402,7 +402,7 @@ a{color:inherit;text-decoration:none}
 /* ---- masthead ---- */
 header{padding:26px 34px 18px;display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
 .brand{display:flex;flex-direction:column;gap:5px}
-.brand h1{margin:0;font-size:40px;font-weight:800;letter-spacing:2px;line-height:1}
+.brand h1{margin:0;font-size:clamp(25px,8.5vw,40px);font-weight:800;letter-spacing:2px;line-height:1}
 .brand h1 .p{color:var(--red)}
 .brand .sub{color:var(--mut);font-size:11px;letter-spacing:3px;text-transform:uppercase}
 .chips{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
@@ -421,10 +421,10 @@ header .live{margin-left:auto;font-size:12px}.ok{color:var(--green)}.blk{color:v
 .kpi.alert .n{color:var(--red)}
 /* ---- tabs (CSS-only) ---- */
 .tabwrap input{position:absolute;opacity:0;pointer-events:none}
-.tabnav{display:flex;gap:0;padding:18px 34px 0;align-items:center}
+.tabnav{display:flex;flex-wrap:wrap;row-gap:8px;gap:0;padding:18px clamp(14px,4vw,34px) 0;align-items:center}
 .tabnav label{cursor:pointer;border:1px solid var(--line);border-bottom:none;padding:11px 20px;font-size:12px;
 letter-spacing:1px;color:var(--mut);background:#0e0e13;border-radius:7px 7px 0 0;margin-right:4px}
-.tabnav .mode{margin-left:auto;font-size:11px;color:var(--mut);letter-spacing:1px;display:flex;align-items:center;gap:7px}
+.tabnav .mode{margin-left:auto;max-width:100%;font-size:11px;color:var(--mut);letter-spacing:1px;display:flex;align-items:center;gap:7px}
 #t-ov:checked~.tabnav label[for=t-ov],#t-ddti:checked~.tabnav label[for=t-ddti],
 #t-sig:checked~.tabnav label[for=t-sig]{background:var(--txt);color:#0b0b0d;font-weight:700;border-color:var(--txt)}
 .pane{display:none;padding:18px 34px 40px}
@@ -444,9 +444,9 @@ padding:15px 20px;margin-bottom:18px;font-size:14px;color:var(--mut)}
 .ri{color:var(--mut);font-size:13px;width:22px}
 .rname{flex:1;min-width:0}
 .term{font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:600;letter-spacing:.2px}
-.new{color:var(--red);font-size:9px;border:1px solid #ff2f2f55;border-radius:3px;padding:1px 4px;margin-left:8px;vertical-align:middle;letter-spacing:1px}
+.new{color:var(--red);font-size:10.5px;border:1px solid #ff2f2f55;border-radius:3px;padding:1px 4px;margin-left:8px;vertical-align:middle;letter-spacing:1px}
 .snippet{color:var(--mut);font-size:11px;display:block;margin-top:3px;font-family:'JetBrains Mono',monospace}
-.chip{font-size:9.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;letter-spacing:1px;text-transform:uppercase}
+.chip{font-size:10.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;letter-spacing:1px;text-transform:uppercase}
 .rscore{font-weight:700;font-size:18px;color:var(--red);min-width:48px;text-align:right}
 .rmeter{height:4px;background:#0b0b0d;border-radius:3px;overflow:hidden;margin-top:6px}
 .rmeter>span{display:block;height:100%;background:linear-gradient(90deg,var(--red),#ffb454)}
@@ -480,7 +480,12 @@ footer .rl{color:var(--accent)}
 
 
 def _page(title, header_html, body_html, footer):
-    return (f"<!doctype html><html lang=en><head><meta charset=utf-8><title>{title}</title>"
+    # The standalone demo report is read on phones too, and without this it
+    # renders at the legacy ~980px viewport, shrunk to illegibility. The
+    # published china-brief gets the same tag injected by its builder.
+    return (f"<!doctype html><html lang=en><head><meta charset=utf-8>"
+            f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f"<title>{title}</title>"
             f"<style>{_CSS}</style></head><body>{header_html}{body_html}"
             f"<footer>{footer}</footer></body></html>")
 

@@ -719,7 +719,16 @@
     function set(cell, text, cls, title) {
       cell.textContent = text;
       cell.className = "rd-fresh" + (cls ? " " + cls : "");
-      if (title) cell.title = title; else cell.removeAttribute("title");
+      // title is a hover tooltip, which a touch reader can never open. The
+      // exact timestamp it carries is evidence, so mirror it where assistive
+      // tech and long-press can reach it.
+      if (title) {
+        cell.title = title;
+        cell.setAttribute("aria-label", text + ", " + title);
+      } else {
+        cell.removeAttribute("title");
+        cell.removeAttribute("aria-label");
+      }
     }
 
     function flag(cell, word) {

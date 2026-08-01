@@ -105,10 +105,16 @@
   color: var(--tk-text-3); padding-right: 10px; white-space: nowrap; }
 .pc-raster__lay { font-family: var(--tk-font-mono); font-size: 9px; letter-spacing: .12em;
   text-transform: uppercase; color: var(--tk-text-4); margin: 8px 0 2px; }
-.pc-cell { width: 17px; height: 17px; border-radius: 4px; border: 0; padding: 0;
+.pc-cell { width: var(--pc-cell-size, 17px); height: var(--pc-cell-size, 17px);
+  border-radius: 4px; border: 0; padding: 0;
   background: var(--tk-surface-3); color: var(--tk-text-4);
-  font-family: var(--tk-font-mono); font-size: 9px; line-height: 17px; text-align: center;
+  font-family: var(--tk-font-mono); font-size: 9px;
+  line-height: var(--pc-cell-size, 17px); text-align: center;
   cursor: default; }
+/* A 17px cell is a mouse target. On a finger it is a coin toss between two
+   runs, and the cell IS the only way to read a run's date. The raster lives
+   in its own scroll box, so wider cells cost scroll distance, not layout. */
+@media (pointer: coarse) { .pc-raster__grid { --pc-cell-size: 26px; } }
 .pc-cell:focus-visible { outline: 2px solid var(--tk-live); outline-offset: 1px; }
 .pc-cell[data-state="calm"] { background: var(--tk-surface-3); }
 .pc-cell[data-state="warming_up"] { background: var(--tk-surface-4); color: var(--tk-text-3); }
@@ -189,6 +195,8 @@
   .pc__tip { transition: none; }
 }
 @media (max-width: 640px) {
-  .pc-matrix { font-size: 10px; }
+  /* The matrix keeps its size on a phone. It lives in a scroll box, so the
+     only thing shrinking the type bought was illegibility on the device that
+     could least afford it. */
   .pc-matrix td:first-child { padding-right: 8px; }
 }

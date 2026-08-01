@@ -371,7 +371,7 @@
 
     <div style="min-width:0">
       <figure class="ps-p2 ps-reveal" style="padding:16px 17px 12px;margin:0 0 12px" id="er-seal-fig">
-        <div class="ps-scroll-x">
+        <div class="ps-scroll-x" tabindex="0" role="region" aria-label="Sealing pipeline diagram, scrolls horizontally">
         <svg viewBox="0 0 720 132" role="img" aria-labelledby="er-seal-t er-seal-d"
              style="display:block;min-width:620px;width:100%;height:auto">
           <title id="er-seal-t">How a result becomes unrevisable</title>
@@ -910,6 +910,9 @@
     } else {
       var card = el("section", "ps-p2 er-tbox");
       var scroll = el("div", "ps-scroll-x");
+      scroll.tabIndex = 0;
+      scroll.setAttribute("role", "region");
+      scroll.setAttribute("aria-label", "Sealed runs table, scrolls horizontally");
       var table = el("table", "er-t");
       var thead = el("thead");
       var hr = el("tr");
@@ -1085,6 +1088,9 @@
     card.appendChild(head);
 
     var scroll = el("div", "ps-scroll-x");
+      scroll.tabIndex = 0;
+      scroll.setAttribute("role", "region");
+      scroll.setAttribute("aria-label", "Probe set table, scrolls horizontally");
     var table = el("table", "er-t");
     var thead = el("thead");
     var hr = el("tr");
@@ -1144,6 +1150,9 @@
       lh.textContent = "The same question, asked in Chinese";
       lcard.appendChild(lh);
       var lscroll = el("div", "ps-scroll-x");
+      lscroll.tabIndex = 0;
+      lscroll.setAttribute("role", "region");
+      lscroll.setAttribute("aria-label", "Ledger entries table, scrolls horizontally");
       var lt = el("table", "er-t");
       var lthead = el("thead");
       var lhr = el("tr");

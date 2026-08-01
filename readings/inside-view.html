@@ -929,6 +929,9 @@
         box.appendChild(el("p", "iv-note", "no in-China vantage returned a result for this domain"));
       } else {
         var scroll = el("div", "ps-scroll-x");
+        scroll.tabIndex = 0;
+        scroll.setAttribute("role", "region");
+        scroll.setAttribute("aria-label", "Per-vantage answers, scrolls horizontally");
         var table = el("table", "iv-t");
         var thead = el("thead");
         var hr = el("tr");

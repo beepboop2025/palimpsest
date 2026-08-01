@@ -217,11 +217,24 @@
     };
   }
 
+  /* A horizontally scrolling box that a KEYBOARD can also scroll. Touch pans
+     it for free; without tabindex nobody who cannot use a pointer can reach
+     the right-hand columns, and a screen reader gets no region to announce.
+     The house pattern in the hand-written pages is the same three attributes,
+     so generated boxes carry them too. */
+  function scrollBox(cls, label) {
+    const box = el("div", cls || "ps-scroll-x");
+    box.tabIndex = 0;
+    box.setAttribute("role", "region");
+    box.setAttribute("aria-label", (label || "table view") + ", scrolls horizontally");
+    return box;
+  }
+
   /* --------------------------------------------------------- table twin ---- */
   function tableTwin(host, headers, rows, summary) {
     const det = el("details", "pc-table");
     det.appendChild(el("summary", null, summary || "table view"));
-    const scroll = el("div", "ps-scroll-x");
+    const scroll = scrollBox("ps-scroll-x", summary || "table view");
     const table = el("table");
     const thead = el("thead"), trh = el("tr");
     headers.forEach((h, i) => {
@@ -247,9 +260,15 @@
   function sizeCanvas(cv, cssH) {
     const dpr = Math.min(3, window.devicePixelRatio || 1);
     const w = cv.clientWidth || cv.parentElement.clientWidth || 600;
+    const bw = Math.round(w * dpr), bh = Math.round(cssH * dpr);
     cv.style.height = cssH + "px";
-    cv.width = Math.round(w * dpr);
-    cv.height = Math.round(cssH * dpr);
+    // Assigning width/height reallocates the backing store and clears it, and
+    // draw() runs on every pointermove. At DPR 3 that is a megapixel buffer
+    // thrown away per frame — the scrub visibly stutters on a mid-range phone.
+    // Only resize when the size actually changed; the transform is reset
+    // unconditionally because callers rely on a clean matrix either way.
+    if (cv.width !== bw) cv.width = bw;
+    if (cv.height !== bh) cv.height = bh;
     const ctx = cv.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx, w, h: cssH };
@@ -531,6 +550,9 @@
                fmtDT(times[hoverIdx]), rows);
     }
     cv.addEventListener("pointermove", e => { hoverIdx = idxAt(e.clientX); draw(1); showTip(); });
+    // A tap emits pointerdown/up with no movement, so a touch reader would
+    // never see a value without discovering drag-scrubbing by accident.
+    cv.addEventListener("pointerdown", e => { hoverIdx = idxAt(e.clientX); draw(1); showTip(); });
     cv.addEventListener("pointerleave", () => { hoverIdx = -1; draw(1); tip.hide(); });
     cv.addEventListener("keydown", e => {
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -614,9 +636,12 @@
       const fb = fallbackEl(host);
       if (fb) fb.remove();
 
-      const scroll = el("div", "pc-raster__scroll");
+      const scroll = scrollBox("pc-raster__scroll", "alarm history grid");
       const grid = el("div", "pc-raster__grid");
-      grid.style.gridTemplateColumns = "max-content repeat(" + runs.length + ", 17px)";
+      // Single-sourced with .pc-cell in charts.css so a coarse-pointer bump in
+      // one place cannot desynchronise the grid track from the button size.
+      grid.style.gridTemplateColumns =
+        "max-content repeat(" + runs.length + ", var(--pc-cell-size, 17px))";
       const wrap = el("div", "pc-raster pc__wrap");
       const tip = makeTip(wrap);
 
@@ -690,7 +715,7 @@
       if (fb) fb.remove();
 
       const probes = Object.keys(models[0].labels || {}).sort();
-      const scroll = el("div", "ps-scroll-x");
+      const scroll = scrollBox("ps-scroll-x", "drift matrix");
       const table = el("table", "pc-matrix");
       const thead = el("thead"), trh = el("tr");
       trh.appendChild(el("th", null, "frozen probe"));
@@ -914,9 +939,18 @@
           ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 4, 0, 7);
           ctx.strokeStyle = t.live; ctx.lineWidth = 2; ctx.stroke();
         }
-        /* labels in text tokens, never the data colour */
+        /* labels in text tokens, never the data colour.
+           On a phone the canvas is ~330px wide and the delta clusters put a
+           dozen 10px labels on top of each other — an unreadable smear that
+           also hides the dots. Below 480px only the largest cities are
+           labelled; every city stays tappable and the table twin carries the
+           full list, so nothing is lost, only decluttered. */
+        const wide = w >= 480;
+        const named = wide ? null : new Set(
+          placed.slice().sort((a, b) => b.r - a.r).slice(0, 8).map(p => p.name));
         ctx.font = "10px " + t.mono;
         for (const p of placed) {
+          if (named && !named.has(p.name)) continue;
           ctx.fillStyle = t.text3;
           ctx.textAlign = p.anchor === "right" ? "right" : "left";
           ctx.fillText(p.name, p.x + p.dx + (p.anchor === "right" ? -p.r + 4 : p.r - 4), p.y + p.dy + 3);
@@ -941,6 +975,17 @@
                  ([...p.c.nets].length === 1 ? "" : "s"), describe(p));
       }
       cv.addEventListener("pointermove", e => {
+        const r = cv.getBoundingClientRect();
+        const x = e.clientX - r.left, y = e.clientY - r.top;
+        let best = null, bd = 30;
+        for (const p of placed) {
+          const d = Math.hypot(p.x - x, p.y - y) - p.r;
+          if (d < bd) { bd = d; best = p; }
+        }
+        if (best) showTip(best); else tip.hide();
+      });
+      /* A tap emits no pointermove, so touch readers need the same hit test. */
+      cv.addEventListener("pointerdown", e => {
         const r = cv.getBoundingClientRect();
         const x = e.clientX - r.left, y = e.clientY - r.top;
         let best = null, bd = 30;
@@ -1090,8 +1135,15 @@
         svg.appendChild(vt);
       });
 
+      // The plot's coordinate system is fixed at 600 units wide with a 150-unit
+      // label gutter. Letting it shrink to a phone's width scales the 9px tick
+      // type to ~5px — legible to nobody. It scrolls at its readable size
+      // instead, inside the house pattern, with the table twin below it.
       const box = el("div", "pc-cal");
-      box.appendChild(svg);
+      svg.style.minWidth = "560px";
+      const calScroll = scrollBox("ps-scroll-x", "forecast calibration plot");
+      calScroll.appendChild(svg);
+      box.appendChild(calScroll);
       host.appendChild(box);
 
       tableTwin(host,

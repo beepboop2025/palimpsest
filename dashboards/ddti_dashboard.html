@@ -162,14 +162,14 @@
   }
   .stamp .cn{font-family:'Noto Serif SC'; margin-right:5px}
   .dchip{
-    font-size:9px; letter-spacing:.18em; text-transform:uppercase; padding:3px 8px;
+    font-size:10px; letter-spacing:.18em; text-transform:uppercase; padding:3px 8px;
     border:1px solid currentColor; border-radius:1px; white-space:nowrap; opacity:.92;
   }
   .spacer{flex:1}
   .threatnum{text-align:right}
   .threatnum .v{font-family:'Anton'; font-size:30px; color:var(--bone)}
   .row.t1 .threatnum .v{color:var(--signal)}
-  .threatnum .l{font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:var(--bone-faint)}
+  .threatnum .l{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--bone-faint)}
 
   /* threat meter */
   .meter{height:6px; background:rgba(255,255,255,.05); margin:14px 0 12px; position:relative; overflow:hidden}
@@ -217,7 +217,7 @@
   footer{margin-top:42px; padding-top:18px; border-top:1px solid var(--line);
     font-size:10.5px; line-height:1.8; color:var(--bone-faint); letter-spacing:.04em}
   footer .scope{color:var(--bone-dim)}
-  a.refresh{color:var(--jade); text-decoration:none; border-bottom:1px dotted var(--jade); cursor:pointer}
+  .refresh{background:none; border:0; border-bottom:1px dotted var(--jade); color:var(--jade); font:inherit; padding:9px 2px; cursor:pointer}
   /* motion safety: rows/meters land instantly for reduce-motion readers */
   @media (prefers-reduced-motion:reduce){
     .row{animation:none; opacity:1; transform:none}
@@ -331,7 +331,7 @@
           <p><span class="sig">Threat</span> = attention × (1 + novelty). What the apparatus is spending capacity on, right now.</p>
           <p style="margin-top:10px"><span class="gold">NEW 新</span> = term never censored in the baseline window — the sharpest fear signal.</p>
           <p style="margin-top:10px"><span class="jade">Burst</span> = how far current deletion rate exceeds its own history.</p>
-          <p style="margin-top:10px;color:var(--bone-faint)">Hover any <b style="color:var(--bone)">▮ redacted</b> line to reveal the leaked headline.</p>
+          <p style="margin-top:10px;color:var(--bone-faint)">Each <b style="color:var(--bone)">▮</b> line is a deleted headline, recovered before removal.</p>
         </div>
       </div>
     </aside>
@@ -339,7 +339,7 @@
 
   <footer>
     <div class="scope" id="scope">SCOPE — censor attention allocation (numerator-only; not a true deletion rate).</div>
-    <div style="margin-top:8px">SOURCE: China Digital Times 404 archive + Minitrue · velocity sub-signal pending in-China egress · <a class="refresh" onclick="boot()">↻ refresh</a></div>
+    <div style="margin-top:8px">SOURCE: China Digital Times 404 archive + Minitrue · velocity sub-signal pending in-China egress · <button class="refresh" type="button" onclick="boot()">↻ refresh</button></div>
   </footer>
 </main>
 

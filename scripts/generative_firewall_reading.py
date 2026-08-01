@@ -720,10 +720,10 @@ def build_dashboard(summ, per_concept, rows, drift, history):
  .kick{{font-family:'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;font-size:11px;color:var(--cy);margin:0 0 8px}}
  h1{{font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;color:#fff}} .sub{{color:var(--t2);font-size:14px;margin:0 0 22px}}
  .row{{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;margin:0 0 12px}}
- .gauge{{flex:1;min-width:320px;display:flex;align-items:baseline;gap:12px;padding:18px 22px;flex-wrap:wrap}}
+ .gauge{{flex:1;min-width:min(320px,100%);display:flex;align-items:baseline;gap:12px;padding:18px 22px;flex-wrap:wrap}}
  .gauge .n{{font-family:'JetBrains Mono',monospace;font-size:52px;font-weight:800;color:#fff;line-height:1}} .gauge .of{{font-size:18px;color:var(--t2)}}
  .gauge .band{{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t2);align-self:center}}
- .trend{{padding:14px 18px;min-width:290px}}
+ .trend{{padding:14px 18px;min-width:min(290px,100%)}}
  .trend .t{{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:0 0 6px}}
  .box{{padding:12px 18px;margin:0 0 6px}}
  .box>:first-child{{margin-top:0}} .box>:last-child{{margin-bottom:0}}
@@ -756,9 +756,9 @@ def build_dashboard(summ, per_concept, rows, drift, history):
  <h2>Drift since previous run</h2>
  <div class="box ps-p2">{drift_html()}</div>
  <h2>Sensitive concepts — aligned subjects, asked in Chinese</h2>
- <div class="grid-box ps-p1 ps-scroll-x"><table><tr><th>Concept</th>{head}</tr>{sens}</table></div>
+ <div class="grid-box ps-p1 ps-scroll-x" tabindex="0" role="region" aria-label="Sensitive concepts by model, scrolls horizontally"><table><tr><th>Concept</th>{head}</tr>{sens}</table></div>
  <h2>Neutral controls — selectivity check</h2>
- <div class="grid-box ps-p1 ps-scroll-x"><table><tr><th>Concept</th>{head}</tr>{ctrl}</table></div>
+ <div class="grid-box ps-p1 ps-scroll-x" tabindex="0" role="region" aria-label="Neutral controls by model, scrolls horizontally"><table><tr><th>Concept</th>{head}</tr>{ctrl}</table></div>
  <h2>Routing — the censorship that answers politely</h2>
  <p class="note ps-p2">{routing_html(summ)}</p>
  <p class="note ps-p1"><b>How to read this.</b> Live hosted-API layer, which is non-deterministic even at

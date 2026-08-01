@@ -100,7 +100,13 @@ EXTRA_CSS = """
 table{max-width:100%}
 .panel{overflow-x:auto}
 .ps-p1>h2,.ps-p2>h2,.ps-p3>h2{background:transparent}
-@media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
+/* The demo's own header/tabnav/pane padding is tuned for a desk. On a phone
+   the 34px gutters eat a tenth of the screen, so they tighten here — and the
+   ranked rows get room to breathe rather than a horizontal pan. */
+@media(max-width:640px){
+  header,.tabnav,.pane,footer{padding-left:16px;padding-right:16px}
+  .rank{gap:10px}
+}
 """
 
 

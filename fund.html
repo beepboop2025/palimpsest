@@ -33,7 +33,7 @@
   .f-big.f-range { font-size: clamp(21px, 3vw, 30px); }
   .f-cap { margin: 7px 0 0; font-size: 13px; line-height: 1.45; color: var(--tk-text-2, #94a3b8); }
 
-  .f-receipt {
+  .f-receipt { overflow-wrap: anywhere;
     margin: 8px 0 0; padding: 11px 14px;
     font-family: var(--tk-font-mono), ui-monospace, monospace;
     font-size: 11px; line-height: 1.7; color: var(--tk-text-3, #7d8ca3);
@@ -44,9 +44,9 @@
   .f-receipt a:hover, .f-card a:hover, .f-note a:hover, .f-claim a:hover { border-bottom-color: currentColor; }
 
   .f-jump { margin: 26px 0 0; padding: 12px 16px; }
-  .f-jump ol { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; padding: 0;
+  .f-jump ol { list-style: none; display: flex; flex-wrap: wrap; gap: 0 18px; margin: 0; padding: 0;
     font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11.5px; }
-  .f-jump a { color: var(--tk-text-2, #94a3b8); text-decoration: none; }
+  .f-jump a { display: inline-block; padding: 7px 0; color: var(--tk-text-2, #94a3b8); text-decoration: none; }
   .f-jump a:hover { color: var(--tk-live, #06d6e0); }
 
   .f-sec { margin: clamp(46px, 7vw, 82px) 0 0; }
@@ -94,7 +94,7 @@
   .f-ok   { color: var(--tk-ok, #19c393); }
   .f-pend { color: var(--tk-text-4, #6f8098); }
 
-  .f-err { margin: 9px 0 0; padding: 9px 12px; border-radius: 9px;
+  .f-err { overflow-wrap: anywhere; margin: 9px 0 0; padding: 9px 12px; border-radius: 9px;
     background: var(--tk-critical-bg, rgba(239,68,68,.13)); border: 1px solid var(--tk-critical-line, rgba(239,68,68,.5));
     color: var(--tk-critical, #ff5b52); font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 11px; line-height: 1.6; }
   .f-err a { color: inherit; border-bottom: 1px solid currentColor; }
@@ -458,7 +458,7 @@
 
       <div class="ps-p2 f-card">
         <h3>Per signal, including where the adaptive band lost to the baseline</h3>
-        <div class="ps-scroll-x">
+        <div class="ps-scroll-x" tabindex="0" role="region" aria-label="Per-signal calibration, scrolls horizontally">
           <table class="f-tab">
             <thead>
               <tr>
@@ -484,7 +484,7 @@
         These are the readings the published interval failed to contain, taken straight from
         the ledger with nothing removed. Values are in each signal's own units and do not
         compare across rows.</p>
-        <div class="ps-scroll-x">
+        <div class="ps-scroll-x" tabindex="0" role="region" aria-label="Worst misses, scrolls horizontally">
           <table class="f-tab">
             <thead>
               <tr>
@@ -827,7 +827,11 @@
       var s = shorten(value);
       if (!s) { set(id, "absent from the feed", "f-warn"); return; }
       set(id, s);
+      // A hover title cannot be opened by touch, and this is the Merkle root:
+      // the one value a reader may want to copy and check. Keep the short form
+      // visible, carry the full one where assistive tech and long-press reach.
       n.setAttribute("title", value);
+      n.setAttribute("aria-label", "full value " + value);
     }
 
     /* Loud failure. A silent empty card on this site would be a lie by omission. */
