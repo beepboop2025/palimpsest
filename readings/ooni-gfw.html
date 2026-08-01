@@ -9,6 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/charts.css">
 <style>
 /* Page-specific only. Never redefines a --tk-* token or a .ps-* class. */
 
@@ -341,6 +342,25 @@
         </div>
       </div>
 
+      <div class="ps-p2 pc" id="gfw-trend" style="padding: 16px 17px 14px; margin: 12px 0 0;">
+        <div class="pc__head">
+          <p class="pc__title">The index across its whole recorded history</p>
+          <span class="pc__readout">ooni-gfw-history.jsonl</span>
+        </div>
+        <p class="pc__fallback">Every committed reading of the index is published in
+        <a href="/readings/ooni-gfw-history.jsonl">the raw history file</a>, and this
+        chart draws from it when the page loads.</p>
+        <p class="pc__foot">Nine weekly captures backfilled from OONI's archive open the
+        record (May to early July, drawn as separate dots because they are separate
+        captures), then live six-hourly runs from 11 July. The ◆ and ▲ marks are the
+        committed timestamps of the only watch and only alarm this detector has ever
+        raised, six days before China Digital Times published its documentation of that
+        week's censored Zhengzhou-anniversary essays — the dated story is in
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/DETECTIONS.md"
+           target="_blank" rel="noopener">DETECTIONS.md</a>. A gap in the line is a gap
+        in the record; nothing is interpolated.</p>
+      </div>
+
       <div class="gfw-caveat ps-p1" id="gfw-caveat">
         <b>Caveat carried from the feed</b>
         <p><span class="gfw-pending">loading</span></p>
@@ -512,6 +532,36 @@
 </main>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
+<script>
+/* The history chart: drawn from the published JSONL, with the two committed
+   detector flags as dated marks. Config only — everything honest about gaps,
+   short history and failure lives in charts.js. */
+(function () {
+  "use strict";
+  function run() {
+    var C = window.PalimpsestCharts;
+    var host = document.getElementById("gfw-trend");
+    if (!C || !host) return;
+    C.trend(host, {
+      url: "/readings/ooni-gfw-history.jsonl",
+      series: [{ key: "gfw_index", label: "GFW pressure index", dec: 1 }],
+      h: 210,
+      minPoints: 8,
+      staleHours: 12,
+      ariaTitle: "Great Firewall pressure index history",
+      markers: [
+        { iso: "2026-07-20T09:45:28Z", label: "watch", kind: "watch" },
+        { iso: "2026-07-21T03:59:30Z", label: "alarm", kind: "alarm" },
+        { iso: "2026-07-27T00:00:00Z", label: "CDT publishes", kind: "note" }
+      ]
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else { run(); }
+})();
+</script>
 <script>
 (function () {
   "use strict";

@@ -549,7 +549,7 @@ def sparkline(points):
            for p in points if p.get("gfi") is not None]
     if len(pts) < 2:
         return '<span style="color:#8ba4b6">trend appears after the second scheduled run</span>'
-    w, h, n = 260, 46, len(pts)
+    w, h, n = 420, 64, len(pts)
     lo = min(x[1] if x[1] is not None else x[0] for x in pts)
     hi = max(x[2] if x[2] is not None else x[0] for x in pts)
     span = (hi - lo) or 1
@@ -560,10 +560,15 @@ def sparkline(points):
     lower = [xy(i, a if a is not None else v) for i, (v, a, _) in enumerate(pts)]
     band = " ".join(upper + lower[::-1])
     last = pts[-1][0]
-    return (f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}">'
-            f'<polygon points="{band}" fill="rgba(127,212,208,.16)" stroke="none"/>'
-            f'<polyline points="{line}" fill="none" stroke="#7fd4d0" stroke-width="2"/>'
-            f'<text x="{w-2}" y="12" text-anchor="end" fill="#7fd4d0" font-size="11">{last}</text></svg>')
+    return (f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" '
+            f'style="max-width:100%;height:auto" '
+            f'aria-label="Generative Firewall Index across {n} runs, latest {last} of 100, '
+            f'drawn with its 95 percent Wilson band">'
+            f'<polygon points="{band}" fill="rgba(6,214,224,.13)" stroke="none"/>'
+            f'<polyline points="{line}" fill="none" stroke="#06d6e0" stroke-width="2" '
+            f'stroke-linejoin="round" stroke-linecap="round"/>'
+            f'<text x="{w-2}" y="12" text-anchor="end" fill="#e2e8f0" font-size="11" '
+            f'font-weight="700">{last}</text></svg>')
 
 
 def routing_html(summ):

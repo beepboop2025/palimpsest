@@ -9,6 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/charts.css">
 <style>
 /* Page-specific only. Never redefines a --tk-* token or a .ps-* class. */
 
@@ -282,6 +283,19 @@
   <hr class="ps-rule" style="margin: 40px 0;">
 
   <!-- ============ FINDING 1 · MIDDLEBOX ================================== -->
+  <div class="ps-p2 pc ps-reveal" id="ipi-trend" style="padding:16px 17px 14px;margin:0 0 26px">
+    <div class="pc__head">
+      <p class="pc__title">Both indices, across the recorded history</p>
+      <span class="pc__readout">in-path-interference-history.jsonl</span>
+    </div>
+    <p class="pc__fallback">Every committed reading is published in
+      <a href="/readings/in-path-interference-history.jsonl">the raw history file</a>,
+      and this chart draws from it when the page loads.</p>
+    <p class="pc__foot">Rates are computed over completed tests only, so an execution
+      blackout changes the denominator, never the line. The signal is young; the chart
+      states its own count until the record is long enough to draw.</p>
+  </div>
+
   <section class="ipi-finding ps-band ps-reveal" aria-labelledby="ipi-h-middlebox">
     <div class="ps-pin ipi-claim">
       <p class="ps-label">Finding 1 of 3</p>
@@ -454,6 +468,31 @@
 </main>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
+<script>
+/* Two series, one axis (both are percentages of completed tests), with the
+   legend and end labels carrying identity — never colour alone. */
+(function () {
+  "use strict";
+  function run() {
+    var C = window.PalimpsestCharts;
+    var host = document.getElementById("ipi-trend");
+    if (!C || !host) return;
+    C.trend(host, {
+      url: "/readings/in-path-interference-history.jsonl",
+      series: [
+        { key: "middlebox_index", label: "middlebox rewriting", dec: 1 },
+        { key: "transport_index", label: "transport anomaly", dec: 1 }
+      ],
+      unit: "%", h: 200, minPoints: 8, zero: true, staleHours: 12,
+      ariaTitle: "In-path interference history"
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else { run(); }
+})();
+</script>
 <script>
 (function () {
   "use strict";

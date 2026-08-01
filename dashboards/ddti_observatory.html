@@ -30,6 +30,7 @@
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
 <link rel="stylesheet" href="/dashboards/assets/tikto.css" />
 <link rel="stylesheet" href="/assets/shell.css" />
+<link rel="stylesheet" href="/assets/charts.css" />
 <style>
   /* Page-specific only. Nothing here redefines a token or a ps-* class.
      Tiktó owns colour and type, shell.css owns depth, this owns page layout. */
@@ -318,6 +319,41 @@
         </div>
         <div class="tk-comprehend" style="margin-bottom:6px">GitHub shelters censored material (996.ICU, nCovMemory, the Terminus2049 archive). This watches those mirrors for takedowns, legal blocks, and defensive fork or star bursts. Public pressure metadata only, never the content and never a maintainer.</div>
         <div id="refugeBody" class="ps-scroll-x"><div class="sig-empty">Loading refuge watch…</div></div>
+      </section>
+    </div>
+
+    <!-- Board memory: every signal's flag state across committed runs -->
+    <div class="full" data-tkm style="margin-top:14px">
+      <section class="tk-card ps-p2 pc" id="alarmRaster">
+        <div class="tk-card__head">
+          <span class="tk-card__title">⚑ Board memory · every flag, every committed run</span>
+          <span class="tk-chip">event-flags-history.jsonl</span>
+        </div>
+        <div class="tk-comprehend" style="margin-bottom:8px">One row per signal, one
+          column per committed change of the board's flag state — a quiet week adds no
+          columns, so this is the board's event memory, not a clock. The July alarm — the
+          only one this board has ever raised, dated six days before CDT's public
+          documentation — is a red ▲ in the GFW row, where it will stay.</div>
+        <p class="pc__fallback">Every flag state is committed to
+          <a href="../readings/event-flags-history.jsonl">the raw history file</a>; this
+          strip draws from it when the page loads.</p>
+      </section>
+    </div>
+
+    <!-- The forecast ledger's report card -->
+    <div class="full" data-tkm style="margin-top:14px">
+      <section class="tk-card ps-p2 pc" id="calPanel">
+        <div class="tk-card__head">
+          <span class="tk-card__title">◫ Forecast calibration · scored against what happened</span>
+          <span class="tk-chip">forecast-ledger-history.jsonl</span>
+        </div>
+        <div class="tk-comprehend" style="margin-bottom:8px">The board publishes forecast
+          intervals, then scores itself when the readings arrive. Coverage near the target
+          means the intervals are honest; a signal under the climatology baseline is named
+          rather than hidden.</div>
+        <p class="pc__fallback">Every scored forecast is committed to
+          <a href="../readings/forecast-ledger-history.jsonl">the raw history file</a>;
+          this panel draws from it when the page loads.</p>
       </section>
     </div>
 
@@ -819,5 +855,47 @@ document.getElementById("themeBtn").onclick = (e) => {
 })();
 </script>
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
+<script>
+/* Board memory raster + forecast calibration, from the committed histories. */
+(function () {
+  "use strict";
+  var LABELS = {
+    ooni_gfw: "GFW pressure", censored_planet: "Censored Planet",
+    ioda_outages: "IODA outages", tor_bridge_cn: "Tor bridge CN",
+    bleedthrough_pools: "Bleedthrough pools", bleedthrough_capacity: "Bleedthrough capacity",
+    ddti_threat: "DDTI threat", ddti_novelty: "DDTI novelty",
+    gdelt_containment: "GDELT containment", github_refuge: "GitHub refuge",
+    weibo_suppression: "Weibo suppression", refusal_drift: "Refusal drift"
+  };
+  function rows(keys) {
+    return keys.map(function (k) { return { key: k, label: LABELS[k] || k }; });
+  }
+  function run() {
+    var C = window.PalimpsestCharts;
+    if (!C) return;
+    var raster = document.getElementById("alarmRaster");
+    if (raster) C.raster(raster, {
+      url: "../readings/event-flags-history.jsonl",
+      maxRuns: 60,
+      groups: [
+        { label: "Network layer", rows: rows(["ooni_gfw", "censored_planet",
+          "ioda_outages", "tor_bridge_cn", "bleedthrough_pools", "bleedthrough_capacity"]) },
+        { label: "Content layer", rows: rows(["ddti_threat", "ddti_novelty",
+          "gdelt_containment", "github_refuge", "weibo_suppression"]) },
+        { label: "Model layer", rows: rows(["refusal_drift"]) }
+      ]
+    });
+    var cal = document.getElementById("calPanel");
+    if (cal) C.calibration(cal, {
+      url: "../readings/forecast-ledger-history.jsonl",
+      labels: LABELS
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else { run(); }
+})();
+</script>
 </body>
 </html>

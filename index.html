@@ -181,6 +181,7 @@
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/charts.css">
 <style>
   /* Page-specific only. Nothing here redefines a token or a ps-* class. */
 
@@ -451,6 +452,7 @@
           with the answer the control arm received outside China in the same round. No forged-address
           list is hardcoded, because the injector pool rotates. Everything else on this site looks at the
           firewall from outside. This looks out from inside it.</p>
+          <span class="pc-spark" data-spark="/readings/inside-view-history.jsonl" data-spark-key="block_rate"></span>
           <p class="sig__f"><span class="fresh" data-fresh="sig-inside">reading the feed</span></p>
         </a>
 
@@ -483,6 +485,7 @@
             which is the louder finding of the two.</p>
             <p class="sig__b" data-field="inpath-exec">Measurement methods that cannot execute inside
             China are listed with each reading.</p>
+            <span class="pc-spark" data-spark="/readings/in-path-interference-history.jsonl" data-spark-key="middlebox_index"></span>
             <p class="sig__f"><span class="fresh" data-fresh="sig-inpath">reading the feed</span></p>
           </a>
 
@@ -534,6 +537,7 @@
             <p class="sig__b">The firewall blocks by connection reset and DNS injection without serving a
             block page, so OONI's confirmed count stays near zero for China. We track anomaly rate and
             say so rather than reporting a reassuring zero.</p>
+            <span class="pc-spark" data-spark="/readings/ooni-gfw-history.jsonl" data-spark-key="gfw_index"></span>
             <p class="sig__f"><span class="fresh" data-fresh="sig-gfw">reading the feed</span></p>
           </a>
 
@@ -547,6 +551,7 @@
             <p class="sig__b">The composite index, plus the layer-by-layer breakdown and the independent
             cross-checks that either confirm a layer or contradict it. A layer that is armed but not yet
             reporting is shown as armed, not as zero.</p>
+            <span class="pc-spark" data-spark="/readings/erasure-observatory-history.jsonl" data-spark-key="erasure_index"></span>
             <p class="sig__f"><span class="fresh" data-fresh="sig-erasure">reading the feed</span></p>
           </a>
 
@@ -878,6 +883,7 @@
 </main>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
 <script>
 /* ============================================================================
    Live figures for the home page.

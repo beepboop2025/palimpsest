@@ -30,6 +30,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/charts.css">
 <style>
   /* Page-specific only. Nothing here redefines a --tk-* or --ps-* token or a
      ps-* class; every rule and every custom property is namespaced eo-. */
@@ -318,6 +319,37 @@
     <p class="eo-read__scale" id="eo-scale"></p>
   </section>
 
+  <!-- ============================ HISTORY ============================ -->
+  <h2 class="ps-section-head" id="history">Every sealed reading, drawn</h2>
+
+  <div class="ps-p2 pc ps-reveal" id="eo-trend" style="padding:16px 17px 14px">
+    <div class="pc__head">
+      <p class="pc__title">Erasure Index, full recorded history</p>
+      <span class="pc__readout">erasure-observatory-history.jsonl</span>
+    </div>
+    <p class="pc__fallback">Every sealed composite reading is published in
+      <a href="/readings/erasure-observatory-history.jsonl">the raw history file</a>,
+      and this chart draws from it when the page loads.</p>
+    <p class="pc__foot">Each point is one sealed ledger entry; the chain check on this
+      page covers every one of them. A gap in the line is a run that did not commit,
+      never an interpolation.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin-top:12px" class="ps-reveal">
+    <div class="ps-p2 pc" id="eo-trend-network" style="padding:14px 15px 12px">
+      <div class="pc__head"><p class="pc__title">Network layer</p></div>
+      <p class="pc__fallback">Drawn from the same history file when the page loads.</p>
+    </div>
+    <div class="ps-p2 pc" id="eo-trend-model" style="padding:14px 15px 12px">
+      <div class="pc__head"><p class="pc__title">Model layer</p></div>
+      <p class="pc__fallback">Drawn from the same history file when the page loads.</p>
+    </div>
+    <div class="ps-p2 pc" id="eo-trend-narrative" style="padding:14px 15px 12px">
+      <div class="pc__head"><p class="pc__title">Narrative layer</p></div>
+      <p class="pc__fallback">Drawn from the same history file when the page loads.</p>
+    </div>
+  </div>
+
   <!-- ============================ LAYERS (plane 2) ============================ -->
   <h2 class="ps-section-head" id="layers">The three layers</h2>
 
@@ -447,6 +479,39 @@
 </main>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
+<script>
+/* History charts: the sealed composite and each layer, drawn from the same
+   published JSONL. The narrative layer has never reported; its panel says the
+   honest count and arms itself when readings exist. */
+(function () {
+  "use strict";
+  function run() {
+    var C = window.PalimpsestCharts;
+    if (!C) return;
+    var URL = "/readings/erasure-observatory-history.jsonl";
+    var main = document.getElementById("eo-trend");
+    if (main) C.trend(main, {
+      url: URL, h: 200, minPoints: 8, staleHours: 12, dec: 1,
+      series: [{ key: "erasure_index", label: "Erasure Index", dec: 1 }],
+      unit: "", ariaTitle: "Erasure Index history"
+    });
+    [["eo-trend-network", "layers.network", "Network layer"],
+     ["eo-trend-model", "layers.model", "Model layer"],
+     ["eo-trend-narrative", "layers.narrative", "Narrative layer"]].forEach(function (p) {
+      var host = document.getElementById(p[0]);
+      if (host) C.trend(host, {
+        url: URL, h: 110, minPoints: 8, dec: 1,
+        series: [{ key: p[1], label: p[2], dec: 1 }],
+        ariaTitle: p[2] + " history"
+      });
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else { run(); }
+})();
+</script>
 <script>
 /* ============================================================================
    Information Erasure Observatory — renders readings/erasure-observatory-latest.json.

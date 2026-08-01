@@ -1,0 +1,190 @@
+/* ============================================================================
+   PALIMPSEST CHARTS — presentation
+   ----------------------------------------------------------------------------
+   Styling for assets/charts.js. Namespace pc-. Nothing here redefines a --tk-*
+   or --ps-* token or any shell class; chart-only tokens live under --pc-.
+
+   Categorical series tokens: two slots only, validated for adjacent-pair CVD
+   separation and lightness band (dark surface #0e0e0e) with the palette
+   validator. Two series is also the cap: any chart needing a third series
+   becomes small multiples instead. Status colours stay the reserved --tk-*
+   scale and never carry series identity.
+   ========================================================================== */
+:root {
+  /* validated 2026-08-01: dark surface #0e0e0e, lightness band, chroma floor,
+     CVD worst-pair ΔE 16.6 deutan / 14.9 tritan, contrast >= 3:1 */
+  --pc-cat-1: #12a7b8;   /* series slot 1 — cyan family, stepped for the dark band */
+  --pc-cat-2: #8259ea;   /* series slot 2 — violet family */
+  /* sequential ramp (map): one hue, dim -> bright = low -> high; monotone L,
+     step gaps >= 0.06, dim end 2:1 vs surface — validated same run */
+  --pc-ramp-0: #7a2f2a;
+  --pc-ramp-1: #a63c35;
+  --pc-ramp-2: #d4544a;
+  --pc-ramp-3: #ff8f85;
+}
+
+/* ---- chart block ---- */
+.pc { margin: 0; }
+.pc + .pc { margin-top: 14px; }
+.pc__head { display: flex; align-items: baseline; justify-content: space-between;
+            gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }
+.pc__title { font-size: 13px; font-weight: 700; color: var(--tk-text-1); margin: 0; }
+.pc__readout { font-family: var(--tk-font-mono); font-size: 10.5px;
+               color: var(--tk-text-3); }
+.pc__readout b { color: var(--tk-text-1); font-weight: 600; }
+
+.pc__wrap { position: relative; }
+.pc__cv { display: block; width: 100%; cursor: crosshair; touch-action: pan-y;
+          border-radius: 4px; }
+.pc__cv:focus-visible { outline: 2px solid var(--tk-live); outline-offset: 3px; }
+
+/* x-orientation row under the plot; exact values live in tooltip + table */
+.pc__axis { display: flex; justify-content: space-between; margin-top: 6px;
+            font-family: var(--tk-font-mono); font-size: 10px; color: var(--tk-text-4); }
+.pc__axis .is-stale { color: var(--tk-warning); }
+
+.pc__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 8px;
+              font-family: var(--tk-font-mono); font-size: 10.5px; color: var(--tk-text-3); }
+.pc__legend i { display: inline-block; width: 14px; height: 2px; border-radius: 1px;
+                vertical-align: 3px; margin-right: 6px; }
+
+.pc__foot { margin: 8px 0 0; font-size: 11px; line-height: 1.55; color: var(--tk-text-4); }
+.pc__foot a { color: var(--tk-text-3); }
+.pc__fallback { font-size: 12.5px; line-height: 1.5; color: var(--tk-text-3); margin: 0; }
+.pc__err { display: block; margin-top: 6px; font-family: var(--tk-font-mono);
+           font-size: 10.5px; color: var(--tk-warning); }
+.pc__err a { color: inherit; }
+
+/* ---- tooltip: values lead, labels follow; line keys, not boxes ---- */
+.pc__tip { position: absolute; z-index: 6; pointer-events: none; min-width: 130px;
+           max-width: 240px; padding: 8px 10px; border-radius: 8px;
+           background: var(--ps-plane-3, #151515); border: 1px solid var(--tk-line-2);
+           box-shadow: var(--tk-shadow-md); opacity: 0;
+           transition: opacity var(--tk-dur-fast) var(--tk-ease); }
+.pc__tip.is-on { opacity: 1; }
+.pc__tip-t { font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .06em;
+             color: var(--tk-text-4); margin: 0 0 5px; text-transform: uppercase; }
+.pc__tip-r { display: flex; align-items: baseline; gap: 7px; margin: 2px 0;
+             font-size: 11px; }
+.pc__tip-r i { flex: none; width: 12px; height: 2px; border-radius: 1px; }
+.pc__tip-r b { font-family: var(--tk-font-mono); font-size: 12px; font-weight: 700;
+               color: var(--tk-text-0); }
+.pc__tip-r span { color: var(--tk-text-3); }
+
+/* ---- sparkline: decorative trend beside a stat; absent until data justifies it */
+.pc-spark { display: none; }
+.pc-spark.is-on { display: block; margin: 8px 0 2px; }
+.pc-spark canvas { display: block; width: 100%; height: 30px; }
+
+/* ---- table twin: the WCAG-clean equivalent of every chart ---- */
+.pc-table { margin-top: 8px; }
+.pc-table > summary { cursor: pointer; list-style: none; display: inline-block;
+  font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--tk-text-4);
+  border-bottom: 1px solid var(--ps-edge-2); padding-bottom: 1px; }
+.pc-table > summary::-webkit-details-marker { display: none; }
+.pc-table > summary:hover { color: var(--tk-text-2); }
+.pc-table[open] > summary { margin-bottom: 8px; }
+.pc-table .ps-scroll-x { max-height: 300px; overflow-y: auto; }
+.pc-table table { border-collapse: collapse; width: 100%;
+  font-family: var(--tk-font-mono); font-size: 11px; }
+.pc-table th { text-align: left; font-weight: 500; font-size: 9.5px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--tk-text-4);
+  padding: 4px 12px 4px 0; border-bottom: 1px solid var(--tk-line-2);
+  position: sticky; top: 0; background: var(--ps-plane-2, #0e0e0e); }
+.pc-table td { color: var(--tk-text-2); padding: 3px 12px 3px 0;
+  border-bottom: 1px solid var(--tk-line-1); white-space: nowrap; }
+.pc-table td.n, .pc-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- alarm raster: rows of signals, columns of runs ---- */
+.pc-raster { }
+.pc-raster__scroll { overflow-x: auto; }
+.pc-raster__grid { display: grid; gap: 2px; align-items: center; width: max-content;
+                   justify-content: start; }
+.pc-raster__lab { font-family: var(--tk-font-mono); font-size: 10px;
+  color: var(--tk-text-3); padding-right: 10px; white-space: nowrap; }
+.pc-raster__lay { font-family: var(--tk-font-mono); font-size: 9px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--tk-text-4); margin: 8px 0 2px; }
+.pc-cell { width: 17px; height: 17px; border-radius: 4px; border: 0; padding: 0;
+  background: var(--tk-surface-3); color: var(--tk-text-4);
+  font-family: var(--tk-font-mono); font-size: 9px; line-height: 17px; text-align: center;
+  cursor: default; }
+.pc-cell:focus-visible { outline: 2px solid var(--tk-live); outline-offset: 1px; }
+.pc-cell[data-state="calm"] { background: var(--tk-surface-3); }
+.pc-cell[data-state="warming_up"] { background: var(--tk-surface-4); color: var(--tk-text-3); }
+.pc-cell[data-state="no_data"], .pc-cell[data-state="absent"] {
+  background: transparent; border: 1px solid var(--tk-line-1); }
+.pc-cell[data-state="watch"] { background: var(--tk-watch-bg); color: var(--tk-watch);
+  border: 1px solid var(--tk-watch-line); font-weight: 700; }
+.pc-cell[data-state="alarm"] { background: var(--tk-critical-bg); color: var(--tk-critical);
+  border: 1px solid var(--tk-critical-line); font-weight: 700; }
+.pc-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0;
+  font-family: var(--tk-font-mono); font-size: 10px; color: var(--tk-text-3); }
+.pc-key .pc-cell { display: inline-block; vertical-align: -4px; margin-right: 6px;
+  width: 15px; height: 15px; line-height: 15px; }
+
+/* ---- drift matrix / state grids ---- */
+.pc-matrix { border-collapse: collapse; font-family: var(--tk-font-mono);
+  font-size: 11px; width: 100%; }
+.pc-matrix th { font-weight: 500; font-size: 9px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--tk-text-4); text-align: center;
+  padding: 5px 6px; border-bottom: 1px solid var(--tk-line-2); }
+.pc-matrix th:first-child { text-align: left; }
+.pc-matrix td { padding: 3px 6px; text-align: center;
+  border-bottom: 1px solid var(--tk-line-1); }
+.pc-matrix td:first-child { text-align: left; color: var(--tk-text-2);
+  white-space: nowrap; padding-right: 12px; }
+.pc-chip { display: inline-block; min-width: 30px; padding: 1px 7px;
+  border-radius: 999px; font-size: 10px; font-weight: 600; line-height: 1.7; }
+.pc-chip--answered { color: var(--tk-text-3); background: var(--tk-surface-3); }
+.pc-chip--refused { color: var(--tk-critical); background: var(--tk-critical-bg);
+  border: 1px solid var(--tk-critical-line); }
+.pc-chip--new { box-shadow: 0 0 0 2px var(--tk-critical); }
+.pc-chip--party { color: var(--tk-warning); background: var(--tk-warning-bg);
+  border: 1px solid var(--tk-warning-line); }
+.pc-chip--ok { color: var(--tk-ok); background: var(--tk-ok-bg);
+  border: 1px solid var(--tk-ok-line); }
+.pc-chip--stale { color: var(--tk-stale); background: var(--tk-stale-bg);
+  border: 1px solid var(--tk-stale-line); }
+
+/* ---- vantage map ---- */
+.pc-map { position: relative; }
+.pc-map canvas { display: block; width: 100%;
+  height: clamp(300px, 44vw, 420px); cursor: crosshair; border-radius: 4px; }
+.pc-map canvas:focus-visible { outline: 2px solid var(--tk-live); outline-offset: 3px; }
+.pc-map__ramp { display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  font-family: var(--tk-font-mono); font-size: 10px; color: var(--tk-text-3); }
+.pc-map__ramp i { display: inline-block; width: 96px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--pc-ramp-0), var(--pc-ramp-1),
+              var(--pc-ramp-2), var(--pc-ramp-3)); }
+
+/* operator angle: one row per network, counts as a gapped strip */
+.pc-ops { display: grid; gap: 12px; }
+.pc-ops__row { }
+.pc-ops__name { font-family: var(--tk-font-mono); font-size: 11px;
+  color: var(--tk-text-2); margin: 0 0 5px; display: flex; justify-content: space-between; }
+.pc-ops__name span { color: var(--tk-text-4); font-size: 10px; }
+.pc-ops__bar { display: flex; gap: 2px; height: 12px; border-radius: 3px; overflow: hidden; }
+.pc-ops__seg { min-width: 3px; }
+.pc-ops__seg--forged { background: var(--tk-critical); }
+.pc-ops__seg--clean { background: var(--tk-ok); }
+.pc-ops__seg--undetermined { background: var(--tk-surface-4); }
+.pc-ops__seg--silent { background: var(--tk-stale-bg); }
+
+/* ---- calibration dot plot ---- */
+.pc-cal { }
+.pc-cal svg { display: block; width: 100%; height: auto; }
+.pc-cal text { font-family: var(--tk-font-mono); font-size: 10px; fill: var(--tk-text-3); }
+.pc-cal .pc-cal__tick { fill: var(--tk-text-4); font-size: 9px; }
+.pc-cal .pc-cal__nom { stroke: var(--tk-text-4); stroke-width: 1; }
+.pc-cal .pc-cal__grid { stroke: var(--tk-line-1); stroke-width: 1; }
+.pc-cal .pc-cal__dot { fill: var(--pc-cat-1); stroke: var(--ps-plane-2, #0e0e0e);
+  stroke-width: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pc__tip { transition: none; }
+}
+@media (max-width: 640px) {
+  .pc-matrix { font-size: 10px; }
+  .pc-matrix td:first-child { padding-right: 8px; }
+}

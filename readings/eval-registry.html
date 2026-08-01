@@ -30,6 +30,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/charts.css">
 
 <script type="application/ld+json">
 {
@@ -368,7 +369,74 @@
       </p>
     </div>
 
-    <div>
+    <div style="min-width:0">
+      <figure class="ps-p2 ps-reveal" style="padding:16px 17px 12px;margin:0 0 12px" id="er-seal-fig">
+        <div class="ps-scroll-x">
+        <svg viewBox="0 0 720 132" role="img" aria-labelledby="er-seal-t er-seal-d"
+             style="display:block;min-width:620px;width:100%;height:auto">
+          <title id="er-seal-t">How a result becomes unrevisable</title>
+          <desc id="er-seal-d">A frozen probe set is hashed into a pre-registration before
+            any model runs. Each run produces a sealed result hash-chained to the previous
+            one. The chain is fingerprinted by a Merkle root, and the root is anchored
+            outside the project at the Internet Archive and, via OpenTimestamps, on
+            Bitcoin.</desc>
+          <defs>
+            <marker id="er-arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7"
+                    markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0.6 L7.4,4 L0,7.4 Z" style="fill:var(--tk-text-4)"/>
+            </marker>
+          </defs>
+          <g style="stroke:var(--tk-text-4);stroke-width:1.2" fill="none">
+            <line x1="106" y1="62" x2="128" y2="62" marker-end="url(#er-arr)"/>
+            <line x1="242" y1="62" x2="266" y2="62" marker-end="url(#er-arr)"/>
+            <line x1="344" y1="62" x2="368" y2="62" marker-end="url(#er-arr)"/>
+            <line x1="478" y1="62" x2="504" y2="62" marker-end="url(#er-arr)"/>
+            <line x1="598" y1="52" x2="626" y2="34" marker-end="url(#er-arr)"/>
+            <line x1="598" y1="72" x2="626" y2="98" marker-end="url(#er-arr)"/>
+          </g>
+          <g>
+            <rect x="4" y="40" width="102" height="44" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-line-2)"/>
+            <text x="55" y="58" text-anchor="middle" style="font:10px var(--tk-font-mono);fill:var(--tk-text-1)">frozen probes</text>
+            <text x="55" y="72" text-anchor="middle" style="font:8.5px var(--tk-font-mono);fill:var(--tk-text-4)">hashed sha-256</text>
+
+            <rect x="128" y="40" width="114" height="44" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-line-2)"/>
+            <text x="185" y="58" text-anchor="middle" style="font:10px var(--tk-font-mono);fill:var(--tk-text-1)">pre-registration</text>
+            <text x="185" y="72" text-anchor="middle" style="font:8.5px var(--tk-font-mono);fill:var(--tk-text-4)">before any run</text>
+
+            <rect x="266" y="40" width="78" height="44" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-line-2)"/>
+            <text x="305" y="58" text-anchor="middle" style="font:10px var(--tk-font-mono);fill:var(--tk-text-1)">run</text>
+            <text x="305" y="72" text-anchor="middle" style="font:8.5px var(--tk-font-mono);fill:var(--tk-text-4)">model × suite</text>
+
+            <rect x="368" y="40" width="110" height="44" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-line-2)"/>
+            <text x="423" y="58" text-anchor="middle" style="font:10px var(--tk-font-mono);fill:var(--tk-text-1)">sealed result</text>
+            <text x="423" y="72" text-anchor="middle" style="font:8.5px var(--tk-font-mono);fill:var(--tk-text-4)">chained to previous</text>
+
+            <rect x="504" y="40" width="94" height="44" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-live-dim)"/>
+            <text x="551" y="58" text-anchor="middle" style="font:10px var(--tk-font-mono);fill:var(--tk-text-1)">Merkle root</text>
+            <text x="551" y="72" text-anchor="middle" style="font:8.5px var(--tk-font-mono);fill:var(--tk-text-4)">one fingerprint</text>
+
+            <rect x="626" y="10" width="90" height="40" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-line-2)"/>
+            <text x="671" y="27" text-anchor="middle" style="font:9px var(--tk-font-mono);fill:var(--tk-text-1)">Internet</text>
+            <text x="671" y="39" text-anchor="middle" style="font:9px var(--tk-font-mono);fill:var(--tk-text-1)">Archive</text>
+
+            <rect x="626" y="82" width="90" height="40" rx="8"
+                  style="fill:var(--tk-surface-3);stroke:var(--tk-line-2)"/>
+            <text x="671" y="99" text-anchor="middle" style="font:8.5px var(--tk-font-mono);fill:var(--tk-text-1)">OpenTimestamps</text>
+            <text x="671" y="111" text-anchor="middle" style="font:9px var(--tk-font-mono);fill:var(--tk-text-4)">→ Bitcoin</text>
+          </g>
+        </svg>
+        </div>
+        <figcaption class="pc__foot">A value edited after sealing breaks every link to its
+          right, and the verifier — which anyone can run offline — names the exact entry
+          that broke.</figcaption>
+      </figure>
+
       <section class="ps-p2 er-step ps-reveal">
         <span class="er-step__n" aria-hidden="true">01</span>
         <div>
@@ -475,6 +543,19 @@
 
     <div id="er-drift-box"></div>
 
+    <div class="ps-p2 pc ps-reveal" id="er-drift-matrix" style="padding:16px 17px 14px;margin-top:14px">
+      <div class="pc__head">
+        <p class="pc__title">The grid itself: every family × every model, this run</p>
+        <span class="pc__readout">refusal-drift-latest.json</span>
+      </div>
+      <p class="pc__fallback">Per-family verdicts for every model are published in
+        <a href="/readings/refusal-drift-latest.json">the raw reading</a>, and this grid
+        draws from it when the page loads.</p>
+    </div>
+
+    <div id="er-drift-trends" class="ps-reveal"
+         style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin-top:12px"></div>
+
     <p class="er-note" style="max-width:var(--ps-measure);margin-top:14px">
       A model's rate is computed over the question families it actually returned usable responses
       to, not over the whole bank, and the interval beside it is a Wilson 95% score interval on that
@@ -566,6 +647,66 @@
 </main>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
+<script>
+/* The drift grid and the per-model history multiples. Each model gets its own
+   panel on its own axis — the two suites never share a chart, and neither do
+   models with different denominators. */
+(function () {
+  "use strict";
+  function run() {
+    var C = window.PalimpsestCharts;
+    if (!C) return;
+    var mx = document.getElementById("er-drift-matrix");
+    if (mx) C.driftMatrix(mx, { url: "/readings/refusal-drift-latest.json" });
+
+    var wrap = document.getElementById("er-drift-trends");
+    if (!wrap) return;
+    C.loadHistory("/readings/refusal-drift-history.jsonl").then(function (rows) {
+      /* two row shapes live in this file: early flat rows, then one row per run
+         with a models map. Both flatten to {generated_at, v} per model here,
+         because a model id like llama-3.3 would break a dotted field path. */
+      var by = {};
+      rows.forEach(function (r) {
+        if (r.models && typeof r.models === "object" && !Array.isArray(r.models)) {
+          Object.keys(r.models).forEach(function (m) {
+            var rec = r.models[m];
+            if (rec && typeof rec.suppression_rate_pct === "number") {
+              (by[m] = by[m] || []).push({ generated_at: r.generated_at, v: rec.suppression_rate_pct });
+            }
+          });
+        } else if (r.model && typeof r.suppression_rate_pct === "number") {
+          (by[r.model] = by[r.model] || []).push({ generated_at: r.generated_at, v: r.suppression_rate_pct });
+        }
+      });
+      Object.keys(by).sort().forEach(function (m) {
+        if (by[m].length < 6) return;
+        var box = document.createElement("div");
+        box.className = "ps-p2 pc";
+        box.style.padding = "14px 15px 12px";
+        var head = document.createElement("div");
+        head.className = "pc__head";
+        var title = document.createElement("p");
+        title.className = "pc__title";
+        title.textContent = m.split("/").pop();
+        head.appendChild(title);
+        box.appendChild(head);
+        wrap.appendChild(box);
+        C.trend(box, {
+          url: "/readings/refusal-drift-history.jsonl",
+          rows: by[m],
+          series: [{ key: "v", label: "suppression rate", dec: 1 }],
+          unit: "%", h: 110, minPoints: 6, zero: true,
+          ariaTitle: m + " suppression rate history"
+        });
+      });
+    }).catch(function () { /* the multiples simply do not appear */ });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else { run(); }
+})();
+</script>
 <script>
 /* ============================================================================
    Verifiable Eval Registry — renders three feeds:

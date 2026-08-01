@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/charts.css">
 <style>
   /* Page-specific only. Nothing here redefines a --tk-* or --ps-* token or a
      ps-* class; every rule is namespaced iv-. */
@@ -326,6 +327,38 @@
     </p>
   </section>
 
+  <!-- ============================ VANTAGE MAP ============================ -->
+  <h2 class="ps-section-head" id="vantages">Where the instrument sees from</h2>
+
+  <p class="iv-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+    Two views of the same round. The map places every mainland city that hosted a probe this
+    round; the strip groups the same observations by the cloud operator whose network they sat
+    on. No national borders are drawn, deliberately: this maps the instrument, not the
+    territory, and the instrument sees datacentre networks in these cities — not households,
+    and not a country.
+  </p>
+
+  <div class="ps-p2 pc ps-reveal" id="iv-map" style="padding:16px 17px 14px">
+    <div class="pc__head">
+      <p class="pc__title">Vantage cities, this round</p>
+      <span class="pc__readout">inside-view-latest.json</span>
+    </div>
+    <p class="pc__fallback">Per-city probe positions and verdict counts are published in
+      <a href="/readings/inside-view-latest.json">the raw reading</a>, and this map draws
+      from it when the page loads.</p>
+  </div>
+
+  <div class="ps-p2 pc ps-reveal" id="iv-ops" style="padding:16px 17px 14px;margin-top:12px">
+    <div class="pc__head">
+      <p class="pc__title">The same observations, by network operator</p>
+      <span class="pc__readout">the second angle</span>
+    </div>
+    <p class="pc__fallback">Grouped from the same published reading when the page loads.</p>
+    <p class="pc__foot">A domain forged inside a single operator's network is reported as a
+      single operator, not as national filtering — the map and this strip exist to keep that
+      distinction visible.</p>
+  </div>
+
   <!-- ============================ CONTROL GATE (plane 2) ============================ -->
   <h2 class="ps-section-head" id="gate">How the round was gated</h2>
 
@@ -532,6 +565,29 @@
 </main>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/charts.js" defer></script>
+<script>
+/* The vantage map and the operator strip draw from the same published reading.
+   The map is borderless by design; identity and verdicts are carried by words,
+   counts and the table view, never by colour alone. */
+(function () {
+  "use strict";
+  function run() {
+    var C = window.PalimpsestCharts;
+    var mapHost = document.getElementById("iv-map");
+    var opsHost = document.getElementById("iv-ops");
+    if (!C || !mapHost) return;
+    C.vantageMap(mapHost, { url: "/readings/inside-view-latest.json" })
+      .then(function (agg) {
+        if (opsHost && agg && agg.networks) C.operatorStrip(opsHost, agg.networks);
+      })
+      .catch(function () { /* the map's own fallback already said it */ });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else { run(); }
+})();
+</script>
 <script>
 /* ============================================================================
    Inside View — render readings/inside-view-latest.json.
