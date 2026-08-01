@@ -675,20 +675,35 @@
     slot2.appendChild(chip(state, tone));
     put("iv-control-why", control.why || "the feed published no control rationale this round");
 
-    /* ---- freshness. Past 2x cadence this is styled as a warning, with the
-           reason, because the writer only rewrites when the answer moves. ---- */
+    /* ---- freshness, which is two separate facts. generated_at is when a round
+           last ran; last_changed_at is when the answer last moved. The writer
+           publishes every round that survives the control gate, so a gap in
+           generated_at now means the collector stopped, not that the censor held
+           still. Saying only "last change" would report a working instrument as
+           a dead one, which is the bug this page used to have. ---- */
     var fresh = document.getElementById("iv-freshness");
     clear(fresh);
     var t = Date.parse(d.generated_at);
     if (isFinite(t)) {
       var hours = (Date.now() - t) / 3.6e6;
-      var line = "last published change " + ago(d.generated_at);
-      var n = el("span", hours > STALE_H ? "iv-stale" : null, line);
+      var n = el("span", hours > STALE_H ? "iv-stale" : null,
+                 "measured " + ago(d.generated_at));
       n.title = new Date(t).toISOString();
       fresh.appendChild(n);
+
+      /* A finding that holds still is itself a reading: sustained blocking is
+         what this panel is expected to look like, so say how long it has held
+         rather than leaving the reader to infer neglect. */
+      var c = Date.parse(d.last_changed_at);
+      if (isFinite(c) && c < t) {
+        var held = el("span", null, "  ·  unchanged since " + ago(d.last_changed_at));
+        held.title = new Date(c).toISOString();
+        fresh.appendChild(held);
+      }
+
       if (hours > STALE_H) {
         fresh.appendChild(el("span", "iv-stale",
-          "  ·  the round runs every " + CADENCE_H + " h and rewrites only when the answer moves"));
+          "  ·  the round runs every " + CADENCE_H + " h, so this one did not report"));
       }
     } else {
       fresh.appendChild(el("span", "iv-stale", "no measurement timestamp in the feed"));
