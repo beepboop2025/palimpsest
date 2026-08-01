@@ -633,6 +633,24 @@ a.ps-p3:hover { box-shadow: var(--ps-lift-3); }
 .ps-share__dot { color: var(--tk-text-4); }
 .ps-share__note { color: var(--tk-ok, #19c393); }
 
+/* Per-card share chip: bottom-right of every signal card. Quiet by default,
+   present on touch, never louder than the reading it shares. */
+a.door, a.lead, a.sig, [data-share-card] { position: relative; }
+.ps-cardshare { position: absolute; right: 14px; bottom: 12px;
+  background: none; border: none; padding: 0 0 1px; cursor: pointer;
+  font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--tk-text-4);
+  border-bottom: 1px solid var(--ps-edge-2, #2a2f36);
+  opacity: 0; transition: opacity .25s ease; }
+a.door:hover .ps-cardshare, a.lead:hover .ps-cardshare, a.sig:hover .ps-cardshare,
+[data-share-card]:hover .ps-cardshare,
+.ps-cardshare:focus-visible { opacity: 1; }
+.ps-cardshare:hover { color: var(--tk-text-2); }
+.ps-cardshare:focus-visible { outline: 1px solid var(--tk-live, #06d6e0); outline-offset: 2px; }
+@media (hover: none) { .ps-cardshare { opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .ps-cardshare { transition: none; } }
+@media print { .ps-cardshare { display: none !important; } }
+
 /* Print: strip every plane back to paper. */
 @media print {
   body.ps::before, .ps-nav { display: none !important; }

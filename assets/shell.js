@@ -467,11 +467,214 @@
     h1.parentNode.insertBefore(row, h1.nextSibling);
   }
 
+  /* -------------------------------------------------------- card share ---- */
+  /* Every signal card can leave the site on its own: kicker, title, the big
+     number, its caption and the honest body line, under the brand row. One
+     chip, app-like: the OS share sheet where it exists, the clipboard where
+     it does not, a download as the last resort. */
+  function cleanText(el) {
+    return el ? String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim() : "";
+  }
+  function harvestCard(card) {
+    var pick = function (sel) { return cleanText(card.querySelector(sel)); };
+    var title = pick("h1, h2, h3, h4");
+    var kicker = pick("[data-share-kicker], .sig__k, .lead__k, .note__h, .ipi-read__k");
+    /* the big number: the largest short digit-bearing leaf in the card */
+    var valueEl = null, best = 0;
+    card.querySelectorAll("*").forEach(function (el) {
+      if (el.childElementCount > 1) return;
+      var txt = cleanText(el);
+      if (!txt || txt.length > 24 || !/\d/.test(txt)) return;
+      var size = parseFloat(getComputedStyle(el).fontSize) || 0;
+      if (size >= 24 && size > best) { best = size; valueEl = el; }
+    });
+    var value = cleanText(valueEl), caption = "";
+    if (valueEl) {
+      var block = valueEl.closest("p, div") || valueEl.parentElement;
+      if (block && block !== card) {
+        caption = cleanText(block).replace(value, " ").replace(/\s+/g, " ").trim();
+      }
+      /* a caption that opens with a bare unit belongs on the number itself */
+      var um = caption.match(/^([%‰]|\/\d+[a-z%]*)\s*(.*)$/);
+      if (um) { value += um[1]; caption = um[2]; }
+    }
+    var body = pick("[data-share-body], .sig__b, .lead__b");
+    var meta = pick("[data-share-meta], .sig__f, .fresh");
+    if (!title) { title = kicker; kicker = cleanText(document.querySelector("main h1")); }
+    var link = card.href
+      ? card.href
+      : location.origin + location.pathname + (card.id ? "#" + card.id : location.hash);
+    return { title: title, kicker: kicker, value: value, caption: caption,
+             body: body, meta: meta, link: link, host: card };
+  }
+  function composeSignalCard(m) {
+    var W = 1200, PAD = 48;
+    return shareIcon().then(function (icon) {
+      var t = shareTokens();
+      var probe = document.createElement("canvas").getContext("2d");
+
+      probe.font = "650 32px " + t.mono;
+      var titleTop = 172;
+      var y = shareWrap(probe, m.title, PAD, titleTop, W - PAD * 2, 44, 2, false);
+      var valueY = 0, capTop = 0;
+      if (m.value) {
+        valueY = y + 118;
+        y = valueY;
+        if (m.caption) {
+          probe.font = "16px " + t.mono;
+          capTop = y + 36;
+          y = shareWrap(probe, m.caption, PAD, capTop, W - PAD * 2 - 8, 27, 2, false);
+        }
+      }
+      var bodyTop = 0;
+      if (m.body) {
+        probe.font = "15px " + t.mono;
+        bodyTop = y + 40;
+        y = shareWrap(probe, m.body, PAD, bodyTop, W - PAD * 2 - 8, 26, 4, false);
+      }
+      var H = Math.max(y + 110, 520);
+      var ruleY = H - 68;
+
+      var EX = 2;
+      var cv = document.createElement("canvas");
+      cv.width = W * EX;
+      cv.height = H * EX;
+      var ctx = cv.getContext("2d");
+      ctx.scale(EX, EX);
+
+      ctx.fillStyle = shareSurface(m.host || document.body);
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = t.grid2;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+      if (icon) ctx.drawImage(icon, PAD, 36, 36, 36);
+      ctx.font = "600 15px " + t.mono;
+      ctx.fillStyle = t.text0;
+      ctx.fillText("P A L I M P S E S T", PAD + (icon ? 50 : 0), 59);
+      ctx.font = "13px " + t.mono;
+      ctx.fillStyle = t.text3;
+      var dom = "palimpsest.info";
+      ctx.fillText(dom, W - PAD - ctx.measureText(dom).width, 59);
+      ctx.strokeStyle = t.grid;
+      ctx.beginPath(); ctx.moveTo(PAD, 84.5); ctx.lineTo(W - PAD, 84.5); ctx.stroke();
+
+      if (m.kicker) {
+        ctx.font = "13px " + t.mono;
+        ctx.fillStyle = t.text4;
+        ctx.fillText(m.kicker.toUpperCase(), PAD, 130);
+      }
+      ctx.font = "650 32px " + t.mono;
+      ctx.fillStyle = t.text0;
+      shareWrap(ctx, m.title, PAD, titleTop, W - PAD * 2, 44, 2, true);
+      if (m.value) {
+        ctx.font = "800 92px " + t.mono;
+        ctx.fillStyle = t.text0;
+        ctx.fillText(m.value, PAD, valueY);
+        if (m.caption) {
+          ctx.font = "16px " + t.mono;
+          ctx.fillStyle = t.text2;
+          shareWrap(ctx, m.caption, PAD, capTop, W - PAD * 2 - 8, 27, 2, true);
+        }
+      }
+      if (m.body) {
+        ctx.font = "15px " + t.mono;
+        ctx.fillStyle = t.text2;
+        shareWrap(ctx, m.body, PAD, bodyTop, W - PAD * 2 - 8, 26, 4, true);
+      }
+
+      ctx.strokeStyle = t.grid;
+      ctx.beginPath(); ctx.moveTo(PAD, ruleY + 0.5); ctx.lineTo(W - PAD, ruleY + 0.5); ctx.stroke();
+      ctx.font = "13px " + t.mono;
+      var f1 = ruleY + 28;
+      ctx.fillStyle = t.text2;
+      ctx.fillText(m.link.replace(/^https?:\/\//, ""), PAD, f1);
+      ctx.fillStyle = t.text4;
+      var now = new Date();
+      var p2 = function (n) { return String(n).padStart(2, "0"); };
+      var right = (m.meta ? m.meta + " · " : "") + "exported " + now.getUTCDate() + " " +
+        ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getUTCMonth()] +
+        " " + now.getUTCFullYear() + ", " + p2(now.getUTCHours()) + ":" + p2(now.getUTCMinutes()) + " UTC";
+      ctx.fillText(right, W - PAD - ctx.measureText(right).width, f1);
+      return cv;
+    });
+  }
+  function initCardShare() {
+    var cards = document.querySelectorAll("a.door, a.lead, a.sig, [data-share-card]");
+    cards.forEach(function (card) {
+      if (card.querySelector(".ps-cardshare")) return;
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "ps-cardshare";
+      chip.textContent = "share";
+      chip.title = "share this card as an image";
+      var chipTimer = 0;
+      var say = function (msg) {
+        chip.textContent = msg;
+        clearTimeout(chipTimer);
+        chipTimer = setTimeout(function () { chip.textContent = "share"; }, 2000);
+      };
+      chip.addEventListener("click", function (e) {
+        /* the card itself is a link; the chip must not navigate */
+        e.preventDefault();
+        e.stopPropagation();
+        var m = harvestCard(card);
+        if (!m.title) { say("nothing to share"); return; }
+        var toBlob = function (cv) {
+          return new Promise(function (res, rej) {
+            cv.toBlob(function (b) { b ? res(b) : rej(new Error("toBlob failed")); }, "image/png");
+          });
+        };
+        var name = "palimpsest-" +
+          m.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + ".png";
+        var download = function () {
+          return composeSignalCard(m).then(toBlob).then(function (blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = name;
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+          });
+        };
+        var shareable = false;
+        try {
+          shareable = !!(navigator.canShare && navigator.canShare({
+            files: [new File([new Uint8Array(1)], "x.png", { type: "image/png" })]
+          }));
+        } catch (err) { shareable = false; }
+        if (shareable) {
+          composeSignalCard(m).then(toBlob).then(function (blob) {
+            return navigator.share({
+              files: [new File([blob], name, { type: "image/png" })],
+              title: m.title,
+              text: m.link
+            });
+          }).catch(function (err) { if (!err || err.name !== "AbortError") say("share failed"); });
+          return;
+        }
+        var wrote = false;
+        try {
+          if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+            navigator.clipboard.write([new ClipboardItem({ "image/png": composeSignalCard(m).then(toBlob) })])
+              .then(function () { say("copied ✓"); },
+                    function () { download().then(function () { say("saved ✓"); },
+                                                 function () { say("failed"); }); });
+            wrote = true;
+          }
+        } catch (err) { /* fall through */ }
+        if (!wrote) download().then(function () { say("saved ✓"); }, function () { say("failed"); });
+      });
+      card.appendChild(chip);
+    });
+  }
+
   function init() {
     initNav();
     initStagger();
     initReveal();
     initPageShare();
+    initCardShare();
   }
 
   if (document.readyState === "loading") {
