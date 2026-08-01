@@ -1,52 +1,64 @@
 {
-  "generated_at": "2026-08-01T08:57:31.927857+00:00",
+  "generated_at": "2026-08-01T14:16:37.828739+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 93,
+      "n_pairs": 94,
       "metric_now": 59.8,
-      "denominator_now": 225541.0,
+      "denominator_now": 226432.0,
       "metric_robust_z": 0.3,
-      "denominator_robust_z": -1.52,
-      "denominator_change_pct": -16.5,
+      "denominator_robust_z": -1.44,
+      "denominator_change_pct": -16.1,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 180,
-      "metric_now": 2.8581,
+      "n_pairs": 182,
+      "metric_now": 2.6451,
       "denominator_now": 199.0,
-      "metric_robust_z": 0.89,
-      "denominator_robust_z": 6.97,
+      "metric_robust_z": 0.6,
+      "denominator_robust_z": 5.23,
       "denominator_change_pct": 18.5,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 180,
+      "n_pairs": 182,
       "metric_now": 16.0,
       "denominator_now": 199.0,
       "metric_robust_z": null,
-      "denominator_robust_z": 6.97,
+      "denominator_robust_z": 5.23,
       "denominator_change_pct": 18.5,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 102,
-      "metric_now": 4.0,
+      "n_pairs": 103,
+      "metric_now": 5.0,
       "denominator_now": 25.0,
-      "metric_robust_z": -0.34,
+      "metric_robust_z": 0.0,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "terms carried into the GDELT cross-signal"
     },
+    "data_darkness": {
+      "verdict": "INSUFFICIENT_HISTORY",
+      "n_pairs": 1,
+      "note": "need 10 paired readings to condition on coverage",
+      "denominator_is": "official surfaces reachable from this vantage this round — the index is a mean over whichever surfaces answered, so a vantage losing one surface shifts composition and the guard must own that"
+    },
+    "silence_blackouts": {
+      "verdict": "INSUFFICIENT_HISTORY",
+      "n_pairs": 0,
+      "note": "need 10 paired readings to condition on coverage",
+      "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
+    },
     "weibo_suppression": {
-      "n_pairs": 52,
+      "n_pairs": 53,
       "metric_now": 0.0,
       "denominator_now": 0.0,
       "metric_robust_z": null,
@@ -57,7 +69,7 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 52,
+      "n_pairs": 53,
       "metric_now": 4.0,
       "denominator_now": 7.0,
       "metric_robust_z": 2.02,
