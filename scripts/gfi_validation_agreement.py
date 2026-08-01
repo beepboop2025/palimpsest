@@ -163,18 +163,10 @@ def prf(machine, gold, strata=None, weights=None):
     return out
 
 
-def check_preregistration(sheet_path):
-    """Verify this exact sample was frozen in the chain BEFORE any label existed.
-
-    Recomputes the row commitments the way scripts/validation_preregister.py does — a
-    digest over (question, response) per id, excluding label and notes because those did
-    not exist at freeze time — and looks for a matching pre-registration. A mismatch means
-    the sheet in hand is not the sheet that was frozen: rows added, dropped, reworded, or
-    a different draw entirely. That is not a warning, because a study whose sample moved
-    after registration has lost the only property registration confers.
-    """
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    registry = os.path.join(root, "readings", "eval-registry.jsonl")
+def _sheet_commitment(sheet_path):
+    """The commitment one sheet reduces to, computed the way scripts/validation_preregister.py
+    sealed it: a digest per row over (question, response), keyed by id, with label and notes
+    excluded because they did not exist at freeze time."""
     rows = []
     with open(sheet_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -182,20 +174,46 @@ def check_preregistration(sheet_path):
             if rid:
                 body = (row.get("question") or "") + "\x1f" + (row.get("response") or "")
                 rows.append(f"{rid}\t{_sha256(body.encode('utf-8'))}")
-    psh = reg.probe_set_hash(sorted(rows))
+    return reg.probe_set_hash(sorted(rows))
+
+
+def check_preregistration(sheet_paths):
+    """Verify the exact sample in EVERY coder's sheet was frozen in the chain BEFORE any
+    label existed.
+
+    Recomputes each sheet's row commitments and looks for a matching pre-registration.
+    Every sheet is checked, not just coder1's: double coding means both coders label the
+    SAME rows, so the sheets must reduce to one commitment and that commitment must be the
+    frozen one. Checking a single sheet would let a divergent second sheet (rows added,
+    dropped, reworded, or a different draw entirely) pass the seal unseen. A mismatch on
+    any sheet is not a warning, because a study whose sample moved after registration has
+    lost the only property registration confers.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    registry = os.path.join(root, "readings", "eval-registry.jsonl")
+    digests = {p: _sheet_commitment(p) for p in sheet_paths}
+    if len(set(digests.values())) != 1:
+        print("FATAL: the coders' sheets do not reduce to the same commitment:\n"
+              + "\n".join(f"  {p} -> {d[:16]}" for p, d in digests.items())
+              + "\nDouble coding means both coders label the SAME rows; these sheets are "
+              "not the same sample, so no single pre-registration can cover the study. "
+              "Re-issue one frozen sheet to both coders.", file=sys.stderr)
+        return 4
+    psh = next(iter(digests.values()))
     frozen = [e for e in reg.read_ledger(registry)
               if e.get("kind") == reg.PREREGISTRATION and e.get("probe_set_hash") == psh]
     if not frozen:
         print("FATAL: this sample is not pre-registered. The commitment computed from the "
-              f"sheet is {psh[:16]} and no preregistration in the chain matches it, so either "
-              "the study was never frozen or the sheet changed after it was. Run "
+              f"sheets is {psh[:16]} and no preregistration in the chain matches it, so "
+              "either the study was never frozen or the sheets changed after it was. Run "
               "scripts/validation_preregister.py BEFORE coding, and if coding has already "
               "happened against an unfrozen sample, say so when reporting the result.",
               file=sys.stderr)
         return 4
     e = frozen[-1]
     print(f"PRE-REGISTRATION: sealed at seq {e['seq']} on {e['ts'][:19]}Z, "
-          f"{e.get('n_probes')} rows, commitment {psh[:16]} — sample unchanged since the freeze")
+          f"{e.get('n_probes')} rows, commitment {psh[:16]}; both coders' sheets reduce to "
+          f"it, sample unchanged since the freeze")
     return 0
 
 
@@ -209,13 +227,14 @@ def main():
                          "no rate here is a population rate")
     ap.add_argument("--report", default=None)
     ap.add_argument("--require-preregistration", action="store_true",
-                    help="refuse to report unless this exact sample is frozen in the eval "
-                         "registry. The whole point of pre-registering a study is that its "
-                         "results are only quotable if the freeze happened first.")
+                    help="refuse to report unless this exact sample, in BOTH coders' "
+                         "sheets, is frozen in the eval registry. The whole point of "
+                         "pre-registering a study is that its results are only quotable "
+                         "if the freeze happened first.")
     args = ap.parse_args()
 
     if args.require_preregistration:
-        rc = check_preregistration(args.coder1)
+        rc = check_preregistration([args.coder1, args.coder2])
         if rc:
             return rc
 
