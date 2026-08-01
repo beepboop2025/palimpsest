@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-01T13:56:27.744110+00:00",
+  "generated_at": "2026-08-01T19:35:21.546573+00:00",
   "method_version": 2,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
@@ -17,9 +17,9 @@
       "value": 59.8,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-08-01T08:36:34.969988+00:00",
-      "age_days": 0.22,
-      "age_hours": 5.3
+      "as_of": "2026-08-01T14:02:01.742167+00:00",
+      "age_days": 0.23,
+      "age_hours": 5.6
     },
     {
       "layer": "model",
@@ -29,7 +29,7 @@
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
       "as_of": "2026-08-01T08:52:28.369503+00:00",
-      "age_days": 0.21
+      "age_days": 0.45
     },
     {
       "layer": "narrative",
@@ -46,29 +46,29 @@
       "value": 4.42,
       "unit": "%",
       "as_of": "2026-08-01T07:49:49.886114+00:00",
-      "age_hours": 6.1,
+      "age_hours": 11.8,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
       "name": "Firewall event velocity",
       "value": 0.68,
       "unit": "x",
-      "as_of": "2026-08-01T04:03:44.668303+00:00",
-      "age_hours": 9.9,
+      "as_of": "2026-08-01T14:09:50.006313+00:00",
+      "age_hours": 5.4,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 107,
+    "entries": 108,
     "verified": true,
-    "merkle_root": "488970d7f7ceefb082f05e9f41286fbdf74d5201cee3efe09e342c338b3f012d",
-    "head_hash": "c86bc615370dab0ab2d39f149ef3be44c653833542a8fcba92fbea5c57c8159b",
+    "merkle_root": "7ff75cf9451be50596b213ceee58b789c326fdc1aec2ab9852219b850b81ed32",
+    "head_hash": "40d9ca824d16db77ca788a767c1468eae9fe51fbd577ab9acc6f6cccabee587b",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-08-01T13:56:27.744110+00:00",
+    "head_ts": "2026-08-01T19:35:21.546573+00:00",
     "by_source": {
-      "ooni-gfw": 84,
+      "ooni-gfw": 85,
       "generative-firewall": 4,
       "censored-planet": 17,
       "baike-redaction": 2
@@ -76,18 +76,13 @@
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 105,
-        "entry_hash": "5dc2796147dcb27bfe148f54f951aebbad895ae0626799507107ca97f1efa37b"
-      },
-      {
-        "source": "generative-firewall",
-        "seq": 106,
-        "entry_hash": "c86bc615370dab0ab2d39f149ef3be44c653833542a8fcba92fbea5c57c8159b"
+        "seq": 107,
+        "entry_hash": "40d9ca824d16db77ca788a767c1468eae9fe51fbd577ab9acc6f6cccabee587b"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
     "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped"
   },
   "vs_access_indices": "Access observatories answer 'is X reachable now'. This answers 'what did the record lose, and can you prove our measurement of the loss was not itself edited afterward'.",
-  "last_changed_at": "2026-08-01T13:56:27.744110+00:00"
+  "last_changed_at": "2026-08-01T19:35:21.546573+00:00"
 }
