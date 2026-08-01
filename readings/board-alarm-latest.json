@@ -1,25 +1,27 @@
 {
-  "generated_at": "2026-08-01T04:13:25.519559+00:00",
-  "board_e_value": 9.797,
+  "generated_at": "2026-08-01T07:56:15.663742+00:00",
+  "board_e_value": 16.566,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
-    "selected": [],
+    "selected": [
+      "censored_planet"
+    ],
     "alpha": 0.1,
-    "k": 0,
-    "n_tested": 9,
-    "threshold": null
+    "k": 1,
+    "n_tested": 8,
+    "threshold": 80.0
   },
   "layers": {
     "network": {
-      "e": 16.635,
+      "e": 28.96,
       "n_signals": 4,
-      "state": "calm",
+      "state": "elevated",
       "corroborated": true,
       "signals": {
-        "censored_planet": 59.899,
+        "censored_planet": 109.781,
         "ioda_outages": 1.0,
         "ooni_gfw": 2.643,
-        "tor_bridge_cn": 2.998
+        "tor_bridge_cn": 2.417
       },
       "recent_alarms": []
     },
@@ -39,20 +41,19 @@
       ]
     },
     "model": {
-      "e": 4.945,
-      "n_signals": 1,
-      "state": "calm",
+      "e": null,
+      "n_signals": 0,
+      "state": "no_data",
       "corroborated": false,
-      "signals": {
-        "refusal_drift": 4.945
-      },
+      "signals": {},
       "recent_alarms": []
     }
   },
   "elevated_layers": [
-    "content"
+    "content",
+    "network"
   ],
-  "layer_coincidence": 1,
+  "layer_coincidence": 2,
   "recently_fired": [
     "ddti_novelty"
   ],
@@ -92,10 +93,10 @@
     },
     "censored_planet": {
       "state": "calm",
-      "e": 59.8991,
-      "n": 17,
+      "e": 109.7811,
+      "n": 18,
       "direction": "down",
-      "robust_z": -1.43,
+      "robust_z": -1.35,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -124,15 +125,10 @@
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
-      "state": "calm",
-      "e": 4.9451,
+      "state": "closed",
       "n": 81,
-      "direction": "up",
-      "robust_z": null,
-      "driver_side": "up",
-      "readings_since_alarm": null,
-      "n_alarms_in_history": 0,
-      "meaning": "cross-lab model suppression rate, averaged over the audited panel"
+      "meaning": "cross-lab model suppression rate, averaged over the audited panel (v1 series, closed at the 2026-08-01 method break — the live detector for the v2 suite is its own churn monitor)",
+      "closed": "closed 2026-08-01 at the v1→v2 method break: v2 measures family refusal rates (a different estimand) and appends history only on label movement; the live model-layer signal is refusal_churn — the v2 suite's own anytime-valid churn monitor"
     },
     "bleedthrough_pools": {
       "state": "no_data",
@@ -146,12 +142,12 @@
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "e": 2.9979,
-      "n": 386,
+      "e": 2.4169,
+      "n": 387,
       "direction": "up",
-      "robust_z": 1.31,
+      "robust_z": 0.68,
       "driver_side": "up",
-      "readings_since_alarm": 81,
+      "readings_since_alarm": 82,
       "n_alarms_in_history": 6,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
@@ -176,9 +172,18 @@
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
+    },
+    "refusal_churn": {
+      "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
+      "e": null,
+      "n_models": 0,
+      "models": {},
+      "state": "no_data",
+      "n_rows": 0,
+      "reason": "no churn log yet — the v2 suite writes one row per model per comparable run, and needs two runs to compare"
     }
   },
-  "headline": "single layer elevated: content",
+  "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
   "readings_to_days": {
     "bleedthrough_capacity": 125.0,
     "bleedthrough_pools": 125.0,
@@ -189,15 +194,16 @@
     "github_refuge": 250.0,
     "ioda_outages": 125.0,
     "ooni_gfw": 125.0,
-    "refusal_drift": 125.0,
+    "refusal_churn": 125.0,
     "tor_bridge_cn": 500.0,
     "weibo_suppression": 125.0
   },
-  "method": "per-signal two-sided conformal Shiryaev-Roberts e-detectors; e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
+  "method": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
   "caveats": [
     "layer co-movement is evidence of CO-MOVEMENT, not of a common cause: two layers can rise together under one directive or under one holiday; this reading reports the coincidence and does not name a cause",
     "the guarantee is per READING and signals refresh on different cadences, so equal e-values mean different wall-clock rarity; readings_to_days gives the conversion for the ALARM threshold",
-    "a layer holding one signal cannot corroborate itself — corroborated=false marks those, and today that is the MODEL layer",
-    "signals still warming up contribute no e-value; they are neither evidence of calm nor of change"
+    "a layer holding one live signal cannot corroborate itself — corroborated=false marks those, and today that is the MODEL layer (refusal_churn is its only live signal)",
+    "signals warming up, calibrating, stale past their bound, or closed at a method break contribute no e-value; none of those states is evidence of calm, and the last two are named in the reading rather than papered over",
+    "refusal_drift is the closed v1 refusal series: its history remains published and verifiable, but a series that can never append again is the record of an era, not a monitor"
   ]
 }
