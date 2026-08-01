@@ -165,19 +165,11 @@ PENDING = {
     # unpublished until a multi-vantage round exists; see docs/BLEEDTHROUGH.md and the worked
     # case in docs/INTEGRITY.md.
     "bleedthrough",
-    # DATA-DARKNESS watches China's official financial publication surfaces for
-    # withholding (the gap docs/VALIDATION.md names). Built and registered ahead of its
-    # first scheduled round; remove from here the moment the first reading commits.
-    "data-darkness",
-    # SILENCE-INDEX operationalises processors/silence_index.py (built and tested since
-    # it landed, wired by scripts/silence_index_pull.py). Registered ahead of its first
-    # scheduled round; remove from here the moment the first reading commits.
-    "silence-index",
-    # CNY-FIX-GAP: spot-vs-fix divergence, backdrop family. Registered ahead of its
-    # first scheduled round; remove from here the moment the first reading commits.
-    "cny-fix-gap",
-    # BELIEVABILITY: the Li Keqiang composite vs the headline, monthly. Registered
-    # ahead of its first scheduled round; remove once the first reading commits.
+    # BELIEVABILITY: the Li Keqiang composite vs the headline, monthly. Its first
+    # scheduled round is the 18th (after the NBS mid-month window) — the 2026-08-01
+    # dispatch correctly abstained because July's articles do not exist yet. Remove
+    # once the first reading commits. (data-darkness, silence-index and cny-fix-gap
+    # graduated 2026-08-01, first readings committed by their dispatch runs.)
     "believability",
 }
 
