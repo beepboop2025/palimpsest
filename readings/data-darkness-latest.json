@@ -1,10 +1,10 @@
 {
  "asof": "2026-08-01",
- "darkness_index": 0.3134,
- "generated_at": "2026-08-01T09:28:57Z",
+ "darkness_index": 0.2688,
+ "generated_at": "2026-08-01T11:23:48Z",
  "method_note": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
  "method_version": 1,
- "n_series_reporting": 7,
+ "n_series_reporting": 6,
  "n_series_watched": 7,
  "note": "high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md",
  "series": {
@@ -71,14 +71,6 @@
    "promised_day": 17,
    "staleness_ratio": 0.5484
   },
-  "nra_rail": {
-   "basis": "calendar",
-   "days_since": 18,
-   "latest_period": "2026-06",
-   "latest_publication": "2026-07-14",
-   "nominal_interval_days": 31,
-   "staleness_ratio": 0.5806
-  },
   "pboc_mb_stats": {
    "basis": "calendar",
    "days_since": 1,
@@ -112,5 +104,7 @@
   }
  },
  "source": "official Chinese publication surfaces, read keyless: pbc.gov.cn (OMO announcements; Money & Banking Statistics directory), safe.gov.cn (bank FX settlement page), stats.gov.cn (最新发布 firehose for the energy and industrial monthlies, plus the release calendar), nra.gov.cn (rail freight monthly), and this repo's own committed CFETS benchmark history",
- "unreachable": []
+ "unreachable": [
+  "nra_rail"
+ ]
 }
