@@ -128,17 +128,31 @@ A public, tamper-evident record of AI-model evaluations. See **[docs/EVAL-REGIST
   verifier, so results cannot be cherry-picked or p-hacked after the answers exist.
 - **Sealed at publication.** Each result is hash-chained to its predecessor and fingerprinted by a
   Merkle root. Edit a published number and `scripts/verify_eval_registry.py` reports the break.
-- **The first live audit: cross-lab refusal drift.** The registry runs two separate frozen suites
+- **The first live audit: cross-lab refusal drift.** The registry runs separate frozen suites
   with no model in common: `cn-sensitive-generative-firewall-v1` (DeepSeek, Qwen) and
-  `frontier-overrefusal-v1` (OpenAI, Anthropic, Meta, Mistral). No model has ever been run under
-  both. What is shared is the machinery, not the questions: the *same* tamper-evident,
+  `frontier-overrefusal-v1`/`-v2` (OpenAI, Anthropic, Meta, Mistral). No model has ever been run
+  under both. What is shared is the machinery, not the questions: the *same* tamper-evident,
   pre-registered apparatus audits a state-aligned model and a Western frontier model, each on its
   own frozen suite, tracked run over run for what a model quietly stops answering, an undisclosed
   behavioral change no changelog admits.
+- **Measured so it survives review.** Every rate carries a Wilson interval and every suite
+  publishes the smallest change a single look could detect. The standing alarm is a mixture
+  supermartingale, so its false-alarm rate is bounded over the lifetime of a watch that re-reads
+  every model every six hours, rather than per look. Each question is asked in three
+  meaning-preserving wordings, because refusal behaviour is sensitive to phrasing and one wording
+  cannot tell a policy from a tripwire. A frozen anchor set re-scores the classifier on every run,
+  so an instrument change can never be published as a model change. Design and honest limits:
+  **[docs/FRONTIER-DRIFT.md](docs/FRONTIER-DRIFT.md)**.
+- **The labels are recomputable, not just tamper-evident.** The v2 suite seals a hash over the raw
+  response digests and publishes the responses, so a reader can check that the text served is the
+  text sealed, re-derive every label, and disagree with ours on the record. That closes most of the
+  gap [docs/INTEGRITY.md](docs/INTEGRITY.md) previously had to concede, where a mislabelled
+  response would be sealed perfectly and verify clean forever.
 
 ```bash
-python3 scripts/verify_eval_registry.py     # chain integrity + the pre-registration rule
-python3 scripts/prove_inclusion.py 5        # inclusion proof for a single sealed result
+python3 scripts/verify_eval_registry.py        # chain integrity + the pre-registration rule
+python3 scripts/verify_refusal_transcripts.py  # published text -> sealed hash -> labels
+python3 scripts/prove_inclusion.py 5           # inclusion proof for a single sealed result
 ```
 
 Live: [palimpsest.info/readings/eval-registry.html](https://palimpsest.info/readings/eval-registry.html).

@@ -3,7 +3,9 @@
 **One line:** open infrastructure for tamper-evident, pre-registered AI model
 evaluations. The questions are frozen before the model is queried, and every
 result is hash-chained so it cannot be quietly re-run, cherry-picked, or revised.
-Any model, any suite. Evals you can prove were not gamed.
+Any model, any suite. Not "evals you can trust" — evals whose *questions were provably
+frozen first* and whose *results provably never changed*, which is a narrower and
+checkable thing.
 
 This is the AI-safety-shaped generalization of Palimpsest's sealed ledger. Where
 `core/sealed_ledger.py` seals our own erasure readings, `core/eval_registry.py`
@@ -39,7 +41,12 @@ not only a censorship one.
   submitter who *does* publish raw responses gets full recomputation for free, because
   `responses_hash` will hash whatever object you hand it. What the chain proves either
   way is that the sealed object never changed; whether the label was the *right* label
-  is a separate question, answered by the human coder study, not by the hash. See
+  is a separate question, and the human coder study that would answer it **has not been
+  completed** — the sample is drawn, the sheets are unlabelled, and no agreement
+  coefficient exists. Until one does, every rate here reads correctly as "as classified by
+  a published lexical rule", not "as a human would classify it". A frozen judge anchor set
+  narrows the gap by proving the classifier has not moved between runs, and names one case
+  where it is provably wrong, but it is author-labelled and is not that study. See
   [INTEGRITY.md](INTEGRITY.md) for the full statement of that boundary.
 
 ## What is anchored in it now
@@ -49,12 +56,15 @@ Two real audits, sealed and pre-registered:
 1. **Chinese-aligned model suppression** (the Generative Firewall): a 10-concept
    sensitive probe set, one sealed run per model (DeepSeek, Qwen), ~40% suppression.
 2. **Frontier refusal drift** (`scripts/refusal_drift_pull.py`): a benign,
-   informational 12-probe set run against a **cross-lab panel of Western frontier
+   informational probe bank run against a **cross-lab panel of Western frontier
    models** (OpenAI gpt-4o-mini, Anthropic claude-3-haiku, Meta llama-3.3-70b,
    Mistral mistral-nemo), with real, live results. Each run is sealed; drift is the
-   diff versus that model's last run, so a model that *quietly* stops answering a
-   question later is caught and cannot be un-recorded. Override the panel with
-   `REFUSAL_DRIFT_MODELS`.
+   diff versus that model's last comparable run, so a model that *quietly* stops
+   answering a question later is caught and cannot be un-recorded. Override the panel
+   with `REFUSAL_DRIFT_MODELS`. See
+   [FRONTIER-DRIFT.md](FRONTIER-DRIFT.md) for the measurement design — paraphrase
+   families, anytime-valid alarms, published transcripts, and what the suite still
+   cannot support.
 
 > **A dated observation, not a standing finding.** On **2026-07-11**, the first sealed
 > panel run recorded OpenAI, Anthropic and Meta each refusing 0/12 while

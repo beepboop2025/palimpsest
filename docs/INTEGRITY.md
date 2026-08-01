@@ -27,25 +27,50 @@ date the old root, and any witness would name the rewritten entry.
 - **Lying at capture time.** The chain proves what was sealed, not that the
   sealed reading was true. If the collector recorded a false response, the
   chain faithfully preserves the falsehood.
-  Be precise about what `responses_hash` actually commits to: it is a sha256
-  over the *derived labels*, not over the raw model output. For the frontier
-  refusal-drift suite that is the `{probe_id: answered|refused}` map
-  (`scripts/refusal_drift_pull.py`); for the Generative Firewall suite it is
-  the `{concept: aligned_state}` map (`scripts/eval_registry_ingest.py`). The
-  raw model text is **not** published anywhere in this repository, so nobody —
-  including us — can recompute the label from the response it came from.
-  The consequence, stated plainly: **a systematically mislabelled response is
-  not caught by the chain.** If the lexical classifier calls a hedged answer a
-  refusal, the chain seals that mistake perfectly and verifies clean forever
-  after. Everything the chain proves is downstream of the label; nothing in
-  layers 1 to 6 audits the label itself.
-  What does audit it lives outside the chain: probes are pre-registered so
-  results cannot be cherry-picked after the answers exist; the classifier is a
-  transparent lexical rule anyone can read and re-run; and the **human coder
-  study** (`validation/CODEBOOK.md` and the coding sheets under
-  `validation/out/`) exists precisely to measure how often that rule disagrees
-  with two independent humans reading the same response text.
-  That study, not the hash chain, is the evidence that the labels are right.
+  What `responses_hash` commits to differs by suite, and the difference is the
+  whole of what follows:
+  - **Frontier refusal drift, v2** (`scripts/refusal_drift_pull.py`,
+    `frontier-overrefusal-v2`) seals a sha256 over the **per-response text
+    digests**, `{arm: sha256(raw text)}`, and the raw responses are published at
+    `readings/refusal-drift-transcripts.json`. So the label *is* recomputable by
+    anyone: hash the published text, check it against the sealed run, re-run the
+    classifier, and disagree with us on the record.
+    `scripts/verify_refusal_transcripts.py` does all three and says which step
+    failed. Two honest limits remain. Only the **current** run's text is served,
+    so a historical run is checkable through git history rather than over HTTP.
+    And step three re-runs *our* classifier, which proves the pipeline is
+    consistent, not that the classifier is right — that is still the coder
+    study's job, below.
+  - **Everything else** — the Generative Firewall suite
+    (`scripts/eval_registry_ingest.py`, sealing `{concept: aligned_state}`) and
+    the canonical v1 arm sealed under `frontier-overrefusal-v1` — still commits
+    to *derived labels* with no published text. For those, the original
+    concession stands unchanged: **a systematically mislabelled response is not
+    caught by the chain.** If the lexical classifier calls a hedged answer a
+    refusal, the chain seals that mistake perfectly and verifies clean forever
+    after.
+  There is one more asymmetry worth naming rather than leaving to be found. v2's
+  pre-registration commits to `id + sha256(prompt text)` per arm, so a silently
+  reworded question moves the registry hash. The v1 pre-registration committed to
+  probe **ids alone**, so for the twelve canonical questions the chain freezes
+  what they are *called*, not what they *say*. The v1 series is kept running
+  because severing 47 sealed runs would cost more than the weakness does, and the
+  weakness is bounded: the v2 commitment covers the same twelve questions' text,
+  in the same chain, from 2026-08-01 onward.
+  What audits the label lives outside the chain in every case: probes are
+  pre-registered so results cannot be cherry-picked after the answers exist; the
+  classifier is a transparent lexical rule anyone can read and re-run; a frozen
+  **judge anchor set** (`config/refusal_judge_anchors.json`,
+  `core/judge_anchors.py`) is re-scored on every run so a change in the
+  classifier cannot be published as a change in a model; and the **human coder
+  study** (`validation/CODEBOOK.md`, sheets under `validation/out/`) is what
+  would measure how often the rule disagrees with two independent humans.
+  **That study has not been completed.** The sheets are drawn and unlabelled, no
+  agreement coefficient exists, and until one does, the correct reading of every
+  refusal rate in this repository is "as classified by a published lexical rule",
+  not "as a human would classify it". The anchor set narrows the gap — it proves
+  the instrument is unchanged and names one case where it is provably wrong — but
+  it is author-labelled, so it is not that study and is not offered as it.
 - **The window between seal and first anchor.** History could in principle be
   rewritten in the gap before any external party has seen it, at most one
   anchor cadence (currently 6 hours) after sealing. Older history is
@@ -128,12 +153,19 @@ weakness and is named here rather than smoothed over.
 
 ```bash
 git clone https://github.com/beepboop2025/palimpsest && cd palimpsest
-python3 scripts/verify_eval_registry.py     # chain + pre-registration rule
-python3 scripts/verify_ledger.py            # the erasure ledger
-python3 scripts/prove_inclusion.py 5        # inclusion proof for one attestation
-ots verify readings/anchors/*.ots           # Bitcoin timestamp on the roots
-python3 ops/witness/palimpsest_witness.py   # become a witness yourself
+python3 scripts/verify_eval_registry.py        # chain + pre-registration rule
+python3 scripts/verify_refusal_transcripts.py  # published text -> sealed hash -> labels
+python3 scripts/verify_ledger.py               # the erasure ledger
+python3 scripts/prove_inclusion.py 5           # inclusion proof for one attestation
+ots verify readings/anchors/*.ots              # Bitcoin timestamp on the roots
+python3 ops/witness/palimpsest_witness.py      # become a witness yourself
 ```
+
+The second command is the one that lets you distrust our judgement rather than
+just our record. It hashes every published response, matches it against what the
+run sealed, then re-derives each label from that text and prints any response
+where the classifier and the published label disagree. If you think a particular
+refusal was not a refusal, the response is right there to quote.
 
 ## Planned hardening
 

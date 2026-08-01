@@ -65,15 +65,33 @@ jobs:
       - name: Refresh the Verifiable Eval Registry (seal model-erasure audit)
         run: python -m scripts.eval_registry_ingest
 
-      - name: Frontier refusal-drift audit (real model; abstains without a key)
-        # Seals a fresh run of a Western frontier model and records drift vs the last run.
-        # Abstains cleanly if OPENROUTER_API_KEY is not configured as a repo secret.
+      - name: Frontier refusal-drift audit (real models; abstains without a key)
+        # Seals a fresh run of each panel model and records drift versus the last
+        # comparable run. Abstains cleanly if OPENROUTER_API_KEY is not configured.
+        #
+        # Cadence, deliberately split: the CANONICAL arm runs on every one of these
+        # six-hourly refreshes, which is what keeps the drift series continuous with
+        # the runs already sealed under the v1 probe-set hash. The paraphrase and
+        # Chinese arms run on the first refresh of each UTC day — wording invariance
+        # and language asymmetry move on a scale of weeks, and a paid API is not free.
+        # The driver decides which it is by reading its own last_full_sweep_at, so no
+        # second cron and no calendar logic here.
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python -m scripts.refusal_drift_pull
 
       - name: Verify the eval registry (chain + pre-registration rule)
         run: python -m scripts.verify_eval_registry
+
+      - name: Verify the transcripts recompute the seal, and the labels the transcripts
+        # The audit the chain alone cannot offer: the published responses must hash to
+        # the sealed responses_hash, and every label must re-derive from that text with
+        # the shipping classifier. A mismatch means the published evidence and the
+        # sealed record have parted company, which is worth failing the run over.
+        # Exit 2 (nothing published yet, e.g. no API key) is not a failure.
+        run: |
+          python -m scripts.verify_refusal_transcripts || rc=$?
+          if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
       - name: Anchor the roots outside our infrastructure
         # Wayback snapshots the served chain files (a third-party dated copy;
@@ -87,21 +105,45 @@ jobs:
           python -m scripts.anchor_roots
 
       - name: Commit & push if anything changed
+        # ONE PATH AT A TIME, AND DELIBERATELY SO. `git add a b c` is atomic: a single
+        # pathspec that matches nothing aborts the whole command with exit 128 and
+        # stages NOTHING, even the paths that do exist. With `|| true` swallowing the
+        # error and `git diff --cached --quiet` then reporting "no change", the step
+        # prints no change and exits 0 while the ledger append, the sealed registry
+        # entries, the readings and the OpenTimestamps proofs all die with the runner.
+        #
+        # That is not hypothetical. Adding two not-yet-created files to the old
+        # combined list would have deadlocked this job permanently: nothing commits,
+        # so the next run checks out the same pre-upgrade state and fails the same way,
+        # for ever, with CI green the whole time. It is precisely the "suppression by
+        # omission" failure docs/INTEGRITY.md says is at least supposed to be visible
+        # as a gap in the cadence, arriving silently instead.
+        #
+        # So: loop, add only what exists, and let a genuine `git add` failure on a file
+        # that IS there be loud rather than swallowed.
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
-          git add readings/erasure-observatory-latest.json \
-                  readings/erasure-observatory-history.jsonl \
-                  readings/erasure-ledger.jsonl \
-                  readings/baike-redaction-latest.json \
-                  readings/baike-redaction-history.jsonl \
-                  readings/eval-registry.jsonl \
-                  readings/eval-registry-latest.json \
-                  readings/refusal-drift-latest.json \
-                  readings/refusal-drift-history.jsonl \
-                  readings/anchors.jsonl \
-                  readings/anchors-latest.json \
-                  readings/anchors/ 2>/dev/null || true
+          for p in readings/erasure-observatory-latest.json \
+                   readings/erasure-observatory-history.jsonl \
+                   readings/erasure-ledger.jsonl \
+                   readings/baike-redaction-latest.json \
+                   readings/baike-redaction-history.jsonl \
+                   readings/eval-registry.jsonl \
+                   readings/eval-registry-latest.json \
+                   readings/refusal-drift-latest.json \
+                   readings/refusal-drift-history.jsonl \
+                   readings/refusal-drift-transcripts.json \
+                   readings/refusal-drift-churn.jsonl \
+                   readings/anchors.jsonl \
+                   readings/anchors-latest.json \
+                   readings/anchors/ ; do
+            if [ -e "$p" ]; then
+              git add "$p" || { echo "FATAL: git add failed for an existing path: $p"; exit 1; }
+            else
+              echo "skip (not produced this run): $p"
+            fi
+          done
           if git diff --cached --quiet; then
             echo "no change"
           else

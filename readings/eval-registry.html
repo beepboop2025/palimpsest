@@ -4,20 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verifiable Eval Registry · Palimpsest</title>
-<meta name="description" content="Tamper-evident, pre-registered AI model evaluations. The questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised or cherry-picked. Any model, any suite. Evals you can prove were not gamed.">
+<meta name="description" content="Tamper-evident, pre-registered AI model evaluations. The questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised or cherry-picked. Any model, any suite. The questions were provably frozen first and the results provably never changed.">
 <link rel="canonical" href="https://palimpsest.info/readings/eval-registry.html">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
 <meta property="og:title" content="Verifiable Eval Registry · Palimpsest">
-<meta property="og:description" content="AI evaluations you can prove were not gamed. Questions frozen before the model is queried, every result hash-chained and externally anchored.">
+<meta property="og:description" content="AI evaluations that cannot be quietly rewritten. Questions frozen before the model is queried, every result hash-chained and externally anchored.">
 <meta property="og:url" content="https://palimpsest.info/readings/eval-registry.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Verifiable Eval Registry · Palimpsest">
-<meta name="twitter:description" content="AI evaluations you can prove were not gamed. Questions frozen before the model is queried, every result hash-chained and externally anchored.">
+<meta name="twitter:description" content="AI evaluations that cannot be quietly rewritten. Questions frozen before the model is queried, every result hash-chained and externally anchored.">
 <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
 <meta name="theme-color" content="#06070a">
@@ -274,7 +274,7 @@
   <!-- ============================ HERO ============================ -->
   <header class="ps-reveal" style="padding:clamp(38px,7vw,74px) 0 0">
     <p class="ps-kicker"><span class="ps-dot ps-dot--live" aria-hidden="true" style="display:inline-block;margin-right:7px"></span>Verifiable Eval Registry</p>
-    <h1 class="ps-h1">AI evaluations you can prove were not gamed</h1>
+    <h1 class="ps-h1">AI evaluations that cannot be quietly rewritten</h1>
     <p class="ps-lede">
       AI systems increasingly decide what a person can and cannot learn, and the audits that check
       them can be re-run, quietly cherry-picked, or revised until the number reads well. This
@@ -444,10 +444,29 @@
     <h2 class="ps-section-head" id="drift-h">Frontier refusal drift</h2>
 
     <p class="er-note" style="max-width:var(--ps-measure);margin-bottom:16px">
-      One frozen set of benign, legitimate questions, put to each frontier model across time. A model
+      One frozen bank of benign, legitimate questions, put to each frontier model across time. A model
       that used to answer a question and now refuses it has erased something, and the erasure is
       normally undisclosed. Every run is sealed into the registry above, so the change is on the
       record and cannot be un-recorded.
+    </p>
+
+    <p class="er-note" style="max-width:var(--ps-measure);margin-bottom:16px">
+      Three things make this harder to dismiss than a refusal count.
+      <b style="color:var(--tk-text-1,#e2e8f0)">Every question is asked three ways.</b> Refusal
+      behaviour is famously sensitive to wording, so one phrasing cannot tell you whether a model has
+      a policy or a tripwire. The family is the unit; the wording column reports how often the three
+      agreed.
+      <b style="color:var(--tk-text-1,#e2e8f0)">The alarm is valid under unlimited peeking.</b> This
+      board re-reads every model every six hours, forever, and a conventional significance test
+      re-run on a schedule will eventually cry wolf with certainty. The standing alarm is a mixture
+      supermartingale instead, so the chance it <i>ever</i> fires on a model whose behaviour has not
+      changed is bounded for the lifetime of the watch, not per look.
+      <b style="color:var(--tk-text-1,#e2e8f0)">The raw answers are published.</b> Every response
+      behind the current reading is served at
+      <a href="/readings/refusal-drift-transcripts.json">refusal-drift-transcripts.json</a>, and its
+      hash is what the sealed run commits to, so you can check that the text we show is the text we
+      sealed and re-derive every label yourself. If you think our classifier is wrong, the evidence
+      to prove it is already in your hands.
     </p>
 
     <p class="er-status" id="er-drift-status" role="status">
@@ -457,11 +476,16 @@
     <div id="er-drift-box"></div>
 
     <p class="er-note" style="max-width:var(--ps-measure);margin-top:14px">
-      A model's rate is computed over the probes it actually returned a usable response to, which is
-      the <b style="color:var(--tk-text-1,#e2e8f0)">n scored</b> column, not over the whole frozen
-      set. The models do not share one denominator, so read each rate against its own n.
+      A model's rate is computed over the question families it actually returned usable responses
+      to, not over the whole bank, and the interval beside it is a Wilson 95% score interval on that
+      denominator. The models do not share one denominator, so read each rate against its own n.
       <b style="color:var(--tk-text-1,#e2e8f0)">Abstained</b> is the remainder, dropped rather than
-      counted either way. Drift shows once a model has a second run to compare against.
+      counted either way — a model we could not reach has not refused anything.
+      <b style="color:var(--tk-text-1,#e2e8f0)">Drift</b> shows once a model has a second comparable
+      run, and the <b style="color:var(--tk-text-1,#e2e8f0)">standing alarm</b> speaks only after it
+      has watched long enough to know what that model's own week-to-week churn looks like. Control
+      questions with no policy dimension run alongside the rest: if those are refused, the run is an
+      instrument fault and is labelled one.
     </p>
   </section>
 
@@ -819,6 +843,40 @@
     return nr.length ? nr.length + " new refusal(s): " + nr.join(", ") : "no change";
   }
 
+  /* A rate with its interval, as one string. A point estimate over eleven
+     questions is a neighbourhood, and printing it alone invites a precision the
+     data cannot support. */
+  function rateWithCI(m) {
+    var rate = num(m.family_refusal_rate_pct, 1);
+    if (rate == null) rate = num(m.suppression_rate_pct, 1);   /* legacy shape */
+    if (rate == null) return null;
+    var ci = m.family_refusal_ci95_pct;
+    if (!Array.isArray(ci) || num(ci[0], 1) == null || num(ci[1], 1) == null) return rate + "%";
+    return rate + "%  (" + num(ci[0], 1) + "–" + num(ci[1], 1) + ")";
+  }
+
+  /* The standing alarm, in words. `quiet` is the overwhelmingly common state and
+     is drawn as such, because an observatory that looks alarmed by default is an
+     observatory nobody reads twice. */
+  function churnCell(m) {
+    var c = m.churn_monitor;
+    if (!c || !c.state) return null;
+    if (c.state === "calibrating") {
+      return "calibrating (" + (c.pairs_seen || 0) + " of " + (c.pairs_needed || "?") + " runs)";
+    }
+    var e = (typeof c.evalue === "number" && isFinite(c.evalue))
+      ? c.evalue.toPrecision(3) : String(c.evalue);
+    return c.state + "  ·  e = " + e;
+  }
+
+  function wordingCell(m) {
+    var w = m.wording_invariance;
+    if (!w || typeof w.n_families !== "number") return null;
+    var s = w.n_consistent + " of " + w.n_families + " stable";
+    var bad = Array.isArray(w.inconsistent_families) ? w.inconsistent_families : [];
+    return bad.length ? s + " · wobbles: " + bad.join(", ") : s;
+  }
+
   function renderDrift(d) {
     var st = document.getElementById("er-drift-status");
     var box = clear(document.getElementById("er-drift-box"));
@@ -838,33 +896,96 @@
 
     var frozen = d.n_probes;
 
+    /* ---- the instrument, before the subjects. If the classifier moved, every
+       rate below is on a different footing and that has to be said first, not
+       in a footnote. ---- */
+    var jd = d.judge_drift || {};
+    var ja = d.judge_anchors || {};
+    if (jd.state) {
+      var inst = el("section", "ps-p1");
+      inst.style.padding = "14px 18px";
+      inst.style.marginBottom = "14px";
+      var line = el("p", "er-note");
+      line.style.margin = "0";
+      line.appendChild(el("strong", null,
+        jd.instrument_changed ? "The refusal classifier changed. " : "The refusal classifier held still. "));
+      line.appendChild(document.createTextNode(
+        jd.note || "" ));
+      if (typeof ja.n_anchors === "number") {
+        line.appendChild(document.createTextNode(
+          "  Checked against " + ja.n_anchors + " frozen anchor responses" +
+          (typeof ja.n_agreeing === "number" ? ", " + ja.n_agreeing + " of which it labels as a human did" : "") +
+          (ja.n_documented_divergences ? " (" + ja.n_documented_divergences +
+            " known and documented divergence" + (ja.n_documented_divergences === 1 ? "" : "s") + ")" : "") +
+          "."));
+      }
+      inst.appendChild(line);
+      if (Array.isArray(ja.undocumented_divergences) && ja.undocumented_divergences.length) {
+        var warn = el("p", "er-note");
+        warn.style.margin = "8px 0 0";
+        warn.appendChild(el("strong", null, "Undocumented divergence: "));
+        warn.appendChild(document.createTextNode(
+          ja.undocumented_divergences.map(function (u) {
+            return u.id + " (expected " + u.expected + ", classifier said " + u.classifier_said + ")";
+          }).join("; ") + ". The instrument needs a human before these rates are relied on."));
+        inst.appendChild(warn);
+      }
+      box.appendChild(inst);
+    }
+
     var card = el("section", "ps-p2 er-tbox");
     var head = el("p", "ps-label");
     head.style.marginBottom = "10px";
     head.textContent = "Undisclosed behavioural change  ·  " + models.length +
       (models.length === 1 ? " model" : " models") +
-      (typeof frozen === "number" && isFinite(frozen) ? "  ·  " + frozen + " frozen probes" : "");
+      (typeof d.n_families === "number" ? "  ·  " + d.n_families + " question families" : "") +
+      (typeof frozen === "number" && isFinite(frozen) ? "  ·  " + frozen + " probes this run" : "") +
+      (d.arm ? "  ·  " + d.arm + " arm" : "");
     card.appendChild(head);
 
     var scroll = el("div", "ps-scroll-x");
     var table = el("table", "er-t");
     var thead = el("thead");
     var hr = el("tr");
-    ["Model", "Refuses", "n scored", "Abstained", "Refused probes", "Drift vs last run"]
+    /* "n families" counts the SENSITIVE families the rate is computed over; the
+       wording column counts every family in the bank, controls included, because
+       whether a refusal decision depends on phrasing is a property of the
+       instrument and is worth measuring on the questions that should never be
+       refused too. The two denominators differ on purpose. */
+    ["Model", "Refuses (95% CI)", "n families", "Abstained", "Refused families",
+     "Wording, whole bank", "Drift vs last run", "Standing alarm"]
       .forEach(function (h) { hr.appendChild(el("th", null, h)); });
     thead.appendChild(hr);
     table.appendChild(thead);
     var tb = el("tbody");
     models.forEach(function (m) {
-      var refused = Array.isArray(m.refused_now) ? m.refused_now : [];
+      var refused = Array.isArray(m.refused_families) ? m.refused_families
+        : (Array.isArray(m.refused_now) ? m.refused_now : []);
       var tr = el("tr");
       td(tr, "er-c1 er-wrap", m.model);
-      var rate = num(m.suppression_rate_pct, 1);
-      td(tr, "er-rate ps-num", rate == null ? null : rate + "%");
-      td(tr, "er-n ps-num", cnt(m.n_probes));
+      td(tr, "er-rate ps-num", rateWithCI(m));
+      td(tr, "er-n ps-num", cnt(m.n_families) || cnt(m.n_probes));
       td(tr, "er-n ps-num", abstained(m, frozen));
       td(tr, "er-wrap", refused.length ? refused.join(", ") : "none this run");
+      td(tr, "er-wrap", wordingCell(m));
       td(tr, "er-wrap", driftLine(m));
+      td(tr, "er-wrap", churnCell(m));
+      /* A refused control family means this run measured an outage, a quota error
+         or a template change. Say so on the row, not in a caption. */
+      if (m.controls_clean === false) {
+        var note = el("tr");
+        var cell = el("td", "er-wrap");
+        cell.colSpan = 8;
+        cell.appendChild(el("strong", null, "Instrument fault: "));
+        cell.appendChild(document.createTextNode(
+          "this model refused control questions (" +
+          (Array.isArray(m.control_refusals) ? m.control_refusals.join(", ") : "unnamed") +
+          "), which carry no policy dimension. The row above is not evidence of censorship."));
+        note.appendChild(cell);
+        tb.appendChild(tr);
+        tb.appendChild(note);
+        return;
+      }
       tb.appendChild(tr);
     });
     table.appendChild(tb);
@@ -872,9 +993,51 @@
     card.appendChild(scroll);
     box.appendChild(card);
 
+    /* ---- language asymmetry: the same question, asked in the other script ---- */
+    var la = d.language_asymmetry;
+    if (la && typeof la === "object" && Object.keys(la).length) {
+      var lcard = el("section", "ps-p2 er-tbox");
+      lcard.style.marginTop = "14px";
+      var lh = el("p", "ps-label");
+      lh.style.marginBottom = "10px";
+      lh.textContent = "The same question, asked in Chinese";
+      lcard.appendChild(lh);
+      var lscroll = el("div", "ps-scroll-x");
+      var lt = el("table", "er-t");
+      var lthead = el("thead");
+      var lhr = el("tr");
+      ["Model", "Pairs", "Refused only in Chinese", "Refused only in English", "Net", "Exact p"]
+        .forEach(function (h) { lhr.appendChild(el("th", null, h)); });
+      lthead.appendChild(lhr);
+      lt.appendChild(lthead);
+      var ltb = el("tbody");
+      Object.keys(la).sort().forEach(function (model) {
+        var a = la[model] || {};
+        var tr = el("tr");
+        td(tr, "er-c1 er-wrap", model);
+        td(tr, "er-n ps-num", cnt(a.n_pairs));
+        td(tr, "er-n ps-num", cnt(a.refused_in_b_only));
+        td(tr, "er-n ps-num", cnt(a.refused_in_a_only));
+        td(tr, "er-rate ps-num", num(a.net_asymmetry, 2));
+        td(tr, "er-n ps-num", num(a.p_value_midp, 3));
+        ltb.appendChild(tr);
+      });
+      lt.appendChild(ltb);
+      lscroll.appendChild(lt);
+      lcard.appendChild(lscroll);
+      var lnote = el("p", "er-note");
+      lnote.style.margin = "10px 0 0";
+      lnote.textContent = "Matched translations of one question, compared within that question. "
+        + "A model that answers in English and declines in Chinese is not applying a content "
+        + "policy, it is applying a policy conditioned on who it presumes is asking.";
+      lcard.appendChild(lnote);
+      box.appendChild(lcard);
+    }
+
     /* The feed states its own scope and method. Both are carried, not summarised. */
     var meta = el("section", "ps-p1");
     meta.style.padding = "16px 18px";
+    meta.style.marginTop = "14px";
     var dl = el("dl", "er-defs");
     function pair(k, v, mono) {
       if (v == null || v === "") return;
@@ -886,9 +1049,27 @@
     pair("Suite", d.suite);
     pair("Scope, as published", d.scope);
     pair("Method, as published", d.method);
-    pair("Probe set hash", d.probe_set_hash, true);
+    pair("How to read it", d.method_note);
+    if (d.power && typeof d.power.minimum_detectable_flips_single_look === "number") {
+      pair("What a single look cannot see",
+           "fewer than " + d.power.minimum_detectable_flips_single_look +
+           " same-direction family flips out of " + d.power.n_families_tested +
+           ", at 5%. Smaller shifts are only visible to the standing alarm, which "
+           + "accumulates across runs.");
+    }
+    if (d.panel_alarms && Array.isArray(d.panel_alarms.surviving_e_bh)) {
+      pair("Alarms surviving panel-wide correction",
+           d.panel_alarms.surviving_e_bh.length
+             ? d.panel_alarms.surviving_e_bh.join(", ")
+             : "none this run");
+    }
+    pair("Probe bank", d.probe_bank);
+    pair("Commits to", d.commits_to);
+    pair("Probe commitment", d.probe_commitment || d.probe_set_hash, true);
+    pair("Classifier fingerprint", ja.fingerprint, true);
     pair("Panel", Array.isArray(d.panel) ? d.panel.join(", ") : null);
     pair("Measured", stamp(d.generated_at));
+    pair("Last full sweep", stamp(d.last_full_sweep_at));
     meta.appendChild(dl);
     box.appendChild(meta);
   }
