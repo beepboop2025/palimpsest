@@ -8,6 +8,13 @@ anything, presented on the board as a live monitored signal.
 
 These tests pin the reader to both shapes: the panel mean for panel rows, and an
 honest abstention (never a zero) for anything that cannot be compared.
+
+Method v2 (2026-08-01) then CLOSED the series: the puller retired
+`suppression_rate_pct` for `family_refusal_rate_pct`, a different estimand
+(refusals over paraphrase families, not single-worded arms), and gates history
+appends on label movement. v2 rows must abstain here — splicing them in would
+manufacture a level shift (v1 ended at 6.25, the first v2 panel read 0.0) —
+and the committed-history regression counts only v1-comparable panels.
 """
 import json
 from pathlib import Path
@@ -65,6 +72,24 @@ def test_unmeasurable_rates_abstain_rather_than_becoming_zero():
     assert refusal_suppression_rate({"models": {"a": {"suppression_rate_pct": True}}}) is None
 
 
+def test_method_v2_row_abstains_because_the_series_is_closed():
+    """A v2 row measures family refusal rates, not arm suppression rates.
+    Reading `family_refusal_rate_pct` into this series would splice two
+    estimands and hand the detector a manufactured level shift; the v2 era
+    is watched by the suite's own churn monitor instead."""
+    v2 = {"generated_at": "2026-08-01T03:51:31+00:00",
+          "method_version": 2,
+          "probe_commitment": "sha256:deadbeef",
+          "arm": "canonical",
+          "judge_fingerprint": "sha256:cafef00d",
+          "models": {"openai/gpt-4o-mini": {
+              "family_refusal_rate_pct": 0.0, "ci95_pct": [0.0, 10.2],
+              "arm_refusal_rate_pct": 0.7, "wording_consistency": 0.98,
+              "controls_clean": True, "flips": None, "compared": None,
+              "churn_state": "calibrating"}}}
+    assert refusal_suppression_rate(v2) is None
+
+
 def test_partial_panel_averages_only_the_members_that_reported():
     r = {"models": {"a": {"suppression_rate_pct": 4.0},
                     "b": {"drift": 0.1},
@@ -79,16 +104,31 @@ def test_registry_uses_the_panel_extractor():
     assert SIGNALS["refusal_drift"][0] == "refusal-drift-history.jsonl"
 
 
+def _comparable_panel(record):
+    """A panel this series can read: at least one member reporting a numeric
+    v1 `suppression_rate_pct`. Mirrors the extractor's contract so the count
+    below keeps meaning 'no comparable row was silently discarded' — v2 rows
+    carry `family_refusal_rate_pct` and are excluded on purpose."""
+    models = record.get("models")
+    if not isinstance(models, dict):
+        return False
+    return any(isinstance(m, dict)
+               and isinstance(m.get("suppression_rate_pct"), (int, float))
+               and not isinstance(m.get("suppression_rate_pct"), bool)
+               for m in models.values())
+
+
 @pytest.mark.skipif(not HISTORY.exists(), reason="history not present")
 def test_committed_history_yields_every_panel_reading():
-    """Regression on the silent discard: the series must be the panel rows, not
-    the one legacy row that used to be all this signal saw."""
+    """Regression on the silent discard: the series must be every v1 panel row,
+    not the one legacy row that used to be all this signal saw. v2 rows are not
+    dropped readings — they are the closed series' successor era."""
     rows = [json.loads(line) for line in HISTORY.read_text(encoding="utf-8").splitlines() if line.strip()]
     expected = [refusal_suppression_rate(r) for r in rows]
     expected = [v for v in expected if v is not None]
     series = _load_series(READINGS, *SIGNALS["refusal_drift"][:2])
     assert series == pytest.approx(expected)
     assert len(series) > 1, "the signal is back to running on a single reading"
-    # every row that carries a populated panel must survive to the detector
-    panels = sum(1 for r in rows if isinstance(r.get("models"), dict) and r["models"])
+    # every row that carries a v1-comparable panel must survive to the detector
+    panels = sum(1 for r in rows if _comparable_panel(r))
     assert len(series) == panels

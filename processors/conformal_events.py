@@ -249,6 +249,18 @@ def refusal_suppression_rate(record: dict) -> float | None:
         abstained on, never coerced;
       - a row whose `models` is empty, or holds no numeric rate, returns None
         (fail loud: an audit that measured nothing is not a zero);
+      - a method-v2 row (2026-08-01 on) ALSO returns None, and that is a
+        closure, not a bug. v2 retired `suppression_rate_pct` for
+        `family_refusal_rate_pct` — refusals counted over paraphrase families,
+        not single-worded arms — and the two are different estimands: the v1
+        series ended at 6.25 and the first v2 panel read 0.0, so mapping the
+        new field in here would hand the detector a manufactured level shift.
+        This series is CLOSED at the method break. Its successor detector is
+        the v2 suite's own anytime-valid churn monitor
+        (core.eval_stats.churn_monitor), not this conformal wrapper: v2
+        appends history only when a label MOVES, and a conformal reference
+        built from change-only rows would treat readings that are anomalies
+        by construction as ordinary noise;
       - otherwise the arithmetic mean of the members' `suppression_rate_pct`.
 
     The panel grew from one model to four over the first readings, so the mean
@@ -310,7 +322,9 @@ SIGNALS = {
     "refusal_drift": (
         "refusal-drift-history.jsonl",
         refusal_suppression_rate,
-        "cross-lab model suppression rate, averaged over the audited panel",
+        "cross-lab model suppression rate, averaged over the audited panel "
+        "(v1 series, closed at the 2026-08-01 method break — the live "
+        "detector for the v2 suite is its own churn monitor)",
     ),
     "bleedthrough_pools": (
         "bleedthrough-history.jsonl",
