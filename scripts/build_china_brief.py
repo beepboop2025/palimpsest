@@ -62,9 +62,13 @@ HEAD = f"""<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta property="og:title" content="{TITLE}">
 <meta property="og:description" content="{DESCRIPTION}">
 <meta property="og:url" content="{CANONICAL}">
+<meta property="og:image" content="https://palimpsest.info/brand/og-site.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{TITLE}">
-<meta name="twitter:description" content="{DESCRIPTION}">"""
+<meta name="twitter:description" content="{DESCRIPTION}">
+<meta name="twitter:image" content="https://palimpsest.info/brand/og-site.png">"""
 
 PROVENANCE = """<div class="prov ps-p1" role="note">
   <p><strong>What this is.</strong> Live public-source measurement, built from the

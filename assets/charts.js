@@ -1313,101 +1313,137 @@
     });
   }
 
-  /* Compose the card. cfgS: { title, node, kind, legend, axis, note, clock,
-     dataUrl, host }. Returns a Promise<canvas>. */
+  /* The brand icon rides every card; a missing file degrades to no icon,
+     never to a broken card. */
+  let ICON = null;
+  function brandIcon() {
+    if (!ICON) {
+      ICON = new Promise(res => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = () => res(null);
+        img.src = "/brand/palimpsest-icon-512.png";
+      });
+    }
+    return ICON;
+  }
+
+  const CARD_W = 1200, CARD_PAD = 48;
+
+  /* Shared card chrome: opaque ground, hairline border, icon + wordmark row.
+     Returns the y where content starts. */
+  function cardChrome(ctx, H, host, icon, t) {
+    ctx.fillStyle = exportSurface(host);
+    ctx.fillRect(0, 0, CARD_W, H);
+    ctx.strokeStyle = t.grid2;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, CARD_W - 1, H - 1);
+
+    if (icon) ctx.drawImage(icon, CARD_PAD, 36, 36, 36);
+    ctx.font = "600 15px " + t.mono;
+    ctx.fillStyle = t.text1;
+    ctx.fillText("P A L I M P S E S T", CARD_PAD + (icon ? 50 : 0), 59);
+    ctx.font = "13px " + t.mono;
+    ctx.fillStyle = t.text3;
+    const dom = "palimpsest.info";
+    ctx.fillText(dom, CARD_W - CARD_PAD - ctx.measureText(dom).width, 59);
+    ctx.strokeStyle = t.grid;
+    ctx.beginPath();
+    ctx.moveTo(CARD_PAD, 84.5);
+    ctx.lineTo(CARD_W - CARD_PAD, 84.5);
+    ctx.stroke();
+    return 84;
+  }
+
+  function cardFooter(ctx, y, t, leftTop, rightTop, leftBot, rightBot) {
+    ctx.strokeStyle = t.grid;
+    ctx.beginPath();
+    ctx.moveTo(CARD_PAD, y + 0.5);
+    ctx.lineTo(CARD_W - CARD_PAD, y + 0.5);
+    ctx.stroke();
+    ctx.font = "13px " + t.mono;
+    const f1 = y + 28, f2 = f1 + 20;
+    ctx.fillStyle = t.text2;
+    ctx.fillText(leftTop, CARD_PAD, f1);
+    ctx.fillStyle = t.text4;
+    if (rightTop) ctx.fillText(rightTop, CARD_W - CARD_PAD - ctx.measureText(rightTop).width, f1);
+    if (leftBot) ctx.fillText(leftBot, CARD_PAD, f2);
+    if (rightBot) ctx.fillText(rightBot, CARD_W - CARD_PAD - ctx.measureText(rightBot).width, f2);
+    return (leftBot || rightBot ? f2 : f1) + 22;
+  }
+
+  /* Compose the chart card: 1200px wide, social-post grade. cfgS: { title,
+     node, kind, legend, axis, note, clock, dataUrl, host }. Promise<canvas>. */
   function composeCard(cfgS) {
     const t = tokens();
-    const EX = 2; /* supersample — crisp after every platform recompress */
-    const drawInto = (chartW, chartH, paint) => {
-      const pad = 20;
-      const W = Math.max(560, chartW + pad * 2);
-      const innerW = W - pad * 2;
+    const EX = 2; /* supersample: crisp after every platform recompress */
+    const innerW = CARD_W - CARD_PAD * 2;
+
+    const drawInto = (icon, chartW, chartH, paint) => {
       const drawH = Math.round(chartH * (innerW / chartW));
-      const titleY = 28;
-      const legendY = cfgS.legend && cfgS.legend.length ? titleY + 18 : titleY;
-      const chartY = legendY + 12;
-      const axisY = cfgS.axis ? chartY + drawH + 14 : chartY + drawH;
-      const noteY = cfgS.note ? axisY + 16 : axisY;
-      const ruleY = noteY + 12;
-      const f1Y = ruleY + 16;
-      const f2Y = f1Y + 14;
-      const H = f2Y + 12;
+      const titleY = 130;
+      const legendY = cfgS.legend && cfgS.legend.length ? titleY + 30 : titleY + 12;
+      const chartY = legendY + 14;
+      const axisY = cfgS.axis ? chartY + drawH + 20 : chartY + drawH;
+      const noteY = cfgS.note ? axisY + 22 : axisY;
+      const ruleY = noteY + 24;
+      const H = ruleY + 70;
 
       const cv = document.createElement("canvas");
-      cv.width = W * EX;
+      cv.width = CARD_W * EX;
       cv.height = H * EX;
       const ctx = cv.getContext("2d");
       ctx.scale(EX, EX);
 
-      ctx.fillStyle = exportSurface(cfgS.host);
-      ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = t.grid;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+      cardChrome(ctx, H, cfgS.host, icon, t);
 
-      ctx.fillStyle = t.text1;
-      ctx.font = "600 13px " + t.mono;
-      ctx.fillText(cfgS.title, pad, titleY);
-      ctx.font = "9px " + t.mono;
-      ctx.fillStyle = t.text3;
-      const mark = "PALIMPSEST · palimpsest.info";
-      ctx.fillText(mark, W - pad - ctx.measureText(mark).width, titleY);
+      ctx.fillStyle = t.text0;
+      ctx.font = "650 24px " + t.mono;
+      ctx.fillText(cfgS.title, CARD_PAD, titleY);
 
       if (cfgS.legend && cfgS.legend.length) {
-        ctx.font = "9.5px " + t.mono;
-        let lx = pad;
+        ctx.font = "13px " + t.mono;
+        let lx = CARD_PAD;
         for (const s of cfgS.legend) {
           ctx.fillStyle = s.color;
-          ctx.fillRect(lx, legendY - 6, 9, 3);
-          lx += 14;
+          ctx.fillRect(lx, legendY - 7, 14, 4);
+          lx += 20;
           ctx.fillStyle = t.text2;
           ctx.fillText(s.label, lx, legendY);
-          lx += ctx.measureText(s.label).width + 16;
+          lx += ctx.measureText(s.label).width + 22;
         }
       }
 
-      paint(ctx, pad, chartY, innerW, drawH);
+      paint(ctx, CARD_PAD, chartY, innerW, drawH);
 
-      ctx.font = "9px " + t.mono;
+      ctx.font = "12px " + t.mono;
       if (cfgS.axis) {
         ctx.fillStyle = t.text4;
-        ctx.fillText(cfgS.axis.left, pad, axisY);
+        ctx.fillText(cfgS.axis.left, CARD_PAD, axisY);
         ctx.fillText(cfgS.axis.right,
-          W - pad - ctx.measureText(cfgS.axis.right).width, axisY);
+          CARD_W - CARD_PAD - ctx.measureText(cfgS.axis.right).width, axisY);
       }
       if (cfgS.note) {
         ctx.fillStyle = t.text4;
-        ctx.fillText(cfgS.note, pad, noteY);
+        ctx.fillText(cfgS.note, CARD_PAD, noteY);
       }
 
-      ctx.strokeStyle = t.grid;
-      ctx.beginPath();
-      ctx.moveTo(pad, ruleY + 0.5);
-      ctx.lineTo(W - pad, ruleY + 0.5);
-      ctx.stroke();
-
-      ctx.fillStyle = t.text2;
-      ctx.fillText(pageLink(cfgS.host).replace(/^https?:\/\//, ""), pad, f1Y);
-      const ex = "exported " + fmtDT(Date.now());
-      ctx.fillStyle = t.text4;
-      ctx.fillText(ex, W - pad - ctx.measureText(ex).width, f1Y);
-      if (cfgS.dataUrl) {
-        ctx.fillText("data: " + absUrl(cfgS.dataUrl).replace(/^https?:\/\//, ""), pad, f2Y);
-      }
-      if (cfgS.clock) {
-        ctx.fillText(cfgS.clock, W - pad - ctx.measureText(cfgS.clock).width, f2Y);
-      }
+      cardFooter(ctx, ruleY, t,
+        pageLink(cfgS.host).replace(/^https?:\/\//, ""),
+        "exported " + fmtDT(Date.now()),
+        cfgS.dataUrl ? "data: " + absUrl(cfgS.dataUrl).replace(/^https?:\/\//, "") : null,
+        cfgS.clock || null);
       return cv;
     };
 
     if (cfgS.kind === "svg") {
-      return svgImage(cfgS.node).then(({ img, w, h }) =>
-        drawInto(w, h, (ctx, x, y, dw, dh) => ctx.drawImage(img, x, y, dw, dh)));
+      return Promise.all([brandIcon(), svgImage(cfgS.node)]).then(([icon, s]) =>
+        drawInto(icon, s.w, s.h, (ctx, x, y, dw, dh) => ctx.drawImage(s.img, x, y, dw, dh)));
     }
     const cv = cfgS.node;
     const dpr = Math.min(3, window.devicePixelRatio || 1);
-    return Promise.resolve(drawInto(
-      Math.round(cv.width / dpr), Math.round(cv.height / dpr),
+    return brandIcon().then(icon => drawInto(
+      icon, Math.round(cv.width / dpr), Math.round(cv.height / dpr),
       (ctx, x, y, dw, dh) => ctx.drawImage(cv, x, y, dw, dh)));
   }
 
