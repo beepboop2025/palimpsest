@@ -25,6 +25,9 @@ What this file now pins: every publishing driver declares a METHOD_VERSION and
 emits it into the reading, no driver reintroduces the conditional write, and the
 detector that decides which shape a driver has still works. If a conditional writer
 ever comes back, the method_version comparison requirement applies to it again.
+Discovery is the *_pull.py glob plus an explicit allowlist (NAMED_DRIVERS) for the
+drivers the glob cannot see, and a named driver that goes missing fails the guard
+rather than falling silently back out of it.
 
 Standard-library only; this reads source text and never imports the drivers.
 """
@@ -36,8 +39,13 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
 
-# A driver is anything that publishes a readings/*-latest.json.
-_PUBLISHES = re.compile(r'OUT\s*=\s*os\.path\.join\(\s*READINGS\s*,\s*["\'][^"\']*latest\.json')
+# A driver is anything that publishes a readings/*-latest.json. Detection keys on
+# the module-level name the reading is written through. Every *_pull.py driver calls
+# it OUT; a named driver below may use another name, so both patterns are built per
+# name rather than hardcoding one.
+def _publishes(var: str) -> re.Pattern:
+    return re.compile(var + r'\s*=\s*os\.path\.join\(\s*READINGS\s*,\s*["\'][^"\']*latest\.json')
+
 
 # Whether the reading is written CONDITIONALLY, detected structurally rather than by
 # guessing at text. `open(OUT, "w")` sitting at the function-body indent (4 spaces)
@@ -51,11 +59,28 @@ _PUBLISHES = re.compile(r'OUT\s*=\s*os\.path\.join\(\s*READINGS\s*,\s*["\'][^"\'
 # Text proxies could not tell the two apart; indentation can.
 # [ \t]* not \s*: \s matches newlines, so a blank line above the call would let the
 # match start one line early and report every indent as one deeper than it is.
-_WRITES_READING = re.compile(r'^([ \t]*)with open\(OUT, ["\']w["\']', re.M)
+def _writes_reading(var: str) -> re.Pattern:
+    return re.compile(r'^([ \t]*)with open\(' + var + r', ["\']w["\']', re.M)
 
 
-def _writes_conditionally(text: str) -> bool:
-    m = _WRITES_READING.search(text)
+_PUBLISHES = _publishes("OUT")
+_WRITES_READING = _writes_reading("OUT")
+
+# Drivers the *_pull.py glob cannot see, named one by one. The flagship fell through
+# that hole: the Generative Firewall Index driver is
+# scripts/generative_firewall_reading.py, so for as long as discovery was glob-only,
+# not one assertion in this file applied to the reading the site leads with. The glob is NOT
+# widened to catch it, deliberately: a looser pattern would sweep in scripts that are
+# not drivers, and an explicit list can be audited in review. Each entry maps the
+# file name to the module-level name it writes its reading through (the GFI publish
+# test patches generative_firewall_reading.LATEST, so that name is load-bearing and
+# stays). A named driver that goes missing, or that stops looking like a publisher,
+# FAILS in _drivers() below rather than being skipped.
+NAMED_DRIVERS = {"generative_firewall_reading.py": "LATEST"}
+
+
+def _writes_conditionally(text: str, var: str = "OUT") -> bool:
+    m = (_WRITES_READING if var == "OUT" else _writes_reading(var)).search(text)
     return bool(m) and len(m.group(1)) > 4
 
 
@@ -63,7 +88,23 @@ def _drivers():
     for p in sorted(SCRIPTS.glob("*_pull.py")):
         text = p.read_text(encoding="utf-8")
         if _PUBLISHES.search(text):
-            yield p, text
+            yield p, text, "OUT"
+    for name, var in sorted(NAMED_DRIVERS.items()):
+        assert not name.endswith("_pull.py"), (
+            f"{name} matches the *_pull.py glob already; naming it here would count "
+            "it twice")
+        p = SCRIPTS / name
+        assert p.exists(), (
+            f"named driver scripts/{name} is missing. It is on the explicit allowlist "
+            "because the *_pull.py glob cannot see it, and a guard that skips a "
+            "vanished driver is guarding nothing: fix the path or retire the entry "
+            "deliberately.")
+        text = p.read_text(encoding="utf-8")
+        assert _publishes(var).search(text), (
+            f"named driver scripts/{name} no longer publishes through {var} in a shape "
+            "this guard can see. Update the allowlist entry to the new name, do not "
+            "let the flagship fall back out of the guard.")
+        yield p, text, var
 
 
 def test_there_are_drivers_to_check():
@@ -72,8 +113,17 @@ def test_there_are_drivers_to_check():
     assert len(list(_drivers())) >= 8
 
 
+def test_the_flagship_driver_is_guarded_by_name():
+    """Pinned by literal file name, not via NAMED_DRIVERS, so this fails if either
+    the allowlist entry or the named-driver loop is removed. The GFI driver publishes
+    the index the site leads with, and it spent months outside this guard because the
+    glob could not see it; it does not get to leave again quietly."""
+    names = {p.name for p, _, _ in _drivers()}
+    assert "generative_firewall_reading.py" in names
+
+
 def test_every_publishing_driver_declares_a_method_version():
-    missing = [p.name for p, t in _drivers() if "METHOD_VERSION" not in t]
+    missing = [p.name for p, t, _ in _drivers() if "METHOD_VERSION" not in t]
     assert not missing, (
         "driver(s) publish a reading without declaring METHOD_VERSION: "
         f"{missing}. A methodology change must be expressible to a reader."
@@ -85,8 +135,8 @@ def test_every_conditional_writer_consults_the_method_version():
     something changed must include METHOD_VERSION in that comparison, or a
     method-only fix never ships."""
     offenders = []
-    for p, t in _drivers():
-        if not _writes_conditionally(t):
+    for p, t, var in _drivers():
+        if not _writes_conditionally(t, var):
             continue
         # the guard must read the PREVIOUS reading's method_version, whatever the
         # local name for it is
@@ -106,7 +156,7 @@ def test_every_publishing_driver_emits_the_method_version_into_the_reading():
     # reading built by an imported function.
     _EMITS = re.compile(r'"method_version":\s*METHOD_VERSION'
                         r'|\[["\']method_version["\']\]\s*=\s*METHOD_VERSION')
-    missing = [p.name for p, t in _drivers() if not _EMITS.search(t)]
+    missing = [p.name for p, t, _ in _drivers() if not _EMITS.search(t)]
     assert not missing, (
         f"driver(s) never write method_version into the reading: {missing}"
     )
@@ -162,7 +212,7 @@ def test_no_driver_writes_its_reading_conditionally():
     a heartbeat is not an event. If a new driver reintroduces the old shape this
     fails, and the method_version assertion above starts applying to it again.
     """
-    offenders = [p.name for p, t in _drivers() if _writes_conditionally(t)]
+    offenders = [p.name for p, t, var in _drivers() if _writes_conditionally(t, var)]
     assert not offenders, (
         "driver(s) rewrite their reading only when the values move, so a round "
         "that observed no change cannot be distinguished from a round that never "

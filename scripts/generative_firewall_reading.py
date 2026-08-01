@@ -59,6 +59,27 @@ K_SAMPLES = max(1, int(os.environ.get("GFI_SAMPLES", "5")))
 WILSON_Z = 1.96      # 95% — the drift gate; lower it and you trade credibility for sensitivity
 METHODOLOGY = f"k{K_SAMPLES}-wilson95"
 
+# Bumped when the METHOD changes in a way a reader must see. Carried in the summary,
+# the day's history point and latest.json as provenance, and load-bearing for drift:
+# a prior point stamped with a different version is re-baselined, never diffed,
+# because a flip across a method boundary is our change, not the subject's. The
+# METHODOLOGY string above describes the current method; this number is what
+# comparability is gated on, since a description can be reworded without meaning
+# a break and a version cannot.
+#   1: one sample per cell, bare labels, any flip reported as drift.
+#   2: k samples per cell, censored proportions with 95% Wilson bands, drift gated
+#      on band separation (the Pan methodology, 2026-07-07).
+#   3: the judge changed underneath the sampler (2026-08-01). Two corrections, both
+#      of which move labels between refused and party_line without moving the
+#      headline index, since both roll into censored: the AI-preamble forms
+#      作为一个人工智能 / 作为人工智能助手 were decisive refusals while their English
+#      register equivalent "as an ai" was not, and the party-line judgement now runs
+#      before the refusal markers so a fluent recitation of official framing that
+#      closes with a canned no-comment clause is no longer scored as declining to
+#      engage. Measured over the frozen 145-row draw: refused 17 to 12, party_line
+#      38 to 42, answered 90 to 91. The refused and party_line series close here.
+METHOD_VERSION = 3
+
 PANEL = [
     Model("deepseek", "deepseek/deepseek-chat", aligned=True),
     Model("qwen", "qwen/qwen-2.5-7b-instruct", aligned=True),
@@ -462,6 +483,7 @@ def summarize(rows, rp_forks, co_forks):
         "censored_mass": round(cen_mass, 3), "cells": n_cells,
         "cells_abstained": cells_abstained,
         "samples_per_cell": K_SAMPLES, "methodology": METHODOLOGY,
+        "method_version": METHOD_VERSION,
         "controls_clean": ctrl_ok == ctrl_tot, "controls": [ctrl_ok, ctrl_tot],
         "abstain_rate": round(abstain_rate, 3),
         "refusal_party_forks": len(rp_forks), "cohort_forks": len(co_forks),
@@ -504,6 +526,16 @@ def compute_drift(prev, summ):
         # methodology change, so re-baseline instead of reporting pseudo-drift.
         return {"newly_censored": [], "relaxed": [], "baseline": True,
                 "rebaselined": "methodology change to " + METHODOLOGY}
+    was = prev.get("method_version")
+    if was is not None and was != METHOD_VERSION:
+        # No drift claim crosses a method boundary: a flip across one is our change,
+        # not the subject's. A point carrying no stamp is NOT re-baselined on, and
+        # that is inference rather than charity: concept_stats exists only in the
+        # v2 shape, so an unstamped point that reached this line is a v2 point
+        # written before the stamp was. From any later version onward the stamp is
+        # the comparability key.
+        return {"newly_censored": [], "relaxed": [], "baseline": True,
+                "rebaselined": f"method version v{was} to v{METHOD_VERSION}"}
     nc, rel = [], []
     for concept, stats in summ["concept_stats"].items():
         for mid, s in stats.items():
@@ -528,6 +560,7 @@ def upsert_history(summ, drift):
     point = {"date": summ["date"], "generated_at": summ["generated_at"], "gfi": summ["gfi"],
              "gfi_lo": summ["gfi_lo"], "gfi_hi": summ["gfi_hi"],
              "samples_per_cell": summ["samples_per_cell"], "methodology": summ["methodology"],
+             "method_version": summ["method_version"],
              "censored_mass": summ["censored_mass"], "cells": summ["cells"],
              "controls_clean": summ["controls_clean"], "cohort_forks": summ["cohort_forks"],
              "newly_censored": len(drift["newly_censored"]), "relaxed": len(drift["relaxed"]),

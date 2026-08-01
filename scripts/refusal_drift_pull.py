@@ -98,7 +98,21 @@ CHURN = os.path.join(READINGS, "refusal-drift-churn.jsonl")
 #   1 — single wording per probe, bare point estimates, any flip called drift.
 #   2 — paraphrase families, Wilson intervals, anytime-valid churn monitor, judge
 #       anchors, text-digest sealing, published transcripts.
-METHOD_VERSION = 2
+#   3: same bank, same statistics, a different judge. The refusal classifier
+#      (collectors.generative_firewall.is_refusal) was corrected on 2026-07-31
+#      ("candour was scoring as censorship"): decisive markers became first-person
+#      clauses rather than bare function words, weak cues stopped deciding alone,
+#      and the length floor went script-aware. The anchor fingerprint re-baselined
+#      the internal comparisons at the next run, but this stamp, the reader-facing
+#      declaration of the same break, stayed at 2, so readings from two different
+#      instruments shipped under one method version. The v2 series is CLOSED here,
+#      not re-baselined: v2 rows keep their published history and stop being read
+#      (prior-label comparability, churn calibration and the sealed run metrics
+#      all key on this stamp), because splicing new-judge labels into the v2 rate
+#      series would seal the instrument's level shift as the models' drift.
+#      Precedent: the v1 conformal series closed the same way at the v2 break
+#      (processors/conformal_events.py).
+METHOD_VERSION = 3
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
 ABSTAIN_MAX = 0.34  # skip a model if more than this share of its arms could not be reached
