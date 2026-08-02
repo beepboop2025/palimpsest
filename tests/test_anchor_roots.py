@@ -8,10 +8,12 @@ from __future__ import annotations
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core import sealed_ledger as led  # noqa: E402
 from scripts import anchor_roots  # noqa: E402
 
 
@@ -71,6 +73,59 @@ def test_idempotent_when_roots_unchanged(monkeypatch):
     again = anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
     assert again is None
     assert len(open(log).read().strip().splitlines()) == 1
+
+
+def test_a_readings_only_move_still_anchors(monkeypatch, tmp_path):
+    """The quiet-round trap.
+
+    Twenty-seven of the thirty-one sealed readings belong to signals the
+    erasure inputs and the eval registry know nothing about. A refresh where
+    only those moved leaves the other two roots identical, and if the skip test
+    ignores readings_root, that refresh anchors nothing: no Wayback save, no
+    Bitcoin stamp, and anchors-latest.json keeps publishing a readings_root
+    that no longer fingerprints the ledger, for as long as the quiet spell
+    lasts.
+    """
+    monkeypatch.setattr(anchor_roots.shutil, "which", lambda _: None)
+    log, latest = _tmp_paths()
+    assert anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
+
+    moved = tmp_path / "readings-ledger.jsonl"
+    shutil.copyfile(anchor_roots.READINGS_LEDGER, moved)
+    led.append_seal(str(moved), "some-signal", {"generated_at": "2026-08-02", "v": 1})
+    monkeypatch.setattr(anchor_roots, "READINGS_LEDGER", str(moved))
+
+    again = anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
+    assert again is not None, "a readings-only move must still be anchored"
+    assert again["roots"]["readings_root"] == json.load(open(latest))["readings_root"]
+
+
+def test_a_broken_readings_chain_withholds_its_root_and_anchors_the_rest(
+        monkeypatch, tmp_path, capsys):
+    """The readings sweep must not be able to take the other two chains down.
+
+    It covers 31 files written by 30 other workflows, so a break there is far
+    more often somebody's truncated JSON than our tampering. The anchor step
+    runs before the commit step, so failing closed on it would keep the
+    established registry and erasure chains out of Bitcoin AND out of the repo.
+    """
+    monkeypatch.setattr(anchor_roots.shutil, "which", lambda _: None)
+    broken = tmp_path / "readings-ledger.jsonl"
+    lines = open(anchor_roots.READINGS_LEDGER, encoding="utf-8").read().splitlines()
+    tampered = json.loads(lines[0])
+    tampered["payload_sha256"] = "0" * 64
+    broken.write_text("\n".join([json.dumps(tampered)] + lines[1:]) + "\n")
+    monkeypatch.setattr(anchor_roots, "READINGS_LEDGER", str(broken))
+
+    log, latest = _tmp_paths()
+    rec = anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
+    assert rec is not None
+    assert len(rec["roots"]["registry_root"]) == 64
+    assert len(rec["roots"]["erasure_root"]) == 64
+    assert rec["roots"]["readings_root"] is None, "a broken root is never anchored"
+    assert "BROKEN readings chain" in capsys.readouterr().out
+    summary = json.load(open(latest))
+    assert summary["readings_chain"] == "broken" and summary["readings_problems"]
 
 
 def test_wayback_failure_is_recorded_not_faked(monkeypatch):
