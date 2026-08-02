@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-02T09:01:58.211838+00:00",
+  "generated_at": "2026-08-02T14:17:39.232562+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 97,
-      "metric_now": 59.9,
-      "denominator_now": 263443.0,
-      "metric_robust_z": 0.4,
-      "denominator_robust_z": -0.21,
-      "denominator_change_pct": -2.3,
+      "n_pairs": 98,
+      "metric_now": 59.0,
+      "denominator_now": 270487.0,
+      "metric_robust_z": -0.34,
+      "denominator_robust_z": 0.05,
+      "denominator_change_pct": 0.5,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 187,
-      "metric_now": 2.0195,
+      "n_pairs": 189,
+      "metric_now": 1.8703,
       "denominator_now": 198.0,
-      "metric_robust_z": -0.11,
+      "metric_robust_z": -0.27,
       "denominator_robust_z": 5.06,
       "denominator_change_pct": 17.9,
       "verdict": "NO_MOVE",
@@ -24,7 +24,7 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 187,
+      "n_pairs": 189,
       "metric_now": 16.0,
       "denominator_now": 198.0,
       "metric_robust_z": null,
@@ -35,10 +35,10 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 106,
-      "metric_now": 5.0,
+      "n_pairs": 107,
+      "metric_now": 3.0,
       "denominator_now": 25.0,
-      "metric_robust_z": 0.0,
+      "metric_robust_z": -0.67,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -47,7 +47,7 @@
     },
     "data_darkness": {
       "verdict": "INSUFFICIENT_HISTORY",
-      "n_pairs": 1,
+      "n_pairs": 2,
       "note": "need 10 paired readings to condition on coverage",
       "denominator_is": "official surfaces reachable from this vantage this round — the index is a mean over whichever surfaces answered, so a vantage losing one surface shifts composition and the guard must own that"
     },
@@ -58,7 +58,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 56,
+      "n_pairs": 57,
       "metric_now": 0.0,
       "denominator_now": 0.0,
       "metric_robust_z": null,
@@ -69,14 +69,14 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 53,
-      "metric_now": 4.0,
+      "n_pairs": 54,
+      "metric_now": 0.0,
       "denominator_now": 7.0,
-      "metric_robust_z": 2.02,
+      "metric_robust_z": -0.67,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
-      "verdict": "INCONCLUSIVE",
-      "note": "denominator is constant across the reference; cannot condition",
+      "verdict": "NO_MOVE",
+      "note": "the metric has not departed from its own history",
       "denominator_is": "repositories under watch"
     }
   },
