@@ -317,6 +317,18 @@ def test_every_signal_has_a_published_reading_on_disk():
         assert os.path.exists(os.path.join(root, path.lstrip("/"))), name
 
 
+def test_the_served_version_and_the_published_manifest_agree():
+    """server.json is what the registry publishes and SERVER_VERSION is what a
+    client is told on initialize. If they disagree, a registry dispatch can put
+    one version number on a server that answers with different semantics, and
+    nobody downstream can tell which contract they are holding.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(root, "server.json"), encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    assert manifest["version"] == mcp.SERVER_VERSION
+
+
 # --------------------------------------------------------- request-size cap --
 def test_request_body_cap_is_bounded():
     assert 0 < mcp.MAX_BODY_BYTES <= 1024 * 1024

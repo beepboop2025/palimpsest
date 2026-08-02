@@ -30,7 +30,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.2.0"
+SERVER_VERSION = "1.3.0"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600

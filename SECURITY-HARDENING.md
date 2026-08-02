@@ -75,9 +75,27 @@ honestly, it is a small surface but not a zero one:
   It binds `127.0.0.1` and is reached only through a reverse proxy with a path allow-list, so
   the internet never speaks to the Python process directly.
 - **What is left.** Resource exhaustion (an unauthenticated caller can make us fetch and
-  parse), which is the reverse proxy's job to rate-limit; and the general prompt-injection
-  risk that any MCP tool carries, bounded here by the fact that the content we hand an agent
-  is our own published measurement JSON rather than arbitrary fetched web text.
+  parse), which is the reverse proxy's job to rate-limit; and prompt injection, which is a
+  real exposure here and not a bounded one. It used to be written down as bounded, on the
+  grounds that we hand an agent our own published measurement JSON rather than arbitrary
+  fetched web text. That reasoning does not survive contact with what the JSON contains. A
+  Generative Firewall Index `excerpt` is verbatim output of a model under study; a GDELT or
+  Weibo `headline` is scraped text. Publishing it ourselves changes who serves it, not who
+  wrote it, and the readers are increasingly agents, so a model under study can reach the
+  caller's agent through us.
+
+  What actually bounds it: fields carrying text we did not author are neutralized before
+  they leave the server and named to the caller in `untrusted_fields`, with a note saying
+  they are data to analyze rather than instructions to follow. Neutralizing means removing
+  the invisible and bidi channels used to hide instructions from a human reviewer, including
+  the Unicode Tags block, which encodes plain ASCII that renders as nothing. It does **not**
+  mean editing what was said: visible characters survive intact, and the zero-width joiners
+  are deliberately kept because they are meaning-bearing in Persian, in Indic scripts and in
+  emoji sequences. An excerpt is the research artifact, so the honest position is that the
+  text is passed through, flagged, and stripped only of the channels a reader cannot see.
+  Any subtree too deeply nested to walk is declared in `neutralization_gap` rather than
+  passed off as clean. A visible-text instruction in a model's own output is therefore still
+  delivered verbatim, by design, and defending against it is the calling agent's job.
 
 The read-only, already-public nature of the payload is what keeps this surface honest: an
 attacker who fully compromised the MCP process would learn nothing that is not on the website,
