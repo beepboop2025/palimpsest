@@ -273,26 +273,58 @@ _INVISIBLE_RANGES = (
     (0xFEFF, 0xFEFF),      # zero width no-break space / BOM
     (0xFFF9, 0xFFFB),      # interlinear annotation, renders as nothing
     (0xE0000, 0xE007F),    # unicode tags block: ASCII that renders as nothing
+    (0xE0100, 0xE01EF),    # variation selectors supplement: category Mn, so
+                           # the Cf sweep below never sees them, and 240
+                           # invisible codepoints next door to the tags block
+                           # is the canonical byte-smuggling range
+)
+
+
+# The format characters that are NOT hiding channels, kept by name because the
+# category cannot tell them apart from the ones that are. Two kinds:
+#
+#   the joiners, invisible but not inert. Persian mi-rood, Indic conjuncts and
+#   emoji families all change meaning or shape when these are dropped, and this
+#   project treats the excerpt as the artifact.
+#
+#   the Arabic prepended concatenation marks, which are Cf but actually RENDER
+#   (the number sign and the end of ayah are visible glyphs). Dropping them
+#   alters visible text, which is the one thing this function must never do.
+#
+# Everything else in Cf goes. Keeping this list short is the point: each entry
+# is a channel deliberately left open, so it has to earn its place.
+_KEEP_FORMAT = frozenset(
+    "‌‍"                                  # ZWNJ, ZWJ
+    "؀؁؂؃؄؅"          # arabic number/year/etc signs
+    "۝܏࢐࢑࣢"                # end of ayah, and kin
+    "\U000110bd\U000110cd"                          # kaithi number signs
 )
 
 
 def strip_invisible(text: str) -> str:
     """Drop invisible/bidi/tag characters and C0/C1 controls (keep tab, newline).
 
-    Zero-width joiners survive: they are invisible but not inert, and removing
-    them changes what the text says rather than only how it hides.
+    Format characters are removed by CATEGORY, not by an enumerated list. An
+    enumerated list is a promise to keep up with Unicode, and it lost that race
+    immediately: the first draft here omitted U+1D173 to U+1D17A (the musical
+    beam and phrase controls, which are Cf and render as nothing) along with 30
+    other format codepoints, every one of them a usable channel for hiding an
+    instruction from the human reading the excerpt.
+
+    Zero-width joiners survive, by name, for the opposite reason: removing them
+    changes what the text says rather than only how it hides.
     """
     if not text:
         return ""
     out = []
     for ch in text:
-        if ch in _KEEP:
+        if ch in _KEEP or ch in _KEEP_FORMAT:
             out.append(ch)
             continue
         cp = ord(ch)
         if any(lo <= cp <= hi for lo, hi in _INVISIBLE_RANGES):
             continue
-        if unicodedata.category(ch) == "Cc":
+        if unicodedata.category(ch) in ("Cc", "Cf"):
             continue
         out.append(ch)
     return "".join(out)
@@ -364,12 +396,20 @@ def _cap_in_place(node, max_rows: int, path: str, depth: int, tally: dict) -> No
     if isinstance(node, dict):
         for k, v in node.items():
             label = f"{path}.{k}" if path else k
-            if k in _ROW_KEYS and isinstance(v, list) and len(v) > max_rows:
+            if k in _ROW_KEYS and isinstance(v, list):
+                # Every sibling array at this path counts toward the total,
+                # not only the ones long enough to be cut. Counting just the
+                # capped ones understates what was there: ranked[].samples of
+                # 40, 3 and 3 would report 40 rows in total when there are 46,
+                # so the reader is told a true number about a false set.
                 agg = tally.setdefault(label, [0, 0, 0])
-                agg[0] += max_rows
                 agg[1] += len(v)
-                agg[2] += 1
-                node[k] = v[:max_rows]
+                if len(v) > max_rows:
+                    agg[0] += max_rows
+                    agg[2] += 1
+                    node[k] = v[:max_rows]
+                else:
+                    agg[0] += len(v)
                 v = node[k]
             _cap_in_place(v, max_rows, label, depth + 1, tally)
     elif isinstance(node, list):
@@ -395,6 +435,11 @@ def _cap_rows(data, max_rows: int) -> tuple[dict, dict]:
     _cap_in_place(data, max_rows, "", 0, tally)
     report = {}
     for label, (returned, total, arrays) in tally.items():
+        if not arrays:
+            # Nothing at this path was cut, so it is not a gap to report. The
+            # tally still counted it, because a sibling that WAS cut needs the
+            # honest denominator.
+            continue
         report[label] = {"returned": returned, "total": total}
         if arrays > 1:
             report[label]["arrays"] = arrays

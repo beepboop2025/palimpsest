@@ -101,8 +101,18 @@ def current_roots() -> dict:
     try:
         rdg_entries = led.read_ledger(READINGS_LEDGER)
         rdg_ok, rdg_problems = led.verify(rdg_entries)
+        if not rdg_entries:
+            # read_ledger returns [] for a missing file and verify([]) is
+            # vacuously true, so an emptied or deleted ledger would otherwise
+            # anchor the GENESIS root and read as a healthy chain. A chain that
+            # sealed 31 readings yesterday and is empty today is the loudest
+            # thing this script can be told; it is not a fresh start.
+            rdg_ok = False
+            rdg_problems = ["readings ledger is empty or missing: expected "
+                            "seals for every published reading"]
     except (OSError, ValueError) as exc:  # a half-written line is unparseable
-        rdg_entries, rdg_ok, rdg_problems = [], False, [f"unreadable: {exc}"]
+        rdg_entries, rdg_ok, rdg_problems = [], False, ["ledger unreadable"]
+        print(f"readings ledger unreadable: {exc}")
     if rdg_ok:
         roots["readings_root"] = led.merkle_root(rdg_entries)
         roots["readings_head"] = (rdg_entries[-1]["entry_hash"] if rdg_entries
