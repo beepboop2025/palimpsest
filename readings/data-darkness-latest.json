@@ -1,10 +1,10 @@
 {
- "asof": "2026-08-01",
- "darkness_index": 0.2688,
- "generated_at": "2026-08-01T11:23:48Z",
+ "asof": "2026-08-02",
+ "darkness_index": 0.3364,
+ "generated_at": "2026-08-02T11:22:43Z",
  "method_note": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
  "method_version": 1,
- "n_series_reporting": 6,
+ "n_series_reporting": 7,
  "n_series_watched": 7,
  "note": "high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md",
  "series": {
@@ -18,13 +18,13 @@
    },
    "latest_publication": "2026-07-31",
    "nominal_interval_days": 1,
-   "our_last_look": "2026-08-01T08:55:40Z",
+   "our_last_look": "2026-08-02T08:58:09Z",
    "staleness_ratio": 0.0
   },
   "nbs_energy": {
    "basis": "calendar",
    "days_past_promise": 0,
-   "days_since": 17,
+   "days_since": 18,
    "latest_period": "2026-06",
    "latest_publication": "2026-07-15",
    "n_listed": 1,
@@ -44,12 +44,12 @@
     "12": 15
    },
    "promised_day": 17,
-   "staleness_ratio": 0.5484
+   "staleness_ratio": 0.5806
   },
   "nbs_industrial": {
    "basis": "calendar",
    "days_past_promise": 0,
-   "days_since": 17,
+   "days_since": 18,
    "latest_period": "2026-06",
    "latest_publication": "2026-07-15",
    "n_listed": 1,
@@ -69,16 +69,24 @@
     "12": 15
    },
    "promised_day": 17,
-   "staleness_ratio": 0.5484
+   "staleness_ratio": 0.5806
+  },
+  "nra_rail": {
+   "basis": "calendar",
+   "days_since": 19,
+   "latest_period": "2026-06",
+   "latest_publication": "2026-07-14",
+   "nominal_interval_days": 31,
+   "staleness_ratio": 0.6129
   },
   "pboc_mb_stats": {
    "basis": "calendar",
-   "days_since": 1,
+   "days_since": 2,
    "latest_period": "2026-06",
    "latest_publication": "2026-07-31",
    "months_listed": 6,
    "nominal_interval_days": 31,
-   "staleness_ratio": 0.0323
+   "staleness_ratio": 0.0645
   },
   "pboc_omo": {
    "announcement_year": 2026,
@@ -96,15 +104,13 @@
   },
   "safe_settlement": {
    "basis": "calendar",
-   "days_since": 15,
+   "days_since": 16,
    "latest_publication": "2026-07-17",
    "n_files": 8,
    "nominal_interval_days": 31,
-   "staleness_ratio": 0.4839
+   "staleness_ratio": 0.5161
   }
  },
  "source": "official Chinese publication surfaces, read keyless: pbc.gov.cn (OMO announcements; Money & Banking Statistics directory), safe.gov.cn (bank FX settlement page), stats.gov.cn (最新发布 firehose for the energy and industrial monthlies, plus the release calendar), nra.gov.cn (rail freight monthly), and this repo's own committed CFETS benchmark history",
- "unreachable": [
-  "nra_rail"
- ]
+ "unreachable": []
 }
