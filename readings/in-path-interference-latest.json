@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-01T19:40:34.093821+00:00",
+  "generated_at": "2026-08-02T04:02:18.177227+00:00",
   "method_version": 1,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "window_days": 90,
@@ -9,20 +9,20 @@
     "state": "OK",
     "why": "5 of 7 tests have enough completed measurements to support a rate"
   },
-  "middlebox_index": 1.46,
-  "middlebox_reading": "1.5% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
-  "transport_index": 32.52,
-  "transport_reading": "32.5% anomalous — transports partly degraded",
+  "middlebox_index": 1.44,
+  "middlebox_reading": "1.4% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
+  "transport_index": 32.59,
+  "transport_reading": "32.6% anomalous — transports partly degraded",
   "execution_blackouts": [
     {
       "test": "dnscheck",
       "label": "DNS-integrity test completion",
-      "measurement_count": 70556
+      "measurement_count": 70186
     },
     {
       "test": "echcheck",
       "label": "Encrypted Client Hello test completion",
-      "measurement_count": 233
+      "measurement_count": 234
     }
   ],
   "execution_reading": "2 measurement method(s) never completed a single run in China this window: dnscheck, echcheck",
@@ -33,11 +33,11 @@
       "label": "HTTP headers rewritten in transit",
       "available": true,
       "why": null,
-      "measurement_count": 5120,
-      "completed_count": 5120,
+      "measurement_count": 5064,
+      "completed_count": 5064,
       "failure_count": 0,
-      "anomaly_count": 80,
-      "anomaly_rate": 0.0156,
+      "anomaly_count": 77,
+      "anomaly_rate": 0.0152,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -47,11 +47,11 @@
       "label": "malformed request lines normalised in transit",
       "available": true,
       "why": null,
-      "measurement_count": 5191,
-      "completed_count": 5191,
+      "measurement_count": 5130,
+      "completed_count": 5130,
       "failure_count": 0,
-      "anomaly_count": 71,
-      "anomaly_rate": 0.0137,
+      "anomaly_count": 70,
+      "anomaly_rate": 0.0136,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -61,11 +61,11 @@
       "label": "STUN servers unreachable (real-time voice / WebRTC)",
       "available": true,
       "why": null,
-      "measurement_count": 39015,
-      "completed_count": 39015,
+      "measurement_count": 38716,
+      "completed_count": 38716,
       "failure_count": 0,
-      "anomaly_count": 12328,
-      "anomaly_rate": 0.316,
+      "anomaly_count": 12263,
+      "anomaly_rate": 0.3167,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -75,12 +75,12 @@
       "label": "stock Tor bootstrap",
       "available": true,
       "why": null,
-      "measurement_count": 3856,
-      "completed_count": 512,
-      "failure_count": 3344,
-      "anomaly_count": 488,
-      "anomaly_rate": 0.9531,
-      "execution_failure_rate": 0.8672,
+      "measurement_count": 3835,
+      "completed_count": 506,
+      "failure_count": 3329,
+      "anomaly_count": 481,
+      "anomaly_rate": 0.9506,
+      "execution_failure_rate": 0.8681,
       "never_completes": false
     },
     {
@@ -89,11 +89,11 @@
       "label": "Tor via Snowflake",
       "available": true,
       "why": null,
-      "measurement_count": 104,
-      "completed_count": 104,
+      "measurement_count": 105,
+      "completed_count": 105,
       "failure_count": 0,
-      "anomaly_count": 73,
-      "anomaly_rate": 0.7019,
+      "anomaly_count": 74,
+      "anomaly_rate": 0.7048,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -103,9 +103,9 @@
       "label": "DNS-integrity test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 70556,
+      "measurement_count": 70186,
       "completed_count": 0,
-      "failure_count": 70556,
+      "failure_count": 70186,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
@@ -117,14 +117,14 @@
       "label": "Encrypted Client Hello test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 233,
+      "measurement_count": 234,
       "completed_count": 0,
-      "failure_count": 233,
+      "failure_count": 234,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
       "never_completes": true
     }
   ],
-  "last_changed_at": "2026-08-01T19:40:34.093821+00:00"
+  "last_changed_at": "2026-08-02T04:02:18.177227+00:00"
 }
