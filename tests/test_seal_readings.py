@@ -64,6 +64,84 @@ def test_discovery_skips_the_chains_themselves():
     assert "generative-firewall" in discovered, "readings/latest.json must be covered"
 
 
+def _isolated(monkeypatch, tmp_path):
+    """Point the sweep at a throwaway readings directory and chain."""
+    readings = tmp_path / "readings"
+    readings.mkdir()
+    monkeypatch.setattr(seal_readings, "READINGS", str(readings))
+    monkeypatch.setattr(seal_readings, "LEDGER", str(tmp_path / "chain.jsonl"))
+    monkeypatch.setattr(seal_readings, "ROOT", str(tmp_path))
+    return readings
+
+
+def _publish(readings, name: str, payload: dict) -> None:
+    (readings / f"{name}-latest.json").write_text(json.dumps(payload),
+                                                  encoding="utf-8")
+
+
+def test_a_sweep_leaves_every_reading_sealed_against_its_own_bytes(monkeypatch, tmp_path):
+    """The property the chain's timestamps claim.
+
+    A seal is a statement that these exact bytes were published at this exact
+    moment, and append-only means a false one can never be withdrawn. So the
+    sweep must never leave a source sealed against content other than what is
+    on disk when it runs.
+    """
+    readings = _isolated(monkeypatch, tmp_path)
+    _publish(readings, "alpha", _reading(1))
+    _publish(readings, "beta", _reading(2))
+    seal_readings.seal_all()
+    cov = seal_readings.coverage()
+    assert cov["drifted"] == []
+    assert cov["unsealed"] == []
+    assert cov["readings_sealed"] == 2
+
+
+def test_a_reading_refreshed_after_its_seal_is_reported_as_drifted(monkeypatch, tmp_path):
+    """Drift is expected between runs and must be visible, never assumed away.
+
+    Every reading has its own refresh workflow, so between sweeps some file is
+    always newer than its seal. That is the honest cost of a snapshot cadence.
+    It is reported rather than fatal, because the failure worth catching is the
+    reverse: a chain generated on a stale checkout, sealing bytes the site had
+    already superseded.
+    """
+    readings = _isolated(monkeypatch, tmp_path)
+    _publish(readings, "alpha", _reading(1))
+    _publish(readings, "beta", _reading(2))
+    seal_readings.seal_all()
+
+    _publish(readings, "beta", _reading(3))          # its own workflow refreshes it
+    assert seal_readings.coverage()["drifted"] == ["beta"]
+
+    seal_readings.seal_all()                         # the next sweep catches up
+    assert seal_readings.coverage()["drifted"] == []
+
+
+def test_an_unreadable_reading_is_named_not_counted_as_sealed(monkeypatch, tmp_path):
+    readings = _isolated(monkeypatch, tmp_path)
+    _publish(readings, "alpha", _reading(1))
+    seal_readings.seal_all()
+    (readings / "alpha-latest.json").write_text("{ truncated", encoding="utf-8")
+    cov = seal_readings.coverage()
+    assert cov["unreadable"] == ["alpha"]
+    assert cov["drifted"] == []
+
+
+def test_the_anchor_log_summary_is_not_swept_as_a_reading(monkeypatch, tmp_path):
+    """An anchor record is no more a reading than anchors.jsonl is.
+
+    It also runs before the anchor step, and anchors-latest.json takes a fresh
+    ts on every anchor, so sweeping it would make the chain grow on every run
+    with nothing measured behind the growth.
+    """
+    readings = _isolated(monkeypatch, tmp_path)
+    _publish(readings, "alpha", _reading(1))
+    _publish(readings, "anchors", {"ts": "2026-08-02T00:00:00+00:00"})
+    assert set(dict(seal_readings.discover())) == {"alpha"}
+    assert "anchors-latest.json" in seal_readings._NOT_A_READING
+
+
 def test_resealing_an_unchanged_reading_adds_nothing(tmp_path):
     ledger = str(tmp_path / "chain.jsonl")
     r = _reading(1)

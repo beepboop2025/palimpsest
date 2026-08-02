@@ -137,12 +137,44 @@ def seal_all(dry_run: bool = False) -> tuple[int, int, list[str]]:
     return sealed, unchanged, problems
 
 
+def _newest_seal(entries: list[dict]) -> dict[str, str]:
+    """source -> payload digest of its most recent seal."""
+    newest: dict[str, str] = {}
+    for e in entries:
+        source = e.get("source")
+        if source:
+            newest[source] = e.get("payload_sha256")
+    return newest
+
+
 def coverage() -> dict:
-    """What is sealed, what is not, and whether the chain still verifies."""
+    """What is sealed, what is not, whether the chain verifies, and what drifted.
+
+    `drifted` names sources whose newest seal no longer matches the bytes on
+    disk. Some drift is the normal cost of a snapshot cadence: a reading its own
+    workflow refreshed is unsealed until the next sweep. It is reported rather
+    than asserted for that reason, but it has to be visible, because the one
+    thing that must never happen is the opposite case, a seal recorded against
+    bytes the site never served at the timestamp the entry claims. Append-only
+    means such an entry can never be withdrawn, so run this before committing a
+    freshly generated chain: everything should be sealed against the tree that
+    is actually published.
+    """
     entries = led.read_ledger(LEDGER)
     ok, chain_problems = led.verify(entries)
     sealed_sources = {e.get("source") for e in entries}
-    all_sources = {s for s, _ in discover()}
+    newest = _newest_seal(entries)
+    published = discover()
+    all_sources = {s for s, _ in published}
+    drifted, unreadable = [], []
+    for source, path in published:
+        try:
+            digest = led.payload_digest(_load(path))
+        except (OSError, ValueError):
+            unreadable.append(source)
+            continue
+        if newest.get(source) != digest:
+            drifted.append(source)
     return {
         "ledger": os.path.relpath(LEDGER, ROOT),
         "entries": len(entries),
@@ -151,6 +183,8 @@ def coverage() -> dict:
         "readings_published": len(all_sources),
         "readings_sealed": len(all_sources & sealed_sources),
         "unsealed": sorted(all_sources - sealed_sources),
+        "drifted": sorted(drifted),
+        "unreadable": sorted(unreadable),
         "merkle_root": led.merkle_root(entries) if entries else None,
         "head_hash": entries[-1]["entry_hash"] if entries else None,
     }
@@ -187,6 +221,9 @@ def main() -> int:
     cov = coverage()
     if cov["unsealed"]:
         print(f"  still unsealed: {', '.join(cov['unsealed'])}", file=sys.stderr)
+    if cov["drifted"]:
+        print(f"  published bytes differ from their newest seal: "
+              f"{', '.join(cov['drifted'])}")
     return 1 if problems else 0
 
 
