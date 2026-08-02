@@ -93,6 +93,20 @@ jobs:
           python -m scripts.verify_refusal_transcripts || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
+      - name: Seal every published reading into the readings record
+        # The other twenty-seven readings are regenerated in place by their own
+        # workflows, so each file is a live view and yesterday's numbers are
+        # gone. This seals the currently published bytes of ALL of them into
+        # readings-ledger.jsonl, which the anchor step below then stamps into
+        # Bitcoin along with the other two chains.
+        #
+        # Scope, stated honestly: this is a daily snapshot of the published
+        # state, not a seal of every intermediate value. A reading that changes
+        # twice between runs has only its latest state attested. Raising the
+        # cadence is a schedule change, nothing else — append_seal is idempotent,
+        # so extra runs cost nothing and add no entries.
+        run: python3 scripts/seal_readings.py
+
       - name: Anchor the roots outside our infrastructure
         # Wayback snapshots the served chain files (a third-party dated copy;
         # it may lag one refresh behind the just-sealed state until Pages
@@ -127,6 +141,7 @@ jobs:
           for p in readings/erasure-observatory-latest.json \
                    readings/erasure-observatory-history.jsonl \
                    readings/erasure-ledger.jsonl \
+                   readings/readings-ledger.jsonl \
                    readings/baike-redaction-latest.json \
                    readings/baike-redaction-history.jsonl \
                    readings/eval-registry.jsonl \

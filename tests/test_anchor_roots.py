@@ -53,8 +53,14 @@ def test_anchor_records_success(monkeypatch):
     assert all(w["ok"] for w in rec["wayback"])
     assert rec["ots"]["skipped"] is True  # skipped loudly, not faked
     summary = json.load(open(latest))
-    assert summary["wayback_ok"] == 2 and summary["ots"] is None
+    # Every chain we anchor gets a Wayback snapshot, so this tracks the target
+    # list rather than a hardcoded count: adding a chain must not silently
+    # leave it un-snapshotted.
+    assert summary["wayback_ok"] == len(anchor_roots.WAYBACK_TARGETS)
+    assert summary["ots"] is None
     assert len(summary["registry_root"]) == 64
+    # All three chains are anchored: registry, erasure, and the readings record.
+    assert len(summary["readings_root"]) == 64
 
 
 def test_idempotent_when_roots_unchanged(monkeypatch):

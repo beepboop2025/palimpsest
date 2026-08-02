@@ -45,6 +45,10 @@ from core import sealed_ledger as led  # noqa: E402
 READINGS = os.path.join(ROOT, "readings")
 REGISTRY = os.path.join(READINGS, "eval-registry.jsonl")
 ERASURE = os.path.join(READINGS, "erasure-ledger.jsonl")
+# Every published reading, sealed by scripts/seal_readings.py. Anchored here so
+# the readings record reaches Bitcoin on the same footing as the other two
+# chains; a seal nobody anchors is only a promise we made to ourselves.
+READINGS_LEDGER = os.path.join(READINGS, "readings-ledger.jsonl")
 ANCHOR_LOG = os.path.join(READINGS, "anchors.jsonl")
 ANCHOR_LATEST = os.path.join(READINGS, "anchors-latest.json")
 ANCHOR_DIR = os.path.join(READINGS, "anchors")
@@ -53,18 +57,21 @@ SITE = os.environ.get("PALIMPSEST_SITE", "https://palimpsest.info")
 WAYBACK_TARGETS = (
     f"{SITE}/readings/eval-registry.jsonl",
     f"{SITE}/readings/erasure-ledger.jsonl",
+    f"{SITE}/readings/readings-ledger.jsonl",
 )
 UA = "palimpsest-anchor/1.0 (+https://palimpsest.info)"
 
 
 def current_roots() -> dict:
-    """Verify both chains and return their roots. Refuses broken chains."""
+    """Verify all three chains and return their roots. Refuses broken chains."""
     reg_entries = reg.read_ledger(REGISTRY)
     led_entries = led.read_ledger(ERASURE)
+    rdg_entries = led.read_ledger(READINGS_LEDGER)
     reg_ok, reg_problems = reg.verify(reg_entries)
     led_ok, led_problems = led.verify(led_entries)
-    if not (reg_ok and led_ok):
-        for p in reg_problems + led_problems:
+    rdg_ok, rdg_problems = led.verify(rdg_entries)
+    if not (reg_ok and led_ok and rdg_ok):
+        for p in reg_problems + led_problems + rdg_problems:
             print(f"BROKEN: {p}")
         raise SystemExit(1)
     return {
@@ -74,6 +81,9 @@ def current_roots() -> dict:
         "erasure_root": led.merkle_root(led_entries),
         "erasure_head": led_entries[-1]["entry_hash"] if led_entries else led.GENESIS_PREV,
         "erasure_entries": len(led_entries),
+        "readings_root": led.merkle_root(rdg_entries),
+        "readings_head": rdg_entries[-1]["entry_hash"] if rdg_entries else led.GENESIS_PREV,
+        "readings_entries": len(rdg_entries),
     }
 
 
@@ -152,6 +162,7 @@ def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
         "ts": ts,
         "registry_root": roots["registry_root"],
         "erasure_root": roots["erasure_root"],
+        "readings_root": roots["readings_root"],
         "wayback_ok": ok_wayback,
         "wayback_snapshots": [w.get("snapshot") for w in record["wayback"] if w["ok"]],
         "ots": record["ots"].get("proof") if record["ots"]["ok"] else None,
@@ -161,7 +172,9 @@ def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
     with open(latest_path, "w", encoding="utf-8") as f:
         json.dump(latest, f, ensure_ascii=False, indent=1)
 
-    print(f"anchored     : registry {roots['registry_root'][:16]}… / erasure {roots['erasure_root'][:16]}…")
+    print(f"anchored     : registry {roots['registry_root'][:16]}… / "
+          f"erasure {roots['erasure_root'][:16]}… / "
+          f"readings {roots['readings_root'][:16]}… ({roots['readings_entries']} entries)")
     print(f"wayback      : {ok_wayback}/{len(WAYBACK_TARGETS)} snapshots")
     print(f"opentimestamps: {'stamped -> ' + record['ots']['proof'] if record['ots']['ok'] else record['ots'].get('reason')}")
     return record
