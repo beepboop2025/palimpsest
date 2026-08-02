@@ -29,7 +29,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.1.0"
+SERVER_VERSION = "1.2.0"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
@@ -365,6 +365,60 @@ TOOL_ANNOTATIONS = {
     "openWorldHint": False,
 }
 
+# Prompts: playbooks MCP clients surface as slash commands. House rule
+# carried from the observatory's reviewers: uncertainty bands lead, the
+# verdict follows.
+PROMPTS = {
+    "censorship_briefing": (
+        "Information-control briefing",
+        "The observatory's cross-signal read: what moved, what it means, "
+        "with uncertainty stated before any verdict.",
+        [],
+        lambda a: (
+            "Write an information-control briefing from the Palimpsest "
+            "board: 1) whats_happening for the cross-signal verdict; 2) "
+            "gfw_reading for both layers of Great Firewall reachability; 3) "
+            "get_signal for the two or three signals whats_happening flags "
+            "as moving. For every number, state the uncertainty band BEFORE "
+            "the interpretation, name the measurement vantage and its "
+            "limits, and separate 'measured' from 'inferred'. If a signal "
+            "is in a data gap, that gap is a finding to report, not "
+            "background to skip."
+        ),
+    ),
+    "gfw_status_check": (
+        "Is it reachable from inside China?",
+        "The Great Firewall reading for the services the observatory "
+        "watches, both measurement layers, vantage limits stated.",
+        [],
+        lambda a: (
+            "Answer 'what does the Great Firewall currently block?' from "
+            "gfw_reading: report both layers, name each service's status "
+            "with its uncertainty, and state the vantage (which networks, "
+            "how many probes) before any generalization. Where the two "
+            "layers disagree, report the disagreement itself as the "
+            "finding. Never extrapolate one service's status to another."
+        ),
+    ),
+    "signal_deep_dive": (
+        "One signal, full provenance",
+        "A single signal's complete reading: method, vantage, uncertainty, "
+        "history, and what would falsify it.",
+        [{"name": "signal",
+          "description": "Signal id — list_signals enumerates them.",
+          "required": True}],
+        lambda a: (
+            f"Deep-dive the {a.get('signal', 'requested')!r} signal: call "
+            "list_signals to confirm the id, then get_signal for the full "
+            "reading. Report: what the signal measures and HOW, the "
+            "current value with its uncertainty band first, the trend, the "
+            "measurement vantage and its blind spots, and what evidence "
+            "would falsify the current reading. Plain language; no verdict "
+            "beyond what the method supports."
+        ),
+    ),
+}
+
 
 # ---------------------------------------------------------------- protocol --
 def _result(msg_id, result):
@@ -387,10 +441,12 @@ def dispatch(msg):
         req = params.get("protocolVersion")
         return _result(msg_id, {
             "protocolVersion": req if isinstance(req, str) and req else PROTOCOL_VERSION,
-            "capabilities": {"tools": {"listChanged": False}},
+            "capabilities": {"tools": {"listChanged": False},
+                             "prompts": {"listChanged": False}},
             "serverInfo": {"name": SERVER_NAME,
                            "title": "Palimpsest — censorship and model-eval observatory",
-                           "version": SERVER_VERSION},
+                           "version": SERVER_VERSION,
+                           "websiteUrl": "https://palimpsest.info"},
             "instructions": SERVER_INSTRUCTIONS,
         })
     if method == "ping":
@@ -423,8 +479,26 @@ def dispatch(msg):
             "structuredContent": out, "isError": False})
     if method in ("resources/list",):
         return _result(msg_id, {"resources": []})
-    if method in ("prompts/list",):
-        return _result(msg_id, {"prompts": []})
+    if method == "prompts/list":
+        return _result(msg_id, {"prompts": [
+            {"name": n, "title": t, "description": d, "arguments": args}
+            for n, (t, d, args, _fn) in PROMPTS.items()]})
+    if method == "prompts/get":
+        name = params.get("name")
+        entry = PROMPTS.get(name) if isinstance(name, str) else None
+        if entry is None:
+            return _error(msg_id, INVALID_PARAMS, f"unknown prompt: {name}")
+        _t, desc, args_spec, fn = entry
+        args = params.get("arguments")
+        if not isinstance(args, dict):
+            args = {}
+        missing = [a["name"] for a in args_spec
+                   if a.get("required") and not args.get(a["name"])]
+        if missing:
+            return _error(msg_id, INVALID_PARAMS,
+                          "missing required argument(s): " + ", ".join(missing))
+        return _result(msg_id, {"description": desc, "messages": [
+            {"role": "user", "content": {"type": "text", "text": fn(args)}}]})
     return _error(msg_id, METHOD_NOT_FOUND, f"method not found: {method}")
 
 
