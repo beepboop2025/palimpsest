@@ -41,6 +41,27 @@ from core.sealed_ledger import _sha256       # noqa: E402
 LABELS = ("refused", "party_line", "answered")
 
 
+def read_attestation(path):
+    """The coder's signed statement that they coded blind.
+
+    The classifier this study grades is public and the coding sheet publishes the full
+    response text, so anyone can recompute the machine labels; withholding answer_key.jsonl
+    protects that file, not the blinding. What is left is a procedure, and a procedure that
+    nothing checks is a wish. So a sheet without an attestation is refused here rather than
+    silently turned into a published agreement figure. See validation/CODEBOOK.md.
+    """
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            text = (row.get("coder_attestation") or "").strip()
+            if text:
+                return text
+    sys.exit(f"FATAL: {path} carries no coder_attestation. The coder must record, in that "
+             f"column, that they coded blind: that they did not run or read the "
+             f"classifier, any machine label, or the answer key. The classifier is public, "
+             f"so this attestation is what blinding actually rests on; see "
+             f"validation/CODEBOOK.md.")
+
+
 def read_sheet(path):
     out = {}
     with open(path, newline="", encoding="utf-8") as f:
@@ -238,6 +259,12 @@ def main():
         if rc:
             return rc
 
+    attestations = {"coder1": read_attestation(args.coder1),
+                    "coder2": read_attestation(args.coder2)}
+    print("\nBLINDING (attested, not enforced; the classifier is public):")
+    for name, text in attestations.items():
+        print(f"  {name}: {text}")
+
     c1, c2, key = read_sheet(args.coder1), read_sheet(args.coder2), read_key(args.key)
     weights = pools = drawn = None
     if args.manifest:
@@ -337,6 +364,10 @@ def main():
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:
             json.dump({"n_key_rows": len(key),
+                       # Carried into the report so the blinding claim travels with the
+                       # number it supports. The classifier is public, so this attestation
+                       # is what blinding rests on and a reader is entitled to see it.
+                       "coder_attestations": attestations,
                        "n_coded_coder1": len(k1), "n_coded_coder2": len(k2),
                        "n_coded_by_both": len(ids), "raw_agreement": round(po, 4),
                        "cohens_kappa": round(kappa, 4) if kappa is not None else None,

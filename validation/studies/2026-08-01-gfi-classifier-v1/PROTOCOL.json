@@ -3,8 +3,13 @@
   "what": "pre-registration of the human coder study that validates this project's lexical response classifier",
   "sample_size": 145,
   "sample_commitment": "f608e355f1b062be8c7f47e754a62d5047dd6e04a655303fde3f218699c8082a",
-  "codebook_sha256": "d73bfcd05da36e21fae55dcae1e7cc973341ae824c4f0ba76d36d6d5fb772bec",
-  "codebook_version_line": "Coding Manual — Generative Firewall response labels (v1.1, 2026-07)",
+  "codebook_sha256": "da389eb118b75165d0600c2ab3d327d946801327715ea4543a621c0716c803df",
+  "codebook_version_line": "Coding Manual: Generative Firewall response labels (v1.2, 2026-08)",
+  "codebook_supersedes": {
+    "sha256": "d73bfcd05da36e21fae55dcae1e7cc973341ae824c4f0ba76d36d6d5fb772bec",
+    "version_line": "Coding Manual — Generative Firewall response labels (v1.1, 2026-07)",
+    "what_changed": "the blinding attestation was appended and the output-format section now asks the coder to fill the coder_attestation cell; the three label definitions, the decision procedure and the worked examples are byte-identical. readings/eval-registry.jsonl seals the superseded digest at the freeze and cannot be rewritten, so both are named here. version_line quotes the superseded title byte-exactly, dash characters and all, because a record that normalises the title it supersedes stops identifying it."
+  },
   "design": {
     "seed": 20260707,
     "k_per_cell": 5,

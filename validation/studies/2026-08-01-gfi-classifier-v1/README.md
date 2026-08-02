@@ -12,7 +12,7 @@ this repository therefore still reads as "as classified by a published lexical r
 
 | file | what it is |
 |---|---|
-| `coding_sheet.csv` | the 145-row blind sample: id, ask language, question, full model response. No model id, no stratum, no label. |
+| `coding_sheet.csv` | the 145-row blind sample: id, ask language, question, full model response. No model id, no stratum, no label. The empty `coder_attestation` column is where a coder signs that they coded blind. |
 | `manifest.json` | the draw: strata targets, pool sizes, rows drawn, Horvitz-Thompson weights, and the shortfalls. |
 | `PROTOCOL.json` | what was sealed: the sample commitment, the codebook digest, the analysis plan, the thresholds, the falsifier. |
 | `WITHHELD.json` | the digest of the one artifact deliberately not published yet, and why. |
@@ -63,6 +63,61 @@ coder who has seen the rule's answer is not producing an independent judgement.
 Its sha256 is in `WITHHELD.json`, committed to public git history now. So the file released
 after coding can be checked against a digest that predates the labels, and it cannot have
 been quietly regenerated with a modified classifier to fit whatever the humans said.
+
+## What withholding the key does NOT do
+
+It does not blind the study, and saying otherwise would be the kind of claim this project
+exists to argue against.
+
+The classifier is open. `collectors/generative_firewall.py` is served at palimpsest.info,
+`coding_sheet.csv` beside this file publishes the full response text, and running the one
+over the other recovers a machine label for all 145 rows in about a second. Anyone who
+wants the withheld labels can compute them; the digest commitment protects the FILE against
+being swapped, and nothing more. A determined coder, or a hostile reviewer arguing after
+the fact that the coders could have been unblinded, is not stopped by `WITHHELD.json`.
+
+So blinding here is procedural, and the procedure is stated rather than implied:
+
+- `validation/CODEBOOK.md` now carries an explicit attestation. Each coder records, in the
+  `coder_attestation` column of the sheet they submit, that they did not run or read the
+  classifier, any machine label, or the answer key while coding.
+- `scripts/gfi_validation_agreement.py` refuses to report on a sheet that does not carry
+  one, so an unattested sheet cannot quietly become a published agreement figure.
+- the attestation is published with the coded sheets, next to the number it supports, so a
+  reader can weigh it rather than take blinding on trust.
+- the strongest version, and the one to prefer where the people are available, is coders
+  who have never seen this repository. That is a recruiting constraint, not a code change,
+  and where it holds it will be stated in the result.
+
+An attestation is weaker than a mechanism. It is what is actually available once the
+instrument is public, it is checkable by a reviewer in the sense that it is a claim on the
+record with a name against it, and pretending the digest did more than it does would be
+worse.
+
+**Protocol change for future studies.** Publish the coding sheet AFTER coding completes,
+and keep the pre-registered digest as the integrity mechanism in the meantime: the sample
+commitment already lives in `readings/eval-registry.jsonl` from the moment of the freeze, so
+delaying publication of the rows costs nothing in checkability and removes the recomputation
+route entirely. This study published the sheet up front, which is why the attestation above
+is doing the work here.
+
+**One post-freeze change to the codebook, recorded here rather than left to be found.**
+`validation/CODEBOOK.md` was sealed into this pre-registration as v1.1, at
+`d73bfcd05da36e21fae55dcae1e7cc973341ae824c4f0ba76d36d6d5fb772bec`. Adding the blinding
+attestation on 2026-08-03 changed the file, so it is now v1.2, at
+`da389eb118b75165d0600c2ab3d327d946801327715ea4543a621c0716c803df`. The three label
+definitions, the decision procedure and the worked examples are byte-identical between the
+two. Two things did move: the attestation section is new, and the Output format section now
+asks the coder to fill the `coder_attestation` cell. Both are instructions about what a
+coder must not read and what they must sign, so no already coded row changes label under
+v1.2.
+
+`PROTOCOL.json` carries the v1.2 digest and version line, with the v1.1 pair it supersedes
+in `codebook_supersedes`. Leaving it pointing at v1.1 would have been the worse option: two
+different documents were shipping under one version number, and a reader hashing the
+codebook beside the protocol got a mismatch with nothing to explain it.
+`readings/eval-registry.jsonl` seals `d73bfcd05da3` at the freeze and is append-only, so the
+chain still records what was actually frozen and `PROTOCOL.json` still names it.
 
 ## What a low result would mean
 

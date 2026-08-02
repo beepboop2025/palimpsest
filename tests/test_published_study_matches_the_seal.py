@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import sys
 
 import pytest
@@ -32,6 +33,7 @@ from core import eval_registry as reg  # noqa: E402
 
 STUDIES = ROOT / "validation" / "studies"
 REGISTRY = ROOT / "readings" / "eval-registry.jsonl"
+CODEBOOK = ROOT / "validation" / "CODEBOOK.md"
 
 
 def _studies():
@@ -87,14 +89,66 @@ def test_the_protocol_agrees_with_the_sheet_beside_it(study):
 
 
 @pytest.mark.parametrize("study", _studies(), ids=lambda d: d.name)
-def test_the_frozen_codebook_digest_is_recorded(study):
-    """The instrument is committed as well as the sample. This asserts the digest is
-    present and well formed, NOT that it still matches the current CODEBOOK.md — the
-    codebook may legitimately be sharpened for a later study, and when it is, the point of
-    this field is that the change is visible against what this study actually used."""
+def test_the_frozen_codebook_digest_is_the_codebook_that_ships(study):
+    """The instrument is committed as well as the sample, and a digest nobody compares is
+    decoration. A codebook edited after the freeze leaves this field describing a document
+    that is no longer in the tree, and a reader hashing CODEBOOK.md gets a mismatch with
+    nothing to explain it. Sharpening the codebook is allowed; shipping it under the old
+    digest, or under the old version line, is not."""
     protocol = json.loads((study / "PROTOCOL.json").read_text(encoding="utf-8"))
-    digest = protocol.get("codebook_sha256", "")
-    assert len(digest) == 64 and all(c in "0123456789abcdef" for c in digest)
+    text = CODEBOOK.read_bytes()
+    assert protocol.get("codebook_sha256") == hashlib.sha256(text).hexdigest(), (
+        f"{study.name}: PROTOCOL.json seals a codebook digest that is not "
+        "validation/CODEBOOK.md. Bump the version line, reseal, and record the superseded "
+        "digest in codebook_supersedes")
+    first_line = text.decode("utf-8").splitlines()[0].lstrip("# ").strip()
+    assert protocol.get("codebook_version_line") == first_line, (
+        f"{study.name}: the sealed version line and the codebook's own differ, so two "
+        "documents are shipping under one version number")
+
+
+def _sealed_codebook_prefix(study) -> str:
+    """The codebook digest the chain froze for this study, read back out of the entry that
+    matches the published sample. The chain is append-only, so this is the one statement
+    about the instrument that a later edit cannot reach."""
+    psh = reg.probe_set_hash(_commitments(study / "coding_sheet.csv"))
+    for entry in reg.read_ledger(str(REGISTRY)):
+        if entry.get("kind") == reg.PREREGISTRATION and entry.get("probe_set_hash") == psh:
+            m = re.search(r"codebook ([0-9a-f]{6,64})", entry.get("note", ""))
+            if m:
+                return m.group(1)
+    return ""
+
+
+@pytest.mark.parametrize("study", _studies(), ids=lambda d: d.name)
+def test_a_superseded_codebook_is_named_rather_than_dropped(study):
+    """The chain entry sealed at the freeze names the digest of the day and is append-only.
+    If the protocol has moved past it, the protocol has to say what it moved from.
+
+    Read from the chain rather than from the protocol's own codebook_supersedes, because a
+    test that starts by asking the protocol whether it was revised passes by deleting the
+    record: drop the field, reseal against today's codebook, and the study now claims to
+    have frozen an instrument that the chain says it did not."""
+    sealed = _sealed_codebook_prefix(study)
+    assert sealed, (
+        f"{study.name}: no pre-registration entry in the chain names the codebook this "
+        "study froze, so nothing outside the study directory records the instrument")
+    protocol = json.loads((study / "PROTOCOL.json").read_text(encoding="utf-8"))
+    current = protocol.get("codebook_sha256", "")
+    if current.startswith(sealed):
+        return
+    superseded = protocol.get("codebook_supersedes")
+    assert superseded, (
+        f"{study.name}: the sealed codebook was {sealed}, the protocol now seals a "
+        "different one, and codebook_supersedes is absent. The revision is then visible "
+        "only to a reader who thinks to hash the chain entry against the protocol")
+    assert superseded.get("sha256", "").startswith(sealed), (
+        f"{study.name}: codebook_supersedes names a digest that is not the one the chain "
+        f"sealed ({sealed})")
+    assert len(superseded["sha256"]) == 64
+    assert superseded.get("version_line")
+    assert superseded["sha256"] != current
+    assert superseded.get("what_changed")
 
 
 @pytest.mark.parametrize("study", _studies(), ids=lambda d: d.name)

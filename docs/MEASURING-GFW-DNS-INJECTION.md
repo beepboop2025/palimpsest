@@ -1,8 +1,11 @@
 # Measuring GFW DNS injection in 2026: what stopped working, and why
 
 *Palimpsest methodological note. All measurements below were taken on 2026-07-30/31 from
-two vantages: AS24940 (Hetzner, Falkenstein, datacenter) and AS55836 (Reliance Jio, Jaipur,
-residential). Every claim here is reproducible with `dig` and a free API key nowhere.*
+two vantages: a European datacenter (AS24940, Hetzner Falkenstein) and a South Asian
+residential connection. The residential vantage is deliberately described by region and
+latency rather than by city or ISP; what the argument needs is that it was a household line
+roughly 90-150 ms from mainland China, and every RTT figure below is unchanged. Every claim
+here is reproducible with `dig` and a free API key nowhere.*
 
 ---
 
@@ -40,11 +43,11 @@ The obvious reading is that the GFW no longer poisons these domains. The obvious
 wrong, and the tell is in the latency:
 
 ```
-223.5.5.5    icmp min/avg  75.5 / 80.1 ms     from Jaipur
-119.29.29.29 icmp min/avg  76.8 / 78.5 ms     from Jaipur
+223.5.5.5    icmp min/avg  75.5 / 80.1 ms     from the residential vantage
+119.29.29.29 icmp min/avg  76.8 / 78.5 ms     from the residential vantage
 ```
 
-Mainland China from northern India is roughly 90–150 ms. Seventy-five milliseconds is not
+Mainland China from South Asia is roughly 90-150 ms. Seventy-five milliseconds is not
 mainland China. **These addresses are anycast**, and a query from outside China lands on a
 PoP outside China. The packet never approaches the border, so no on-path injector ever sees
 it. You have not measured the firewall; you have measured a CDN edge.
@@ -59,7 +62,7 @@ id.server` is the better one.
 ## Trap 2: aim at routed mainland addresses, and it is still there
 
 Aim the same query at ordinary **routed mainland IP addresses** instead, and the injector
-is immediately visible. From Jaipur (AS55836):
+is immediately visible. From the South Asian residential vantage:
 
 | target | `torproject.org` | `rsf.org` | `example.com` |
 |---|---|---|---|

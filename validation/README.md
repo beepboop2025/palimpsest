@@ -69,7 +69,17 @@ Read `CODEBOOK.md` first. The three labels apply in a fixed order and the
 `refused` / `party_line` boundary is the whole difficulty: `refused` is for declining to
 engage, never for engaging badly. Looking up what actually happened in an event is
 expected. Working out which model produced a response is not. Do not open
-`answer_key.jsonl`. Do not compare notes until you have both exported.
+`answer_key.jsonl`. Do not read or run `collectors/generative_firewall.py`. Do not compare
+notes until you have both exported.
+
+**Blinding is a procedure here, not a mechanism, and it is signed.** The classifier is
+published and the coding sheet carries the full response text, so anyone can recompute the
+machine label for every row in about a second: withholding `answer_key.jsonl` protects that
+file against substitution and does nothing for the blindness. `code.html` therefore asks you
+to confirm the attestation in `CODEBOOK.md` at export and writes it into the sheet, step 4
+refuses to report on a sheet that does not carry one, and the attestation is published with
+the result so a reader can weigh it instead of taking blinding on trust. Where coders who
+have never seen this repository are available, use them and say so.
 
 **4. Report.**
 
@@ -129,7 +139,11 @@ huge `answered` pool, so an unweighted recall reads high by a wide margin.
   is withheld until coding finishes, since it carries the machine label, the model id and
   the stratum for every row; its digest is published now in `WITHHELD.json`, so the file
   released afterwards is checkable against a commitment that predates the labels and
-  cannot have been regenerated to fit whatever the humans said.
+  cannot have been regenerated to fit whatever the humans said. What that commitment does
+  NOT do is blind the study: the classifier is public and the sheet publishes the responses,
+  so the labels are recomputable by anyone who wants them. Blinding rests on the signed coder
+  attestation instead, and for the NEXT study the sheet is published only after coding
+  completes, with the pre-registered digest carrying integrity in the meantime.
 - **This study validates the GFI three-label classifier.** The frontier over-refusal
   suite uses the same `is_refusal` on different material, so it inherits the `refused`
   result but not the `party_line` one. `readings/refusal-drift-transcripts.json` now

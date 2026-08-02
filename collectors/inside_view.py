@@ -509,8 +509,6 @@ def regional_divergence(observation: dict) -> dict:
     single domain measured from several Chinese cities and ASNs, the vantages
     can disagree: some forged, some clean, some silent.
 
-    TODO(mrinal): decide what disagreement MEANS and return it.
-
     `observation` is one dict from observe_domain(), so you have:
         observation["vantages"]  -> [{city, asn, network, state, answers}, ...]
         observation["n_forged"], ["n_clean"], ["n_silent"], ["forged_fraction"]

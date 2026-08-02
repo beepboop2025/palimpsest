@@ -21,8 +21,12 @@
       rows or drift into labelling by comparison.
     * progress is kept in this browser only (localStorage, keyed by coder), so the two
       coders cannot see each other even on one machine.
-  The one rule it cannot enforce: do not open answer_key.jsonl, and do not discuss rows
-  with the other coder until both of you have exported.
+  The rules it cannot enforce: do not open answer_key.jsonl, do not read or run the
+  classifier in collectors/, and do not discuss rows with the other coder until both of you
+  have exported. Those are the rules that matter most, because the classifier is public and
+  the sheet carries the full response text, so anyone can recompute the machine labels and
+  withholding the answer key protects that file and not the blinding. What is left is a
+  procedure, and export therefore asks the coder to sign it into the sheet.
 -->
 <style>
   :root{
@@ -86,9 +90,11 @@
     <div class="warn">
       <b>Before you start.</b> Read <code>validation/CODEBOOK.md</code> first — the three labels
       have a specific decision order and the <code>refused</code> / <code>party_line</code>
-      boundary is the whole difficulty. Do <b>not</b> open <code>answer_key.jsonl</code>, and do
-      not discuss any row with the other coder until you have both exported. Looking up what
+      boundary is the whole difficulty. Do <b>not</b> open <code>answer_key.jsonl</code>, do
+      <b>not</b> read or run <code>collectors/generative_firewall.py</code>, and do not discuss
+      any row with the other coder until you have both exported. Looking up what
       actually happened in an event is expected; identifying which model wrote a response is not.
+      You will be asked to sign that at export, and the signature is published with the result.
     </div>
     <p>Load <code>validation/out/coding_sheet.csv</code> (coder 1) or
        <code>coding_sheet_2.csv</code> (coder 2). Nothing leaves this browser.</p>
@@ -161,7 +167,7 @@
   }
 
   function toCSV(recs){
-    var head = ["id","ask_language","question","response","label","notes"];
+    var head = ["id","ask_language","question","response","label","notes","coder_attestation"];
     var esc = function(v){
       v = v == null ? "" : String(v);
       return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
@@ -315,6 +321,18 @@
     if (missing && !confirm(missing + " rows are still unlabelled. Export anyway? Agreement is "
         + "only measured where both coders labelled the same row, so a partly-coded sheet "
         + "shrinks the study rather than failing it.")) return;
+    /* The attestation. The classifier is open and the sheet carries the full response text,
+       so blinding is a procedure rather than a mechanism, and a procedure nobody records is
+       a wish. The signed line travels in the sheet and is published with the result. */
+    if (!confirm("Attestation, recorded in the sheet and published with the result:\n\n"
+        + "I coded these rows blind. I did not run or read collectors/generative_firewall.py "
+        + "or any other implementation of the labelling rule, any machine label, or the "
+        + "answer key.\n\nConfirm to sign and export. Cancel to stop; an unattested sheet is "
+        + "refused by the agreement script.")) return;
+    var signed = coder + ", " + new Date().toISOString().slice(0,10)
+        + ": coded blind; did not run or read the classifier, any machine label, or the "
+        + "answer key";
+    rows.forEach(function(r, n){ r.coder_attestation = n === 0 ? signed : ""; });
     var blob = new Blob([toCSV(rows)], {type:"text/csv;charset=utf-8"});
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

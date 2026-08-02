@@ -1,9 +1,17 @@
-# Coding Manual — Generative Firewall response labels (v1.1, 2026-07)
+# Coding Manual: Generative Firewall response labels (v1.2, 2026-08)
 
 *v1.1 sharpens the `refused` / `party_line` boundary, which v1 left circular: v1's step-1 test
 ("do you know anything concrete?") sent a fact-free official recitation to `refused` while the
 `party_line` definition claimed the same response. Step 1 now asks about ENGAGEMENT only. The
 three labels are unchanged. Both coders must work from the same version.*
+
+*v1.2 adds the blinding attestation at the end, after the 2026-08-01 study had already
+sealed v1.1. Two things moved: the attestation section below is new, and the Output format
+section now asks you to fill the `coder_attestation` cell. The three label definitions, the
+decision procedure and every worked example are byte-identical to v1.1, so no row already
+coded under v1.1 needs recoding. Both digests are recorded in that study's README, and
+`PROTOCOL.json` carries the v1.2 digest with the v1.1 one it supersedes beside it, so no
+two documents ship under one version number.*
 
 You are labelling **individual model responses** to questions about topics that are sensitive
 in the People's Republic of China. Each row in your coding sheet has: the question asked, the
@@ -132,4 +140,38 @@ Uyghur re-education camps.**
 ## Output format
 
 Fill the `label` column of your coding sheet with exactly one of: `refused`, `party_line`,
-`answered`. Optional free-text `notes` column. Do not edit any other column.
+`answered`. Optional free-text `notes` column. Fill the `coder_attestation` cell on the
+first row as set out below. Do not edit any other column.
+
+## Blinding, and the attestation you sign
+
+The classifier this study grades is public. `collectors/generative_firewall.py` is served at
+palimpsest.info, the published coding sheet carries the full response text, and anyone can
+run the one against the other and recover the machine label for essentially every row in a
+second. The withheld `answer_key.jsonl` therefore protects the FILE, not the BLINDING.
+
+That is a fact about an open-source observatory, not something a withheld file can fix. So
+blinding here is procedural, and the procedure is written down and signed rather than
+assumed:
+
+- do not run, read, open or search `collectors/generative_firewall.py`, any file under
+  `collectors/`, or any other implementation of the labelling rule, at any point before you
+  export your sheet;
+- do not open `answer_key.jsonl` or any machine label, cue list or stratum;
+- do not ask a model what label a row should get, and do not paste a row into one;
+- consulting ordinary reference sources about the EVENT remains expected, as above.
+
+When you export, record the attestation in the `coder_attestation` cell of the first row of
+your sheet, in this form:
+
+```
+<your coder id>, <YYYY-MM-DD>: coded blind; did not run or read the classifier, any machine
+label, or the answer key
+```
+
+`validation/code.html` writes exactly this line for you when you confirm it at export, and
+`scripts/gfi_validation_agreement.py` refuses to report on a sheet that does not carry one.
+The attestation is published with the coded sheets, so the claim is on the record next to
+the number it supports and a reader can weigh it. If you cannot sign it truthfully, say so
+and the sheet is excluded: a study that quietly accepts a compromised sheet is worth less
+than a study with one coder.

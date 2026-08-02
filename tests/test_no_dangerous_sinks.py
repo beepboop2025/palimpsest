@@ -36,8 +36,13 @@ _SINKS = re.compile(
 #   anchor_roots.py: invokes the OpenTimestamps client as subprocess.run(["ots", "stamp",
 #   <path we constructed>]) — fixed argv, no shell, and the stamped file is written by us
 #   from our own chain roots. Fetched data (the Wayback response) never reaches it.
+#   verify_public_surface.py: invokes subprocess.run(["git", "-C", <repo root>, "ls-files",
+#   "-z"]) to enumerate exactly the files Pages publishes. Fixed argv, no shell, and the
+#   argument vector contains no runtime input at all; the only thing it reads is the tree
+#   already on disk. It is a pre-publication check and never runs on a collection path.
 _ALLOWED = {
     ("scripts/anchor_roots.py", "subprocess."),
+    ("scripts/verify_public_surface.py", "subprocess."),
 }
 
 

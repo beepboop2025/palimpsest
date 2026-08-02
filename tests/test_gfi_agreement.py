@@ -30,16 +30,24 @@ from scripts.gfi_validation_agreement import (  # noqa: E402
     cohens_kappa, main, prf, read_manifest_weights, read_sheet,
 )
 
-SHEET_COLS = ["id", "ask_language", "question", "response", "label", "notes"]
+SHEET_COLS = ["id", "ask_language", "question", "response", "label", "notes",
+              "coder_attestation"]
+
+ATTESTED = ("TC, 2026-08-03: coded blind; did not run or read the classifier, any machine "
+            "label, or the answer key")
 
 
-def _sheet(path, labels):
-    """labels: {id: label or ""} — an empty label means the coder left the row blank."""
+def _sheet(path, labels, attestation=ATTESTED):
+    """labels: {id: label or ""}, where an empty label means the coder left the row blank.
+
+    The attestation is written on the first row only, which is where code.html puts it and
+    where read_attestation() looks: it is one statement about the sheet, not a per-row fact.
+    """
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(SHEET_COLS)
-        for i, lab in labels.items():
-            w.writerow([i, "zh", "q?", "a.", lab, ""])
+        for n, (i, lab) in enumerate(labels.items()):
+            w.writerow([i, "zh", "q?", "a.", lab, "", attestation if n == 0 else ""])
     return str(path)
 
 
@@ -241,15 +249,46 @@ def test_wholly_unlabelled_sheet_is_fatal(tmp_path):
 
 # ---------------------------------------------------------------------------- end to end main
 
-def _study(tmp_path, c1_labels, c2_labels, key_rows, manifest=None):
+def _study(tmp_path, c1_labels, c2_labels, key_rows, manifest=None,
+           c1_attestation=ATTESTED, c2_attestation=ATTESTED):
     argv = ["gfi_validation_agreement.py",
-            "--coder1", _sheet(tmp_path / "c1.csv", c1_labels),
-            "--coder2", _sheet(tmp_path / "c2.csv", c2_labels),
+            "--coder1", _sheet(tmp_path / "c1.csv", c1_labels, c1_attestation),
+            "--coder2", _sheet(tmp_path / "c2.csv", c2_labels, c2_attestation),
             "--key", _key(tmp_path / "key.jsonl", key_rows),
             "--report", str(tmp_path / "report.json")]
     if manifest:
         argv += ["--manifest", manifest]
     return argv
+
+
+SIMPLE_KEY = {"VAL-001": ("answered", "answered"), "VAL-002": ("refused", "refused")}
+SIMPLE_LABELS = {"VAL-001": "answered", "VAL-002": "refused"}
+
+
+def test_an_unattested_sheet_cannot_become_a_published_number(tmp_path, monkeypatch):
+    """Blinding is procedural here and always will be: the classifier is public and the
+    coding sheet publishes the response text, so the withheld answer key protects that file
+    and not the blindness. The one thing that must not happen is an agreement figure coming
+    out of a sheet where nobody ever said they coded blind."""
+    argv = _study(tmp_path, SIMPLE_LABELS, dict(SIMPLE_LABELS), SIMPLE_KEY,
+                  c2_attestation="")
+    monkeypatch.setattr(sys, "argv", argv)
+    with pytest.raises(SystemExit) as exc:
+        main()
+    assert "coder_attestation" in str(exc.value)
+    assert not os.path.exists(tmp_path / "report.json"), (
+        "no report may be written for an unattested sheet")
+
+
+def test_the_attestation_is_published_with_the_number_it_supports(tmp_path, monkeypatch):
+    """An attestation nobody can read is worth nothing to a reviewer, so it travels in the
+    report rather than staying in the coder's own copy of the sheet."""
+    monkeypatch.setattr(sys, "argv",
+                        _study(tmp_path, SIMPLE_LABELS, dict(SIMPLE_LABELS), SIMPLE_KEY))
+    assert main() == 0
+    report = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    assert report["coder_attestations"]["coder1"] == ATTESTED
+    assert report["coder_attestations"]["coder2"] == ATTESTED
 
 
 def test_disjoint_coverage_is_fatal_not_a_crash(tmp_path, monkeypatch):

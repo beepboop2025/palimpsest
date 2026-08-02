@@ -33,6 +33,17 @@ jobs:
       - name: Pull Censored Planet CN data and publish the signal
         run: python -m scripts.censored_planet_pull
 
+      - name: Read the public surface before pushing it
+        # This repository is served in full by Pages, so the push below is the publication
+        # act and this is the last point at which a match can still be stopped. The test
+        # workflow cannot cover this commit: it carries [skip ci], and GitHub skips the
+        # whole run rather than one job. Without the rule list configured this reports and
+        # exits 0, on purpose: a check that stops the refresh when a secret is absent
+        # stops the observatory, and stops it silently.
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
       - name: Commit & push if the signal changed
         run: |
           git config user.name  "palimpsest-bot"

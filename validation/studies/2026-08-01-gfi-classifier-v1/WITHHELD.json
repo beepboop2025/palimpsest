@@ -1,6 +1,7 @@
 {
   "what": "sha256 of artifacts WITHHELD until coding completes, published now so releasing them later is checkable",
-  "why": "answer_key.jsonl carries the machine label, the model id and the stratum for every row. Publishing it before the humans code would destroy the blindness the study depends on. Publishing its digest now, in public git history, means the file released afterwards can be checked against this commitment and cannot have been swapped for a friendlier one.",
+  "why": "answer_key.jsonl carries the machine label, the model id and the stratum for every row, and handing a coder the rule's own answers is the most direct way to lose the independence the study measures. Publishing its digest now, in public git history, means the file released afterwards can be checked against this commitment and cannot have been swapped for a friendlier one.",
+  "what_this_does_not_do": "it does not blind the study, and an earlier version of this file claimed it did. The classifier that produced these labels is public at collectors/generative_firewall.py, and coding_sheet.csv publishes the full response text, so a machine label for every row can be recomputed in about a second. This commitment protects the FILE against substitution and nothing more. Blinding is enforced procedurally instead, through the coder attestation in validation/CODEBOOK.md, which scripts/gfi_validation_agreement.py requires before it will report an agreement figure. README.md in this directory states the whole of it.",
   "digests": {
     "answer_key.jsonl": "9045baf2f2d55a19f434c8de8844f091371a2d90d4c8b16ef87be34bb70a45c3"
   },

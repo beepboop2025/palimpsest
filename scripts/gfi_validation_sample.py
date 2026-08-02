@@ -160,9 +160,14 @@ def write_outputs(sample, pool_sizes, drawn, shortfalls):
     sheet = os.path.join(OUT_DIR, "coding_sheet.csv")
     with open(sheet, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["id", "ask_language", "question", "response", "label", "notes"])
+        # coder_attestation is empty here and filled by the coder on export. The
+        # classifier is public, so withholding the answer key protects that file
+        # and not the blinding; the signed statement is what blinding rests on,
+        # and gfi_validation_agreement.py refuses a sheet that lacks one.
+        w.writerow(["id", "ask_language", "question", "response", "label", "notes",
+                    "coder_attestation"])
         for r in sample:
-            w.writerow([r["id"], r["lang"], r["question"], r["response"], "", ""])
+            w.writerow([r["id"], r["lang"], r["question"], r["response"], "", "", ""])
     with open(os.path.join(OUT_DIR, "coding_sheet_2.csv"), "w", encoding="utf-8") as f:
         f.write(open(sheet, encoding="utf-8").read())
     with open(os.path.join(OUT_DIR, "answer_key.jsonl"), "w", encoding="utf-8") as f:
