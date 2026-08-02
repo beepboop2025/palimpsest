@@ -129,6 +129,38 @@ def test_long_row_arrays_are_capped_and_the_cap_is_disclosed(monkeypatch):
     assert "truncated" not in full
 
 
+def test_the_joiners_that_carry_meaning_are_not_stripped_out_of_an_excerpt():
+    """The hiding channels go; the characters that decide what the text SAYS stay.
+
+    A blanket Cf-category test takes both. It turns می‌رود into میرود, welds
+    Indic conjuncts together, splits a one-glyph emoji family into three
+    people, and eats the Arabic number sign. This project treats the excerpt
+    as the artifact, and GDELT headlines and Weibo hot-search titles are
+    exactly where these arrive.
+    """
+    keep = {
+        "persian ZWNJ": ("می‌رود", "می‌رود"),
+        "emoji ZWJ family": ("\U0001F468‍\U0001F469‍\U0001F467",
+                             "\U0001F468‍\U0001F469‍\U0001F467"),
+        "arabic number sign": ("؀123", "؀123"),
+        "end of ayah": ("۝7", "۝7"),
+    }
+    for label, (given, want) in keep.items():
+        assert mcp.strip_invisible(given) == want, label
+
+    drop = {
+        "zero width space": "a​b",
+        "RTL override": "a‮b",
+        "arabic letter mark": "a؜b",
+        "mongolian vowel separator": "a᠎b",
+        "interlinear annotation": "a￹b",
+        "deprecated format control": "a⁪b",
+        "byte order mark": "a﻿b",
+    }
+    for label, given in drop.items():
+        assert mcp.strip_invisible(given) == "ab", label
+
+
 def test_unreachable_signal_fails_loud_and_serves_nothing_invented(monkeypatch):
     def boom(name):
         raise OSError("upstream down")
