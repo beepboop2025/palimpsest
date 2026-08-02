@@ -105,7 +105,18 @@ jobs:
         # twice between runs has only its latest state attested. Raising the
         # cadence is a schedule change, nothing else — append_seal is idempotent,
         # so extra runs cost nothing and add no entries.
-        run: python3 scripts/seal_readings.py
+        #
+        # Exit 1 means the chain itself does not verify, which is a tamper
+        # finding and fails the job. Exit 2 means the chain was extended but a
+        # reading could not be read: those files belong to thirty other
+        # workflows, and one of them shipping truncated JSON must not take down
+        # this job, because everything above (the erasure-ledger appends, the
+        # sealed registry entries, the refusal transcripts) is still uncommitted
+        # at this point and would die with the runner. Same shape as the
+        # transcript verification step above.
+        run: |
+          python3 scripts/seal_readings.py || rc=$?
+          if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
       - name: Anchor the roots outside our infrastructure
         # Wayback snapshots the served chain files (a third-party dated copy;

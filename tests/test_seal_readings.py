@@ -128,6 +128,42 @@ def test_an_unreadable_reading_is_named_not_counted_as_sealed(monkeypatch, tmp_p
     assert cov["drifted"] == []
 
 
+def test_an_unreadable_reading_exits_2_so_the_caller_can_carry_on(monkeypatch, tmp_path):
+    """A truncated file owned by another workflow is not a tamper finding.
+
+    In CI this step sits between the producing steps and the commit step, so a
+    hard failure here discards the erasure-ledger appends, the sealed registry
+    entries and the refusal transcripts, all still uncommitted. Exit 2 keeps
+    the problem loud and the record intact.
+    """
+    readings = _isolated(monkeypatch, tmp_path)
+    _publish(readings, "alpha", _reading(1))
+    (readings / "beta-latest.json").write_text("{ truncated", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["seal_readings.py"])
+
+    assert seal_readings.main() == 2
+    cov = seal_readings.coverage()
+    assert cov["readings_sealed"] == 1          # the readable one still sealed
+    assert cov["unreadable"] == ["beta"]
+
+
+def test_a_broken_chain_exits_1_and_appends_nothing(monkeypatch, tmp_path):
+    """The one condition worth failing a job over, and it must be separable."""
+    readings = _isolated(monkeypatch, tmp_path)
+    _publish(readings, "alpha", _reading(1))
+    ledger = seal_readings.LEDGER
+    led.append_seal(ledger, "alpha", _reading(1))
+    entries = led.read_ledger(ledger)
+    entries[0]["payload_sha256"] = "0" * 64
+    with open(ledger, "w", encoding="utf-8") as fh:
+        for e in entries:
+            fh.write(json.dumps(e, ensure_ascii=False) + "\n")
+    monkeypatch.setattr(sys, "argv", ["seal_readings.py"])
+
+    assert seal_readings.main() == 1
+    assert len(led.read_ledger(ledger)) == 1
+
+
 def test_the_anchor_log_summary_is_not_swept_as_a_reading(monkeypatch, tmp_path):
     """An anchor record is no more a reading than anchors.jsonl is.
 

@@ -48,7 +48,15 @@ Usage
     python3 scripts/seal_readings.py --check    # verify only, no writes (CI)
     python3 scripts/seal_readings.py --coverage # which readings are sealed
 
-Exit codes: 0 all good, 1 a reading could not be read or the chain is broken.
+Exit codes, and the difference between them matters to CI
+---------------------------------------------------------
+    0   everything sealed, chain verifies
+    1   THE CHAIN IS BROKEN and nothing was sealed. A tamper finding: fail the
+        job on it.
+    2   the chain is fine and was extended, but one or more readings could not
+        be read. Those files belong to thirty other workflows and a truncated
+        one is their bug, not evidence against this record. The rest of the
+        sweep succeeded and the caller should carry on to its commit step.
 """
 from __future__ import annotations
 
@@ -116,7 +124,10 @@ def seal_all(dry_run: bool = False) -> tuple[int, int, list[str]]:
             reading = _load(path)
         except (OSError, ValueError) as exc:
             # Fail loud per reading but keep going: one malformed file must not
-            # stop the rest of the record being sealed.
+            # stop the rest of the record being sealed. main() reports these as
+            # exit 2, distinct from the exit 1 a broken chain earns, so a caller
+            # can tell "somebody else's file is truncated" from "our record was
+            # tampered with" instead of treating both as a failed run.
             problems.append(f"{source}: cannot read ({exc})")
             continue
         if dry_run:
@@ -206,7 +217,9 @@ def main() -> int:
     ok, chain_problems = led.verify(entries)
     if not ok:
         # Never extend a chain that no longer verifies: appending onto a broken
-        # history would launder the break behind new, valid-looking links.
+        # history would launder the break behind new, valid-looking links. This
+        # is the one condition here worth failing a job over, so it alone
+        # returns 1.
         print(f"REFUSING TO SEAL: {LEDGER} does not verify", file=sys.stderr)
         for p in chain_problems:
             print(f"  {p}", file=sys.stderr)
@@ -224,7 +237,7 @@ def main() -> int:
     if cov["drifted"]:
         print(f"  published bytes differ from their newest seal: "
               f"{', '.join(cov['drifted'])}")
-    return 1 if problems else 0
+    return 2 if problems else 0
 
 
 if __name__ == "__main__":
