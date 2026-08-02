@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-01T19:35:21.546573+00:00",
+  "generated_at": "2026-08-02T03:54:09.544237+00:00",
   "method_version": 2,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 38.9,
+  "erasure_index": 39.0,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -14,12 +14,12 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 59.8,
+      "value": 59.9,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-08-01T14:02:01.742167+00:00",
-      "age_days": 0.23,
-      "age_hours": 5.6
+      "as_of": "2026-08-01T19:38:51.424096+00:00",
+      "age_days": 0.34,
+      "age_hours": 8.3
     },
     {
       "layer": "model",
@@ -29,7 +29,7 @@
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
       "as_of": "2026-08-01T08:52:28.369503+00:00",
-      "age_days": 0.45
+      "age_days": 0.79
     },
     {
       "layer": "narrative",
@@ -46,7 +46,7 @@
       "value": 4.42,
       "unit": "%",
       "as_of": "2026-08-01T07:49:49.886114+00:00",
-      "age_hours": 11.8,
+      "age_hours": 20.1,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
@@ -54,21 +54,21 @@
       "value": 0.68,
       "unit": "x",
       "as_of": "2026-08-01T14:09:50.006313+00:00",
-      "age_hours": 5.4,
+      "age_hours": 13.7,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 108,
+    "entries": 109,
     "verified": true,
-    "merkle_root": "7ff75cf9451be50596b213ceee58b789c326fdc1aec2ab9852219b850b81ed32",
-    "head_hash": "40d9ca824d16db77ca788a767c1468eae9fe51fbd577ab9acc6f6cccabee587b",
+    "merkle_root": "640413874f3da17a16ef3b0ff28b924bda7a9b3dce2059a83c34b98edb8bdb9c",
+    "head_hash": "5499cbaa0f43536260ed17ea2f660a7319f88d081f8856fcfa1cfc19dcd8bd5e",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-08-01T19:35:21.546573+00:00",
+    "head_ts": "2026-08-02T03:54:09.544237+00:00",
     "by_source": {
-      "ooni-gfw": 85,
+      "ooni-gfw": 86,
       "generative-firewall": 4,
       "censored-planet": 17,
       "baike-redaction": 2
@@ -76,13 +76,13 @@
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 107,
-        "entry_hash": "40d9ca824d16db77ca788a767c1468eae9fe51fbd577ab9acc6f6cccabee587b"
+        "seq": 108,
+        "entry_hash": "5499cbaa0f43536260ed17ea2f660a7319f88d081f8856fcfa1cfc19dcd8bd5e"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
     "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped"
   },
   "vs_access_indices": "Access observatories answer 'is X reachable now'. This answers 'what did the record lose, and can you prove our measurement of the loss was not itself edited afterward'.",
-  "last_changed_at": "2026-08-01T19:35:21.546573+00:00"
+  "last_changed_at": "2026-08-02T03:54:09.544237+00:00"
 }
