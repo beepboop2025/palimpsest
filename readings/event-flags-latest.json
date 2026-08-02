@@ -1,28 +1,28 @@
 {
-  "generated_at": "2026-08-02T14:13:56.805854+00:00",
+  "generated_at": "2026-08-02T19:53:54.074091+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 2.5057,
-      "n": 98,
+      "stat": 2.5164,
+      "n": 99,
       "n_alarms_in_history": 1,
       "age_hours": 0.2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 2.2766,
-      "n": 189,
+      "stat": 2.1001,
+      "n": 191,
       "n_alarms_in_history": 2,
       "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 1.3663,
-      "n": 189,
+      "stat": 1.3098,
+      "n": 191,
       "n_alarms_in_history": 1,
       "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
@@ -32,15 +32,15 @@
       "stat": 144.5024,
       "n": 19,
       "n_alarms_in_history": 0,
-      "age_hours": 6.4,
+      "age_hours": 12.1,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.0321,
-      "n": 107,
+      "stat": 1.9227,
+      "n": 108,
       "n_alarms_in_history": 0,
-      "age_hours": 5.2,
+      "age_hours": 5.6,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 6.8865,
       "n": 54,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 5.7,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -72,21 +72,21 @@
       "stat": 2.9971,
       "n": 388,
       "n_alarms_in_history": 6,
-      "age_hours": 86.2,
+      "age_hours": 91.9,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 57,
+      "n": 58,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 0.1,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 56,
+      "n": 57,
       "n_alarms_in_history": 0,
       "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
@@ -96,7 +96,7 @@
       "stat": 0.0,
       "n": 2,
       "n_alarms_in_history": 0,
-      "age_hours": 14.2,
+      "age_hours": 19.9,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -113,7 +113,7 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 3,
+          "pairs_seen": 4,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
@@ -122,7 +122,7 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 3,
+          "pairs_seen": 4,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
@@ -131,7 +131,7 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 3,
+          "pairs_seen": 4,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
@@ -140,21 +140,21 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 3,
+          "pairs_seen": 4,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
         }
       },
-      "n_rows": 12,
+      "n_rows": 16,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 5.6,
+      "age_hours": 6.0,
       "bound_hours": 30.0,
       "state": "calibrating",
-      "reason": "burn-in in progress: furthest model has 3 of 21 adjacent-run pairs"
+      "reason": "burn-in in progress: furthest model has 4 of 21 adjacent-run pairs"
     }
   },
   "active": [],
