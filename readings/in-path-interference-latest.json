@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T10:11:13.978677+00:00",
+  "generated_at": "2026-08-03T15:28:21.619817+00:00",
   "method_version": 1,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "window_days": 90,
@@ -9,15 +9,15 @@
     "state": "OK",
     "why": "5 of 7 tests have enough completed measurements to support a rate"
   },
-  "middlebox_index": 1.43,
+  "middlebox_index": 1.45,
   "middlebox_reading": "1.4% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
-  "transport_index": 32.65,
-  "transport_reading": "32.6% anomalous — transports partly degraded",
+  "transport_index": 32.68,
+  "transport_reading": "32.7% anomalous — transports partly degraded",
   "execution_blackouts": [
     {
       "test": "dnscheck",
       "label": "DNS-integrity test completion",
-      "measurement_count": 70362
+      "measurement_count": 70531
     },
     {
       "test": "echcheck",
@@ -33,11 +33,11 @@
       "label": "HTTP headers rewritten in transit",
       "available": true,
       "why": null,
-      "measurement_count": 5058,
-      "completed_count": 5058,
+      "measurement_count": 5070,
+      "completed_count": 5070,
       "failure_count": 0,
-      "anomaly_count": 77,
-      "anomaly_rate": 0.0152,
+      "anomaly_count": 79,
+      "anomaly_rate": 0.0156,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -47,11 +47,11 @@
       "label": "malformed request lines normalised in transit",
       "available": true,
       "why": null,
-      "measurement_count": 5127,
-      "completed_count": 5127,
+      "measurement_count": 5140,
+      "completed_count": 5140,
       "failure_count": 0,
       "anomaly_count": 69,
-      "anomaly_rate": 0.0135,
+      "anomaly_rate": 0.0134,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -61,11 +61,11 @@
       "label": "STUN servers unreachable (real-time voice / WebRTC)",
       "available": true,
       "why": null,
-      "measurement_count": 38777,
-      "completed_count": 38777,
+      "measurement_count": 38845,
+      "completed_count": 38845,
       "failure_count": 0,
-      "anomaly_count": 12305,
-      "anomaly_rate": 0.3173,
+      "anomaly_count": 12341,
+      "anomaly_rate": 0.3177,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -75,12 +75,12 @@
       "label": "stock Tor bootstrap",
       "available": true,
       "why": null,
-      "measurement_count": 3852,
+      "measurement_count": 3860,
       "completed_count": 506,
-      "failure_count": 3346,
+      "failure_count": 3354,
       "anomaly_count": 480,
       "anomaly_rate": 0.9486,
-      "execution_failure_rate": 0.8686,
+      "execution_failure_rate": 0.8689,
       "never_completes": false
     },
     {
@@ -89,11 +89,11 @@
       "label": "Tor via Snowflake",
       "available": true,
       "why": null,
-      "measurement_count": 103,
-      "completed_count": 103,
+      "measurement_count": 104,
+      "completed_count": 104,
       "failure_count": 0,
-      "anomaly_count": 73,
-      "anomaly_rate": 0.7087,
+      "anomaly_count": 74,
+      "anomaly_rate": 0.7115,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -103,9 +103,9 @@
       "label": "DNS-integrity test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 70362,
+      "measurement_count": 70531,
       "completed_count": 0,
-      "failure_count": 70362,
+      "failure_count": 70531,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
@@ -126,5 +126,5 @@
       "never_completes": true
     }
   ],
-  "last_changed_at": "2026-08-03T10:11:13.978677+00:00"
+  "last_changed_at": "2026-08-03T15:28:21.619817+00:00"
 }
