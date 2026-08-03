@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-03T03:55:25.560170+00:00",
+  "generated_at": "2026-08-03T15:17:26.121750+00:00",
   "method_version": 2,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 42.4,
+  "erasure_index": 42.8,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -14,12 +14,12 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 59.7,
+      "value": 60.5,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-08-02T19:39:07.309414+00:00",
-      "age_days": 0.34,
-      "age_hours": 8.3
+      "as_of": "2026-08-03T10:09:13.508891+00:00",
+      "age_days": 0.21,
+      "age_hours": 5.1
     },
     {
       "layer": "model",
@@ -29,7 +29,7 @@
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
       "as_of": "2026-08-02T08:55:41.340373+00:00",
-      "age_days": 0.79
+      "age_days": 1.27
     },
     {
       "layer": "narrative",
@@ -43,46 +43,51 @@
   "cross_checks": [
     {
       "name": "Censored Planet interference",
-      "value": 4.42,
+      "value": 4.43,
       "unit": "%",
-      "as_of": "2026-08-02T07:50:45.771567+00:00",
-      "age_hours": 20.1,
+      "as_of": "2026-08-03T08:50:05.137209+00:00",
+      "age_hours": 6.5,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
       "name": "Firewall event velocity",
-      "value": 0.76,
+      "value": 0.67,
       "unit": "x",
-      "as_of": "2026-08-02T04:07:32.394357+00:00",
-      "age_hours": 23.8,
+      "as_of": "2026-08-03T04:19:23.851174+00:00",
+      "age_hours": 11.0,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 115,
+    "entries": 117,
     "verified": true,
-    "merkle_root": "6f2adcb3f01ef32014495aa5031f31007aa06aa76f93ba03bcf6165a58da27a1",
-    "head_hash": "e9e75619cda701b326be027eaa44523c221ab788ca8d0ffc51f9c991cbbcb0b9",
+    "merkle_root": "125a6a2f184d66da3cd7eec7c2c01f2605573477d79da47fded0f98c820ace4e",
+    "head_hash": "e5c719d4229d998f701f1ba60788d21970ec5cabaecb699eef7d86ea6cefde91",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-08-03T03:55:25.560170+00:00",
+    "head_ts": "2026-08-03T15:17:26.121750+00:00",
     "by_source": {
-      "ooni-gfw": 90,
+      "ooni-gfw": 91,
       "generative-firewall": 5,
-      "censored-planet": 18,
+      "censored-planet": 19,
       "baike-redaction": 2
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 114,
-        "entry_hash": "e9e75619cda701b326be027eaa44523c221ab788ca8d0ffc51f9c991cbbcb0b9"
+        "seq": 115,
+        "entry_hash": "bfbb4442fe4e03a32decdd39f65907314682bf85d53668e18d7b5a3803a50776"
+      },
+      {
+        "source": "censored-planet",
+        "seq": 116,
+        "entry_hash": "e5c719d4229d998f701f1ba60788d21970ec5cabaecb699eef7d86ea6cefde91"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
     "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped"
   },
   "vs_access_indices": "Access observatories answer 'is X reachable now'. This answers 'what did the record lose, and can you prove our measurement of the loss was not itself edited afterward'.",
-  "last_changed_at": "2026-08-03T03:55:25.560170+00:00"
+  "last_changed_at": "2026-08-03T15:17:26.121750+00:00"
 }
