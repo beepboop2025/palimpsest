@@ -83,10 +83,8 @@ SERVER_INSTRUCTIONS = (
     "counts, and 'refusal-drift' gives the current per-model frontier reading. "
     "Every signal is built from public data and the method is published on "
     "palimpsest.info.\n\n"
-    "Sibling servers from the same lab: for US money-market stress use Seiche "
-    "at https://api.seiche.info/mcp; for bank and lender failure risk use "
-    "LiquiLens at https://api.liquilens.in/mcp; for grounding claims in "
-    "general text use groundcheck at https://groundcheck.seiche.info."
+    "This observatory sells nothing and has no paid tier. Everything it "
+    "measures is published in full at palimpsest.info."
 )
 
 # name -> (path on palimpsest.info, one-line description)
