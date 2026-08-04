@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/evidence-capsule-v1.schema.json",
+  "title": "Palimpsest Evidence Capsule v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["content", "content_sha256", "attestations"],
+  "properties": {
+    "content": {"$ref": "#/$defs/content"},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "attestations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/attestation"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+    "stringArray": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+    "jsonValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "integer"},
+        {"type": "string"},
+        {"type": "array", "items": {"$ref": "#/$defs/jsonValue"}},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/jsonValue"}}
+      ]
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "canonicalization", "created_at", "producer", "subject", "artifacts", "claims", "derivations", "intents", "bindings"],
+      "properties": {
+        "spec_version": {"const": "palimpsest-evidence-capsule/v1"},
+        "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "producer": {
+          "type": "object", "additionalProperties": false,
+          "required": ["name", "software"],
+          "properties": {"name": {"type": "string", "minLength": 1}, "software": {"type": "string", "minLength": 1}}
+        },
+        "subject": {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "id", "title"],
+          "properties": {
+            "type": {"enum": ["reading", "analytical-lead", "evidence-set"]},
+            "id": {"type": "string", "minLength": 1},
+            "title": {"type": "string", "minLength": 1}
+          }
+        },
+        "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/artifact"}},
+        "claims": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/claim"}},
+        "derivations": {"type": "array", "items": {"$ref": "#/$defs/derivation"}},
+        "intents": {"type": "array", "items": {"$ref": "#/$defs/intent"}},
+        "bindings": {"type": "array", "items": {"$ref": "#/$defs/binding"}}
+      }
+    },
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sha256", "size", "media_type", "source", "untrusted", "location"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "pattern": "^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$"},
+        "source": {
+          "type": "object", "additionalProperties": false,
+          "required": ["uri", "captured_at", "collector"],
+          "properties": {
+            "uri": {"type": "string", "minLength": 1},
+            "captured_at": {"type": "string", "format": "date-time"},
+            "collector": {"type": "string", "minLength": 1}
+          }
+        },
+        "untrusted": {"type": "boolean"},
+        "location": {
+          "oneOf": [
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["type", "encoding", "data"],
+              "properties": {"type": {"const": "inline"}, "encoding": {"const": "base64"}, "data": {"type": "string"}}
+            },
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["type", "path"],
+              "properties": {"type": {"const": "path"}, "path": {"type": "string", "minLength": 1}}
+            }
+          ]
+        }
+      }
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "type", "statement", "artifact_refs", "derivation_refs", "evidence_level", "limitations"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "type": {"enum": ["observation", "measurement", "provenance", "integrity", "analytical-lead"]},
+        "statement": {"type": "string", "minLength": 1},
+        "artifact_refs": {"$ref": "#/$defs/stringArray"},
+        "derivation_refs": {"$ref": "#/$defs/stringArray"},
+        "evidence_level": {"enum": ["direct", "derived", "sampled", "reported"]},
+        "limitations": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "derivation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "type", "description", "input_artifact_refs", "supports_claim_refs", "proof"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "type": {"enum": ["extraction", "calculation", "ranking", "analyst-judgment"]},
+        "description": {"type": "string", "minLength": 1},
+        "input_artifact_refs": {"$ref": "#/$defs/stringArray"},
+        "supports_claim_refs": {"$ref": "#/$defs/stringArray"},
+        "proof": {
+          "oneOf": [
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["type", "artifact_ref", "pointer", "expected"],
+              "properties": {
+                "type": {"const": "json-pointer-equals-v1"},
+                "artifact_ref": {"$ref": "#/$defs/identifier"},
+                "pointer": {"type": "string", "pattern": "^(|/.*)$"},
+                "expected": {"$ref": "#/$defs/jsonValue"}
+              }
+            },
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["type", "reason"],
+              "properties": {"type": {"const": "declared-nonrecomputable-v1"}, "reason": {"type": "string", "minLength": 1}}
+            }
+          ]
+        }
+      }
+    },
+    "intent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "summary", "advisory"],
+      "properties": {
+        "type": {"enum": ["human-review", "investigate", "preserve", "compare", "cite"]},
+        "summary": {"type": "string", "minLength": 1},
+        "advisory": {"const": true}
+      }
+    },
+    "ledgerEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["seq", "ts", "source", "payload_sha256", "prev_hash", "entry_hash"],
+      "properties": {
+        "seq": {"type": "integer", "minimum": 0}, "ts": {"type": "string", "format": "date-time"},
+        "source": {"type": "string", "minLength": 1}, "payload_sha256": {"$ref": "#/$defs/sha256"},
+        "prev_hash": {"$ref": "#/$defs/sha256"}, "entry_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "inclusionProof": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "seq", "entry_hash", "n_entries", "path", "merkle_root"],
+      "properties": {
+        "type": {"const": "palimpsest-merkle-duplicate-last-v1"},
+        "seq": {"type": "integer", "minimum": 0}, "entry_hash": {"$ref": "#/$defs/sha256"},
+        "n_entries": {"type": "integer", "minimum": 1}, "merkle_root": {"$ref": "#/$defs/sha256"},
+        "path": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["side", "hash"], "properties": {"side": {"enum": ["left", "right"]}, "hash": {"$ref": "#/$defs/sha256"}}}}
+      }
+    },
+    "anchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "ledger", "prefix_entries", "head_hash", "merkle_root", "anchored_at", "input_artifact_ref", "proof_artifact_ref", "proof_type"],
+      "properties": {
+        "type": {"const": "palimpsest-prefix-anchor-v1"}, "ledger": {"$ref": "#/$defs/identifier"},
+        "prefix_entries": {"type": "integer", "minimum": 1}, "head_hash": {"$ref": "#/$defs/sha256"},
+        "merkle_root": {"$ref": "#/$defs/sha256"}, "anchored_at": {"type": "string", "format": "date-time"},
+        "input_artifact_ref": {"$ref": "#/$defs/identifier"}, "proof_artifact_ref": {"$ref": "#/$defs/identifier"},
+        "proof_type": {"const": "opentimestamps-detached-v1"}
+      }
+    },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "artifact_ref", "payload_canonicalization", "entry", "inclusion_proof", "anchor"],
+      "properties": {
+        "type": {"const": "palimpsest-ledger-anchor-v1"},
+        "artifact_ref": {"$ref": "#/$defs/identifier"},
+        "payload_canonicalization": {"const": "palimpsest-ledger-json-v1"},
+        "entry": {"$ref": "#/$defs/ledgerEntry"},
+        "inclusion_proof": {"$ref": "#/$defs/inclusionProof"},
+        "anchor": {"$ref": "#/$defs/anchor"}
+      }
+    },
+    "attestation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "content_sha256", "actor", "issued_at", "statement"],
+      "properties": {
+        "type": {"const": "statement-v1"}, "content_sha256": {"$ref": "#/$defs/sha256"},
+        "actor": {"type": "string", "minLength": 1}, "issued_at": {"type": "string", "format": "date-time"},
+        "statement": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
