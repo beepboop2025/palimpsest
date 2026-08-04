@@ -68,7 +68,7 @@ the method is on [`bleedthrough.html`](bleedthrough.html) and the code is open.
 
 | Signal | Cadence | Latest | Time-series |
 | --- | --- | --- | --- |
-| China econ telemetry (CFETS benchmarks) | Every 6h | [`china-econ-latest.json`](china-econ-latest.json) | [`china-econ-history.jsonl`](china-econ-history.jsonl) |
+| China econ telemetry (CFETS benchmarks) | Every 6h | [`china-econ-latest.json`](china-econ-latest.json) | [`china-econ-history.jsonl`](china-econ-history.jsonl) (latest-per-date wide compatibility history) · `china-econ-observations.jsonl` (append-only bitemporal vintages, created on next refresh) |
 | Stock Connect flows | Weekdays | [`stock-connect-latest.json`](stock-connect-latest.json) | [`stock-connect-history.jsonl`](stock-connect-history.jsonl) |
 
 ## Dated readings

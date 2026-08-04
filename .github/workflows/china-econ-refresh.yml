@@ -5,7 +5,7 @@ name: Refresh China econ telemetry
 # chinamoney English portal. State-PUBLISHED numbers — the economic half of
 # the latent-state read, complementing the censorship signals. The portal is
 # range-limited and burst-throttled, so the script makes three spaced calls
-# per run and the git history file is the long record. Stdlib-only,
+# per run and the Git-tracked compatibility/vintage ledgers are the long record. Stdlib-only,
 # vantage-insensitive — runs correctly from a GitHub runner (no box egress).
 
 on:
@@ -35,6 +35,9 @@ jobs:
       - name: Pull CFETS benchmarks and publish the china-econ signal
         run: python -m scripts.china_econ_pull
 
+      - name: Validate the append-only economic observation ledger
+        run: python -m scripts.china_econ_pull --validate-only
+
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
@@ -50,7 +53,8 @@ jobs:
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
-          git add readings/china-econ-latest.json readings/china-econ-history.jsonl 2>/dev/null || true
+          git add readings/china-econ-latest.json readings/china-econ-history.jsonl \
+            readings/china-econ-observations.jsonl 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else

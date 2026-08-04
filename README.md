@@ -247,6 +247,14 @@ self-refreshing feeds in all.
 | **App storefront** | Storefront-level availability drift for watched apps, the removal timeline read from the store itself | Daily | [`readings/app-storefront-latest.json`](readings/app-storefront-latest.json) |
 | **Inside view** | What the domestic vantage can and cannot see, read from sources published inside the wall | Every 6 hours | [`readings/inside-view-latest.json`](readings/inside-view-latest.json) |
 
+The economic expansion is specified separately from the live table so planned
+coverage cannot pose as collected data. See the 33-source executable registry
+[`config/china_econ_sources.json`](config/china_econ_sources.json), the planner
+(`PYTHONPATH=. python -m scripts.china_econ_plan`), and
+[`docs/CHINA-ECONOMIC-OBSERVATORY.md`](docs/CHINA-ECONOMIC-OBSERVATORY.md).
+The target is a CBB-shaped public/contracted observatory; it does not claim access
+to China Beige Book's proprietary respondent network or microdata.
+
 Every value is provenance-tracked to its source document, and a signal abstains rather than
 fabricates when its source returns nothing. Nothing is published without evidence. Researcher docs,
 schemas, and citation (BibTeX) are at
