@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-04T09:09:23.647216+00:00",
+  "generated_at": "2026-08-04T14:40:04.826946+00:00",
   "method_version": 2,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 42.1,
+  "erasure_index": 41.0,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -14,10 +14,10 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 59.2,
+      "value": 59.1,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-08-04T03:43:44.462564+00:00",
+      "as_of": "2026-08-04T09:16:01.507801+00:00",
       "age_days": 0.23,
       "age_hours": 5.4
     },
@@ -25,11 +25,11 @@
       "layer": "model",
       "title": "Model erasure",
       "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
-      "value": 25.0,
+      "value": 23.0,
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
-      "as_of": "2026-08-02T08:55:41.340373+00:00",
-      "age_days": 2.01
+      "as_of": "2026-08-04T09:37:38.748003+00:00",
+      "age_days": 0.21
     },
     {
       "layer": "narrative",
@@ -46,7 +46,7 @@
       "value": 4.45,
       "unit": "%",
       "as_of": "2026-08-04T08:04:21.227514+00:00",
-      "age_hours": 1.1,
+      "age_hours": 6.6,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
@@ -54,40 +54,40 @@
       "value": 0.75,
       "unit": "x",
       "as_of": "2026-08-04T03:52:45.278286+00:00",
-      "age_hours": 5.3,
+      "age_hours": 10.8,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 121,
+    "entries": 123,
     "verified": true,
-    "merkle_root": "e6deb2467dd47e1916e9dbaf307f21248329c74e71e9d3cacec25a739edc9d32",
-    "head_hash": "b9f46c06836593232f74c835d7c31dd7ba8548f38ebe7b3a44fc24a8752fca0a",
+    "merkle_root": "aaf11f797f65d37bafb6556cbafc18b5a2383e2c1ab1871f628fd17b4b55dc7d",
+    "head_hash": "90329620cd165d5ae998fe6241271288991f368aa18a37722d0efef573289c5f",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-08-04T09:09:23.647216+00:00",
+    "head_ts": "2026-08-04T14:40:04.826946+00:00",
     "by_source": {
-      "ooni-gfw": 94,
-      "generative-firewall": 5,
+      "ooni-gfw": 95,
+      "generative-firewall": 6,
       "censored-planet": 20,
       "baike-redaction": 2
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 119,
-        "entry_hash": "e78fc232ed24ed95661f186708a67921325f602508de3eb6299c141049f26461"
+        "seq": 121,
+        "entry_hash": "a42fab12ad92d770f2cc90acbeb69b87f75451e76f02d2e72e9c4c25af07b588"
       },
       {
-        "source": "censored-planet",
-        "seq": 120,
-        "entry_hash": "b9f46c06836593232f74c835d7c31dd7ba8548f38ebe7b3a44fc24a8752fca0a"
+        "source": "generative-firewall",
+        "seq": 122,
+        "entry_hash": "90329620cd165d5ae998fe6241271288991f368aa18a37722d0efef573289c5f"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
     "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped"
   },
   "vs_access_indices": "Access observatories answer 'is X reachable now'. This answers 'what did the record lose, and can you prove our measurement of the loss was not itself edited afterward'.",
-  "last_changed_at": "2026-08-04T09:09:23.647216+00:00"
+  "last_changed_at": "2026-08-04T14:40:04.826946+00:00"
 }
