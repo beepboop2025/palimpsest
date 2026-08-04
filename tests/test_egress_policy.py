@@ -260,9 +260,7 @@ def _safe_fetch_importers():
 
 
 def test_safe_fetch_migration_note_matches_reality():
-    """core/safe_fetch.py states plainly that production does not call it yet. Keep that note
-    honest in BOTH directions: it must be there while no production module imports safe_fetch,
-    and it must be removed the moment one does."""
+    """Keep the safe-fetch status note honest in both directions as callers migrate."""
     doc = (ROOT / "core" / "safe_fetch.py").read_text(encoding="utf-8")
     note = "NOT YET WIRED INTO PRODUCTION" in doc
     importers = _safe_fetch_importers()

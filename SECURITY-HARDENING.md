@@ -110,9 +110,10 @@ What is explicitly **not** in the model: "hacking back" (out of scope by design 
 ## 2. Client self-defence — `core/safe_fetch.py`
 
 **State this accurately, because the gap matters.** `core/safe_fetch.py` is a written, tested,
-standard-library-only hardened fetch — and as of this writing **no collector calls it**. Grep
-the tree: the only importer of `safe_fetch()` is `tests/test_safe_fetch.py`. It is the intended
-egress chokepoint, not the current one.
+standard-library-only hardened fetch. Its first production caller is the optional
+`scripts/import_nemesis_snapshot.py` publication bridge, which permits one operator-configured
+HTTPS endpoint and disables redirects. **No live collector calls it yet.** It protects that
+narrow import boundary today and remains the intended egress chokepoint for the collectors.
 
 What the live reads actually do today: a plain `urllib.request.urlopen`, or an
 `httpx.AsyncClient` on the async paths. Most carry a timeout and about half carry an explicit
@@ -130,7 +131,7 @@ outside the design, a loopback Ollama backend the SSRF guard would correctly ref
 that list *is* the migration; growing it silently is not possible, because a new un-hardened
 call site fails the suite.
 
-Two things keep the gap survivable in the meantime. Every live read is an anonymous request to
+Two things keep the collector gap survivable in the meantime. Every live collector read is an anonymous request to
 a **hard-coded, first-party-chosen URL** — no collector fetches a URL supplied by the surface it
 is reading, which is what makes the missing SSRF guard a latent risk rather than an open door.
 And nothing fetched is ever executed (§5). Until the list empties, read the rest of this section

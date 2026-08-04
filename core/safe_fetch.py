@@ -17,17 +17,18 @@ Palimpsest reads from surfaces that may be adversarial. A hostile server cannot 
 This module NEVER executes a byte it fetches; it returns text for a parser to treat as
 untrusted data. Standard-library only. See SECURITY-HARDENING.md for the full threat model.
 
-STATUS — NOT YET WIRED INTO PRODUCTION. Stated plainly so nobody mistakes the existence of
-this module for the hardening of the observatory: no collector, script, or server currently
-imports it. Every live outbound read still goes out through a plain `urllib.request.urlopen`
-or an `httpx` client. This module is the intended migration TARGET, not the current state.
+STATUS — WIRED AT ONE NARROW PUBLICATION BOUNDARY. The optional Nemesis snapshot importer
+uses this path with redirects disabled before accepting a configured external HTTPS document.
+No live observatory collector or server uses it yet: their outbound reads still go through a
+plain `urllib.request.urlopen` or an `httpx` client. This module protects that one named import
+while remaining the migration target for the collector inventory.
 
 The inventory of what still has to move — every un-hardened egress call site, each with the
 honest reason it has not moved yet (async-only paths, POST bodies this GET-only fetch cannot
 carry, the deliberately-independent witness, the pinned-IP CDN probe that is structurally
 outside this design) — lives in tests/test_egress_policy.py. That test fails on any NEW
 un-hardened call site, so the gap can only shrink. Shrinking `_ALLOWED` there IS the
-migration; when the last production caller lands, delete this note (the test enforces that
+migration; when the last collector caller lands, update this note (the test enforces that
 too, in both directions).
 """
 

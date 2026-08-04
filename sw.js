@@ -3,9 +3,11 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v4";
+const CACHE = "palimpsest-v5";
 const SHELL = [
   "/",
+  "/osint-china.html",
+  "/readings/osint-china-latest.json",
   "/dashboards/ddti_observatory.html",
   "/dashboards/ddti_dashboard.html",
   /* The stylesheets and behaviour the pages above depend on. Without these an

@@ -57,6 +57,21 @@ same offline verification model.
 > A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
 > Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
 
+The full operational view is [OSINT China](https://palimpsest.info/osint-china.html): the Nemesis
+command surface over every China-facing reading, including each source's cadence, freshness deadline,
+coverage state and complete machine-readable payload. A failed or stale collector stays on the board as
+a visible gap; it is never replaced by a plausible-looking zero.
+
+The dedicated Nemesis layer is an optional, explicit deployment bridge. An operator sets the repository
+variable `NEMESIS_SNAPSHOT_URL` to the Nemesis service's public-snapshot HTTPS endpoint; the hourly
+roll-up then imports only the versioned `palimpsest-nemesis.public-snapshot` document. The importer
+refuses credentials in the URL, all redirects (including HTTPS-to-HTTP downgrade), private-network
+targets, oversized/decompression-bomb responses, duplicate JSON keys, unknown top-level fields,
+unsupported source/schema/status values and contradictory or future-dated health timestamps. It writes
+the validated document atomically as `readings/nemesis-latest.json`, then rebuilds and tests the roll-up.
+If the variable is unset, Nemesis remains visibly absent and the rest of OSINT China continues; if it is
+set but the endpoint fails validation or cannot be reached, publication fails loudly.
+
 ![The Verifiable Eval Registry, live: sealed runs of Chinese state-aligned and Western frontier models, each on its own frozen suite, chain intact, with the frontier refusal-drift panel](docs/img/eval-registry.png)
 
 > *The registry, live. Chinese state-aligned and Western frontier models under one tamper-evident,

@@ -120,6 +120,13 @@ CONTRACT = {
         "generated_at", ["method"],
         reason="fuses the network vantages that reported; the contributing and excluded "
                "vantages are both enumerated, so a ratio would double-count them."),
+    "osint-china": _d(
+        "generated_at", ["source", "method", "scope"], "n_signals_total"),
+    "nemesis": _d(
+        "generated_at", ["source", "method", "scope"],
+        reason="an allowlisted operational snapshot whose observed sources and component "
+               "counts are explicitly enumerated in coverage and counts; it is not one "
+               "ratio drawn from a larger sampled population."),
     "in-path-interference": _d(
         "generated_at", ["source", "method"],
         reason="indices are measurement-weighted means over OONI's published aggregate; "
@@ -173,12 +180,19 @@ PENDING = {
     "believability",
 }
 
+# External public products whose contract is agreed here but whose presence is deliberately
+# deployment-dependent. Unlike PENDING, these do not "graduate": Nemesis remains optional so a
+# repository with no NEMESIS_SNAPSHOT_URL has an honest missing layer rather than a fake zero.
+OPTIONAL_EXTERNAL = {
+    "nemesis",
+}
+
 
 def test_no_contract_entry_describes_a_reading_that_does_not_exist():
     """Keeps the inventory honest as signals are retired, without punishing signals whose
     contract was agreed before their first round."""
     present = {_name(p) for p in _readings()}
-    stale = sorted(set(CONTRACT) - present - PENDING)
+    stale = sorted(set(CONTRACT) - present - PENDING - OPTIONAL_EXTERNAL)
     assert not stale, (
         f"CONTRACT describes readings that no longer exist: {stale}. Retire the entry, or "
         "move it to PENDING if the signal is built but not publishing yet.")
@@ -193,6 +207,14 @@ def test_pending_signals_are_registered_and_do_not_linger_silently():
     graduated = sorted(PENDING & published)
     assert not graduated, (
         f"these signals now publish and must be removed from PENDING: {graduated}")
+
+
+def test_optional_external_signals_are_pre_registered_not_silently_required():
+    """An optional deployment feed still agrees its contract before its first import."""
+    unregistered = sorted(OPTIONAL_EXTERNAL - set(CONTRACT))
+    assert not unregistered, f"optional external signals have no contract: {unregistered}"
+    assert not (OPTIONAL_EXTERNAL & PENDING), (
+        "deployment-dependent signals must not also use one-time PENDING graduation semantics")
 
 
 @pytest.mark.parametrize("path", _readings(), ids=_name)
