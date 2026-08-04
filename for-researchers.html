@@ -156,6 +156,7 @@
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
             <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
             <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
             <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
             <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
@@ -221,7 +222,8 @@
   <p class="ps-lede">Palimpsest is an open, public-good observatory that measures how authoritarian states, and their state-aligned AI models, censor. It treats deletion as data and watches the censor, never the censored. Everything below is free to use and built to be cited. If a number is here, its raw evidence is here too.</p>
 
   <div class="btn-row">
-    <a class="ps-btn" href="/dashboards/ddti_observatory.html">Open the observatory</a>
+    <a class="ps-btn" href="/osint-china.html">Open OSINT China</a>
+    <a class="ps-btn ps-btn--ghost" href="/dashboards/ddti_observatory.html">Open the observatory</a>
     <a class="ps-btn ps-btn--ghost" href="/readings/">Browse all data</a>
     <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
   </div>
@@ -299,6 +301,7 @@
   <h2 class="ps-section-head">Get the data</h2>
   <p>All files are plain JSON. The <code>*-latest.json</code> files hold the current snapshot; the <code>*-history.jsonl</code> files are append-only time series, one compact record per run, so you can chart a signal over time.</p>
   <div class="grid ps-stagger">
+    <div class="file ps-p1 ps-reveal"><a href="readings/osint-china-latest.json">osint-china-latest.json</a><div class="d">The complete OSINT China bundle: every China-facing current payload, normalized source health, cadence, freshness deadline, layer coverage and honest missing-source state in one versioned contract.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/ddti-latest.json">ddti-latest.json</a><div class="d">DDTI snapshot: ranked terms with threat, attention, novelty, is_new, and source samples with links.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/ddti-history.jsonl">ddti-history.jsonl</a><div class="d">DDTI time series: generated_at, n_terms, top_term, top_threat per run.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/latest.json">latest.json</a><div class="d">Generative Firewall raw run: per-model, per-concept refusals, controls, and the GFI value.</div></div>

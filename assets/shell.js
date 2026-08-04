@@ -358,6 +358,7 @@
     var path = location.pathname;
     var kicker =
       path.indexOf("/readings/") === 0 ? "reading" :
+      path.indexOf("/osint-china") === 0 ? "osint china" :
       path.indexOf("/china-brief") === 0 ? "china brief" :
       path.indexOf("/dashboards/") === 0 ? "dashboard" : null;
     if (!kicker) return;

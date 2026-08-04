@@ -39,6 +39,8 @@ NAV = [
             {
                 "head": "Boards",
                 "links": [
+                    ("/osint-china.html", "OSINT China",
+                     "Every signal, source and freshness state in one public roll-up", "new"),
                     ("/china-brief.html", "China Brief",
                      "The six-hourly read: what moved and what it means"),
                     ("/dashboards/ddti_observatory.html", "DDTI Observatory",

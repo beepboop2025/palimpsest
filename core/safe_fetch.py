@@ -1,33 +1,34 @@
-"""Hardened outbound fetch — client self-defence against a hostile server.
+"""Hardened outbound fetch: client self-defence against a hostile server.
 
 Palimpsest reads from surfaces that may be adversarial. A hostile server cannot reach
 *into* an outbound collector, but it CAN try to weaponise the collector against itself:
 
-  1. SSRF via redirect — answer a request with `302 Location: http://169.254.169.254/…`
+  1. SSRF via redirect: answer a request with `302 Location: http://169.254.169.254/…`
      (cloud metadata) or `http://127.0.0.1/…` / an RFC-1918 address, to make OUR client
      attack OUR own network. Defence: resolve every hop and refuse any non-public address;
      connect to the *pinned* validated IP so a DNS-rebind between check and connect can't
      swap it for an internal one.
-  2. Decompression bomb — a few KB of gzip that expands to gigabytes, to OOM the box.
+  2. Decompression bomb: a few KB of gzip that expands to gigabytes, to OOM the box.
      Defence: decompress through a hard output cap; over-cap or leftover input => reject.
-  3. Oversized / endless body — defence: read through a hard byte cap.
-  4. TLS downgrade — defence: always verify cert + hostname (default SSL context).
-  5. Odd schemes (file://, ftp://, gopher://) — defence: https/http allowlist only.
+  3. Oversized / endless body: defence means reading through a hard byte cap.
+  4. TLS downgrade: defence means always verifying cert + hostname (default SSL context).
+  5. Odd schemes (file://, ftp://, gopher://): defence is an https/http allowlist only.
 
 This module NEVER executes a byte it fetches; it returns text for a parser to treat as
 untrusted data. Standard-library only. See SECURITY-HARDENING.md for the full threat model.
 
-STATUS — NOT YET WIRED INTO PRODUCTION. Stated plainly so nobody mistakes the existence of
-this module for the hardening of the observatory: no collector, script, or server currently
-imports it. Every live outbound read still goes out through a plain `urllib.request.urlopen`
-or an `httpx` client. This module is the intended migration TARGET, not the current state.
+STATUS: WIRED AT ONE NARROW PUBLICATION BOUNDARY. The optional Nemesis snapshot importer
+uses this path with redirects disabled before accepting a configured external HTTPS document.
+No live observatory collector or server uses it yet: their outbound reads still go through a
+plain `urllib.request.urlopen` or an `httpx` client. This module protects that one named import
+while remaining the migration target for the collector inventory.
 
-The inventory of what still has to move — every un-hardened egress call site, each with the
+The inventory of what still has to move includes every un-hardened egress call site, each with the
 honest reason it has not moved yet (async-only paths, POST bodies this GET-only fetch cannot
 carry, the deliberately-independent witness, the pinned-IP CDN probe that is structurally
-outside this design) — lives in tests/test_egress_policy.py. That test fails on any NEW
+outside this design). It lives in tests/test_egress_policy.py. That test fails on any NEW
 un-hardened call site, so the gap can only shrink. Shrinking `_ALLOWED` there IS the
-migration; when the last production caller lands, delete this note (the test enforces that
+migration; when the last collector caller lands, update this note (the test enforces that
 too, in both directions).
 """
 
@@ -57,7 +58,7 @@ class BlockedAddressError(FetchError):
 
 
 class ResponseTooLarge(FetchError):
-    """Body (or its decompressed form) exceeded the byte cap — size / bomb guard."""
+    """Body (or its decompressed form) exceeded the size / bomb guard byte cap."""
 
 
 class TooManyRedirects(FetchError):
@@ -66,7 +67,7 @@ class TooManyRedirects(FetchError):
 
 def _validate_public(host: str):
     """Resolve `host` and return its addresses only if EVERY one is public. Blocks private,
-    loopback, link-local (incl. 169.254 metadata), reserved, multicast, and unspecified —
+    loopback, link-local (incl. 169.254 metadata), reserved, multicast, and unspecified;
     the SSRF guard. Returning the pinned address(es) lets the caller connect to a validated
     IP, closing the DNS-rebinding window between check and connect."""
     try:
@@ -95,7 +96,7 @@ def _read_capped(resp, max_bytes: int) -> bytes:
 
 def _maybe_decompress(data: bytes, encoding, max_bytes: int) -> bytes:
     """Decompress gzip/deflate through a HARD output cap. A decompression bomb either exceeds
-    the cap or leaves unconsumed input once the cap is hit — both are rejected."""
+    the cap or leaves unconsumed input once the cap is hit; both are rejected."""
     enc = (encoding or "").lower().strip()
     if enc in ("gzip", "x-gzip"):
         dobj = zlib.decompressobj(16 + zlib.MAX_WBITS)
@@ -123,22 +124,36 @@ def _connect(scheme: str, host: str, ip: str, port: int, timeout: float, ctx: ss
     return conn
 
 
-def safe_fetch(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES, timeout: float = DEFAULT_TIMEOUT,
-               max_redirects: int = DEFAULT_MAX_REDIRECTS, headers: dict = None,
-               proxy: str = None) -> str:
-    """Fetch a PUBLIC http(s) url defensively and return decoded text.
+def safe_fetch_bytes(
+    url: str,
+    *,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    headers: dict = None,
+    proxy: str = None,
+) -> bytes:
+    """Fetch a PUBLIC http(s) URL defensively and return the exact response bytes.
 
     Every redirect hop is re-validated (SSRF), connections pin the validated IP (rebinding),
     body and decompression are capped (bombs), TLS is verified, and only http/https are
-    allowed. Raises a FetchError subclass on any refusal — callers abstain, never false-zero.
+    allowed. The returned bytes are the bounded, decompressed entity body; no character
+    decoding has happened. Callers which authenticate or strictly parse a payload must use
+    this seam so a replacement decoder cannot change the signed input.
 
     proxy: when an egress proxy is configured (the PALIMPSEST_PROXY seam), host resolution
     happens at the *proxy*, so client-side IP pinning does not apply; size / redirect / timeout
     caps still hold and the proxy is the trusted egress. Kept minimal and clearly delimited.
     """
     if proxy:
-        return _fetch_via_proxy(url, proxy, max_bytes=max_bytes, timeout=timeout,
-                                max_redirects=max_redirects, headers=headers)
+        return _fetch_via_proxy_bytes(
+            url,
+            proxy,
+            max_bytes=max_bytes,
+            timeout=timeout,
+            max_redirects=max_redirects,
+            headers=headers,
+        )
     ctx = ssl.create_default_context()  # cert + hostname verification ON by default
     current = url
     hops = 0
@@ -176,12 +191,37 @@ def safe_fetch(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES, timeout: float =
                 raise FetchError(f"http status {resp.status}")
             body = _read_capped(resp, max_bytes)
             body = _maybe_decompress(body, resp.getheader("Content-Encoding"), max_bytes)
-            return body.decode("utf-8", "replace")
+            return body
         finally:
             conn.close()
 
 
-def _fetch_via_proxy(url, proxy, *, max_bytes, timeout, max_redirects, headers):
+def safe_fetch(
+    url: str,
+    *,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    headers: dict = None,
+    proxy: str = None,
+) -> str:
+    """Fetch defensively and return replacement-decoded text for legacy callers.
+
+    New authenticated or strict-UTF-8 publication boundaries should call
+    :func:`safe_fetch_bytes`. This wrapper deliberately preserves the historical text
+    behaviour for existing collectors while sharing all transport protections.
+    """
+    return safe_fetch_bytes(
+        url,
+        max_bytes=max_bytes,
+        timeout=timeout,
+        max_redirects=max_redirects,
+        headers=headers,
+        proxy=proxy,
+    ).decode("utf-8", "replace")
+
+
+def _fetch_via_proxy_bytes(url, proxy, *, max_bytes, timeout, max_redirects, headers):
     """Bounded fetch through the trusted egress proxy. SSRF host-pinning is delegated to the
     egress; size / redirect / timeout caps and the scheme allowlist still hold here."""
     import urllib.error
@@ -211,4 +251,4 @@ def _fetch_via_proxy(url, proxy, *, max_bytes, timeout, max_redirects, headers):
         raise FetchError(f"proxy fetch failed: {e}") from e
     if len(data) > max_bytes:
         raise ResponseTooLarge(f"body exceeds {max_bytes} bytes")
-    return data.decode("utf-8", "replace")
+    return data

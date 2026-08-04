@@ -57,8 +57,9 @@ evidence, so journalists and researchers can verify each claim.
   from The Citizen Lab's chat-censorship corpus. Not inference about what the censor cares
   about — the censor's own trigger list, dated by client version.
 
-Every signal above is live and self-updating on schedules from 3 hours to daily, via
-public GitHub Actions on the open repository.
+Signals above update on declared cadences from hours to daily, weekly and monthly, via
+public GitHub Actions on the open repository. A missing or stale feed remains explicit
+rather than becoming a synthetic value.
 
 ## The Verifiable Eval Registry
 
@@ -90,6 +91,7 @@ It re-walks every hash link, recomputes the Merkle root, and fails loud on any b
 
 ## Key pages
 
+- [OSINT China](https://palimpsest.info/osint-china.html): the continuous public roll-up across every China-facing signal, including per-source freshness, coverage failures and the complete machine-readable bundle
 - [Observatory](https://palimpsest.info/dashboards/ddti_observatory.html): live fear index, topic network, provenance-on-pull
 - [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html): live index of state-aligned AI suppression
 - [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html): pre-registered, hash-chained, Merkle-anchored AI model evaluations that cannot be revised after publication
