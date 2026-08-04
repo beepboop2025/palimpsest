@@ -124,22 +124,36 @@ def _connect(scheme: str, host: str, ip: str, port: int, timeout: float, ctx: ss
     return conn
 
 
-def safe_fetch(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES, timeout: float = DEFAULT_TIMEOUT,
-               max_redirects: int = DEFAULT_MAX_REDIRECTS, headers: dict = None,
-               proxy: str = None) -> str:
-    """Fetch a PUBLIC http(s) url defensively and return decoded text.
+def safe_fetch_bytes(
+    url: str,
+    *,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    headers: dict = None,
+    proxy: str = None,
+) -> bytes:
+    """Fetch a PUBLIC http(s) URL defensively and return the exact response bytes.
 
     Every redirect hop is re-validated (SSRF), connections pin the validated IP (rebinding),
     body and decompression are capped (bombs), TLS is verified, and only http/https are
-    allowed. Raises a FetchError subclass on any refusal — callers abstain, never false-zero.
+    allowed. The returned bytes are the bounded, decompressed entity body; no character
+    decoding has happened. Callers which authenticate or strictly parse a payload must use
+    this seam so a replacement decoder cannot change the signed input.
 
     proxy: when an egress proxy is configured (the PALIMPSEST_PROXY seam), host resolution
     happens at the *proxy*, so client-side IP pinning does not apply; size / redirect / timeout
     caps still hold and the proxy is the trusted egress. Kept minimal and clearly delimited.
     """
     if proxy:
-        return _fetch_via_proxy(url, proxy, max_bytes=max_bytes, timeout=timeout,
-                                max_redirects=max_redirects, headers=headers)
+        return _fetch_via_proxy_bytes(
+            url,
+            proxy,
+            max_bytes=max_bytes,
+            timeout=timeout,
+            max_redirects=max_redirects,
+            headers=headers,
+        )
     ctx = ssl.create_default_context()  # cert + hostname verification ON by default
     current = url
     hops = 0
@@ -177,12 +191,37 @@ def safe_fetch(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES, timeout: float =
                 raise FetchError(f"http status {resp.status}")
             body = _read_capped(resp, max_bytes)
             body = _maybe_decompress(body, resp.getheader("Content-Encoding"), max_bytes)
-            return body.decode("utf-8", "replace")
+            return body
         finally:
             conn.close()
 
 
-def _fetch_via_proxy(url, proxy, *, max_bytes, timeout, max_redirects, headers):
+def safe_fetch(
+    url: str,
+    *,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    headers: dict = None,
+    proxy: str = None,
+) -> str:
+    """Fetch defensively and return replacement-decoded text for legacy callers.
+
+    New authenticated or strict-UTF-8 publication boundaries should call
+    :func:`safe_fetch_bytes`. This wrapper deliberately preserves the historical text
+    behaviour for existing collectors while sharing all transport protections.
+    """
+    return safe_fetch_bytes(
+        url,
+        max_bytes=max_bytes,
+        timeout=timeout,
+        max_redirects=max_redirects,
+        headers=headers,
+        proxy=proxy,
+    ).decode("utf-8", "replace")
+
+
+def _fetch_via_proxy_bytes(url, proxy, *, max_bytes, timeout, max_redirects, headers):
     """Bounded fetch through the trusted egress proxy. SSRF host-pinning is delegated to the
     egress; size / redirect / timeout caps and the scheme allowlist still hold here."""
     import urllib.error
@@ -212,4 +251,4 @@ def _fetch_via_proxy(url, proxy, *, max_bytes, timeout, max_redirects, headers):
         raise FetchError(f"proxy fetch failed: {e}") from e
     if len(data) > max_bytes:
         raise ResponseTooLarge(f"body exceeds {max_bytes} bytes")
-    return data.decode("utf-8", "replace")
+    return data

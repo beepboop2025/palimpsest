@@ -16,9 +16,11 @@ previous complete document or the next complete document, never a partial JSON f
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -71,7 +73,7 @@ LAYER_TITLES = {
     "economy": "Economic undertext",
     "models": "Generative firewall",
     "integrity": "Integrity and witnessing",
-    "nemesis": "Nemesis intelligence",
+    "nemesis": "Optional intelligence bridge",
 }
 
 
@@ -246,19 +248,18 @@ SIGNALS: tuple[SignalSpec, ...] = (
        source_fallback="Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
        method_fallback="Merkle roots over committed ledgers with external timestamp witnesses"),
 
-    # Nemesis is intentionally an optional boundary: deployment may copy its export into
-    # readings/nemesis-latest.json. Absence remains visible inside its own layer but cannot
-    # make the required Palimpsest measurement set unavailable.
-    _s("nemesis", "Nemesis intelligence", "nemesis", "nemesis-latest.json", 0.25, 1,
-       "Optional Nemesis intelligence export; no result is inferred when the export is absent.",
-       "alerts", ("n_alerts",), "count", optional=True,
+    # The separately operated runtime is intentionally an optional boundary. Absence remains
+    # visible inside its own layer but cannot make the required Palimpsest source set unavailable.
+    _s("nemesis", "Private runtime bridge", "nemesis", "nemesis-latest.json", 0.25, 1,
+       "Optional signed and sanitized intelligence export; absence never becomes a zero.",
+       "topics ranked", ("counts", "topics"), "count", optional=True,
        # The exporter may write a new file around old evidence. Prefer its oldest
        # required-core data timestamp over the serialization time so a fresh export
        # cannot launder stale DDTI/economic observations into a live reading.
        timestamp_paths=(("data_timestamp",), ("timestamps", "data_updated_at"),
                         ("generated_at",), ("_generated_at",), ("timestamp",)),
-       source_fallback="Optional local Palimpsest Nemesis export",
-       method_fallback="Nemesis export, embedded without reinterpretation"),
+       source_fallback="Optional separately operated sanitized export",
+       method_fallback="Authenticated public export, embedded without reinterpretation"),
 )
 
 
@@ -338,17 +339,15 @@ def _timestamp(payload: dict[str, Any], spec: SignalSpec) -> tuple[datetime | No
     return None, "source timestamp is missing"
 
 
-def _scalar_metric(value: Any) -> Any:
-    """Return a normalized scalar without fabricating a number from structured data."""
+def _scalar_metric(value: Any, *, allow_container_count: bool = False) -> int | float | None:
+    """Return only an actual finite JSON number or an explicitly declared container count."""
     if isinstance(value, bool):
-        return value
+        return None
     if isinstance(value, (int, float)):
-        if isinstance(value, float) and not math.isfinite(value):
+        if not math.isfinite(float(value)):
             return None
         return value
-    if isinstance(value, str):
-        return value
-    if isinstance(value, (list, dict)):
+    if allow_container_count and isinstance(value, (list, dict)):
         # A declared count path may point at an enumerated container. Counting the complete
         # container is deterministic and does not infer an unobserved population.
         return len(value)
@@ -358,12 +357,14 @@ def _scalar_metric(value: Any) -> Any:
 def _metric(spec: SignalSpec, payload: dict[str, Any]) -> dict[str, Any] | None:
     if not spec.metric_path or not spec.metric_label:
         return None
-    value = _scalar_metric(_at(payload, spec.metric_path))
+    value = _scalar_metric(
+        _at(payload, spec.metric_path), allow_container_count=spec.metric_unit == "count")
     if value is None:
         return None
     denominator = None
     if spec.denominator_path and spec.denominator_label:
-        d_value = _scalar_metric(_at(payload, spec.denominator_path))
+        d_value = _scalar_metric(
+            _at(payload, spec.denominator_path), allow_container_count=True)
         if d_value is not None:
             denominator = {"label": spec.denominator_label, "value": d_value}
     return {
@@ -522,8 +523,22 @@ def _summary(
     return " ".join(parts)
 
 
+def _source_fingerprint(path: Path) -> dict[str, Any]:
+    """Bind one signal to the exact source bytes used by this build."""
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return {"filename": path.name, "sha256": None, "bytes": None}
+    return {
+        "filename": path.name,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "bytes": len(data),
+    }
+
+
 def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, Any]:
     path = readings_dir / spec.filename
+    input_fingerprint = _source_fingerprint(path)
     payload, load_error = _load_object(path)
     raw_url = PUBLIC_BASE + spec.filename
 
@@ -552,6 +567,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             "summary": _summary(spec, None, status, None, None, None, load_error),
             "metric": None,
             "raw_url": raw_url,
+            "input": input_fingerprint,
             "payload": None,
         }
 
@@ -618,6 +634,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             semantic_reason),
         "metric": metric,
         "raw_url": raw_url,
+        "input": input_fingerprint,
         "payload": payload,
     }
 
@@ -719,7 +736,61 @@ def _headline(signals: Sequence[dict[str, Any]]) -> str:
     return opening + ending
 
 
-def build_document(readings_dir: Path = READINGS, now: datetime | None = None) -> dict[str, Any]:
+def _input_commit(value: str | None) -> str:
+    """Return a verified source commit without ever inventing a repository identity."""
+    candidate = (value or "").strip().lower()
+    if candidate and re.fullmatch(r"[0-9a-f]{40}", candidate):
+        return candidate
+    if candidate:
+        raise ValueError("input commit must be a full 40-character Git object ID")
+    git_entry = ROOT / ".git"
+    try:
+        if git_entry.is_file():
+            marker = git_entry.read_text(encoding="utf-8").strip()
+            if not marker.startswith("gitdir: "):
+                raise ValueError("repository gitdir marker is invalid")
+            git_dir = (ROOT / marker[8:]).resolve()
+        else:
+            git_dir = git_entry.resolve()
+        common_dir = git_dir
+        common_marker = git_dir / "commondir"
+        if common_marker.is_file():
+            common_dir = (git_dir / common_marker.read_text(encoding="utf-8").strip()).resolve()
+        head = (git_dir / "HEAD").read_text(encoding="ascii").strip()
+        if re.fullmatch(r"[0-9a-fA-F]{40}", head):
+            resolved = head.lower()
+        elif head.startswith("ref: ") and re.fullmatch(
+            r"refs/[A-Za-z0-9._/-]+", head[5:]
+        ) and ".." not in head[5:].split("/"):
+            ref = head[5:]
+            resolved = ""
+            for base in (git_dir, common_dir):
+                ref_path = (base / ref).resolve()
+                if ref_path.is_relative_to(base) and ref_path.is_file():
+                    resolved = ref_path.read_text(encoding="ascii").strip().lower()
+                    break
+            if not resolved:
+                packed = common_dir / "packed-refs"
+                if packed.is_file():
+                    for line in packed.read_text(encoding="ascii").splitlines():
+                        parts = line.split(" ", 1)
+                        if len(parts) == 2 and parts[1] == ref:
+                            resolved = parts[0].lower()
+                            break
+        else:
+            resolved = ""
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("input commit is unavailable; pass --input-commit") from exc
+    if not re.fullmatch(r"[0-9a-f]{40}", resolved):
+        raise ValueError("git returned an invalid input commit")
+    return resolved
+
+
+def build_document(
+    readings_dir: Path = READINGS,
+    now: datetime | None = None,
+    input_commit: str | None = None,
+) -> dict[str, Any]:
     """Return the complete stable document without mutating the filesystem."""
     if now is None:
         now = datetime.now(timezone.utc)
@@ -743,6 +814,7 @@ def build_document(readings_dir: Path = READINGS, now: datetime | None = None) -
         "schema_version": SCHEMA_VERSION,
         "method_version": METHOD_VERSION,
         "generated_at": iso_z(now),
+        "input_commit": _input_commit(input_commit),
         "source": ("Committed Palimpsest China OSINT readings, the China-specific "
                    "Generative Firewall reading, integrity anchors, and predeclared "
                    "optional Nemesis, believability and controlled-prober exports"),
@@ -819,13 +891,18 @@ def _arguments(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=OUT,
                         help="atomic output path")
     parser.add_argument("--now", help="fixed timezone-aware ISO timestamp for replay")
+    parser.add_argument(
+        "--input-commit",
+        default=os.environ.get("PALIMPSEST_INPUT_COMMIT"),
+        help="full Git object ID of the source tree used for this roll-up",
+    )
     return parser.parse_args(list(argv) if argv is not None else None)
 
 
 def main(argv: Iterable[str] | None = None) -> dict[str, Any]:
     args = _arguments(argv)
     now = parse_timestamp(args.now) if args.now else datetime.now(timezone.utc)
-    document = build_document(args.readings_dir, now)
+    document = build_document(args.readings_dir, now, args.input_commit)
     write_atomic(document, args.output)
     print(
         f"osint-china -> {args.output} · "

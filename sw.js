@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v5";
+const CACHE = "palimpsest-v6";
 const SHELL = [
   "/",
   "/osint-china.html",
@@ -21,9 +21,44 @@ const SHELL = [
   "/brand/palimpsest-icon-512.png",
 ];
 
+function expectedContentType(url, response, request) {
+  if (!response || !response.ok || response.type === "opaque") return false;
+  const type = (response.headers.get("content-type") || "")
+    .split(";", 1)[0]
+    .trim()
+    .toLowerCase();
+  const path = url.pathname.toLowerCase();
+  if (path.endsWith(".json")) return type === "application/json" || type.endsWith("+json");
+  if (path.endsWith(".css")) return type === "text/css";
+  if (path.endsWith(".js")) {
+    return type === "text/javascript" || type === "application/javascript";
+  }
+  if (path.endsWith(".svg")) return type === "image/svg+xml";
+  if (path.endsWith(".png")) return type === "image/png";
+  if (path === "/" || path.endsWith(".html") || request.mode === "navigate") {
+    return type === "text/html";
+  }
+  return false;
+}
+
+async function cacheVerified(cache, request, key) {
+  const response = await fetch(request, { cache: "no-cache" });
+  const url = new URL(request.url || request, self.location.origin);
+  if (expectedContentType(url, response, request)) {
+    await cache.put(key || url.origin + url.pathname, response.clone());
+  }
+  return response;
+}
+
 self.addEventListener("install", (e) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {})));
+  e.waitUntil(
+    caches.open(CACHE).then((cache) =>
+      Promise.all(SHELL.map((path) =>
+        cacheVerified(cache, new Request(new URL(path, self.location.origin))).catch(() => null)
+      ))
+    )
+  );
 });
 
 self.addEventListener("activate", (e) => {
@@ -48,8 +83,10 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(key, copy)).catch(() => {});
+        if (expectedContentType(url, res, req)) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(key, copy)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(req, { ignoreSearch: true }))

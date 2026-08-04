@@ -9,7 +9,7 @@ import pytest
 
 import core.safe_fetch as sf
 from core.safe_fetch import (
-    _validate_public, _read_capped, _maybe_decompress, safe_fetch,
+    _validate_public, _read_capped, _maybe_decompress, safe_fetch, safe_fetch_bytes,
     BlockedAddressError, ResponseTooLarge, FetchError, TooManyRedirects,
 )
 
@@ -126,6 +126,19 @@ class _FakeRedirectResponse:
         return b""
 
 
+class _FakeBodyResponse:
+    status = 200
+
+    def __init__(self, body):
+        self._body = body
+
+    def getheader(self, _name, default=None):
+        return default
+
+    def read(self, n):
+        return self._body[:n]
+
+
 class _FakeConn:
     """Shaped like the http.client connection _connect returns: request / getresponse / close."""
 
@@ -213,3 +226,15 @@ def test_connection_is_closed_even_when_a_hop_is_refused(monkeypatch):
     with pytest.raises(BlockedAddressError):
         safe_fetch(PUBLIC_LITERAL, timeout=1.0)
     assert conns and all(c.closed for c in conns)
+
+
+def test_bytes_seam_preserves_invalid_utf8_for_a_strict_caller(monkeypatch):
+    raw = b'{"title":"\xff"}'
+    monkeypatch.setattr(
+        sf,
+        "_connect",
+        lambda *_args, **_kwargs: _FakeConn(_FakeBodyResponse(raw)),
+    )
+
+    assert safe_fetch_bytes(PUBLIC_LITERAL, timeout=1.0) == raw
+    assert "\ufffd" in safe_fetch(PUBLIC_LITERAL, timeout=1.0)

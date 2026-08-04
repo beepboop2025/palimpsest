@@ -22,7 +22,7 @@ def _text(path: str) -> str:
 def test_page_starts_fail_closed_and_names_the_raw_fallback():
     page = PAGE.read_text(encoding="utf-8")
     assert 'data-oc="pending"' in page
-    assert 'role="status"' in page
+    assert 'id="oc-result-status" aria-live="polite" aria-atomic="true"' in page
     assert "/readings/osint-china-latest.json" in page
     assert "no cached placeholder" in page.lower()
     assert '<main id="main" class="ps-wrap ps-wrap--wide" data-oc="pending">' in page
@@ -34,7 +34,12 @@ def test_untrusted_feed_strings_are_inserted_as_text_not_markup():
     assert ".innerHTML" not in page
     assert "safeHref" in page
     assert '/^\\/(?![\\/\\\\])/' in page
-    assert '/^https:\\/\\//i' in page
+    assert '["palimpsest.info", "www.palimpsest.info"]' in page
+    assert 'parsed.protocol === "https:"' in page
+    assert 'function finite(value) { return typeof value === "number"' in page
+    assert 'Number(value)' not in page
+    assert 'text(d.n_signals_total' not in page
+    assert 'reportingNow + "/" + currentSignals.length' in page
 
 
 def test_freshness_is_recomputed_in_the_browser():
@@ -55,7 +60,7 @@ def test_expired_sources_cannot_remain_in_headline_kpis_or_active_findings():
     for field in ("oc-erasure", "oc-target", "oc-network", "oc-darkness"):
         assert f'withholdKpi(' in page and f'"{field}"' in page
     assert 'if (statusFor(board) === "fresh")' in page
-    assert 'if (source && statusFor(source) !== "fresh") return' in page
+    assert 'if (!source || statusFor(source) !== "fresh") return' in page
     assert "command.headline || command.summary || d.headline" not in page
 
 
@@ -78,11 +83,32 @@ def test_status_is_written_in_words_and_not_only_colour():
     page = PAGE.read_text(encoding="utf-8")
     assert 'id="oc-status"' in page
     assert 'id="oc-command-chip"' in page
-    assert 'id="oc-nemesis-mode">Nemesis checking' in page
-    assert 'nemesisStatus === "fresh" ? "Nemesis active"' in page
-    assert '>Nemesis active</span>' not in page
+    assert 'id="oc-runtime-mode">public roll-up' in page
+    assert 'runtimeStatus === "fresh" ? "runtime bridge active"' in page
+    assert "palimpsest-nemesis" not in page.lower()
     assert 'node("span", "oc-chip", status)' in page
     assert 'aria-hidden="true"' in page  # the coloured dot is explicitly decorative
+
+
+def test_public_copy_is_honest_before_the_optional_runtime_is_live():
+    page = PAGE.read_text(encoding="utf-8")
+    assert "palimpsest-nemesis" not in page.lower()
+    assert "Nemesis command surface" not in _text("llms.txt")
+    assert "hours to daily" not in page
+    assert "hourly to daily, weekly and monthly" in page
+    assert "Every number keeps" not in page
+    assert "denominator appears" in page
+    assert "\u2014" not in page and "\u2013" not in page
+
+
+def test_service_worker_caches_only_successful_expected_content_types():
+    worker = _text("sw.js")
+    assert "response.ok" in worker
+    assert 'response.type === "opaque"' in worker
+    assert 'type === "application/json"' in worker
+    assert 'type === "text/html"' in worker
+    assert "if (expectedContentType(url, res, req))" in worker
+    assert "c.addAll(SHELL)" not in worker
 
 
 def test_route_is_present_on_every_discovery_surface():

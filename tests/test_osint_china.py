@@ -7,6 +7,7 @@ replacement executable promises.
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import os
 import sys
@@ -146,7 +147,23 @@ def test_valid_source_retains_the_complete_payload_and_normalizes_contract(mod, 
     assert signal["metric"] == {
         "label": "terms ranked", "value": 2, "unit": "count", "denominator": None}
     assert signal["raw_url"] == "https://palimpsest.info/readings/ddti-latest.json"
+    source_bytes = (tmp_path / spec.filename).read_bytes()
+    assert signal["input"] == {
+        "filename": spec.filename,
+        "sha256": hashlib.sha256(source_bytes).hexdigest(),
+        "bytes": len(source_bytes),
+    }
     assert "Ranks terms" in signal["summary"]
+
+
+@pytest.mark.parametrize("invalid", [True, False, "4", "not-a-number"])
+def test_scalar_metrics_reject_booleans_and_arbitrary_strings(mod, tmp_path, invalid):
+    _write_json(tmp_path / "ddti-latest.json", {
+        "generated_at": "2026-08-04T11:30:00Z",
+        "n_terms": invalid,
+    })
+    signal = _signal(mod.build_document(tmp_path, NOW, "a" * 40), "ddti")
+    assert signal["metric"] is None
 
 
 def test_missing_corrupt_and_stale_sources_remain_visible_and_never_live(mod, tmp_path):
@@ -298,8 +315,8 @@ def test_fixed_time_build_and_atomic_serialization_are_byte_deterministic(mod, t
     payload = _write_current_source(tmp_path, spec)
     payload["headline"] = "fixture board state"
     _write_json(tmp_path / spec.filename, payload)
-    first = mod.build_document(tmp_path, NOW)
-    second = mod.build_document(tmp_path, NOW)
+    first = mod.build_document(tmp_path, NOW, "a" * 40)
+    second = mod.build_document(tmp_path, NOW, "a" * 40)
     assert first == second
 
     output = tmp_path / "published" / "osint-china-latest.json"
@@ -331,6 +348,7 @@ def test_published_rollup_obeys_the_stable_schema_and_contract(mod):
     document = json.loads(PUBLISHED.read_text(encoding="utf-8"))
     assert document["schema_version"] == mod.SCHEMA_VERSION
     assert document["method_version"] == mod.METHOD_VERSION
+    assert len(document["input_commit"]) == 40
     assert all(document[key] for key in ("generated_at", "source", "method", "scope", "headline"))
     assert document["n_signals_total"] == len(mod.SIGNALS)
     assert len(document["signals"]) == document["n_signals_total"]
@@ -339,8 +357,11 @@ def test_published_rollup_obeys_the_stable_schema_and_contract(mod):
     for signal in document["signals"]:
         assert signal["status"] in {"live", "degraded", "stale", "missing", "corrupt"}
         assert signal["live"] is (signal["status"] == "live")
-        assert set(("id", "layer", "summary", "metric", "raw_url", "payload")) <= set(signal)
+        assert set(("id", "layer", "summary", "metric", "raw_url", "input", "payload")) <= set(signal)
         assert signal["raw_url"].startswith("https://palimpsest.info/readings/")
+        assert signal["input"]["filename"]
+        if signal["input"]["bytes"] is not None:
+            assert len(signal["input"]["sha256"]) == 64
         if signal["live"]:
             assert signal["source_timestamp"] and signal["freshness_deadline"]
 

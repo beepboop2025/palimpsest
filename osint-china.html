@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OSINT China · continuous public-source intelligence · Palimpsest</title>
-<meta name="description" content="Palimpsest OSINT China is the continuous Nemesis command surface: censorship, network interference, narrative control, economic stress and source health in one auditable public view.">
+<meta name="description" content="Palimpsest OSINT China is a continuous public roll-up of censorship, network interference, narrative control, economic undertext and source health.">
 <link rel="canonical" href="https://palimpsest.info/osint-china.html">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
 <meta property="og:title" content="OSINT China · continuous public-source intelligence">
-<meta property="og:description" content="The continuous Nemesis command surface: every China OSINT signal, its freshness and its evidence in one auditable view.">
+<meta property="og:description" content="Every China OSINT signal, its freshness and its evidence in one auditable public view.">
 <meta property="og:url" content="https://palimpsest.info/osint-china.html">
 <meta property="og:image" content="https://palimpsest.info/brand/og-site.png">
 <meta property="og:image:width" content="1200">
@@ -104,7 +104,8 @@
 .oc-alert__title{font-size:13px;font-weight:650;color:var(--tk-text-1);margin:0}
 .oc-alert__detail{font:400 11px/1.55 var(--tk-font-mono);color:var(--tk-text-3);margin:4px 0 0}
 
-.oc-empty{padding:20px;color:var(--tk-text-3);font-size:13px}
+	.oc-empty{padding:20px;color:var(--tk-text-3);font-size:13px}
+	.oc-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .oc-method{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-bottom:52px}
 .oc-method>section{padding:20px}
 .oc-method h3{font-size:15px;color:var(--tk-text-0);margin:0 0 10px}
@@ -131,7 +132,7 @@
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
             <p class="ps-flyout__head">Boards</p>
-            <a href="/osint-china.html" aria-current="page"><b>OSINT China<span class="ps-tag">new</span></b><span>Nemesis command surface: every signal, source and freshness state</span></a>
+            <a href="/osint-china.html" aria-current="page"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
             <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
             <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
             <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
@@ -192,33 +193,34 @@
 <main id="main" class="ps-wrap ps-wrap--wide" data-oc="pending">
   <header class="oc-hero ps-reveal">
     <div class="oc-lockup">
-      <span class="oc-lockup__mode" id="oc-nemesis-mode">Nemesis checking</span>
+      <span class="oc-lockup__mode" id="oc-runtime-mode">public roll-up</span>
       <span class="oc-lockup__state">continuous · public sources · fail loud</span>
     </div>
     <h1 class="oc-title">OSINT <span>China</span></h1>
     <p class="oc-deck">
       One operational view across the signals China cannot make agree: what is deleted,
       blocked, rewritten, delisted, hidden from models, and contradicted by economic
-      telemetry. <strong>Every number keeps its source, denominator and age attached.</strong>
+      telemetry. <strong>Every signal shows its source state and age; a denominator appears
+      whenever the upstream reading publishes one.</strong>
     </p>
     <div class="oc-actions">
       <a class="ps-btn" href="/readings/osint-china-latest.json">Download the full bundle</a>
       <a class="ps-btn ps-btn--ghost" href="/for-researchers.html">Schemas and citation</a>
-      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest-nemesis">Nemesis source</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md">Public methods</a>
     </div>
   </header>
 
   <div class="tk-trust oc-trust ps-p2" aria-label="OSINT China publication status">
     <span class="tk-trust__item oc-trust__status"><i class="oc-status-dot" id="oc-status-dot" data-tone="stale" aria-hidden="true"></i><b id="oc-status">checking</b></span>
     <span class="tk-trust__sep" aria-hidden="true"></span>
-    <span class="tk-trust__item">reporting <b id="oc-reporting">—</b></span>
+    <span class="tk-trust__item">reporting <b id="oc-reporting">not available</b></span>
     <span class="tk-trust__sep" aria-hidden="true"></span>
-    <span class="tk-trust__item">roll-up checked <b id="oc-updated">—</b></span>
+    <span class="tk-trust__item">roll-up checked <b id="oc-updated">not available</b></span>
     <span class="tk-trust__sep" aria-hidden="true"></span>
-    <span class="tk-trust__item">contract <b id="oc-version">—</b></span>
+    <span class="tk-trust__item">contract <b id="oc-version">not available</b></span>
   </div>
 
-  <p class="oc-load" id="oc-load" role="status" aria-live="polite">
+  <p class="oc-load" id="oc-load">
     Loading the same-origin public bundle. If this message remains, use
     <a href="/readings/osint-china-latest.json">the raw JSON</a>; no cached placeholder or
     hand-entered number is substituted for a failed reading.
@@ -232,15 +234,15 @@
         <p class="ps-label">Cross-signal state</p>
         <span class="oc-chip" id="oc-command-chip">assessing</span>
       </div>
-      <h3 class="oc-command__headline" id="oc-headline">—</h3>
+      <h3 class="oc-command__headline" id="oc-headline">not available</h3>
       <p class="oc-command__note" id="oc-command-note"></p>
     </section>
 
     <div class="oc-kpis ps-stagger" aria-label="Headline measurements">
-      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Erasure index</p><p class="oc-kpi__value" id="oc-erasure">—</p><p class="oc-kpi__meta" id="oc-erasure-meta">network · narrative · model</p></section>
-      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Top censor target</p><p class="oc-kpi__value oc-kpi__value--word" id="oc-target">—</p><p class="oc-kpi__meta" id="oc-target-meta">DDTI attention × novelty</p></section>
-      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Network vantages</p><p class="oc-kpi__value" id="oc-network">—</p><p class="oc-kpi__meta" id="oc-network-meta">independent instruments</p></section>
-      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Data darkness</p><p class="oc-kpi__value" id="oc-darkness">—</p><p class="oc-kpi__meta" id="oc-darkness-meta">official series availability</p></section>
+      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Erasure index</p><p class="oc-kpi__value" id="oc-erasure">not available</p><p class="oc-kpi__meta" id="oc-erasure-meta">network · narrative · model</p></section>
+      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Top censor target</p><p class="oc-kpi__value oc-kpi__value--word" id="oc-target">not available</p><p class="oc-kpi__meta" id="oc-target-meta">DDTI attention × novelty</p></section>
+      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Network vantages</p><p class="oc-kpi__value" id="oc-network">not available</p><p class="oc-kpi__meta" id="oc-network-meta">independent instruments</p></section>
+      <section class="oc-kpi ps-p2"><p class="oc-kpi__label">Data darkness</p><p class="oc-kpi__value" id="oc-darkness">not available</p><p class="oc-kpi__meta" id="oc-darkness-meta">official series availability</p></section>
     </div>
 
     <section id="oc-alert-section" hidden>
@@ -249,22 +251,23 @@
     </section>
 
     <div class="oc-section-intro">
-      <div><h2 class="ps-section-head" id="coverage" style="margin-bottom:6px">Full coverage map</h2><p>Every configured signal appears—even when missing or stale. Filter the view; the full bundle remains unchanged.</p></div>
+      <div><h2 class="ps-section-head" id="coverage" style="margin-bottom:6px">Full coverage map</h2><p>Every configured signal appears, even when missing or stale. Filter the view; the full bundle remains unchanged.</p></div>
     </div>
     <div class="oc-filters" id="oc-filters" role="group" aria-label="Filter signals by intelligence layer">
       <button class="oc-filter" type="button" data-layer="all" aria-pressed="true">All layers</button>
     </div>
+    <p class="oc-sr" id="oc-result-status" aria-live="polite" aria-atomic="true"></p>
     <div class="oc-layers" id="oc-layers"></div>
 
     <h2 class="ps-section-head" id="contract">The operating contract</h2>
     <div class="oc-method">
       <section class="ps-p2 ps-reveal">
         <h3>What “continuous” means here</h3>
-        <p>Independent collectors run on cadences matched to their sources, from hours to daily. This roll-up checks their committed readings hourly. The browser recomputes age against each source deadline, so a board can become stale without waiting for somebody to republish the page.</p>
+        <p>Independent collectors run on cadences matched to their sources, from hourly to daily, weekly and monthly. This roll-up checks their committed readings hourly. The browser recomputes age against each source deadline, so a board can become stale without waiting for somebody to republish the page.</p>
         <p>One failed collector cannot erase the last verified reading. It becomes <strong>stale</strong> or <strong>missing</strong>, remains visible in the coverage map, and lowers the board’s health.</p>
       </section>
       <section class="ps-p1 ps-reveal">
-        <h3>Lines Nemesis will not cross</h3>
+        <h3>Safety lines this surface will not cross</h3>
         <ul>
           <li>Public-source reads only; no targeting of people.</li>
           <li>No offensive action, hack-back or third-party deception.</li>
@@ -277,7 +280,7 @@
   </div>
 
   <footer class="oc-foot">
-    Palimpsest / OSINT China · Nemesis intelligence surface · public OSINT only · watches the censor, never the censored.
+    Palimpsest / OSINT China · public OSINT only · watches the censor, never the censored.
   </footer>
 </main>
 
@@ -305,8 +308,8 @@
     return n;
   }
   function clear(n) { while (n && n.firstChild) n.removeChild(n.firstChild); return n; }
-  function put(id, value) { var n = document.getElementById(id); if (n) n.textContent = value == null ? "—" : String(value); return n; }
-  function finite(value) { var n = Number(value); return isFinite(n) ? n : null; }
+  function put(id, value) { var n = document.getElementById(id); if (n) n.textContent = value == null ? "not available" : String(value); return n; }
+  function finite(value) { return typeof value === "number" && isFinite(value) ? value : null; }
   function payload(signal) { return signal && (signal.payload || signal.reading || signal.data) || {}; }
   function idOf(signal) { return String(signal && (signal.id || signal.name || signal.signal) || ""); }
   function findSignal(ids) {
@@ -345,21 +348,32 @@
   function metricText(signal) {
     var metric = signal && signal.metric;
     if (metric && typeof metric === "object") {
-      var v = metric.display != null ? metric.display : metric.value;
+      var v = finite(metric.value);
       if (v != null) {
-        var unit = metric.display != null ? "" : String(metric.unit || "");
+        var unit = String(metric.unit || "");
         if (unit === "percent") unit = "%";
         else if (unit && unit !== "count" && unit !== "index") unit = " " + unit;
         else unit = "";
         return String(v) + unit;
       }
     }
-    if (metric != null && typeof metric !== "object") return String(metric);
     return "";
   }
   function safeHref(value, fallback) {
     var href = String(value || fallback || "");
-    return (/^\/(?![\/\\])/.test(href) || /^https:\/\//i.test(href)) ? href : fallback;
+    if (/^\/(?![\/\\])/.test(href)) return href;
+    try {
+      var parsed = new URL(href);
+      var allowed = ["palimpsest.info", "www.palimpsest.info"];
+      if (parsed.protocol === "https:" && !parsed.username && !parsed.password &&
+          allowed.indexOf(parsed.hostname.toLowerCase()) !== -1) return parsed.href;
+    } catch (_error) {}
+    return /^\/(?![\/\\])/.test(String(fallback || "")) ? fallback : FEED;
+  }
+  function sourceAge(signal) {
+    var source = text(signal && (signal.source || signal.title), "declared source");
+    var measuredAt = signal && (signal.source_timestamp || signal.generated_at);
+    return source + " · " + (measuredAt ? "measured " + ago(measuredAt) : "measurement time unavailable");
   }
 
   function fail(err) {
@@ -404,28 +418,29 @@
       var ev = finite(ep.erasure_index);
       put("oc-erasure", ev == null ? metricText(erasure) || "withheld" : ev.toFixed(1));
       var layers = Array.isArray(ep.layers_contributing) ? ep.layers_contributing : [];
-      put("oc-erasure-meta", layers.length ? layers.join(" · ") + " contributing" : "see source coverage");
+      put("oc-erasure-meta", sourceAge(erasure) + (layers.length ? " · " + layers.length + " contributing layers" : ""));
     }
 
     var ddti = findSignal(["ddti"]), dp = payload(ddti), ranked = Array.isArray(dp.ranked) ? dp.ranked : [];
     if (!withholdKpi(ddti, "oc-target", "oc-target-meta")) {
       put("oc-target", ranked.length ? text(ranked[0].term, "unreported") : metricText(ddti) || "unreported");
-      put("oc-target-meta", ranked.length ? text(ranked[0].domain, "other").toLowerCase() + " · threat " + text(ranked[0].threat, "—") : text(ddti && ddti.summary, "DDTI not reporting"));
+      var threat = ranked.length ? finite(ranked[0].threat) : null;
+      put("oc-target-meta", sourceAge(ddti) + (ranked.length ? " · " + text(ranked[0].domain, "other").toLowerCase() + (threat == null ? "" : " · threat " + threat) : ""));
     }
 
     var network = findSignal(["vantage-fusion"]), np = payload(network);
     if (!withholdKpi(network, "oc-network", "oc-network-meta")) {
       var vals = np.vantages && typeof np.vantages === "object" ? Object.keys(np.vantages).map(function (k) { return finite(np.vantages[k]); }).filter(function (v) { return v != null; }) : [];
-      if (vals.length > 1) put("oc-network", Math.min.apply(null, vals).toFixed(0) + "–" + Math.max.apply(null, vals).toFixed(0) + "%");
+      if (vals.length > 1) put("oc-network", Math.min.apply(null, vals).toFixed(0) + " to " + Math.max.apply(null, vals).toFixed(0) + "%");
       else put("oc-network", metricText(network) || (finite(np.fused_index) != null ? finite(np.fused_index).toFixed(1) : "withheld"));
-      put("oc-network-meta", text(np.confidence, "coverage-aware") + " · " + vals.length + " quantitative vantages");
+      put("oc-network-meta", sourceAge(network) + " · " + vals.length + " quantitative vantages · " + text(np.confidence, "coverage-aware"));
     }
 
     var darkness = findSignal(["data-darkness"]), xp = payload(darkness), xv = finite(xp.darkness_index);
     if (!withholdKpi(darkness, "oc-darkness", "oc-darkness-meta")) {
       put("oc-darkness", xv == null ? metricText(darkness) || "unreported" : (xv * 100).toFixed(0) + "%");
-      if (finite(xp.n_series_reporting) != null && finite(xp.n_series_watched) != null) put("oc-darkness-meta", xp.n_series_reporting + " of " + xp.n_series_watched + " official series reporting");
-      else put("oc-darkness-meta", text(darkness && darkness.summary, "official series availability"));
+      if (finite(xp.n_series_reporting) != null && finite(xp.n_series_watched) != null) put("oc-darkness-meta", sourceAge(darkness) + " · " + xp.n_series_reporting + " of " + xp.n_series_watched + " official series reporting");
+      else put("oc-darkness-meta", sourceAge(darkness));
     }
   }
 
@@ -436,7 +451,7 @@
     var top = node("div", "oc-signal__top");
     top.appendChild(node("h4", "oc-signal__name", text(signal.title || signal.label, idOf(signal) || "unnamed signal")));
     var chip = node("span", "oc-chip", status); chip.setAttribute("data-tone", tone); top.appendChild(chip); card.appendChild(top);
-    var mt = metricText(signal); if (mt) card.appendChild(node("p", "oc-signal__metric", mt));
+    var mt = metricText(signal); if (mt) card.appendChild(node("p", "oc-signal__metric", status === "fresh" ? mt : "last reported: " + mt));
     card.appendChild(node("p", "oc-signal__summary", text(signal.summary || signal.headline, "No plain-language summary was published for this source.")));
     var meta = node("div", "oc-signal__meta");
     var measuredAt = signal.generated_at || signal.source_timestamp;
@@ -474,6 +489,7 @@
       var grid = node("div", "oc-signal-grid"); groups[layer].forEach(function (s) { grid.appendChild(makeSignal(s)); shown += 1; }); section.appendChild(grid); host.appendChild(section);
     });
     if (!shown) host.appendChild(node("p", "oc-empty ps-p1", "No signals match this layer."));
+    put("oc-result-status", shown + (shown === 1 ? " signal shown" : " signals shown"));
   }
 
   function renderFilters() {
@@ -497,8 +513,9 @@
     var current = [];
     (Array.isArray(alerts) ? alerts : []).forEach(function (alert) {
       if (alert.kind === "health") return;
-      var source = alert.source_id ? findSignal([String(alert.source_id)]) : null;
-      if (source && statusFor(source) !== "fresh") return;
+      if (!alert.source_id) return;
+      var source = findSignal([String(alert.source_id)]);
+      if (!source || statusFor(source) !== "fresh") return;
       current.push(alert);
     });
     currentSignals.forEach(function (signal) {
@@ -579,7 +596,7 @@
     var overall = requiredUnhealthy || lastFetchFailed ? "degraded" : "healthy";
     put("oc-status", overall);
     document.getElementById("oc-status-dot").setAttribute("data-tone", overall === "healthy" ? "ok" : "warning");
-    put("oc-reporting", reportingNow + "/" + text(d.n_signals_total, currentSignals.length));
+    put("oc-reporting", reportingNow + "/" + currentSignals.length);
     put("oc-updated", d.generated_at ? ago(d.generated_at) : "unknown");
     put("oc-version", text(d.schema_version, "unversioned"));
 
@@ -592,8 +609,8 @@
     put("oc-command-note", (command.caveat || command.note || d.caveat || "This is a coverage-aware roll-up of independent readings, not a new composite score. Open any signal below to inspect its method and evidence.") + healthNow + refreshNow);
     var cchip = put("oc-command-chip", overall); cchip.setAttribute("data-tone", toneFor(overall === "healthy" ? "fresh" : overall));
 
-    var nemesis = findSignal(["nemesis"]), nemesisStatus = statusFor(nemesis);
-    put("oc-nemesis-mode", nemesisStatus === "fresh" ? "Nemesis active" : "Nemesis " + nemesisStatus);
+    var runtime = findSignal(["nemesis"]), runtimeStatus = statusFor(runtime);
+    put("oc-runtime-mode", runtimeStatus === "fresh" ? "runtime bridge active" : "public roll-up");
 
     renderKpis(); renderAlerts(d.alerts); renderFilters(); renderLayers();
     lastStatusSignature = statusSignature();

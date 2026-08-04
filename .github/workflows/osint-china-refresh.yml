@@ -1,10 +1,9 @@
 name: Refresh OSINT China roll-up
 
-# Deterministic recomputation over the committed China-facing readings plus one optional,
-# sanitized Palimpsest-Nemesis public snapshot. NEMESIS_SNAPSHOT_URL is a repository variable,
-# not an API key; when configured, its HTTPS import is a fail-loud publication prerequisite.
-# The hourly cadence makes freshness failures visible promptly even when no upstream payload
-# changed, while concurrency prevents two publishers from racing the same atomic artefact.
+# Deterministic recomputation over committed China-facing readings plus one optional,
+# authenticated private-runtime public snapshot. The hourly cadence makes source aging
+# visible even when no payload changed. Every race recovery rebuilds, reseals and rechecks
+# the exact tree it will publish.
 
 on:
   schedule:
@@ -23,33 +22,36 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
-      NEMESIS_SNAPSHOT_URL: ${{ vars.NEMESIS_SNAPSHOT_URL }}
-      PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
 
-      - name: Synchronize the input ledger before computation
+      - name: Install the pinned offline test runner
+        run: python -m pip install --quiet "pytest==9.1.1"
+
+      - name: Synchronize inputs before computation
         run: |
           git config user.name "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
           git fetch origin main
           git rebase origin/main
 
-      - name: Import the optional validated Nemesis snapshot
+      - name: Import the optional authenticated runtime snapshot
+        env:
+          NEMESIS_SNAPSHOT_URL: ${{ vars.NEMESIS_SNAPSHOT_URL }}
+          NEMESIS_SNAPSHOT_HMAC_KEY: ${{ secrets.NEMESIS_SNAPSHOT_HMAC_KEY }}
         run: python -m scripts.import_nemesis_snapshot
 
       - name: Build the deterministic roll-up
-        run: python -m scripts.build_osint_china
+        run: python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
 
       - name: Seal the exact readings that will be published
         run: python scripts/seal_readings.py
-
-      - name: Install the offline test runner
-        run: pip install --quiet pytest
 
       - name: Verify the roll-up and publication contract
         run: |
@@ -57,63 +59,176 @@ jobs:
             tests/test_import_nemesis_snapshot.py \
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
-            tests/test_publication_contract.py
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py
 
       - name: Read the complete public surface before publication
-        # The push below is the publication act. This check therefore runs after the build
-        # and dedicated schema tests but before anything is staged or committed.
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit, rebase, rebuild, reverify and push if inputs changed
+      - name: Create the candidate refresh commit
+        id: candidate
         run: |
-          git add readings/osint-china-latest.json
+          git add readings/osint-china-latest.json readings/readings-ledger.jsonl
           if [ -e readings/nemesis-latest.json ]; then
             git add readings/nemesis-latest.json
           fi
-          git add readings/readings-ledger.jsonl
           if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
           else
             git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
-            if ! git pull --rebase origin main; then
-              # A concurrent append to the readings ledger cannot be resolved by choosing
-              # either side: both proposed tails have the same predecessor. Discard only
-              # this reproducible bot commit and recompute on the new public chain head.
-              git rebase --abort || true
-              git fetch origin main
-              git switch --detach origin/main
-            fi
-
-            # The rebase can introduce newer source readings. Re-import and rebuild from that
-            # merged tree, seal those exact bytes, then rerun every publication gate before
-            # amending (or recreating) the bot commit.
-            python -m scripts.import_nemesis_snapshot
-            python -m scripts.build_osint_china
-            python scripts/seal_readings.py
-            python -m pytest -q \
-              tests/test_import_nemesis_snapshot.py \
-              tests/test_egress_policy.py \
-              tests/test_osint_china.py \
-              tests/test_safe_fetch.py \
-              tests/test_seal_readings.py \
-              tests/test_publication_contract.py
-            python scripts/verify_public_surface.py
-
-            git add readings/osint-china-latest.json
-            if [ -e readings/nemesis-latest.json ]; then
-              git add readings/nemesis-latest.json
-            fi
-            git add readings/readings-ledger.jsonl
-            if git diff --cached origin/main --quiet; then
-              echo "no change after rebase"
-              exit 0
-            fi
-            if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
-              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
-            else
-              git commit --amend --no-edit
-            fi
-            git push origin HEAD:main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Rebase candidate onto the latest public ledger
+        if: steps.candidate.outputs.changed == 'true'
+        id: prepublish_sync
+        run: |
+          previous_base=$(git rev-parse HEAD^)
+          git fetch origin main
+          if git rebase origin/main; then
+            current_base=$(git rev-parse HEAD^)
+            if [ "$previous_base" = "$current_base" ]; then
+              echo "rebuild=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "rebuild=true" >> "$GITHUB_OUTPUT"
+            fi
+            echo "recreate=false" >> "$GITHUB_OUTPUT"
+          else
+            git rebase --abort || true
+            git switch --detach origin/main
+            echo "rebuild=true" >> "$GITHUB_OUTPUT"
+            echo "recreate=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Re-import after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        env:
+          NEMESIS_SNAPSHOT_URL: ${{ vars.NEMESIS_SNAPSHOT_URL }}
+          NEMESIS_SNAPSHOT_HMAC_KEY: ${{ secrets.NEMESIS_SNAPSHOT_HMAC_KEY }}
+        run: python -m scripts.import_nemesis_snapshot
+
+      - name: Rebuild and reseal after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        run: |
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
+          python scripts/seal_readings.py
+
+      - name: Retest after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        run: |
+          python -m pytest -q \
+            tests/test_import_nemesis_snapshot.py \
+            tests/test_egress_policy.py \
+            tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
+            tests/test_safe_fetch.py \
+            tests/test_seal_readings.py \
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py
+
+      - name: Rescrub after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Replace the candidate with the revalidated bytes
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        run: |
+          git add readings/osint-china-latest.json readings/readings-ledger.jsonl
+          if [ -e readings/nemesis-latest.json ]; then
+            git add readings/nemesis-latest.json
+          fi
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+            if git diff --cached --quiet origin/main; then
+              echo "no change after synchronization"
+            else
+              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
+            fi
+          else
+            git commit --amend --no-edit
+          fi
+
+      - name: Attempt the verified push
+        if: steps.candidate.outputs.changed == 'true'
+        id: push_attempt
+        continue-on-error: true
+        env:
+          GITHUB_PUSH_TOKEN: ${{ github.token }}
+        run: |
+          basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
+            push origin HEAD:main
+
+      - name: Synchronize after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          git fetch origin main
+          if ! git rebase origin/main; then
+            git rebase --abort || true
+            git switch --detach origin/main
+          fi
+
+      - name: Re-import after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        env:
+          NEMESIS_SNAPSHOT_URL: ${{ vars.NEMESIS_SNAPSHOT_URL }}
+          NEMESIS_SNAPSHOT_HMAC_KEY: ${{ secrets.NEMESIS_SNAPSHOT_HMAC_KEY }}
+        run: python -m scripts.import_nemesis_snapshot
+
+      - name: Rebuild and reseal after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
+          python scripts/seal_readings.py
+
+      - name: Retest after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          python -m pytest -q \
+            tests/test_import_nemesis_snapshot.py \
+            tests/test_egress_policy.py \
+            tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
+            tests/test_safe_fetch.py \
+            tests/test_seal_readings.py \
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py
+
+      - name: Rescrub after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Commit the race-safe rebuilt bytes
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          git add readings/osint-china-latest.json readings/readings-ledger.jsonl
+          if [ -e readings/nemesis-latest.json ]; then
+            git add readings/nemesis-latest.json
+          fi
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+            if git diff --cached --quiet; then
+              echo "no change after push race"
+            else
+              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
+            fi
+          else
+            git commit --amend --no-edit
+          fi
+
+      - name: Push the race-safe rebuilt commit
+        if: steps.push_attempt.outcome == 'failure'
+        env:
+          GITHUB_PUSH_TOKEN: ${{ github.token }}
+        run: |
+          basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
+            push origin HEAD:main
