@@ -1,8 +1,8 @@
 """Adapter from Palimpsest readings to Evidence Capsule v1.
 
-This module never creates a merely *plausible* integrity claim.  It emits only
-after finding the complete canonical reading payload in the ledger and a real
-OpenTimestamps anchor input for an exact prefix containing that entry.
+This module never creates a merely *plausible* integrity claim. It emits only
+after finding the complete canonical reading payload in the ledger and an exact
+anchor input plus detached envelope for a prefix containing that entry.
 """
 from __future__ import annotations
 
@@ -18,6 +18,9 @@ from evidence.capsule import (
     CANONICALIZATION,
     LEDGER_BINDING,
     LEDGER_CANONICALIZATION,
+    MAX_ARTIFACT_BYTES,
+    MAX_CAPSULE_BYTES,
+    MAX_OTS_BYTES,
     MERKLE_PROOF,
     SPEC_VERSION,
     CapsuleError,
@@ -36,7 +39,8 @@ def _sha256(data: bytes) -> str:
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     values: list[dict[str, Any]] = []
-    for line_number, line in enumerate(path.read_bytes().splitlines(), 1):
+    data = _read_bounded_file(path, MAX_CAPSULE_BYTES, "JSONL input")
+    for line_number, line in enumerate(data.splitlines(), 1):
         if not line.strip():
             continue
         value = strict_json_loads(line)
@@ -46,6 +50,24 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return values
 
 
+def _read_bounded_file(path: Path, maximum: int, label: str) -> bytes:
+    try:
+        with path.open("rb") as handle:
+            data = handle.read(maximum + 1)
+    except OSError as exc:
+        raise CapsuleError(f"{label} cannot be read: {exc}") from exc
+    if len(data) > maximum:
+        raise CapsuleError(f"{label} exceeds the v1 byte limit")
+    return data
+
+
+def _resolve_input(path: str | Path, label: str) -> Path:
+    try:
+        return Path(path).resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise CapsuleError(f"{label} cannot be resolved safely: {exc}") from exc
+
+
 def _inside_repo(repo_root: Path, relative: str) -> Path:
     if "\\" in relative:
         raise CapsuleError("anchor record path uses a backslash")
@@ -53,7 +75,10 @@ def _inside_repo(repo_root: Path, relative: str) -> Path:
     if (rel.is_absolute() or not rel.parts or str(rel) != relative
             or any(part in {"", ".", ".."} for part in rel.parts)):
         raise CapsuleError("anchor record path is not a clean repository-relative path")
-    target = repo_root.joinpath(*rel.parts).resolve(strict=True)
+    try:
+        target = repo_root.joinpath(*rel.parts).resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise CapsuleError(f"anchor record path cannot be resolved safely: {exc}") from exc
     try:
         target.relative_to(repo_root)
     except ValueError as exc:
@@ -111,8 +136,12 @@ def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
         try:
             input_path = _inside_repo(repo_root, ots["file"])
             proof_path = _inside_repo(repo_root, ots["proof"])
-            input_bytes = input_path.read_bytes()
-            proof_bytes = proof_path.read_bytes()
+            input_bytes = _read_bounded_file(
+                input_path, MAX_ARTIFACT_BYTES, "anchor input"
+            )
+            proof_bytes = _read_bounded_file(
+                proof_path, MAX_OTS_BYTES, "OpenTimestamps envelope"
+            )
             fields = _parse_anchor_input(input_bytes)
             expected_fields = {
                 f"{ledger_name}_entries": str(count),
@@ -123,12 +152,12 @@ def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
             if any(fields.get(key) != value for key, value in expected_fields.items()):
                 continue
             _verify_ots_detached(proof_bytes, input_bytes)
-        except (CapsuleError, KeyError, OSError, TypeError):
+        except (CapsuleError, KeyError, OSError, RuntimeError, TypeError):
             continue
         candidates.append((count, record["ts"], record, input_bytes, proof_bytes))
     if not candidates:
         raise CapsuleError(
-            "no exact anchored ledger prefix contains this sealed reading; refusing to emit"
+            "no exact anchored ledger prefix contains this reading; refusing to emit"
         )
     # The earliest containing prefix gives the tightest public upper bound on
     # existence.  Ties are deterministic.
@@ -147,23 +176,27 @@ def capsule_from_reading(
     source_uri: str | None = None,
     created_at: str | None = None,
 ) -> dict[str, Any]:
-    """Create a self-contained capsule for an exactly sealed reading.
+    """Create a self-contained capsule for an exact reading with entry-membership evidence.
 
     Raises :class:`CapsuleError` when the payload is absent, ambiguous, the chain
     is broken, or there is no exact anchored prefix containing it.
     """
-    reading_path = Path(reading_path).resolve(strict=True)
-    ledger_path = Path(ledger_path).resolve(strict=True)
-    anchors_path = Path(anchors_path).resolve(strict=True)
-    repo_root = (Path(repository_root).resolve(strict=True) if repository_root
-                 else anchors_path.parent.parent.resolve(strict=True))
+    reading_path = _resolve_input(reading_path, "Palimpsest reading")
+    ledger_path = _resolve_input(ledger_path, "Palimpsest ledger")
+    anchors_path = _resolve_input(anchors_path, "Palimpsest anchor registry")
+    repo_root = _resolve_input(
+        repository_root if repository_root else anchors_path.parent.parent,
+        "repository root",
+    )
     try:
         reading_path.relative_to(repo_root)
         relative_reading = reading_path.relative_to(repo_root).as_posix()
     except ValueError:
         relative_reading = reading_path.name
 
-    reading_bytes = reading_path.read_bytes()
+    reading_bytes = _read_bounded_file(
+        reading_path, MAX_ARTIFACT_BYTES, "Palimpsest reading"
+    )
     reading = strict_json_loads(reading_bytes)
     if not isinstance(reading, dict):
         raise CapsuleError("Palimpsest reading must be a JSON object")
@@ -218,23 +251,26 @@ def capsule_from_reading(
             artifact_id="anchor-proof", data=anchor_proof,
             media_type="application/vnd.opentimestamps.ots",
             uri=f"https://palimpsest.info/{ots['proof']}", captured_at=anchor_record["ts"],
-            collector="OpenTimestamps detached proof", untrusted=False,
+            collector="OpenTimestamps detached envelope", untrusted=False,
         ),
     ]
     claims: list[dict[str, Any]] = [{
-        "id": "sealed-reading",
+        "id": "entry-membership",
         "type": "integrity",
         "statement": (
-            f"The complete {source} reading payload is sealed at {ledger_name} ledger "
-            f"sequence {entry['seq']} and included in the exact {prefix_entries}-entry "
-            "prefix supplied to OpenTimestamps."
+            f"The complete canonical JSON value of the {source} reading matches "
+            f"{ledger_name} entry {entry['seq']} and its Merkle membership proof for the "
+            f"declared {prefix_entries}-entry prefix. The prefix fields are digest-bound "
+            "to the attached structurally complete OpenTimestamps envelope."
         ),
         "artifact_refs": ["reading", "anchor-input", "anchor-proof"],
         "derivation_refs": [],
+        "binding_refs": ["reading-membership"],
         "evidence_level": "direct",
         "limitations": [
-            "The offline v1 verifier binds the detached OpenTimestamps proof bytes but does not validate Bitcoin consensus.",
-            "A seal proves what Palimpsest recorded, not that the upstream source reported ground truth.",
+            "The offline v1 verifier validates the detached envelope structure and input digest only; it does not prove calendar acceptance, attestation authenticity, Bitcoin consensus, or a time.",
+            "The capsule proves Merkle entry membership, not the complete ledger hash chain; the adapter checked the frozen chain before emission.",
+            "Entry membership proves what Palimpsest recorded, not that the upstream source reported ground truth.",
         ],
     }]
     derivations: list[dict[str, Any]] = []
@@ -245,6 +281,7 @@ def capsule_from_reading(
             "statement": f"The reading reports its capture time as {captured_at}.",
             "artifact_refs": ["reading"],
             "derivation_refs": ["extract-capture-time"],
+            "binding_refs": [],
             "evidence_level": "derived",
             "limitations": ["This verifies the value present in the artifact, not the upstream clock."],
         })
@@ -263,6 +300,7 @@ def capsule_from_reading(
         })
 
     binding = {
+        "id": "reading-membership",
         "type": LEDGER_BINDING,
         "artifact_ref": "reading",
         "payload_canonicalization": LEDGER_CANONICALIZATION,
@@ -288,7 +326,7 @@ def capsule_from_reading(
         "subject": {
             "type": "reading",
             "id": f"{source}:{payload_digest}",
-            "title": f"Exactly sealed Palimpsest reading: {source}",
+            "title": f"Canonical Palimpsest reading with entry-membership evidence: {source}",
         },
         "artifacts": artifacts,
         "claims": claims,

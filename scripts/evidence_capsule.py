@@ -21,7 +21,10 @@ def _parser() -> argparse.ArgumentParser:
     verify = sub.add_parser("verify", help="verify a capsule without network or execution")
     verify.add_argument("capsule")
     verify.add_argument("--artifact-root", help="root for path-backed artifacts")
-    build = sub.add_parser("palimpsest", help="build from an exact sealed Palimpsest reading")
+    build = sub.add_parser(
+        "palimpsest",
+        help="build from an exact Palimpsest reading with entry-membership evidence",
+    )
     build.add_argument("--reading", required=True)
     build.add_argument("--source", required=True)
     build.add_argument("--ledger", default=str(ROOT / "readings" / "erasure-ledger.jsonl"))

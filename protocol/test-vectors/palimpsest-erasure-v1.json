@@ -10,7 +10,7 @@
     "subject": {
       "type": "reading",
       "id": "censored-planet:8f3059118bcd84f95011e2675af70f6b915e79670694c5c59b660822e72a918e",
-      "title": "Exactly sealed Palimpsest reading: censored-planet"
+      "title": "Canonical Palimpsest reading with entry-membership evidence: censored-planet"
     },
     "artifacts": [
       {
@@ -55,7 +55,7 @@
         "source": {
           "uri": "https://palimpsest.info/readings/anchors/roots-20260804T092652Z.txt.ots",
           "captured_at": "2026-08-04T09:26:52.865414+00:00",
-          "collector": "OpenTimestamps detached proof"
+          "collector": "OpenTimestamps detached envelope"
         },
         "untrusted": false,
         "location": {
@@ -67,19 +67,23 @@
     ],
     "claims": [
       {
-        "id": "sealed-reading",
+        "id": "entry-membership",
         "type": "integrity",
-        "statement": "The complete censored-planet reading payload is sealed at erasure ledger sequence 120 and included in the exact 121-entry prefix supplied to OpenTimestamps.",
+        "statement": "The complete canonical JSON value of the censored-planet reading matches erasure entry 120 and its Merkle membership proof for the declared 121-entry prefix. The prefix fields are digest-bound to the attached structurally complete OpenTimestamps envelope.",
         "artifact_refs": [
           "reading",
           "anchor-input",
           "anchor-proof"
         ],
         "derivation_refs": [],
+        "binding_refs": [
+          "reading-membership"
+        ],
         "evidence_level": "direct",
         "limitations": [
-          "The offline v1 verifier binds the detached OpenTimestamps proof bytes but does not validate Bitcoin consensus.",
-          "A seal proves what Palimpsest recorded, not that the upstream source reported ground truth."
+          "The offline v1 verifier validates the detached envelope structure and input digest only; it does not prove calendar acceptance, attestation authenticity, Bitcoin consensus, or a time.",
+          "The capsule proves Merkle entry membership, not the complete ledger hash chain; the adapter checked the frozen chain before emission.",
+          "Entry membership proves what Palimpsest recorded, not that the upstream source reported ground truth."
         ]
       },
       {
@@ -92,6 +96,7 @@
         "derivation_refs": [
           "extract-capture-time"
         ],
+        "binding_refs": [],
         "evidence_level": "derived",
         "limitations": [
           "This verifies the value present in the artifact, not the upstream clock."
@@ -126,9 +131,10 @@
     ],
     "bindings": [
       {
+        "id": "reading-membership",
         "type": "palimpsest-ledger-anchor-v1",
         "artifact_ref": "reading",
-        "payload_canonicalization": "palimpsest-ledger-json-v1",
+        "payload_canonicalization": "palimpsest-ledger-python-json-v1",
         "entry": {
           "seq": 120,
           "ts": "2026-08-04T09:09:23.647216+00:00",
@@ -183,11 +189,11 @@
           "anchored_at": "2026-08-04T09:26:52.865414+00:00",
           "input_artifact_ref": "anchor-input",
           "proof_artifact_ref": "anchor-proof",
-          "proof_type": "opentimestamps-detached-v1"
+          "proof_type": "opentimestamps-detached-envelope-v1"
         }
       }
     ]
   },
-  "content_sha256": "9d4cfe56a2675183340a66972c641074f2362ad2f4a9c89bd102c4cbb2b5f79e",
+  "content_sha256": "54e2ad9df136d2f1f55097c0c35d7b3436fc4762416a921179d81517399213ea",
   "attestations": []
 }

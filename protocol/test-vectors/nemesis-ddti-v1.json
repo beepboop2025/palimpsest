@@ -69,7 +69,7 @@
       {
         "id": "ddti-lead",
         "type": "analytical-lead",
-        "statement": "Nemesis ranked 'online censorship' as a INFORMATION investigative lead with reported lead score 8.5.",
+        "statement": "Nemesis derived 'online censorship' as a INFORMATION investigative lead with lead score 8.5 from the supplied DDTI snapshot.",
         "artifact_refs": [
           "ddti-snapshot",
           "cdt-sample-1",
@@ -77,26 +77,38 @@
         ],
         "derivation_refs": [
           "extract-ranked-term",
+          "extract-ranked-domain",
+          "extract-ranked-total",
           "ddti-ranking-context"
         ],
+        "binding_refs": [],
         "evidence_level": "sampled",
         "limitations": [
           "This is a triage lead, not a factual finding about censorship prevalence or cause.",
-          "The DDTI snapshot retains at most three sample titles/URLs per term; article bodies and the complete scored post population are not included.",
+          "This adapter enforces the DDTI scorer's maximum of three sample titles/URLs per term; article bodies and the complete scored post population are not included.",
           "The reported score depends on timestamps, the historical known-term set, scoring configuration, and evaluation clock that are not fully encapsulated."
         ]
       },
       {
         "id": "cdt-provenance",
         "type": "provenance",
-        "statement": "The included bounded sample contains 2 China Digital Times article reference(s) associated with 'online censorship'.",
+        "statement": "The adapter reproduced 2 China Digital Times title/URL pair(s) from the selected snapshot row for 'online censorship'.",
         "artifact_refs": [
+          "ddti-snapshot",
           "cdt-sample-1",
           "cdt-sample-2"
         ],
         "derivation_refs": [
-          "extract-first-cdt-url"
+          "extract-sample-1-snapshot-title",
+          "extract-sample-1-artifact-title",
+          "extract-sample-1-snapshot-url",
+          "extract-sample-1-artifact-url",
+          "extract-sample-2-snapshot-title",
+          "extract-sample-2-artifact-title",
+          "extract-sample-2-snapshot-url",
+          "extract-sample-2-artifact-url"
         ],
+        "binding_refs": [],
         "evidence_level": "sampled",
         "limitations": [
           "A CDT URL and title establish source attribution only; the capsule does not include or independently authenticate the article body."
@@ -122,20 +134,37 @@
         }
       },
       {
-        "id": "extract-first-cdt-url",
+        "id": "extract-ranked-domain",
         "type": "extraction",
-        "description": "Read the first exact CDT URL from its bounded sample artifact.",
+        "description": "Read the selected domain from its exact DDTI ranked row.",
         "input_artifact_refs": [
-          "cdt-sample-1"
+          "ddti-snapshot"
         ],
         "supports_claim_refs": [
-          "cdt-provenance"
+          "ddti-lead"
         ],
         "proof": {
           "type": "json-pointer-equals-v1",
-          "artifact_ref": "cdt-sample-1",
-          "pointer": "/url",
-          "expected": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"
+          "artifact_ref": "ddti-snapshot",
+          "pointer": "/ranked/0/domain",
+          "expected": "INFORMATION"
+        }
+      },
+      {
+        "id": "extract-ranked-total",
+        "type": "extraction",
+        "description": "Read the selected observation count from its exact DDTI ranked row.",
+        "input_artifact_refs": [
+          "ddti-snapshot"
+        ],
+        "supports_claim_refs": [
+          "ddti-lead"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "ddti-snapshot",
+          "pointer": "/ranked/0/total",
+          "expected": 4
         }
       },
       {
@@ -154,6 +183,142 @@
           "type": "declared-nonrecomputable-v1",
           "reason": "V1 carries no executable formula proof for the ranking, and the bounded DDTI sample cannot reproduce its underlying threat inputs. Reproducing score_ddti requires the full CDT post population, timestamps, known-term history, scoring configuration and evaluation clock."
         }
+      },
+      {
+        "id": "extract-sample-1-snapshot-title",
+        "type": "extraction",
+        "description": "Read sample 1 title from the selected DDTI row.",
+        "input_artifact_refs": [
+          "ddti-snapshot"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "ddti-snapshot",
+          "pointer": "/ranked/0/samples/0/title",
+          "expected": "CDT’s ‘404 Deleted Content Archive’ Summary for May 2026"
+        }
+      },
+      {
+        "id": "extract-sample-1-artifact-title",
+        "type": "extraction",
+        "description": "Read sample 1 title from its copied capsule artifact.",
+        "input_artifact_refs": [
+          "cdt-sample-1"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "cdt-sample-1",
+          "pointer": "/title",
+          "expected": "CDT’s ‘404 Deleted Content Archive’ Summary for May 2026"
+        }
+      },
+      {
+        "id": "extract-sample-1-snapshot-url",
+        "type": "extraction",
+        "description": "Read sample 1 url from the selected DDTI row.",
+        "input_artifact_refs": [
+          "ddti-snapshot"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "ddti-snapshot",
+          "pointer": "/ranked/0/samples/0/url",
+          "expected": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"
+        }
+      },
+      {
+        "id": "extract-sample-1-artifact-url",
+        "type": "extraction",
+        "description": "Read sample 1 url from its copied capsule artifact.",
+        "input_artifact_refs": [
+          "cdt-sample-1"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "cdt-sample-1",
+          "pointer": "/url",
+          "expected": "https://chinadigitaltimes.net/2026/06/cdts-404-deleted-content-archive-summary-for-may-2026/"
+        }
+      },
+      {
+        "id": "extract-sample-2-snapshot-title",
+        "type": "extraction",
+        "description": "Read sample 2 title from the selected DDTI row.",
+        "input_artifact_refs": [
+          "ddti-snapshot"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "ddti-snapshot",
+          "pointer": "/ranked/0/samples/1/title",
+          "expected": "CDT’s ‘404 Deleted Content Archive’ Summary for April 2026"
+        }
+      },
+      {
+        "id": "extract-sample-2-artifact-title",
+        "type": "extraction",
+        "description": "Read sample 2 title from its copied capsule artifact.",
+        "input_artifact_refs": [
+          "cdt-sample-2"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "cdt-sample-2",
+          "pointer": "/title",
+          "expected": "CDT’s ‘404 Deleted Content Archive’ Summary for April 2026"
+        }
+      },
+      {
+        "id": "extract-sample-2-snapshot-url",
+        "type": "extraction",
+        "description": "Read sample 2 url from the selected DDTI row.",
+        "input_artifact_refs": [
+          "ddti-snapshot"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "ddti-snapshot",
+          "pointer": "/ranked/0/samples/1/url",
+          "expected": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"
+        }
+      },
+      {
+        "id": "extract-sample-2-artifact-url",
+        "type": "extraction",
+        "description": "Read sample 2 url from its copied capsule artifact.",
+        "input_artifact_refs": [
+          "cdt-sample-2"
+        ],
+        "supports_claim_refs": [
+          "cdt-provenance"
+        ],
+        "proof": {
+          "type": "json-pointer-equals-v1",
+          "artifact_ref": "cdt-sample-2",
+          "pointer": "/url",
+          "expected": "https://chinadigitaltimes.net/2026/05/cdts-404-deleted-content-archive-summary-for-april-2026/"
+        }
       }
     ],
     "intents": [
@@ -170,6 +335,6 @@
     ],
     "bindings": []
   },
-  "content_sha256": "7e62c8c59359980e0ca5651b068e60e4ae5105434e8d54880e5bad3f2db74937",
+  "content_sha256": "b76b78b82a1c8a9089be25c42229775c9b4a49551f2e877adbd96da50a854986",
   "attestations": []
 }
