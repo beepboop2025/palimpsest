@@ -20,6 +20,7 @@ import os
 
 from celery import Celery
 from celery.schedules import crontab
+from censorwatch.config import is_enabled
 
 BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", BROKER_URL)
@@ -51,7 +52,7 @@ def _base_schedule() -> dict:
 
 def build_beat_schedule() -> dict:
     schedule = _base_schedule()
-    if os.getenv("CENSORWATCH_ENABLED"):
+    if is_enabled():
         try:
             from censorwatch.beat import build_censorwatch_schedule
             schedule.update(build_censorwatch_schedule())

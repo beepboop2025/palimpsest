@@ -163,6 +163,7 @@ async def recheck_source(
             pending = (
                 db.query(CensoredPost)
                 .filter(CensoredPost.deleted_at.is_(None))
+                .filter(CensoredPost.source == source_name)
                 .order_by(CensoredPost.posted_at.desc().nullslast())
                 .limit(batch_limit)
                 .all()
