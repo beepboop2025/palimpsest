@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence Capsules · portable, offline-verifiable Palimpsest evidence</title>
+<meta name="description" content="Download, create and verify Palimpsest Evidence Capsule v1 files: portable JSON claims bound to exact evidence bytes, with explicit limitations and offline verification.">
+<link rel="canonical" href="https://palimpsest.info/evidence-capsules.html">
+<meta name="robots" content="index, follow, max-snippet:-1">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Palimpsest Evidence Capsules">
+<meta property="og:description" content="One JSON file carries a claim, the exact evidence bytes behind it, and the limits of what can be verified offline.">
+<meta property="og:url" content="https://palimpsest.info/evidence-capsules.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="theme-color" content="#0b1622">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  .ec { padding-bottom: 64px; }
+  .ec-head { padding: clamp(34px, 7vw, 72px) 0 12px; }
+  .ec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 28px; }
+  .ec-card { padding: 18px; }
+  .ec-card h2 { margin: 0 0 9px; color: var(--tk-text-0, #fff); font-size: 17px; }
+  .ec-card p, .ec-copy { color: var(--tk-text-2, #94a3b8); font-size: 14px; line-height: 1.65; max-width: 76ch; }
+  .ec-card a, .ec a { color: var(--tk-live, #06d6e0); }
+  .ec-section { margin-top: 34px; }
+  .ec pre {
+    overflow-x: auto; padding: 15px 17px; margin: 12px 0; border: 1px solid var(--ps-edge-1);
+    background: rgba(255,255,255,.035); color: var(--tk-text-1, #e2e8f0);
+    font: 12.5px/1.6 var(--tk-font-mono), ui-monospace, Menlo, monospace;
+  }
+  .ec code { font-family: var(--tk-font-mono), ui-monospace, Menlo, monospace; }
+  .ec-list { padding-left: 19px; max-width: 76ch; }
+  .ec-list li { color: var(--tk-text-2, #94a3b8); font-size: 14px; line-height: 1.65; margin: 7px 0; }
+  .ec-note { padding: 16px 18px; border-left: 3px solid var(--tk-live, #06d6e0); margin: 16px 0; }
+  .ec-note p { margin: 0; color: var(--tk-text-1, #e2e8f0); font-size: 13.5px; line-height: 1.65; }
+  .ec-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+  .ec-foot { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--ps-edge-1); color: var(--tk-text-4, #6f8098); font: 11.5px/1.7 var(--tk-font-mono); }
+  @media (max-width: 760px) { .ec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2" data-within="">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html" aria-current="page"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap ec">
+  <header class="ec-head ps-recede">
+    <p class="ps-kicker">Portable evidence · standard library only · offline</p>
+    <h1 class="ps-h1">Take the evidence with the claim</h1>
+    <p class="ps-lede">An Evidence Capsule is one JSON file containing a typed claim, the exact bytes it cites, machine-checkable relationships, and the limitations a reader must carry with it. Verification fetches nothing and executes nothing.</p>
+    <div class="ec-actions">
+      <a class="ps-btn" href="/protocol/test-vectors/palimpsest-erasure-v1.json" download>Download a verified example</a>
+      <a class="ps-btn ps-btn--ghost" href="/protocol/evidence-capsule-v1.md">Read the protocol</a>
+      <a class="ps-btn ps-btn--ghost" href="/protocol/evidence-capsule-v1.schema.json">JSON Schema</a>
+    </div>
+  </header>
+
+  <section class="ec-grid ps-stagger" aria-label="Evidence Capsule properties">
+    <article class="ec-card ps-p1">
+      <h2>Exact bytes</h2>
+      <p>Every artifact carries its SHA-256 and byte size. Inline artifacts travel as base64; local path artifacts remain confined to an explicitly supplied stable root.</p>
+    </article>
+    <article class="ec-card ps-p2">
+      <h2>Honest proof scope</h2>
+      <p>The report separates content identity, artifact integrity, derivation checks, ledger membership and anchor-envelope binding. Natural-language truth and producer identity are not silently inferred.</p>
+    </article>
+    <article class="ec-card ps-p3">
+      <h2>Portable claims</h2>
+      <p>Journalists, researchers and agents can exchange the evidence object without granting it agency. URIs and intents are inert provenance and advice, never commands.</p>
+    </article>
+  </section>
+
+  <section class="ec-section" id="verify">
+    <p class="ps-kicker">Verify the frozen example</p>
+    <h2 class="ps-section-head">One command, no key and no network</h2>
+    <p class="ec-copy">Clone the public repository and run the dependency-free verifier against the frozen Palimpsest vector:</p>
+    <pre><code>git clone https://github.com/beepboop2025/palimpsest
+cd palimpsest
+python3 scripts/evidence_capsule.py verify \
+  protocol/test-vectors/palimpsest-erasure-v1.json</code></pre>
+    <p class="ec-copy">Exit code <code>0</code> means the bounded v1 checks passed. Exit code <code>1</code> means a well-formed report contains a failed check; <code>2</code> means the input or command could not be processed.</p>
+  </section>
+
+  <section class="ec-section" id="create">
+    <p class="ps-kicker">Create from published Palimpsest data</p>
+    <h2 class="ps-section-head">Export an exact sealed reading</h2>
+    <p class="ec-copy">The adapter refuses to invent a seal. It emits only when the complete reading matches one ledger entry and a structurally valid OpenTimestamps envelope binds an anchored prefix containing that entry.</p>
+    <pre><code>python3 scripts/evidence_capsule.py palimpsest \
+  --reading readings/censored-planet-latest.json \
+  --source censored-planet \
+  --output censored-planet.capsule.json
+
+python3 scripts/evidence_capsule.py verify \
+  censored-planet.capsule.json</code></pre>
+    <div class="ec-note ps-p1">
+      <p>The download above is a frozen conformance example with a stable content identity, not a moving “latest” alias. Current readings change on their publication schedule, so generate a capsule from the checked-out published state when you need a current evidence object. Capsule creation is a trusted local build step: use only a stable checkout and inputs that an adversarial local process cannot modify while the adapter runs.</p>
+    </div>
+  </section>
+
+  <section class="ec-section" id="meaning">
+    <p class="ps-kicker">Read the result precisely</p>
+    <h2 class="ps-section-head">What <code>ok</code> means, and what it does not mean</h2>
+    <ul class="ec-list">
+      <li><b>Verified:</b> canonical content identity, exact artifact bytes, declared references, supported extraction proofs, and any supplied entry-membership or anchor-envelope relationship.</li>
+      <li><b>Not claimed:</b> that prose is true, that an upstream source told the truth, that an attestation actor is authenticated, or that the capsule establishes a Bitcoin timestamp.</li>
+      <li><b>Deliberately partial:</b> a derivation may say <code>declared-nonrecomputable-v1</code>. That is an honest negative result, not a hidden success.</li>
+    </ul>
+    <p class="ec-copy">A sampled or bounded investigative lead can preserve the exact source bytes without pretending to reproduce a larger ranking. Evidence Capsule v1 records that boundary with <code>declared-nonrecomputable-v1</code>: the derivation must state why it cannot be rerun from the capsule alone, and the verifier reports the result as partial rather than verified. This behavior is documented in the Palimpsest-local <a href="/protocol/evidence-capsule-v1.md">protocol content model</a>.</p>
+  </section>
+
+  <footer class="ec-foot">
+    Protocol: <a href="/protocol/evidence-capsule-v1.md">palimpsest-evidence-capsule/v1</a> ·
+    Conformance release: <a href="/protocol/conformance-v1.json">manifest</a> ·
+    Source: <a href="https://github.com/beepboop2025/palimpsest">GitHub</a>
+  </footer>
+</main>
+
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

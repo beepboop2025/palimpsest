@@ -40,10 +40,16 @@ Built entirely from open sources. **It watches the censor, never the censored.**
 git clone https://github.com/beepboop2025/palimpsest && cd palimpsest
 python3 scripts/verify_eval_registry.py   # the eval chain + the pre-registration rule
 python3 scripts/verify_ledger.py          # the erasure / censorship ledger
+python3 scripts/evidence_capsule.py verify protocol/test-vectors/palimpsest-erasure-v1.json
 ```
 
 No install, no key, no server, standard library only. Change one sealed byte and the verifier
 names the break. That is the entire idea: you do not have to trust the operator, you check.
+
+Need to carry one claim and its exact supporting bytes into another newsroom,
+research notebook or agent? [Evidence Capsules](https://palimpsest.info/evidence-capsules.html)
+package the evidence, typed claims and explicit limitations into one inert JSON file with the
+same offline verification model.
 
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
 > (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
