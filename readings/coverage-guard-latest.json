@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-03T20:19:03.934768+00:00",
+  "generated_at": "2026-08-04T03:55:17.752406+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 103,
-      "metric_now": 60.4,
-      "denominator_now": 331307.0,
-      "metric_robust_z": 0.75,
-      "denominator_robust_z": 1.91,
-      "denominator_change_pct": 22.6,
+      "n_pairs": 104,
+      "metric_now": 59.2,
+      "denominator_now": 269052.0,
+      "metric_robust_z": -0.22,
+      "denominator_robust_z": -0.04,
+      "denominator_change_pct": -0.5,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 197,
-      "metric_now": 1.2119,
+      "n_pairs": 199,
+      "metric_now": 1.0851,
       "denominator_now": 199.0,
-      "metric_robust_z": -0.94,
+      "metric_robust_z": -1.06,
       "denominator_robust_z": 5.06,
       "denominator_change_pct": 17.8,
       "verdict": "NO_MOVE",
@@ -24,21 +24,27 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 197,
+      "n_pairs": 199,
       "metric_now": 16.0,
       "denominator_now": 199.0,
-      "metric_robust_z": null,
+      "metric_robust_z": -18.21,
       "denominator_robust_z": 5.06,
       "denominator_change_pct": 17.8,
-      "verdict": "NO_MOVE",
-      "note": "the metric has not departed from its own history",
+      "fit": {
+        "slope": -0.169944,
+        "intercept": 56.0798,
+        "correlation": -0.628
+      },
+      "residual_robust_z": -4.08,
+      "verdict": "COVERAGE_CONFOUNDED",
+      "note": "the measurement base moved 17.8% at the same time and tracks this metric historically (r=-0.63); conditioning on it shrinks the departure from z=-18.2 to z=-4.1. This reading is NOT evidence of a censorship change.",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 112,
-      "metric_now": 8.0,
+      "n_pairs": 113,
+      "metric_now": 4.0,
       "denominator_now": 25.0,
-      "metric_robust_z": 1.01,
+      "metric_robust_z": -0.34,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -58,7 +64,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 62,
+      "n_pairs": 63,
       "metric_now": 0.0,
       "denominator_now": 0.0,
       "metric_robust_z": null,
@@ -69,7 +75,7 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 56,
+      "n_pairs": 57,
       "metric_now": 2.0,
       "denominator_now": 7.0,
       "metric_robust_z": 0.67,
@@ -80,8 +86,10 @@
       "denominator_is": "repositories under watch"
     }
   },
-  "confounded": [],
-  "headline": "no signal's movement is explained by its own measurement coverage",
+  "confounded": [
+    "ddti_novelty"
+  ],
+  "headline": "coverage-confounded, do not read as censorship change: ddti_novelty",
   "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
   "caveats": [
     "conditioning is linear and the histories are short — the fit correlation and pair count are published with every verdict, and |r| < 0.3 is treated as uninformative rather than as licence to conclude",
