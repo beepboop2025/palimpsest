@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T20:07:43.096188+00:00",
+  "generated_at": "2026-08-04T03:45:37.860081+00:00",
   "method_version": 1,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "window_days": 90,
@@ -9,20 +9,20 @@
     "state": "OK",
     "why": "5 of 7 tests have enough completed measurements to support a rate"
   },
-  "middlebox_index": 1.46,
+  "middlebox_index": 1.47,
   "middlebox_reading": "1.5% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
-  "transport_index": 32.68,
-  "transport_reading": "32.7% anomalous — transports partly degraded",
+  "transport_index": 32.77,
+  "transport_reading": "32.8% anomalous — transports partly degraded",
   "execution_blackouts": [
     {
       "test": "dnscheck",
       "label": "DNS-integrity test completion",
-      "measurement_count": 70567
+      "measurement_count": 69974
     },
     {
       "test": "echcheck",
       "label": "Encrypted Client Hello test completion",
-      "measurement_count": 238
+      "measurement_count": 236
     }
   ],
   "execution_reading": "2 measurement method(s) never completed a single run in China this window: dnscheck, echcheck",
@@ -33,11 +33,11 @@
       "label": "HTTP headers rewritten in transit",
       "available": true,
       "why": null,
-      "measurement_count": 5072,
-      "completed_count": 5072,
+      "measurement_count": 5030,
+      "completed_count": 5030,
       "failure_count": 0,
       "anomaly_count": 80,
-      "anomaly_rate": 0.0158,
+      "anomaly_rate": 0.0159,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -47,11 +47,11 @@
       "label": "malformed request lines normalised in transit",
       "available": true,
       "why": null,
-      "measurement_count": 5143,
-      "completed_count": 5143,
+      "measurement_count": 5101,
+      "completed_count": 5101,
       "failure_count": 0,
       "anomaly_count": 69,
-      "anomaly_rate": 0.0134,
+      "anomaly_rate": 0.0135,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -61,11 +61,11 @@
       "label": "STUN servers unreachable (real-time voice / WebRTC)",
       "available": true,
       "why": null,
-      "measurement_count": 38870,
-      "completed_count": 38870,
+      "measurement_count": 38524,
+      "completed_count": 38524,
       "failure_count": 0,
-      "anomaly_count": 12347,
-      "anomaly_rate": 0.3176,
+      "anomaly_count": 12275,
+      "anomaly_rate": 0.3186,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -75,12 +75,12 @@
       "label": "stock Tor bootstrap",
       "available": true,
       "why": null,
-      "measurement_count": 3863,
-      "completed_count": 506,
-      "failure_count": 3357,
-      "anomaly_count": 480,
-      "anomaly_rate": 0.9486,
-      "execution_failure_rate": 0.869,
+      "measurement_count": 3830,
+      "completed_count": 498,
+      "failure_count": 3332,
+      "anomaly_count": 471,
+      "anomaly_rate": 0.9458,
+      "execution_failure_rate": 0.87,
       "never_completes": false
     },
     {
@@ -103,9 +103,9 @@
       "label": "DNS-integrity test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 70567,
+      "measurement_count": 69974,
       "completed_count": 0,
-      "failure_count": 70567,
+      "failure_count": 69974,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
@@ -117,14 +117,14 @@
       "label": "Encrypted Client Hello test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 238,
+      "measurement_count": 236,
       "completed_count": 0,
-      "failure_count": 238,
+      "failure_count": 236,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
       "never_completes": true
     }
   ],
-  "last_changed_at": "2026-08-03T20:07:43.096188+00:00"
+  "last_changed_at": "2026-08-04T03:45:37.860081+00:00"
 }
