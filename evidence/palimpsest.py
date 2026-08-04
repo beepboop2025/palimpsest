@@ -21,11 +21,13 @@ from evidence.capsule import (
     MAX_ARTIFACT_BYTES,
     MAX_CAPSULE_BYTES,
     MAX_OTS_BYTES,
+    MAX_TOTAL_ARTIFACT_BYTES,
     MERKLE_PROOF,
     SPEC_VERSION,
     CapsuleError,
     _ledger_canonical_bytes,
     _parse_anchor_input,
+    _timestamp,
     _verify_ots_detached,
     build_capsule,
     strict_json_loads,
@@ -33,16 +35,35 @@ from evidence.capsule import (
 )
 
 
+# Adapter inputs are local repository material, but they are still parsed as
+# hostile data.  A byte cap alone is insufficient for JSONL: 32 MiB of ``{}\n``
+# expands into millions of Python objects, and repeated anchor records used to
+# retain a fresh copy of every referenced proof.  These bounds leave years of
+# headroom at the current cadence while keeping memory and verification work
+# finite.
+MAX_LEDGER_ENTRIES = 65_536
+MAX_ANCHOR_RECORDS = 8_192
+MAX_ANCHOR_CANDIDATES = 128
+MAX_ANCHOR_SCAN_BYTES = MAX_TOTAL_ARTIFACT_BYTES
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+def _read_jsonl(
+    path: Path,
+    *,
+    maximum_records: int,
+    label: str,
+) -> list[dict[str, Any]]:
     values: list[dict[str, Any]] = []
-    data = _read_bounded_file(path, MAX_CAPSULE_BYTES, "JSONL input")
+    data = _read_bounded_file(path, MAX_CAPSULE_BYTES, label)
     for line_number, line in enumerate(data.splitlines(), 1):
         if not line.strip():
             continue
+        if len(values) >= maximum_records:
+            raise CapsuleError(f"{label} exceeds {maximum_records} records")
         value = strict_json_loads(line)
         if not isinstance(value, dict):
             raise CapsuleError(f"{path}:{line_number}: expected a JSON object")
@@ -113,7 +134,11 @@ def _inline_artifact(*, artifact_id: str, data: bytes, media_type: str,
 def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
                  anchor_records: list[dict[str, Any]], repo_root: Path,
                  ledger_name: str) -> tuple[dict[str, Any], bytes, bytes]:
-    candidates: list[tuple[int, str, dict[str, Any], bytes, bytes]] = []
+    # Keep metadata only, deduplicate before touching any referenced file, then
+    # visit tightest prefixes first.  The first valid item is the answer, so no
+    # proof/input byte blobs accumulate in memory.
+    candidates: list[tuple[Any, ...]] = []
+    seen: set[tuple[Any, ...]] = set()
     for record in anchor_records:
         roots = record.get("roots")
         ots = record.get("ots")
@@ -124,24 +149,70 @@ def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
             continue
         if count <= target_seq or count > len(entries):
             continue
-        prefix = entries[:count]
-        ok, _ = verify(prefix)
-        if not ok:
-            continue
-        expected_root = merkle_root(prefix)
-        expected_head = prefix[-1]["entry_hash"]
-        if (roots.get(f"{ledger_name}_root") != expected_root
-                or roots.get(f"{ledger_name}_head") != expected_head):
+        timestamp = record.get("ts")
+        root = roots.get(f"{ledger_name}_root")
+        head = roots.get(f"{ledger_name}_head")
+        input_name = ots.get("file")
+        proof_name = ots.get("proof")
+        if not all(isinstance(value, str) for value in (
+            timestamp, root, head, input_name, proof_name,
+        )):
             continue
         try:
-            input_path = _inside_repo(repo_root, ots["file"])
-            proof_path = _inside_repo(repo_root, ots["proof"])
+            _timestamp(timestamp, "anchor record timestamp")
+            sort_time = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except (CapsuleError, ValueError, OverflowError):
+            continue
+        identity = (count, timestamp, root, head, input_name, proof_name)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        candidates.append((
+            count, sort_time, timestamp, root, head, input_name, proof_name, record,
+        ))
+
+    candidates.sort(key=lambda item: item[:-1])
+    prefix_facts: dict[int, tuple[str, str]] = {}
+    attempts = 0
+    scanned_bytes = 0
+    for (count, _sort_time, _timestamp_text, declared_root, declared_head,
+         input_name, proof_name, record) in candidates:
+        attempts += 1
+        if attempts > MAX_ANCHOR_CANDIDATES:
+            raise CapsuleError(
+                f"anchor candidate verification exceeds {MAX_ANCHOR_CANDIDATES} attempts"
+            )
+        if count not in prefix_facts:
+            prefix = entries[:count]
+            prefix_facts[count] = (merkle_root(prefix), prefix[-1]["entry_hash"])
+        expected_root, expected_head = prefix_facts[count]
+        if declared_root != expected_root or declared_head != expected_head:
+            continue
+        try:
+            input_path = _inside_repo(repo_root, input_name)
+            proof_path = _inside_repo(repo_root, proof_name)
             input_bytes = _read_bounded_file(
                 input_path, MAX_ARTIFACT_BYTES, "anchor input"
             )
+        except (CapsuleError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+            continue
+        scanned_bytes += len(input_bytes)
+        if scanned_bytes > MAX_ANCHOR_SCAN_BYTES:
+            raise CapsuleError(
+                f"anchor candidate bytes exceed {MAX_ANCHOR_SCAN_BYTES}"
+            )
+        try:
             proof_bytes = _read_bounded_file(
                 proof_path, MAX_OTS_BYTES, "OpenTimestamps envelope"
             )
+        except (CapsuleError, OSError, RuntimeError, TypeError, ValueError):
+            continue
+        scanned_bytes += len(proof_bytes)
+        if scanned_bytes > MAX_ANCHOR_SCAN_BYTES:
+            raise CapsuleError(
+                f"anchor candidate bytes exceed {MAX_ANCHOR_SCAN_BYTES}"
+            )
+        try:
             fields = _parse_anchor_input(input_bytes)
             expected_fields = {
                 f"{ledger_name}_entries": str(count),
@@ -152,17 +223,17 @@ def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
             if any(fields.get(key) != value for key, value in expected_fields.items()):
                 continue
             _verify_ots_detached(proof_bytes, input_bytes)
-        except (CapsuleError, KeyError, OSError, RuntimeError, TypeError):
+        except (CapsuleError, KeyError, OSError, RuntimeError, TypeError, ValueError):
             continue
-        candidates.append((count, record["ts"], record, input_bytes, proof_bytes))
+        return record, input_bytes, proof_bytes
+
     if not candidates:
         raise CapsuleError(
             "no exact anchored ledger prefix contains this reading; refusing to emit"
         )
-    # The earliest containing prefix gives the tightest public upper bound on
-    # existence.  Ties are deterministic.
-    _, _, record, input_bytes, proof_bytes = sorted(candidates, key=lambda item: (item[0], item[1]))[0]
-    return record, input_bytes, proof_bytes
+    raise CapsuleError(
+        "no exact anchored ledger prefix passed bounded verification; refusing to emit"
+    )
 
 
 def capsule_from_reading(
@@ -202,7 +273,9 @@ def capsule_from_reading(
         raise CapsuleError("Palimpsest reading must be a JSON object")
     payload_digest = _sha256(_ledger_canonical_bytes(reading))
 
-    entries = _read_jsonl(ledger_path)
+    entries = _read_jsonl(
+        ledger_path, maximum_records=MAX_LEDGER_ENTRIES, label="Palimpsest ledger"
+    )
     chain_ok, chain_problems = verify(entries)
     if not chain_ok:
         raise CapsuleError("ledger is broken: " + "; ".join(chain_problems))
@@ -217,7 +290,11 @@ def capsule_from_reading(
         raise CapsuleError("the exact reading payload has ambiguous duplicate seals")
     entry = matches[0]
 
-    anchor_records = _read_jsonl(anchors_path)
+    anchor_records = _read_jsonl(
+        anchors_path,
+        maximum_records=MAX_ANCHOR_RECORDS,
+        label="Palimpsest anchor registry",
+    )
     anchor_record, anchor_input, anchor_proof = _find_anchor(
         entries=entries, target_seq=entry["seq"], anchor_records=anchor_records,
         repo_root=repo_root, ledger_name=ledger_name,
@@ -251,7 +328,7 @@ def capsule_from_reading(
             artifact_id="anchor-proof", data=anchor_proof,
             media_type="application/vnd.opentimestamps.ots",
             uri=f"https://palimpsest.info/{ots['proof']}", captured_at=anchor_record["ts"],
-            collector="OpenTimestamps detached envelope", untrusted=False,
+            collector="OpenTimestamps detached envelope", untrusted=True,
         ),
     ]
     claims: list[dict[str, Any]] = [{

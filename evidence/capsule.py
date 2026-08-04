@@ -1135,7 +1135,10 @@ def verify_capsule(capsule: Any, *, base_dir: str | Path | None = None) -> dict[
 
     ``base_dir`` is mandatory only for path-backed artifacts.  Paths are resolved
     beneath that directory after rejecting absolute paths, dot segments,
-    backslashes, and symlink escapes.
+    backslashes, and symlink escapes.  The caller must keep that artifact root
+    stable for the duration of verification and must not let an untrusted local
+    process modify it concurrently; portable path resolution cannot close a
+    check/open race in an adversary-writable directory on every supported OS.
     """
     errors: list[str] = []
     schema_status = "failed"

@@ -20,7 +20,9 @@ it. It is data, never an instruction channel. A verifier:
 
 `untrusted` is mandatory provenance metadata. `true` means the bytes originated
 outside the capsule producer's trust boundary. It never makes execution safe;
-there is no execution path in v1.
+there is no execution path in v1. A detached OpenTimestamps envelope containing
+calendar-returned material is therefore `untrusted: true`, even when the producer
+ran the client that wrote the local `.ots` file.
 
 ## Envelope and identity
 
@@ -99,6 +101,12 @@ Content has exactly these fields:
 Relative artifact paths use `/`, contain no empty, `.` or `..` component, and are
 resolved beneath an explicitly supplied root after symlink resolution. Absolute
 paths, backslashes, root escapes, and non-files are rejected.
+
+The artifact root is a caller-owned trust boundary and must stay stable for the
+duration of verification. Do not use a directory that an untrusted local process
+can modify concurrently: v1 confines resolved paths and symlink escapes, but its
+portable verifier does not claim to make a mutable filesystem race-free on every
+supported operating system.
 
 ## Palimpsest entry membership and anchor-envelope binding
 

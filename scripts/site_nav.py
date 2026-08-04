@@ -102,6 +102,8 @@ NAV = [
                      "Validation", "The DDTI scorer retrodicted against six documented events"),
                     ("https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md",
                      "Ethics and safety", "Watch the censor, never the censored"),
+                    ("/evidence-capsules.html", "Evidence Capsules",
+                     "Portable claims bound to exact evidence bytes, verified offline"),
                     ("/for-researchers.html#forecast", "Our own misses",
                      "The forecast ledger, including where we were wrong"),
                 ],

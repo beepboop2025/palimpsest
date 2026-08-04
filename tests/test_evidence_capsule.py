@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 import evidence.capsule as capsule_module
+import evidence.palimpsest as palimpsest_module
 from evidence.capsule import (
     CANONICALIZATION,
     IJSON_SAFE_INTEGER,
@@ -158,6 +159,87 @@ def test_palimpsest_adapter_recreates_golden_vector_from_frozen_exact_prefix() -
         created_at="2026-08-04T09:26:52.865414+00:00",
     )
     assert generated == _vector("palimpsest-erasure-v1.json")
+    artifacts = {item["id"]: item for item in generated["content"]["artifacts"]}
+    assert artifacts["anchor-input"]["untrusted"] is False
+    assert artifacts["anchor-proof"]["untrusted"] is True
+
+
+def test_adapter_deduplicates_anchor_candidates_before_reading_proofs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readings = ADAPTER_FIXTURE / "readings"
+    entries = palimpsest_module._read_jsonl(
+        readings / "erasure-ledger.jsonl",
+        maximum_records=palimpsest_module.MAX_LEDGER_ENTRIES,
+        label="test ledger",
+    )
+    records = palimpsest_module._read_jsonl(
+        readings / "anchors.jsonl",
+        maximum_records=palimpsest_module.MAX_ANCHOR_RECORDS,
+        label="test anchors",
+    )
+    calls = 0
+    original = palimpsest_module._verify_ots_detached
+
+    def counted(proof: bytes, subject: bytes):
+        nonlocal calls
+        calls += 1
+        return original(proof, subject)
+
+    monkeypatch.setattr(palimpsest_module, "_verify_ots_detached", counted)
+    record, _anchor_input, _anchor_proof = palimpsest_module._find_anchor(
+        entries=entries,
+        target_seq=120,
+        anchor_records=[copy.deepcopy(records[0]) for _ in range(500)],
+        repo_root=ADAPTER_FIXTURE,
+        ledger_name="erasure",
+    )
+    assert record == records[0]
+    assert calls == 1
+
+
+def test_adapter_bounds_jsonl_records_anchor_work_and_referenced_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tiny_records = tmp_path / "tiny.jsonl"
+    tiny_records.write_text("{}\n{}\n{}\n", encoding="utf-8")
+    with pytest.raises(CapsuleError, match="exceeds 2 records"):
+        palimpsest_module._read_jsonl(
+            tiny_records, maximum_records=2, label="hostile registry"
+        )
+
+    readings = ADAPTER_FIXTURE / "readings"
+    entries = palimpsest_module._read_jsonl(
+        readings / "erasure-ledger.jsonl",
+        maximum_records=palimpsest_module.MAX_LEDGER_ENTRIES,
+        label="test ledger",
+    )
+    base = palimpsest_module._read_jsonl(
+        readings / "anchors.jsonl",
+        maximum_records=palimpsest_module.MAX_ANCHOR_RECORDS,
+        label="test anchors",
+    )[0]
+    hostile = []
+    for count in range(1, 6):
+        record = copy.deepcopy(base)
+        record["roots"]["erasure_entries"] = count
+        record["roots"]["erasure_root"] = "0" * 64
+        record["roots"]["erasure_head"] = "0" * 64
+        hostile.append(record)
+    monkeypatch.setattr(palimpsest_module, "MAX_ANCHOR_CANDIDATES", 4)
+    with pytest.raises(CapsuleError, match="exceeds 4 attempts"):
+        palimpsest_module._find_anchor(
+            entries=entries, target_seq=0, anchor_records=hostile,
+            repo_root=ADAPTER_FIXTURE, ledger_name="erasure",
+        )
+
+    monkeypatch.setattr(palimpsest_module, "MAX_ANCHOR_CANDIDATES", 128)
+    monkeypatch.setattr(palimpsest_module, "MAX_ANCHOR_SCAN_BYTES", 1)
+    with pytest.raises(CapsuleError, match="candidate bytes exceed 1"):
+        palimpsest_module._find_anchor(
+            entries=entries, target_seq=120, anchor_records=[base],
+            repo_root=ADAPTER_FIXTURE, ledger_name="erasure",
+        )
 
 
 def test_adapter_refuses_unsealed_payload_and_missing_anchor(tmp_path: Path) -> None:
@@ -505,3 +587,26 @@ def test_protocol_schema_is_valid_json() -> None:
     schema = json.loads((ROOT / "protocol" / "evidence-capsule-v1.schema.json").read_text())
     assert schema["$schema"].endswith("2020-12/schema")
     assert schema["additionalProperties"] is False
+
+
+def test_protocol_documents_mutable_artifact_root_precondition() -> None:
+    protocol = " ".join(
+        (ROOT / "protocol" / "evidence-capsule-v1.md").read_text().split()
+    )
+    assert "must stay stable for the duration of verification" in protocol
+    assert "untrusted local process" in protocol
+    assert "calendar-returned material" in protocol
+
+
+def test_public_evidence_capsule_guide_is_indexed_and_downloadable() -> None:
+    page = (ROOT / "evidence-capsules.html").read_text()
+    example = "/protocol/test-vectors/palimpsest-erasure-v1.json"
+    assert '<meta name="robots" content="index, follow' in page
+    assert f'href="{example}"' in page
+    assert "not a moving “latest” alias" in page
+    assert "scripts/evidence_capsule.py verify" in page
+    assert "https://palimpsest.info/evidence-capsules.html" in (
+        ROOT / "sitemap.xml"
+    ).read_text()
+    assert "evidence-capsules.html" in (ROOT / "llms.txt").read_text()
+    assert "evidence-capsules.html" in (ROOT / "README.md").read_text()
