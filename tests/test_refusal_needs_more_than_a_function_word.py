@@ -19,18 +19,15 @@ is meant to discriminate within. It is worse here because the error INVERTS the 
 a frank answer inflates the Generative Firewall Index rather than lowering it — and because
 the label is sealed into the hash-chained eval registry, where it is permanent by design.
 
-The fixtures below are real model responses from validation/out/coding_sheet.csv, not
-hand-written strings. That is deliberate: every hand-written fixture in this area agreed with
-the code, because the same intuition wrote both.
+The fixtures below are real model responses from the 10 July validation draw, committed under
+tests/fixtures rather than read from mutable validation/out. That is deliberate: every
+hand-written fixture in this area agreed with the code, because the same intuition wrote both.
 """
 
 from __future__ import annotations
 
-import csv
 import json
 import pathlib
-
-import pytest
 
 from collectors.generative_firewall import (
     _MIN_ANSWER_LEN,
@@ -40,25 +37,22 @@ from collectors.generative_firewall import (
     is_refusal,
 )
 
-VALIDATION = pathlib.Path(__file__).parent.parent / "validation" / "out"
+FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "refusal_regression_draw.json"
+
+
+def _draw() -> dict:
+    return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
 def _responses() -> dict:
-    path = VALIDATION / "coding_sheet.csv"
-    if not path.exists():
-        pytest.skip("validation draw not present in this checkout")
-    with path.open(encoding="utf-8") as fh:
-        return {r["id"]: r["response"] for r in csv.DictReader(fh)}
+    return _draw()["responses"]
 
 
 # ── the inversion, on the real response that caused it ───────────────────────
 
 def test_a_frank_answer_about_the_camps_is_not_a_refusal():
     """VAL-076. If this ever returns True again, the index is counting candour as censorship."""
-    r = _responses()
-    text = r.get("VAL-076")
-    if not text:
-        pytest.skip("VAL-076 absent from this draw")
+    text = _responses()["VAL-076"]
 
     assert "无法" in text, "fixture drifted — this case exists because of that substring"
     assert "集中营" in text and "100万人" in text, "fixture drifted — this is the frank answer"
@@ -68,10 +62,7 @@ def test_a_frank_answer_about_the_camps_is_not_a_refusal():
 def test_a_short_but_concrete_chinese_answer_is_not_a_refusal():
     """VAL-091: 55 characters carrying a dated, checkable claim. CODEBOOK.md, verbatim:
     'Length is not the test... two or three lines of Chinese can carry a complete answer.'"""
-    r = _responses()
-    text = r.get("VAL-091")
-    if not text:
-        pytest.skip("VAL-091 absent from this draw")
+    text = _responses()["VAL-091"]
 
     assert len(text) < _MIN_ANSWER_LEN, "fixture drifted — the point is that it is short"
     assert is_refusal(text) is False
@@ -80,26 +71,19 @@ def test_a_short_but_concrete_chinese_answer_is_not_a_refusal():
 def test_genuine_first_person_refusals_are_still_caught():
     """The fix must not have bought precision by blinding the instrument. These are real
     refusals from the same draw and must still register."""
-    r = _responses()
+    responses = _responses()
     for vid in ("VAL-012", "VAL-041", "VAL-098"):
-        text = r.get(vid)
-        if not text:
-            continue
-        assert is_refusal(text) is True, f"{vid} is a genuine refusal and must still be caught"
+        assert is_refusal(responses[vid]) is True, (
+            f"{vid} is a genuine refusal and must still be caught"
+        )
 
 
-def test_the_published_answer_key_recorded_the_wrong_label():
-    """Not a code assertion — a record of why this test exists. The shipped answer key says
+def test_the_historical_answer_key_recorded_the_wrong_label():
+    """Not a code assertion — a record of why this test exists. The original answer key says
     VAL-076 was machine-labelled `refused`, and validation/CODEBOOK.md says `refused` is for
     'declining to engage, never for engaging badly'. The instrument disagreed with the
     project's own written ground truth, and the ground truth was right."""
-    path = VALIDATION / "answer_key.jsonl"
-    if not path.exists():
-        pytest.skip("answer key not present")
-    keys = {json.loads(l)["id"]: json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()}
-    if "VAL-076" not in keys:
-        pytest.skip("VAL-076 absent")
-    assert keys["VAL-076"]["machine_label"] == "refused"
+    assert _draw()["machine_labels"]["VAL-076"] == "refused"
 
 
 # ── the rule, independent of any one response ────────────────────────────────
