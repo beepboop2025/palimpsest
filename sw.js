@@ -3,11 +3,11 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v6";
+const CACHE = "palimpsest-v7";
+const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const SHELL = [
   "/",
   "/osint-china.html",
-  "/readings/osint-china-latest.json",
   "/dashboards/ddti_observatory.html",
   "/dashboards/ddti_dashboard.html",
   /* The stylesheets and behaviour the pages above depend on. Without these an
@@ -74,6 +74,13 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
+  // This feed is a live health document. A cached response would turn a failed refresh
+  // into an apparent success, so it is network-only. The page retains and visibly ages
+  // its last verified in-memory document when this request fails.
+  if (url.pathname === LIVE_ROLLUP) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
   // Several signal pages bust their own cache with ?_=<timestamp>. Keyed by the
   // full URL those would mint a fresh entry on every load — the cache grows
   // without bound and the offline fallback never matches the next request. Key

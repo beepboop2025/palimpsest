@@ -10,6 +10,7 @@ import importlib.util
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,7 @@ SCRIPT = ROOT / "scripts" / "build_osint_china.py"
 READINGS = ROOT / "readings"
 PUBLISHED = READINGS / "osint-china-latest.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+CI_REQUIREMENTS = ROOT / ".github" / "osint-china-ci-requirements.txt"
 NOW = datetime(2026, 8, 4, 12, 0, tzinfo=timezone.utc)
 
 
@@ -328,6 +330,31 @@ def test_fixed_time_build_and_atomic_serialization_are_byte_deterministic(mod, t
     assert json.loads(first_bytes)["schema_version"] == mod.SCHEMA_VERSION
 
 
+def test_builder_normalizes_its_clock_before_age_calculations(mod, tmp_path):
+    spec = next(spec for spec in mod.SIGNALS if spec.id == "ddti")
+    _write_current_source(tmp_path, spec)
+    whole_second = NOW.replace(microsecond=0)
+    subsecond = NOW.replace(microsecond=987654)
+
+    whole_document = mod.build_document(tmp_path, whole_second, "a" * 40)
+    subsecond_document = mod.build_document(tmp_path, subsecond, "a" * 40)
+
+    assert subsecond_document == whole_document
+    assert subsecond_document["generated_at"] == "2026-08-04T12:00:00Z"
+
+
+def test_published_rollup_is_byte_identical_when_it_replays_itself(mod, tmp_path):
+    published = json.loads(PUBLISHED.read_text(encoding="utf-8"))
+    replay = mod.build_document(
+        READINGS,
+        mod.parse_timestamp(published["generated_at"]),
+        published["input_commit"],
+    )
+    output = tmp_path / PUBLISHED.name
+    mod.write_atomic(replay, output)
+    assert output.read_bytes() == PUBLISHED.read_bytes()
+
+
 def test_failed_atomic_replace_preserves_previous_document_and_cleans_temp(mod, tmp_path,
                                                                           monkeypatch):
     output = tmp_path / "osint-china-latest.json"
@@ -378,3 +405,39 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     commit = text.index("git commit")
     assert build < tests < surface < commit
     assert "readings/osint-china-latest.json" in text
+
+
+def test_workflow_installs_a_complete_hash_pinned_test_runner_without_credentials():
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    install = workflow[
+        workflow.index("- name: Install the pinned offline test runner"):
+        workflow.index("- name: Synchronize inputs before computation")
+    ]
+    assert "python -m pip install --quiet --require-hashes" in install
+    assert "-r .github/osint-china-ci-requirements.txt" in install
+    assert "${{" not in install
+    assert "env:" not in install
+    assert "GITHUB" not in install
+    assert "persist-credentials: false" in workflow
+    assert "pytest==" not in workflow
+
+    expected = {
+        "iniconfig": "2.3.0",
+        "packaging": "26.2",
+        "pluggy": "1.6.0",
+        "pygments": "2.20.0",
+        "pytest": "9.1.1",
+    }
+    requirements = CI_REQUIREMENTS.read_text(encoding="utf-8")
+    lines = [
+        line.strip() for line in requirements.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    assert len(lines) == 2 * len(expected)
+    observed = {}
+    for requirement, hash_line in zip(lines[::2], lines[1::2], strict=True):
+        assert requirement.endswith("\\")
+        name, version = requirement[:-1].strip().split("==", 1)
+        assert re.fullmatch(r"--hash=sha256:[0-9a-f]{64}", hash_line)
+        observed[name] = version
+    assert observed == expected

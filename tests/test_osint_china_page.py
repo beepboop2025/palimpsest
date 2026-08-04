@@ -9,6 +9,10 @@ its public surface.
 from __future__ import annotations
 
 import pathlib
+import shutil
+import subprocess
+
+import pytest
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -109,6 +113,72 @@ def test_service_worker_caches_only_successful_expected_content_types():
     assert 'type === "text/html"' in worker
     assert "if (expectedContentType(url, res, req))" in worker
     assert "c.addAll(SHELL)" not in worker
+    shell_start = worker.index("const SHELL = [")
+    shell = worker[shell_start:worker.index("];", shell_start)]
+    assert '"/readings/osint-china-latest.json"' not in shell
+    assert 'if (url.pathname === LIVE_ROLLUP)' in worker
+    assert 'e.respondWith(fetch(req, { cache: "no-store" }))' in worker
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable")
+def test_live_rollup_network_failure_cannot_fall_back_to_service_worker_cache():
+    harness = r'''
+const fs = require("fs");
+const vm = require("vm");
+const listeners = {};
+global.self = {
+  location: { origin: "https://palimpsest.info" },
+  addEventListener: (kind, callback) => { listeners[kind] = callback; },
+  skipWaiting: () => {},
+  clients: { claim: () => {} }
+};
+global.location = self.location;
+let cacheMatches = 0;
+global.caches = {
+  match: async () => { cacheMatches += 1; return { stale: true }; },
+  open: async () => ({ put: async () => {} }),
+  keys: async () => []
+};
+const fetchCalls = [];
+global.fetch = (request, options) => {
+  fetchCalls.push({ request, options });
+  return Promise.reject(new Error("network unavailable"));
+};
+vm.runInThisContext(fs.readFileSync("sw.js", "utf8"), { filename: "sw.js" });
+let response;
+listeners.fetch({
+  request: {
+    method: "GET",
+    url: "https://palimpsest.info/readings/osint-china-latest.json?refresh=1"
+  },
+  respondWith: (promise) => { response = promise; }
+});
+(async () => {
+  let failedClosed = false;
+  try {
+    await response;
+  } catch (error) {
+    failedClosed = error.message === "network unavailable";
+  }
+  if (!failedClosed) throw new Error("network failure was hidden");
+  if (cacheMatches !== 0) throw new Error("live roll-up consulted the cache");
+  if (fetchCalls.length !== 1) throw new Error("unexpected live roll-up fetch count");
+  if (!fetchCalls[0].options || fetchCalls[0].options.cache !== "no-store") {
+    throw new Error("live roll-up fetch was not no-store");
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+'''
+    result = subprocess.run(
+        [shutil.which("node"), "-e", harness],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_route_is_present_on_every_discovery_surface():

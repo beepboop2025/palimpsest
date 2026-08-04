@@ -32,7 +32,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install the pinned offline test runner
-        run: python -m pip install --quiet "pytest==9.1.1"
+        run: >-
+          python -m pip install --quiet --require-hashes
+          -r .github/osint-china-ci-requirements.txt
 
       - name: Synchronize inputs before computation
         run: |

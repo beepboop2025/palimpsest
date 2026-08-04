@@ -519,7 +519,12 @@ def test_replayed_ok_snapshot_is_rejected_after_its_freshness_ceiling(tmp_path):
 def test_workflow_scopes_secrets_pins_tools_and_rebuilds_after_each_race():
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "persist-credentials: false" in text
-    assert 'pytest==9.1.1' in text
+    assert "pip install --quiet --require-hashes" in text
+    assert "-r .github/osint-china-ci-requirements.txt" in text
+    lock = (ROOT / ".github" / "osint-china-ci-requirements.txt").read_text(
+        encoding="utf-8"
+    )
+    assert "pytest==9.1.1" in lock
     assert "env:\n      PYTHONPATH:" in text
     assert text.count("NEMESIS_SNAPSHOT_HMAC_KEY:") == 3
     assert text.count("PALIMPSEST_SCRUB_STRINGS:") == 3

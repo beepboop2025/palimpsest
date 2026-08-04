@@ -794,7 +794,9 @@ def build_document(
     """Return the complete stable document without mutating the filesystem."""
     if now is None:
         now = datetime.now(timezone.utc)
-    now = _utc(now)
+    # The serialized timestamp has second precision. Normalize before freshness and age
+    # calculations so replaying that timestamp reconstructs the exact same document bytes.
+    now = _utc(now).replace(microsecond=0)
     signals = [_signal(spec, Path(readings_dir), now) for spec in SIGNALS]
     required = [s for s in signals if not s["optional"]]
     required_reporting = sum(s["status"] not in {"missing", "corrupt"} for s in required)

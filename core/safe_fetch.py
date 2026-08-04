@@ -1,32 +1,32 @@
-"""Hardened outbound fetch — client self-defence against a hostile server.
+"""Hardened outbound fetch: client self-defence against a hostile server.
 
 Palimpsest reads from surfaces that may be adversarial. A hostile server cannot reach
 *into* an outbound collector, but it CAN try to weaponise the collector against itself:
 
-  1. SSRF via redirect — answer a request with `302 Location: http://169.254.169.254/…`
+  1. SSRF via redirect: answer a request with `302 Location: http://169.254.169.254/…`
      (cloud metadata) or `http://127.0.0.1/…` / an RFC-1918 address, to make OUR client
      attack OUR own network. Defence: resolve every hop and refuse any non-public address;
      connect to the *pinned* validated IP so a DNS-rebind between check and connect can't
      swap it for an internal one.
-  2. Decompression bomb — a few KB of gzip that expands to gigabytes, to OOM the box.
+  2. Decompression bomb: a few KB of gzip that expands to gigabytes, to OOM the box.
      Defence: decompress through a hard output cap; over-cap or leftover input => reject.
-  3. Oversized / endless body — defence: read through a hard byte cap.
-  4. TLS downgrade — defence: always verify cert + hostname (default SSL context).
-  5. Odd schemes (file://, ftp://, gopher://) — defence: https/http allowlist only.
+  3. Oversized / endless body: defence means reading through a hard byte cap.
+  4. TLS downgrade: defence means always verifying cert + hostname (default SSL context).
+  5. Odd schemes (file://, ftp://, gopher://): defence is an https/http allowlist only.
 
 This module NEVER executes a byte it fetches; it returns text for a parser to treat as
 untrusted data. Standard-library only. See SECURITY-HARDENING.md for the full threat model.
 
-STATUS — WIRED AT ONE NARROW PUBLICATION BOUNDARY. The optional Nemesis snapshot importer
+STATUS: WIRED AT ONE NARROW PUBLICATION BOUNDARY. The optional Nemesis snapshot importer
 uses this path with redirects disabled before accepting a configured external HTTPS document.
 No live observatory collector or server uses it yet: their outbound reads still go through a
 plain `urllib.request.urlopen` or an `httpx` client. This module protects that one named import
 while remaining the migration target for the collector inventory.
 
-The inventory of what still has to move — every un-hardened egress call site, each with the
+The inventory of what still has to move includes every un-hardened egress call site, each with the
 honest reason it has not moved yet (async-only paths, POST bodies this GET-only fetch cannot
 carry, the deliberately-independent witness, the pinned-IP CDN probe that is structurally
-outside this design) — lives in tests/test_egress_policy.py. That test fails on any NEW
+outside this design). It lives in tests/test_egress_policy.py. That test fails on any NEW
 un-hardened call site, so the gap can only shrink. Shrinking `_ALLOWED` there IS the
 migration; when the last collector caller lands, update this note (the test enforces that
 too, in both directions).
@@ -58,7 +58,7 @@ class BlockedAddressError(FetchError):
 
 
 class ResponseTooLarge(FetchError):
-    """Body (or its decompressed form) exceeded the byte cap — size / bomb guard."""
+    """Body (or its decompressed form) exceeded the size / bomb guard byte cap."""
 
 
 class TooManyRedirects(FetchError):
@@ -67,7 +67,7 @@ class TooManyRedirects(FetchError):
 
 def _validate_public(host: str):
     """Resolve `host` and return its addresses only if EVERY one is public. Blocks private,
-    loopback, link-local (incl. 169.254 metadata), reserved, multicast, and unspecified —
+    loopback, link-local (incl. 169.254 metadata), reserved, multicast, and unspecified;
     the SSRF guard. Returning the pinned address(es) lets the caller connect to a validated
     IP, closing the DNS-rebinding window between check and connect."""
     try:
@@ -96,7 +96,7 @@ def _read_capped(resp, max_bytes: int) -> bytes:
 
 def _maybe_decompress(data: bytes, encoding, max_bytes: int) -> bytes:
     """Decompress gzip/deflate through a HARD output cap. A decompression bomb either exceeds
-    the cap or leaves unconsumed input once the cap is hit — both are rejected."""
+    the cap or leaves unconsumed input once the cap is hit; both are rejected."""
     enc = (encoding or "").lower().strip()
     if enc in ("gzip", "x-gzip"):
         dobj = zlib.decompressobj(16 + zlib.MAX_WBITS)
