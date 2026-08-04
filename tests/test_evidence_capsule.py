@@ -49,6 +49,30 @@ def _rehash(capsule: dict) -> dict:
     return capsule
 
 
+def _ots_varuint(value: int) -> bytes:
+    encoded = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        encoded.append(byte | (0x80 if value else 0))
+        if not value:
+            return bytes(encoded)
+
+
+def _ots_varbytes(value: bytes) -> bytes:
+    return _ots_varuint(len(value)) + value
+
+
+def _ots_attestation(tag: bytes, payload: bytes) -> bytes:
+    return b"\x00" + tag + _ots_varbytes(payload)
+
+
+def _ots_envelope(subject: bytes, timestamp: bytes) -> bytes:
+    return (
+        _OTS_MAGIC + b"\x01\x08" + hashlib.sha256(subject).digest() + timestamp
+    )
+
+
 def _minimal_capsule(data: bytes, location: dict | None = None) -> dict:
     location = location or {
         "type": "inline", "encoding": "base64",
@@ -361,6 +385,141 @@ def test_header_only_ots_blob_is_not_a_complete_envelope() -> None:
     assert not report["ok"]
     assert report["anchor"]["status"] == "failed"
     assert "timestamp" not in report["anchor"]["items"][0]["status"]
+
+
+def test_ots_operations_enforce_result_and_hexlify_input_limits() -> None:
+    subject = b"exact anchor input"
+    opaque_leaf = _ots_attestation(b"unknown!", b"\x80opaque")
+
+    valid_edge = (
+        b"\xf0" + _ots_varbytes(b"x" * 2016) + b"\xf3" + opaque_leaf
+    )
+    shape = capsule_module._verify_ots_detached(
+        _ots_envelope(subject, valid_edge), subject
+    )
+    assert shape == {"nodes": 3, "attestations": 1}
+
+    oversized_result = b"\xf0" + _ots_varbytes(b"x" * 4065) + opaque_leaf
+    with pytest.raises(CapsuleError, match="operation result exceeds 4096"):
+        capsule_module._verify_ots_detached(
+            _ots_envelope(subject, oversized_result), subject
+        )
+
+    oversized_hexlify_input = (
+        b"\xf0" + _ots_varbytes(b"x" * 2017) + b"\xf3" + opaque_leaf
+    )
+    with pytest.raises(CapsuleError, match="hexlify input exceeds 2048"):
+        capsule_module._verify_ots_detached(
+            _ots_envelope(subject, oversized_hexlify_input), subject
+        )
+
+
+def test_ots_branching_preserves_message_lengths_and_depth() -> None:
+    subject = b"exact anchor input"
+    opaque_leaf = _ots_attestation(b"unknown!", b"opaque")
+
+    valid_length_branch = (
+        b"\xff\xf0"
+        + _ots_varbytes(b"x" * 2016)
+        + b"\xf3"
+        + opaque_leaf
+        + b"\xf3"
+        + opaque_leaf
+    )
+    shape = capsule_module._verify_ots_detached(
+        _ots_envelope(subject, valid_length_branch), subject
+    )
+    assert shape == {"nodes": 5, "attestations": 2}
+
+    oversized_hexlify_branch = (
+        b"\xff\xf0"
+        + _ots_varbytes(b"x" * 2017)
+        + b"\xf3"
+        + opaque_leaf
+        + b"\xf3"
+        + opaque_leaf
+    )
+    with pytest.raises(CapsuleError, match="hexlify input exceeds 2048"):
+        capsule_module._verify_ots_detached(
+            _ots_envelope(subject, oversized_hexlify_branch), subject
+        )
+
+    valid_depth_branch = b"\xff" + (b"\x08" * 64) + opaque_leaf + opaque_leaf
+    assert capsule_module._verify_ots_detached(
+        _ots_envelope(subject, valid_depth_branch), subject
+    )["attestations"] == 2
+
+    oversized_depth_branch = b"\xff" + (b"\x08" * 65) + opaque_leaf + opaque_leaf
+    with pytest.raises(CapsuleError, match="depth limit"):
+        capsule_module._verify_ots_detached(
+            _ots_envelope(subject, oversized_depth_branch), subject
+        )
+
+
+@pytest.mark.parametrize(
+    "tag,payload",
+    [
+        (bytes.fromhex("83dfe30d2ef90c8e"), _ots_varbytes(b"https://calendar.example")),
+        (bytes.fromhex("0588960d73d71901"), _ots_varuint(900_000)),
+        (bytes.fromhex("06869a0d73d71b45"), _ots_varuint(3_000_000)),
+    ],
+)
+def test_known_ots_attestation_payloads_are_fully_parsed(
+    tag: bytes, payload: bytes
+) -> None:
+    subject = b"exact anchor input"
+    valid = _ots_envelope(subject, _ots_attestation(tag, payload))
+    assert capsule_module._verify_ots_detached(valid, subject)["attestations"] == 1
+
+    trailing = _ots_envelope(subject, _ots_attestation(tag, payload + b"\x00"))
+    with pytest.raises(CapsuleError, match="payload has trailing bytes"):
+        capsule_module._verify_ots_detached(trailing, subject)
+
+
+@pytest.mark.parametrize(
+    "tag,payload",
+    [
+        (
+            bytes.fromhex("83dfe30d2ef90c8e"),
+            _ots_varbytes(b"https://calendar.example/?query"),
+        ),
+        (bytes.fromhex("0588960d73d71901"), b"\x81\x00"),
+        (bytes.fromhex("06869a0d73d71b45"), b""),
+    ],
+)
+def test_malformed_known_ots_attestation_payloads_fail_closed(
+    tag: bytes, payload: bytes
+) -> None:
+    subject = b"exact anchor input"
+    envelope = _ots_envelope(subject, _ots_attestation(tag, payload))
+    with pytest.raises(CapsuleError, match="OpenTimestamps"):
+        capsule_module._verify_ots_detached(envelope, subject)
+
+
+def test_unknown_ots_attestations_remain_bounded_and_opaque() -> None:
+    subject = b"exact anchor input"
+    opaque = _ots_envelope(
+        subject, _ots_attestation(b"unknown!", b"\x80not-a-known-payload")
+    )
+    assert capsule_module._verify_ots_detached(opaque, subject)["attestations"] == 1
+
+    oversized = _ots_envelope(
+        subject, _ots_attestation(b"unknown!", b"x" * 8193)
+    )
+    with pytest.raises(CapsuleError, match="length exceeds"):
+        capsule_module._verify_ots_detached(oversized, subject)
+
+
+def test_referenced_anchor_proof_artifact_must_declare_untrusted_true() -> None:
+    capsule = _vector("palimpsest-erasure-v1.json")
+    artifacts = {item["id"]: item for item in capsule["content"]["artifacts"]}
+    artifacts["anchor-proof"]["untrusted"] = False
+    _rehash(capsule)
+
+    report = verify_capsule(capsule)
+    assert not report["ok"]
+    assert report["schema"]["status"] == "failed"
+    assert any("must declare untrusted true" in error for error in report["errors"])
 
 
 def test_integrity_claim_must_reference_its_exact_binding() -> None:

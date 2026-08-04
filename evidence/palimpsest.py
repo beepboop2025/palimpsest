@@ -3,6 +3,11 @@
 This module never creates a merely *plausible* integrity claim. It emits only
 after finding the complete canonical reading payload in the ledger and an exact
 anchor input plus detached envelope for a prefix containing that entry.
+
+Capsule creation is a trusted local build step. The repository checkout and all
+input files must stay stable while the adapter runs and must not be writable by
+an adversarial local process; portable path checks cannot make an
+adversary-writable input tree race-free on every supported operating system.
 """
 from __future__ import annotations
 
@@ -45,6 +50,30 @@ MAX_LEDGER_ENTRIES = 65_536
 MAX_ANCHOR_RECORDS = 8_192
 MAX_ANCHOR_CANDIDATES = 128
 MAX_ANCHOR_SCAN_BYTES = MAX_TOTAL_ARTIFACT_BYTES
+_JSONL_READ_CHUNK_BYTES = 64 * 1024
+
+
+class _AnchorScanBudgetExceeded(CapsuleError):
+    """Raised when candidate reads exhaust the aggregate anchor scan budget."""
+
+
+class _AnchorScanBudget:
+    """Account for bytes read across successful and rejected anchor candidates."""
+
+    def __init__(self, maximum: int) -> None:
+        self.maximum = maximum
+        self.consumed = 0
+
+    @property
+    def remaining(self) -> int:
+        return self.maximum - self.consumed
+
+    def consume(self, amount: int) -> None:
+        self.consumed += amount
+        if self.consumed > self.maximum:
+            raise _AnchorScanBudgetExceeded(
+                f"anchor candidate bytes exceed {self.maximum}"
+            )
 
 
 def _sha256(data: bytes) -> str:
@@ -58,25 +87,74 @@ def _read_jsonl(
     label: str,
 ) -> list[dict[str, Any]]:
     values: list[dict[str, Any]] = []
-    data = _read_bounded_file(path, MAX_CAPSULE_BYTES, label)
-    for line_number, line in enumerate(data.splitlines(), 1):
+    total_bytes = 0
+    line_number = 1
+    line_parts: list[bytes] = []
+
+    def accept_line(line: bytes) -> None:
         if not line.strip():
-            continue
+            return
         if len(values) >= maximum_records:
             raise CapsuleError(f"{label} exceeds {maximum_records} records")
         value = strict_json_loads(line)
         if not isinstance(value, dict):
             raise CapsuleError(f"{path}:{line_number}: expected a JSON object")
         values.append(value)
+
+    try:
+        with path.open("rb") as handle:
+            while True:
+                remaining = MAX_CAPSULE_BYTES - total_bytes
+                read_size = min(_JSONL_READ_CHUNK_BYTES, remaining + 1)
+                chunk = handle.readline(read_size)
+                if not chunk:
+                    if line_parts:
+                        accept_line(b"".join(line_parts))
+                    break
+
+                total_bytes += len(chunk)
+                if total_bytes > MAX_CAPSULE_BYTES:
+                    raise CapsuleError(f"{label} exceeds the v1 byte limit")
+
+                # Once the record limit is reached, scan only bounded chunks of
+                # the remainder.  Reject at the first non-whitespace byte rather
+                # than retaining or parsing an arbitrarily long extra record.
+                if len(values) >= maximum_records:
+                    if chunk.strip():
+                        raise CapsuleError(
+                            f"{label} exceeds {maximum_records} records"
+                        )
+                    if chunk.endswith(b"\n"):
+                        line_number += 1
+                    continue
+
+                line_parts.append(chunk)
+                if chunk.endswith(b"\n"):
+                    accept_line(b"".join(line_parts))
+                    line_parts.clear()
+                    line_number += 1
+    except OSError as exc:
+        raise CapsuleError(f"{label} cannot be read: {exc}") from exc
     return values
 
 
-def _read_bounded_file(path: Path, maximum: int, label: str) -> bytes:
+def _read_bounded_file(
+    path: Path,
+    maximum: int,
+    label: str,
+    *,
+    scan_budget: _AnchorScanBudget | None = None,
+) -> bytes:
+    read_size = maximum + 1
+    if scan_budget is not None:
+        read_size = min(read_size, scan_budget.remaining + 1)
     try:
         with path.open("rb") as handle:
-            data = handle.read(maximum + 1)
+            data = handle.read(read_size)
     except OSError as exc:
         raise CapsuleError(f"{label} cannot be read: {exc}") from exc
+    if scan_budget is not None:
+        scan_budget.consume(len(data))
     if len(data) > maximum:
         raise CapsuleError(f"{label} exceeds the v1 byte limit")
     return data
@@ -174,7 +252,7 @@ def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
     candidates.sort(key=lambda item: item[:-1])
     prefix_facts: dict[int, tuple[str, str]] = {}
     attempts = 0
-    scanned_bytes = 0
+    scan_budget = _AnchorScanBudget(MAX_ANCHOR_SCAN_BYTES)
     for (count, _sort_time, _timestamp_text, declared_root, declared_head,
          input_name, proof_name, record) in candidates:
         attempts += 1
@@ -192,26 +270,22 @@ def _find_anchor(*, entries: list[dict[str, Any]], target_seq: int,
             input_path = _inside_repo(repo_root, input_name)
             proof_path = _inside_repo(repo_root, proof_name)
             input_bytes = _read_bounded_file(
-                input_path, MAX_ARTIFACT_BYTES, "anchor input"
+                input_path, MAX_ARTIFACT_BYTES, "anchor input",
+                scan_budget=scan_budget,
             )
+        except _AnchorScanBudgetExceeded:
+            raise
         except (CapsuleError, KeyError, OSError, RuntimeError, TypeError, ValueError):
             continue
-        scanned_bytes += len(input_bytes)
-        if scanned_bytes > MAX_ANCHOR_SCAN_BYTES:
-            raise CapsuleError(
-                f"anchor candidate bytes exceed {MAX_ANCHOR_SCAN_BYTES}"
-            )
         try:
             proof_bytes = _read_bounded_file(
-                proof_path, MAX_OTS_BYTES, "OpenTimestamps envelope"
+                proof_path, MAX_OTS_BYTES, "OpenTimestamps envelope",
+                scan_budget=scan_budget,
             )
+        except _AnchorScanBudgetExceeded:
+            raise
         except (CapsuleError, OSError, RuntimeError, TypeError, ValueError):
             continue
-        scanned_bytes += len(proof_bytes)
-        if scanned_bytes > MAX_ANCHOR_SCAN_BYTES:
-            raise CapsuleError(
-                f"anchor candidate bytes exceed {MAX_ANCHOR_SCAN_BYTES}"
-            )
         try:
             fields = _parse_anchor_input(input_bytes)
             expected_fields = {
@@ -249,6 +323,11 @@ def capsule_from_reading(
 ) -> dict[str, Any]:
     """Create a self-contained capsule for an exact reading with entry-membership evidence.
 
+    This trusted build step requires a stable repository checkout and stable
+    inputs that an adversarial local process cannot modify concurrently. A
+    reading outside ``repository_root`` is rejected unless the caller supplies
+    an explicit ``source_uri`` provenance string.
+
     Raises :class:`CapsuleError` when the payload is absent, ambiguous, the chain
     is broken, or there is no exact anchored prefix containing it.
     """
@@ -260,10 +339,9 @@ def capsule_from_reading(
         "repository root",
     )
     try:
-        reading_path.relative_to(repo_root)
         relative_reading = reading_path.relative_to(repo_root).as_posix()
     except ValueError:
-        relative_reading = reading_path.name
+        relative_reading = None
 
     reading_bytes = _read_bounded_file(
         reading_path, MAX_ARTIFACT_BYTES, "Palimpsest reading"
@@ -289,6 +367,11 @@ def capsule_from_reading(
     if len(matches) != 1:
         raise CapsuleError("the exact reading payload has ambiguous duplicate seals")
     entry = matches[0]
+    if relative_reading is None and source_uri is None:
+        raise CapsuleError(
+            "Palimpsest reading is outside the repository root; "
+            "an explicit source_uri is required"
+        )
 
     anchor_records = _read_jsonl(
         anchors_path,
@@ -312,7 +395,11 @@ def capsule_from_reading(
     if not isinstance(captured_at, str):
         raise CapsuleError("reading/ledger capture time is not a string")
     created = created_at or datetime.now(timezone.utc).isoformat()
-    reading_uri = source_uri or f"https://palimpsest.info/{relative_reading}"
+    reading_uri = (
+        source_uri
+        if source_uri is not None
+        else f"https://palimpsest.info/{relative_reading}"
+    )
     ots = anchor_record["ots"]
     artifacts = [
         _inline_artifact(

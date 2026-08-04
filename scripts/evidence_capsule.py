@@ -24,13 +24,28 @@ def _parser() -> argparse.ArgumentParser:
     build = sub.add_parser(
         "palimpsest",
         help="build from an exact Palimpsest reading with entry-membership evidence",
+        description=(
+            "Build from an exact sealed Palimpsest reading. This is a trusted local "
+            "build step: use a stable checkout and input files that an adversarial "
+            "local process cannot modify while the command runs."
+        ),
     )
-    build.add_argument("--reading", required=True)
+    build.add_argument(
+        "--reading",
+        required=True,
+        help=(
+            "exact JSON reading (outside the repository root requires "
+            "--source-uri)"
+        ),
+    )
     build.add_argument("--source", required=True)
     build.add_argument("--ledger", default=str(ROOT / "readings" / "erasure-ledger.jsonl"))
     build.add_argument("--anchors", default=str(ROOT / "readings" / "anchors.jsonl"))
     build.add_argument("--ledger-name", default="erasure")
-    build.add_argument("--source-uri")
+    build.add_argument(
+        "--source-uri",
+        help="exact provenance URI; required for a reading outside the repository root",
+    )
     build.add_argument("--created-at")
     build.add_argument("--output", "-o", help="write JSON here (default: stdout)")
     return parser

@@ -162,19 +162,19 @@ python3 scripts/evidence_capsule.py verify \
 python3 scripts/evidence_capsule.py verify \
   censored-planet.capsule.json</code></pre>
     <div class="ec-note ps-p1">
-      <p>The download above is a frozen conformance example with a stable content identity, not a moving “latest” alias. Current readings change on their publication schedule, so generate a capsule from the checked-out published state when you need a current evidence object.</p>
+      <p>The download above is a frozen conformance example with a stable content identity, not a moving “latest” alias. Current readings change on their publication schedule, so generate a capsule from the checked-out published state when you need a current evidence object. Capsule creation is a trusted local build step: use only a stable checkout and inputs that an adversarial local process cannot modify while the adapter runs.</p>
     </div>
   </section>
 
   <section class="ec-section" id="meaning">
     <p class="ps-kicker">Read the result precisely</p>
-    <h2 class="ps-section-head">What <code>ok</code> does—and does not—mean</h2>
+    <h2 class="ps-section-head">What <code>ok</code> means, and what it does not mean</h2>
     <ul class="ec-list">
       <li><b>Verified:</b> canonical content identity, exact artifact bytes, declared references, supported extraction proofs, and any supplied entry-membership or anchor-envelope relationship.</li>
       <li><b>Not claimed:</b> that prose is true, that an upstream source told the truth, that an attestation actor is authenticated, or that the capsule establishes a Bitcoin timestamp.</li>
       <li><b>Deliberately partial:</b> a derivation may say <code>declared-nonrecomputable-v1</code>. That is an honest negative result, not a hidden success.</li>
     </ul>
-    <p class="ec-copy">Nemesis uses the same byte-identical verifier to export sampled DDTI investigative leads. Its adapter documentation explains why a bounded lead can preserve source evidence without pretending to reproduce the entire ranking: <a href="https://github.com/beepboop2025/palimpsest-nemesis/blob/main/docs/EVIDENCE-CAPSULES.md">Nemesis Evidence Capsules</a>.</p>
+    <p class="ec-copy">A sampled or bounded investigative lead can preserve the exact source bytes without pretending to reproduce a larger ranking. Evidence Capsule v1 records that boundary with <code>declared-nonrecomputable-v1</code>: the derivation must state why it cannot be rerun from the capsule alone, and the verifier reports the result as partial rather than verified. This behavior is documented in the Palimpsest-local <a href="/protocol/evidence-capsule-v1.md">protocol content model</a>.</p>
   </section>
 
   <footer class="ec-foot">

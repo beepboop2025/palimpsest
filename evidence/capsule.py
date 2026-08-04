@@ -51,7 +51,10 @@ MAX_OTS_BYTES = 1024 * 1024
 MAX_OTS_DEPTH = 64
 MAX_OTS_NODES = 2048
 MAX_OTS_OP_ARG_BYTES = 4096
+MAX_OTS_OP_RESULT_BYTES = 4096
+MAX_OTS_HEXLIFY_INPUT_BYTES = 2048
 MAX_OTS_ATTESTATION_BYTES = 8192
+MAX_OTS_PENDING_URI_BYTES = 1000
 
 CLAIM_TYPES = frozenset({
     "observation", "measurement", "provenance", "integrity",
@@ -72,6 +75,12 @@ _RFC3339 = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
 _OTS_MAGIC = b"\x00OpenTimestamps\x00\x00Proof\x00\xbf\x89\xe2\xe8\x84\xe8\x92\x94"
+_OTS_PENDING_ATTESTATION = bytes.fromhex("83dfe30d2ef90c8e")
+_OTS_BITCOIN_ATTESTATION = bytes.fromhex("0588960d73d71901")
+_OTS_LITECOIN_ATTESTATION = bytes.fromhex("06869a0d73d71b45")
+_OTS_PENDING_URI_CHARS = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._/:"
+)
 
 
 class CapsuleError(ValueError):
@@ -389,6 +398,7 @@ def _validate_content(content: Any) -> None:
     _text(subject["title"], "content.subject.title")
 
     artifact_ids: set[str] = set()
+    artifact_untrusted: dict[str, bool] = {}
     declared_artifact_bytes = 0
     artifact_values = _list(
         obj["artifacts"], "content.artifacts", maximum=MAX_ARTIFACTS
@@ -417,6 +427,7 @@ def _validate_content(content: Any) -> None:
             raise CapsuleError(f"{path}.media_type: invalid media type")
         if not isinstance(artifact["untrusted"], bool):
             raise CapsuleError(f"{path}.untrusted: expected boolean")
+        artifact_untrusted[aid] = artifact["untrusted"]
         source = _fields(artifact["source"], f"{path}.source",
                          {"uri", "captured_at", "collector"})
         _text(source["uri"], f"{path}.source.uri")
@@ -571,7 +582,7 @@ def _validate_content(content: Any) -> None:
         obj["bindings"], "content.bindings", maximum=MAX_BINDINGS
     )):
         binding_id, artifact_ref = _validate_binding(
-            raw, f"content.bindings[{index}]", artifact_ids
+            raw, f"content.bindings[{index}]", artifact_ids, artifact_untrusted
         )
         if binding_id in binding_artifacts:
             raise CapsuleError(f"content.bindings[{index}].id: duplicate binding id")
@@ -591,7 +602,12 @@ def _validate_content(content: Any) -> None:
     _check_canonical_value(obj)
 
 
-def _validate_binding(raw: Any, path: str, artifact_ids: set[str]) -> tuple[str, str]:
+def _validate_binding(
+    raw: Any,
+    path: str,
+    artifact_ids: set[str],
+    artifact_untrusted: Mapping[str, bool],
+) -> tuple[str, str]:
     binding = _fields(raw, path, {
         "id", "type", "artifact_ref", "payload_canonicalization", "entry",
         "inclusion_proof", "anchor",
@@ -644,6 +660,11 @@ def _validate_binding(raw: Any, path: str, artifact_ids: set[str]) -> tuple[str,
     for field in ("input_artifact_ref", "proof_artifact_ref"):
         if anchor[field] not in artifact_ids:
             raise CapsuleError(f"{path}.anchor.{field}: unknown artifact")
+    if artifact_untrusted[anchor["proof_artifact_ref"]] is not True:
+        raise CapsuleError(
+            f"{path}.anchor.proof_artifact_ref: detached proof artifact "
+            "must declare untrusted true"
+        )
     if anchor["proof_type"] != ANCHOR_PROOF:
         raise CapsuleError(f"{path}.anchor.proof_type: unknown proof {anchor['proof_type']!r}")
     return binding_id, artifact_ref
@@ -895,7 +916,9 @@ class _OTSCursor:
         self.offset = end
         return result
 
-    def read_varuint(self, maximum: int) -> int:
+    def read_varuint(
+        self, maximum: int | None = None, *, label: str = "length"
+    ) -> int:
         value = 0
         shift = 0
         count = 0
@@ -910,8 +933,8 @@ class _OTSCursor:
                     raise CapsuleError("OpenTimestamps varuint is not minimally encoded")
                 break
             shift += 7
-        if value > maximum:
-            raise CapsuleError("OpenTimestamps length exceeds the v1 limit")
+        if maximum is not None and value > maximum:
+            raise CapsuleError(f"OpenTimestamps {label} exceeds the v1 limit")
         return value
 
     def read_varbytes(self, maximum: int, *, minimum: int = 0) -> bytes:
@@ -921,7 +944,37 @@ class _OTSCursor:
         return self.read(size)
 
 
-def _parse_ots_timestamp(cursor: _OTSCursor, depth: int = 0) -> None:
+def _parse_ots_attestation(cursor: _OTSCursor) -> None:
+    """Parse known attestation payloads exactly; keep unknown tags opaque."""
+    attestation_tag = cursor.read(8)
+    payload = cursor.read_varbytes(MAX_OTS_ATTESTATION_BYTES)
+    if attestation_tag not in {
+        _OTS_PENDING_ATTESTATION,
+        _OTS_BITCOIN_ATTESTATION,
+        _OTS_LITECOIN_ATTESTATION,
+    }:
+        return
+
+    payload_cursor = _OTSCursor(payload, 0)
+    if attestation_tag == _OTS_PENDING_ATTESTATION:
+        uri = payload_cursor.read_varbytes(MAX_OTS_PENDING_URI_BYTES)
+        if any(character not in _OTS_PENDING_URI_CHARS for character in uri):
+            raise CapsuleError("OpenTimestamps pending attestation URI is invalid")
+        label = "pending attestation"
+    else:
+        payload_cursor.read_varuint(label="block height")
+        label = (
+            "Bitcoin attestation"
+            if attestation_tag == _OTS_BITCOIN_ATTESTATION
+            else "Litecoin attestation"
+        )
+    if payload_cursor.offset != len(payload):
+        raise CapsuleError(f"OpenTimestamps {label} payload has trailing bytes")
+
+
+def _parse_ots_timestamp(
+    cursor: _OTSCursor, message_length: int, depth: int = 0
+) -> None:
     """Parse, but do not authenticate, the complete OTS timestamp tree."""
     if depth > MAX_OTS_DEPTH:
         raise CapsuleError("OpenTimestamps tree exceeds the v1 depth limit")
@@ -931,15 +984,29 @@ def _parse_ots_timestamp(cursor: _OTSCursor, depth: int = 0) -> None:
         if cursor.nodes > MAX_OTS_NODES:
             raise CapsuleError("OpenTimestamps tree exceeds the v1 node limit")
         if tag == 0x00:
-            cursor.read(8)  # attestation type tag; unknown tags are forward-compatible
-            cursor.read_varbytes(MAX_OTS_ATTESTATION_BYTES)
+            _parse_ots_attestation(cursor)
             cursor.attestations += 1
             return
+        if message_length > MAX_OTS_OP_RESULT_BYTES:
+            raise CapsuleError("OpenTimestamps operation input exceeds 4096 bytes")
         if tag in {0xF0, 0xF1}:  # append / prepend
-            cursor.read_varbytes(MAX_OTS_OP_ARG_BYTES, minimum=1)
-        elif tag not in {0x02, 0x03, 0x08, 0x67, 0xF2, 0xF3}:
+            argument = cursor.read_varbytes(MAX_OTS_OP_ARG_BYTES, minimum=1)
+            result_length = message_length + len(argument)
+        elif tag in {0x02, 0x03}:
+            result_length = 20
+        elif tag in {0x08, 0x67}:
+            result_length = 32
+        elif tag == 0xF2:  # reverse
+            result_length = message_length
+        elif tag == 0xF3:  # hexlify
+            if message_length > MAX_OTS_HEXLIFY_INPUT_BYTES:
+                raise CapsuleError("OpenTimestamps hexlify input exceeds 2048 bytes")
+            result_length = message_length * 2
+        else:
             raise CapsuleError(f"unknown OpenTimestamps operation tag 0x{tag:02x}")
-        _parse_ots_timestamp(cursor, depth + 1)
+        if not result_length or result_length > MAX_OTS_OP_RESULT_BYTES:
+            raise CapsuleError("OpenTimestamps operation result exceeds 4096 bytes")
+        _parse_ots_timestamp(cursor, result_length, depth + 1)
 
     tag = cursor.read(1)[0]
     while tag == 0xFF:
@@ -965,7 +1032,7 @@ def _verify_ots_detached(data: bytes, subject: bytes) -> dict[str, int]:
     if data[len(prefix):len(prefix) + 32] != hashlib.sha256(subject).digest():
         raise CapsuleError("detached OpenTimestamps envelope commits to a different anchor input")
     cursor = _OTSCursor(data, len(prefix) + 32)
-    _parse_ots_timestamp(cursor)
+    _parse_ots_timestamp(cursor, 32)
     if cursor.offset != len(data):
         raise CapsuleError("detached OpenTimestamps envelope has trailing bytes")
     if not cursor.attestations:

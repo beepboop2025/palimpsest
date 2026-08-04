@@ -58,7 +58,8 @@ Unicode-scalar sequence with `"`, then encode:
 - `"` as `\"` and `\` as `\\`;
 - U+0008, U+0009, U+000A, U+000C, and U+000D as `\b`, `\t`, `\n`, `\f`,
   and `\r`, respectively;
-- every other U+0000–U+001F scalar as `\u00xx`, using lowercase hexadecimal;
+- every other scalar from U+0000 through U+001F as `\u00xx`, using lowercase
+  hexadecimal;
 - every other scalar literally as UTF-8, including `/`, U+2028, U+2029, and
   non-BMP scalars. Surrogate escapes and optional escaping are forbidden.
 
@@ -123,7 +124,8 @@ supported operating system.
    anchor time must parse to the exact values declared by the binding, and the
    proof artifact must be a complete, bounded OpenTimestamps v1 SHA-256
    detached-envelope serialization whose embedded subject digest equals SHA-256
-   of those exact anchor-input bytes.
+   of those exact anchor-input bytes. The artifact referenced by
+   `proof_artifact_ref` must declare `untrusted` as the exact JSON value `true`.
 
 The standard-library verifier reports `envelope_bound`: it parses the timestamp
 tree through EOF and proves that the envelope names the exact input digest. It
@@ -174,6 +176,12 @@ individual artifacts over 8 MiB, cumulative resolved artifacts over 16 MiB, JSON
 nesting deeper than 32, and collections above the schema maxima (64 artifacts,
 128 claims, 128 derivations, 32 intents, 32 bindings, and 64 attestations).
 OpenTimestamps envelopes are limited to 1 MiB, depth 64, and 2,048 tree nodes.
+Every timestamp operation input and result is limited to 4,096 bytes; append and
+prepend arguments are nonempty and at most 4,096 bytes, and `hexlify` inputs are
+at most 2,048 bytes. The verifier parses Bitcoin and Litecoin block-height
+payloads and pending-calendar URI payloads completely through their payload EOF,
+rejecting malformed known payloads. Unknown 8-byte attestation tags remain opaque
+and forward-compatible, with payloads limited to 8,192 bytes.
 JSON-pointer array indices are canonical ASCII decimal digits only.
 
 ## Golden vectors
