@@ -65,6 +65,15 @@ def test_tools_list_shape():
         assert t["annotations"]["readOnlyHint"] is True
 
 
+def test_signal_catalog_discloses_disabled_baike_and_independent_status():
+    listed = mcp.tool_list_signals({})
+    baike = next(s for s in listed["signals"] if s["name"] == "baike-redaction")
+    assert "disabled pending authorized access" in baike["description"]
+    assert "quarantined" in baike["description"]
+    assert "independent cadence and status" in listed["note"]
+    assert "all signals self-update" not in listed["note"]
+
+
 # -------------------------------------------------------------- tools/call --
 def test_unknown_tool_is_invalid_params():
     out = mcp.dispatch(_rpc("tools/call", {"name": "no_such_tool"}))

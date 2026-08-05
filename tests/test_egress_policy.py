@@ -60,9 +60,9 @@ _ALLOWED = {
     #    at all. They are the highest-value migration targets, not the lowest. ───────────────
     "collectors/undertext.py":
         "build_opener GET of arbitrary, possibly adversarial public web surfaces through the "
-        "PALIMPSEST_PROXY seam, 8 MiB read cap, redirects followed with NO re-validation. This "
-        "is the closest match in the repo to safe_fetch's stated threat model and should be the "
-        "FIRST file migrated.",
+        "operator-supplied proxy argument, 8 MiB read cap, redirects followed with NO "
+        "re-validation, and an explicit pre-egress Baike deny. This is the closest match in "
+        "the repo to safe_fetch's stated threat model and should be the FIRST file migrated.",
     "collectors/github_refuge.py":
         "build_opener GET of api.github.com with an 8 MiB cap; fixed well-known host and an "
         "optional read-only token, so SSRF risk is low, but redirects are still followed "

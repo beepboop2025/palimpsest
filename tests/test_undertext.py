@@ -193,12 +193,7 @@ if __name__ == "__main__":
 # ── fetch backend: the exception contract is load-bearing ─────────────────────
 
 def test_httpx_backend_raises_the_stdlib_error_type_on_404():
-    """The seam's callers branch on urllib.error.HTTPError.code, and that branch
-    carries meaning: baike treats 404 as a real absence rather than a transport
-    failure. Raising httpx's own error type instead would sail past those handlers
-    into a generic except — and the entities that 404 are precisely the most
-    censored ones (六四事件, 法轮功, 天安门母亲, 709大抓捕, 白纸运动 all 404 while
-    刘晓波 and 李文亮 return 200), so the observation would be discarded as an error."""
+    """Generic adapters consume one exception contract regardless of HTTP client."""
     import urllib.error
     import pytest
     httpx = pytest.importorskip("httpx")
@@ -250,3 +245,66 @@ def test_stdlib_backend_can_be_forced(monkeypatch):
         assert seen == ["https://example.invalid/z"]
     finally:
         undertext._stdlib_fetch = orig
+
+
+def test_baike_is_denied_before_either_generic_http_client_can_run(monkeypatch):
+    """Client selection, subdomains, and proxy arguments cannot activate Baike."""
+    import urllib.error
+    import pytest
+    from collectors import undertext
+    called = {"httpx": 0, "stdlib": 0}
+
+    def httpx_tripwire(*args, **kwargs):
+        called["httpx"] += 1
+        raise AssertionError("httpx client must not be reached")
+
+    def stdlib_tripwire(*args, **kwargs):
+        called["stdlib"] += 1
+        raise AssertionError("stdlib opener must not be reached")
+
+    monkeypatch.setattr(undertext, "_httpx_fetch", httpx_tripwire)
+    monkeypatch.setattr(undertext.urllib.request, "build_opener", stdlib_tripwire)
+    for url in ("https://baike.baidu.com/item/test",
+                "https://sub.baike.baidu.com/item/test"):
+        with pytest.raises(urllib.error.URLError, match="Baike acquisition is disabled"):
+            undertext._default_fetch(url, proxy="http://proxy.invalid")
+        with pytest.raises(urllib.error.URLError, match="Baike acquisition is disabled"):
+            undertext._stdlib_fetch(url, proxy="http://proxy.invalid")
+    assert called == {"httpx": 0, "stdlib": 0}
+
+
+def test_redirects_cannot_bypass_the_baike_deny(monkeypatch):
+    import urllib.error
+    import urllib.request
+    import pytest
+    httpx = pytest.importorskip("httpx")
+    from collectors import undertext
+
+    class _Client:
+        calls = []
+
+        def __init__(self, **kwargs):
+            assert kwargs["follow_redirects"] is False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def get(self, url):
+            self.calls.append(url)
+            return httpx.Response(302, headers={
+                "location": "https://baike.baidu.com/item/blocked"
+            })
+
+    monkeypatch.setattr(httpx, "Client", _Client)
+    with pytest.raises(urllib.error.URLError, match="Baike acquisition is disabled"):
+        undertext._httpx_fetch("https://example.invalid/start")
+    assert _Client.calls == ["https://example.invalid/start"]
+
+    handler = undertext._GuardedRedirectHandler()
+    request = urllib.request.Request("https://example.invalid/start")
+    with pytest.raises(urllib.error.URLError, match="Baike acquisition is disabled"):
+        handler.redirect_request(
+            request, None, 302, "found", {}, "https://baike.baidu.com/item/blocked")

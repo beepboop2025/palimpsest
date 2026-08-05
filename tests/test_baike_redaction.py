@@ -373,8 +373,8 @@ def test_generic_404_is_ambiguous_without_prior_present_evidence():
     assert not any(d.kind in (DELETION, ENCYCLOPEDIA_FORK) for d in res["divergences"])
 
 
-def test_generic_404_after_prior_present_is_bounded_transition_evidence():
-    """Only an earlier local present snapshot lets a generic 404 support DELETION."""
+def test_generic_404_after_prior_present_is_availability_only():
+    """A prior page does not turn a generic transport response into content evidence."""
     e = Entity("某词条", lemma_id="405")
     page = _baike(summary="词条。", paras=["稳定内容。"])
 
@@ -385,15 +385,26 @@ def test_generic_404_after_prior_present_is_bounded_transition_evidence():
 
     def present_then_not_found(url):
         calls["n"] += 1
-        return page if calls["n"] == 1 else not_found(url)
+        return not_found(url) if calls["n"] == 2 else page
 
     w = BaikeRedactionWatch(baike_fetch=present_then_not_found,
-                            wiki_fetch=_seq(WIKI_MISSING, WIKI_MISSING))
+                            wiki_fetch=_seq(WIKI_MISSING, WIKI_MISSING, WIKI_MISSING))
     w.observe(e, observed_at=1000.0)
     res = w.observe(e, observed_at=2000.0)
     dels = [d for d in res["divergences"] if d.kind == DELETION]
-    assert res["status"] == "not_found_after_present"
-    assert len(dels) == 1 and "not_found_ambiguous" in dels[0].detail
+    assert res["status"] == "availability_transition_unverified"
+    assert dels == []
+    assert res["availability"] == {
+        "observed": "http_404",
+        "prior_present_in_process": True,
+        "content_deletion_claim": False,
+        "reason": (
+            "generic HTTP 404 does not identify whether content was deleted, "
+            "rerouted, refused, or made temporarily unavailable"
+        ),
+    }
+    # The ambiguous round does not overwrite the last trusted baseline.
+    assert w.observe(e, observed_at=3000.0)["divergences"] == []
 
 
 def test_explicit_deletion_evidence_in_404_body_is_not_generic_404():

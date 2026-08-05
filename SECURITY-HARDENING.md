@@ -45,16 +45,16 @@ likes. The concrete abuses:
 - **Odd schemes.** A redirect to `file://`, `ftp://`, or `gopher://` to reach the local
   filesystem or another service.
 
-**(b) Blast radius of a compromised collector.** A collector box sits at an egress seam and
-holds both secrets (§4). If it is compromised, the exposure should stop at that box: it must not
+**(b) Blast radius of a compromised collector.** A collector box may hold a scoped API key and
+operator-approved network configuration (§4). If it is compromised, the exposure should stop at
+that box: it must not
 reach the operator's other projects, vaults, keys, or identity, and its egress must not be
 traceable to a person inside the censoring jurisdiction.
 
-**(c) Secret exposure.** There are two secrets (inventoried in §4): an OpenRouter API key used
-by the live model readings, and the optional `PALIMPSEST_PROXY` egress-seam URL. A leaked API
-key means an attacker can spend against it; a leaked proxy URL exposes the egress path itself.
-The goal is that the first costs a capped bill, never an account takeover or a pivot into
-anything else, and that the second is treated as sensitive infrastructure, not a config value.
+**(c) Secret exposure.** The scheduled repository workflows use one secret: an OpenRouter API
+key for model readings. A leak can spend against it, so the key must be dedicated and capped.
+The generic fetch libraries accept operator-supplied proxy configuration for approved surfaces,
+but no repository workflow carries `PALIMPSEST_PROXY`, and it cannot activate Baike collection.
 
 **(d) Data poisoning.** A censor who notices they are being measured can feed fake deletions
 or fake "still live" answers to skew the index. This is a *measurement-integrity* threat, not
@@ -177,10 +177,11 @@ The protections, each tied to a threat in §1:
   treat as untrusted data. No fetched byte is ever passed to an interpreter, deserialiser, or
   shell.
 
-The proxy path (`_fetch_via_proxy`, used when the `PALIMPSEST_PROXY` egress seam is set) is
+The generic proxy path (`_fetch_via_proxy`, used when an approved caller supplies a proxy) is
 kept minimal and clearly delimited: host resolution happens *at the trusted proxy*, so
 client-side IP pinning does not apply there, but the scheme allowlist, byte cap, redirect cap,
-and timeout still hold.
+and timeout still hold. This transport capability is not source authorization. Baike is denied
+before either generic UNDERTEXT client path and its collector has no live client.
 
 These defences are pinned by offline tests in
 [`tests/test_safe_fetch.py`](tests/test_safe_fetch.py): loopback and metadata IPs are refused,
@@ -227,17 +228,16 @@ hardened non-root, read-only, capability-dropped container at [`ops/docker/`](op
 recommended packaging for any always-on collector box. The analytical core is standard-library
 only, which keeps that image small and its supply chain short.
 
-**Route egress through the seam, never through a person.** Live probing goes through the
-optional `PALIMPSEST_PROXY` egress seam — deliberately an outside-the-wall path. The
-in-country vantage backends are infrastructure, **never a residential exit tied to an
-identifiable person**; that line is stated in [docs/ETHICS.md](docs/ETHICS.md) and
-[SAFETY.md](SAFETY.md) and is a hard rule, not a preference. The seam is also the single place
-where egress can be swapped, rate-limited, or cut.
+**Keep network authorization explicit.** Approved public collectors use only their documented
+source paths. This repository configures no in-country route and never relies on an identifiable
+person's connection. Baike acquisition is disabled in its runner and denied in both generic
+UNDERTEXT client paths. A proxy argument is transport configuration, not permission to add a
+source.
 
 **Blast-radius containment.** The collector box should hold only what it needs: the code, the
-two scoped secrets (§4), and its own working files. It must be separated from the operator's
+scoped secrets (§4), and its own working files. It must be separated from the operator's
 other projects, private vaults, and unrelated credentials, so that compromising the box yields
-a censorship collector, a capped API key, and the egress-seam URL — nothing more. The most sensitive collection path
+a censorship collector and a capped API key, nothing more. The most sensitive collection path
 (CensorWatch deletion detection) is additionally feature-flagged and writes to its own
 database tables, inert unless `CENSORWATCH_ENABLED` is set (see SAFETY.md).
 
@@ -245,18 +245,12 @@ database tables, inert unless `CENSORWATCH_ENABLED` is set (see SAFETY.md).
 
 ## 4. Secret scoping and rotation
 
-There are **two** secrets, and one of them is stored in two places. Get the inventory right
-before touching either, because rotating only the copy you remember silently breaks live
-publishing.
+There is **one scheduled secret**, stored in two places. Get the inventory right before
+touching it, because rotating only the copy you remember silently breaks live publishing.
 
 | Secret | What it is | Where it is stored | What reads it |
 | --- | --- | --- | --- |
 | `OPENROUTER_API_KEY` | OpenRouter API key for the live model readings | **(1)** local git-ignored env file `~/.config/palimpsest/gfi.env`, mode `0600` · **(2)** a **GitHub Actions repository secret** on `beepboop2025/palimpsest` | locally: `scripts/run_gfi.sh` → `scripts/generative_firewall_reading.py` · in Actions: `gfi-refresh.yml`, `erasure-refresh.yml`, `gfi-validation-sample.yml` |
-| `PALIMPSEST_PROXY` | URL of the optional outside-the-wall egress seam (§3) | operator environment on the collector box · a **GitHub Actions repository secret**, injected by `erasure-refresh.yml` | any collector that honours the seam (`collectors/baike_redaction.py`, `collectors/undertext.py`) |
-
-`PALIMPSEST_PROXY` is a secret in the source-safety sense as much as the security sense: it
-names the egress path, and an egress path is operational information about how the observatory
-reaches a censored network. Treat it with the same care as the API key.
 
 Neither value is ever committed. The workflows that carry `OPENROUTER_API_KEY` run only on
 `schedule` and `workflow_dispatch`, never on `pull_request`, so a fork's code can never read
@@ -290,12 +284,6 @@ run fails silently as an abstention rather than an alert.
    - local: `zsh scripts/run_gfi.sh`, then check `readings/state/gfi.log` for a clean run;
    - Actions: `gh workflow run gfi-refresh.yml --repo beepboop2025/palimpsest` and check that
      the run produces a real reading rather than an abstention.
-
-**Rotating `PALIMPSEST_PROXY`.** Same shape, fewer steps: stand up the new egress path, update
-the operator environment on the box, update the Actions secret
-(`gh secret set PALIMPSEST_PROXY --repo beepboop2025/palimpsest`), confirm one
-`erasure-refresh` run, then tear the old path down. Never leave the old path live "just in
-case" — a stale egress route is exactly the thing that gets attributed later.
 
 Rotate on any suspected exposure, on operator change, and on a routine schedule.
 

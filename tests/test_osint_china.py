@@ -210,6 +210,29 @@ def test_explicit_upstream_abstention_is_degraded_not_promoted_to_live(mod, tmp_
     assert "does not convert" in signal["summary"]
 
 
+def test_disabled_baike_collector_is_explicit_on_rollup_surface(mod, tmp_path):
+    _write_json(tmp_path / "baike-redaction-latest.json", {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "pipeline_checked_at": "2026-08-04T11:55:00Z",
+        "source": "fixture",
+        "status": "disabled",
+        "collector_status": "disabled_no_authorized_access",
+        "collector_reason": "Baike collection is disabled pending authorized access",
+        "rewrite_index": None,
+        "valid_for_series": False,
+        "n_comparable": 0,
+        "n_forked": 0,
+    })
+    signal = _signal(mod.build_document(tmp_path, NOW), "baike-redaction")
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert signal["health"]["upstream_status"] == "disabled"
+    assert signal["health"]["collector_status"] == "disabled_no_authorized_access"
+    assert signal["health"]["pipeline_checked_at"] == "2026-08-04T11:55:00Z"
+    assert "Collector operational status is 'disabled_no_authorized_access'" in signal["summary"]
+    assert "disabled pending authorized access" in signal["summary"]
+
+
 def _valid_anchor_payload(ots_status="stamped") -> dict:
     return {
         "ts": "2026-08-04T11:00:00Z",

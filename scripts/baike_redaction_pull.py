@@ -49,7 +49,25 @@ HIST = os.path.join(READINGS, "baike-redaction-history.jsonl")
 # movement record — a methodology correction that leaves the values identical is a
 # real change to what the number means, and it earns its own history row rather
 # than passing as another quiet republication.
-METHOD_VERSION = 2
+METHOD_VERSION = 3
+
+# Method version 1 treated a generic HTTP 404 as content absence. The resulting
+# 2026-07-30 90.0 point is retained in history for audit, but it is never valid
+# scientific series input. This metadata travels with the latest payload so API
+# and MCP readers do not need to discover the correction in a separate document.
+QUARANTINED_HISTORY = [{
+    "generated_at": "2026-07-30T20:25:46.041900+00:00",
+    "rewrite_index": 90.0,
+    "validation_status": "quarantined",
+    "reason": (
+        "method version 1 counted generic HTTP 404 responses as Baike absence; "
+        "HTTP availability did not establish content deletion or an encyclopedia fork"
+    ),
+}]
+SERIES_POLICY = (
+    "include only history rows with valid_for_series=true; generic HTTP availability "
+    "responses are never deletion or fork evidence"
+)
 
 
 # Minimum comparable entities before we trust an index (else abstain).
@@ -182,6 +200,11 @@ def _publish_collected(now, watch) -> None:
 
 
 def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> dict:
+    valid_for_series = (
+        status == "ok"
+        and isinstance(rewrite_index, (int, float))
+        and not isinstance(rewrite_index, bool)
+    )
     return {
         "generated_at": now.isoformat(),
         "method_version": METHOD_VERSION,
@@ -193,7 +216,11 @@ def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> 
         "rewrite_index": rewrite_index,
         "index_definition": "share (%) of comparable contested entries showing an encyclopedia fork vs the open record",
         "status": status,
+        "observation_status": status,
         "reason": reason,
+        "valid_for_series": valid_for_series,
+        "series_policy": SERIES_POLICY,
+        "quarantined_history": QUARANTINED_HISTORY,
         "n_entities": len(ENTITIES),
         "n_comparable": comparable,
         "n_forked": forks,
@@ -215,9 +242,31 @@ def _write_status_only(now, *, collector_status: str, reason: str) -> None:
     if not isinstance(out, dict):
         print("baike-redaction: prior reading is not an object; status not published")
         return
+    prior_collector_status = out.get("collector_status")
+    prior_observation_status = out.get("observation_status") or out.get("status")
+    prior_observation_reason = out.get("observation_reason") or out.get("reason")
     out["pipeline_checked_at"] = now.isoformat()
     out["collector_status"] = collector_status
     out["collector_reason"] = reason
+    out["collector_status_changed_at"] = (
+        now.isoformat() if prior_collector_status != collector_status
+        else out.get("collector_status_changed_at", now.isoformat())
+    )
+    out["observation_status"] = prior_observation_status
+    out["observation_reason"] = prior_observation_reason
+    out["status"] = {
+        "disabled_no_authorized_access": "disabled",
+        "halted_by_governance": "halted",
+    }.get(collector_status, "unavailable")
+    out["reason"] = reason
+    out["method_version"] = METHOD_VERSION
+    out["method"] = (
+        "offline fixture analysis; live Baike collection disabled pending authorized "
+        "access; lexical, auditable judgement with no authenticated revision-history access"
+    )
+    out["valid_for_series"] = False
+    out["series_policy"] = SERIES_POLICY
+    out["quarantined_history"] = QUARANTINED_HISTORY
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
     print("baike-redaction: operational status updated; observation timestamp unchanged")
@@ -238,6 +287,7 @@ def _write(now, *, observed: bool = True, collector_status: str | None = None, *
     out["pipeline_checked_at"] = out["generated_at"]
     out["collector_status"] = "observed"
     out["collector_reason"] = None
+    out["collector_status_changed_at"] = out["generated_at"]
     prev = {}
     if os.path.exists(OUT):
         try:
@@ -274,7 +324,10 @@ def _write(now, *, observed: bool = True, collector_status: str | None = None, *
         with open(HIST, "a", encoding="utf-8") as f:
             f.write(json.dumps({"generated_at": out["generated_at"], "rewrite_index": out["rewrite_index"],
                                 "status": out["status"], "n_comparable": out["n_comparable"],
-                                "n_forked": out["n_forked"]}, ensure_ascii=False) + "\n")
+                                "n_forked": out["n_forked"],
+                                "method_version": out["method_version"],
+                                "valid_for_series": out["valid_for_series"]},
+                               ensure_ascii=False) + "\n")
     else:
         print(f"baike-redaction: unchanged since {out['last_changed_at']} "
               f"(status={out['status']}, rewrite_index={out['rewrite_index']}) — "

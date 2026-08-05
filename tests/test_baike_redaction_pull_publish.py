@@ -187,6 +187,10 @@ def test_disabled_round_does_not_stamp_a_fresh_observation_time(publish, monkeyp
     assert after["pipeline_checked_at"] > first["pipeline_checked_at"]
     assert after["collector_status"] == "disabled_no_authorized_access"
     assert after["collector_reason"] == pull.DISABLED_REASON
+    assert after["status"] == "disabled"
+    assert after["observation_status"] == first["status"]
+    assert after["valid_for_series"] is False
+    assert after["quarantined_history"] == pull.QUARANTINED_HISTORY
     assert len(_history(tmp_path)) == 1
 
 
@@ -215,3 +219,49 @@ def test_erasure_workflow_contains_no_baike_activation_knob():
     assert "PALIMPSEST_PROXY" not in workflow
     assert "PALIMPSEST_LIVE" not in workflow
     assert "permanently inert pending an authorized source path" in workflow
+
+
+def test_deployment_docs_and_container_do_not_offer_a_baike_proxy_path():
+    security = (ROOT / "SECURITY-HARDENING.md").read_text(encoding="utf-8")
+    docker_readme = (ROOT / "ops" / "docker" / "README.md").read_text(encoding="utf-8")
+    compose = (ROOT / "ops" / "docker" / "docker-compose.yml").read_text(encoding="utf-8")
+    sources = (ROOT / "docs" / "OSINT_SOURCES.md").read_text(encoding="utf-8")
+
+    assert "injected by `erasure-refresh.yml`" not in security
+    assert "cannot activate Baike collection" in security
+    assert "does not forward `PALIMPSEST_PROXY`" in docker_readme
+    assert "PALIMPSEST_PROXY" not in compose
+    assert "No environment variable or proxy argument enables Baike acquisition" in " ".join(
+        sources.split())
+
+
+def test_public_copy_names_disabled_state_and_quarantine():
+    researchers = (ROOT / "for-researchers.html").read_text(encoding="utf-8")
+    index = (ROOT / "readings" / "index.html").read_text(encoding="utf-8")
+    assert "Baike disabled and retained as stale" in researchers
+    assert "invalid 90.0 method-v1 point is quarantined" in index
+    assert "Every self-refreshing feed" not in index
+
+
+def test_checked_in_method_v1_numeric_point_is_retained_but_quarantined():
+    rows = [json.loads(line) for line in
+            (ROOT / "readings" / "baike-redaction-history.jsonl").read_text(
+                encoding="utf-8").splitlines() if line.strip()]
+    bad = next(row for row in rows if row.get("rewrite_index") == 90.0)
+    assert bad["generated_at"] == "2026-07-30T20:25:46.041900+00:00"
+    assert bad["status"] == "ok", "the original append-only evidence row stays unchanged"
+    erratum = next(row for row in rows if row.get("event") == "historical_validation_erratum")
+    assert erratum["invalidates_generated_at"] == bad["generated_at"]
+    assert erratum["excluded_rewrite_index"] == 90.0
+    assert erratum["valid_for_series"] is False
+    assert erratum["validation_status"] == "quarantined"
+    assert "generic HTTP 404" in erratum["exclusion_reason"]
+    assert not any(row.get("valid_for_series") is True for row in rows)
+
+
+def test_new_offline_fixture_history_declares_series_validity(publish):
+    run, tmp_path = publish
+    run(comparable=10, forked=5)
+    row = _history(tmp_path)[0]
+    assert row["method_version"] == pull.METHOD_VERSION
+    assert row["valid_for_series"] is True

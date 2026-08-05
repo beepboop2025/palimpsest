@@ -2,10 +2,9 @@
 
 > Baidu Baike is a state-moderated encyclopedia that silently rewrites contested
 > entries and has deliberately removed the public's ability to view its own edit
-> history. The act of redaction is hidden. We reconstruct it from outside the wall:
-> content-address the entry over time, diff it against the open record (Chinese
-> Wikipedia), and treat the divergence as the payload. The censor erased the
-> history; we keep it.
+> history. The act of redaction is hidden. The offline method can compare authorized
+> snapshots over time and against the open record (Chinese Wikipedia). This repository
+> does not acquire those snapshots from Baike.
 
 This is UNDERTEXT pointed at an encyclopedia. It changes ONE coordinate of the vantage
 tensor — the ``surface`` becomes an encyclopedia — and reuses everything else: the same
@@ -16,12 +15,13 @@ are measured on this surface:
   (i) **ENCYCLOPEDIA_FORK** — Baike vs Chinese Wikipedia on the *same* contested entity.
       The two prose bodies ALWAYS differ (different register/language), so comparing
       ``content_fp`` would flag every pair — the ``PLATFORM_FORK`` trap. The payload is a
-      diff of DERIVED FACETS: terms the open record carries that Baike omits
+      diff of DERIVED FACETS from authorized snapshots: terms the open record carries that Baike omits
       (``wiki_only_sensitive``), a reference list collapsed to state media
       (``sourcing_monoculture``), the years of biography the open record has that Baike
       lacks (``bio_gap``), and the hardest case — total absence (``absent_on_baike``).
 
-  (ii) **STATE_REWRITE** — Baike rewriting its OWN history over time. We feed the Baike
+  (ii) **STATE_REWRITE**: Baike rewriting its OWN history over time. In offline fixture
+      analysis we feed the Baike
       observation to a ``DivergenceDetector`` (``DELETION`` on present→absent, ``MUTATION``
       on a content-fp change) and then run the transparent, lexical ``state_rewrite_signal``
       over the two snapshots: sensitive-term excision, biographical truncation, dated-
@@ -541,10 +541,11 @@ class BaikeRedactionWatch:
     are permanently inert. A bare ``BaikeRedactionWatch().observe(entity)`` performs no
     network I/O and returns no divergences — inert, never a false zero.
 
-    Time-divergence baselines persist via the injected ``store`` (e.g. ``JsonBaselineStore``);
-    the full prior EXTRACTION (needed for the lexical rewrite classifier) is cached in memory,
-    so across a fresh process a MUTATION still fires from the stored fingerprint even when the
-    prior text is unavailable to relabel it STATE_REWRITE.
+    An injected ``store`` such as ``JsonBaselineStore`` persists only presence, fingerprint,
+    and timestamp. It does not persist source text and therefore is not a replayable content
+    record. The full prior extraction used by the lexical rewrite classifier exists only in
+    memory. Across a fresh process, a changed fingerprint can support a generic MUTATION, but
+    it cannot support a STATE_REWRITE label without separately retained source evidence.
     """
 
     def __init__(self, *, baike_fetch=None, wiki_fetch=None, store=None,
@@ -571,8 +572,8 @@ class BaikeRedactionWatch:
             if getattr(e, "code", None) == 404:
                 # A bare 404 is an ambiguous transport response, not deletion evidence. If
                 # the response body has one of the explicit deletion signatures, preserve
-                # that evidence; otherwise observe() can only treat it as a deletion after a
-                # previously-present local baseline.
+                # that evidence. A generic 404 remains an availability observation even when
+                # the same process previously captured a present page.
                 try:
                     body = e.read().decode("utf-8", errors="replace")
                 except Exception:
@@ -649,12 +650,24 @@ class BaikeRedactionWatch:
         key = baike_obs.observation_key()
         prev_ex = self._last_extract.get(key)
         if interstitial == "not_found_ambiguous":
-            if not (prev_ex and prev_ex.get("present")):
-                result["status"] = "not_found_ambiguous"
-                return result
-            # A previously captured present entry bounds the claim to a transition. Keep the
-            # generic 404 label in the evidence; do not upgrade it to an asserted deletion.
-            result["status"] = "not_found_after_present"
+            prior_present = bool(prev_ex and prev_ex.get("present"))
+            result["status"] = (
+                "availability_transition_unverified" if prior_present
+                else "not_found_ambiguous"
+            )
+            result["availability"] = {
+                "observed": "http_404",
+                "prior_present_in_process": prior_present,
+                "content_deletion_claim": False,
+                "reason": (
+                    "generic HTTP 404 does not identify whether content was deleted, "
+                    "rerouted, refused, or made temporarily unavailable"
+                ),
+            }
+            # Never feed a generic 404 to DivergenceDetector. Its present-to-absent rule is
+            # intentionally content-agnostic and would turn transport ambiguity into DELETION.
+            # Preserve the prior trustworthy baseline for a later content-bearing observation.
+            return result
         div = self._detector.observe(baike_obs)
         if div is not None:
             baike_obs.features["latency_bounded_by_poll"] = True  # velocity honesty (see below)

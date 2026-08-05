@@ -194,8 +194,10 @@ this `surface` from authorized evidence:
   removal. Two or more markers relabels the mutation as a `STATE_REWRITE` — the act of rewriting
   history, reconstructed because Baike removed the public diff.
 
-**Maps to DDTI.** Both signals go through `divergence_to_observation()` into the existing
-selectivity / novelty index; the reconstructed snapshots are the replayable evidence.
+**Maps to DDTI.** Findings from authorized, retained snapshots can go through
+`divergence_to_observation()` into the existing selectivity / novelty index. The JSON baseline
+store retains only presence, fingerprint, and timestamp, so it is not replayable content
+evidence. A content-level label requires separately retained source snapshots.
 
 **Holds the lines.** *Line 1:* the repository deliberately does **not** authenticate into Baike's
 restricted revision history, route through a proxy, change a client fingerprint, or work around
@@ -204,9 +206,9 @@ a refusal. Any future authorized collection must be separately reviewed and gove
 counts as a state rewrite) is made by transparent lexical / structural rules shipped as the
 finding's own `reasons[]` evidence — no LLM decides sensitivity. *Fail loud:* a blocked or failed
 fetch is `present=False` with a `fetch_failed` marker kept **distinct** from real, explicit
-deletion evidence; a generic 404 remains ambiguous unless an earlier local observation was
-present. Retained null readings are displayed as **STALE** or **UNAVAILABLE**, never refreshed as
-a live value.
+deletion evidence. A generic 404 remains availability evidence only, even after an earlier
+local present observation, and never enters deletion or fork scoring. Retained null readings are
+displayed as **STALE** or **UNAVAILABLE**, never refreshed as a live value.
 
 ## 7. Wayback Reconstruction — `collectors/wayback_vantage.py`
 

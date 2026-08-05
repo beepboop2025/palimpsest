@@ -226,15 +226,12 @@ Sitong Bridge protest, the White Paper protests, and more), the scorer ranks the
 Reproduce it: `PYTHONPATH=. python3 scripts/validate_ddti.py`. See
 [docs/VALIDATION.md](docs/VALIDATION.md) and the method in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
-### Live signals (auto-published)
+### Published signals and operational status
 
-[palimpsest.info](https://palimpsest.info/) is self-updating public infrastructure. Thirty
-independent observatory signals refresh on their own schedules via GitHub Actions on this repo, so
-every run, its code, and its output are publicly auditable (the badges above are live run status).
-No hidden server publishes. The Verifiable Eval Registry auto-publishes two further feeds of its own
-([`readings/eval-registry-latest.json`](readings/eval-registry-latest.json) and
-[`readings/refusal-drift-latest.json`](readings/refusal-drift-latest.json)), for thirty-two
-self-refreshing feeds in all.
+[palimpsest.info](https://palimpsest.info/) publishes static artifacts from independent pipelines.
+Most refresh on declared schedules through GitHub Actions, while disabled, optional, stale, and
+abstaining methods remain visible with their own status. A current file timestamp never overrides
+an upstream limitation. Runs, code, and outputs are public, and no hidden server publishes them.
 
 | Signal | What it measures | Cadence | Feed |
 | --- | --- | --- | --- |
@@ -247,7 +244,7 @@ self-refreshing feeds in all.
 | **Weibo hot-search join** | The allowed-attention denominator: DDTI terms deleted-yet-trending (contained) vs deleted-and-invisible (suppressed), gazetteer breakthroughs, withdrawal watch, the pinned state-headline series | Every 6 hours | [`readings/weibo-hotsearch-latest.json`](readings/weibo-hotsearch-latest.json) |
 | **Circumvention demand** | Tor bridge users from China (demand to climb the wall) + the per-transport split whose regime shifts fingerprint new GFW classifiers | Daily | [`readings/circumvention-demand-latest.json`](readings/circumvention-demand-latest.json) |
 | **IODA outages** | Shutdown-scale connectivity events for CN from three independent global instruments (BGP, active probing, darknet) | Every 6 hours | [`readings/ioda-outages-latest.json`](readings/ioda-outages-latest.json) |
-| **Baike redaction-diff** | Narrative-erasure method; collection is disabled pending authorized access, so the retained reading is rendered unavailable/stale rather than refreshed | Composite checks every 6 hours | [`readings/baike-redaction-latest.json`](readings/baike-redaction-latest.json) |
+| **Baike redaction-diff** | Offline narrative-erasure method; collection is disabled pending authorized access, and the invalid 90.0 method-v1 point is quarantined from the valid series | Disabled; status checked every 6 hours | [`readings/baike-redaction-latest.json`](readings/baike-redaction-latest.json) |
 | **Erasure Observatory** | The roll-up index across the erasure layers: what was removed or rewritten over time, layer by layer, with the cross-checks shown | Every 6 hours | [`readings/erasure-observatory-latest.json`](readings/erasure-observatory-latest.json) |
 | **OONI GFW** | Great Firewall network blocking measured *inside* China by OONI Probe: website, messenger and circumvention-tool reachability (we ingest their aggregate, we never probe) | Every 6 hours | [`readings/ooni-gfw-latest.json`](readings/ooni-gfw-latest.json) |
 | **Censored Planet** | The independent remote vantage: DNS/HTTP side-channel interference for CN from 95k+ vantage points (Satellite + Hyperquack), a different method than OONI | Daily | [`readings/censored-planet-latest.json`](readings/censored-planet-latest.json) |

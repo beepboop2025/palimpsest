@@ -56,13 +56,12 @@ to complement and share back with:
 - **Bellingcat's China OSINT guidance** — the standard primer on China-specific investigative
   pitfalls; recommended reading before extending the collectors.
 
-## Access seam for walled feeds
+## Deployment-specific access
 
-Several Chinese feeds are reachable only from inside the firewall. Palimpsest exposes a single,
-optional egress seam (`PALIMPSEST_PROXY` / the opener in `demo/palimpsest_demo.py`): point it at
-an in-country egress path and the otherwise-blocked feeds become reachable, with no other code
-change. The open-source collector never *requires* it, and the project never asks an individual
-in China to provide it — this is infrastructure, not a person.
+The generic UNDERTEXT web vantage accepts an operator-reviewed proxy for approved public surfaces.
+It is not a source activation switch, and this repository does not provide an in-country route.
+Baidu Baike is explicitly denied by both generic HTTP client paths and by its own collector. No
+environment variable or proxy argument enables Baike acquisition.
 
 ## What Palimpsest will never collect
 

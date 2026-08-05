@@ -11,7 +11,7 @@ protection in operational detail.
 | Who | The risk | How the design prevents it |
 | --- | --- | --- |
 | A poster inside China | Being identified or profiled from data we collect | We collect topic-level signal, never person-level data. No identity, location, or contact data is stored or derived. We watch the censor, not the censored. |
-| A contact or source | Being asked to gather data and exposed by doing so | Nobody inside China is ever asked to act. The system observes from outside; the in-country egress seam is infrastructure, never a person. |
+| A contact or source | Being asked to gather data and exposed by doing so | Nobody inside China is ever asked to act. The open repository configures no in-country collection path. |
 | A journalist relying on output | Acting on a false "this topic is now dangerous" signal | A deletion is never claimed lightly: a known-live control post is probed each cycle, unreliable networks mark the whole cycle `DEGRADED` and suppress all deletion writes, and confirmation requires multiple agreeing observations. |
 | The field's credibility | Overclaiming that gets a tool dismissed or weaponized | Every figure ships with stated uncertainty and biases ([METHODOLOGY.md](METHODOLOGY.md) §7). Scope is labelled in the data itself. |
 

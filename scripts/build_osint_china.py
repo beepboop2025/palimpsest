@@ -409,6 +409,7 @@ def _is_degraded_upstream(status: str | None) -> bool:
     token = status.casefold().replace("-", "_").replace(" ", "_")
     return token in {
         "abstain", "abstained", "degraded", "empty", "error", "failed", "failure",
+        "disabled", "disabled_no_authorized_access", "halted", "halted_by_governance",
         "insufficient_data", "no_data", "not_ready", "partial", "stale", "starting",
         "unavailable", "unhealthy", "unknown",
     }
@@ -509,8 +510,17 @@ def _summary(
     if semantic_reason:
         parts.append(f"Semantic health limitation: {semantic_reason}.")
 
+    collector_status = _text(payload.get("collector_status"))
+    collector_reason = _text(payload.get("collector_reason"))
+    if collector_status and collector_status.casefold() != "observed":
+        limitation = f"Collector operational status is {collector_status!r}"
+        if collector_reason:
+            limitation += f": {collector_reason}"
+        parts.append(limitation + ".")
+
     upstream_text = (_text(payload.get("headline")) or _text(payload.get("reading"))
-                     or _text(payload.get("reason")) or _text(payload.get("note")))
+                     or collector_reason or _text(payload.get("reason"))
+                     or _text(payload.get("note")))
     if upstream_text:
         # Keep summaries useful in the command surface while the complete, untruncated text
         # remains in payload. The prefix makes clear this is an upstream statement.
@@ -560,6 +570,9 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
                 "reason": load_error,
                 "age_hours": None,
                 "upstream_status": None,
+                "collector_status": None,
+                "collector_reason": None,
+                "pipeline_checked_at": None,
             },
             "source": spec.source_fallback,
             "method": spec.method_fallback,
@@ -625,6 +638,9 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             "reason": reason,
             "age_hours": age_hours,
             "upstream_status": upstream_status,
+            "collector_status": _text(payload.get("collector_status")),
+            "collector_reason": _text(payload.get("collector_reason")),
+            "pipeline_checked_at": _text(payload.get("pipeline_checked_at")),
         },
         "source": source,
         "method": method,
