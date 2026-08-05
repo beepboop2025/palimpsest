@@ -424,12 +424,26 @@ _MAX_REDIRECTS = 5
 _DISABLED_FETCH_HOSTS = frozenset({"baike.baidu.com"})
 
 
+def _canonical_fetch_host(url: str) -> str:
+    """Return a conservative ASCII host before either HTTP client sees the URL."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        authority = parts.netloc
+        if (not authority or "%" in authority or "\\" in authority
+                or any(ord(char) < 0x21 or ord(char) > 0x7e for char in authority)):
+            raise ValueError("non-canonical authority")
+        host = parts.hostname
+        if not host:
+            raise ValueError("missing host")
+        return host.lower().rstrip(".")
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise urllib.error.URLError(
+            "non-canonical URL authority is disabled before egress") from exc
+
+
 def _reject_disabled_surface(url: str) -> None:
     """Fail before egress for surfaces that have no authorized live collection path."""
-    try:
-        host = (urllib.parse.urlsplit(url).hostname or "").lower().rstrip(".")
-    except (TypeError, ValueError):
-        host = ""
+    host = _canonical_fetch_host(url)
     if any(host == blocked or host.endswith("." + blocked)
            for blocked in _DISABLED_FETCH_HOSTS):
         raise urllib.error.URLError(
@@ -535,6 +549,8 @@ class WebVantagePoint:
                 self._rate.acquire()              # polite by construction
             url = s["url"].format(query=urllib.parse.quote(probe.query))
             try:
+                # An injected transport is still subject to the source policy.
+                _reject_disabled_surface(url)
                 body = self._fetch(url)
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 # A transport failure is NOT a censorship finding. Abstain — record the
