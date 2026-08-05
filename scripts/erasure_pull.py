@@ -364,7 +364,8 @@ def main() -> None:
         path = f"readings/{reading}"
         detail = ("encyclopedia entries rewritten to the state line — sensitive terms excised, "
                   "sourcing collapsed to state media")
-        source_reason = ((baike or {}).get("reason")
+        source_reason = ((baike or {}).get("collector_reason")
+                         or (baike or {}).get("reason")
                          or "Baike collection disabled pending authorized access")
         if b_age_hours is None:
             status = "UNAVAILABLE"

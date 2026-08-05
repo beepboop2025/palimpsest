@@ -275,6 +275,26 @@ def test_a_current_null_narrative_reading_is_unavailable_not_armed(tmp_path, mon
     assert nar["age_hours"] < 3
 
 
+def test_narrative_layer_prefers_current_collector_reason_over_old_observation_reason(
+        tmp_path, monkeypatch):
+    d = str(tmp_path)
+    _write(d, "baike-redaction-latest.json", {
+        "generated_at": _hours_ago(24 * 30),
+        "pipeline_checked_at": _hours_ago(1),
+        "collector_status": "disabled_no_authorized_access",
+        "collector_reason": "Baike collection is disabled pending authorized access",
+        "rewrite_index": None,
+        "reason": "obsolete transport diagnosis",
+    })
+    _point_at(monkeypatch, d)
+
+    nar = _layer(_run(d), "narrative")
+
+    assert nar["status"] == "STALE"
+    assert "disabled pending authorized access" in nar["reason"]
+    assert "obsolete transport diagnosis" not in nar["reason"]
+
+
 def test_a_stale_cross_check_is_dropped_and_the_drop_is_stated(tmp_path, monkeypatch):
     """A cross-check is a corroborating claim a reader weighs against the layers, so a stale
     one is a stale claim. Silently omitting it would read as 'we never had that check'."""

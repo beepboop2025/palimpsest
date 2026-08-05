@@ -89,10 +89,12 @@ def main() -> None:
         except RuntimeError:
             print("baike-redaction: halted by governance — no observation made")
             _write_abstain(now, reason="Baike collection halted by governance; no new observation was made",
-                           comparable=0, forks=0, results=[], observed=False)
+                           comparable=0, forks=0, results=[], observed=False,
+                           collector_status="halted_by_governance")
             return
     print(f"baike-redaction: disabled — {DISABLED_REASON}")
-    _write_abstain(now, reason=DISABLED_REASON, comparable=0, forks=0, results=[], observed=False)
+    _write_abstain(now, reason=DISABLED_REASON, comparable=0, forks=0, results=[], observed=False,
+                   collector_status="disabled_no_authorized_access")
 
 
 def _collect(watch) -> tuple[int, int, list[dict], bool]:
@@ -199,14 +201,43 @@ def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> 
     }
 
 
-def _write(now, *, observed: bool = True, **kw) -> None:
-    # No evidence was acquired: do not replace the prior sealed observation with a
-    # fresh-looking status document. In particular, `generated_at` is an observation time,
-    # not a heartbeat for an inert or all-error run.
+def _write_status_only(now, *, collector_status: str, reason: str) -> None:
+    """Publish pipeline health without changing the last observation's time or value."""
+    if not os.path.exists(OUT):
+        print("baike-redaction: no prior reading; status recorded only in the workflow log")
+        return
+    try:
+        with open(OUT, encoding="utf-8") as f:
+            out = json.load(f)
+    except (ValueError, OSError):
+        print("baike-redaction: prior reading unreadable; status not published")
+        return
+    if not isinstance(out, dict):
+        print("baike-redaction: prior reading is not an object; status not published")
+        return
+    out["pipeline_checked_at"] = now.isoformat()
+    out["collector_status"] = collector_status
+    out["collector_reason"] = reason
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    print("baike-redaction: operational status updated; observation timestamp unchanged")
+
+
+def _write(now, *, observed: bool = True, collector_status: str | None = None, **kw) -> None:
+    # No evidence was acquired: retain the prior sealed observation time and value, but
+    # publish a separate operational heartbeat so readers see the current disabled/error
+    # state instead of an obsolete acquisition explanation.
     if not observed:
-        print("baike-redaction: no observation acquired; existing reading left unchanged")
+        _write_status_only(
+            now,
+            collector_status=collector_status or "error_no_observation",
+            reason=kw.get("reason") or "No observation was acquired",
+        )
         return
     out = _base(now, **kw)
+    out["pipeline_checked_at"] = out["generated_at"]
+    out["collector_status"] = "observed"
+    out["collector_reason"] = None
     prev = {}
     if os.path.exists(OUT):
         try:
@@ -250,12 +281,14 @@ def _write(now, *, observed: bool = True, **kw) -> None:
               f"republished with this round's observation time, history untouched")
 
 
-def _write_abstain(now, *, reason, comparable, forks, results, observed: bool = True) -> None:
+def _write_abstain(now, *, reason, comparable, forks, results, observed: bool = True,
+                   collector_status: str | None = None) -> None:
     # An abstain is this collector's reading, not the absence of one: rewrite_index
     # stays null and the reason travels with it. So a repeated abstain gets the same
     # heartbeat as a repeated number — the null is republished, never a fabricated value.
     _write(now, rewrite_index=None, status="insufficient_data", reason=reason,
-           comparable=comparable, forks=forks, results=results, observed=observed)
+           comparable=comparable, forks=forks, results=results, observed=observed,
+           collector_status=collector_status)
 
 
 if __name__ == "__main__":

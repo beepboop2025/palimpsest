@@ -184,6 +184,9 @@ def test_disabled_round_does_not_stamp_a_fresh_observation_time(publish, monkeyp
     with open(tmp_path / "baike-redaction-latest.json", encoding="utf-8") as f:
         after = json.load(f)
     assert after["generated_at"] == first["generated_at"]
+    assert after["pipeline_checked_at"] > first["pipeline_checked_at"]
+    assert after["collector_status"] == "disabled_no_authorized_access"
+    assert after["collector_reason"] == pull.DISABLED_REASON
     assert len(_history(tmp_path)) == 1
 
 
@@ -200,6 +203,9 @@ def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(publish, 
     with open(tmp_path / "baike-redaction-latest.json", encoding="utf-8") as f:
         after = json.load(f)
     assert after["generated_at"] == first["generated_at"]
+    assert after["pipeline_checked_at"] > first["pipeline_checked_at"]
+    assert after["collector_status"] == "error_no_observation"
+    assert "error:OSError" in after["collector_reason"]
     assert len(_history(tmp_path)) == 1
 
 
