@@ -1,13 +1,13 @@
 {
   "generated_at": "2026-07-30T20:31:16.856256+00:00",
-  "method_version": 1,
+  "method_version": 3,
   "source": "Baidu Baike (subject) vs Chinese Wikipedia (open-record control)",
   "scope": "narrative erasure — contested encyclopedia entries silently forked from the open record: sensitive terms excised, sourcing collapsed to state media, or absent",
-  "method": "public anonymous reads of both encyclopedias from outside the wall; lexical, auditable judgement; we never authenticate into Baike's hidden revision history",
+  "method": "offline fixture analysis; live Baike collection disabled pending authorized access; lexical, auditable judgement with no authenticated revision-history access",
   "rewrite_index": null,
   "index_definition": "share (%) of comparable contested entries showing an encyclopedia fork vs the open record",
-  "status": "insufficient_data",
-  "reason": "only 0/10 entities were comparable (fetch_failed×10). A 403 here is the source refusing this client, which is not by itself evidence about geography",
+  "status": "disabled",
+  "reason": "Baike collection is disabled pending authorized access; no new observation was made",
   "n_entities": 10,
   "n_comparable": 0,
   "n_forked": 0,
@@ -101,6 +101,22 @@
       "baike_interstitial": "fetch_failed",
       "wiki_present": true,
       "fork": null
+    }
+  ],
+  "pipeline_checked_at": "2026-08-05T09:43:18.814035+00:00",
+  "collector_status": "disabled_no_authorized_access",
+  "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
+  "collector_status_changed_at": "2026-08-05T09:43:18.814035+00:00",
+  "observation_status": "insufficient_data",
+  "observation_reason": "only 0/10 entities were comparable (fetch_failed×10). A 403 here is the source refusing this client, which is not by itself evidence about geography",
+  "valid_for_series": false,
+  "series_policy": "include only history rows with valid_for_series=true; generic HTTP availability responses are never deletion or fork evidence",
+  "quarantined_history": [
+    {
+      "generated_at": "2026-07-30T20:25:46.041900+00:00",
+      "rewrite_index": 90.0,
+      "validation_status": "quarantined",
+      "reason": "method version 1 counted generic HTTP 404 responses as Baike absence; HTTP availability did not establish content deletion or an encyclopedia fork"
     }
   ]
 }
