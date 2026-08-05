@@ -526,6 +526,8 @@ def _summary(
         # remains in payload. The prefix makes clear this is an upstream statement.
         if len(upstream_text) > 500:
             upstream_text = upstream_text[:497].rstrip() + "…"
+        if not upstream_text.endswith((".", "!", "?", "。", "！", "？")):
+            upstream_text += "."
         parts.append(f"Upstream reading: {upstream_text}")
     metric_text = _format_metric(metric)
     if metric_text:
