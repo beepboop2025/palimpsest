@@ -74,6 +74,19 @@ def test_signal_catalog_discloses_disabled_baike_and_independent_status():
     assert "all signals self-update" not in listed["note"]
 
 
+def test_mcp_copy_discloses_that_labelled_stale_evidence_is_served():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    source = open(os.path.join(root, "mcp", "palimpsest_mcp.py"), encoding="utf-8").read()
+    docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
+    agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
+    combined = "\n".join((source, docs, agents))
+
+    assert "nothing stale or invented is served" not in combined
+    assert "Nothing is served past its window" not in combined
+    assert "discover every live signal" not in combined
+    assert "Published stale or disabled evidence remains inspectable" in combined
+
+
 # -------------------------------------------------------------- tools/call --
 def test_unknown_tool_is_invalid_params():
     out = mcp.dispatch(_rpc("tools/call", {"name": "no_such_tool"}))

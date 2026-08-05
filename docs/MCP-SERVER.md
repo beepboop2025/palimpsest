@@ -92,9 +92,10 @@ to walk, the response says so in `neutralization_gap` instead of implying it was
 
 ## The rules it keeps
 
-- **Fail-loud, never stale-silent.** Each signal is cached for ten minutes. A signal that
-  cannot be fetched is returned as explicitly `unavailable` with the reason attached. Nothing
-  is served past its window, and nothing is invented to fill a hole.
+- **Fail-loud and status-explicit.** Each signal is cached for ten minutes. A signal that
+  cannot be fetched is returned as explicitly `unavailable` with the reason attached.
+  Published stale or disabled evidence remains inspectable with its `status` and
+  `generated_at`; it is never silently promoted to current, and nothing is invented.
 - **Cite what you are handed.** Every payload carries its own `generated_at` and its upstream
   sources. Agents are instructed to cite both; a reading without its timestamp is not a
   reading.

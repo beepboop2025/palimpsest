@@ -11,9 +11,9 @@ signals remain published with explicit operational state. This server makes
 them callable by any LLM agent over the Model Context Protocol.
 
 Design: stdlib only (http.server + urllib), stateless JSON-RPC 2.0 over
-streamable HTTP, ten-minute per-signal cache, fail-loud — a signal that
-cannot be fetched is reported as unavailable, never served stale silently
-past its window or invented.
+streamable HTTP, ten-minute per-signal cache, and explicit failure. A signal
+that cannot be fetched is unavailable. Published stale or disabled evidence
+remains inspectable with its status and generated_at; no replacement is invented.
 
 Deploy: systemd service on the box, fronted by Caddy at
 https://api.seiche.info/palimpsest/mcp (and https://mcp.palimpsest.info once
@@ -481,7 +481,7 @@ def tool_get_signal(args: dict) -> dict:
         data = _fetch(name)
     except Exception as exc:
         return {"signal": name, "unavailable": str(exc),
-                "note": "fail-loud: nothing stale or invented is served"}
+                "note": "fail-loud: fetch failure is explicit; no replacement is invented"}
     data, truncated, gap = _sanitized(data, max_rows)
     out = {"signal": name, "source_url": SITE + SIGNALS[name][0], "data": data,
            "untrusted_fields": list(_UNTRUSTED_FIELDS)}
@@ -602,7 +602,7 @@ def tool_whats_happening(args: dict) -> dict:
 
 TOOLS = {
     "list_signals": (
-        "List every live signal Palimpsest publishes, across both of its "
+        "List every published signal Palimpsest exposes, across both of its "
         "applications: name, one-line description and source URL for each. "
         "Censorship and information control — OONI Great Firewall probes, "
         "Censored Planet, IODA outages, circumvention demand, takedown and "
