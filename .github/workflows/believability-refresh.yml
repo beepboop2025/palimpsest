@@ -10,7 +10,12 @@ name: Refresh believability read
 on:
   schedule:
     - cron: "43 6 18 * *"      # monthly, minute offset from the other signals
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      period:
+        description: "Optional completed data month to backfill (YYYY-MM)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -24,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
+      BELIEVABILITY_PERIOD: ${{ github.event.inputs.period || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
 

@@ -51,10 +51,14 @@ SPACING_S = 10.0
 NBS_EN_URL = "https://www.stats.gov.cn/english/PressRelease/"
 PBC_LIST_URL = "https://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html"
 NRA_NEWS_URL = "https://www.nra.gov.cn/xwzx/xwxx/xwlb/"
+PBC_MAX_LIST_PAGES = 4
 
 _ANCHOR_TAG = re.compile(r"<a\b[^>]*>")
 _ATTR_HREF = re.compile(r"""href=["']([^"']+)["']""")
 _ATTR_TITLE = re.compile(r"""title=["']([^"']+)["']""")
+_ATTR_TAGNAME = re.compile(r"""tagname=["']([^"']+)["']""")
+_NEXT_PAGE_ANCHOR = re.compile(
+    r"<a\b(?P<attrs>[^>]*)>\s*下一页\s*</a>", re.IGNORECASE)
 
 _MONTHS_EN = {m: i + 1 for i, m in enumerate(
     ("January", "February", "March", "April", "May", "June", "July",
@@ -119,16 +123,37 @@ def _yoy_near(text: str, keyword: str, window: int = 400) -> float | None:
     return None
 
 
-def find_article(listing: str, stem: str) -> tuple[str, str] | None:
-    """(href, title) of the newest listing anchor whose title carries the
-    stem. Listing order is newest-first; URLs are unguessable by design."""
+def find_articles(listing: str, stem: str) -> list[tuple[str, str]]:
+    """Every ``(href, title)`` listing anchor whose title carries ``stem``."""
+    found = []
     for m in _ANCHOR_TAG.finditer(listing):
         tag = m.group(0)
         title = _ATTR_TITLE.search(tag)
         href = _ATTR_HREF.search(tag)
         if title and href and stem in title.group(1):
-            return href.group(1), title.group(1)
-    return None
+            found.append((href.group(1), title.group(1)))
+    return found
+
+
+def find_article(listing: str, stem: str) -> tuple[str, str] | None:
+    """Newest matching listing anchor; listing order is newest-first."""
+    found = find_articles(listing, stem)
+    return found[0] if found else None
+
+
+def next_listing_page(listing_url: str, listing: str) -> str | None:
+    """Absolute URL behind a PBC-style ``下一页`` control.
+
+    PBC's paginated listing uses a JavaScript ``tagname`` target rather than
+    an href. Accept href as well so a future accessible-nav improvement does
+    not break discovery. No other links are followed.
+    """
+    match = _NEXT_PAGE_ANCHOR.search(listing)
+    if not match:
+        return None
+    attrs = match.group("attrs")
+    target = _ATTR_HREF.search(attrs) or _ATTR_TAGNAME.search(attrs)
+    return urllib.parse.urljoin(listing_url, target.group(1)) if target else None
 
 
 def period_from_en_title(title: str) -> str | None:
@@ -246,8 +271,13 @@ def parse_nra_rail(article: str) -> dict:
 
 
 def find_rail_article(listing: str) -> tuple[str, str] | None:
-    """Newest NRA news item about rail freight: title must carry both 铁路
-    and a freight/volume marker — a loose match would pick unrelated news."""
+    """Newest NRA item about China's national rail-freight series.
+
+    The NRA feed also reports overseas projects such as the Mombasa-Nairobi
+    railway. Requiring 全国铁路 or 国家铁路 keeps discovery tied to the
+    nationwide series used by the estimator, while the freight/volume marker
+    still excludes meetings and passenger-only releases.
+    """
     best = None
     for m in _ANCHOR_TAG.finditer(listing):
         tag = m.group(0)
@@ -256,7 +286,7 @@ def find_rail_article(listing: str) -> tuple[str, str] | None:
         if not title or not href:
             continue
         t = title.group(1)
-        if "铁路" not in t or not any(
+        if not any(scope in t for scope in ("全国铁路", "国家铁路")) or not any(
                 k in t for k in ("发送量", "客货运", "货运量", "发送货物")):
             continue
         d = re.search(r"/t(\d{8})_", href.group(1))
@@ -296,6 +326,32 @@ def _fetch_article(listing_url: str, listing: str, stem: str) -> tuple[str, str]
     return (body, title) if body else None
 
 
+def _fetch_pbc_report(first_listing: str, expected_period: str) -> tuple[str, str] | None:
+    """Find the requested PBC report across a bounded number of list pages.
+
+    The news feed is busy enough to push the monthly report off page one
+    before the scheduled collection date. Pagination is deliberately bounded
+    and spaced: this is a monthly collector, not a crawler.
+    """
+    listing_url = PBC_LIST_URL
+    listing = first_listing
+    for page_number in range(PBC_MAX_LIST_PAGES):
+        for href, title in find_articles(listing, "金融统计数据报告"):
+            if pbc_period(title) == expected_period:
+                body = _get(urllib.parse.urljoin(listing_url, href))
+                return (body, title) if body else None
+
+        next_url = next_listing_page(listing_url, listing)
+        if not next_url or page_number + 1 >= PBC_MAX_LIST_PAGES:
+            return None
+        time.sleep(SPACING_S)
+        listing = _get(next_url)
+        if not listing:
+            return None
+        listing_url = next_url
+    return None
+
+
 def collect(expected_period: str) -> dict:
     """Every component whose article matches the expected data period
     ('YYYY-MM'). A component from a stale article is DROPPED, not reused: a
@@ -325,8 +381,8 @@ def collect(expected_period: str) -> dict:
     time.sleep(SPACING_S)
     pbc = _get(PBC_LIST_URL)
     if pbc:
-        got = _fetch_article(PBC_LIST_URL, pbc, "金融统计数据报告")
-        if got and pbc_period(got[1]) == expected_period:
+        got = _fetch_pbc_report(pbc, expected_period)
+        if got:
             loans = parse_pbc_loans(got[0])
             if loans is not None:
                 out["components"]["loans_yoy"] = loans["value"]

@@ -210,6 +210,23 @@ def test_explicit_upstream_abstention_is_degraded_not_promoted_to_live(mod, tmp_
     assert "does not convert" in signal["summary"]
 
 
+def test_believability_warmup_is_reporting_but_not_promoted_to_live(mod, tmp_path):
+    _write_json(tmp_path / "believability-latest.json", {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "source": "fixture",
+        "method_note": "fixture method",
+        "status": "not_ready",
+        "label": "warming_up",
+        "drift": None,
+        "n_components_required": 3,
+    })
+    signal = _signal(mod.build_document(tmp_path, NOW), "believability")
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert signal["health"]["upstream_status"] == "not_ready"
+    assert signal["metric"] is None
+
+
 def _valid_anchor_payload(ots_status="stamped") -> dict:
     return {
         "ts": "2026-08-04T11:00:00Z",

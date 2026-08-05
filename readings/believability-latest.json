@@ -1,0 +1,36 @@
+{
+ "asof": "2026-06",
+ "band_high": null,
+ "band_low": null,
+ "components": {
+  "electricity_yoy": 2.0,
+  "loans_yoy": 5.2,
+  "rail_freight_yoy": 2.5
+ },
+ "components_missing": [],
+ "drift": null,
+ "expected_gap": null,
+ "flags": [
+  "rail_month_yoy_was_prose_flat"
+ ],
+ "gap": 1.92,
+ "generated_at": "2026-08-05T09:10:30Z",
+ "headline_yoy": 5.3,
+ "label": "warming_up",
+ "lkq_composite": 3.38,
+ "loans_basis": "rmb_balance",
+ "method_note": "the Li Keqiang composite (40% loan growth, 40% electricity, 20% rail freight, using the canonical weights) against the state's own headline industrial-production YoY for the same month. The statistic is DRIFT: this month's headline-minus-composite gap against the gap's own rolling median and MAD band, so a services-heavy economy's persistent gap reads as baseline and only a break in the established relationship registers. Electricity is PRODUCTION (the keyless state series), not the original's consumption; this is a stated substitution. A missing component abstains the composite rather than reweighting it; fewer than 8 months of history publishes the gap but claims no drift (warming_up). Full method, origin, critiques and counterpoint: docs/BELIEVABILITY.md. A reading outside the band is evidence the relationship moved; it does not, by itself, establish fabrication",
+ "method_version": 1,
+ "n_components_present": 3,
+ "n_components_required": 3,
+ "n_history": 0,
+ "note": "physical telemetry is hard to fake because someone pays for the electricity; this read compares the state to the state",
+ "outside_band": null,
+ "source": "the state's own releases, keyless: NBS English press releases (Energy Production; Industrial Production Operation), PBC monthly financial statistics report (outstanding RMB loan YoY), NRA monthly rail freight news",
+ "status": "not_ready",
+ "telemetry": {
+  "coal_yoy": -9.7,
+  "rail_freight_month_yoy": 0.0,
+  "steel_yoy": 0.4
+ }
+}
