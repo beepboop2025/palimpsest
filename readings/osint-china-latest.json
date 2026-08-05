@@ -37,18 +37,18 @@
       "kind": "health",
       "severity": "notice",
       "source_id": "believability",
-      "summary": "source file is missing",
-      "title": "Believability read: missing"
+      "summary": "upstream status is not_ready",
+      "title": "Believability read: degraded"
     }
   ],
-  "generated_at": "2026-08-05T08:19:01Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 31 of 33 configured sources report; 30 are live. Health qualifiers: 1 stale, 2 missing.",
+  "generated_at": "2026-08-05T09:13:54Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
-      "degraded": 0,
+      "degraded": 1,
       "live": 30,
-      "missing": 2,
+      "missing": 1,
       "stale": 1
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
@@ -58,7 +58,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "5b5bf47ef0326171814dfbb8f3ae977d11e90a36",
+  "input_commit": "678384b64d43c537fc9adcc4e7af18b1f73e89b3",
   "layers": [
     {
       "id": "command",
@@ -133,7 +133,7 @@
       "id": "economy",
       "n_degraded": 1,
       "n_live": 4,
-      "n_reporting": 4,
+      "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
         "china-econ",
@@ -185,7 +185,7 @@
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
   "n_signals_live": 30,
-  "n_signals_reporting": 31,
+  "n_signals_reporting": 32,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
   "scope": "China public-source measurement across attention, network access, erasure, economic undertext, model behaviour, command safeguards and integrity witnessing.",
@@ -194,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:17Z",
       "health": {
-        "age_hours": 4.479,
+        "age_hours": 5.393,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -496,7 +496,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:49:06Z",
       "health": {
-        "age_hours": 4.499,
+        "age_hours": 5.413,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -709,7 +709,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:17Z",
       "health": {
-        "age_hours": 4.479,
+        "age_hours": 5.393,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -842,7 +842,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:18Z",
       "health": {
-        "age_hours": 4.479,
+        "age_hours": 5.393,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -1378,7 +1378,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:18Z",
       "health": {
-        "age_hours": 4.479,
+        "age_hours": 5.393,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -1566,18 +1566,18 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-05T10:33:50Z",
+      "freshness_deadline": "2026-08-05T16:06:23Z",
       "health": {
-        "age_hours": 4.753,
+        "age_hours": 0.125,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "ddti",
       "input": {
-        "bytes": 21638,
+        "bytes": 21631,
         "filename": "ddti-latest.json",
-        "sha256": "c8ef07d4d33c7ffa06d273b7e6a9a56c22c56e2d3175a3abd1461d379e74bb3b"
+        "sha256": "f9ee13a4b97bf5d6a4de2c4cb4299ea745711b71633eee1503ed83eb00ff4c92"
       },
       "layer": "attention",
       "live": true,
@@ -1599,7 +1599,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 186.2,
+          "days_covered": 186.5,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1613,12 +1613,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-05T03:33:50.052889+00:00",
+        "generated_at": "2026-08-05T09:06:23.925251+00:00",
         "n_observations": 87,
         "n_terms": 199,
         "ranked": [
           {
-            "attention": 0.7681,
+            "attention": 0.709,
             "burst_ratio": 0.81,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -1643,10 +1643,10 @@
               }
             ],
             "term": "WeChat",
-            "threat": 0.7681
+            "threat": 0.709
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1663,10 +1663,10 @@
               }
             ],
             "term": "Economics",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1683,10 +1683,10 @@
               }
             ],
             "term": "World Cup",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1703,10 +1703,10 @@
               }
             ],
             "term": "animal protection",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1723,10 +1723,10 @@
               }
             ],
             "term": "animals",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1743,10 +1743,10 @@
               }
             ],
             "term": "blue-collar workers",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1763,10 +1763,10 @@
               }
             ],
             "term": "business",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1783,10 +1783,10 @@
               }
             ],
             "term": "dogs",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1803,10 +1803,10 @@
               }
             ],
             "term": "extortion",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1823,10 +1823,10 @@
               }
             ],
             "term": "legislation",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1843,10 +1843,10 @@
               }
             ],
             "term": "market-economy",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1863,10 +1863,10 @@
               }
             ],
             "term": "protesters",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1883,10 +1883,10 @@
               }
             ],
             "term": "protests",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1903,10 +1903,10 @@
               }
             ],
             "term": "soccer",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1923,10 +1923,10 @@
               }
             ],
             "term": "sports",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1943,10 +1943,10 @@
               }
             ],
             "term": "transportation",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -1963,10 +1963,10 @@
               }
             ],
             "term": "white-collar workers",
-            "threat": 0.3994
+            "threat": 0.3687
           },
           {
-            "attention": 0.2329,
+            "attention": 0.2149,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-03-24T05:52:38+00:00",
@@ -1987,10 +1987,10 @@
               }
             ],
             "term": "arrests",
-            "threat": 0.3881
+            "threat": 0.3582
           },
           {
-            "attention": 0.2578,
+            "attention": 0.238,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-11T07:18:26+00:00",
@@ -2007,10 +2007,10 @@
               }
             ],
             "term": "709",
-            "threat": 0.3868
+            "threat": 0.357
           },
           {
-            "attention": 0.3685,
+            "attention": 0.3401,
             "burst_ratio": 0.68,
             "domain": "INFORMATION",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -2035,10 +2035,10 @@
               }
             ],
             "term": "Internet censorship",
-            "threat": 0.3685
+            "threat": 0.3401
           },
           {
-            "attention": 0.2284,
+            "attention": 0.2108,
             "burst_ratio": 2.0,
             "domain": "OTHER",
             "first_seen": "2026-02-10T23:58:46+00:00",
@@ -2059,10 +2059,10 @@
               }
             ],
             "term": "police",
-            "threat": 0.3426
+            "threat": 0.3162
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-12T06:51:19+00:00",
@@ -2079,10 +2079,10 @@
               }
             ],
             "term": "June 4th",
-            "threat": 0.3423
+            "threat": 0.316
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-05-03T22:29:25+00:00",
@@ -2099,10 +2099,10 @@
               }
             ],
             "term": "activism",
-            "threat": 0.3423
+            "threat": 0.316
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-16T00:26:11+00:00",
@@ -2119,10 +2119,10 @@
               }
             ],
             "term": "police violence",
-            "threat": 0.3423
+            "threat": 0.316
           },
           {
-            "attention": 0.2586,
+            "attention": 0.2387,
             "burst_ratio": 1.29,
             "domain": "OTHER",
             "first_seen": "2026-03-24T06:34:26+00:00",
@@ -2147,10 +2147,10 @@
               }
             ],
             "term": "CDT in the news",
-            "threat": 0.3232
+            "threat": 0.2984
           },
           {
-            "attention": 0.3063,
+            "attention": 0.2827,
             "burst_ratio": 0.83,
             "domain": "INFORMATION",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -2175,10 +2175,10 @@
               }
             ],
             "term": "social media censorship",
-            "threat": 0.3063
+            "threat": 0.2827
           },
           {
-            "attention": 0.3061,
+            "attention": 0.2826,
             "burst_ratio": 0.66,
             "domain": "INFORMATION",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -2203,10 +2203,10 @@
               }
             ],
             "term": "online censorship",
-            "threat": 0.3061
+            "threat": 0.2826
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": 1.5,
             "domain": "SOCIETY",
             "first_seen": "2026-05-03T22:29:25+00:00",
@@ -2223,10 +2223,10 @@
               }
             ],
             "term": "activists",
-            "threat": 0.2853
+            "threat": 0.2633
           },
           {
-            "attention": 0.2282,
+            "attention": 0.2107,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-04-03T02:47:04+00:00",
@@ -2243,7 +2243,7 @@
               }
             ],
             "term": "employment",
-            "threat": 0.2853
+            "threat": 0.2633
           }
         ],
         "source_feeds": {
@@ -2265,7 +2265,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-05T03:33:50Z",
+      "source_timestamp": "2026-08-05T09:06:23Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 199 count.",
       "title": "Deletion-directive term index"
@@ -2274,7 +2274,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:53:39Z",
       "health": {
-        "age_hours": 4.423,
+        "age_hours": 5.337,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -2569,7 +2569,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:47:22Z",
       "health": {
-        "age_hours": 4.527,
+        "age_hours": 5.442,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -2878,7 +2878,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:43:51Z",
       "health": {
-        "age_hours": 4.586,
+        "age_hours": 5.501,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -3182,7 +3182,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-11T07:54:31Z",
       "health": {
-        "age_hours": 48.408,
+        "age_hours": 49.323,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -3490,7 +3490,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-06T05:47:38Z",
       "health": {
-        "age_hours": 4.523,
+        "age_hours": 5.438,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -3761,7 +3761,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:40:15Z",
       "health": {
-        "age_hours": 4.646,
+        "age_hours": 5.561,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -4037,7 +4037,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:41:45Z",
       "health": {
-        "age_hours": 4.621,
+        "age_hours": 5.536,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -4201,7 +4201,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:05:27Z",
       "health": {
-        "age_hours": 0.226,
+        "age_hours": 1.141,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -4374,7 +4374,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:46:48Z",
       "health": {
-        "age_hours": 4.537,
+        "age_hours": 5.452,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -6804,7 +6804,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:41:26Z",
       "health": {
-        "age_hours": 4.626,
+        "age_hours": 5.541,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -6851,7 +6851,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T09:49:22Z",
       "health": {
-        "age_hours": 0.494,
+        "age_hours": 1.409,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -6921,7 +6921,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:49:55Z",
       "health": {
-        "age_hours": 4.485,
+        "age_hours": 5.4,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -7026,7 +7026,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:33:49Z",
       "health": {
-        "age_hours": 4.753,
+        "age_hours": 5.668,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -7148,7 +7148,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-06T05:41:53Z",
       "health": {
-        "age_hours": 4.619,
+        "age_hours": 5.533,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -7720,7 +7720,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 131.796,
+        "age_hours": 132.71,
         "ok": false,
         "reason": "freshness deadline has passed",
         "upstream_status": "insufficient_data"
@@ -7863,7 +7863,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-06T05:47:06Z",
       "health": {
-        "age_hours": 4.532,
+        "age_hours": 5.447,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8039,7 +8039,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:52:14Z",
       "health": {
-        "age_hours": 4.446,
+        "age_hours": 5.361,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8212,7 +8212,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:03:22Z",
       "health": {
-        "age_hours": 0.261,
+        "age_hours": 1.175,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8313,7 +8313,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:48:15Z",
       "health": {
-        "age_hours": 4.513,
+        "age_hours": 5.428,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8377,7 +8377,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-06T20:26:33Z",
       "health": {
-        "age_hours": 13.874,
+        "age_hours": 14.789,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8426,7 +8426,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-08T17:41:55Z",
       "health": {
-        "age_hours": 16.618,
+        "age_hours": 17.533,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8481,7 +8481,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-06T14:07:54Z",
       "health": {
-        "age_hours": 20.185,
+        "age_hours": 21.1,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8632,39 +8632,74 @@
     },
     {
       "cadence_hours": 720,
-      "freshness_deadline": null,
+      "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": null,
+        "age_hours": 0.057,
         "ok": false,
-        "reason": "source file is missing",
-        "upstream_status": null
+        "reason": "upstream status is not_ready",
+        "upstream_status": "not_ready"
       },
       "id": "believability",
       "input": {
-        "bytes": null,
+        "bytes": 1917,
         "filename": "believability-latest.json",
-        "sha256": null
+        "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49"
       },
       "layer": "economy",
       "live": false,
-      "method": "Canonical 40/40/20 loan, electricity and rail-freight composite; missing components abstain and drift requires a prior-history uncertainty band",
-      "method_version": null,
+      "method": "the Li Keqiang composite (40% loan growth, 40% electricity, 20% rail freight, using the canonical weights) against the state's own headline industrial-production YoY for the same month. The statistic is DRIFT: this month's headline-minus-composite gap against the gap's own rolling median and MAD band, so a services-heavy economy's persistent gap reads as baseline and only a break in the established relationship registers. Electricity is PRODUCTION (the keyless state series), not the original's consumption; this is a stated substitution. A missing component abstains the composite rather than reweighting it; fewer than 8 months of history publishes the gap but claims no drift (warming_up). Full method, origin, critiques and counterpoint: docs/BELIEVABILITY.md. A reading outside the band is evidence the relationship moved; it does not, by itself, establish fabrication",
+      "method_version": 1,
       "metric": null,
       "optional": true,
-      "payload": null,
+      "payload": {
+        "asof": "2026-06",
+        "band_high": null,
+        "band_low": null,
+        "components": {
+          "electricity_yoy": 2.0,
+          "loans_yoy": 5.2,
+          "rail_freight_yoy": 2.5
+        },
+        "components_missing": [],
+        "drift": null,
+        "expected_gap": null,
+        "flags": [
+          "rail_month_yoy_was_prose_flat"
+        ],
+        "gap": 1.92,
+        "generated_at": "2026-08-05T09:10:30Z",
+        "headline_yoy": 5.3,
+        "label": "warming_up",
+        "lkq_composite": 3.38,
+        "loans_basis": "rmb_balance",
+        "method_note": "the Li Keqiang composite (40% loan growth, 40% electricity, 20% rail freight, using the canonical weights) against the state's own headline industrial-production YoY for the same month. The statistic is DRIFT: this month's headline-minus-composite gap against the gap's own rolling median and MAD band, so a services-heavy economy's persistent gap reads as baseline and only a break in the established relationship registers. Electricity is PRODUCTION (the keyless state series), not the original's consumption; this is a stated substitution. A missing component abstains the composite rather than reweighting it; fewer than 8 months of history publishes the gap but claims no drift (warming_up). Full method, origin, critiques and counterpoint: docs/BELIEVABILITY.md. A reading outside the band is evidence the relationship moved; it does not, by itself, establish fabrication",
+        "method_version": 1,
+        "n_components_present": 3,
+        "n_components_required": 3,
+        "n_history": 0,
+        "note": "physical telemetry is hard to fake because someone pays for the electricity; this read compares the state to the state",
+        "outside_band": null,
+        "source": "the state's own releases, keyless: NBS English press releases (Energy Production; Industrial Production Operation), PBC monthly financial statistics report (outstanding RMB loan YoY), NRA monthly rail freight news",
+        "status": "not_ready",
+        "telemetry": {
+          "coal_yoy": -9.7,
+          "rail_freight_month_yoy": 0.0,
+          "steel_yoy": 0.4
+        }
+      },
       "raw_url": "https://palimpsest.info/readings/believability-latest.json",
       "scope": "Optional monthly Li Keqiang composite against the state's headline industrial-production growth, publishing divergence only against the gap's own history.",
-      "source": "Official NBS, PBC and NRA releases collected without private credentials",
-      "source_timestamp": null,
-      "status": "missing",
-      "summary": "Optional monthly Li Keqiang composite against the state's headline industrial-production growth, publishing divergence only against the gap's own history. No payload is present at readings/believability-latest.json; no current measurement is claimed.",
+      "source": "the state's own releases, keyless: NBS English press releases (Energy Production; Industrial Production Operation), PBC monthly financial statistics report (outstanding RMB loan YoY), NRA monthly rail freight news",
+      "source_timestamp": "2026-08-05T09:10:30Z",
+      "status": "degraded",
+      "summary": "Optional monthly Li Keqiang composite against the state's headline industrial-production growth, publishing divergence only against the gap's own history. The upstream payload reports status 'not_ready'; this roll-up does not convert that abstention or limitation into a finding. Upstream reading: physical telemetry is hard to fake because someone pays for the electricity; this read compares the state to the state",
       "title": "Believability read"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-06T11:37:38Z",
       "health": {
-        "age_hours": 22.69,
+        "age_hours": 23.604,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -13996,7 +14031,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T18:50:34Z",
       "health": {
-        "age_hours": 3.474,
+        "age_hours": 4.389,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -14040,7 +14075,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-05T09:14:16Z",
       "health": {
-        "age_hours": 0.079,
+        "age_hours": 0.994,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
