@@ -41,7 +41,7 @@
       "title": "Believability read: degraded"
     }
   ],
-  "generated_at": "2026-08-05T09:25:49Z",
+  "generated_at": "2026-08-05T09:26:54Z",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
   "health": {
     "counts": {
@@ -58,7 +58,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "21df5b11ea4a1882cc78b59b1e48ca848ab66299",
+  "input_commit": "afb02c8656aecf98caf80eeb60c20254c628aa00",
   "layers": [
     {
       "id": "command",
@@ -194,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:17Z",
       "health": {
-        "age_hours": 5.592,
+        "age_hours": 5.61,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -494,9 +494,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-05T17:49:06Z",
+      "freshness_deadline": "2026-08-05T23:24:37Z",
       "health": {
-        "age_hours": 5.612,
+        "age_hours": 0.038,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -505,7 +505,7 @@
       "input": {
         "bytes": 6160,
         "filename": "event-flags-latest.json",
-        "sha256": "dfd66e19e1fd9ea20928e3edd711cc22cbc12c370f90efea34fc269ce5e06ec4"
+        "sha256": "c024dfca4178d6a7b4df1b909bbfc6b706a2f16f7344a62890429feb5be5b871"
       },
       "layer": "command",
       "live": true,
@@ -528,7 +528,7 @@
         "closed": [
           "refusal_drift"
         ],
-        "generated_at": "2026-08-05T03:49:06.100627+00:00",
+        "generated_at": "2026-08-05T09:24:37.091478+00:00",
         "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
         "headline": "elevated: ddti_threat",
         "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
@@ -552,7 +552,7 @@
             "state": "no_data"
           },
           "censored_planet": {
-            "age_hours": 19.7,
+            "age_hours": 25.3,
             "meaning": "remote-vantage interference rate",
             "n": 21,
             "n_alarms_in_history": 0,
@@ -560,7 +560,7 @@
             "state": "calm"
           },
           "data_darkness": {
-            "age_hours": 27.8,
+            "age_hours": 33.4,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
             "n": 4,
             "n_alarms_in_history": 0,
@@ -570,29 +570,29 @@
           "ddti_novelty": {
             "age_hours": 0.3,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 206,
+            "n": 207,
             "n_alarms_in_history": 1,
-            "stat": 1.1352,
+            "stat": 1.1303,
             "state": "calm"
           },
           "ddti_threat": {
             "age_hours": 0.3,
             "meaning": "peak censor attention on one term",
-            "n": 206,
+            "n": 207,
             "n_alarms_in_history": 2,
-            "stat": 373.4688,
+            "stat": 647.109,
             "state": "watch"
           },
           "gdelt_containment": {
-            "age_hours": 7.5,
+            "age_hours": 5.5,
             "meaning": "terms loud abroad while censored at home",
-            "n": 117,
+            "n": 118,
             "n_alarms_in_history": 0,
-            "stat": 3.3418,
+            "stat": 2.7256,
             "state": "calm"
           },
           "github_refuge": {
-            "age_hours": 0.0,
+            "age_hours": 5.6,
             "meaning": "takedown/pressure events on refuge repositories",
             "n": 59,
             "n_alarms_in_history": 0,
@@ -600,23 +600,23 @@
             "state": "calm"
           },
           "ioda_outages": {
-            "age_hours": 0.1,
+            "age_hours": 0.2,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 66,
+            "n": 67,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
           },
           "ooni_gfw": {
-            "age_hours": 0.1,
+            "age_hours": 0.2,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 108,
+            "n": 109,
             "n_alarms_in_history": 1,
-            "stat": 2.9794,
+            "stat": 2.5966,
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 7.9,
+            "age_hours": 5.8,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -630,7 +630,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 12,
+                "pairs_seen": 13,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -639,7 +639,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 12,
+                "pairs_seen": 13,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -648,7 +648,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 12,
+                "pairs_seen": 13,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -657,14 +657,14 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 12,
+                "pairs_seen": 13,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               }
             },
             "n_models": 4,
-            "n_rows": 48,
-            "reason": "burn-in in progress: furthest model has 12 of 21 adjacent-run pairs",
+            "n_rows": 52,
+            "reason": "burn-in in progress: furthest model has 13 of 21 adjacent-run pairs",
             "state": "calibrating"
           },
           "refusal_drift": {
@@ -679,17 +679,17 @@
             "state": "no_data"
           },
           "tor_bridge_cn": {
-            "age_hours": 99.8,
+            "age_hours": 81.4,
             "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
-            "n": 390,
+            "n": 391,
             "n_alarms_in_history": 6,
-            "stat": 3.763,
+            "stat": 3.4685,
             "state": "calm"
           },
           "weibo_suppression": {
             "age_hours": 0.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 67,
+            "n": 68,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
@@ -700,7 +700,7 @@
       "raw_url": "https://palimpsest.info/readings/event-flags-latest.json",
       "scope": "Per-signal conformal event states, including non-reporting and stale series.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T03:49:06Z",
+      "source_timestamp": "2026-08-05T09:24:37Z",
       "status": "live",
       "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: elevated: ddti_threat Latest payload reports signals reporting at 11 count across 15 signals configured.",
       "title": "Event flags"
@@ -709,7 +709,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:17Z",
       "health": {
-        "age_hours": 5.592,
+        "age_hours": 5.61,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -842,7 +842,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:18Z",
       "health": {
-        "age_hours": 5.592,
+        "age_hours": 5.61,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -1378,7 +1378,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:50:18Z",
       "health": {
-        "age_hours": 5.592,
+        "age_hours": 5.61,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -1568,7 +1568,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-05T16:06:23Z",
       "health": {
-        "age_hours": 0.324,
+        "age_hours": 0.342,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -2274,7 +2274,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:53:39Z",
       "health": {
-        "age_hours": 5.536,
+        "age_hours": 5.554,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -2569,7 +2569,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T23:21:49Z",
       "health": {
-        "age_hours": 0.067,
+        "age_hours": 0.085,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -2879,7 +2879,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:43:51Z",
       "health": {
-        "age_hours": 5.699,
+        "age_hours": 5.718,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -3183,7 +3183,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-11T07:54:31Z",
       "health": {
-        "age_hours": 49.522,
+        "age_hours": 49.54,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -3491,7 +3491,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-06T05:47:38Z",
       "health": {
-        "age_hours": 5.636,
+        "age_hours": 5.654,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -3762,7 +3762,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T23:12:56Z",
       "health": {
-        "age_hours": 0.215,
+        "age_hours": 0.233,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -4038,7 +4038,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T23:17:11Z",
       "health": {
-        "age_hours": 0.144,
+        "age_hours": 0.162,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -4202,7 +4202,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:05:27Z",
       "health": {
-        "age_hours": 1.339,
+        "age_hours": 1.357,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -4375,7 +4375,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T23:21:32Z",
       "health": {
-        "age_hours": 0.071,
+        "age_hours": 0.089,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -6788,7 +6788,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T23:15:03Z",
       "health": {
-        "age_hours": 0.179,
+        "age_hours": 0.198,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -6835,7 +6835,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T09:49:22Z",
       "health": {
-        "age_hours": 1.607,
+        "age_hours": 1.626,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -6905,7 +6905,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:49:55Z",
       "health": {
-        "age_hours": 5.598,
+        "age_hours": 5.616,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -7010,7 +7010,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:33:49Z",
       "health": {
-        "age_hours": 5.867,
+        "age_hours": 5.885,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -7132,7 +7132,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-06T05:41:53Z",
       "health": {
-        "age_hours": 5.732,
+        "age_hours": 5.75,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -7704,7 +7704,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 132.909,
+        "age_hours": 132.927,
         "ok": false,
         "reason": "freshness deadline has passed",
         "upstream_status": "insufficient_data"
@@ -7847,7 +7847,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-06T05:47:06Z",
       "health": {
-        "age_hours": 5.645,
+        "age_hours": 5.663,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8023,7 +8023,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T17:52:14Z",
       "health": {
-        "age_hours": 5.56,
+        "age_hours": 5.578,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8196,7 +8196,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:03:22Z",
       "health": {
-        "age_hours": 1.374,
+        "age_hours": 1.392,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8297,7 +8297,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T23:22:33Z",
       "health": {
-        "age_hours": 0.054,
+        "age_hours": 0.072,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8361,7 +8361,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-06T20:26:33Z",
       "health": {
-        "age_hours": 14.988,
+        "age_hours": 15.006,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8410,7 +8410,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-08T17:41:55Z",
       "health": {
-        "age_hours": 17.732,
+        "age_hours": 17.75,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8465,7 +8465,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-06T14:07:54Z",
       "health": {
-        "age_hours": 21.299,
+        "age_hours": 21.317,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -8618,7 +8618,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 0.255,
+        "age_hours": 0.273,
         "ok": false,
         "reason": "upstream status is not_ready",
         "upstream_status": "not_ready"
@@ -8683,7 +8683,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-06T11:37:38Z",
       "health": {
-        "age_hours": 23.803,
+        "age_hours": 23.821,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -14015,7 +14015,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-05T18:50:34Z",
       "health": {
-        "age_hours": 4.587,
+        "age_hours": 4.605,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
@@ -14059,7 +14059,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-05T10:14:16Z",
       "health": {
-        "age_hours": 0.192,
+        "age_hours": 0.211,
         "ok": true,
         "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
