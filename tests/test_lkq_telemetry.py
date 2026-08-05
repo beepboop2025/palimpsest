@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import pytest
 
+import collectors.lkq_telemetry as lkq
 from collectors.lkq_telemetry import (
     find_article,
     find_rail_article,
+    next_listing_page,
     parse_energy,
     parse_industrial,
     parse_nra_rail,
@@ -163,6 +165,8 @@ LISTING = """
 """
 
 NRA_LISTING = """
+<a href="./202607/t20260729_351737.shtml" target="_blank"
+   title='蒙内铁路货运量累计突破5000万吨'>蒙内铁路货运量累计突破5000万吨</a>
 <a href="./202607/t20260715_351669.shtml" target="_blank"
    title='2026年上半年国家铁路发送货物26.22亿吨'>2026年上半年国家铁路发送货物26.22亿吨</a>
 <a href="./202606/t20260615_351400.shtml" target="_blank"
@@ -182,5 +186,47 @@ def test_find_article_matches_the_stem():
 def test_find_rail_article_takes_newest_freight_item_not_meetings():
     href, title = find_rail_article(NRA_LISTING)
     assert href.endswith("t20260715_351669.shtml"), (
-        "the newer meeting item has no freight marker and must lose to the "
-        "newest actual freight/volume item")
+        "the overseas project and newer meeting item must both lose to the "
+        "newest national freight/volume item")
+
+
+def test_pbc_next_page_accepts_its_javascript_tagname_target():
+    listing = """
+    <a style="cursor:pointer"
+       onclick="queryArticleByCondition(this,'/goutongjiaoliu/113456/113469/11040-2.html')"
+       tagname="/goutongjiaoliu/113456/113469/11040-2.html"
+       class="pagingNormal">下一页</a>
+    """
+    assert next_listing_page(
+        "https://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html",
+        listing,
+    ) == "https://www.pbc.gov.cn/goutongjiaoliu/113456/113469/11040-2.html"
+
+
+def test_pbc_report_discovery_follows_one_bounded_listing_page(monkeypatch):
+    page_1 = """
+    <a title="2026年7月金融统计数据报告"
+       href="/goutongjiaoliu/newer-report/index.html">新报告</a>
+    <a tagname="/goutongjiaoliu/113456/113469/11040-2.html">下一页</a>
+    """
+    page_2 = """
+    <a title="2026年上半年金融统计数据报告"
+       href="/goutongjiaoliu/report/index.html">报告</a>
+    """
+    article = "六月末，人民币贷款余额268.56万亿元，同比增长7.1%。"
+    fetched = []
+
+    def fake_get(url):
+        fetched.append(url)
+        if url.endswith("11040-2.html"):
+            return page_2
+        if url.endswith("/report/index.html"):
+            return article
+        raise AssertionError(f"unexpected URL: {url}")
+
+    monkeypatch.setattr(lkq, "_get", fake_get)
+    monkeypatch.setattr(lkq, "SPACING_S", 0)
+    got = lkq._fetch_pbc_report(page_1, "2026-06")
+
+    assert got == (article, "2026年上半年金融统计数据报告")
+    assert len(fetched) == 2

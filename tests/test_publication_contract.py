@@ -172,12 +172,6 @@ PENDING = {
     # unpublished until a multi-vantage round exists; see docs/BLEEDTHROUGH.md and the worked
     # case in docs/INTEGRITY.md.
     "bleedthrough",
-    # BELIEVABILITY: the Li Keqiang composite vs the headline, monthly. Its first
-    # scheduled round is the 18th (after the NBS mid-month window) — the 2026-08-01
-    # dispatch correctly abstained because July's articles do not exist yet. Remove
-    # once the first reading commits. (data-darkness, silence-index and cny-fix-gap
-    # graduated 2026-08-01, first readings committed by their dispatch runs.)
-    "believability",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

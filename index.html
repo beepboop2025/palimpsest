@@ -647,7 +647,7 @@
             published statistic is drift against the gap's own history with its uncertainty band, never a
             raw level. A missing component abstains the composite rather than quietly reweighting it.
             Method, critiques and the counterpoint are published beside it.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-believability">first reading 18 Aug</span></p>
+            <p class="sig__f"><span class="fresh" data-fresh="sig-believability">loading latest reading</span></p>
           </a>
 
           <a class="sig ps-p2" href="/readings/#state">
@@ -1186,8 +1186,6 @@
         url: "/readings/believability-latest.json",
         slots: ["[data-stat='sig-believability']"],
         fresh: [["[data-fresh='sig-believability']", 1100]],
-        /* Monthly, first round on the 18th. Clear this once it publishes. */
-        pending: true,
         ok: function (d) {
           if (typeof d.gap === "number" && isFinite(d.gap)) {
             paint($("[data-stat='sig-believability']"), {

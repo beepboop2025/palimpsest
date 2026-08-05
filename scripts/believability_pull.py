@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 from collectors.lkq_telemetry import collect
@@ -32,11 +33,32 @@ HIST = os.path.join(READINGS, "believability-history.jsonl")
 # rewritten unconditionally, so a method change can never hide behind an
 # unchanged number.
 METHOD_VERSION = 1
+_PERIOD_RE = re.compile(r"\d{4}-(?:0[1-9]|1[0-2])")
 
 
 def _expected_period(now: datetime) -> str:
     y, m = (now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12)
     return f"{y:04d}-{m:02d}"
+
+
+def _target_period(now: datetime) -> str:
+    """Scheduled period, or an explicit completed month for a backfill.
+
+    The override is operationally useful when a signal first launches or a
+    past source outage is repaired. Future/current months remain forbidden:
+    their official release set is not complete yet.
+    """
+    expected = _expected_period(now)
+    override = os.getenv("BELIEVABILITY_PERIOD", "").strip()
+    if not override:
+        return expected
+    if not _PERIOD_RE.fullmatch(override):
+        raise SystemExit("BELIEVABILITY_PERIOD must be YYYY-MM")
+    if override > expected:
+        raise SystemExit(
+            f"BELIEVABILITY_PERIOD {override} is newer than the latest "
+            f"eligible data month {expected}")
+    return override
 
 
 def _load_history() -> dict[str, dict]:
@@ -58,7 +80,7 @@ def _load_history() -> dict[str, dict]:
 
 def main() -> None:
     now = datetime.now(timezone.utc)
-    period = _expected_period(now)
+    period = _target_period(now)
 
     got = collect(period)
     components = got.get("components", {})
@@ -108,6 +130,11 @@ def main() -> None:
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "method_version": METHOD_VERSION,
+        "status": (
+            "not_ready" if reading["label"] == "warming_up"
+            else "abstain" if reading["label"] == "abstain"
+            else "ok"
+        ),
         "source": (
             "the state's own releases, keyless: NBS English press releases "
             "(Energy Production; Industrial Production Operation), PBC "
@@ -116,14 +143,14 @@ def main() -> None:
         ),
         "method_note": (
             "the Li Keqiang composite (40% loan growth, 40% electricity, 20% "
-            "rail freight — the canonical weights) against the state's own "
+            "rail freight, using the canonical weights) against the state's own "
             "headline industrial-production YoY for the same month. The "
             "statistic is DRIFT: this month's headline-minus-composite gap "
             "against the gap's own rolling median and MAD band, so a "
             "services-heavy economy's persistent gap reads as baseline and "
             "only a break in the established relationship registers. "
             "Electricity is PRODUCTION (the keyless state series), not the "
-            "original's consumption — a stated substitution. A missing "
+            "original's consumption; this is a stated substitution. A missing "
             "component abstains the composite rather than reweighting it; "
             "fewer than " + str(MIN_HISTORY) + " months of history publishes "
             "the gap but claims no drift (warming_up). Full method, origin, "
@@ -147,6 +174,21 @@ def main() -> None:
             "electricity; this read compares the state to the state"
         ),
     }
+
+    # A backfill may add a missing history row, but it must never make the
+    # public "latest" pointer go backwards after a newer month has published.
+    existing_asof = None
+    if os.path.exists(OUT):
+        try:
+            with open(OUT, encoding="utf-8") as f:
+                existing_asof = json.load(f).get("asof")
+        except (OSError, json.JSONDecodeError, AttributeError):
+            pass
+    if isinstance(existing_asof, str) and existing_asof > period:
+        print(f"believability: recorded {period} in history; latest kept at "
+              f"{existing_asof}")
+        return
+
     os.makedirs(READINGS, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(latest, f, ensure_ascii=False, indent=1, sort_keys=True)
