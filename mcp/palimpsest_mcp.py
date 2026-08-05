@@ -5,14 +5,15 @@ Palimpsest is an open, public-good observatory of two things that erase the
 record: internet censorship and information control (the Great Firewall, OONI,
 Censored Planet, takedown and redaction pressure), and undisclosed behavioural
 change in deployed AI models (pre-registered, hash-chained evaluations of both
-Chinese state-aligned and Western frontier models on frozen probe sets). Its
-signals self-update on GitHub Actions and publish as static JSON; this server
-makes them callable by any LLM agent over the Model Context Protocol.
+Chinese state-aligned and Western frontier models on frozen probe sets). Most
+signals update on GitHub Actions and publish as static JSON; disabled and stale
+signals remain published with explicit operational state. This server makes
+them callable by any LLM agent over the Model Context Protocol.
 
 Design: stdlib only (http.server + urllib), stateless JSON-RPC 2.0 over
-streamable HTTP, ten-minute per-signal cache, fail-loud — a signal that
-cannot be fetched is reported as unavailable, never served stale silently
-past its window or invented.
+streamable HTTP, ten-minute per-signal cache, and explicit failure. A signal
+that cannot be fetched is unavailable. Published stale or disabled evidence
+remains inspectable with its status and generated_at; no replacement is invented.
 
 Deploy: systemd service on the box, fronted by Caddy at
 https://api.seiche.info/palimpsest/mcp (and https://mcp.palimpsest.info once
@@ -46,8 +47,8 @@ INVALID_PARAMS = -32602
 INTERNAL_ERROR = -32603
 
 SERVER_INSTRUCTIONS = (
-    "Palimpsest is an open observatory of erasure, publishing live self-updating "
-    "signals from public measurement infrastructure. It covers TWO distinct "
+    "Palimpsest is an open observatory of erasure, publishing timestamped signals "
+    "with explicit health and operational state. It covers TWO distinct "
     "applications:\n\n"
     "(1) INTERNET CENSORSHIP AND INFORMATION CONTROL — the Great Firewall and "
     "censorship measurement (OONI, Censored Planet, IODA, Tor bridge demand), "
@@ -105,7 +106,8 @@ SIGNALS = {
         "domestic discourse tightening: takedown/redaction pressure signals"),
     "baike-redaction": (
         "/readings/baike-redaction-latest.json",
-        "Baidu Baike redaction activity: what is being quietly edited or erased"),
+        "offline Baike redaction method: live acquisition is disabled pending authorized "
+        "access; retained evidence is stale and the invalid method-v1 point is quarantined"),
     "china-econ": (
         "/readings/china-econ-latest.json",
         "China money-market benchmarks pulled keyless from CFETS chinamoney: "
@@ -220,8 +222,9 @@ def tool_list_signals(args: dict) -> dict:
         "observatory": SITE,
         "signals": [{"name": k, "description": d, "url": SITE + p}
                     for k, (p, d) in SIGNALS.items()],
-        "note": "all signals self-update from public measurement data; each payload "
-                "carries generated_at and its upstream sources — cite both",
+        "note": "signals have independent cadence and status; some are disabled, optional, "
+                "stale, or abstaining. Inspect each payload's operational fields and "
+                "generated_at before citing it",
     }
 
 
@@ -478,7 +481,7 @@ def tool_get_signal(args: dict) -> dict:
         data = _fetch(name)
     except Exception as exc:
         return {"signal": name, "unavailable": str(exc),
-                "note": "fail-loud: nothing stale or invented is served"}
+                "note": "fail-loud: fetch failure is explicit; no replacement is invented"}
     data, truncated, gap = _sanitized(data, max_rows)
     out = {"signal": name, "source_url": SITE + SIGNALS[name][0], "data": data,
            "untrusted_fields": list(_UNTRUSTED_FIELDS)}
@@ -599,7 +602,7 @@ def tool_whats_happening(args: dict) -> dict:
 
 TOOLS = {
     "list_signals": (
-        "List every live signal Palimpsest publishes, across both of its "
+        "List every published signal Palimpsest exposes, across both of its "
         "applications: name, one-line description and source URL for each. "
         "Censorship and information control — OONI Great Firewall probes, "
         "Censored Planet, IODA outages, circumvention demand, takedown and "

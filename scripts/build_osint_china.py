@@ -409,6 +409,7 @@ def _is_degraded_upstream(status: str | None) -> bool:
     token = status.casefold().replace("-", "_").replace(" ", "_")
     return token in {
         "abstain", "abstained", "degraded", "empty", "error", "failed", "failure",
+        "disabled", "disabled_no_authorized_access", "halted", "halted_by_governance",
         "insufficient_data", "no_data", "not_ready", "partial", "stale", "starting",
         "unavailable", "unhealthy", "unknown",
     }
@@ -422,6 +423,20 @@ def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | 
     timestamp must not turn a broken or unwitnessed chain into a live integrity signal.
     Keep this check beside normalization so every consumer receives the same verdict.
     """
+    if spec.id == "baike-redaction":
+        failures: list[str] = []
+        if payload.get("valid_for_series") is not True:
+            failures.append("valid_for_series is not explicitly true")
+        collector_status = _text(payload.get("collector_status"))
+        if collector_status != "observed":
+            failures.append(
+                f"collector_status is {collector_status!r}, not 'observed'"
+                if collector_status is not None
+                else "collector_status is absent, not 'observed'")
+        if not failures:
+            return None
+        return "Baike series eligibility failed: " + "; ".join(failures)
+
     if spec.id != "anchors":
         return None
 
@@ -509,13 +524,24 @@ def _summary(
     if semantic_reason:
         parts.append(f"Semantic health limitation: {semantic_reason}.")
 
+    collector_status = _text(payload.get("collector_status"))
+    collector_reason = _text(payload.get("collector_reason"))
+    if collector_status and collector_status.casefold() != "observed":
+        limitation = f"Collector operational status is {collector_status!r}"
+        if collector_reason:
+            limitation += f": {collector_reason}"
+        parts.append(limitation + ".")
+
     upstream_text = (_text(payload.get("headline")) or _text(payload.get("reading"))
-                     or _text(payload.get("reason")) or _text(payload.get("note")))
+                     or collector_reason or _text(payload.get("reason"))
+                     or _text(payload.get("note")))
     if upstream_text:
         # Keep summaries useful in the command surface while the complete, untruncated text
         # remains in payload. The prefix makes clear this is an upstream statement.
         if len(upstream_text) > 500:
             upstream_text = upstream_text[:497].rstrip() + "…"
+        if not upstream_text.endswith((".", "!", "?", "。", "！", "？")):
+            upstream_text += "."
         parts.append(f"Upstream reading: {upstream_text}")
     metric_text = _format_metric(metric)
     if metric_text:
@@ -560,6 +586,9 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
                 "reason": load_error,
                 "age_hours": None,
                 "upstream_status": None,
+                "collector_status": None,
+                "collector_reason": None,
+                "pipeline_checked_at": None,
             },
             "source": spec.source_fallback,
             "method": spec.method_fallback,
@@ -576,6 +605,8 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     source, method, scope = _provenance(payload, spec)
     upstream_status = _upstream_status(payload)
     semantic_reason = _semantic_health_reason(spec, payload)
+    if spec.id == "baike-redaction" and semantic_reason:
+        metric = None
 
     if measured_at is None:
         status = "corrupt"
@@ -625,6 +656,9 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             "reason": reason,
             "age_hours": age_hours,
             "upstream_status": upstream_status,
+            "collector_status": _text(payload.get("collector_status")),
+            "collector_reason": _text(payload.get("collector_reason")),
+            "pipeline_checked_at": _text(payload.get("pipeline_checked_at")),
         },
         "source": source,
         "method": method,

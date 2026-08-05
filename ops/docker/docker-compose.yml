@@ -57,7 +57,6 @@ services:
       # Bare names (no `=value`) mean: inherit from the host environment if set.
       # The image contains none of these values.
       - OPENROUTER_API_KEY              # the reading fails loud if this is absent
-      - PALIMPSEST_PROXY               # app-level egress seam for in-country collectors
       - HTTPS_PROXY                    # urllib honors this for the OpenRouter call
       - HTTP_PROXY
       - NO_PROXY

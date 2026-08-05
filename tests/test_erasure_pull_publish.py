@@ -178,3 +178,59 @@ def test_a_round_where_no_layer_reported_republishes_a_null_index(publish, tmp_p
     assert second["generated_at"] > first["generated_at"]
     assert second["last_changed_at"] == first["last_changed_at"]
     assert len(_history(tmp_path)) == 1
+
+
+def test_narrative_operational_transition_moves_composite_history(publish, tmp_path):
+    run, _ = publish
+    generated = _hours_ago(24 * 30)
+    baike_path = tmp_path / "baike-redaction-latest.json"
+    base = {
+        "generated_at": generated,
+        "pipeline_checked_at": _hours_ago(2),
+        "status": "disabled",
+        "collector_status": "disabled_no_authorized_access",
+        "collector_reason": "Baike collection is disabled pending authorized access",
+        "rewrite_index": None,
+        "valid_for_series": False,
+    }
+    baike_path.write_text(json.dumps(base), encoding="utf-8")
+    first = run()
+    before = len(_history(tmp_path))
+
+    base.update({
+        "pipeline_checked_at": _hours_ago(1),
+        "status": "halted",
+        "collector_status": "halted_by_governance",
+        "collector_reason": "Baike collection halted by governance",
+    })
+    baike_path.write_text(json.dumps(base), encoding="utf-8")
+    second = run()
+    history = _history(tmp_path)
+
+    first_narrative = next(l for l in first["layers"] if l["layer"] == "narrative")
+    second_narrative = next(l for l in second["layers"] if l["layer"] == "narrative")
+    assert first_narrative["collector_status"] == "disabled_no_authorized_access"
+    assert second_narrative["collector_status"] == "halted_by_governance"
+    assert len(history) == before + 1
+    assert history[-1]["collector_status"]["narrative"] == "halted_by_governance"
+    assert second["last_changed_at"] == second["generated_at"]
+
+
+def test_legacy_numeric_baike_without_eligibility_metadata_is_quarantined(
+        publish, tmp_path):
+    run, _ = publish
+    (tmp_path / "baike-redaction-latest.json").write_text(json.dumps({
+        "generated_at": _hours_ago(1),
+        "status": "ok",
+        "rewrite_index": 90.0,
+        "n_comparable": 10,
+        "n_forked": 9,
+    }), encoding="utf-8")
+
+    out = run()
+    narrative = next(layer for layer in out["layers"]
+                     if layer["layer"] == "narrative")
+    assert narrative["status"] == "QUARANTINED"
+    assert narrative["value"] is None
+    assert narrative["withheld_value"] == 90.0
+    assert "narrative" not in out["layers_contributing"]

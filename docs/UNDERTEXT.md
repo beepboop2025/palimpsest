@@ -48,14 +48,10 @@ observation = f( query × geo × cohort × surface × time )
 | `time` | re-probing on a schedule | deletion velocity falls out for free |
 
 Tomography is reconstructing the censorship function over this tensor. The open core in this
-repository (`collectors/undertext.py`) ships the tensor, the divergence math, and a generic
-**web vantage** that uses the optional `PALIMPSEST_PROXY` egress seam. The simplest live
-configuration — `GLOBAL` (direct) vs an in-country egress view of the same query — is already
-real intelligence: *what the global internet sees versus what an in-country exit is served.*
-
-> **In-country vantage backends** (residential exits, in-app device reads) are
-> deployment-specific *infrastructure*, not part of this open core, and are never a person:
-> see [OSINT_SOURCES.md](OSINT_SOURCES.md) and [ETHICS.md](ETHICS.md).
+repository (`collectors/undertext.py`) ships the tensor, divergence math, and a generic
+**web vantage** for approved public surfaces. A proxy argument is deployment plumbing, not
+authorization. This repository configures no in-country route, and both generic client paths
+refuse Baidu Baike before egress.
 
 ## 4. The key idea: divergence is the payload
 
@@ -120,8 +116,8 @@ vocabulary faster than manual curation.
 collectors/undertext.py
   Vantage / Probe / Observation     # the tensor coordinates and one reading
   DivergenceDetector                # time-divergence + cross-vantage forks
-  JsonBaselineStore                 # replayable baselines (you only see deletion if you remember)
-  WebVantagePoint                   # governance-gated generic web vantage (PALIMPSEST_PROXY seam)
+  JsonBaselineStore                 # fingerprint, presence, and timestamp state, not source text
+  WebVantagePoint                   # governance-gated generic web vantage for approved surfaces
   divergence_to_observation()       # adapter → the existing DDTI observation schema
 ```
 

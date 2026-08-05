@@ -67,10 +67,10 @@ hand-wave: un-censorable public infrastructure.
 
 - **Live now:** network + model layers report real numbers; the composite is
   their mean. First sealed ledger entries are committed with this change.
-- **Narrative layer is ARMED, not yet reporting:** `baike_redaction.py` is built
-  but its first sealed reading needs the outside-the-wall egress seam
-  (`PALIMPSEST_PROXY`), since the GFW blocks Wikipedia. Until then the page shows
-  it as ARMED with the reason, never a fabricated value.
+- **Narrative layer is disabled pending authorized access:** `baike_redaction.py`
+  remains offline-testable, but this repository contains no live Baike route, proxy,
+  or bypass path. Historical readings stay sealed; a null retained reading is rendered
+  **STALE** or **UNAVAILABLE** with its path and age, never refreshed as a live value.
 - **False positives are the enemy.** Content changes for boring reasons (redesigns,
   quality retraining). Every layer must stay conservative and fail-loud; a null
   result is a reportable result.

@@ -21,18 +21,17 @@ The two ideas that make it work:
     same logical query (same `observation_key`) that returns a *different* content
     fingerprint is the alarm: a deletion, a quiet mutation, or — across two vantages at
     once — a geo/cohort fork (differential serving / shadowban).
-  * **Evidentiary by construction.** Fingerprints are sha256 over `0x1f`-joined fields and
-    baselines are replayable, so any divergence claim is reproducible — a divergence you
-    cannot replay is not a finding.
+  * **Evidence state by construction.** Fingerprints are sha256 over `0x1f`-joined fields.
+    The default baseline store retains fingerprint, presence, and timestamp, not source text.
+    Content-level replay requires separately retained snapshots.
 
 SCOPE / SAFETY (the analytical-OSINT line, held). PUBLIC READS ONLY: no account creation,
 no CAPTCHA-solving, no impersonation, no intrusion, no injection. We observe differential
 responses; we never manipulate. Active probing runs only behind the governance layer
 (`core/governance.py`): the kill switch can halt it instantly and a rate ceiling keeps it
-polite. In-country *vantage backends* (residential exits, in-app device reads) are
-deployment-specific infrastructure and are intentionally NOT part of this open core — this
-module ships the method and the math, plus a generic web vantage that uses the optional
-`PALIMPSEST_PROXY` egress seam. Standard-library only.
+polite. Deployment-specific vantage backends are intentionally NOT part of this open core.
+The generic web vantage may use an operator-reviewed proxy for approved surfaces, but it
+explicitly refuses Baidu Baike. Standard-library fallback included.
 """
 
 from __future__ import annotations
@@ -421,15 +420,52 @@ DEFAULT_SURFACES = [
 _MIN_PRESENT_LEN = 200  # below this, the page is empty/blocked/interstitial → present=False
 _USER_AGENT = "Mozilla/5.0 (Palimpsest/0.2; open-source censorship research)"
 _MAX_BYTES = 8 * 1024 * 1024
+_MAX_REDIRECTS = 5
+_DISABLED_FETCH_HOSTS = frozenset({"baike.baidu.com"})
+
+
+def _canonical_fetch_host(url: str) -> str:
+    """Return a conservative ASCII host before either HTTP client sees the URL."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        authority = parts.netloc
+        if (not authority or "%" in authority or "\\" in authority
+                or any(ord(char) < 0x21 or ord(char) > 0x7e for char in authority)):
+            raise ValueError("non-canonical authority")
+        host = parts.hostname
+        if not host:
+            raise ValueError("missing host")
+        return host.lower().rstrip(".")
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise urllib.error.URLError(
+            "non-canonical URL authority is disabled before egress") from exc
+
+
+def _reject_disabled_surface(url: str) -> None:
+    """Fail before egress for surfaces that have no authorized live collection path."""
+    host = _canonical_fetch_host(url)
+    if any(host == blocked or host.endswith("." + blocked)
+           for blocked in _DISABLED_FETCH_HOSTS):
+        raise urllib.error.URLError(
+            "live Baike acquisition is disabled pending authorized access")
+
+
+class _GuardedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Apply the disabled-surface policy before urllib follows a redirect."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        _reject_disabled_surface(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def _stdlib_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """Minimal stdlib GET honoring the optional PALIMPSEST_PROXY egress seam.
+    """Minimal stdlib GET honoring an explicit operator-supplied proxy argument.
 
     Kept as the fallback so a bare clone with no dependencies still works, which is
     the promise the module docstring makes.
     """
-    handlers = [urllib.request.HTTPRedirectHandler()]
+    _reject_disabled_surface(url)
+    handlers = [_GuardedRedirectHandler()]
     if proxy:
         handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
     opener = urllib.request.build_opener(*handlers)
@@ -439,50 +475,40 @@ def _stdlib_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
 
 
 def _httpx_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """GET through httpx, whose TLS handshake some WAFs accept where they refuse
-    urllib's. Raises ImportError when httpx is absent so the caller can fall back."""
+    """Compatibility GET for approved surfaces. Baike is rejected before client creation."""
+    _reject_disabled_surface(url)
     import httpx                                    # noqa: PLC0415 — optional dependency
-    kwargs = {"timeout": timeout, "follow_redirects": True,
+    kwargs = {"timeout": timeout, "follow_redirects": False,
               "headers": {"User-Agent": _USER_AGENT}}
     if proxy:
         kwargs["proxy"] = proxy
     with httpx.Client(**kwargs) as client:
-        resp = client.get(url)
+        current = url
+        for redirect_count in range(_MAX_REDIRECTS + 1):
+            resp = client.get(current)
+            if resp.status_code not in {301, 302, 303, 307, 308}:
+                break
+            location = resp.headers.get("location")
+            if not location:
+                break
+            if redirect_count >= _MAX_REDIRECTS:
+                raise urllib.error.URLError("redirect limit exceeded")
+            current = urllib.parse.urljoin(current, location)
+            _reject_disabled_surface(current)
     body = resp.content[:_MAX_BYTES].decode("utf-8", "replace")
     if resp.status_code >= 400:
-        # Raise the STDLIB error type, not httpx's. Callers of this seam are written
-        # against urllib's contract and branch on `.code`, and that branching carries
-        # meaning: baike's fetch_baike treats 404 as a real absence ("deleted") rather
-        # than a transport failure. Raising httpx.HTTPStatusError instead would sail
-        # past those handlers into a generic except, and the entities that 404 are
-        # exactly the most censored ones — 六四事件, 法轮功, 天安门母亲, 709大抓捕,
-        # 白纸运动 all return 404 while 刘晓波 and 李文亮 return 200. Losing that branch
-        # would discard the observation the collector exists to make.
+        # Preserve the stdlib exception contract used by generic surface adapters.
         raise urllib.error.HTTPError(url, resp.status_code, body, resp.headers, None)
     return body
 
 
 def _default_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """Fetch a public surface, preferring httpx and falling back to stdlib urllib.
+    """Fetch an approved public surface, preferring httpx with a stdlib fallback.
 
-    WHY THE PREFERENCE, because it looks like a gratuitous dependency and is not.
-
-    Baidu Baike refuses urllib with HTTP 403 and serves httpx a full 213KB page —
-    same IP, same URL, same User-Agent, same second, reproduced across interleaved
-    rounds. It is not geography, not an IP reputation ban, and not HTTP/2 (httpx
-    negotiated plain HTTP/1.1 and still got through). The discriminator is the TLS
-    handshake fingerprint: httpx's cipher and extension ordering differs from
-    urllib's, and the WAF accepts one and not the other.
-
-    That distinction had real cost. The baike signal spent twenty days abstaining
-    with a published reason blaming geography and asking for a China-reachable
-    proxy, when what it actually needed was a different client on the same machine.
-    curl does not help either — curl 403s here where httpx succeeds — so the
-    obvious "shell out to curl" fix would have failed AND widened the execution
-    surface for nothing.
-
-    Set PALIMPSEST_FETCH=stdlib to force the fallback, e.g. to reproduce a refusal.
+    The deny check runs before either client path and cannot be bypassed with
+    ``PALIMPSEST_FETCH`` or a proxy argument.
     """
+    _reject_disabled_surface(url)
     if os.environ.get("PALIMPSEST_FETCH") == "stdlib":
         return _stdlib_fetch(url, proxy=proxy, timeout=timeout)
     try:
@@ -497,7 +523,7 @@ class WebVantagePoint:
     Governance-gated: before any outbound request it consults an optional kill switch
     (`require_live()`) and an optional rate ceiling (`acquire()`), so active probing is
     polite and instantly haltable. `fetch` is injectable for testing; the default uses
-    stdlib urllib through the optional `PALIMPSEST_PROXY` egress seam.
+    an approved generic client path. Baike is denied before egress.
 
     A fetch that fails ABSTAINS (features={"abstain": True, "reason": "fetch-error"}) rather
     than reporting absence — a network error is not a deletion.
@@ -523,6 +549,8 @@ class WebVantagePoint:
                 self._rate.acquire()              # polite by construction
             url = s["url"].format(query=urllib.parse.quote(probe.query))
             try:
+                # An injected transport is still subject to the source policy.
+                _reject_disabled_surface(url)
                 body = self._fetch(url)
             except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
                 # A transport failure is NOT a censorship finding. Abstain — record the

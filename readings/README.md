@@ -43,7 +43,7 @@ the method is on [`bleedthrough.html`](bleedthrough.html) and the code is open.
 | Signal | Cadence | Latest | Time-series |
 | --- | --- | --- | --- |
 | Weibo hot-search (allowed-attention denominator) | Every 6h | [`weibo-hotsearch-latest.json`](weibo-hotsearch-latest.json) | [`weibo-hotsearch-history.jsonl`](weibo-hotsearch-history.jsonl) |
-| Baike redaction-diff | Every 6h | [`baike-redaction-latest.json`](baike-redaction-latest.json) | [`baike-redaction-history.jsonl`](baike-redaction-history.jsonl) |
+| Baike redaction-diff | Disabled pending authorized access; retained artifact only | [`baike-redaction-latest.json`](baike-redaction-latest.json) | [`baike-redaction-history.jsonl`](baike-redaction-history.jsonl) |
 | Wayback reconstruction | Every 12h | [`wayback-latest.json`](wayback-latest.json) | [`wayback-history.jsonl`](wayback-history.jsonl) |
 
 **Model layer and the sealed record**

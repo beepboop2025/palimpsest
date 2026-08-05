@@ -51,7 +51,11 @@ HIST = os.path.join(READINGS, "erasure-observatory-history.jsonl")
 # and no as_of at all. Values are unchanged today because everything is currently fresh,
 # which is precisely the case this counter exists for: without the bump the site would
 # keep serving a reading that does not carry the freshness fields it now guarantees.
-METHOD_VERSION = 2
+# 3 (2026-08-05): a null narrative reading is also a dated claim. The composite renders
+# it STALE or UNAVAILABLE with its reading path and age, rather than leaving it ARMED.
+# 4 (2026-08-05): operational collector state is carried into the narrative layer and
+# its history state, so disabled, halted, and observed are distinct movements.
+METHOD_VERSION = 4
 
 
 # The Generative Firewall reading refreshes daily (workflow: gfi-refresh.yml) and lands
@@ -82,8 +86,8 @@ NETWORK_STALE_AFTER_HOURS = float(_FUSION_MAX_AGE_HOURS.get("ooni", 36.0))
 # fourth input without an entry is a KeyError at import, not a silent unbounded publish.
 #
 # censored_planet and net4people were already bounded in vantage_fusion's table and this
-# runner simply was not consulting it. Baike has no cron of its own — it refreshes inside
-# erasure-refresh.yml every 6h — so it takes the same bound as the other 6-hourly input.
+# runner simply was not consulting it. Baike's retained reading is checked on the same
+# six-hourly composite cadence; a disabled collector does not refresh its timestamp.
 INPUT_MAX_AGE_HOURS = {
     "ooni-gfw-latest.json": NETWORK_STALE_AFTER_HOURS,
     "baike-redaction-latest.json": 36.0,
@@ -319,11 +323,13 @@ def main() -> None:
                                  "missing, malformed, or carrying no index)"})
 
     # ---- NARRATIVE erasure: Baike redaction-diff (0-100) -----------------
-    # baike_redaction.py is armed; its reading is published as baike-redaction-latest.json
-    # once its first sealed pull runs (needs the outside-the-wall egress seam). Until then
-    # we report it ABSENT with a reason rather than fake a number.
+    # Baike acquisition is disabled. The retained observation remains visible with its
+    # original timestamp, while collector_status says what the current pipeline can do.
     baike, b_as_of, b_age_hours, b_fresh = _bounded_reading("baike-redaction-latest.json", now)
     b_index = (baike or {}).get("rewrite_index")
+    b_collector_status = (baike or {}).get("collector_status")
+    b_collector_reason = (baike or {}).get("collector_reason")
+    b_pipeline_checked_at = (baike or {}).get("pipeline_checked_at")
     # Seal whatever the narrative instrument recorded — a real index OR an honest abstain
     # (both are timestamped provenance of what we saw and tried).
     if baike:
@@ -331,7 +337,11 @@ def main() -> None:
         if e:
             sealed.append({"source": "baike-redaction", "seq": e["seq"], "entry_hash": e["entry_hash"]})
     b_readable = isinstance(b_index, (int, float)) and not isinstance(b_index, bool)
-    if b_readable and b_fresh:
+    # Scientific eligibility is opt-in. Legacy payloads lack both fields and must not
+    # inherit validity merely because they predate the contract.
+    b_series_valid = (baike or {}).get("valid_for_series") is True
+    b_collector_observed = b_collector_status == "observed"
+    if b_readable and b_fresh and b_series_valid and b_collector_observed:
         layers.append({
             "layer": "narrative",
             "title": "Narrative erasure",
@@ -343,7 +353,7 @@ def main() -> None:
             "age_days": round(b_age_hours / 24.0, 2),
             "age_hours": round(b_age_hours, 1),
         })
-    elif b_readable:
+    elif b_readable and b_series_valid and b_collector_observed:
         # Readable but not current. This branch had never existed: a Baike index that went
         # stale would have published as today's number, which is precisely the bug the model
         # layer was fixed for — sitting unfixed two layers down in the same function.
@@ -354,14 +364,70 @@ def main() -> None:
             reading="baike-redaction-latest.json", value=float(b_index),
             as_of=b_as_of, age_hours=b_age_hours,
             bound_hours=INPUT_MAX_AGE_HOURS["baike-redaction-latest.json"]))
+    elif b_readable:
+        # A retained number can be inspectable without remaining publishable. This catches
+        # quarantined method output and a collector that was disabled after its last look.
+        status = "QUARANTINED" if not b_series_valid else "UNAVAILABLE"
+        source_reason = (b_collector_reason
+                         or (baike or {}).get("reason")
+                         or "Baike collection disabled pending authorized access")
+        layers.append({
+            "layer": "narrative",
+            "title": "Narrative erasure",
+            "value": None,
+            "status": status,
+            "detail": ("encyclopedia entries rewritten to the state line; sensitive terms "
+                       "excised and sourcing collapsed to state media"),
+            "reason": source_reason,
+            "reading": "baike-redaction-latest.json",
+            "as_of": b_as_of,
+            "withheld_value": round(float(b_index), 1),
+        })
     else:
-        # surface the instrument's own reason when it published one, else the generic armed note
-        reason = ((baike or {}).get("reason")
-                  or "Baike redaction-diff instrument built; first sealed reading pending outside-the-wall egress")
-        layers.append({"layer": "narrative", "title": "Narrative erasure",
-                       "value": None, "status": "ARMED",
-                       "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
-                       "reason": reason})
+        # A null narrative reading is an abstention, not an armed-but-current layer. It may
+        # represent a disabled instrument or insufficient comparable evidence; either way,
+        # make its source path and age explicit so the composite cannot look healthy by omission.
+        reading = "baike-redaction-latest.json"
+        path = f"readings/{reading}"
+        detail = ("encyclopedia entries rewritten to the state line — sensitive terms excised, "
+                  "sourcing collapsed to state media")
+        source_reason = ((baike or {}).get("collector_reason")
+                         or (baike or {}).get("reason")
+                         or "Baike collection disabled pending authorized access")
+        if b_age_hours is None:
+            status = "UNAVAILABLE"
+            reason = (f"Baike narrative layer unavailable: {source_reason}. Source path {path} "
+                      "has no usable observation timestamp, so no current value can be claimed")
+            layer = {"layer": "narrative", "title": "Narrative erasure", "value": None,
+                     "status": status, "detail": detail, "reason": reason, "reading": reading,
+                     "as_of": b_as_of}
+        elif b_age_hours > INPUT_MAX_AGE_HOURS[reading]:
+            status = "STALE"
+            age = f"{b_age_hours:.1f} hours" if b_age_hours < 48 else f"{b_age_hours / 24:.1f} days"
+            reason = (f"Baike narrative layer unavailable: {source_reason}. Source path {path} "
+                      f"is {age} old (as of {b_as_of}), beyond the "
+                      f"{INPUT_MAX_AGE_HOURS[reading]:.1f}-hour freshness bound")
+            layer = {"layer": "narrative", "title": "Narrative erasure", "value": None,
+                     "status": status, "detail": detail, "reason": reason, "reading": reading,
+                     "as_of": b_as_of, "age_hours": round(b_age_hours, 1)}
+        else:
+            status = "UNAVAILABLE"
+            reason = (f"Baike narrative layer unavailable: {source_reason}. Source path {path} "
+                      f"is current as of {b_as_of}, but it contains no reportable index")
+            layer = {"layer": "narrative", "title": "Narrative erasure", "value": None,
+                     "status": status, "detail": detail, "reason": reason, "reading": reading,
+                     "as_of": b_as_of, "age_hours": round(b_age_hours, 1)}
+        layers.append(layer)
+
+    # Operational state is not measurement time. Carry it separately on every narrative
+    # shape so JSON, the public dashboard, history, and MCP all tell the same story.
+    narrative_layer = layers[-1]
+    if b_collector_status:
+        narrative_layer["collector_status"] = b_collector_status
+    if b_collector_reason:
+        narrative_layer["collector_reason"] = b_collector_reason
+    if b_pipeline_checked_at:
+        narrative_layer["pipeline_checked_at"] = b_pipeline_checked_at
 
     # ---- cross-checks (different scales, not folded into the composite) ---
     # A cross-check is a corroborating number a reader weighs against the layers, so a stale
@@ -440,8 +506,12 @@ def main() -> None:
     # longer the gate on writing the reading — it is the gate on the history file
     # and on last_changed_at below.
     prev = _load("erasure-observatory-latest.json") or {}
-    prev_vals = [(l.get("layer"), l.get("value")) for l in prev.get("layers", [])]
-    cur_vals = [(l.get("layer"), l.get("value")) for l in layers]
+    def layer_state(layer):
+        return (layer.get("layer"), layer.get("value"), layer.get("status"),
+                layer.get("collector_status"))
+
+    prev_vals = [layer_state(l) for l in prev.get("layers", [])]
+    cur_vals = [layer_state(l) for l in layers]
     changed = (prev.get("erasure_index") != composite
                or prev_vals != cur_vals
                or (prev.get("integrity") or {}).get("head_hash") != ledger_summary["head_hash"])
@@ -475,6 +545,11 @@ def main() -> None:
                 "generated_at": out["generated_at"],
                 "erasure_index": composite,
                 "layers": {l["layer"]: l.get("value") for l in layers},
+                "layer_status": {l["layer"]: l.get("status", "REPORTING") for l in layers},
+                "collector_status": {
+                    l["layer"]: l.get("collector_status") for l in layers
+                    if l.get("collector_status")
+                },
                 "ledger_entries": ledger_summary["entries"],
                 "merkle_root": ledger_summary["merkle_root"],
             }, ensure_ascii=False) + "\n")

@@ -10,6 +10,7 @@ fetch handling, the lexical classifiers, and the DDTI hand-off are all exercised
 network.
 """
 
+import io
 import urllib.error
 
 import pytest
@@ -358,6 +359,66 @@ def test_real_deletion_is_detected_distinctly():
     assert dels[0].severity() == "critical"  # <3600s ⇒ censor graded it urgent
 
 
+def test_generic_404_is_ambiguous_without_prior_present_evidence():
+    """A bare HTTP 404 cannot create an absence or fork finding on its own."""
+    e = Entity("某词条", lemma_id="404")
+
+    def not_found(url):
+        raise urllib.error.HTTPError(url, 404, "not found", hdrs=None, fp=io.BytesIO(b"not found"))
+
+    res = BaikeRedactionWatch(baike_fetch=not_found,
+                              wiki_fetch=_seq(_wiki("某词条", "开放记录存在。"))).observe(e)
+    assert res["status"] == "not_found_ambiguous"
+    assert res["baike"]["interstitial"] == "not_found_ambiguous"
+    assert not any(d.kind in (DELETION, ENCYCLOPEDIA_FORK) for d in res["divergences"])
+
+
+def test_generic_404_after_prior_present_is_availability_only():
+    """A prior page does not turn a generic transport response into content evidence."""
+    e = Entity("某词条", lemma_id="405")
+    page = _baike(summary="词条。", paras=["稳定内容。"])
+
+    def not_found(url):
+        raise urllib.error.HTTPError(url, 404, "not found", hdrs=None, fp=io.BytesIO(b"not found"))
+
+    calls = {"n": 0}
+
+    def present_then_not_found(url):
+        calls["n"] += 1
+        return not_found(url) if calls["n"] == 2 else page
+
+    w = BaikeRedactionWatch(baike_fetch=present_then_not_found,
+                            wiki_fetch=_seq(WIKI_MISSING, WIKI_MISSING, WIKI_MISSING))
+    w.observe(e, observed_at=1000.0)
+    res = w.observe(e, observed_at=2000.0)
+    dels = [d for d in res["divergences"] if d.kind == DELETION]
+    assert res["status"] == "availability_transition_unverified"
+    assert dels == []
+    assert res["availability"] == {
+        "observed": "http_404",
+        "prior_present_in_process": True,
+        "content_deletion_claim": False,
+        "reason": (
+            "generic HTTP 404 does not identify whether content was deleted, "
+            "rerouted, refused, or made temporarily unavailable"
+        ),
+    }
+    # The ambiguous round does not overwrite the last trusted baseline.
+    assert w.observe(e, observed_at=3000.0)["divergences"] == []
+
+
+def test_explicit_deletion_evidence_in_404_body_is_not_generic_404():
+    e = Entity("某词条", lemma_id="406")
+
+    def deleted(url):
+        raise urllib.error.HTTPError(url, 404, "not found", hdrs=None,
+                                     fp=io.BytesIO("该词条已被删除".encode()))
+
+    res = BaikeRedactionWatch(baike_fetch=deleted,
+                              wiki_fetch=_seq(WIKI_MISSING)).observe(e)
+    assert res["baike"]["interstitial"] == "deleted"
+
+
 def test_disambiguation_landing_is_flagged_not_treated_as_entity():
     e = Entity("张伟")  # common name, no lemma_id pinned
     w = BaikeRedactionWatch(baike_fetch=_seq('<div class="lemmaWgt-subLemmaList">多义词</div>'),
@@ -388,47 +449,36 @@ def test_default_fetch_is_inert_no_real_network(monkeypatch):
     zero). This is the inert claim as a TEST, not an inspection."""
     import collectors.baike_redaction as br
 
-    called = {"n": 0}
-
-    def tripwire(url, proxy=None, timeout=20.0):
-        called["n"] += 1
-        raise AssertionError("real urllib fetch must not be reached when inert")
-
-    monkeypatch.setattr(br, "_default_fetch", tripwire)
     monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
     monkeypatch.delenv("PALIMPSEST_PROXY", raising=False)
 
     w = br.BaikeRedactionWatch()  # every default, nothing injected
     res = w.observe(Entity("某词条", lemma_id="1"), observed_at=1000.0)
 
-    assert called["n"] == 0                              # the real fetch was never reached
     assert res["status"] == "baike_fetch_failed"         # fail-soft
     assert res["divergences"] == []                      # never a false zero
     assert res["baike"]["interstitial"] == "fetch_failed"
 
 
-def test_default_fetch_wiring_used_when_live_enabled(monkeypatch):
-    """The non-injected default DOES wire through to the urllib seam once live mode is
-    explicitly enabled (PALIMPSEST_LIVE=1), hitting the correct Baike + Wikipedia URLs. Pins
-    the default fetch path that the inert test deliberately short-circuits."""
+def test_default_fetch_stays_inert_even_when_legacy_live_env_is_set(monkeypatch):
+    """Legacy environment flags are not an authorization path to the real network."""
     import collectors.baike_redaction as br
 
-    seen = {"urls": []}
+    called = {"n": 0}
 
-    def fake(url, proxy=None, timeout=20.0):
-        seen["urls"].append(url)
-        return _baike(summary="正常词条。", paras=["内容。" * 30])
+    def tripwire(*args, **kwargs):
+        called["n"] += 1
+        raise AssertionError("legacy live flags must not enable Baike fetches")
 
-    monkeypatch.setattr(br, "_default_fetch", fake)
+    monkeypatch.setattr(br.urllib.request, "urlopen", tripwire)
     monkeypatch.setenv("PALIMPSEST_LIVE", "1")
-    monkeypatch.delenv("PALIMPSEST_PROXY", raising=False)
+    monkeypatch.setenv("PALIMPSEST_PROXY", "http://not-an-authorization-path.invalid")
 
     w = br.BaikeRedactionWatch()
     res = w.observe(Entity("某词条", lemma_id="1"), observed_at=1000.0)
 
-    assert any("baike.baidu.com" in u for u in seen["urls"])   # default Baike wiring exercised
-    assert any("zh.wikipedia.org" in u for u in seen["urls"])  # default Wikipedia wiring exercised
-    assert res["status"] == "ok"  # Baike parsed as present; the fetch seam was actually used
+    assert called["n"] == 0
+    assert res["status"] == "baike_fetch_failed"
 
 
 # ── governance gating ────────────────────────────────────────────────────────────────────────
@@ -543,15 +593,12 @@ def test_a_real_disambiguation_landing_is_still_caught():
     assert out["interstitial"] == "disambiguation"
 
 
-def test_the_pacing_stays_below_the_ban_threshold():
-    """0.5/s with a burst of 2 permitted ~20 reads in 40s, which is the burst
-    Baidu rate-bans on. A banned IP returns 403 for every entity, which reads as
-    'unreachable' and gets reported as a vantage problem — the pacing was
-    manufacturing the blocker the reading then blamed."""
-    from scripts.baike_redaction_pull import _RATE_PER_SEC, ENTITIES
-    reads = 2 * len(ENTITIES)
-    assert _RATE_PER_SEC <= 0.1, "pacing is back above the Baidu ban threshold"
-    assert reads / _RATE_PER_SEC >= 120, "a full pass should take minutes, not seconds"
+def test_public_runner_has_no_live_pacing_or_activation_knob():
+    """Disabled means the executable runner cannot tune or activate source probing."""
+    import scripts.baike_redaction_pull as pull
+
+    assert not hasattr(pull, "_RATE_PER_SEC")
+    assert "disabled pending authorized access" in pull.DISABLED_REASON
 
 
 def test_every_entity_has_a_resolvable_wiki_control():

@@ -70,6 +70,12 @@ def _write_current_source(directory: Path, spec, timestamp="2026-08-04T11:00:00Z
             "ots_status": "stamped",
             "wayback_ok": 1,
         })
+    if spec.id == "baike-redaction":
+        payload.update({
+            "status": "ok",
+            "collector_status": "observed",
+            "valid_for_series": True,
+        })
     _write_json(directory / spec.filename, payload)
     return payload
 
@@ -208,6 +214,59 @@ def test_explicit_upstream_abstention_is_degraded_not_promoted_to_live(mod, tmp_
     assert signal["live"] is False
     assert signal["health"]["upstream_status"] == "insufficient_data"
     assert "does not convert" in signal["summary"]
+
+
+def test_disabled_baike_collector_is_explicit_on_rollup_surface(mod, tmp_path):
+    _write_json(tmp_path / "baike-redaction-latest.json", {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "pipeline_checked_at": "2026-08-04T11:55:00Z",
+        "source": "fixture",
+        "status": "disabled",
+        "collector_status": "disabled_no_authorized_access",
+        "collector_reason": "Baike collection is disabled pending authorized access",
+        "rewrite_index": None,
+        "valid_for_series": False,
+        "n_comparable": 0,
+        "n_forked": 0,
+    })
+    signal = _signal(mod.build_document(tmp_path, NOW), "baike-redaction")
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert signal["health"]["upstream_status"] == "disabled"
+    assert signal["health"]["collector_status"] == "disabled_no_authorized_access"
+    assert signal["health"]["pipeline_checked_at"] == "2026-08-04T11:55:00Z"
+    assert "Collector operational status is 'disabled_no_authorized_access'" in signal["summary"]
+    assert "disabled pending authorized access" in signal["summary"]
+
+
+@pytest.mark.parametrize("payload", [
+    {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "source": "legacy fixture",
+        "status": "ok",
+        "rewrite_index": 90.0,
+        "n_comparable": 10,
+        "n_forked": 9,
+    },
+    {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "source": "quarantined fixture",
+        "status": "ok",
+        "collector_status": "observed",
+        "valid_for_series": False,
+        "rewrite_index": 90.0,
+        "n_comparable": 10,
+        "n_forked": 9,
+    },
+])
+def test_baike_metric_requires_explicit_series_and_collector_eligibility(
+        mod, tmp_path, payload):
+    _write_json(tmp_path / "baike-redaction-latest.json", payload)
+    signal = _signal(mod.build_document(tmp_path, NOW), "baike-redaction")
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert signal["metric"] is None
+    assert "Baike series eligibility failed" in signal["summary"]
 
 
 def test_believability_warmup_is_reporting_but_not_promoted_to_live(mod, tmp_path):

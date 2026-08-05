@@ -174,11 +174,12 @@ and we never claim in-China reachability (that is the UNDERTEXT / OONI lane).
 
 ## 6. Baike Redaction-Diff — `collectors/baike_redaction.py`
 
-**Method.** Baidu Baike is a state-moderated encyclopedia that silently rewrites contested
-entries and has deliberately removed the public's ability to view its own edit history — the
-act of redaction is hidden. We reconstruct it from outside the wall by content-addressing the
-entry over time and diffing it against the open record (Chinese Wikipedia). Two things are
-measured on this `surface`:
+**Method status: disabled pending authorized access.** Baidu Baike is a state-moderated
+encyclopedia that silently rewrites contested entries and has deliberately removed the public's
+ability to view its own edit history. The offline analytical method content-addresses an entry
+over time and diffs it against the open record (Chinese Wikipedia); this repository provides no
+live route, proxy, client modification, or refusal workaround. Two things would be measured on
+this `surface` from authorized evidence:
 
 - **`ENCYCLOPEDIA_FORK`** — Baike vs Chinese Wikipedia on the same contested entity. Because the
   two prose bodies always differ in register, comparing raw `content_fp` would flag every pair
@@ -193,20 +194,21 @@ measured on this `surface`:
   removal. Two or more markers relabels the mutation as a `STATE_REWRITE` — the act of rewriting
   history, reconstructed because Baike removed the public diff.
 
-**Maps to DDTI.** Both signals go through `divergence_to_observation()` into the existing
-selectivity / novelty index; the reconstructed snapshots are the replayable evidence.
+**Maps to DDTI.** Findings from authorized, retained snapshots can go through
+`divergence_to_observation()` into the existing selectivity / novelty index. The JSON baseline
+store retains only presence, fingerprint, and timestamp, so it is not replayable content
+evidence. A content-level label requires separately retained source snapshots.
 
-**Holds the lines.** *Line 1:* Baike and Wikipedia are public encyclopedias read with plain
-anonymous GETs from outside-the-wall infrastructure. We deliberately do **not** authenticate
-into Baike's restricted revision history even though an account could — that is not a public
-read and would break Line 1; reconstructing the diff from our own snapshots is both the safe and
-the correct method. *Line 2:* Baike is the **subject**; every judgement (what is sensitive, fork
-vs normal edit, what counts as a state rewrite) is made by transparent lexical / structural
-rules shipped as the finding's own `reasons[]` evidence — no LLM decides sensitivity. *Fail
-loud:* a blocked or failed fetch is `present=False` with a `fetch_failed` marker kept **distinct**
-from a real deletion (never-created, deleted, locked, disambiguation, and fetch-failed are five
-different states); from outside the wall the redaction *moment* is unobservable, so velocity is
-poll-bounded and shown suppressed.
+**Holds the lines.** *Line 1:* the repository deliberately does **not** authenticate into Baike's
+restricted revision history, route through a proxy, change a client fingerprint, or work around
+a refusal. Any future authorized collection must be separately reviewed and governance-gated.
+*Line 2:* Baike is the **subject**; every judgement (what is sensitive, fork vs normal edit, what
+counts as a state rewrite) is made by transparent lexical / structural rules shipped as the
+finding's own `reasons[]` evidence — no LLM decides sensitivity. *Fail loud:* a blocked or failed
+fetch is `present=False` with a `fetch_failed` marker kept **distinct** from real, explicit
+deletion evidence. A generic 404 remains availability evidence only, even after an earlier
+local present observation, and never enters deletion or fork scoring. Retained null readings are
+displayed as **STALE** or **UNAVAILABLE**, never refreshed as a live value.
 
 ## 7. Wayback Reconstruction — `collectors/wayback_vantage.py`
 
@@ -255,12 +257,12 @@ signal.
 | Blocklist Archaeology | a client-shipped keyword list | novelty (newly-added term) | injected list loader |
 | Silence Detection | a global-vs-domestic coverage gap | selectivity of *absence* (blackout) | injected domestic-volume feed |
 | GitHub-as-Refuge | a takedown-transparency / mirror-repo feed | selectivity (pressure) + novelty | injected GitHub read |
-| Baike Redaction-Diff | a state encyclopedia | selectivity + mutation (state rewrite) | injected fetch (`PALIMPSEST_PROXY` seam) |
+| Baike Redaction-Diff | a state encyclopedia | selectivity + mutation (state rewrite) | disabled pending authorized access (offline fixtures only) |
 | Wayback Reconstruction | the Internet Archive capture timeline | velocity (deletion bracket) + mutation (silent redaction) | **live** — injected CDX fetch (public archive) |
 
 All seven are **standard-library only** in their analytical core, fully unit-testable offline with
 an injected fake fetch / generate, and each emits into the DDTI index and gazetteer-evolution
-pipeline through the *same* adapter UNDERTEXT already uses. Nothing here reaches real Chinese
-infrastructure until a deployer explicitly injects a live source and clears the governance gate.
-This is a measurement commons, developed in the open as a public good — never a product, and
+pipeline through the *same* adapter UNDERTEXT already uses. The Baike collector is disabled
+pending authorized access; this repository contains no mechanism to reach real Chinese
+infrastructure through it. This is a measurement commons, developed in the open as a public good — never a product, and
 never a tool that monetizes the people or topics it observes.

@@ -105,19 +105,13 @@ scheduled runner.
 
 ---
 
-## Composing with an egress proxy
+## Composing with an outbound proxy
 
-Palimpsest already has an app-level egress seam, `PALIMPSEST_PROXY`, used by the
-in-country collectors (`baike_redaction`, `undertext`) to route reads through
-outside-the-wall infrastructure. This sandbox composes with it cleanly, on two
-independent layers:
+This image runs the Generative Firewall reading only. It does not run Baike or
+UNDERTEXT collection and does not forward `PALIMPSEST_PROXY`. If OpenRouter access
+must traverse operator-approved infrastructure, use the standard transport variables:
 
-- **App layer (`PALIMPSEST_PROXY`)** — passed straight through to the container.
-  Point it at your egress path and the in-country collectors honor it exactly as
-  they do on the host. The recurring GFI reading itself talks to OpenRouter,
-  which is reachable *outside* the wall, so it does not need this seam — but the
-  variable is forwarded for any collector you add that does.
-- **Transport layer (`HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY`)** — the GFI
+- **Transport layer (`HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY`)**: the GFI
   reading calls OpenRouter with stdlib `urllib`, which honors the standard proxy
   environment variables automatically. Set `HTTPS_PROXY` in your `gfi.env` (or
   shell) and the OpenRouter call routes through your egress proxy with no code
@@ -127,7 +121,7 @@ For stronger network containment you can also run the container on a Docker
 network whose only route out is an egress-proxy sidecar, so the collector
 physically cannot reach anything except the proxy. That is an infrastructure
 choice layered on top of the isolation here; this compose file keeps the default
-outbound network so it runs anywhere, and leaves the proxy pinning to you.
+outbound network so it runs anywhere, and leaves transport proxy pinning to you.
 
 ---
 
