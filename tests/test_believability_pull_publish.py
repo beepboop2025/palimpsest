@@ -170,6 +170,19 @@ def test_explicit_completed_period_supports_a_reproducible_backfill(monkeypatch)
     assert pull._target_period(now) == "2026-06"
 
 
+def test_older_backfill_updates_history_without_regressing_latest(publish,
+                                                                  monkeypatch):
+    run, tmp_path = publish
+    current = run(FULL, 7.0)
+    assert current["asof"] == "2026-07"
+
+    monkeypatch.setenv("BELIEVABILITY_PERIOD", "2026-06")
+    run(FULL, 7.0)
+
+    assert {row["month"] for row in _history(tmp_path)} == {"2026-06", "2026-07"}
+    assert _reading(tmp_path)["asof"] == "2026-07"
+
+
 def test_period_override_rejects_unreleased_or_malformed_months(monkeypatch):
     now = datetime(2026, 8, 5, tzinfo=timezone.utc)
     monkeypatch.setenv("BELIEVABILITY_PERIOD", "2026-08")
