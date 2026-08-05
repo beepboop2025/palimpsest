@@ -240,6 +240,41 @@ def test_a_fresh_narrative_layer_publishes_and_dates_itself(tmp_path, monkeypatc
     assert nar["as_of"] is not None and nar["age_hours"] < 3
 
 
+def test_a_stale_null_narrative_reading_is_stale_with_age_and_path(tmp_path, monkeypatch):
+    """A retained abstention ages too; it must not appear as an indefinitely armed layer."""
+    d = str(tmp_path)
+    _write(d, "baike-redaction-latest.json", {
+        "generated_at": _hours_ago(24 * 30), "rewrite_index": None,
+        "reason": "Baike collection disabled pending authorized access",
+    })
+    _point_at(monkeypatch, d)
+
+    nar = _layer(_run(d), "narrative")
+
+    assert nar["value"] is None
+    assert nar["status"] == "STALE"
+    assert nar["age_hours"] > 36
+    assert nar["reading"] == "baike-redaction-latest.json"
+    assert "readings/baike-redaction-latest.json" in nar["reason"]
+    assert "30.0 days old" in nar["reason"]
+
+
+def test_a_current_null_narrative_reading_is_unavailable_not_armed(tmp_path, monkeypatch):
+    d = str(tmp_path)
+    _write(d, "baike-redaction-latest.json", {
+        "generated_at": _hours_ago(2), "rewrite_index": None,
+        "reason": "Baike collection disabled pending authorized access",
+    })
+    _point_at(monkeypatch, d)
+
+    nar = _layer(_run(d), "narrative")
+
+    assert nar["value"] is None
+    assert nar["status"] == "UNAVAILABLE"
+    assert nar["reading"] == "baike-redaction-latest.json"
+    assert nar["age_hours"] < 3
+
+
 def test_a_stale_cross_check_is_dropped_and_the_drop_is_stated(tmp_path, monkeypatch):
     """A cross-check is a corroborating claim a reader weighs against the layers, so a stale
     one is a stale claim. Silently omitting it would read as 'we never had that check'."""

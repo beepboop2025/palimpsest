@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import types
+from datetime import datetime, timezone
 
 import pytest
 
@@ -47,8 +48,6 @@ def _observation(*, comparable: bool, forked: bool) -> dict:
 @pytest.fixture
 def publish(tmp_path, monkeypatch):
     """Run main() against a temp readings dir with the encyclopedia reads stubbed."""
-    monkeypatch.setenv("PALIMPSEST_LIVE", "1")
-    monkeypatch.delenv("PALIMPSEST_PROXY", raising=False)
     monkeypatch.delenv("PALIMPSEST_HALT", raising=False)
     monkeypatch.setattr(pull, "READINGS", str(tmp_path))
     monkeypatch.setattr(pull, "OUT", str(tmp_path / "baike-redaction-latest.json"))
@@ -66,7 +65,7 @@ def publish(tmp_path, monkeypatch):
                 return next(self._rows)
 
         monkeypatch.setattr(pull, "BaikeRedactionWatch", _Watch)
-        pull.main()
+        pull._publish_collected(datetime.now(timezone.utc), _Watch())
         path = tmp_path / "baike-redaction-latest.json"
         if not path.exists():
             return None
@@ -170,16 +169,31 @@ def test_too_few_comparable_entities_still_abstains(publish):
     assert out["rewrite_index"] is None
 
 
-def test_an_inert_round_does_not_stamp_a_fresh_observation_time(publish, monkeypatch):
-    """A round with the live network switched off never opened a socket, so it
+def test_disabled_round_does_not_stamp_a_fresh_observation_time(publish, monkeypatch):
+    """A disabled round never opened a socket, so it
     has no observation time to offer. The heartbeat is a claim about looking, and
     this round did not look."""
     run, tmp_path = publish
     first = run(comparable=0, forked=0)
 
-    monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
     pull.main()
 
+    with open(tmp_path / "baike-redaction-latest.json", encoding="utf-8") as f:
+        after = json.load(f)
+    assert after["generated_at"] == first["generated_at"]
+    assert len(_history(tmp_path)) == 1
+
+
+def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(publish, monkeypatch):
+    """An all-error run has no observation evidence and must leave the last reading intact."""
+    run, tmp_path = publish
+    first = run(comparable=0, forked=0)
+
+    class _AllErrorWatch:
+        def observe(self, entity):
+            raise OSError("fixture transport failure")
+
+    pull._publish_collected(datetime.now(timezone.utc), _AllErrorWatch())
     with open(tmp_path / "baike-redaction-latest.json", encoding="utf-8") as f:
         after = json.load(f)
     assert after["generated_at"] == first["generated_at"]

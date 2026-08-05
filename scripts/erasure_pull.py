@@ -51,7 +51,9 @@ HIST = os.path.join(READINGS, "erasure-observatory-history.jsonl")
 # and no as_of at all. Values are unchanged today because everything is currently fresh,
 # which is precisely the case this counter exists for: without the bump the site would
 # keep serving a reading that does not carry the freshness fields it now guarantees.
-METHOD_VERSION = 2
+# 3 (2026-08-05): a null narrative reading is also a dated claim. The composite renders
+# it STALE or UNAVAILABLE with its reading path and age, rather than leaving it ARMED.
+METHOD_VERSION = 3
 
 
 # The Generative Firewall reading refreshes daily (workflow: gfi-refresh.yml) and lands
@@ -82,8 +84,8 @@ NETWORK_STALE_AFTER_HOURS = float(_FUSION_MAX_AGE_HOURS.get("ooni", 36.0))
 # fourth input without an entry is a KeyError at import, not a silent unbounded publish.
 #
 # censored_planet and net4people were already bounded in vantage_fusion's table and this
-# runner simply was not consulting it. Baike has no cron of its own — it refreshes inside
-# erasure-refresh.yml every 6h — so it takes the same bound as the other 6-hourly input.
+# runner simply was not consulting it. Baike's retained reading is checked on the same
+# six-hourly composite cadence; a disabled collector does not refresh its timestamp.
 INPUT_MAX_AGE_HOURS = {
     "ooni-gfw-latest.json": NETWORK_STALE_AFTER_HOURS,
     "baike-redaction-latest.json": 36.0,
@@ -355,13 +357,39 @@ def main() -> None:
             as_of=b_as_of, age_hours=b_age_hours,
             bound_hours=INPUT_MAX_AGE_HOURS["baike-redaction-latest.json"]))
     else:
-        # surface the instrument's own reason when it published one, else the generic armed note
-        reason = ((baike or {}).get("reason")
-                  or "Baike redaction-diff instrument built; first sealed reading pending outside-the-wall egress")
-        layers.append({"layer": "narrative", "title": "Narrative erasure",
-                       "value": None, "status": "ARMED",
-                       "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
-                       "reason": reason})
+        # A null narrative reading is an abstention, not an armed-but-current layer. It may
+        # represent a disabled instrument or insufficient comparable evidence; either way,
+        # make its source path and age explicit so the composite cannot look healthy by omission.
+        reading = "baike-redaction-latest.json"
+        path = f"readings/{reading}"
+        detail = ("encyclopedia entries rewritten to the state line — sensitive terms excised, "
+                  "sourcing collapsed to state media")
+        source_reason = ((baike or {}).get("reason")
+                         or "Baike collection disabled pending authorized access")
+        if b_age_hours is None:
+            status = "UNAVAILABLE"
+            reason = (f"Baike narrative layer unavailable: {source_reason}. Source path {path} "
+                      "has no usable observation timestamp, so no current value can be claimed")
+            layer = {"layer": "narrative", "title": "Narrative erasure", "value": None,
+                     "status": status, "detail": detail, "reason": reason, "reading": reading,
+                     "as_of": b_as_of}
+        elif b_age_hours > INPUT_MAX_AGE_HOURS[reading]:
+            status = "STALE"
+            age = f"{b_age_hours:.1f} hours" if b_age_hours < 48 else f"{b_age_hours / 24:.1f} days"
+            reason = (f"Baike narrative layer unavailable: {source_reason}. Source path {path} "
+                      f"is {age} old (as of {b_as_of}), beyond the "
+                      f"{INPUT_MAX_AGE_HOURS[reading]:.1f}-hour freshness bound")
+            layer = {"layer": "narrative", "title": "Narrative erasure", "value": None,
+                     "status": status, "detail": detail, "reason": reason, "reading": reading,
+                     "as_of": b_as_of, "age_hours": round(b_age_hours, 1)}
+        else:
+            status = "UNAVAILABLE"
+            reason = (f"Baike narrative layer unavailable: {source_reason}. Source path {path} "
+                      f"is current as of {b_as_of}, but it contains no reportable index")
+            layer = {"layer": "narrative", "title": "Narrative erasure", "value": None,
+                     "status": status, "detail": detail, "reason": reason, "reading": reading,
+                     "as_of": b_as_of, "age_hours": round(b_age_hours, 1)}
+        layers.append(layer)
 
     # ---- cross-checks (different scales, not folded into the composite) ---
     # A cross-check is a corroborating number a reader weighs against the layers, so a stale

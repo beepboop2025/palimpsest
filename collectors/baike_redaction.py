@@ -31,13 +31,11 @@ are measured on this surface:
 
 WHY THIS STAYS ON THE TWO LINES (held, like UNDERTEXT and the Generative Firewall):
 
-  * PUBLIC / PERMITTED READS ONLY. Baike and Wikipedia are public encyclopedias; we issue
-    plain anonymous GETs from OUTSIDE-the-wall infrastructure (the optional ``PALIMPSEST_PROXY``
-    egress seam, since the GFW blocks Wikipedia). We deliberately do NOT authenticate into
-    Baike's restricted 历史版本 (revision history) even though a high-level account could —
-    that needs credentials, is not a public read, and breaks Line 1. Reconstructing the diff
-    from our own snapshots is both the safe and the correct method. No person inside China is
-    ever asked to act.
+  * DISABLED PENDING AUTHORIZED ACCESS. This repository ships no live Baike access path. The
+    collector is offline-testable through injected fixtures only; it does not authenticate,
+    route through a proxy, alter a client fingerprint, or attempt to work around a refusal.
+    Any future authorized collection must be separately reviewed and governance-gated before it
+    is introduced. No person inside China is ever asked to act.
   * NO Beijing-aligned model is ever the analyst. Baike is the SUBJECT under observation.
     Every judgement — what is sensitive, what counts as a state rewrite, fork vs normal edit —
     is made by the transparent lexical/structural rules below, auditable from the text alone
@@ -46,21 +44,18 @@ WHY THIS STAYS ON THE TWO LINES (held, like UNDERTEXT and the Generative Firewal
   * FAIL LOUD, NOT SILENT. Inert without a backend (never a false zero). A blocked/failed
     fetch is ``present=False`` with a ``fetch_failed`` marker kept DISTINCT from a real
     deletion (a timeout must never masquerade as a scrub). never-created / deleted / locked /
-    disambiguation / fetch-failed are five different states. From outside the wall the
+    disambiguation / fetch-failed / ambiguous-not-found are distinct states. From outside the wall the
     redaction *moment* is unobservable, so velocity is poll-bounded and shown suppressed.
 
-Standard-library only. The two fetchers are INJECTABLE; the defaults are INERT — they
-perform NO network I/O unless live mode is explicitly enabled (``PALIMPSEST_LIVE=1`` or a
-configured ``PALIMPSEST_PROXY``), so a bare ``BaikeRedactionWatch().observe(entity)``
-reaches out to nothing. A disabled/blocked fetch is fail-soft (present=False), never a
-false zero.
+Standard-library only. The two fetchers are INJECTABLE for offline fixtures; the defaults are
+permanently INERT and perform NO network I/O. A disabled/blocked fetch is fail-soft
+(present=False), never a false zero.
 """
 
 from __future__ import annotations
 
 import difflib
 import logging
-import os
 import re
 import time
 import urllib.error
@@ -72,7 +67,7 @@ from dataclasses import dataclass
 from collectors.undertext import (  # noqa: E402
     Vantage, Probe, Observation, Divergence, DivergenceDetector, JsonBaselineStore,
     content_key, normalize_body, items_fingerprint_text, extract_items,
-    divergence_to_observation, _default_fetch,
+    divergence_to_observation,
     DELETION, MUTATION,
 )
 
@@ -371,7 +366,7 @@ def encyclopedia_fork(entity: Entity, baike_ex: dict, wiki_ex: dict,
     monoculture, when the open record carries ≥2 sensitive terms Baike omits, or ≥1 such term
     with a real biographical gap. ``detail`` carries the exact delta so the fork self-evidences.
     """
-    if baike_ex.get("interstitial") in ("fetch_failed", "disambiguation"):
+    if baike_ex.get("interstitial") in ("fetch_failed", "disambiguation", "not_found_ambiguous"):
         return None
     if not wiki_ex.get("present"):
         return None
@@ -527,40 +522,24 @@ def _fetch_failed(url: str, kind: str) -> dict:
             "latest_year": None, "ref_domains": [], "url": url}
 
 
-def _live_enabled(proxy) -> bool:
-    """Is real outbound network I/O explicitly opted into? True only when a proxy egress is
-    configured or ``PALIMPSEST_LIVE`` is truthy. Default (neither) is INERT."""
-    if proxy:
-        return True
-    return os.environ.get("PALIMPSEST_LIVE", "").strip().lower() in ("1", "true", "yes", "on")
+def _disabled_default_fetch(url: str) -> str:
+    """Refuse default acquisition without opening a socket.
 
-
-def _governed_default_fetch(url: str, proxy: str = None) -> str:
-    """The INERT-by-default network seam used when no fetch is injected.
-
-    Unlike a raw ``_default_fetch``, this refuses to touch the network unless live mode is
-    EXPLICITLY enabled (``PALIMPSEST_LIVE=1`` or a configured ``PALIMPSEST_PROXY``). When it is
-    not, it raises ``URLError`` WITHOUT opening a socket, which the collector catches as
-    ``fetch_failed`` (present=False) — so a bare ``BaikeRedactionWatch().observe(entity)``, with
-    no injected fetch and no governance, performs no real GET at all (inert, never a false
-    zero). Governance gating (kill switch / rate ceiling) still runs first when provided."""
-    if not _live_enabled(proxy):
-        raise urllib.error.URLError(
-            "inert: live network disabled (set PALIMPSEST_LIVE=1 or configure PALIMPSEST_PROXY)")
-    return _default_fetch(url, proxy=proxy)
+    This is deliberately not an environment switch: enabling a variable must not turn an
+    offline research artifact into a live client. Tests supply explicit fixture fetchers.
+    """
+    raise urllib.error.URLError("Baike acquisition disabled pending authorized access")
 
 
 class BaikeRedactionWatch:
     """Watches a contested entity on Baike (subject) and Wikipedia (control), emitting
     ENCYCLOPEDIA_FORK and STATE_REWRITE / MUTATION / DELETION divergences.
 
-    Governance-gated exactly like ``WebVantagePoint``: before every outbound read it consults
-    the optional kill switch (``require_live()`` — raises if halted) and rate ceiling
-    (``acquire()`` — polite by construction). ``baike_fetch`` / ``wiki_fetch`` are injectable;
-    the defaults are INERT and refuse real network I/O unless live mode is EXPLICITLY enabled
-    (``PALIMPSEST_LIVE=1`` or a configured ``PALIMPSEST_PROXY`` egress seam — the GFW blocks
-    Wikipedia), going through stdlib urllib only then. A bare ``BaikeRedactionWatch().observe(
-    entity)`` performs no network I/O and returns no divergences — inert, never a false zero.
+    Governance-gated before every injected acquisition: the optional kill switch
+    (``require_live()`` — raises if halted) and rate ceiling (``acquire()``) run first.
+    ``baike_fetch`` / ``wiki_fetch`` are injectable for offline fixtures only; the defaults
+    are permanently inert. A bare ``BaikeRedactionWatch().observe(entity)`` performs no
+    network I/O and returns no divergences — inert, never a false zero.
 
     Time-divergence baselines persist via the injected ``store`` (e.g. ``JsonBaselineStore``);
     the full prior EXTRACTION (needed for the lexical rewrite classifier) is cached in memory,
@@ -568,11 +547,10 @@ class BaikeRedactionWatch:
     prior text is unavailable to relabel it STATE_REWRITE.
     """
 
-    def __init__(self, *, baike_fetch=None, wiki_fetch=None, proxy=None, store=None,
+    def __init__(self, *, baike_fetch=None, wiki_fetch=None, store=None,
                  kill_switch=None, rate_ceiling=None):
-        self.proxy = proxy if proxy is not None else os.environ.get("PALIMPSEST_PROXY")
-        self._baike_fetch = baike_fetch or (lambda url: _governed_default_fetch(url, proxy=self.proxy))
-        self._wiki_fetch = wiki_fetch or (lambda url: _governed_default_fetch(url, proxy=self.proxy))
+        self._baike_fetch = baike_fetch or _disabled_default_fetch
+        self._wiki_fetch = wiki_fetch or _disabled_default_fetch
         self._detector = DivergenceDetector(store=store)
         self._kill = kill_switch
         self._rate = rate_ceiling
@@ -591,8 +569,17 @@ class BaikeRedactionWatch:
             html = self._baike_fetch(url)
         except urllib.error.HTTPError as e:
             if getattr(e, "code", None) == 404:
-                ex = extract_baike("")          # nothing to parse
-                ex["interstitial"] = "deleted"  # a 404 is a real absence, not a fetch error
+                # A bare 404 is an ambiguous transport response, not deletion evidence. If
+                # the response body has one of the explicit deletion signatures, preserve
+                # that evidence; otherwise observe() can only treat it as a deletion after a
+                # previously-present local baseline.
+                try:
+                    body = e.read().decode("utf-8", errors="replace")
+                except Exception:
+                    body = ""
+                ex = extract_baike(body)
+                if ex.get("interstitial") != "deleted":
+                    ex["interstitial"] = "not_found_ambiguous"
                 ex["url"] = url
                 return ex
             return _fetch_failed(url, "baike")
@@ -641,7 +628,8 @@ class BaikeRedactionWatch:
                   "baike": baike_ex, "wiki": wiki_ex,
                   "baike_obs": baike_obs, "wiki_obs": wiki_obs, "divergences": []}
 
-        # Detection (i): the cross-surface fork (single round; never stored).
+        # Detection (i): the cross-surface fork (single round; never stored). A generic
+        # 404 never supplies absence evidence for this comparison.
         fork = encyclopedia_fork(entity, baike_ex, wiki_ex, baike_obs, wiki_obs)
         if fork is not None:
             result["divergences"].append(fork)
@@ -660,6 +648,13 @@ class BaikeRedactionWatch:
         # Detection (ii): time-divergence on the Baike surface (DELETION / MUTATION).
         key = baike_obs.observation_key()
         prev_ex = self._last_extract.get(key)
+        if interstitial == "not_found_ambiguous":
+            if not (prev_ex and prev_ex.get("present")):
+                result["status"] = "not_found_ambiguous"
+                return result
+            # A previously captured present entry bounds the claim to a transition. Keep the
+            # generic 404 label in the evidence; do not upgrade it to an asserted deletion.
+            result["status"] = "not_found_after_present"
         div = self._detector.observe(baike_obs)
         if div is not None:
             baike_obs.features["latency_bounded_by_poll"] = True  # velocity honesty (see below)

@@ -7,10 +7,9 @@ Wikipedia) — sensitive terms excised, sourcing collapsed to state media, or th
 absent entirely. This is the narrative layer of the Information Erasure Observatory.
 
 HONESTY / FAIL-LOUD (load-bearing):
-  * The Great Firewall blocks Wikipedia from inside China, and Baidu Baike blocks or
-    hangs for non-China / datacenter IPs. So a genuine two-sided diff needs an
-    outside-the-wall egress that can ALSO reach Baike (a residential/China-reachable
-    proxy via PALIMPSEST_PROXY). From open infrastructure, Baike reads fail.
+  * Live Baike acquisition is disabled pending authorized access. This runner has no
+    environment flag, proxy setting, or fallback that can turn it on. It preserves
+    existing evidence and publishes nothing new when no authorized observation occurred.
   * When too few entities yield a COMPARABLE read (Baike reachable AND Wikipedia
     present), we ABSTAIN: we publish rewrite_index = null with status
     "insufficient_data" and the exact reason. We never emit a fabricated 0 or a
@@ -18,11 +17,8 @@ HONESTY / FAIL-LOUD (load-bearing):
   * The rewrite_index is computed ONLY over comparable entities.
 
 Vantage-insensitive, stdlib-only. Judgement is lexical and auditable (see the
-collector). Run live with PALIMPSEST_LIVE=1 (open infra) or PALIMPSEST_PROXY=<egress>.
-
-Governance-gated (kill switch + rate ceiling): PALIMPSEST_HALT (or the kill file)
-stops this runner dead with no redeploy, and the token bucket keeps the two public
-encyclopedias' reads polite by construction.
+collector). Any future authorized acquisition must retain the kill switch and rate
+ceiling gates before it can be reviewed for activation.
 """
 from __future__ import annotations
 
@@ -35,13 +31,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from collectors.baike_redaction import BaikeRedactionWatch, Entity, _default_fetch  # noqa: E402
+from collectors.baike_redaction import BaikeRedactionWatch, Entity  # noqa: E402
 from collectors.baike_redaction import ENCYCLOPEDIA_FORK  # noqa: E402
 
 try:
-    from core.governance import KillSwitch, RateCeiling  # noqa: E402
+    from core.governance import KillSwitch  # noqa: E402
 except Exception:  # pragma: no cover - governance is always present, but stay fail-soft
-    KillSwitch = RateCeiling = None
+    KillSwitch = None
 
 READINGS = os.path.join(ROOT, "readings")
 OUT = os.path.join(READINGS, "baike-redaction-latest.json")
@@ -53,24 +49,13 @@ HIST = os.path.join(READINGS, "baike-redaction-history.jsonl")
 # movement record — a methodology correction that leaves the values identical is a
 # real change to what the number means, and it earns its own history row rather
 # than passing as another quiet republication.
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 
 
 # Minimum comparable entities before we trust an index (else abstain).
 MIN_COMPARABLE = 4
 
-# Polite by construction: two reads per entity against two public encyclopedias.
-#
-# 0.5/s with a burst of 2 permitted ~20 reads in 40 seconds, and that is precisely the burst
-# Baidu rate-bans on: a run at that pace took the source IP to blanket 403 on every entity,
-# still refusing 45s later. A banned IP does not fail loudly — it returns 403 for every
-# entity, which the collector reads as "unreachable" and reports as a vantage problem. The
-# pacing was manufacturing the very blocker the reading then blamed.
-#
-# One read per 12s with a small burst puts a full 10-entity pass (20 reads) at ~4 minutes,
-# which is nothing on a 6-hourly cadence and stays far below the ban threshold.
-_RATE_PER_SEC = 1 / 12
-_BURST = 2.0
+DISABLED_REASON = "Baike collection is disabled pending authorized access; no new observation was made"
 
 # Curated contested-entity canon: widely documented public censorship subjects only.
 # domain = DDTI hint. (lemma_id left blank; a disambiguation landing abstains per-entity.)
@@ -90,34 +75,32 @@ ENTITIES = [
 ]
 
 
-def _short_fetch(url: str, proxy: str | None):
-    # 8s per read so an unreachable Baike fails fast instead of the default 20s hang.
-    return _default_fetch(url, proxy=proxy, timeout=8.0)
-
-
 def main() -> None:
+    """Fail closed: this public runner never initiates Baike acquisition.
+
+    `_collect` remains an offline-fixture seam so the analytical code is testable. It is
+    intentionally not reached from this executable entry point.
+    """
     now = datetime.now(timezone.utc)
-    proxy = os.environ.get("PALIMPSEST_PROXY")
-    live = bool(proxy) or os.environ.get("PALIMPSEST_LIVE", "").lower() in ("1", "true", "yes", "on")
-
-    if not live:
-        print("baike-redaction: inert (set PALIMPSEST_LIVE=1 or PALIMPSEST_PROXY) — abstaining")
-        _write_abstain(now, reason="live network not enabled (PALIMPSEST_LIVE / PALIMPSEST_PROXY unset)",
-                       comparable=0, forks=0, results=[], observed=False)
-        return
-
-    # Governance BEFORE the first outbound read: the kill switch can halt this runner
-    # instantly, and the rate ceiling bounds the request rate.
     kill = KillSwitch() if KillSwitch else None
-    rate = RateCeiling(rate=_RATE_PER_SEC, capacity=_BURST) if RateCeiling else None
+    if kill is not None:
+        try:
+            kill.require_live()
+        except RuntimeError:
+            print("baike-redaction: halted by governance — no observation made")
+            _write_abstain(now, reason="Baike collection halted by governance; no new observation was made",
+                           comparable=0, forks=0, results=[], observed=False)
+            return
+    print(f"baike-redaction: disabled — {DISABLED_REASON}")
+    _write_abstain(now, reason=DISABLED_REASON, comparable=0, forks=0, results=[], observed=False)
 
-    watch = BaikeRedactionWatch(
-        proxy=proxy,
-        baike_fetch=lambda u: _short_fetch(u, proxy),
-        wiki_fetch=lambda u: _short_fetch(u, proxy),
-        kill_switch=kill,
-        rate_ceiling=rate,
-    )
+
+def _collect(watch) -> tuple[int, int, list[dict], bool]:
+    """Run injected offline fixtures and return comparable/fork counts plus evidence rows.
+
+    This is deliberately separate from `main`: keeping the scoring seam testable must not
+    create an executable live-acquisition path.
+    """
 
     results = []
     comparable = 0
@@ -125,14 +108,18 @@ def main() -> None:
     for e in ENTITIES:
         try:
             r = watch.observe(e)
-        except Exception as ex:  # a halt or transport error on one entity must not sink the run
+        except RuntimeError:
+            # A governance halt is terminal: do not turn it into ten more attempted reads.
+            raise
+        except Exception as ex:  # a transport error on one entity must not sink the run
             results.append({"entity": e.zh_title, "status": f"error:{type(ex).__name__}"})
             continue
         baike = r.get("baike", {})
         wiki = r.get("wiki", {})
         baike_int = baike.get("interstitial", "")
         wiki_ok = bool(wiki.get("present"))
-        is_comparable = wiki_ok and baike_int not in ("fetch_failed", "disambiguation")
+        is_comparable = wiki_ok and baike_int not in (
+            "fetch_failed", "disambiguation", "not_found_ambiguous")
         fork = next((d for d in r.get("divergences", [])
                      if getattr(d, "kind", None) == ENCYCLOPEDIA_FORK), None)
         if is_comparable:
@@ -149,14 +136,17 @@ def main() -> None:
             "fork": None if fork is None else str(getattr(fork, "detail", ""))[:240],
         })
 
+    observed = any(not str(r.get("status") or "").startswith("error:") for r in results)
+    return comparable, forks, results, observed
+
+
+def _publish_collected(now, watch) -> None:
+    """Publish an injected/offline collection result; used only by offline tests."""
+    comparable, forks, results, observed = _collect(watch)
+
     if comparable < MIN_COMPARABLE:
-        # Report WHY each entity failed rather than asserting a cause. The previous text
-        # named a China-reachable proxy as the missing ingredient, and that diagnosis was
-        # wrong: Baidu's WAF refuses the stdlib client's TLS/HTTP fingerprint independently
-        # of IP or User-Agent, and the same URL from the same machine with the same UA
-        # succeeds under a browser-grade stack. An abstain reason is written at design time
-        # and then read downstream as a measurement, so a guessed cause becomes a published
-        # finding. Say what was observed; do not name a culprit we have not established.
+        # Report only the observed per-entity states. An abstain reason is publication
+        # evidence, so it must not speculate about the source, network, client, or cause.
         by_reason = {}
         for r in results:
             # an entity that raised is appended as a short {entity, status} row with no
@@ -175,18 +165,16 @@ def main() -> None:
             by_reason[k] = by_reason.get(k, 0) + 1
         detail = ", ".join(f"{k}×{n}" for k, n in sorted(by_reason.items()))
         reason = (f"only {comparable}/{len(ENTITIES)} entities were comparable "
-                  f"({detail or 'no per-entity detail'}). Baidu filters on two axes, "
-                  f"measured separately: the CLIENT (urllib and curl are refused, httpx is "
-                  f"served, same IP and same second) and the EGRESS (residential is served, "
-                  f"datacenter is refused whatever the client). This run cleared the first "
-                  f"and not the second — it needs a residential egress, not a Chinese one")
+                  f"({detail or 'no per-entity detail'}); insufficient comparable evidence "
+                  "to calculate a narrative-erasure index")
         print(f"baike-redaction: insufficient data — {reason}; abstaining")
-        _write_abstain(now, reason=reason, comparable=comparable, forks=forks, results=results)
+        _write_abstain(now, reason=reason, comparable=comparable, forks=forks, results=results,
+                       observed=observed)
         return
 
     rewrite_index = round(100.0 * forks / comparable, 1)
     _write(now, rewrite_index=rewrite_index, status="ok", reason=None,
-           comparable=comparable, forks=forks, results=results)
+           comparable=comparable, forks=forks, results=results, observed=observed)
     print(f"=== Baike redaction — rewrite_index {rewrite_index} "
           f"({forks}/{comparable} contested entries forked from the open record) ===")
 
@@ -198,8 +186,8 @@ def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> 
         "source": "Baidu Baike (subject) vs Chinese Wikipedia (open-record control)",
         "scope": ("narrative erasure — contested encyclopedia entries silently forked from the "
                   "open record: sensitive terms excised, sourcing collapsed to state media, or absent"),
-        "method": ("public anonymous reads of both encyclopedias from outside the wall; lexical, "
-                   "auditable judgement; we never authenticate into Baike's hidden revision history"),
+        "method": ("offline fixture analysis; live Baike collection disabled pending authorized "
+                   "access; lexical, auditable judgement with no authenticated revision-history access"),
         "rewrite_index": rewrite_index,
         "index_definition": "share (%) of comparable contested entries showing an encyclopedia fork vs the open record",
         "status": status,
@@ -212,6 +200,12 @@ def _base(now, *, rewrite_index, status, reason, comparable, forks, results) -> 
 
 
 def _write(now, *, observed: bool = True, **kw) -> None:
+    # No evidence was acquired: do not replace the prior sealed observation with a
+    # fresh-looking status document. In particular, `generated_at` is an observation time,
+    # not a heartbeat for an inert or all-error run.
+    if not observed:
+        print("baike-redaction: no observation acquired; existing reading left unchanged")
+        return
     out = _base(now, **kw)
     prev = {}
     if os.path.exists(OUT):
@@ -240,13 +234,6 @@ def _write(now, *, observed: bool = True, **kw) -> None:
     out["last_changed_at"] = (
         out["generated_at"] if (changed or not prev)
         else (prev.get("last_changed_at") or prev.get("generated_at")))
-
-    # An inert round never opened a socket, so it has no observation time to offer
-    # and stamping one would date the file to a look that never happened. It keeps
-    # the old write-if-changed behaviour: it may record that we have stopped
-    # looking, but it may not pass itself off as a fresh look.
-    if not observed and not (changed or not prev):
-        return
 
     os.makedirs(READINGS, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
