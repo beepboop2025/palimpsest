@@ -214,3 +214,23 @@ def test_narrative_operational_transition_moves_composite_history(publish, tmp_p
     assert len(history) == before + 1
     assert history[-1]["collector_status"]["narrative"] == "halted_by_governance"
     assert second["last_changed_at"] == second["generated_at"]
+
+
+def test_legacy_numeric_baike_without_eligibility_metadata_is_quarantined(
+        publish, tmp_path):
+    run, _ = publish
+    (tmp_path / "baike-redaction-latest.json").write_text(json.dumps({
+        "generated_at": _hours_ago(1),
+        "status": "ok",
+        "rewrite_index": 90.0,
+        "n_comparable": 10,
+        "n_forked": 9,
+    }), encoding="utf-8")
+
+    out = run()
+    narrative = next(layer for layer in out["layers"]
+                     if layer["layer"] == "narrative")
+    assert narrative["status"] == "QUARANTINED"
+    assert narrative["value"] is None
+    assert narrative["withheld_value"] == 90.0
+    assert "narrative" not in out["layers_contributing"]

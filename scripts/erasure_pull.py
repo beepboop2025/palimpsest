@@ -337,8 +337,10 @@ def main() -> None:
         if e:
             sealed.append({"source": "baike-redaction", "seq": e["seq"], "entry_hash": e["entry_hash"]})
     b_readable = isinstance(b_index, (int, float)) and not isinstance(b_index, bool)
-    b_series_valid = (baike or {}).get("valid_for_series") is not False
-    b_collector_observed = b_collector_status in (None, "observed")
+    # Scientific eligibility is opt-in. Legacy payloads lack both fields and must not
+    # inherit validity merely because they predate the contract.
+    b_series_valid = (baike or {}).get("valid_for_series") is True
+    b_collector_observed = b_collector_status == "observed"
     if b_readable and b_fresh and b_series_valid and b_collector_observed:
         layers.append({
             "layer": "narrative",

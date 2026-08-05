@@ -423,6 +423,20 @@ def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | 
     timestamp must not turn a broken or unwitnessed chain into a live integrity signal.
     Keep this check beside normalization so every consumer receives the same verdict.
     """
+    if spec.id == "baike-redaction":
+        failures: list[str] = []
+        if payload.get("valid_for_series") is not True:
+            failures.append("valid_for_series is not explicitly true")
+        collector_status = _text(payload.get("collector_status"))
+        if collector_status != "observed":
+            failures.append(
+                f"collector_status is {collector_status!r}, not 'observed'"
+                if collector_status is not None
+                else "collector_status is absent, not 'observed'")
+        if not failures:
+            return None
+        return "Baike series eligibility failed: " + "; ".join(failures)
+
     if spec.id != "anchors":
         return None
 
@@ -591,6 +605,8 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     source, method, scope = _provenance(payload, spec)
     upstream_status = _upstream_status(payload)
     semantic_reason = _semantic_health_reason(spec, payload)
+    if spec.id == "baike-redaction" and semantic_reason:
+        metric = None
 
     if measured_at is None:
         status = "corrupt"
