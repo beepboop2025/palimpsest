@@ -216,7 +216,8 @@ def test_a_stale_narrative_layer_is_withheld_not_published_as_today(tmp_path, mo
     current narrative value — the exact bug the model layer was fixed for."""
     d = str(tmp_path)
     _write(d, "baike-redaction-latest.json",
-           {"generated_at": _hours_ago(24 * 30), "rewrite_index": 71.0})
+           {"generated_at": _hours_ago(24 * 30), "rewrite_index": 71.0,
+            "valid_for_series": True, "collector_status": "observed"})
     _point_at(monkeypatch, d)
 
     out = _run(d)
@@ -231,7 +232,8 @@ def test_a_stale_narrative_layer_is_withheld_not_published_as_today(tmp_path, mo
 def test_a_fresh_narrative_layer_publishes_and_dates_itself(tmp_path, monkeypatch):
     d = str(tmp_path)
     _write(d, "baike-redaction-latest.json",
-           {"generated_at": _hours_ago(2), "rewrite_index": 71.0})
+           {"generated_at": _hours_ago(2), "rewrite_index": 71.0,
+            "valid_for_series": True, "collector_status": "observed"})
     _point_at(monkeypatch, d)
 
     nar = _layer(_run(d), "narrative")
