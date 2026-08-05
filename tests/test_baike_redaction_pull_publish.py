@@ -19,10 +19,13 @@ from __future__ import annotations
 import json
 import types
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
 import scripts.baike_redaction_pull as pull
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _observation(*, comparable: bool, forked: bool) -> dict:
@@ -198,3 +201,11 @@ def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(publish, 
         after = json.load(f)
     assert after["generated_at"] == first["generated_at"]
     assert len(_history(tmp_path)) == 1
+
+
+def test_erasure_workflow_contains_no_baike_activation_knob():
+    workflow = (ROOT / ".github" / "workflows" / "erasure-refresh.yml").read_text(
+        encoding="utf-8")
+    assert "PALIMPSEST_PROXY" not in workflow
+    assert "PALIMPSEST_LIVE" not in workflow
+    assert "permanently inert pending an authorized source path" in workflow
