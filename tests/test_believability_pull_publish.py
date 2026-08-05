@@ -42,6 +42,7 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "OUT", str(tmp_path / "believability-latest.json"))
     monkeypatch.setattr(pull, "HIST", str(tmp_path / "believability-history.jsonl"))
     monkeypatch.setattr(pull, "datetime", _Clock())
+    monkeypatch.delenv("BELIEVABILITY_PERIOD", raising=False)
 
     def run(components, headline, telemetry=None, flags=None):
         monkeypatch.setattr(pull, "collect", lambda period: {
@@ -91,6 +92,7 @@ def test_first_round_warms_up_and_publishes_the_contract_fields(publish):
     assert got["lkq_composite"] == pytest.approx(6.0)
     assert got["gap"] == pytest.approx(1.0)
     assert got["label"] == "warming_up"
+    assert got["status"] == "not_ready"
 
 
 def test_a_missing_component_is_named_and_abstains_the_composite(publish):
@@ -102,6 +104,7 @@ def test_a_missing_component_is_named_and_abstains_the_composite(publish):
     assert got["n_components_present"] == 2
     assert got["lkq_composite"] is None
     assert got["label"] == "abstain"
+    assert got["status"] == "abstain"
 
 
 def test_nothing_collected_publishes_nothing(publish):
@@ -159,3 +162,32 @@ def test_the_current_month_never_sits_in_its_own_reference(publish):
 
     assert got["n_history"] == 8, "the 2026-07 row must be excluded from its own reference"
     assert got["label"] == "diverging"
+
+
+def test_explicit_completed_period_supports_a_reproducible_backfill(monkeypatch):
+    now = datetime(2026, 8, 5, tzinfo=timezone.utc)
+    monkeypatch.setenv("BELIEVABILITY_PERIOD", "2026-06")
+    assert pull._target_period(now) == "2026-06"
+
+
+def test_older_backfill_updates_history_without_regressing_latest(publish,
+                                                                  monkeypatch):
+    run, tmp_path = publish
+    current = run(FULL, 7.0)
+    assert current["asof"] == "2026-07"
+
+    monkeypatch.setenv("BELIEVABILITY_PERIOD", "2026-06")
+    run(FULL, 7.0)
+
+    assert {row["month"] for row in _history(tmp_path)} == {"2026-06", "2026-07"}
+    assert _reading(tmp_path)["asof"] == "2026-07"
+
+
+def test_period_override_rejects_unreleased_or_malformed_months(monkeypatch):
+    now = datetime(2026, 8, 5, tzinfo=timezone.utc)
+    monkeypatch.setenv("BELIEVABILITY_PERIOD", "2026-08")
+    with pytest.raises(SystemExit, match="newer than the latest eligible"):
+        pull._target_period(now)
+    monkeypatch.setenv("BELIEVABILITY_PERIOD", "June 2026")
+    with pytest.raises(SystemExit, match="must be YYYY-MM"):
+        pull._target_period(now)
