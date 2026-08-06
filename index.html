@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palimpsest · censorship observatory + verifiable AI eval registry</title>
-<meta name="description" content="Palimpsest measures censorship in China at the network, content and model layers, including a vantage measured from inside the country, and seals AI evaluation results into a tamper-evident public registry that nobody can revise after publication. Free, MIT licensed, open source. Watch the censor, never the censored.">
-<meta name="keywords" content="AI evaluation registry, verifiable evals, tamper-evident, refusal drift, authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, DNS injection, middlebox interference, App Store censorship, blocklist keywords, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OONI, OSINT censorship">
+<title>Palimpsest | Verifiable AI evaluations and censorship data</title>
+<meta name="description" content="Palimpsest publishes tamper-evident AI evaluation records and open censorship measurements with sources, limitations and offline verification tools.">
 <meta name="author" content="Palimpsest">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="https://palimpsest.info/">
@@ -23,8 +22,8 @@
 <!-- Open Graph / social -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
-<meta property="og:description" content="Three things, one instrument. A censorship observatory measuring what China removes at the network, content and model layers, including a vantage from inside the country. A registry that seals AI evaluations so nobody can revise them afterwards. A free public good, MIT licensed.">
+<meta property="og:title" content="Palimpsest | Verifiable AI evaluations and censorship data">
+<meta property="og:description" content="Open censorship measurements and tamper-evident AI evaluation records, with sources, limitations and offline verification tools.">
 <meta property="og:url" content="https://palimpsest.info/">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta property="og:image:width" content="1200">
@@ -32,11 +31,11 @@
 <meta property="og:image:alt" content="Palimpsest: AI evaluations, sealed the moment they are published. Nobody can revise the record. Not a lab, not a government, not us.">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
-<meta name="twitter:description" content="What the apparatus removed, measured at the network, content and model layers, plus AI evaluations sealed so nobody can revise them after publication. Free and open source.">
+<meta name="twitter:title" content="Palimpsest | Verifiable AI evaluations and censorship data">
+<meta name="twitter:description" content="Open censorship measurements and tamper-evident AI evaluation records, with sources, limitations and offline verification tools.">
 <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
-<!-- Structured data: declares Palimpsest as a citable Dataset + Organization for AI/search engines -->
+<!-- Structured data for the project and its two public datasets. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -47,13 +46,13 @@
       "name": "Palimpsest",
       "url": "https://palimpsest.info/",
       "sameAs": ["https://github.com/beepboop2025/palimpsest"],
-      "description": "Open-source public-good observatory that measures authoritarian and AI-model censorship by treating deletion as data, and that seals its own AI evaluation results into a tamper-evident public registry."
+      "description": "Open-source publisher of censorship measurements and tamper-evident AI evaluation records."
     },
     {
       "@type": "WebSite",
       "@id": "https://palimpsest.info/#website",
       "url": "https://palimpsest.info/",
-      "name": "Palimpsest · censorship observatory + verifiable AI eval registry",
+      "name": "Palimpsest | Verifiable AI evaluations and censorship data",
       "publisher": { "@id": "https://palimpsest.info/#org" },
       "inLanguage": "en"
     },
@@ -61,7 +60,7 @@
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#dataset",
       "name": "Palimpsest Censorship Observatory Dataset",
-      "description": "Continuously updated measurements of censorship in China across three layers. Network layer: DNS answers forged for censored domains as seen by probes inside mainland China, HTTP rewriting by in-path middleboxes and circumvention transport health from OONI, App Store availability in the Chinese storefront, and website, messenger and circumvention-tool blocking rates. Content layer: deletion as data, archived public posts watched for scrubbing and ranked by censor attention and novelty, validated against six documented censorship events, plus keywords newly present in successive client blocklists. Model layer: the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite against neutral controls, in Chinese and English. Every finding ships its raw evidence.",
+      "description": "Continuously updated public measurements of censorship in China across network, content, application-store and language-model layers. Each reading includes its source, collection time, scope and known limitations.",
       "url": "https://palimpsest.info/",
       "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censor attention", "DNS injection", "middlebox interference", "App Store censorship", "blocklist keywords", "Great Firewall", "OONI"],
       "measurementTechnique": ["OONI aggregation of open measurement data", "volunteer DNS probes inside mainland China compared against an out-of-country control arm", "Apple iTunes storefront lookup, Chinese storefront versus control", "diffing successive client blocklist versions from the Citizen Lab chat-censorship corpus", "archived public posts checked for later removal", "probing state-aligned language models on a frozen sensitive prompt set against neutral controls"],
@@ -88,7 +87,7 @@
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#eval-registry",
       "name": "Palimpsest Verifiable Eval Registry",
-      "description": "A tamper-evident, pre-registered public record of AI model evaluations. The probe set is frozen and its hash sealed before any model is queried, every result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root whose roots are deposited outside our own infrastructure at the Internet Archive and OpenTimestamps. It runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1, covering Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1, covering Western frontier models (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Both families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and refusal drift is the diff against that model's own previous sealed run. Anyone can recompute the chain offline from the public repository.",
+      "description": "A public record of pre-registered AI model evaluations. Probe sets are frozen before collection, results are hash-chained, and the registry can be verified offline from the repository.",
       "url": "https://palimpsest.info/readings/eval-registry.html",
       "keywords": ["AI evaluation registry", "verifiable evals", "tamper-evident", "pre-registration", "hash chain", "Merkle root", "refusal drift", "over-refusal", "AI transparency", "frontier model evaluation", "LLM refusal measurement"],
       "creator": { "@id": "https://palimpsest.info/#org" },
@@ -105,8 +104,7 @@
 }
 </script>
 
-<!-- FAQ schema: feeds "what is …" answer boxes in Google AI Overviews & Gemini.
-     Answers mirror the visible FAQ section below (Google requires parity). -->
+<!-- These answers mirror the visible FAQ section below. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -118,7 +116,7 @@
       "name": "What is Palimpsest?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Palimpsest is three things built on one instrument. It is a free, open-source observatory that measures how authoritarian states censor, at the network, content and model layers. It is a verifiable AI eval registry, where evaluation results are sealed the moment they publish so nobody can revise them afterwards. And it is a public good: MIT licensed, free to read, funded by grants and individuals rather than by customers. It watches the censor, never the censored, and ships raw evidence with every finding."
+        "text": "Palimpsest is an open-source publisher of censorship measurements and verifiable AI evaluation records. It monitors public evidence across network, content, application-store and language-model layers. Evaluation probe sets are frozen before collection, and published results are hash-chained so later changes can be detected offline."
       }
     },
     {
@@ -150,7 +148,7 @@
       "name": "What is the Generative Firewall Index?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It records how often state-aligned large language models refuse or substitute state-narrative answers on sensitive prompts, in Chinese and English, against neutral control models. A high index means the model is selectively suppressing truthful answers by design, not by accident."
+        "text": "The Generative Firewall Index records how often tested state-aligned language models refuse or substitute state narratives on a frozen set of sensitive prompts, in Chinese and English, relative to control prompts and models. It measures behavior on the published test set; it does not by itself establish a model developer's intent."
       }
     },
     {
@@ -880,19 +878,15 @@
     </p>
   </section>
 
-  <!-- ══ FAQ ════════════════════════════════════════════════════════════
-       Kept word-for-word in parity with the FAQPage schema above. Edit both
-       or neither: Google drops the rich result when they diverge. -->
+  <!-- FAQ copy mirrors the structured data above. -->
   <section class="ps-wrap ps-defer faq" id="faq">
     <p class="ps-section-head">Frequently asked</p>
 
     <h3>What is Palimpsest?</h3>
-    <p>Palimpsest is three things built on one instrument. It is a free, open-source observatory that
-    measures how authoritarian states censor, at the network, content and model layers. It is a verifiable
-    AI eval registry, where evaluation results are sealed the moment they publish so nobody can revise
-    them afterwards. And it is a public good: MIT licensed, free to read, funded by grants and individuals
-    rather than by customers. It watches the censor, never the censored, and ships raw evidence with every
-    finding.</p>
+    <p>Palimpsest is an open-source publisher of censorship measurements and verifiable AI evaluation
+    records. It monitors public evidence across network, content, application-store and language-model
+    layers. Evaluation probe sets are frozen before collection, and published results are hash-chained so
+    later changes can be detected offline.</p>
 
     <h3>What is the Palimpsest censorship observatory measuring?</h3>
     <p>Removal, on three layers. The network layer: DNS answers forged for censored domains, HTTP
@@ -924,10 +918,10 @@
     readings and raw JSON evidence are published here at palimpsest.info, updated continuously.</p>
 
     <h3>What is the Generative Firewall Index?</h3>
-    <p>The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It
-    records how often state-aligned large language models refuse or substitute state-narrative answers on
-    sensitive prompts, in Chinese and English, against neutral control models. A high index means the
-    model is selectively suppressing truthful answers by design, not by accident.</p>
+    <p>The Generative Firewall Index records how often tested state-aligned language models refuse or
+    substitute state narratives on a frozen set of sensitive prompts, in Chinese and English, relative to
+    control prompts and models. It measures behavior on the published test set; it does not by itself
+    establish a model developer's intent.</p>
 
     <h3>What is the Verifiable Eval Registry?</h3>
     <p>The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The

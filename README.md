@@ -1,40 +1,22 @@
 # Palimpsest
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 [![tests](https://github.com/beepboop2025/palimpsest/actions/workflows/tests.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/tests.yml)
-![verify](https://img.shields.io/badge/verify-offline%2C%20one%20command-06d6e0.svg)
-![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
-![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
 
-[![DDTI refresh](https://github.com/beepboop2025/palimpsest/actions/workflows/ddti-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/ddti-refresh.yml)
-[![Generative Firewall](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml)
-[![GDELT cross-signal](https://github.com/beepboop2025/palimpsest/actions/workflows/gdelt-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gdelt-refresh.yml)
-[![GitHub-refuge](https://github.com/beepboop2025/palimpsest/actions/workflows/github-refuge-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/github-refuge-refresh.yml)
-[![Wayback reconstruction](https://github.com/beepboop2025/palimpsest/actions/workflows/wayback-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/wayback-refresh.yml)
+Palimpsest publishes verifiable AI evaluations and censorship data. Its records are append-only, hash-chained, and designed for offline verification, so a change made after publication is detectable.
 
-**A public, tamper-evident record of what powerful actors quietly erase, and a way for anyone
-to prove, offline, that not one entry was changed after it was published.**
+- The [Verifiable Eval Registry](docs/EVAL-REGISTRY.md) freezes each probe set before models are queried, then seals the resulting evaluation runs. Separate suites track Chinese state-aligned and Western frontier models over time.
+- The [Censorship Observatory](https://palimpsest.info/) measures public evidence of network interference, content deletion, blocklist changes, storefront restrictions, and model refusals. Each signal states its source, cadence, coverage, and limitations.
 
-Palimpsest is one primitive, a sealed append-only ledger you can verify without trusting us,
-pointed at two places where the record gets rewritten in the dark:
+The project uses public OSINT and does not ask people inside a censoring jurisdiction to collect data. Code and published datasets are available under the [MIT License](LICENSE).
 
-- **The [Verifiable Eval Registry](docs/EVAL-REGISTRY.md).** AI evaluation results, sealed at
-  publication. The questions are frozen and hash-committed *before* any model is queried, every
-  result is chained to the one before it, and a single edited number fails verification. Chinese
-  state-aligned models and Western frontier models are held to the same tamper-evident,
-  pre-registered machinery, each on its own frozen suite, watched over time for what they quietly
-  stop answering. Not a lab, not a government, not us: if we edited a published number, our own
-  verifier would report the break.
-- **The Censorship Observatory.** Authoritarian deletion, measured as data. It reads the public
-  record of what has been scrubbed, rewritten or blocked — across the network, the encyclopedia and
-  the model — and turns what a state is burying into a live, openly licensed early-warning signal
-  for journalists, researchers, and human rights defenders.
-  Twenty-six signals refresh on their own, unattended, every number tracing back to public evidence.
+Live resources:
 
-Built entirely from open sources. **It watches the censor, never the censored.**
+- [Censorship Observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
+- [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html)
+- [OSINT China overview](https://palimpsest.info/osint-china.html)
+- [Evidence Capsules](https://palimpsest.info/evidence-capsules.html)
 
-## Prove it yourself, in one command
+## Verify the published records
 
 ```bash
 git clone https://github.com/beepboop2025/palimpsest && cd palimpsest
@@ -43,19 +25,9 @@ python3 scripts/verify_ledger.py          # the erasure / censorship ledger
 python3 scripts/evidence_capsule.py verify protocol/test-vectors/palimpsest-erasure-v1.json
 ```
 
-No install, no key, no server, standard library only. Change one sealed byte and the verifier
-names the break. That is the entire idea: you do not have to trust the operator, you check.
+These checks use the Python standard library and require no API key or server. If a sealed byte has changed, the verifier reports where the chain breaks.
 
-Need to carry one claim and its exact supporting bytes into another newsroom,
-research notebook or agent? [Evidence Capsules](https://palimpsest.info/evidence-capsules.html)
-package the evidence, typed claims and explicit limitations into one inert JSON file with the
-same offline verification model.
-
-> **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
-> (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
-> and the [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html).
-> A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
-> Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
+To run the small demonstration against the live China Digital Times feed, use `python3 demo/palimpsest_demo.py`. Pass `--source sample` for an offline run.
 
 The full operational view is [OSINT China](https://palimpsest.info/osint-china.html): the public
 roll-up over every China-facing reading, including each source's cadence, freshness deadline,
