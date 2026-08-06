@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-05T20:17:39.450015+00:00",
-  "headline": "8 signals scored over 1118 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
+  "generated_at": "2026-08-06T03:54:42.469048+00:00",
+  "headline": "8 signals scored over 1125 one-step forecasts; 83% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 2 of 8",
   "n_signals_scored": 8,
-  "n_forecasts": 1118,
-  "pooled_empirical_coverage": 0.836,
+  "n_forecasts": 1125,
+  "pooled_empirical_coverage": 0.834,
   "nominal_coverage": 0.8,
-  "n_beating_baseline": 3,
+  "n_beating_baseline": 2,
   "signals": {
     "ooni_gfw": {
       "scoreable": true,
-      "n_forecasts": 100,
+      "n_forecasts": 101,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.81,
-      "coverage_gap_pp": 1.0,
-      "wis": 0.2275,
-      "wis_baseline_fixed_quantile": 0.2423,
+      "empirical_coverage": 0.812,
+      "coverage_gap_pp": 1.2,
+      "wis": 0.2265,
+      "wis_baseline_fixed_quantile": 0.2414,
       "beats_baseline": true,
-      "skill_vs_baseline": 0.061,
+      "skill_vs_baseline": 0.062,
       "n_misses": 19,
       "worst_misses": [
         {
@@ -73,15 +73,15 @@
     },
     "ddti_threat": {
       "scoreable": true,
-      "n_forecasts": 200,
+      "n_forecasts": 202,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.83,
-      "coverage_gap_pp": 3.0,
-      "wis": 0.1445,
-      "wis_baseline_fixed_quantile": 0.1449,
-      "beats_baseline": true,
-      "skill_vs_baseline": 0.003,
-      "n_misses": 34,
+      "empirical_coverage": 0.822,
+      "coverage_gap_pp": 2.2,
+      "wis": 0.1496,
+      "wis_baseline_fixed_quantile": 0.1491,
+      "beats_baseline": false,
+      "skill_vs_baseline": -0.003,
+      "n_misses": 36,
       "worst_misses": [
         {
           "t": 148,
@@ -137,15 +137,15 @@
     },
     "ddti_novelty": {
       "scoreable": true,
-      "n_forecasts": 200,
+      "n_forecasts": 202,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.975,
-      "coverage_gap_pp": 17.5,
-      "wis": 0.0752,
-      "wis_baseline_fixed_quantile": 0.0754,
+      "empirical_coverage": 0.97,
+      "coverage_gap_pp": 17.0,
+      "wis": 0.0942,
+      "wis_baseline_fixed_quantile": 0.0945,
       "beats_baseline": true,
       "skill_vs_baseline": 0.003,
-      "n_misses": 5,
+      "n_misses": 6,
       "worst_misses": [
         {
           "t": 168,
@@ -168,6 +168,16 @@
           "miss_by": 4.0
         },
         {
+          "t": 211,
+          "forecast": 16.0,
+          "lo": 16.0,
+          "hi": 16.0,
+          "actual": 20.0,
+          "covered": false,
+          "wis": 4.0,
+          "miss_by": 4.0
+        },
+        {
           "t": 32,
           "forecast": 29.0,
           "lo": 29.0,
@@ -183,16 +193,6 @@
           "lo": 30.0,
           "hi": 30.0,
           "actual": 29.0,
-          "covered": false,
-          "wis": 1.0,
-          "miss_by": 1.0
-        },
-        {
-          "t": 169,
-          "forecast": 21.0,
-          "lo": 21.0,
-          "hi": 21.0,
-          "actual": 20.0,
           "covered": false,
           "wis": 1.0,
           "miss_by": 1.0
@@ -225,15 +225,15 @@
     },
     "gdelt_containment": {
       "scoreable": true,
-      "n_forecasts": 109,
+      "n_forecasts": 110,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.798,
-      "coverage_gap_pp": -0.2,
-      "wis": 1.2799,
-      "wis_baseline_fixed_quantile": 1.2656,
+      "empirical_coverage": 0.791,
+      "coverage_gap_pp": -0.9,
+      "wis": 1.2971,
+      "wis_baseline_fixed_quantile": 1.2842,
       "beats_baseline": false,
-      "skill_vs_baseline": -0.011,
-      "n_misses": 22,
+      "skill_vs_baseline": -0.01,
+      "n_misses": 23,
       "worst_misses": [
         {
           "t": 17,
@@ -289,14 +289,14 @@
     },
     "github_refuge": {
       "scoreable": true,
-      "n_forecasts": 49,
+      "n_forecasts": 50,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.816,
-      "coverage_gap_pp": 1.6,
-      "wis": 0.6754,
-      "wis_baseline_fixed_quantile": 0.6232,
+      "empirical_coverage": 0.82,
+      "coverage_gap_pp": 2.0,
+      "wis": 0.6679,
+      "wis_baseline_fixed_quantile": 0.6167,
       "beats_baseline": false,
-      "skill_vs_baseline": -0.084,
+      "skill_vs_baseline": -0.083,
       "n_misses": 9,
       "worst_misses": [
         {
