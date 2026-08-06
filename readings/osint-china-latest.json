@@ -41,7 +41,7 @@
       "title": "Believability read: degraded"
     }
   ],
-  "generated_at": "2026-08-06T01:44:22Z",
+  "generated_at": "2026-08-06T04:57:29Z",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
   "health": {
     "counts": {
@@ -58,7 +58,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "02a9a0e9f4f359634eaff1d7084f1cef61d8dd01",
+  "input_commit": "f3e5c1027ef86dc4291f70dbc2ba29fa5ea00bfa",
   "layers": [
     {
       "id": "command",
@@ -192,9 +192,9 @@
   "signals": [
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:17:39Z",
+      "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 5.445,
+        "age_hours": 1.046,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -204,9 +204,9 @@
       },
       "id": "board-alarm",
       "input": {
-        "bytes": 9917,
+        "bytes": 9914,
         "filename": "board-alarm-latest.json",
-        "sha256": "cc5d514aab59e25fb6ce3c44a7ae149b218321453d0d7b1222e4c36fe063c6ab"
+        "sha256": "ea88e7ea67009177b198be8876b6c1c41f4f4197ccb8f27e9c98d8dca1efbea9"
       },
       "layer": "command",
       "live": true,
@@ -216,11 +216,11 @@
         "denominator": null,
         "label": "board e-value",
         "unit": "e-value",
-        "value": 13.468
+        "value": 15.629
       },
       "optional": false,
       "payload": {
-        "board_e_value": 13.468,
+        "board_e_value": 15.629,
         "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
         "caveats": [
           "layer co-movement is evidence of CO-MOVEMENT, not of a common cause: two layers can rise together under one directive or under one holiday; this reading reports the coincidence and does not name a cause",
@@ -242,21 +242,21 @@
           ],
           "threshold": 80.0
         },
-        "generated_at": "2026-08-05T20:17:39.307463+00:00",
+        "generated_at": "2026-08-06T03:54:42.331381+00:00",
         "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
         "layer_coincidence": 2,
         "layers": {
           "content": {
             "corroborated": true,
-            "e": 1.882,
+            "e": 6.188,
             "n_signals": 4,
             "recent_alarms": [
               "ddti_threat"
             ],
             "signals": {
-              "ddti_novelty": 1.114,
-              "gdelt_containment": 1.951,
-              "github_refuge": 3.462,
+              "ddti_novelty": 3.321,
+              "gdelt_containment": 15.921,
+              "github_refuge": 4.512,
               "weibo_suppression": 1.0
             },
             "state": "elevated"
@@ -271,13 +271,13 @@
           },
           "network": {
             "corroborated": true,
-            "e": 25.054,
+            "e": 25.07,
             "n_signals": 4,
             "recent_alarms": [],
             "signals": {
               "censored_planet": 93.408,
               "ioda_outages": 1.0,
-              "ooni_gfw": 2.341,
+              "ooni_gfw": 2.404,
               "tor_bridge_cn": 3.469
             },
             "state": "elevated"
@@ -338,13 +338,13 @@
           },
           "ddti_novelty": {
             "direction": "down",
-            "driver_side": "down",
-            "e": 1.114,
+            "driver_side": "up",
+            "e": 3.3207,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 211,
+            "n": 213,
             "n_alarms_in_history": 1,
-            "readings_since_alarm": 39,
-            "robust_z": -8.77,
+            "readings_since_alarm": 41,
+            "robust_z": -6.07,
             "state": "calm"
           },
           "ddti_threat": {
@@ -352,29 +352,29 @@
             "driver_side": null,
             "e": 0.0,
             "meaning": "peak censor attention on one term",
-            "n": 211,
+            "n": 213,
             "n_alarms_in_history": 3,
-            "readings_since_alarm": 3,
-            "robust_z": -1.42,
+            "readings_since_alarm": 5,
+            "robust_z": -0.14,
             "state": "warming_up"
           },
           "gdelt_containment": {
-            "direction": "down",
+            "direction": "up",
             "driver_side": "up",
-            "e": 1.9507,
+            "e": 15.9211,
             "meaning": "terms loud abroad while censored at home",
-            "n": 120,
+            "n": 121,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
-            "robust_z": -0.34,
+            "robust_z": 1.69,
             "state": "calm"
           },
           "github_refuge": {
             "direction": "down",
             "driver_side": "down",
-            "e": 3.4622,
+            "e": 4.5122,
             "meaning": "takedown/pressure events on refuge repositories",
-            "n": 60,
+            "n": 61,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": -0.67,
@@ -385,7 +385,7 @@
             "driver_side": "up",
             "e": 1.0,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 69,
+            "n": 70,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": null,
@@ -394,16 +394,16 @@
           "ooni_gfw": {
             "direction": "up",
             "driver_side": "up",
-            "e": 2.3409,
+            "e": 2.4041,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 111,
+            "n": 112,
             "n_alarms_in_history": 1,
-            "readings_since_alarm": 60,
-            "robust_z": 0.08,
+            "readings_since_alarm": 61,
+            "robust_z": 0.25,
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 0.4,
+            "age_hours": 8.0,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -481,7 +481,7 @@
             "driver_side": "up",
             "e": 1.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 69,
+            "n": 70,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": null,
@@ -492,16 +492,16 @@
       "raw_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "scope": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T20:17:39Z",
+      "source_timestamp": "2026-08-06T03:54:42Z",
       "status": "live",
-      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 13.468 e-value.",
+      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 15.629 e-value.",
       "title": "Board alarm"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:14:00Z",
+      "freshness_deadline": "2026-08-06T17:53:57Z",
       "health": {
-        "age_hours": 5.506,
+        "age_hours": 1.059,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -511,9 +511,9 @@
       },
       "id": "event-flags",
       "input": {
-        "bytes": 6177,
+        "bytes": 6179,
         "filename": "event-flags-latest.json",
-        "sha256": "b24282205d474287ebcb98c721cbe9dfc81acfedaec4c1386091f8b0fc03251a"
+        "sha256": "29cce3a858b8caad1618ba50ebfdc99639b705eb00ec77224bacdbfeac2c7ae9"
       },
       "layer": "command",
       "live": true,
@@ -534,7 +534,7 @@
         "closed": [
           "refusal_drift"
         ],
-        "generated_at": "2026-08-05T20:14:00.289023+00:00",
+        "generated_at": "2026-08-06T03:53:57.797865+00:00",
         "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
         "headline": "no signal elevated, but only 11 of 14 signals are reporting",
         "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
@@ -558,7 +558,7 @@
             "state": "no_data"
           },
           "censored_planet": {
-            "age_hours": 36.2,
+            "age_hours": 43.8,
             "meaning": "remote-vantage interference rate",
             "n": 21,
             "n_alarms_in_history": 0,
@@ -566,7 +566,7 @@
             "state": "calm"
           },
           "data_darkness": {
-            "age_hours": 20.2,
+            "age_hours": 27.9,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
             "n": 5,
             "n_alarms_in_history": 0,
@@ -574,55 +574,55 @@
             "state": "warming_up"
           },
           "ddti_novelty": {
-            "age_hours": 0.3,
+            "age_hours": 0.2,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 211,
+            "n": 213,
             "n_alarms_in_history": 1,
-            "stat": 1.114,
+            "stat": 3.3207,
             "state": "calm"
           },
           "ddti_threat": {
-            "age_hours": 0.3,
+            "age_hours": 0.2,
             "meaning": "peak censor attention on one term",
-            "n": 211,
+            "n": 213,
             "n_alarms_in_history": 3,
             "stat": 0.0,
             "state": "warming_up"
           },
           "gdelt_containment": {
-            "age_hours": 5.1,
+            "age_hours": 7.6,
             "meaning": "terms loud abroad while censored at home",
-            "n": 120,
+            "n": 121,
             "n_alarms_in_history": 0,
-            "stat": 1.9507,
+            "stat": 15.9211,
             "state": "calm"
           },
           "github_refuge": {
-            "age_hours": 5.2,
+            "age_hours": 0.0,
             "meaning": "takedown/pressure events on refuge repositories",
-            "n": 60,
+            "n": 61,
             "n_alarms_in_history": 0,
-            "stat": 3.4622,
+            "stat": 4.5122,
             "state": "calm"
           },
           "ioda_outages": {
-            "age_hours": 0.2,
+            "age_hours": 0.1,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 69,
+            "n": 70,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
           },
           "ooni_gfw": {
-            "age_hours": 0.2,
+            "age_hours": 0.1,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 111,
+            "n": 112,
             "n_alarms_in_history": 1,
-            "stat": 2.3409,
+            "stat": 2.4041,
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 5.7,
+            "age_hours": 8.0,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -636,7 +636,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 15,
+                "pairs_seen": 16,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -645,7 +645,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 15,
+                "pairs_seen": 16,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -654,7 +654,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 15,
+                "pairs_seen": 16,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -663,14 +663,14 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 15,
+                "pairs_seen": 16,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               }
             },
             "n_models": 4,
-            "n_rows": 60,
-            "reason": "burn-in in progress: furthest model has 15 of 21 adjacent-run pairs",
+            "n_rows": 64,
+            "reason": "burn-in in progress: furthest model has 16 of 21 adjacent-run pairs",
             "state": "calibrating"
           },
           "refusal_drift": {
@@ -685,7 +685,7 @@
             "state": "no_data"
           },
           "tor_bridge_cn": {
-            "age_hours": 92.2,
+            "age_hours": 99.9,
             "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
             "n": 391,
             "n_alarms_in_history": 6,
@@ -695,7 +695,7 @@
           "weibo_suppression": {
             "age_hours": 0.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 69,
+            "n": 70,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
@@ -706,16 +706,16 @@
       "raw_url": "https://palimpsest.info/readings/event-flags-latest.json",
       "scope": "Per-signal conformal event states, including non-reporting and stale series.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T20:14:00Z",
+      "source_timestamp": "2026-08-06T03:53:57Z",
       "status": "live",
       "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: no signal elevated, but only 11 of 14 signals are reporting. Latest payload reports signals reporting at 11 count across 15 signals configured.",
       "title": "Event flags"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:17:39Z",
+      "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 5.445,
+        "age_hours": 1.046,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -725,9 +725,9 @@
       },
       "id": "coverage-guard",
       "input": {
-        "bytes": 4354,
+        "bytes": 4355,
         "filename": "coverage-guard-latest.json",
-        "sha256": "43933cfecbfb377252de520a564a7e6c0b48bfedc68011798938516f3ccbd3b1"
+        "sha256": "7d130f98c1c27a50a3d877e5d46d71b9cc4b2194e03c56dd5df2b119b65aa865"
       },
       "layer": "command",
       "live": true,
@@ -749,7 +749,7 @@
         "confounded": [
           "ddti_novelty"
         ],
-        "generated_at": "2026-08-05T20:17:39.370697+00:00",
+        "generated_at": "2026-08-06T03:54:42.389656+00:00",
         "headline": "coverage-confounded, do not read as censorship change: ddti_novelty",
         "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
         "signals": {
@@ -760,30 +760,30 @@
             "verdict": "INSUFFICIENT_HISTORY"
           },
           "ddti_novelty": {
-            "denominator_change_pct": 17.8,
+            "denominator_change_pct": 24.3,
             "denominator_is": "distinct terms extracted from the CDT deletion stream",
-            "denominator_now": 199.0,
-            "denominator_robust_z": 5.06,
+            "denominator_now": 210.0,
+            "denominator_robust_z": 6.91,
             "fit": {
-              "correlation": -0.705,
-              "intercept": 61.4638,
-              "slope": -0.203974
+              "correlation": -0.713,
+              "intercept": 61.6659,
+              "slope": -0.205267
             },
-            "metric_now": 16.0,
-            "metric_robust_z": -8.77,
-            "n_pairs": 211,
-            "note": "the measurement base moved 17.8% at the same time and tracks this metric historically (r=-0.71); conditioning on it shrinks the departure from z=-8.8 to z=-2.6. This reading is NOT evidence of a censorship change.",
-            "residual_robust_z": -2.56,
+            "metric_now": 20.0,
+            "metric_robust_z": -6.07,
+            "n_pairs": 213,
+            "note": "the measurement base moved 24.3% at the same time and tracks this metric historically (r=-0.71); conditioning on it shrinks the departure from z=-6.1 to z=-0.2. This reading is NOT evidence of a censorship change.",
+            "residual_robust_z": -0.22,
             "verdict": "COVERAGE_CONFOUNDED"
           },
           "ddti_threat": {
-            "denominator_change_pct": 17.8,
+            "denominator_change_pct": 24.3,
             "denominator_is": "distinct terms extracted from the CDT deletion stream",
-            "denominator_now": 199.0,
-            "denominator_robust_z": 5.06,
-            "metric_now": 0.6064,
-            "metric_robust_z": -1.42,
-            "n_pairs": 211,
+            "denominator_now": 210.0,
+            "denominator_robust_z": 6.91,
+            "metric_now": 1.8001,
+            "metric_robust_z": -0.14,
+            "n_pairs": 213,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -792,9 +792,9 @@
             "denominator_is": "terms carried into the GDELT cross-signal",
             "denominator_now": 25.0,
             "denominator_robust_z": null,
-            "metric_now": 4.0,
-            "metric_robust_z": -0.34,
-            "n_pairs": 120,
+            "metric_now": 10.0,
+            "metric_robust_z": 1.69,
+            "n_pairs": 121,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -805,18 +805,18 @@
             "denominator_robust_z": null,
             "metric_now": 0.0,
             "metric_robust_z": -0.67,
-            "n_pairs": 60,
+            "n_pairs": 61,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
           "ooni_gfw": {
-            "denominator_change_pct": 14.0,
+            "denominator_change_pct": -0.4,
             "denominator_is": "OONI probe measurements in the rolling window",
-            "denominator_now": 308321.0,
-            "denominator_robust_z": 1.35,
-            "metric_now": 59.5,
-            "metric_robust_z": 0.08,
-            "n_pairs": 111,
+            "denominator_now": 269435.0,
+            "denominator_robust_z": -0.04,
+            "metric_now": 59.7,
+            "metric_robust_z": 0.25,
+            "n_pairs": 112,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -833,7 +833,7 @@
             "denominator_robust_z": null,
             "metric_now": 0.0,
             "metric_robust_z": null,
-            "n_pairs": 69,
+            "n_pairs": 70,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           }
@@ -842,16 +842,16 @@
       "raw_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
       "scope": "Checks whether apparent movement is confounded by changing measurement coverage.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T20:17:39Z",
+      "source_timestamp": "2026-08-06T03:54:42Z",
       "status": "live",
       "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: coverage-confounded, do not read as censorship change: ddti_novelty. Latest payload reports confounded signals at 1 count.",
       "title": "Coverage guard"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:17:39Z",
+      "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 5.445,
+        "age_hours": 1.046,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -861,9 +861,9 @@
       },
       "id": "forecast-ledger",
       "input": {
-        "bytes": 13065,
+        "bytes": 13066,
         "filename": "forecast-ledger-latest.json",
-        "sha256": "0dcc47071eefe080398f7e987f8472abbcea073b57e452577316203413b7ba2b"
+        "sha256": "a151b475dfeb1170b4b8b3a8a250cc8b6308949ed92a8a1cbe0da344c6ebf46f"
       },
       "layer": "command",
       "live": true,
@@ -872,11 +872,11 @@
       "metric": {
         "denominator": {
           "label": "forecasts",
-          "value": 1118
+          "value": 1125
         },
         "label": "empirical coverage",
         "unit": "ratio",
-        "value": 0.836
+        "value": 0.834
       },
       "optional": false,
       "payload": {
@@ -894,15 +894,15 @@
           "silence_blackouts": "needs 20 readings, has 0",
           "weibo_suppression": "history logs state transitions, not a regular series"
         },
-        "generated_at": "2026-08-05T20:17:39.450015+00:00",
-        "headline": "8 signals scored over 1118 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
+        "generated_at": "2026-08-06T03:54:42.469048+00:00",
+        "headline": "8 signals scored over 1125 one-step forecasts; 83% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 2 of 8",
         "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
-        "n_beating_baseline": 3,
-        "n_forecasts": 1118,
+        "n_beating_baseline": 2,
+        "n_forecasts": 1125,
         "n_signals_scored": 8,
         "nominal_coverage": 0.8,
         "not_yet_scoreable": "term-level escalation calls from processors/forecaster.py are not scored here: resolving them needs the full ranked term list preserved at each reading, and readings/ddti-history.jsonl currently stores only the top term. Scoring them requires that list to start being written; it cannot be reconstructed.",
-        "pooled_empirical_coverage": 0.836,
+        "pooled_empirical_coverage": 0.834,
         "signals": {
           "censored_planet": {
             "beats_baseline": false,
@@ -930,15 +930,15 @@
           },
           "ddti_novelty": {
             "beats_baseline": true,
-            "coverage_gap_pp": 17.5,
-            "empirical_coverage": 0.975,
-            "n_forecasts": 200,
-            "n_misses": 5,
+            "coverage_gap_pp": 17.0,
+            "empirical_coverage": 0.97,
+            "n_forecasts": 202,
+            "n_misses": 6,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.003,
-            "wis": 0.0752,
-            "wis_baseline_fixed_quantile": 0.0754,
+            "wis": 0.0942,
+            "wis_baseline_fixed_quantile": 0.0945,
             "worst_misses": [
               {
                 "actual": 21.0,
@@ -961,6 +961,16 @@
                 "wis": 4.0
               },
               {
+                "actual": 20.0,
+                "covered": false,
+                "forecast": 16.0,
+                "hi": 16.0,
+                "lo": 16.0,
+                "miss_by": 4.0,
+                "t": 211,
+                "wis": 4.0
+              },
+              {
                 "actual": 30.0,
                 "covered": false,
                 "forecast": 29.0,
@@ -979,30 +989,20 @@
                 "miss_by": 1.0,
                 "t": 130,
                 "wis": 1.0
-              },
-              {
-                "actual": 20.0,
-                "covered": false,
-                "forecast": 21.0,
-                "hi": 21.0,
-                "lo": 21.0,
-                "miss_by": 1.0,
-                "t": 169,
-                "wis": 1.0
               }
             ]
           },
           "ddti_threat": {
-            "beats_baseline": true,
-            "coverage_gap_pp": 3.0,
-            "empirical_coverage": 0.83,
-            "n_forecasts": 200,
-            "n_misses": 34,
+            "beats_baseline": false,
+            "coverage_gap_pp": 2.2,
+            "empirical_coverage": 0.822,
+            "n_forecasts": 202,
+            "n_misses": 36,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": 0.003,
-            "wis": 0.1445,
-            "wis_baseline_fixed_quantile": 0.1449,
+            "skill_vs_baseline": -0.003,
+            "wis": 0.1496,
+            "wis_baseline_fixed_quantile": 0.1491,
             "worst_misses": [
               {
                 "actual": 3.369,
@@ -1058,15 +1058,15 @@
           },
           "gdelt_containment": {
             "beats_baseline": false,
-            "coverage_gap_pp": -0.2,
-            "empirical_coverage": 0.798,
-            "n_forecasts": 109,
-            "n_misses": 22,
+            "coverage_gap_pp": -0.9,
+            "empirical_coverage": 0.791,
+            "n_forecasts": 110,
+            "n_misses": 23,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": -0.011,
-            "wis": 1.2799,
-            "wis_baseline_fixed_quantile": 1.2656,
+            "skill_vs_baseline": -0.01,
+            "wis": 1.2971,
+            "wis_baseline_fixed_quantile": 1.2842,
             "worst_misses": [
               {
                 "actual": 2.0,
@@ -1122,15 +1122,15 @@
           },
           "github_refuge": {
             "beats_baseline": false,
-            "coverage_gap_pp": 1.6,
-            "empirical_coverage": 0.816,
-            "n_forecasts": 49,
+            "coverage_gap_pp": 2.0,
+            "empirical_coverage": 0.82,
+            "n_forecasts": 50,
             "n_misses": 9,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": -0.084,
-            "wis": 0.6754,
-            "wis_baseline_fixed_quantile": 0.6232,
+            "skill_vs_baseline": -0.083,
+            "wis": 0.6679,
+            "wis_baseline_fixed_quantile": 0.6167,
             "worst_misses": [
               {
                 "actual": 0.0,
@@ -1186,15 +1186,15 @@
           },
           "ooni_gfw": {
             "beats_baseline": true,
-            "coverage_gap_pp": 1.0,
-            "empirical_coverage": 0.81,
-            "n_forecasts": 100,
+            "coverage_gap_pp": 1.2,
+            "empirical_coverage": 0.812,
+            "n_forecasts": 101,
             "n_misses": 19,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": 0.061,
-            "wis": 0.2275,
-            "wis_baseline_fixed_quantile": 0.2423,
+            "skill_vs_baseline": 0.062,
+            "wis": 0.2265,
+            "wis_baseline_fixed_quantile": 0.2414,
             "worst_misses": [
               {
                 "actual": 55.6,
@@ -1381,16 +1381,16 @@
       "raw_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
       "scope": "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T20:17:39Z",
+      "source_timestamp": "2026-08-06T03:54:42Z",
       "status": "live",
-      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1118 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8. Latest payload reports empirical coverage at 0.836 ratio across 1118 forecasts.",
+      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1125 one-step forecasts; 83% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 2 of 8. Latest payload reports empirical coverage at 0.834 ratio across 1125 forecasts.",
       "title": "Forecast ledger"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:17:39Z",
+      "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 5.445,
+        "age_hours": 1.046,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1402,7 +1402,7 @@
       "input": {
         "bytes": 5963,
         "filename": "cross-layer-latest.json",
-        "sha256": "c21abfa713b7259fda17343a4952c9646a8350bb29b4fb9b1c325159fdb837fc"
+        "sha256": "c12b1f61d2b08331b1897b19d5538d6cfa2124dc9daedeccf985e74b6de40dcf"
       },
       "layer": "command",
       "live": true,
@@ -1425,7 +1425,7 @@
           "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
           "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
         ],
-        "generated_at": "2026-08-05T20:17:39.536302+00:00",
+        "generated_at": "2026-08-06T03:54:42.555693+00:00",
         "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
         "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
         "method_version": 1,
@@ -1476,7 +1476,7 @@
               "ddti_novelty",
               "ooni_gfw"
             ],
-            "reason": "10 admissible shifts: smallest attainable p is 0.091, above alpha=0.05. Needs about 36d of overlapping daily history (has 25d)"
+            "reason": "11 admissible shifts: smallest attainable p is 0.083, above alpha=0.05. Needs about 36d of overlapping daily history (has 26d)"
           },
           {
             "pair": [
@@ -1497,7 +1497,7 @@
               "ddti_threat",
               "ooni_gfw"
             ],
-            "reason": "10 admissible shifts: smallest attainable p is 0.091, above alpha=0.05. Needs about 36d of overlapping daily history (has 25d)"
+            "reason": "11 admissible shifts: smallest attainable p is 0.083, above alpha=0.05. Needs about 36d of overlapping daily history (has 26d)"
           },
           {
             "pair": [
@@ -1539,7 +1539,7 @@
               "github_refuge",
               "ooni_gfw"
             ],
-            "reason": "10 admissible shifts: smallest attainable p is 0.091, above alpha=0.05. Needs about 36d of overlapping daily history (has 25d)"
+            "reason": "11 admissible shifts: smallest attainable p is 0.083, above alpha=0.05. Needs about 36d of overlapping daily history (has 26d)"
           },
           {
             "pair": [
@@ -1574,16 +1574,16 @@
       "raw_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "scope": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T20:17:39Z",
+      "source_timestamp": "2026-08-06T03:54:42Z",
       "status": "live",
       "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. Upstream reading: no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned. Latest payload reports confirmed pairs at 0 count across 0 pairs tested.",
       "title": "Cross-layer lead/lag"
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-06T05:28:26Z",
+      "freshness_deadline": "2026-08-06T10:39:39Z",
       "health": {
-        "age_hours": 3.266,
+        "age_hours": 1.297,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1593,9 +1593,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 21838,
+        "bytes": 21812,
         "filename": "ddti-latest.json",
-        "sha256": "86a65b6adb25295397995ee39da1601962da1e48caa0508d54e54c7fcbeb4783"
+        "sha256": "6724296676dc9d897c60dbacf731ed1577063861b5ae637b113bd4cc9a0f8c53"
       },
       "layer": "attention",
       "live": true,
@@ -1617,7 +1617,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 186.9,
+          "days_covered": 187.1,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1631,12 +1631,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-05T22:28:26.073138+00:00",
+        "generated_at": "2026-08-06T03:39:39.719937+00:00",
         "n_observations": 88,
         "n_terms": 210,
         "ranked": [
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-06-25T04:55:16+00:00",
@@ -1657,10 +1657,10 @@
               }
             ],
             "term": "online media",
-            "threat": 1.9401
+            "threat": 1.8001
           },
           {
-            "attention": 0.986,
+            "attention": 0.9148,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-23T02:11:05+00:00",
@@ -1685,10 +1685,10 @@
               }
             ],
             "term": "state media",
-            "threat": 1.7254
+            "threat": 1.6009
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1705,10 +1705,10 @@
               }
             ],
             "term": "AI Has Determined That My Press Card Is a Fake",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1725,10 +1725,10 @@
               }
             ],
             "term": "china youth daily",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1745,10 +1745,10 @@
               }
             ],
             "term": "information technology",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1765,10 +1765,10 @@
               }
             ],
             "term": "literacy",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1785,10 +1785,10 @@
               }
             ],
             "term": "media",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1805,10 +1805,10 @@
               }
             ],
             "term": "press accreditation",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1825,10 +1825,10 @@
               }
             ],
             "term": "reputation",
-            "threat": 1.6976
+            "threat": 1.5751
           },
           {
-            "attention": 0.986,
+            "attention": 0.9148,
             "burst_ratio": 1.2,
             "domain": "OTHER",
             "first_seen": "2026-02-20T20:32:28+00:00",
@@ -1853,10 +1853,10 @@
               }
             ],
             "term": "CDT translation",
-            "threat": 1.1831
+            "threat": 1.0978
           },
           {
-            "attention": 0.9856,
+            "attention": 0.9145,
             "burst_ratio": 1.2,
             "domain": "OTHER",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -1877,10 +1877,10 @@
               }
             ],
             "term": "investigative journalism",
-            "threat": 1.1499
+            "threat": 1.0669
           },
           {
-            "attention": 0.9739,
+            "attention": 0.9036,
             "burst_ratio": 0.92,
             "domain": "OTHER",
             "first_seen": "2026-02-11T05:21:06+00:00",
@@ -1905,10 +1905,10 @@
               }
             ],
             "term": "Culture & the Arts",
-            "threat": 0.9739
+            "threat": 0.9036
           },
           {
-            "attention": 0.9701,
+            "attention": 0.9001,
             "burst_ratio": 0.75,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -1929,10 +1929,10 @@
               }
             ],
             "term": "artificial intelligence",
-            "threat": 0.9701
+            "threat": 0.9001
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": 0.6,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -1949,10 +1949,10 @@
               }
             ],
             "term": "AI",
-            "threat": 0.97
+            "threat": 0.9
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -1969,10 +1969,10 @@
               }
             ],
             "term": "humor",
-            "threat": 0.97
+            "threat": 0.9
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": 0.5,
             "domain": "OTHER",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -1989,10 +1989,10 @@
               }
             ],
             "term": "journalism",
-            "threat": 0.97
+            "threat": 0.9
           },
           {
-            "attention": 0.97,
+            "attention": 0.9,
             "burst_ratio": 0.5,
             "domain": "OTHER",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -2009,10 +2009,10 @@
               }
             ],
             "term": "journalists",
-            "threat": 0.97
+            "threat": 0.9
           },
           {
-            "attention": 0.5846,
+            "attention": 0.5424,
             "burst_ratio": 0.81,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-02-10T02:38:33+00:00",
@@ -2037,10 +2037,10 @@
               }
             ],
             "term": "WeChat",
-            "threat": 0.5846
+            "threat": 0.5424
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2057,10 +2057,10 @@
               }
             ],
             "term": "Economics",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2077,10 +2077,10 @@
               }
             ],
             "term": "World Cup",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2097,10 +2097,10 @@
               }
             ],
             "term": "animal protection",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2117,10 +2117,10 @@
               }
             ],
             "term": "animals",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2137,10 +2137,10 @@
               }
             ],
             "term": "blue-collar workers",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2157,10 +2157,10 @@
               }
             ],
             "term": "business",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2177,10 +2177,10 @@
               }
             ],
             "term": "dogs",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2197,10 +2197,10 @@
               }
             ],
             "term": "extortion",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2217,10 +2217,10 @@
               }
             ],
             "term": "legislation",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2237,10 +2237,10 @@
               }
             ],
             "term": "market-economy",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2257,10 +2257,10 @@
               }
             ],
             "term": "protesters",
-            "threat": 0.3039
+            "threat": 0.282
           },
           {
-            "attention": 0.1737,
+            "attention": 0.1612,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2277,7 +2277,7 @@
               }
             ],
             "term": "protests",
-            "threat": 0.3039
+            "threat": 0.282
           }
         ],
         "source_feeds": {
@@ -2299,16 +2299,16 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-05T22:28:26Z",
+      "source_timestamp": "2026-08-06T03:39:39Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 210 count.",
       "title": "Deletion-directive term index"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:19:37Z",
+      "freshness_deadline": "2026-08-06T17:58:36Z",
       "health": {
-        "age_hours": 5.412,
+        "age_hours": 0.981,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2318,9 +2318,9 @@
       },
       "id": "gdelt",
       "input": {
-        "bytes": 6645,
+        "bytes": 6694,
         "filename": "gdelt-latest.json",
-        "sha256": "eabcc32b23fc82c6d4bd8949ad703096181cfd6827abfbe9400549a115d2fdde"
+        "sha256": "9232575560838e55c2f36e0d65ae7b675e54822523609d77cf9eb94113abd878"
       },
       "layer": "attention",
       "live": true,
@@ -2333,122 +2333,204 @@
         },
         "label": "terms with global data",
         "unit": "count",
-        "value": 10
+        "value": 8
       },
       "optional": false,
       "payload": {
-        "ddti_generated_at": "2026-08-05T19:55:51.720790+00:00",
-        "generated_at": "2026-08-05T20:19:37.000464+00:00",
+        "ddti_generated_at": "2026-08-06T03:39:39.719937+00:00",
+        "generated_at": "2026-08-06T03:58:36.867275+00:00",
         "method_version": 1,
         "n_blackout": 0,
-        "n_containment": 10,
+        "n_containment": 8,
         "n_terms": 25,
-        "n_with_global_data": 10,
+        "n_with_global_data": 8,
         "ranked": [
           {
-            "cross_score": 0.1528,
-            "domestic_attention": 0.1803,
+            "cross_score": 0.2392,
+            "domestic_attention": 0.9001,
             "domestic_present": true,
-            "global_norm": 1.0,
-            "global_volume_intensity": 12.422808536585366,
+            "global_norm": 0.505,
+            "global_volume_intensity": 2.525090909090909,
             "label": "containment",
-            "term": "police"
+            "term": "artificial intelligence"
           },
           {
-            "cross_score": 0.1099,
-            "domestic_attention": 0.1802,
+            "cross_score": 0.1219,
+            "domestic_attention": 0.9,
             "domestic_present": true,
-            "global_norm": 0.7197,
-            "global_volume_intensity": 3.5985384146341466,
+            "global_norm": 0.2574,
+            "global_volume_intensity": 1.287010909090909,
             "label": "containment",
-            "term": "sports"
+            "term": "journalists"
           },
           {
-            "cross_score": 0.0582,
-            "domestic_attention": 0.1802,
+            "cross_score": 0.0795,
+            "domestic_attention": 0.9,
             "domestic_present": true,
-            "global_norm": 0.3812,
-            "global_volume_intensity": 1.9058981707317073,
+            "global_norm": 0.1678,
+            "global_volume_intensity": 0.8389830303030302,
             "label": "containment",
-            "term": "animals"
+            "term": "reputation"
           },
           {
-            "cross_score": 0.0535,
-            "domestic_attention": 0.1802,
+            "cross_score": 0.0489,
+            "domestic_attention": 0.9,
             "domestic_present": true,
-            "global_norm": 0.3504,
-            "global_volume_intensity": 1.752209756097561,
+            "global_norm": 0.1033,
+            "global_volume_intensity": 0.5164509090909091,
             "label": "containment",
-            "term": "transportation"
+            "term": "humor"
           },
           {
-            "cross_score": 0.0517,
-            "domestic_attention": 0.1802,
+            "cross_score": 0.0287,
+            "domestic_attention": 0.9,
             "domestic_present": true,
-            "global_norm": 0.3383,
-            "global_volume_intensity": 1.6916963414634145,
+            "global_norm": 0.0606,
+            "global_volume_intensity": 0.30280666666666667,
             "label": "containment",
-            "term": "legislation"
+            "term": "information technology"
           },
           {
-            "cross_score": 0.0253,
-            "domestic_attention": 0.1802,
+            "cross_score": 0.0155,
+            "domestic_attention": 0.9148,
             "domestic_present": true,
-            "global_norm": 0.1657,
-            "global_volume_intensity": 0.8284262195121951,
+            "global_norm": 0.0324,
+            "global_volume_intensity": 0.16211515151515152,
             "label": "containment",
-            "term": "protests"
+            "term": "state media"
           },
           {
-            "cross_score": 0.0167,
-            "domestic_attention": 0.1838,
+            "cross_score": 0.0006,
+            "domestic_attention": 0.5424,
             "domestic_present": true,
-            "global_norm": 0.1075,
-            "global_volume_intensity": 0.5374103658536585,
+            "global_norm": 0.0017,
+            "global_volume_intensity": 0.008538787878787878,
             "label": "containment",
-            "term": "arrests"
+            "term": "WeChat"
           },
           {
-            "cross_score": 0.016,
-            "domestic_attention": 0.1802,
+            "cross_score": 0.0005,
+            "domestic_attention": 0.9036,
             "domestic_present": true,
-            "global_norm": 0.1045,
-            "global_volume_intensity": 0.522569512195122,
+            "global_norm": 0.001,
+            "global_volume_intensity": 0.004946666666666667,
             "label": "containment",
-            "term": "Economics"
-          },
-          {
-            "cross_score": 0.0002,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": 0.0014,
-            "global_volume_intensity": 0.006835365853658537,
-            "label": "containment",
-            "term": "blue-collar workers"
-          },
-          {
-            "cross_score": 0.0001,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": 0.0005,
-            "global_volume_intensity": 0.002517682926829268,
-            "label": "containment",
-            "term": "white-collar workers"
+            "term": "Culture & the Arts"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6064,
+            "domestic_attention": 0.9,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
             "label": "unknown",
-            "term": "WeChat"
+            "term": "online media"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.1802,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "AI Has Determined That My Press Card Is a Fake"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "china youth daily"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "literacy"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "media"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "press accreditation"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9148,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "CDT translation"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9145,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "investigative journalism"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "AI"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.9,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "journalism"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.1612,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "Economics"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.1612,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2458,7 +2540,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.1802,
+            "domestic_attention": 0.1612,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2468,7 +2550,27 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.1802,
+            "domestic_attention": 0.1612,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "animals"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.1612,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "blue-collar workers"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.1612,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2478,112 +2580,12 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.1802,
+            "domestic_attention": 0.1612,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
             "label": "unknown",
             "term": "dogs"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "extortion"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "market-economy"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "protesters"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "soccer"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.2036,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "709"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.2909,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "Internet censorship"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "June 4th"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "activism"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.1802,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "police violence"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.2041,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "CDT in the news"
           }
         ],
         "scope": "cross-signal: domestic censorship attention vs global coverage volume",
@@ -2592,16 +2594,16 @@
       "raw_url": "https://palimpsest.info/readings/gdelt-latest.json",
       "scope": "cross-signal: domestic censorship attention vs global coverage volume",
       "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
-      "source_timestamp": "2026-08-05T20:19:37Z",
+      "source_timestamp": "2026-08-06T03:58:36Z",
       "status": "live",
-      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 10 count across 25 terms compared.",
+      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 8 count across 25 terms compared.",
       "title": "Global coverage cross-signal"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:12:20Z",
+      "freshness_deadline": "2026-08-06T17:52:51Z",
       "health": {
-        "age_hours": 5.534,
+        "age_hours": 1.077,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2611,9 +2613,9 @@
       },
       "id": "weibo-hotsearch",
       "input": {
-        "bytes": 6742,
+        "bytes": 6300,
         "filename": "weibo-hotsearch-latest.json",
-        "sha256": "1cedd3f030a64af29ac2d0753bd1de94c5114752099093222418ab985fbb211f"
+        "sha256": "a0fe6250191bdefb787a06b5ff088e1e8787d93d07a0661cc4fa29045b5d61ef"
       },
       "layer": "attention",
       "live": true,
@@ -2623,11 +2625,11 @@
         "denominator": null,
         "label": "board entries",
         "unit": "count",
-        "value": 2297
+        "value": 2104
       },
       "optional": false,
       "payload": {
-        "board_entries": 2297,
+        "board_entries": 2104,
         "ddti_terms_joined": 0,
         "gazetteer_breakthroughs": [
           {
@@ -2675,19 +2677,13 @@
             ],
             "sense_filtered": [
               {
-                "cue": "暧昧",
-                "date": "2026-07-29",
-                "rank": 49,
-                "title": "散步是一项隐私且暧昧的行为"
-              },
-              {
                 "cue": "猝死",
                 "date": "2026-08-01",
                 "rank": 18,
                 "title": "教师午休散步猝死未被认定工亡"
               }
             ],
-            "sense_filtered_count": 2,
+            "sense_filtered_count": 1,
             "term": "散步"
           },
           {
@@ -2766,12 +2762,6 @@
             ],
             "sense_filtered": [
               {
-                "cue": "遇难",
-                "date": "2026-07-29",
-                "rank": 29,
-                "title": "重庆失联00后网格员确认遇难"
-              },
-              {
                 "cue": "找到",
                 "date": "2026-07-30",
                 "rank": 45,
@@ -2784,25 +2774,15 @@
                 "title": "重庆彭水山体崩塌致51人遇难10人失联"
               }
             ],
-            "sense_filtered_count": 3,
+            "sense_filtered_count": 2,
             "term": "失联"
           }
         ],
-        "generated_at": "2026-08-05T20:12:20Z",
+        "generated_at": "2026-08-06T03:52:51Z",
         "join": [],
         "method_note": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
         "method_version": 2,
         "pinned_headlines": [
-          {
-            "date": "2026-07-29",
-            "pinned": [
-              "习近平强调做好这篇大文章",
-              "习近平总书记高度重视侨务工作",
-              "斯洛伐克总统这样对习主席说",
-              "习近平对侨务工作作出重要指示",
-              "中斯友谊之树根深叶茂"
-            ]
-          },
           {
             "date": "2026-07-30",
             "pinned": [
@@ -2868,6 +2848,12 @@
               "人民军队制胜向强",
               "下半年经济工作部署提到人工智能"
             ]
+          },
+          {
+            "date": "2026-08-06",
+            "pinned": [
+              "重温总书记在地方工作时的点滴瞬间"
+            ]
           }
         ],
         "regimes": {
@@ -2876,18 +2862,18 @@
         },
         "source": "Sina Weibo hot-search board via the MIT-licensed archive github.com/justjavac/weibo-trending-hot-search (hourly captures, per-day union; keyless raw fetch)",
         "window_days": [
-          "2026-07-29",
           "2026-07-30",
           "2026-07-31",
           "2026-08-01",
           "2026-08-02",
           "2026-08-03",
           "2026-08-04",
-          "2026-08-05"
+          "2026-08-05",
+          "2026-08-06"
         ],
         "withdrawal_watch": {
           "baseline_note": "pooled across all top-rank topics: the archive stores only title and url, no genre field, so entertainment and sports churn cannot be deterministically stratified out. The pooled rate reads low for hard-news topics, making a fast exit look more normal than it is; the bias runs toward missing withdrawals, not inventing them.",
-          "baseline_persist_rate": 0.2328,
+          "baseline_persist_rate": 0.2316,
           "candidates": [
             {
               "best_rank": 4,
@@ -2898,24 +2884,24 @@
               "title": "突然发现摆烂才是最强的谈判技巧"
             }
           ],
-          "one_day_exits": 267,
+          "one_day_exits": 272,
           "sense_filtered": [],
-          "top_topics_considered": 348
+          "top_topics_considered": 354
         }
       },
       "raw_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
       "scope": "Joins deletion-stream terms to archived Weibo hot-search board captures.",
       "source": "Sina Weibo hot-search board via the MIT-licensed archive github.com/justjavac/weibo-trending-hot-search (hourly captures, per-day union; keyless raw fetch)",
-      "source_timestamp": "2026-08-05T20:12:20Z",
+      "source_timestamp": "2026-08-06T03:52:51Z",
       "status": "live",
-      "summary": "Joins deletion-stream terms to archived Weibo hot-search board captures. Latest payload reports board entries at 2297 count.",
+      "summary": "Joins deletion-stream terms to archived Weibo hot-search board captures. Latest payload reports board entries at 2104 count.",
       "title": "Weibo hot-search join"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:08:28Z",
+      "freshness_deadline": "2026-08-06T17:49:41Z",
       "health": {
-        "age_hours": 5.598,
+        "age_hours": 1.13,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2925,9 +2911,9 @@
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6549,
+        "bytes": 6622,
         "filename": "silence-index-latest.json",
-        "sha256": "df1c1fd55be1f3ac726122bfb1f6fe90bfa844369af5ae000e9de9a20cf628d6"
+        "sha256": "8f444d62b51473327487027522ba3b72e870cf20cb2c4508411917fa7929f236"
       },
       "layer": "attention",
       "live": true,
@@ -2945,7 +2931,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-05T20:08:28Z",
+        "generated_at": "2026-08-06T03:49:41Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -2966,73 +2952,13 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "police"
+            "topic": "media"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.7197,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "sports"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.203,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "World Cup"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.1657,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "protests"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.1075,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "arrests"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.04,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "protesters"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0188,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "activism"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
+            "global_norm": 0.0017,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -3046,7 +2972,177 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
+            "topic": "online media"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "state media"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "AI Has Determined That My Press Card Is a Fake"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "china youth daily"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "information technology"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "literacy"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "press accreditation"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "reputation"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "CDT translation"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "investigative journalism"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "Culture & the Arts"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "artificial intelligence"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "AI"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "humor"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "journalism"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "journalists"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
             "topic": "Economics"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "World Cup"
           },
           {
             "abstained": true,
@@ -3097,123 +3193,13 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "dogs"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "extortion"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "legislation"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "market-economy"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "soccer"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "transportation"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "white-collar workers"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": true,
-            "silence_score": null,
-            "topic": "709"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "Internet censorship"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "June 4th"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "police violence"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "CDT in the news"
           }
         ]
       },
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-05T20:08:28Z",
+      "source_timestamp": "2026-08-06T03:49:41Z",
       "status": "live",
       "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously. Latest payload reports blackout topics at 0 count across 25 topics considered.",
       "title": "Silence index"
@@ -3222,7 +3208,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-11T07:54:31Z",
       "health": {
-        "age_hours": 65.831,
+        "age_hours": 69.049,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3531,9 +3517,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-06T16:59:30Z",
+      "freshness_deadline": "2026-08-07T05:53:07Z",
       "health": {
-        "age_hours": 10.748,
+        "age_hours": 1.073,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3543,9 +3529,9 @@
       },
       "id": "net4people",
       "input": {
-        "bytes": 7123,
+        "bytes": 7157,
         "filename": "net4people-latest.json",
-        "sha256": "dcd51921ad3866be51312e33884270b11e7d81ac2b481983afd3f5955f879898"
+        "sha256": "06dd6b2d169fe4259bd429a05a3233b80e5b2ca2aebe45c73217260fb38c2f30"
       },
       "layer": "attention",
       "live": true,
@@ -3555,11 +3541,21 @@
         "denominator": null,
         "label": "recent events",
         "unit": "count",
-        "value": 8
+        "value": 9
       },
       "optional": false,
       "payload": {
         "events": [
+          {
+            "china_tagged": false,
+            "comments": 0,
+            "created_at": "2026-08-05T17:49:52Z",
+            "kind": "circumvention",
+            "labels": [],
+            "number": 645,
+            "title": "Snowflake Daily Operations statement about Mullvad donations",
+            "url": "https://github.com/net4people/bbs/issues/645"
+          },
           {
             "china_tagged": false,
             "comments": 0,
@@ -3582,7 +3578,7 @@
           },
           {
             "china_tagged": false,
-            "comments": 2,
+            "comments": 3,
             "created_at": "2026-07-31T14:36:50Z",
             "kind": "other",
             "labels": [
@@ -3770,44 +3766,34 @@
             "number": 618,
             "title": "Tunneling IP traffic through whitelisted WebRTC carriers",
             "url": "https://github.com/net4people/bbs/issues/618"
-          },
-          {
-            "china_tagged": false,
-            "comments": 0,
-            "created_at": "2026-05-20T15:53:01Z",
-            "kind": "other",
-            "labels": [],
-            "number": 617,
-            "title": "Add Hindi section for Net4People BBS",
-            "url": "https://github.com/net4people/bbs/pull/617"
           }
         ],
-        "generated_at": "2026-08-05T14:59:30.323446+00:00",
-        "last_changed_at": "2026-08-04T03:52:45.278286+00:00",
+        "generated_at": "2026-08-06T03:53:07.780068+00:00",
+        "last_changed_at": "2026-08-06T03:53:07.780068+00:00",
         "method": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
         "method_version": 1,
         "n_blocking": 1,
-        "n_circumvention": 2,
-        "n_recent": 8,
+        "n_circumvention": 3,
+        "n_recent": 9,
         "recent_days": 30,
         "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
         "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
-        "velocity": 0.76,
-        "velocity_reading": "0.76x normal — typical"
+        "velocity": 0.84,
+        "velocity_reading": "0.84x normal — typical"
       },
       "raw_url": "https://palimpsest.info/readings/net4people-latest.json",
       "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
       "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
-      "source_timestamp": "2026-08-05T14:59:30Z",
+      "source_timestamp": "2026-08-06T03:53:07Z",
       "status": "live",
-      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 8 count.",
+      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 9 count.",
       "title": "Community blocking log"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T09:59:36Z",
+      "freshness_deadline": "2026-08-06T17:45:32Z",
       "health": {
-        "age_hours": 5.746,
+        "age_hours": 1.199,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3817,9 +3803,9 @@
       },
       "id": "ooni-gfw",
       "input": {
-        "bytes": 6114,
+        "bytes": 6120,
         "filename": "ooni-gfw-latest.json",
-        "sha256": "91ec1c854103b3ce15b209bc570df220ccb9c469d459b981b9761c71a8ba5061"
+        "sha256": "631196045b7cbb29a1042862f850752ec34d617dcc88f719afef149b98cb0abf"
       },
       "layer": "network",
       "live": true,
@@ -3828,84 +3814,84 @@
       "metric": {
         "denominator": {
           "label": "measurements",
-          "value": 308321
+          "value": 269435
         },
         "label": "GFW anomaly index",
         "unit": "percent",
-        "value": 59.5
+        "value": 59.7
       },
       "optional": false,
       "payload": {
         "china_caveat": "the GFW blocks via RST/DNS injection without a block page, so OONI 'confirmed' is near-zero for CN; we track anomaly rate, not confirmed",
-        "generated_at": "2026-08-05T19:59:36.570787+00:00",
-        "gfw_index": 59.5,
-        "last_changed_at": "2026-08-05T19:59:36.570787+00:00",
+        "generated_at": "2026-08-06T03:45:32.515935+00:00",
+        "gfw_index": 59.7,
+        "last_changed_at": "2026-08-06T03:45:32.515935+00:00",
         "method": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
         "method_version": 1,
-        "n_measurements": 308321,
+        "n_measurements": 269435,
         "n_tests_with_data": 6,
         "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
-        "since": "2026-07-29",
+        "since": "2026-07-30",
         "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
         "tests": [
           {
-            "anomaly_count": 180963,
-            "anomaly_rate": 0.5942,
+            "anomaly_count": 158671,
+            "anomaly_rate": 0.5964,
             "available": true,
-            "failure_count": 2461,
+            "failure_count": 2207,
             "label": "website / URL blocking",
-            "measurement_count": 306989,
-            "reading": "59% anomalous — substantial interference",
+            "measurement_count": 268255,
+            "reading": "60% anomalous — substantial interference",
             "test": "web_connectivity"
           },
           {
-            "anomaly_count": 299,
-            "anomaly_rate": 0.9645,
+            "anomaly_count": 267,
+            "anomaly_rate": 0.957,
             "available": true,
             "failure_count": 0,
             "label": "Telegram reachability",
-            "measurement_count": 310,
+            "measurement_count": 279,
             "reading": "96% anomalous — heavily interfered with",
             "test": "telegram"
           },
           {
-            "anomaly_count": 295,
-            "anomaly_rate": 0.9641,
+            "anomaly_count": 263,
+            "anomaly_rate": 0.9564,
             "available": true,
             "failure_count": 0,
             "label": "WhatsApp reachability",
-            "measurement_count": 306,
+            "measurement_count": 275,
             "reading": "96% anomalous — heavily interfered with",
             "test": "whatsapp"
           },
           {
-            "anomaly_count": 297,
-            "anomaly_rate": 0.9643,
+            "anomaly_count": 262,
+            "anomaly_rate": 0.9562,
             "available": true,
             "failure_count": 6,
             "label": "Signal reachability",
-            "measurement_count": 314,
+            "measurement_count": 280,
             "reading": "96% anomalous — heavily interfered with",
             "test": "signal"
           },
           {
-            "anomaly_count": 158,
-            "anomaly_rate": 0.9461,
+            "anomaly_count": 133,
+            "anomaly_rate": 0.9301,
             "available": true,
             "failure_count": 0,
             "label": "Tor reachability",
-            "measurement_count": 167,
-            "reading": "95% anomalous — heavily interfered with",
+            "measurement_count": 143,
+            "reading": "93% anomalous — heavily interfered with",
             "test": "tor"
           },
           {
-            "anomaly_count": 53,
-            "anomaly_rate": 0.2255,
+            "anomaly_count": 44,
+            "anomaly_rate": 0.2167,
             "available": true,
             "failure_count": 0,
             "label": "Psiphon circumvention",
-            "measurement_count": 235,
-            "reading": "23% anomalous — some interference",
+            "measurement_count": 203,
+            "reading": "22% anomalous — some interference",
             "test": "psiphon"
           },
           {
@@ -3921,106 +3907,70 @@
         ],
         "top_blocked": [
           {
-            "anomaly_count": 46,
+            "anomaly_count": 65,
             "anomaly_rate": 1.0,
-            "domain": "www.hrichina.org",
-            "measurement_count": 47
-          },
-          {
-            "anomaly_count": 38,
-            "anomaly_rate": 1.0,
-            "domain": "www.economist.com",
-            "measurement_count": 38
+            "domain": "www.bbc.com",
+            "measurement_count": 75
           },
           {
             "anomaly_count": 37,
             "anomaly_rate": 1.0,
-            "domain": "www.nchrd.org",
-            "measurement_count": 37
+            "domain": "www.hrichina.org",
+            "measurement_count": 38
           },
           {
             "anomaly_count": 35,
             "anomaly_rate": 1.0,
-            "domain": "www.hrw.org",
-            "measurement_count": 40
-          },
-          {
-            "anomaly_count": 33,
-            "anomaly_rate": 1.0,
-            "domain": "www.brookings.edu",
+            "domain": "www.economist.com",
             "measurement_count": 35
-          },
-          {
-            "anomaly_count": 33,
-            "anomaly_rate": 1.0,
-            "domain": "www.chinesepen.org",
-            "measurement_count": 33
           },
           {
             "anomaly_count": 32,
             "anomaly_rate": 1.0,
-            "domain": "studentsforafreetibet.org",
-            "measurement_count": 40
+            "domain": "www.brookings.edu",
+            "measurement_count": 34
           },
           {
             "anomaly_count": 31,
             "anomaly_rate": 1.0,
-            "domain": "dongtaiwang.com",
-            "measurement_count": 31
+            "domain": "studentsforafreetibet.org",
+            "measurement_count": 37
           },
           {
-            "anomaly_count": 29,
+            "anomaly_count": 28,
             "anomaly_rate": 1.0,
-            "domain": "zht.globalvoices.org",
-            "measurement_count": 34
+            "domain": "dongtaiwang.com",
+            "measurement_count": 28
+          },
+          {
+            "anomaly_count": 28,
+            "anomaly_rate": 1.0,
+            "domain": "www.chinesepen.org",
+            "measurement_count": 28
+          },
+          {
+            "anomaly_count": 28,
+            "anomaly_rate": 1.0,
+            "domain": "www.hrw.org",
+            "measurement_count": 33
           },
           {
             "anomaly_count": 27,
             "anomaly_rate": 1.0,
-            "domain": "www.xvideos.com",
-            "measurement_count": 27
+            "domain": "zht.globalvoices.org",
+            "measurement_count": 30
           },
           {
             "anomaly_count": 26,
             "anomaly_rate": 1.0,
-            "domain": "www.cbc.ca",
-            "measurement_count": 27
+            "domain": "www.nchrd.org",
+            "measurement_count": 26
           },
           {
             "anomaly_count": 24,
             "anomaly_rate": 1.0,
             "domain": "dns.adguard.com",
             "measurement_count": 24
-          },
-          {
-            "anomaly_count": 24,
-            "anomaly_rate": 1.0,
-            "domain": "nypost.com",
-            "measurement_count": 24
-          },
-          {
-            "anomaly_count": 24,
-            "anomaly_rate": 1.0,
-            "domain": "ooni.torproject.org",
-            "measurement_count": 24
-          },
-          {
-            "anomaly_count": 24,
-            "anomaly_rate": 1.0,
-            "domain": "proton.me",
-            "measurement_count": 27
-          },
-          {
-            "anomaly_count": 24,
-            "anomaly_rate": 1.0,
-            "domain": "www.bahai.org",
-            "measurement_count": 24
-          },
-          {
-            "anomaly_count": 24,
-            "anomaly_rate": 1.0,
-            "domain": "www.businessweekly.com.tw",
-            "measurement_count": 25
           },
           {
             "anomaly_count": 23,
@@ -4031,62 +3981,98 @@
           {
             "anomaly_count": 23,
             "anomaly_rate": 1.0,
-            "domain": "mega.io",
+            "domain": "tibetnetwork.org",
+            "measurement_count": 26
+          },
+          {
+            "anomaly_count": 23,
+            "anomaly_rate": 1.0,
+            "domain": "www.cbc.ca",
             "measurement_count": 24
           },
           {
-            "anomaly_count": 23,
+            "anomaly_count": 22,
             "anomaly_rate": 1.0,
-            "domain": "tibetnetwork.org",
-            "measurement_count": 27
+            "domain": "www.bahai.org",
+            "measurement_count": 22
           },
           {
-            "anomaly_count": 23,
+            "anomaly_count": 22,
             "anomaly_rate": 1.0,
             "domain": "www.csis.org",
+            "measurement_count": 24
+          },
+          {
+            "anomaly_count": 22,
+            "anomaly_rate": 1.0,
+            "domain": "www.kakaocorp.com",
+            "measurement_count": 22
+          },
+          {
+            "anomaly_count": 21,
+            "anomaly_rate": 1.0,
+            "domain": "dns.quad9.net",
+            "measurement_count": 21
+          },
+          {
+            "anomaly_count": 21,
+            "anomaly_rate": 1.0,
+            "domain": "surfshark.com",
+            "measurement_count": 22
+          },
+          {
+            "anomaly_count": 21,
+            "anomaly_rate": 1.0,
+            "domain": "theintercept.com",
             "measurement_count": 25
           },
           {
-            "anomaly_count": 23,
+            "anomaly_count": 21,
+            "anomaly_rate": 1.0,
+            "domain": "www.businessweekly.com.tw",
+            "measurement_count": 22
+          },
+          {
+            "anomaly_count": 21,
             "anomaly_rate": 1.0,
             "domain": "www.dalailama.com",
-            "measurement_count": 23
+            "measurement_count": 21
           },
           {
-            "anomaly_count": 23,
+            "anomaly_count": 21,
             "anomaly_rate": 1.0,
-            "domain": "www.kakaocorp.com",
-            "measurement_count": 23
+            "domain": "www.nytimes.com",
+            "measurement_count": 21
           },
           {
-            "anomaly_count": 22,
+            "anomaly_count": 21,
             "anomaly_rate": 1.0,
-            "domain": "beyondexgay.com",
-            "measurement_count": 22
+            "domain": "www.xvideos.com",
+            "measurement_count": 21
           },
           {
-            "anomaly_count": 22,
+            "anomaly_count": 20,
             "anomaly_rate": 1.0,
-            "domain": "msguancha.com",
-            "measurement_count": 22
+            "domain": "supchina.com",
+            "measurement_count": 21
           }
         ],
-        "until": "2026-08-06",
+        "until": "2026-08-07",
         "window_days": 7
       },
       "raw_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
       "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
       "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
-      "source_timestamp": "2026-08-05T19:59:36Z",
+      "source_timestamp": "2026-08-06T03:45:32Z",
       "status": "live",
-      "summary": "Aggregates OONI measurements made by probes in China across network test families. Latest payload reports GFW anomaly index at 59.5 percent across 308321 measurements.",
+      "summary": "Aggregates OONI measurements made by probes in China across network test families. Latest payload reports GFW anomaly index at 59.7 percent across 269435 measurements.",
       "title": "OONI Great Firewall index"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:02:28Z",
+      "freshness_deadline": "2026-08-06T17:47:45Z",
       "health": {
-        "age_hours": 5.698,
+        "age_hours": 1.162,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4096,9 +4082,9 @@
       },
       "id": "in-path-interference",
       "input": {
-        "bytes": 4225,
+        "bytes": 4226,
         "filename": "in-path-interference-latest.json",
-        "sha256": "2e016b2d8b4068e164102a93b0e0d3bb3dad5ab928fe10d8474b8dc17cad66e0"
+        "sha256": "5c203918a1db5491445b039bbedc83acc5f99b366b1c2e9b6cb95165ba1fa513"
       },
       "layer": "network",
       "live": true,
@@ -4108,7 +4094,7 @@
         "denominator": null,
         "label": "middlebox index",
         "unit": "percent",
-        "value": 1.5
+        "value": 1.49
       },
       "optional": false,
       "payload": {
@@ -4119,77 +4105,77 @@
         "execution_blackouts": [
           {
             "label": "DNS-integrity test completion",
-            "measurement_count": 70188,
+            "measurement_count": 69525,
             "test": "dnscheck"
           },
           {
             "label": "Encrypted Client Hello test completion",
-            "measurement_count": 239,
+            "measurement_count": 238,
             "test": "echcheck"
           }
         ],
         "execution_reading": "2 measurement method(s) never completed a single run in China this window: dnscheck, echcheck",
-        "generated_at": "2026-08-05T20:02:28.006866+00:00",
-        "last_changed_at": "2026-08-05T14:43:30.395278+00:00",
+        "generated_at": "2026-08-06T03:47:45.568881+00:00",
+        "last_changed_at": "2026-08-06T03:47:45.568881+00:00",
         "method": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
         "method_version": 1,
-        "middlebox_index": 1.5,
+        "middlebox_index": 1.49,
         "middlebox_reading": "1.5% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
         "scope": "in-path tampering, real-time/circumvention transport health, and measurement methods that cannot execute inside China",
         "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
         "tests": [
           {
             "anomaly_count": 82,
-            "anomaly_rate": 0.0164,
+            "anomaly_rate": 0.0165,
             "available": true,
-            "completed_count": 5014,
+            "completed_count": 4962,
             "execution_failure_rate": 0.0,
             "failure_count": 0,
             "family": "MIDDLEBOX",
             "label": "HTTP headers rewritten in transit",
-            "measurement_count": 5014,
+            "measurement_count": 4962,
             "never_completes": false,
             "test": "http_header_field_manipulation",
             "why": null
           },
           {
-            "anomaly_count": 69,
-            "anomaly_rate": 0.0136,
+            "anomaly_count": 67,
+            "anomaly_rate": 0.0133,
             "available": true,
-            "completed_count": 5085,
+            "completed_count": 5034,
             "execution_failure_rate": 0.0,
             "failure_count": 0,
             "family": "MIDDLEBOX",
             "label": "malformed request lines normalised in transit",
-            "measurement_count": 5085,
+            "measurement_count": 5034,
             "never_completes": false,
             "test": "http_invalid_request_line",
             "why": null
           },
           {
-            "anomaly_count": 12369,
-            "anomaly_rate": 0.3206,
+            "anomaly_count": 12280,
+            "anomaly_rate": 0.3215,
             "available": true,
-            "completed_count": 38582,
+            "completed_count": 38192,
             "execution_failure_rate": 0.0,
             "failure_count": 0,
             "family": "TRANSPORT",
             "label": "STUN servers unreachable (real-time voice / WebRTC)",
-            "measurement_count": 38582,
+            "measurement_count": 38192,
             "never_completes": false,
             "test": "stunreachability",
             "why": null
           },
           {
-            "anomaly_count": 466,
-            "anomaly_rate": 0.9433,
+            "anomaly_count": 462,
+            "anomaly_rate": 0.9409,
             "available": true,
-            "completed_count": 494,
-            "execution_failure_rate": 0.8714,
-            "failure_count": 3348,
+            "completed_count": 491,
+            "execution_failure_rate": 0.8709,
+            "failure_count": 3313,
             "family": "TRANSPORT",
             "label": "stock Tor bootstrap",
-            "measurement_count": 3842,
+            "measurement_count": 3804,
             "never_completes": false,
             "test": "vanilla_tor",
             "why": null
@@ -4214,10 +4200,10 @@
             "available": false,
             "completed_count": 0,
             "execution_failure_rate": 1.0,
-            "failure_count": 70188,
+            "failure_count": 69525,
             "family": "EXECUTION",
             "label": "DNS-integrity test completion",
-            "measurement_count": 70188,
+            "measurement_count": 69525,
             "never_completes": true,
             "test": "dnscheck",
             "why": "only 0 completed measurement(s); below the 100 floor for a rate"
@@ -4228,32 +4214,32 @@
             "available": false,
             "completed_count": 0,
             "execution_failure_rate": 1.0,
-            "failure_count": 239,
+            "failure_count": 238,
             "family": "EXECUTION",
             "label": "Encrypted Client Hello test completion",
-            "measurement_count": 239,
+            "measurement_count": 238,
             "never_completes": true,
             "test": "echcheck",
             "why": "only 0 completed measurement(s); below the 100 floor for a rate"
           }
         ],
-        "transport_index": 32.95,
+        "transport_index": 33.05,
         "transport_reading": "33.0% anomalous — transports partly degraded",
         "window_days": 90
       },
       "raw_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
       "scope": "in-path tampering, real-time/circumvention transport health, and measurement methods that cannot execute inside China",
       "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
-      "source_timestamp": "2026-08-05T20:02:28Z",
+      "source_timestamp": "2026-08-06T03:47:45Z",
       "status": "live",
-      "summary": "Separates middlebox signatures, transport failures and tests that could not execute. Latest payload reports middlebox index at 1.5 percent.",
+      "summary": "Separates middlebox signatures, transport failures and tests that could not execute. Latest payload reports middlebox index at 1.49 percent.",
       "title": "In-path interference"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:05:27Z",
       "health": {
-        "age_hours": 17.649,
+        "age_hours": 20.867,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4429,7 +4415,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T10:12:00Z",
       "health": {
-        "age_hours": 5.539,
+        "age_hours": 8.758,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6871,9 +6857,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:00:40Z",
+      "freshness_deadline": "2026-08-06T17:46:54Z",
       "health": {
-        "age_hours": 5.728,
+        "age_hours": 1.176,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6885,7 +6871,7 @@
       "input": {
         "bytes": 668,
         "filename": "ioda-outages-latest.json",
-        "sha256": "d22f1eb5c4ccc35d855407f803b0d21ffc29a3a2fd0cb077e9f618617a3d3252"
+        "sha256": "078dfef7e5649b95116ee5465b4f700f04c19f7e2b1b83fd1b2d504a6f4cf593"
       },
       "layer": "network",
       "live": true,
@@ -6900,7 +6886,7 @@
       "optional": false,
       "payload": {
         "events": [],
-        "generated_at": "2026-08-05T20:00:40Z",
+        "generated_at": "2026-08-06T03:46:54Z",
         "instruments_firing": 0,
         "method_note": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
         "method_version": 1,
@@ -6914,7 +6900,7 @@
       "raw_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
       "scope": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments.",
       "source": "IODA (Georgia Tech Internet Intelligence) v2 API — outage events for country CN from BGP, active probing (ping-slash24) and darknet (merit-nt) instruments",
-      "source_timestamp": "2026-08-05T20:00:40Z",
+      "source_timestamp": "2026-08-06T03:46:54Z",
       "status": "live",
       "summary": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments. Latest payload reports instruments firing at 0 count.",
       "title": "IODA outage monitor"
@@ -6923,7 +6909,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T09:49:22Z",
       "health": {
-        "age_hours": 17.917,
+        "age_hours": 21.135,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6994,9 +6980,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:16:39Z",
+      "freshness_deadline": "2026-08-06T17:54:35Z",
       "health": {
-        "age_hours": 5.462,
+        "age_hours": 1.048,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7008,7 +6994,7 @@
       "input": {
         "bytes": 2093,
         "filename": "vantage-fusion-latest.json",
-        "sha256": "24da8e57e89cd74d918ceec812a1dfd22e0c4313d7159cb759fc389c785d8099"
+        "sha256": "632aef5964d9c48a2db3139ddefc245e7022aa7adcddf73f35527e593a54790b"
       },
       "layer": "network",
       "live": true,
@@ -7018,11 +7004,11 @@
         "denominator": null,
         "label": "fused network index",
         "unit": "percent",
-        "value": 29.2
+        "value": 29.3
       },
       "optional": false,
       "payload": {
-        "agreement": 0.083,
+        "agreement": 0.079,
         "caveats": [
           "when single_rate_quotable is false the fused_index is NOT a defensible estimate — it is the weighted midpoint of methods that disagree, kept only for continuity of the series; quote the interval instead",
           "censorship is VANTAGE-DEPENDENT (arXiv:2406.19304): independent methods can legitimately disagree because of routing, partial deployment, or probe location — divergence is reported, never smoothed away",
@@ -7031,22 +7017,22 @@
           "coverage weights (Censored Planet 0.55, OONI 0.45) are a disclosed choice reflecting vantage count, renormalized over whichever vantages report"
         ],
         "confidence": "CONTESTED",
-        "divergence_pp": 55.0,
+        "divergence_pp": 55.2,
         "excluded_vantages": {},
-        "fused_index": 29.2,
-        "generated_at": "2026-08-05T20:16:39.426439+00:00",
+        "fused_index": 29.3,
+        "generated_at": "2026-08-06T03:54:35.036972+00:00",
         "interval": [
           4.5,
-          59.5
+          59.7
         ],
-        "interval_width_pp": 55.0,
+        "interval_width_pp": 55.2,
         "last_changed_at": "2026-07-31T15:10:06.554371+00:00",
         "method": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
         "method_version": 1,
         "net4people": {
-          "blocking_share": 0.125,
+          "blocking_share": 0.111,
           "n_blocking": 1,
-          "n_recent": 8,
+          "n_recent": 9,
           "present": true
         },
         "ok": true,
@@ -7054,7 +7040,7 @@
         "single_rate_quotable": false,
         "vantages": {
           "censored_planet": 4.5,
-          "ooni": 59.5
+          "ooni": 59.7
         },
         "verdict": "NO SINGLE RATE IS DEFENSIBLE: OONI reads 60 and Censored Planet 4, 55pp apart. The honest answer is the range 4–60, not its midpoint — censorship is vantage-dependent and these two methods are measuring different things about the same wall.",
         "weights_used": {
@@ -7065,9 +7051,9 @@
       "raw_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
       "scope": "Fuses only reporting network vantages and names excluded or divergent inputs.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T20:16:39Z",
+      "source_timestamp": "2026-08-06T03:54:35Z",
       "status": "live",
-      "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 29.2 percent.",
+      "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 29.3 percent.",
       "title": "Network vantage fusion"
     },
     {
@@ -7105,9 +7091,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T09:55:48Z",
+      "freshness_deadline": "2026-08-06T17:39:32Z",
       "health": {
-        "age_hours": 5.809,
+        "age_hours": 1.299,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7117,9 +7103,9 @@
       },
       "id": "erasure-observatory",
       "input": {
-        "bytes": 4070,
+        "bytes": 4072,
         "filename": "erasure-observatory-latest.json",
-        "sha256": "b391cfed860104d195be18c28e456e1edecd109d382108eb1207b046fcc907d9"
+        "sha256": "9a980821448987debf699f4c1518cf005fbea04f8f5257d9d2a152d5d6d04e28"
       },
       "layer": "erasure",
       "live": true,
@@ -7135,7 +7121,7 @@
       "payload": {
         "cross_checks": [
           {
-            "age_hours": 11.8,
+            "age_hours": 19.6,
             "as_of": "2026-08-05T08:05:27.041156+00:00",
             "name": "Censored Planet interference",
             "note": "independent DNS/HTTP side-channel, confirms network layer",
@@ -7143,7 +7129,7 @@
             "value": 4.45
           },
           {
-            "age_hours": 4.9,
+            "age_hours": 12.7,
             "as_of": "2026-08-05T14:59:30.323446+00:00",
             "name": "Firewall event velocity",
             "note": "community-logged blocking/circumvention rate vs baseline",
@@ -7153,52 +7139,52 @@
         ],
         "cross_checks_withheld": [],
         "erasure_index": 36.2,
-        "generated_at": "2026-08-05T19:55:48.557612+00:00",
+        "generated_at": "2026-08-06T03:39:32.815354+00:00",
         "index_scale": "0-100; higher = more of the observed record removed or rewritten",
         "integrity": {
           "by_source": {
-            "baike-redaction": 7,
+            "baike-redaction": 8,
             "censored-planet": 21,
             "generative-firewall": 7,
-            "ooni-gfw": 99
+            "ooni-gfw": 100
           },
-          "entries": 134,
+          "entries": 136,
           "first_ts": "2026-07-11T15:18:29.250178+00:00",
-          "head_hash": "27b6d94ea7d8fe9eafd1af824108d45fc1ca2a109d264ba05bd3942b946502bf",
-          "head_ts": "2026-08-05T19:55:48.557612+00:00",
+          "head_hash": "89f9dc7d1602f3fd76394a9cbecd87861ab19ae08f92bae2d85957786b7201ee",
+          "head_ts": "2026-08-06T03:39:32.815354+00:00",
           "ledger": "readings/erasure-ledger.jsonl",
-          "merkle_root": "7d21fdc1e5451d2a37bd609228c52a3c57c43166249aa04d66b10a836451ebc4",
+          "merkle_root": "096fe1a8637d8fd0e0b4957b3059a661b39726b0f124e32efe15df20ee0a9fe9",
           "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped",
           "sealed_this_run": [
             {
-              "entry_hash": "a908fea34e32a0be1cfcaa15c27fb4484932b7d1facb5046a0b8857650b28207",
-              "seq": 132,
+              "entry_hash": "a4f9951f316fc8745073fdc840bb94f27f4336e1d3cdab40bb777ce1e95b7aaf",
+              "seq": 134,
               "source": "ooni-gfw"
             },
             {
-              "entry_hash": "27b6d94ea7d8fe9eafd1af824108d45fc1ca2a109d264ba05bd3942b946502bf",
-              "seq": 133,
+              "entry_hash": "89f9dc7d1602f3fd76394a9cbecd87861ab19ae08f92bae2d85957786b7201ee",
+              "seq": 135,
               "source": "baike-redaction"
             }
           ],
           "verified": true,
           "verify_cmd": "python3 scripts/verify_ledger.py"
         },
-        "last_changed_at": "2026-08-05T19:55:48.557612+00:00",
+        "last_changed_at": "2026-08-06T03:39:32.815354+00:00",
         "layers": [
           {
-            "age_days": 0.22,
-            "age_hours": 5.3,
-            "as_of": "2026-08-05T14:40:07.724644+00:00",
+            "age_days": 0.32,
+            "age_hours": 7.7,
+            "as_of": "2026-08-05T19:59:36.570787+00:00",
             "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
             "layer": "network",
             "reading": "ooni-gfw-latest.json",
             "source": "OONI aggregation (probe_cc=CN)",
             "title": "Network erasure",
-            "value": 59.4
+            "value": 59.5
           },
           {
-            "age_days": 0.44,
+            "age_days": 0.76,
             "as_of": "2026-08-05T09:29:01.568203+00:00",
             "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
             "layer": "model",
@@ -7208,15 +7194,15 @@
             "value": 13.0
           },
           {
-            "age_hours": 143.4,
+            "age_hours": 151.1,
             "as_of": "2026-07-30T20:31:16.856256+00:00",
             "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
             "collector_status": "disabled_no_authorized_access",
             "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
             "layer": "narrative",
-            "pipeline_checked_at": "2026-08-05T19:55:48.477251+00:00",
+            "pipeline_checked_at": "2026-08-06T03:39:32.749320+00:00",
             "reading": "baike-redaction-latest.json",
-            "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 6.0 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
+            "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 6.3 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
             "status": "STALE",
             "title": "Narrative erasure",
             "value": null
@@ -7234,16 +7220,16 @@
       "raw_url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
       "scope": "Rolls up contributing erasure layers while retaining cross-checks and integrity state.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-05T19:55:48Z",
+      "source_timestamp": "2026-08-06T03:39:32Z",
       "status": "live",
       "summary": "Rolls up contributing erasure layers while retaining cross-checks and integrity state. Latest payload reports erasure index at 36.2 index.",
       "title": "Erasure observatory"
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-06T16:41:03Z",
+      "freshness_deadline": "2026-08-07T05:47:34Z",
       "health": {
-        "age_hours": 11.055,
+        "age_hours": 1.165,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7253,9 +7239,9 @@
       },
       "id": "wayback",
       "input": {
-        "bytes": 17598,
+        "bytes": 1462,
         "filename": "wayback-latest.json",
-        "sha256": "3c96c3b27daa37432d437ccae274e9a5d98a395918aaa9b578de6fd63fb0a0ed"
+        "sha256": "f8806bc444b141d06e04d186523eb3e993189f4ad7b038f92167a4b69e222f11"
       },
       "layer": "erasure",
       "live": true,
@@ -7272,503 +7258,22 @@
       },
       "optional": false,
       "payload": {
-        "ddti_observations": [
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-03-16T11:51:28+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-09-15T13:59:24+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-01-24T13:14:36+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-08-18T12:39:34+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-08-22T17:38:12+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-12-08T08:14:28+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-09-22T16:14:32+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-12-01T21:55:31+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-10-06T07:03:00+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-12-18T07:34:38+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-03-04T14:14:44+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-01-23T11:20:47+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2026-02-08T06:28:54+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-02-22T19:50:27+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-02-08T07:37:11+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-04-01T14:37:21+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2026-05-02T15:02:31+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-04-21T22:12:46+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-09-15T06:44:38+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-01-11T14:17:59+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-10-18T05:16:23+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-07-18T06:07:12+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-08-15T13:43:29+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-12-31T15:16:39+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-06-26T14:09:21+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-09-27T11:19:22+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-11-23T15:08:28+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-05-22T12:10:05+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-05-31T19:13:31+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-02-09T13:45:45+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2023-07-18T06:16:31+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2026-01-25T11:24:49+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-06-20T17:43:45+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2026-06-25T17:19:24+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-04-30T15:39:59+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-08-23T01:34:01+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-12-08T06:29:13+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2026-04-12T08:21:29+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2025-04-14T11:01:46+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          },
-          {
-            "deletion_signal": "mutation",
-            "detected_at": "2024-11-30T05:16:29+00:00",
-            "severity": "medium",
-            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
-            "terms": [
-              "国家统计局 最新发布"
-            ],
-            "text": "国家统计局 最新发布",
-            "title": "[undertext:mutation] 国家统计局 最新发布",
-            "url": ""
-          }
-        ],
-        "generated_at": "2026-08-05T14:41:03.681994+00:00",
+        "ddti_observations": [],
+        "generated_at": "2026-08-06T03:47:34.710108+00:00",
         "method_version": 1,
         "n_deletions": 0,
-        "n_mutations": 1,
-        "n_reachable": 4,
+        "n_mutations": 0,
+        "n_reachable": 2,
         "n_watched": 4,
         "reconstructions": [
           {
-            "event": "no_baseline",
+            "event": "unreachable",
             "first_capture": null,
             "last_capture": null,
             "n_captures": 0,
-            "note": "no_baseline",
+            "note": "unreachable",
             "term": "青年失业率",
-            "url": ""
+            "url": "https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87"
           },
           {
             "event": "no_baseline",
@@ -7789,18 +7294,13 @@
             "url": ""
           },
           {
-            "detail": "silent redaction between https://web.archive.org/web/20230316105547/http://www.stats.gov.cn/sj/zxfb/ and https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
-            "event": "mutation",
-            "first_capture": "20230316105547",
-            "last_capture": "20260625171924",
-            "last_live_snapshot": "https://web.archive.org/web/20230316105547/http://www.stats.gov.cn/sj/zxfb/",
-            "latency_bracket_s": 3341.0,
-            "n_captures": 47,
-            "note": "",
-            "post_event_snapshot": "https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
-            "severity": "medium",
+            "event": "unreachable",
+            "first_capture": null,
+            "last_capture": null,
+            "n_captures": 0,
+            "note": "unreachable",
             "term": "国家统计局 最新发布",
-            "url": "http://www.stats.gov.cn/sj/zxfb/"
+            "url": "https://www.stats.gov.cn/sj/zxfb/"
           }
         ],
         "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket",
@@ -7809,7 +7309,7 @@
       "raw_url": "https://palimpsest.info/readings/wayback-latest.json",
       "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket",
       "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
-      "source_timestamp": "2026-08-05T14:41:03Z",
+      "source_timestamp": "2026-08-06T03:47:34Z",
       "status": "live",
       "summary": "Reconstructs deletions and silent mutations only where archive captures provide a witness. Latest payload reports reconstructed deletions at 0 count across 4 URLs watched.",
       "title": "Wayback reconstruction"
@@ -7818,11 +7318,11 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 149.218,
+        "age_hours": 152.437,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
-        "pipeline_checked_at": "2026-08-05T19:55:48.477251+00:00",
+        "pipeline_checked_at": "2026-08-06T03:39:32.749320+00:00",
         "reason": "freshness deadline has passed",
         "upstream_status": "disabled"
       },
@@ -7830,7 +7330,7 @@
       "input": {
         "bytes": 4205,
         "filename": "baike-redaction-latest.json",
-        "sha256": "5d0485537e573bc1396e7c42077ebf48af2ce3f10a9c8f36b6e0499c40349ed3"
+        "sha256": "335fdd8b19cf899a1773a10e371b54a1282bde1ab3dc2e363c03d76054a8bd83"
       },
       "layer": "erasure",
       "live": false,
@@ -7943,7 +7443,7 @@
         "n_forked": 0,
         "observation_reason": "only 0/10 entities were comparable (fetch_failed×10). A 403 here is the source refusing this client, which is not by itself evidence about geography",
         "observation_status": "insufficient_data",
-        "pipeline_checked_at": "2026-08-05T19:55:48.477251+00:00",
+        "pipeline_checked_at": "2026-08-06T03:39:32.749320+00:00",
         "quarantined_history": [
           {
             "generated_at": "2026-07-30T20:25:46.041900+00:00",
@@ -7970,9 +7470,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-06T16:59:24Z",
+      "freshness_deadline": "2026-08-07T05:52:42Z",
       "health": {
-        "age_hours": 10.749,
+        "age_hours": 1.08,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7982,9 +7482,9 @@
       },
       "id": "github-refuge",
       "input": {
-        "bytes": 3741,
+        "bytes": 3732,
         "filename": "github-refuge-latest.json",
-        "sha256": "c5824f544550e797ed213ddef8eae41dbfc534532e8e61cdaf249c469f417aa1"
+        "sha256": "ec9f3620ee85dcc55d9f8b95178d366c1377963d37ea9e0e1075b9a366bf995e"
       },
       "layer": "erasure",
       "live": true,
@@ -8002,7 +7502,7 @@
       "optional": false,
       "payload": {
         "first_run": false,
-        "generated_at": "2026-08-05T14:59:24.731643+00:00",
+        "generated_at": "2026-08-06T03:52:42.074344+00:00",
         "method_version": 1,
         "n_present": 7,
         "n_pressure_events": 0,
@@ -8074,14 +7574,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.141",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.0",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "programthink/zhao",
             "kind": "quiet",
             "pressure_likelihood": 0.0,
             "severity": "low",
-            "star_novelty": 0.1405,
+            "star_novelty": 0.0,
             "status": "present",
             "topic_terms": [
               "programthink",
@@ -8091,14 +7591,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.23",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.115",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "net4people/bbs",
             "kind": "quiet",
             "pressure_likelihood": 0.0,
             "severity": "low",
-            "star_novelty": 0.2302,
+            "star_novelty": 0.1146,
             "status": "present",
             "topic_terms": [
               "gfw",
@@ -8108,14 +7608,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.479",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.0",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "github/dmca",
             "kind": "quiet",
             "pressure_likelihood": 0.0,
             "severity": "low",
-            "star_novelty": 0.4792,
+            "star_novelty": 0.0,
             "status": "present",
             "topic_terms": [
               "transparency",
@@ -8142,16 +7642,16 @@
       "raw_url": "https://palimpsest.info/readings/github-refuge-latest.json",
       "scope": "pressure on censored-material refuge repos: takedowns, legal blocks, visibility drops, preservation bursts",
       "source": "GitHub REST API (public pressure metadata only)",
-      "source_timestamp": "2026-08-05T14:59:24Z",
+      "source_timestamp": "2026-08-06T03:52:42Z",
       "status": "live",
       "summary": "Watches public pressure metadata for repositories preserving censored material. Latest payload reports pressure events at 0 count across 7 repositories watched.",
       "title": "GitHub refuge watch"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:20:16Z",
+      "freshness_deadline": "2026-08-06T17:57:09Z",
       "health": {
-        "age_hours": 5.402,
+        "age_hours": 1.006,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8163,7 +7663,7 @@
       "input": {
         "bytes": 3519,
         "filename": "app-storefront-latest.json",
-        "sha256": "840cabae4584349798284f38a046c8022ed1871021df8308b3179b451a356086"
+        "sha256": "09c007fdf4145f02892492024784d5ab4b00a9cb79735aac99d8dd939ee80c41"
       },
       "layer": "erasure",
       "live": true,
@@ -8305,7 +7805,7 @@
           "The New York Times"
         ],
         "delisting_rate": 0.6,
-        "generated_at": "2026-08-05T20:20:16.202587+00:00",
+        "generated_at": "2026-08-06T03:57:09.107464+00:00",
         "last_changed_at": "2026-07-31T04:15:37.987842+00:00",
         "method_version": 1,
         "n_delisted": 6,
@@ -8318,7 +7818,7 @@
       "raw_url": "https://palimpsest.info/readings/app-storefront-latest.json",
       "scope": "app-layer availability: which apps are offered in the Chinese App Store storefront versus the US one",
       "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
-      "source_timestamp": "2026-08-05T20:20:16Z",
+      "source_timestamp": "2026-08-06T03:57:09Z",
       "status": "live",
       "summary": "Compares a fixed app panel in the China and US Apple storefronts. Upstream reading: much of the tracked catalogue is unavailable in the Chinese storefront. Latest payload reports delisting rate at 0.6 ratio across 10 apps tracked.",
       "title": "App Storefront panel"
@@ -8327,7 +7827,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:03:22Z",
       "health": {
-        "age_hours": 17.683,
+        "age_hours": 20.902,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8431,7 +7931,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T04:59:51Z",
       "health": {
-        "age_hours": 10.742,
+        "age_hours": 13.961,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8498,7 +7998,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T20:20:43Z",
       "health": {
-        "age_hours": 7.394,
+        "age_hours": 10.613,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8550,7 +8050,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-09T17:34:16Z",
       "health": {
-        "age_hours": 10.168,
+        "age_hours": 13.387,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8608,7 +8108,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T14:05:50Z",
       "health": {
-        "age_hours": 13.642,
+        "age_hours": 16.861,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8758,7 +8258,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 16.564,
+        "age_hours": 19.783,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8826,7 +8326,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T11:29:01Z",
       "health": {
-        "age_hours": 16.256,
+        "age_hours": 19.474,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14115,9 +13615,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-06T10:12:53Z",
+      "freshness_deadline": "2026-08-06T18:46:35Z",
       "health": {
-        "age_hours": 5.525,
+        "age_hours": 0.181,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14129,7 +13629,7 @@
       "input": {
         "bytes": 692,
         "filename": "anchors-latest.json",
-        "sha256": "eb7b1ef414edda412d5f763975d65aee713576d3ea966be712ff35f799078888"
+        "sha256": "bc5c67b34fc48a6a31033b4daeafff35654b4b238c30fc8b3c96419cdef2f9a9"
       },
       "layer": "integrity",
       "live": true,
@@ -14138,33 +13638,33 @@
       "metric": null,
       "optional": false,
       "payload": {
-        "erasure_root": "7d21fdc1e5451d2a37bd609228c52a3c57c43166249aa04d66b10a836451ebc4",
-        "ots": "readings/anchors/roots-20260805T201253Z.txt.ots",
+        "erasure_root": "096fe1a8637d8fd0e0b4957b3059a661b39726b0f124e32efe15df20ee0a9fe9",
+        "ots": "readings/anchors/roots-20260806T044635Z.txt.ots",
         "ots_status": "stamped",
         "readings_chain": "verified",
         "readings_problems": [],
-        "readings_root": "1f560108f77f36fdafded05c602fe1af75077e4647b8f84578f012b8a0382b9c",
-        "registry_root": "9c91f83fc96363c9a28a065e442cdadda1779a83b0a69f3cc392ad6bf5057804",
-        "ts": "2026-08-05T20:12:53.319136+00:00",
+        "readings_root": "1f6b48e73427aa0c61e04af899fa2f71b14127c8ec8469d7d6dc5ccebd2eaf60",
+        "registry_root": "6fc12ce08f584f7b3b7391638dbb509035465a038c3b6f146b9d88cc18029de7",
+        "ts": "2026-08-06T04:46:35.631070+00:00",
         "wayback_ok": 2,
         "wayback_snapshots": [
-          "https://web.archive.org/web/20260805145536/https://palimpsest.info/readings/eval-registry.jsonl",
-          "https://web.archive.org/web/20260805145540/https://palimpsest.info/readings/erasure-ledger.jsonl"
+          "https://web.archive.org/web/20260806044638/https://palimpsest.info/readings/eval-registry.jsonl",
+          "https://web.archive.org/web/20260806044643/https://palimpsest.info/readings/erasure-ledger.jsonl"
         ]
       },
       "raw_url": "https://palimpsest.info/readings/anchors-latest.json",
       "scope": "Publishes ledger roots and external witness status for independent integrity checks.",
       "source": "Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
-      "source_timestamp": "2026-08-05T20:12:53Z",
+      "source_timestamp": "2026-08-06T04:46:35Z",
       "status": "live",
       "summary": "Publishes ledger roots and external witness status for independent integrity checks.",
       "title": "Integrity anchors"
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-06T02:44:16Z",
+      "freshness_deadline": "2026-08-06T05:44:16Z",
       "health": {
-        "age_hours": 0.002,
+        "age_hours": 0.22,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14174,9 +13674,9 @@
       },
       "id": "nemesis",
       "input": {
-        "bytes": 170357,
+        "bytes": 170378,
         "filename": "nemesis-latest.json",
-        "sha256": "ff5a36a2a33a41b36b27248de1aef47d87592e622d8f49a1acf67d106d277ebc"
+        "sha256": "33bfb0bed04debd39d1878ed67565ec3561464d804d95911a2c6ec7fa9410fc8"
       },
       "layer": "nemesis",
       "live": true,
@@ -14234,7 +13734,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1785980656.111,
+        "data_timestamp": 1785991456.116,
         "ddti": {
           "by_domain": {
             "ECONOMY": 4,
@@ -14246,13 +13746,13 @@
             "SOCIETY": 8,
             "UNREST": 7
           },
-          "generated_at": 1785980656.111,
+          "generated_at": 1785991456.116,
           "n_posts": 16,
           "n_posts_scored": 16,
           "n_terms": 196,
           "ranked": [
             {
-              "attention": 1.85,
+              "attention": 1.84,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14287,11 +13787,11 @@
               "tag_observations": 3,
               "term": "state media",
               "text_observations": 0,
-              "threat": 4.63,
+              "threat": 4.6,
               "total": 3
             },
             {
-              "attention": 3.14,
+              "attention": 3.12,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14326,11 +13826,11 @@
               "tag_observations": 7,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 4.18,
+              "threat": 4.15,
               "total": 7
             },
             {
-              "attention": 3.07,
+              "attention": 3.05,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14365,11 +13865,11 @@
               "tag_observations": 7,
               "term": "online censorship",
               "text_observations": 0,
-              "threat": 4.08,
+              "threat": 4.06,
               "total": 7
             },
             {
-              "attention": 3.34,
+              "attention": 3.32,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14404,11 +13904,11 @@
               "tag_observations": 8,
               "term": "social media censorship",
               "text_observations": 0,
-              "threat": 3.89,
+              "threat": 3.87,
               "total": 8
             },
             {
-              "attention": 1.5,
+              "attention": 1.49,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14443,11 +13943,11 @@
               "tag_observations": 3,
               "term": "floods",
               "text_observations": 0,
-              "threat": 3.74,
+              "threat": 3.72,
               "total": 3
             },
             {
-              "attention": 1.5,
+              "attention": 1.49,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14482,11 +13982,11 @@
               "tag_observations": 3,
               "term": "natural disasters",
               "text_observations": 0,
-              "threat": 3.74,
+              "threat": 3.72,
               "total": 3
             },
             {
-              "attention": 1.54,
+              "attention": 1.53,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14513,11 +14013,11 @@
               "tag_observations": 2,
               "term": "investigative journalism",
               "text_observations": 0,
-              "threat": 3.38,
+              "threat": 3.36,
               "total": 2
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14536,11 +14036,11 @@
               "tag_observations": 1,
               "term": "china youth daily",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14559,11 +14059,11 @@
               "tag_observations": 1,
               "term": "humor",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14582,11 +14082,11 @@
               "tag_observations": 1,
               "term": "information technology",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14605,11 +14105,11 @@
               "tag_observations": 1,
               "term": "journalism",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14628,11 +14128,11 @@
               "tag_observations": 1,
               "term": "journalists",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14651,11 +14151,11 @@
               "tag_observations": 1,
               "term": "literacy",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14674,11 +14174,11 @@
               "tag_observations": 1,
               "term": "media",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14697,11 +14197,11 @@
               "tag_observations": 1,
               "term": "press accreditation",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 0.99,
+              "attention": 0.98,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14720,11 +14220,11 @@
               "tag_observations": 1,
               "term": "reputation",
               "text_observations": 0,
-              "threat": 2.18,
+              "threat": 2.16,
               "total": 1
             },
             {
-              "attention": 1.25,
+              "attention": 1.24,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14751,11 +14251,11 @@
               "tag_observations": 2,
               "term": "artificial intelligence",
               "text_observations": 0,
-              "threat": 2.01,
+              "threat": 1.99,
               "total": 2
             },
             {
-              "attention": 1.22,
+              "attention": 1.21,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -14782,7 +14282,7 @@
               "tag_observations": 2,
               "term": "arrests",
               "text_observations": 0,
-              "threat": 1.96,
+              "threat": 1.94,
               "total": 2
             },
             {
@@ -14813,7 +14313,7 @@
               "tag_observations": 2,
               "term": "online media",
               "text_observations": 0,
-              "threat": 1.79,
+              "threat": 1.78,
               "total": 2
             },
             {
@@ -14836,7 +14336,7 @@
               "tag_observations": 0,
               "term": "404",
               "text_observations": 1,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14859,7 +14359,7 @@
               "tag_observations": 1,
               "term": "activism",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14882,7 +14382,7 @@
               "tag_observations": 1,
               "term": "activists",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14905,7 +14405,7 @@
               "tag_observations": 1,
               "term": "animal protection",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14928,7 +14428,7 @@
               "tag_observations": 1,
               "term": "animals",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14951,7 +14451,7 @@
               "tag_observations": 1,
               "term": "blue-collar workers",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14974,7 +14474,7 @@
               "tag_observations": 1,
               "term": "business",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -14997,7 +14497,7 @@
               "tag_observations": 1,
               "term": "censorship vault",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15020,7 +14520,7 @@
               "tag_observations": 0,
               "term": "deleted",
               "text_observations": 1,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15043,7 +14543,7 @@
               "tag_observations": 1,
               "term": "dogs",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15066,7 +14566,7 @@
               "tag_observations": 1,
               "term": "economics",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15089,7 +14589,7 @@
               "tag_observations": 1,
               "term": "employment",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15112,7 +14612,7 @@
               "tag_observations": 1,
               "term": "extortion",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15135,7 +14635,7 @@
               "tag_observations": 1,
               "term": "june 4th",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15158,7 +14658,7 @@
               "tag_observations": 1,
               "term": "legislation",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15181,7 +14681,7 @@
               "tag_observations": 1,
               "term": "local government",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15204,7 +14704,7 @@
               "tag_observations": 1,
               "term": "market-economy",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15227,7 +14727,7 @@
               "tag_observations": 1,
               "term": "nationalism",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15250,7 +14750,7 @@
               "tag_observations": 1,
               "term": "police violence",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15273,7 +14773,7 @@
               "tag_observations": 1,
               "term": "protesters",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15296,7 +14796,7 @@
               "tag_observations": 1,
               "term": "protests",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15319,7 +14819,7 @@
               "tag_observations": 1,
               "term": "soccer",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15342,7 +14842,7 @@
               "tag_observations": 1,
               "term": "sports",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15365,7 +14865,7 @@
               "tag_observations": 1,
               "term": "transportation",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15388,7 +14888,7 @@
               "tag_observations": 1,
               "term": "unemployment",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15411,7 +14911,7 @@
               "tag_observations": 1,
               "term": "white-collar workers",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15434,7 +14934,7 @@
               "tag_observations": 1,
               "term": "workers",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
@@ -15457,11 +14957,11 @@
               "tag_observations": 1,
               "term": "world cup",
               "text_observations": 0,
-              "threat": 1.7,
+              "threat": 1.69,
               "total": 1
             },
             {
-              "attention": 0.98,
+              "attention": 0.97,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15488,11 +14988,11 @@
               "tag_observations": 2,
               "term": "cyberspace administration of china",
               "text_observations": 0,
-              "threat": 1.57,
+              "threat": 1.56,
               "total": 2
             },
             {
-              "attention": 1.49,
+              "attention": 1.48,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15527,7 +15027,7 @@
               "tag_observations": 2,
               "term": "police",
               "text_observations": 1,
-              "threat": 1.57,
+              "threat": 1.56,
               "total": 3
             },
             {
@@ -15550,7 +15050,7 @@
               "tag_observations": 1,
               "term": "changsha",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15573,7 +15073,7 @@
               "tag_observations": 1,
               "term": "cybersecurity",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15596,7 +15096,7 @@
               "tag_observations": 1,
               "term": "great firewall",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15619,7 +15119,7 @@
               "tag_observations": 1,
               "term": "hunan",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15642,7 +15142,7 @@
               "tag_observations": 1,
               "term": "internet",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15665,7 +15165,7 @@
               "tag_observations": 1,
               "term": "internet access",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15688,7 +15188,7 @@
               "tag_observations": 1,
               "term": "real name registration",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15711,7 +15211,7 @@
               "tag_observations": 1,
               "term": "wi-fi",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.54,
               "total": 1
             },
             {
@@ -15742,7 +15242,7 @@
               "tag_observations": 2,
               "term": "media censorship",
               "text_observations": 0,
-              "threat": 1.44,
+              "threat": 1.43,
               "total": 2
             },
             {
@@ -15765,7 +15265,7 @@
               "tag_observations": 1,
               "term": "accountability",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -15788,7 +15288,7 @@
               "tag_observations": 0,
               "term": "censored",
               "text_observations": 1,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -15811,7 +15311,7 @@
               "tag_observations": 1,
               "term": "chengdu",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -15842,7 +15342,7 @@
               "tag_observations": 2,
               "term": "dams",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -15873,7 +15373,7 @@
               "tag_observations": 2,
               "term": "death toll",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -15904,7 +15404,7 @@
               "tag_observations": 2,
               "term": "disaster relief",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -15927,7 +15427,7 @@
               "tag_observations": 1,
               "term": "henan",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -15958,7 +15458,7 @@
               "tag_observations": 2,
               "term": "infrastructure",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -15981,7 +15481,7 @@
               "tag_observations": 1,
               "term": "li zhi",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -16004,7 +15504,7 @@
               "tag_observations": 1,
               "term": "mourning",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -16035,7 +15535,7 @@
               "tag_observations": 2,
               "term": "rainfall",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -16066,7 +15566,7 @@
               "tag_observations": 2,
               "term": "reservoirs",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -16089,7 +15589,7 @@
               "tag_observations": 1,
               "term": "state council",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -16112,7 +15612,7 @@
               "tag_observations": 1,
               "term": "subway",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
@@ -16143,7 +15643,7 @@
               "tag_observations": 2,
               "term": "typhoons",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 2
             },
             {
@@ -16166,11 +15666,11 @@
               "tag_observations": 1,
               "term": "zhengzhou",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.38,
               "total": 1
             },
             {
-              "attention": 1.36,
+              "attention": 1.35,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16205,11 +15705,11 @@
               "tag_observations": 1,
               "term": "censorship",
               "text_observations": 3,
-              "threat": 1.36,
+              "threat": 1.35,
               "total": 4
             },
             {
-              "attention": 0.83,
+              "attention": 0.82,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16236,11 +15736,11 @@
               "tag_observations": 2,
               "term": "drones",
               "text_observations": 0,
-              "threat": 1.33,
+              "threat": 1.32,
               "total": 2
             },
             {
-              "attention": 1.21,
+              "attention": 1.2,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16279,7 +15779,7 @@
               "total": 3
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16298,11 +15798,11 @@
               "tag_observations": 1,
               "term": "emergency response",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.2,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -16321,11 +15821,11 @@
               "tag_observations": 1,
               "term": "environment",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.2,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16344,11 +15844,11 @@
               "tag_observations": 1,
               "term": "storms",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.2,
               "total": 1
             },
             {
-              "attention": 0.78,
+              "attention": 0.77,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16383,7 +15883,7 @@
               "tag_observations": 4,
               "term": "social media",
               "text_observations": 0,
-              "threat": 0.78,
+              "threat": 0.77,
               "total": 4
             },
             {
@@ -16426,7 +15926,7 @@
               "total": 3
             },
             {
-              "attention": 0.72,
+              "attention": 0.71,
               "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
@@ -16454,7 +15954,7 @@
               "tag_observations": 2,
               "term": "hong kong",
               "text_observations": 1,
-              "threat": 0.72,
+              "threat": 0.71,
               "total": 2
             },
             {
@@ -17242,7 +16742,7 @@
               "total": 1
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17261,11 +16761,11 @@
               "tag_observations": 1,
               "term": "fccc",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 1
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17284,11 +16784,11 @@
               "tag_observations": 1,
               "term": "foreign media",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 1
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17307,11 +16807,11 @@
               "tag_observations": 1,
               "term": "media conditions",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 1
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17330,11 +16830,11 @@
               "tag_observations": 1,
               "term": "media control",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 1
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17353,11 +16853,11 @@
               "tag_observations": 1,
               "term": "visas",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17376,11 +16876,11 @@
               "tag_observations": 1,
               "term": "euphemisms",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17399,7 +16899,7 @@
               "tag_observations": 1,
               "term": "farmers",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
@@ -19108,7 +18608,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1785980656.12,
+          "generated_at": 1785991456.138,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 2,
           "pct": 16,
@@ -19146,33 +18646,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1785980656.126,
+        "generated_at": 1785991456.151,
         "health": {
           "freshness": {
-            "age_seconds": 0.015,
-            "core_data_at": 1785980656.111,
+            "age_seconds": 0.035,
+            "core_data_at": 1785991456.116,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.22,
-            "finished_at": 1785980656.125,
+            "duration_s": 0.24,
+            "finished_at": 1785991456.15,
             "healthy": true,
-            "id": 125,
-            "started_at": 1785980655.907,
+            "id": 137,
+            "started_at": 1785991455.909,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.22,
-            "finished_at": 1785980656.125,
+            "duration_s": 0.24,
+            "finished_at": 1785991456.15,
             "healthy": true,
-            "id": 125,
-            "started_at": 1785980655.907,
+            "id": 137,
+            "started_at": 1785991455.909,
             "status": "ok"
           },
-          "last_successful_run_at": 1785980656.125,
+          "last_successful_run_at": 1785991456.15,
           "live": true,
           "posts": 27,
           "ready": true,
@@ -19214,7 +18714,7 @@
             ],
             "score": 9.0,
             "term": "state media",
-            "threat": 4.63
+            "threat": 4.6
           },
           {
             "domain": "INFORMATION",
@@ -19247,9 +18747,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
               }
             ],
-            "score": 7.9,
+            "score": 7.8,
             "term": "internet censorship",
-            "threat": 4.18
+            "threat": 4.15
           },
           {
             "domain": "INFORMATION",
@@ -19284,7 +18784,7 @@
             ],
             "score": 7.7,
             "term": "online censorship",
-            "threat": 4.08
+            "threat": 4.06
           },
           {
             "domain": "INFORMATION",
@@ -19317,9 +18817,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 7.4,
+            "score": 7.3,
             "term": "social media censorship",
-            "threat": 3.89
+            "threat": 3.87
           },
           {
             "domain": "OTHER",
@@ -19354,7 +18854,7 @@
             ],
             "score": 7.3,
             "term": "floods",
-            "threat": 3.74
+            "threat": 3.72
           },
           {
             "domain": "OTHER",
@@ -19389,7 +18889,7 @@
             ],
             "score": 7.3,
             "term": "natural disasters",
-            "threat": 3.74
+            "threat": 3.72
           },
           {
             "domain": "INFORMATION",
@@ -19414,9 +18914,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
-            "score": 5.7,
+            "score": 5.6,
             "term": "investigative journalism",
-            "threat": 3.38
+            "threat": 3.36
           },
           {
             "domain": "OTHER",
@@ -19433,9 +18933,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
-            "score": 3.4,
+            "score": 3.3,
             "term": "china youth daily",
-            "threat": 2.18
+            "threat": 2.16
           },
           {
             "domain": "OTHER",
@@ -19452,9 +18952,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
-            "score": 3.4,
+            "score": 3.3,
             "term": "humor",
-            "threat": 2.18
+            "threat": 2.16
           },
           {
             "domain": "OTHER",
@@ -19471,9 +18971,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
-            "score": 3.4,
+            "score": 3.3,
             "term": "information technology",
-            "threat": 2.18
+            "threat": 2.16
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -19489,10 +18989,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1785980656.125,
-          "ddti_generated_at": 1785980656.111,
-          "economic_generated_at": 1785980656.12,
-          "last_successful_run_at": 1785980656.125,
+          "data_updated_at": 1785991456.15,
+          "ddti_generated_at": 1785991456.116,
+          "economic_generated_at": 1785991456.138,
+          "last_successful_run_at": 1785991456.15,
           "latest_fetched_at": 1785967156.022,
           "latest_published_at": 1785961325.0
         }
@@ -19500,7 +19000,7 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-06T01:44:16Z",
+      "source_timestamp": "2026-08-06T04:44:16Z",
       "status": "live",
       "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 196 count.",
       "title": "Private runtime bridge"
