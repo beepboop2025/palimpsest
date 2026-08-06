@@ -33,6 +33,14 @@
       "title": "Baike redaction: stale"
     },
     {
+      "id": "health-china-econ",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "china-econ",
+      "summary": "freshness deadline has passed",
+      "title": "China money-market benchmarks: stale"
+    },
+    {
       "id": "health-believability",
       "kind": "health",
       "severity": "notice",
@@ -41,24 +49,24 @@
       "title": "Believability read: degraded"
     }
   ],
-  "generated_at": "2026-08-06T04:57:29Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
+  "generated_at": "2026-08-06T07:42:05Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 32 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 2 stale, 1 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 30,
+      "live": 29,
       "missing": 1,
-      "stale": 1
+      "stale": 2
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 29,
+    "required_live": 28,
     "required_reporting": 30,
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "f3e5c1027ef86dc4291f70dbc2ba29fa5ea00bfa",
+  "input_commit": "c7aab593c97b46d4434a188741fb0083d5d51345",
   "layers": [
     {
       "id": "command",
@@ -131,8 +139,8 @@
     },
     {
       "id": "economy",
-      "n_degraded": 1,
-      "n_live": 4,
+      "n_degraded": 2,
+      "n_live": 3,
       "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
@@ -184,7 +192,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 30,
+  "n_signals_live": 29,
   "n_signals_reporting": 32,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -194,7 +202,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 1.046,
+        "age_hours": 3.79,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -501,7 +509,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:53:57Z",
       "health": {
-        "age_hours": 1.059,
+        "age_hours": 3.802,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -715,7 +723,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 1.046,
+        "age_hours": 3.79,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -851,7 +859,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 1.046,
+        "age_hours": 3.79,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1390,7 +1398,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:54:42Z",
       "health": {
-        "age_hours": 1.046,
+        "age_hours": 3.79,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1583,7 +1591,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-06T10:39:39Z",
       "health": {
-        "age_hours": 1.297,
+        "age_hours": 4.04,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2308,7 +2316,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:58:36Z",
       "health": {
-        "age_hours": 0.981,
+        "age_hours": 3.724,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2603,7 +2611,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:52:51Z",
       "health": {
-        "age_hours": 1.077,
+        "age_hours": 3.821,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2901,7 +2909,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:49:41Z",
       "health": {
-        "age_hours": 1.13,
+        "age_hours": 3.873,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3208,7 +3216,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-11T07:54:31Z",
       "health": {
-        "age_hours": 69.049,
+        "age_hours": 71.793,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3519,7 +3527,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-07T05:53:07Z",
       "health": {
-        "age_hours": 1.073,
+        "age_hours": 3.816,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3793,7 +3801,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:45:32Z",
       "health": {
-        "age_hours": 1.199,
+        "age_hours": 3.942,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4072,7 +4080,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:47:45Z",
       "health": {
-        "age_hours": 1.162,
+        "age_hours": 3.905,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4239,7 +4247,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:05:27Z",
       "health": {
-        "age_hours": 20.867,
+        "age_hours": 23.611,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4415,7 +4423,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T10:12:00Z",
       "health": {
-        "age_hours": 8.758,
+        "age_hours": 11.501,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6859,7 +6867,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:46:54Z",
       "health": {
-        "age_hours": 1.176,
+        "age_hours": 3.92,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6909,7 +6917,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T09:49:22Z",
       "health": {
-        "age_hours": 21.135,
+        "age_hours": 23.879,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6982,7 +6990,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:54:35Z",
       "health": {
-        "age_hours": 1.048,
+        "age_hours": 3.792,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7093,7 +7101,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:39:32Z",
       "health": {
-        "age_hours": 1.299,
+        "age_hours": 4.042,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7229,7 +7237,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-07T05:47:34Z",
       "health": {
-        "age_hours": 1.165,
+        "age_hours": 3.908,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7318,7 +7326,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 152.437,
+        "age_hours": 155.18,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7472,7 +7480,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-07T05:52:42Z",
       "health": {
-        "age_hours": 1.08,
+        "age_hours": 3.823,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7651,7 +7659,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T17:57:09Z",
       "health": {
-        "age_hours": 1.006,
+        "age_hours": 3.749,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7827,7 +7835,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T10:03:22Z",
       "health": {
-        "age_hours": 20.902,
+        "age_hours": 23.645,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7931,12 +7939,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T04:59:51Z",
       "health": {
-        "age_hours": 13.961,
+        "age_hours": 16.704,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "china-econ",
@@ -7946,7 +7954,7 @@
         "sha256": "988a7cfe16380606c223a4ff249f6cbed894b8f1abf31614e0123beb7e9b294f"
       },
       "layer": "economy",
-      "live": true,
+      "live": false,
       "method": "See the complete embedded upstream payload and its raw feed",
       "method_version": 2,
       "metric": {
@@ -7990,15 +7998,15 @@
       "scope": "Carries keyless official CFETS money-market and central-parity benchmark levels.",
       "source": "CFETS chinamoney English portal (official published benchmarks, keyless)",
       "source_timestamp": "2026-08-05T14:59:51Z",
-      "status": "live",
-      "summary": "Carries keyless official CFETS money-market and central-parity benchmark levels. Upstream reading: official state-published numbers; the policy read is FDR007 vs the 7-day OMO rate and the daily parity fix, not any single level. Latest payload reports benchmark families reporting at 3 count.",
+      "status": "stale",
+      "summary": "Carries keyless official CFETS money-market and central-parity benchmark levels. The retained payload is stale: source timestamp 2026-08-05T14:59:51Z passed its freshness deadline 2026-08-06T04:59:51Z, so it is not labelled live. Upstream reading: official state-published numbers; the policy read is FDR007 vs the 7-day OMO rate and the daily parity fix, not any single level. Latest payload reports benchmark families reporting at 3 count.",
       "title": "China money-market benchmarks"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T20:20:43Z",
       "health": {
-        "age_hours": 10.613,
+        "age_hours": 13.356,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8050,7 +8058,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-09T17:34:16Z",
       "health": {
-        "age_hours": 13.387,
+        "age_hours": 16.13,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8108,7 +8116,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T14:05:50Z",
       "health": {
-        "age_hours": 16.861,
+        "age_hours": 19.604,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8258,7 +8266,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 19.783,
+        "age_hours": 22.526,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8326,7 +8334,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-07T11:29:01Z",
       "health": {
-        "age_hours": 19.474,
+        "age_hours": 22.218,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13617,7 +13625,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-06T18:46:35Z",
       "health": {
-        "age_hours": 0.181,
+        "age_hours": 2.925,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13662,9 +13670,9 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-06T05:44:16Z",
+      "freshness_deadline": "2026-08-06T08:29:16Z",
       "health": {
-        "age_hours": 0.22,
+        "age_hours": 0.214,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13674,9 +13682,9 @@
       },
       "id": "nemesis",
       "input": {
-        "bytes": 170378,
+        "bytes": 170380,
         "filename": "nemesis-latest.json",
-        "sha256": "33bfb0bed04debd39d1878ed67565ec3561464d804d95911a2c6ec7fa9410fc8"
+        "sha256": "fab5f667509ae2a7e0ab3242be9bd56fe38220ca5b7fd5abab48ebe8053bea66"
       },
       "layer": "nemesis",
       "live": true,
@@ -13734,7 +13742,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1785991456.116,
+        "data_timestamp": 1786001356.322,
         "ddti": {
           "by_domain": {
             "ECONOMY": 4,
@@ -13746,13 +13754,13 @@
             "SOCIETY": 8,
             "UNREST": 7
           },
-          "generated_at": 1785991456.116,
+          "generated_at": 1786001356.322,
           "n_posts": 16,
           "n_posts_scored": 16,
           "n_terms": 196,
           "ranked": [
             {
-              "attention": 1.84,
+              "attention": 1.83,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13787,11 +13795,11 @@
               "tag_observations": 3,
               "term": "state media",
               "text_observations": 0,
-              "threat": 4.6,
+              "threat": 4.58,
               "total": 3
             },
             {
-              "attention": 3.12,
+              "attention": 3.1,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13826,11 +13834,11 @@
               "tag_observations": 7,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 4.15,
+              "threat": 4.13,
               "total": 7
             },
             {
-              "attention": 3.05,
+              "attention": 3.03,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13865,11 +13873,11 @@
               "tag_observations": 7,
               "term": "online censorship",
               "text_observations": 0,
-              "threat": 4.06,
+              "threat": 4.03,
               "total": 7
             },
             {
-              "attention": 3.32,
+              "attention": 3.3,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13904,11 +13912,11 @@
               "tag_observations": 8,
               "term": "social media censorship",
               "text_observations": 0,
-              "threat": 3.87,
+              "threat": 3.84,
               "total": 8
             },
             {
-              "attention": 1.49,
+              "attention": 1.48,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -13943,11 +13951,11 @@
               "tag_observations": 3,
               "term": "floods",
               "text_observations": 0,
-              "threat": 3.72,
+              "threat": 3.7,
               "total": 3
             },
             {
-              "attention": 1.49,
+              "attention": 1.48,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -13982,11 +13990,11 @@
               "tag_observations": 3,
               "term": "natural disasters",
               "text_observations": 0,
-              "threat": 3.72,
+              "threat": 3.7,
               "total": 3
             },
             {
-              "attention": 1.53,
+              "attention": 1.52,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14013,7 +14021,7 @@
               "tag_observations": 2,
               "term": "investigative journalism",
               "text_observations": 0,
-              "threat": 3.36,
+              "threat": 3.34,
               "total": 2
             },
             {
@@ -14036,7 +14044,7 @@
               "tag_observations": 1,
               "term": "china youth daily",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14059,7 +14067,7 @@
               "tag_observations": 1,
               "term": "humor",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14082,7 +14090,7 @@
               "tag_observations": 1,
               "term": "information technology",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14105,7 +14113,7 @@
               "tag_observations": 1,
               "term": "journalism",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14128,7 +14136,7 @@
               "tag_observations": 1,
               "term": "journalists",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14151,7 +14159,7 @@
               "tag_observations": 1,
               "term": "literacy",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14174,7 +14182,7 @@
               "tag_observations": 1,
               "term": "media",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14197,7 +14205,7 @@
               "tag_observations": 1,
               "term": "press accreditation",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
@@ -14220,11 +14228,11 @@
               "tag_observations": 1,
               "term": "reputation",
               "text_observations": 0,
-              "threat": 2.16,
+              "threat": 2.15,
               "total": 1
             },
             {
-              "attention": 1.24,
+              "attention": 1.23,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14251,11 +14259,11 @@
               "tag_observations": 2,
               "term": "artificial intelligence",
               "text_observations": 0,
-              "threat": 1.99,
+              "threat": 1.98,
               "total": 2
             },
             {
-              "attention": 1.21,
+              "attention": 1.2,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -14282,11 +14290,11 @@
               "tag_observations": 2,
               "term": "arrests",
               "text_observations": 0,
-              "threat": 1.94,
+              "threat": 1.93,
               "total": 2
             },
             {
-              "attention": 1.11,
+              "attention": 1.1,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14313,11 +14321,11 @@
               "tag_observations": 2,
               "term": "online media",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 2
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14336,11 +14344,11 @@
               "tag_observations": 0,
               "term": "404",
               "text_observations": 1,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14359,11 +14367,11 @@
               "tag_observations": 1,
               "term": "activism",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14382,11 +14390,11 @@
               "tag_observations": 1,
               "term": "activists",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14405,11 +14413,11 @@
               "tag_observations": 1,
               "term": "animal protection",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14428,11 +14436,11 @@
               "tag_observations": 1,
               "term": "animals",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14451,11 +14459,11 @@
               "tag_observations": 1,
               "term": "blue-collar workers",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14474,11 +14482,11 @@
               "tag_observations": 1,
               "term": "business",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14497,11 +14505,11 @@
               "tag_observations": 1,
               "term": "censorship vault",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14520,11 +14528,11 @@
               "tag_observations": 0,
               "term": "deleted",
               "text_observations": 1,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14543,11 +14551,11 @@
               "tag_observations": 1,
               "term": "dogs",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -14566,11 +14574,11 @@
               "tag_observations": 1,
               "term": "economics",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -14589,11 +14597,11 @@
               "tag_observations": 1,
               "term": "employment",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14612,11 +14620,11 @@
               "tag_observations": 1,
               "term": "extortion",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14635,11 +14643,11 @@
               "tag_observations": 1,
               "term": "june 4th",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14658,11 +14666,11 @@
               "tag_observations": 1,
               "term": "legislation",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14681,11 +14689,11 @@
               "tag_observations": 1,
               "term": "local government",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -14704,11 +14712,11 @@
               "tag_observations": 1,
               "term": "market-economy",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14727,11 +14735,11 @@
               "tag_observations": 1,
               "term": "nationalism",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -14750,11 +14758,11 @@
               "tag_observations": 1,
               "term": "police violence",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -14773,11 +14781,11 @@
               "tag_observations": 1,
               "term": "protesters",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -14796,11 +14804,11 @@
               "tag_observations": 1,
               "term": "protests",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14819,11 +14827,11 @@
               "tag_observations": 1,
               "term": "soccer",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14842,11 +14850,11 @@
               "tag_observations": 1,
               "term": "sports",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14865,11 +14873,11 @@
               "tag_observations": 1,
               "term": "transportation",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -14888,11 +14896,11 @@
               "tag_observations": 1,
               "term": "unemployment",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14911,11 +14919,11 @@
               "tag_observations": 1,
               "term": "white-collar workers",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14934,11 +14942,11 @@
               "tag_observations": 1,
               "term": "workers",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
-              "attention": 0.77,
+              "attention": 0.76,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14957,7 +14965,7 @@
               "tag_observations": 1,
               "term": "world cup",
               "text_observations": 0,
-              "threat": 1.69,
+              "threat": 1.68,
               "total": 1
             },
             {
@@ -14988,11 +14996,11 @@
               "tag_observations": 2,
               "term": "cyberspace administration of china",
               "text_observations": 0,
-              "threat": 1.56,
+              "threat": 1.55,
               "total": 2
             },
             {
-              "attention": 1.48,
+              "attention": 1.47,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15027,7 +15035,7 @@
               "tag_observations": 2,
               "term": "police",
               "text_observations": 1,
-              "threat": 1.56,
+              "threat": 1.55,
               "total": 3
             },
             {
@@ -15050,7 +15058,7 @@
               "tag_observations": 1,
               "term": "changsha",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15073,7 +15081,7 @@
               "tag_observations": 1,
               "term": "cybersecurity",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15096,7 +15104,7 @@
               "tag_observations": 1,
               "term": "great firewall",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15119,7 +15127,7 @@
               "tag_observations": 1,
               "term": "hunan",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15142,7 +15150,7 @@
               "tag_observations": 1,
               "term": "internet",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15165,7 +15173,7 @@
               "tag_observations": 1,
               "term": "internet access",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15188,7 +15196,7 @@
               "tag_observations": 1,
               "term": "real name registration",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
@@ -15211,11 +15219,11 @@
               "tag_observations": 1,
               "term": "wi-fi",
               "text_observations": 0,
-              "threat": 1.54,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15242,7 +15250,7 @@
               "tag_observations": 2,
               "term": "media censorship",
               "text_observations": 0,
-              "threat": 1.43,
+              "threat": 1.42,
               "total": 2
             },
             {
@@ -15315,99 +15323,6 @@
               "total": 1
             },
             {
-              "attention": 0.86,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "dams",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 2
-            },
-            {
-              "attention": 0.86,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "death toll",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 2
-            },
-            {
-              "attention": 0.86,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "disaster relief",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 2
-            },
-            {
               "attention": 0.63,
               "direct_signal_observations": 0,
               "domain": "OTHER",
@@ -15429,37 +15344,6 @@
               "text_observations": 0,
               "threat": 1.38,
               "total": 1
-            },
-            {
-              "attention": 0.86,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "infrastructure",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 2
             },
             {
               "attention": 0.63,
@@ -15508,68 +15392,6 @@
               "total": 1
             },
             {
-              "attention": 0.86,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "rainfall",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 2
-            },
-            {
-              "attention": 0.86,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "reservoirs",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 2
-            },
-            {
               "attention": 0.63,
               "direct_signal_observations": 0,
               "domain": "OTHER",
@@ -15616,7 +15438,216 @@
               "total": 1
             },
             {
-              "attention": 0.86,
+              "attention": 0.63,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.8,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "zhengzhou",
+              "text_observations": 0,
+              "threat": 1.38,
+              "total": 1
+            },
+            {
+              "attention": 0.85,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "dams",
+              "text_observations": 0,
+              "threat": 1.37,
+              "total": 2
+            },
+            {
+              "attention": 0.85,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "death toll",
+              "text_observations": 0,
+              "threat": 1.37,
+              "total": 2
+            },
+            {
+              "attention": 0.85,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "disaster relief",
+              "text_observations": 0,
+              "threat": 1.37,
+              "total": 2
+            },
+            {
+              "attention": 0.85,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "infrastructure",
+              "text_observations": 0,
+              "threat": 1.37,
+              "total": 2
+            },
+            {
+              "attention": 0.85,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "rainfall",
+              "text_observations": 0,
+              "threat": 1.37,
+              "total": 2
+            },
+            {
+              "attention": 0.85,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "reservoirs",
+              "text_observations": 0,
+              "threat": 1.37,
+              "total": 2
+            },
+            {
+              "attention": 0.85,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15643,34 +15674,11 @@
               "tag_observations": 2,
               "term": "typhoons",
               "text_observations": 0,
-              "threat": 1.38,
+              "threat": 1.37,
               "total": 2
             },
             {
-              "attention": 0.63,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "zhengzhou",
-              "text_observations": 0,
-              "threat": 1.38,
-              "total": 1
-            },
-            {
-              "attention": 1.35,
+              "attention": 1.34,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15705,7 +15713,7 @@
               "tag_observations": 1,
               "term": "censorship",
               "text_observations": 3,
-              "threat": 1.35,
+              "threat": 1.34,
               "total": 4
             },
             {
@@ -15736,7 +15744,7 @@
               "tag_observations": 2,
               "term": "drones",
               "text_observations": 0,
-              "threat": 1.32,
+              "threat": 1.31,
               "total": 2
             },
             {
@@ -15775,7 +15783,7 @@
               "tag_observations": 3,
               "term": "reporting",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 3
             },
             {
@@ -15798,7 +15806,7 @@
               "tag_observations": 1,
               "term": "emergency response",
               "text_observations": 0,
-              "threat": 1.2,
+              "threat": 1.19,
               "total": 1
             },
             {
@@ -15821,7 +15829,7 @@
               "tag_observations": 1,
               "term": "environment",
               "text_observations": 0,
-              "threat": 1.2,
+              "threat": 1.19,
               "total": 1
             },
             {
@@ -15844,7 +15852,7 @@
               "tag_observations": 1,
               "term": "storms",
               "text_observations": 0,
-              "threat": 1.2,
+              "threat": 1.19,
               "total": 1
             },
             {
@@ -15887,7 +15895,7 @@
               "total": 4
             },
             {
-              "attention": 0.73,
+              "attention": 0.72,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15922,7 +15930,7 @@
               "tag_observations": 3,
               "term": "wechat",
               "text_observations": 0,
-              "threat": 0.73,
+              "threat": 0.72,
               "total": 3
             },
             {
@@ -15958,7 +15966,7 @@
               "total": 2
             },
             {
-              "attention": 0.69,
+              "attention": 0.68,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15993,7 +16001,7 @@
               "tag_observations": 3,
               "term": "freedom of expression",
               "text_observations": 0,
-              "threat": 0.69,
+              "threat": 0.68,
               "total": 3
             },
             {
@@ -16036,7 +16044,7 @@
               "total": 3
             },
             {
-              "attention": 0.56,
+              "attention": 0.55,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -16063,7 +16071,7 @@
               "tag_observations": 2,
               "term": "education",
               "text_observations": 0,
-              "threat": 0.56,
+              "threat": 0.55,
               "total": 2
             },
             {
@@ -18030,7 +18038,7 @@
               "total": 1
             },
             {
-              "attention": 0.13,
+              "attention": 0.12,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18049,11 +18057,11 @@
               "tag_observations": 1,
               "term": "bloggers",
               "text_observations": 0,
-              "threat": 0.13,
+              "threat": 0.12,
               "total": 1
             },
             {
-              "attention": 0.13,
+              "attention": 0.12,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18072,330 +18080,7 @@
               "tag_observations": 1,
               "term": "buddhism",
               "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "fiction",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "free expression",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "RIGHTS",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "freedom of religion",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "novelists",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "novels",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "online culture",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "online platforms",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "privacy",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "RIGHTS",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag",
-                    "text"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "religion",
-              "text_observations": 1,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "schools",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "self-censorship",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "taoism",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "teachers",
-              "text_observations": 0,
-              "threat": 0.13,
-              "total": 1
-            },
-            {
-              "attention": 0.13,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
-                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "writing",
-              "text_observations": 0,
-              "threat": 0.13,
+              "threat": 0.12,
               "total": 1
             },
             {
@@ -18424,6 +18109,29 @@
             {
               "attention": 0.12,
               "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "fiction",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
               "novelty": 0.0,
@@ -18440,6 +18148,52 @@
               ],
               "tag_observations": 1,
               "term": "food safety",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "free expression",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "RIGHTS",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "freedom of religion",
               "text_observations": 0,
               "threat": 0.12,
               "total": 1
@@ -18526,6 +18280,121 @@
                     "tag"
                   ],
                   "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "novelists",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "novels",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "online culture",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "online platforms",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "privacy",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
                   "title": "Translation: How Tolerant is China’s Internet?",
                   "url": "https://chinadigitaltimes.net/2026/06/translation-how-tolerant-is-chinas-internet/"
                 }
@@ -18556,6 +18425,30 @@
               "tag_observations": 1,
               "term": "public safety",
               "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "RIGHTS",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag",
+                    "text"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "religion",
+              "text_observations": 1,
               "threat": 0.12,
               "total": 1
             },
@@ -18595,6 +18488,121 @@
                     "tag"
                   ],
                   "source": "cdt",
+                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "schools",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "self-censorship",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: Religion and Red Lines in Chinese Online Literature",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-religion-and-red-lines-in-chinese-online-literature/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "taoism",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "teachers",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “The School Where I Work Requires Us to Report Our Social Media Accounts. Should I Keep Publishing on My WeChat Public Account?”",
+                  "url": "https://chinadigitaltimes.net/2026/06/translation-the-school-where-i-work-requires-us-to-report-our-social-media-accounts-should-i-keep-publishing-on-my-wechat-public-account/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "writing",
+              "text_observations": 0,
+              "threat": 0.12,
+              "total": 1
+            },
+            {
+              "attention": 0.12,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
                   "title": "Translation: How Tolerant is China’s Internet?",
                   "url": "https://chinadigitaltimes.net/2026/06/translation-how-tolerant-is-chinas-internet/"
                 }
@@ -18608,7 +18616,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1785991456.138,
+          "generated_at": 1786001356.333,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 2,
           "pct": 16,
@@ -18621,7 +18629,7 @@
                 }
               ],
               "term": "economy",
-              "weight": 0.77
+              "weight": 0.76
             },
             {
               "samples": [
@@ -18631,7 +18639,7 @@
                 }
               ],
               "term": "unemployment",
-              "weight": 0.77
+              "weight": 0.76
             },
             {
               "samples": [
@@ -18646,33 +18654,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1785991456.151,
+        "generated_at": 1786001356.344,
         "health": {
           "freshness": {
-            "age_seconds": 0.035,
-            "core_data_at": 1785991456.116,
+            "age_seconds": 0.022,
+            "core_data_at": 1786001356.322,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1785991456.15,
+            "duration_s": 0.43,
+            "finished_at": 1786001356.344,
             "healthy": true,
-            "id": 137,
-            "started_at": 1785991455.909,
+            "id": 148,
+            "started_at": 1786001355.911,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1785991456.15,
+            "duration_s": 0.43,
+            "finished_at": 1786001356.344,
             "healthy": true,
-            "id": 137,
-            "started_at": 1785991455.909,
+            "id": 148,
+            "started_at": 1786001355.911,
             "status": "ok"
           },
-          "last_successful_run_at": 1785991456.15,
+          "last_successful_run_at": 1786001356.344,
           "live": true,
           "posts": 27,
           "ready": true,
@@ -18712,9 +18720,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
-            "score": 9.0,
+            "score": 8.9,
             "term": "state media",
-            "threat": 4.6
+            "threat": 4.58
           },
           {
             "domain": "INFORMATION",
@@ -18749,7 +18757,7 @@
             ],
             "score": 7.8,
             "term": "internet censorship",
-            "threat": 4.15
+            "threat": 4.13
           },
           {
             "domain": "INFORMATION",
@@ -18782,9 +18790,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 7.7,
+            "score": 7.6,
             "term": "online censorship",
-            "threat": 4.06
+            "threat": 4.03
           },
           {
             "domain": "INFORMATION",
@@ -18819,7 +18827,7 @@
             ],
             "score": 7.3,
             "term": "social media censorship",
-            "threat": 3.87
+            "threat": 3.84
           },
           {
             "domain": "OTHER",
@@ -18852,9 +18860,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 7.3,
+            "score": 7.2,
             "term": "floods",
-            "threat": 3.72
+            "threat": 3.7
           },
           {
             "domain": "OTHER",
@@ -18887,9 +18895,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 7.3,
+            "score": 7.2,
             "term": "natural disasters",
-            "threat": 3.72
+            "threat": 3.7
           },
           {
             "domain": "INFORMATION",
@@ -18916,7 +18924,7 @@
             ],
             "score": 5.6,
             "term": "investigative journalism",
-            "threat": 3.36
+            "threat": 3.34
           },
           {
             "domain": "OTHER",
@@ -18935,7 +18943,7 @@
             ],
             "score": 3.3,
             "term": "china youth daily",
-            "threat": 2.16
+            "threat": 2.15
           },
           {
             "domain": "OTHER",
@@ -18954,7 +18962,7 @@
             ],
             "score": 3.3,
             "term": "humor",
-            "threat": 2.16
+            "threat": 2.15
           },
           {
             "domain": "OTHER",
@@ -18973,7 +18981,7 @@
             ],
             "score": 3.3,
             "term": "information technology",
-            "threat": 2.16
+            "threat": 2.15
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -18989,10 +18997,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1785991456.15,
-          "ddti_generated_at": 1785991456.116,
-          "economic_generated_at": 1785991456.138,
-          "last_successful_run_at": 1785991456.15,
+          "data_updated_at": 1786001356.344,
+          "ddti_generated_at": 1786001356.322,
+          "economic_generated_at": 1786001356.333,
+          "last_successful_run_at": 1786001356.344,
           "latest_fetched_at": 1785967156.022,
           "latest_published_at": 1785961325.0
         }
@@ -19000,7 +19008,7 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-06T04:44:16Z",
+      "source_timestamp": "2026-08-06T07:29:16Z",
       "status": "live",
       "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 196 count.",
       "title": "Private runtime bridge"
