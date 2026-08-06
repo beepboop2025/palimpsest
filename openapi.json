@@ -1,0 +1,70 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Palimpsest Public Readings API",
+    "version": "1.0.0",
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+  },
+  "servers": [{"url": "https://palimpsest.info"}],
+  "externalDocs": {
+    "description": "MCP and API quickstart",
+    "url": "https://palimpsest.info/developers.html"
+  },
+  "components": {
+    "schemas": {
+      "Reading": {
+        "type": "object",
+        "description": "A published reading whose exact fields depend on the named instrument.",
+        "additionalProperties": true
+      }
+    },
+    "responses": {
+      "Reading": {
+        "description": "Published JSON reading",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Reading"}}}
+      }
+    }
+  },
+  "paths": {
+    "/readings/board-alarm-latest.json": {"get": {
+      "operationId": "getCensorshipBoardAlarm",
+      "summary": "Read the cross-signal board verdict and multiplicity-aware alarm state",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/coverage-guard-latest.json": {"get": {
+      "operationId": "getCoverageGuard",
+      "summary": "Read measurement coverage failures and confounds",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/erasure-observatory-latest.json": {"get": {
+      "operationId": "getErasureObservatory",
+      "summary": "Read the composite erasure observatory state",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/eval-registry-latest.json": {"get": {
+      "operationId": "getVerifiableEvalRegistry",
+      "summary": "Read the latest verified evaluation-registry head and Merkle root",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/refusal-drift-latest.json": {"get": {
+      "operationId": "getRefusalDrift",
+      "summary": "Read the latest frontier-model refusal-drift evaluation",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/ooni-gfw-latest.json": {"get": {
+      "operationId": "getGreatFirewallReading",
+      "summary": "Read outside-in Great Firewall reachability measurements",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/inside-view-latest.json": {"get": {
+      "operationId": "getInsideView",
+      "summary": "Read DNS-injection measurements from mainland-China probes",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/latest.json": {"get": {
+      "operationId": "getDeletionAsDataReading",
+      "summary": "Read the latest deletion-as-data censorship ranking",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }}
+  }
+}

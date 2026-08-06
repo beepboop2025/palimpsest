@@ -42,6 +42,11 @@ curl -s -X POST https://api.seiche.info/palimpsest/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python3 -m json.tool
 ```
 
+The live console on [the developer page](https://palimpsest.info/developers.html)
+uses this endpoint directly from the browser. CORS is deliberately limited to
+`https://palimpsest.info`; normal MCP clients send no browser `Origin` header,
+and a request carrying any other web origin is rejected before JSON-RPC dispatch.
+
 ## The four tools
 
 | Tool | What it answers |

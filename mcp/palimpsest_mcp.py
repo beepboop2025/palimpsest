@@ -31,10 +31,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.3.0"
+SERVER_VERSION = "1.3.1"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
+# Browser access exists only for the first-party developer console. Normal MCP
+# clients are server-to-server and send no Origin header. Keeping this exact
+# instead of returning Access-Control-Allow-Origin: * makes the endpoint useful
+# from the website without turning every page on the web into an MCP caller.
+ALLOWED_BROWSER_ORIGINS = frozenset({SITE})
 # A publicly reachable listener must not let a caller size our memory. Every
 # legitimate JSON-RPC request here is a few hundred bytes; a batch of them is
 # still tiny. Anything past this is refused before a byte of it is read.
@@ -818,16 +823,32 @@ def dispatch(msg):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def _origin_allowed(self) -> bool:
+        origin = self.headers.get("Origin")
+        return origin is None or origin in ALLOWED_BROWSER_ORIGINS
+
+    def _reject_untrusted_origin(self) -> bool:
+        if self._origin_allowed():
+            return False
+        self._send(403, _error(None, INVALID_REQUEST, "origin not allowed"))
+        return True
+
     def _send(self, code: int, payload=None):
         body = json.dumps(payload).encode() if payload is not None else b""
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
+        origin = self.headers.get("Origin")
+        if origin in ALLOWED_BROWSER_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if body:
             self.wfile.write(body)
 
     def do_POST(self):
+        if self._reject_untrusted_origin():
+            return
         try:
             n = int(self.headers.get("Content-Length", 0))
         except (TypeError, ValueError):
@@ -850,6 +871,8 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(200, responses if isinstance(body, list) else responses[0])
 
     def do_GET(self):
+        if self._reject_untrusted_origin():
+            return
         self._send(200, {"server": SERVER_NAME,
                          "protocol": "MCP (streamable HTTP, stateless)",
                          "how": "POST JSON-RPC 2.0: initialize, tools/list, tools/call",
@@ -857,7 +880,24 @@ class Handler(BaseHTTPRequestHandler):
                          "observatory": SITE})
 
     def do_DELETE(self):
+        if self._reject_untrusted_origin():
+            return
         self._send(200)
+
+    def do_OPTIONS(self):
+        if self._reject_untrusted_origin():
+            return
+        origin = self.headers.get("Origin")
+        if origin not in ALLOWED_BROWSER_ORIGINS:
+            return self._send(204)
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, MCP-Protocol-Version")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def log_message(self, fmt, *args):  # systemd journal gets one clean line
         print(f"{self.address_string()} {fmt % args}")

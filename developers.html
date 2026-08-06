@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palimpsest API + MCP — live censorship evidence for agents</title>
+<meta name="description" content="Connect Palimpsest's free, read-only MCP server or import its OpenAPI document. Give agents current, timestamped censorship and model-evaluation evidence instead of stale guesses.">
+<link rel="canonical" href="https://palimpsest.info/developers.html">
+<link rel="service-desc" type="application/vnd.oai.openapi+json" href="https://palimpsest.info/openapi.json" title="Palimpsest Public Readings API">
+<link rel="alternate" type="application/json" href="https://palimpsest.info/product-card.json" title="Palimpsest product card">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Palimpsest API + MCP — current evidence for agents">
+<meta property="og:description" content="Four read-only tools, eight stable JSON readings, no key, and timestamps and limitations attached.">
+<meta property="og:url" content="https://palimpsest.info/developers.html">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Connect Palimpsest's public API and MCP server",
+  "description": "A quickstart for Palimpsest's read-only censorship-observatory and model-evaluation data interfaces.",
+  "dateModified": "2026-08-06",
+  "mainEntityOfPage": "https://palimpsest.info/developers.html",
+  "author": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+  "publisher": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+  "isAccessibleForFree": true,
+  "license": "https://opensource.org/license/mit"
+}
+</script>
+<style>
+  .dev-head { padding: clamp(36px, 7vw, 74px) 0 10px; }
+  .dev-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 24px; }
+  .proof {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+    margin: 18px 0 4px;
+  }
+  .proof > div { padding: 15px 17px; }
+  .proof b { display: block; color: var(--tk-text-0, #fff); font-size: 17px; margin-bottom: 3px; }
+  .proof span { color: var(--tk-text-3, #7d8ca3); font: 11px/1.5 var(--tk-font-mono); }
+
+  .connect-grid, .tool-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+  }
+  .connect, .tool { padding: 19px 20px; min-width: 0; }
+  .connect h3, .tool h3 { color: var(--tk-text-0, #fff); font-size: 16px; margin: 0 0 7px; }
+  .connect p, .tool p, .dev-copy {
+    color: var(--tk-text-2, #94a3b8); font-size: 13px; line-height: 1.65; margin: 0 0 13px;
+  }
+  .tool code { color: var(--tk-live, #06d6e0); font-size: 12px; }
+  .tool .args { color: var(--tk-text-4, #6f8098); font: 10.5px/1.55 var(--tk-font-mono); margin-top: 9px; }
+
+  .codebox { position: relative; margin-top: 10px; }
+  pre {
+    margin: 0; padding: 16px 17px; overflow: auto; max-height: 460px;
+    border-radius: 10px; border: 1px solid var(--ps-edge-1);
+    background: rgba(0, 0, 0, .58); color: var(--tk-text-1, #e2e8f0);
+    font: 11.5px/1.65 var(--tk-font-mono); tab-size: 2; white-space: pre;
+  }
+  .copy-btn {
+    margin-top: 9px; padding: 8px 11px; min-height: 38px; border-radius: 8px;
+    border: 1px solid var(--ps-edge-3); background: transparent;
+    color: var(--tk-text-2, #94a3b8); cursor: pointer;
+    font: 10.5px var(--tk-font-mono);
+  }
+  .copy-btn:hover, .copy-btn:focus-visible { color: var(--tk-live, #06d6e0); border-color: var(--tk-live, #06d6e0); }
+  .copy-btn[data-copied] { color: #04141a; background: var(--tk-live, #06d6e0); }
+
+  .console { padding: clamp(18px, 3vw, 25px); }
+  .console-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+  .console-head h2 { margin: 0 0 6px; color: var(--tk-text-0, #fff); font-size: 21px; }
+  .console-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  button.ps-btn[disabled] { cursor: wait; opacity: .62; }
+  .status { min-height: 22px; margin: 0 0 10px; color: var(--tk-text-3, #7d8ca3); font: 11px/1.55 var(--tk-font-mono); }
+  .status[data-state="ok"] { color: var(--tk-ok, #19c393); }
+  .status[data-state="error"] { color: var(--tk-critical, #ff5b52); }
+  #mcp-output { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  .steps { counter-reset: dev-step; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .steps li { counter-increment: dev-step; padding: 15px 17px 15px 53px; position: relative; color: var(--tk-text-2, #94a3b8); font-size: 13px; line-height: 1.65; }
+  .steps li::before {
+    content: counter(dev-step); position: absolute; left: 17px; top: 16px;
+    width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%;
+    color: #04141a; background: var(--tk-live, #06d6e0); font: 700 11px var(--tk-font-mono);
+  }
+  .steps b { color: var(--tk-text-0, #fff); }
+  .note { padding: 15px 17px; color: var(--tk-text-3, #7d8ca3); font: 11.5px/1.7 var(--tk-font-mono); }
+  .note strong { color: var(--tk-text-1, #e2e8f0); }
+  a { color: var(--tk-live, #06d6e0); }
+  .foot {
+    color: var(--tk-text-4, #6f8098); font: 11.5px/1.75 var(--tk-font-mono);
+    margin: 48px 0 62px; border-top: 1px solid var(--ps-edge-1); padding-top: 18px;
+  }
+  @media (max-width: 760px) {
+    .proof, .connect-grid, .tool-grid { grid-template-columns: minmax(0, 1fr); }
+    .console-head { display: block; }
+  }
+</style>
+</head>
+<body class="ps" data-mcp-endpoint="https://api.seiche.info/palimpsest/mcp">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html" aria-current="page">Developers</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap ps-wrap--narrow">
+  <header class="dev-head ps-recede">
+    <p class="ps-kicker">Public API · remote MCP · no key</p>
+    <h1 class="ps-h1">Give your agent evidence that can still be checked</h1>
+    <p class="ps-lede">Palimpsest exposes current censorship measurements and tamper-evident
+    model evaluations through a read-only MCP server and stable JSON readings. Every result keeps
+    its timestamp, source, vantage and limitations attached.</p>
+    <div class="dev-actions">
+      <a class="ps-btn" href="#connect">Connect the MCP server</a>
+      <a class="ps-btn ps-btn--ghost" href="/openapi.json">Import OpenAPI</a>
+      <a class="ps-btn ps-btn--ghost" href="/product-card.json">Product card</a>
+    </div>
+    <div class="proof ps-stagger" aria-label="Service facts">
+      <div class="ps-p1 ps-reveal"><b>4 tools</b><span>censorship + model-eval evidence</span></div>
+      <div class="ps-p1 ps-reveal"><b>No auth</b><span>public data, no account or token</span></div>
+      <div class="ps-p1 ps-reveal"><b>Read-only</b><span>timestamps and gaps stay visible</span></div>
+    </div>
+  </header>
+
+  <section id="connect" class="ps-defer">
+    <h2 class="ps-section-head">Connect in under a minute</h2>
+    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all four tools
+    from the server, so no schema needs to be copied by hand.</p>
+    <div class="connect-grid">
+      <article class="connect ps-p2 ps-reveal">
+        <p class="ps-label">Claude Code</p>
+        <h3>One command</h3>
+        <div class="codebox">
+          <pre id="claude-command"><code>claude mcp add --transport http palimpsest https://api.seiche.info/palimpsest/mcp</code></pre>
+          <button class="copy-btn" type="button" data-copy="claude-command">Copy command</button>
+        </div>
+      </article>
+      <article class="connect ps-p2 ps-reveal">
+        <p class="ps-label">Any MCP client</p>
+        <h3>Remote server config</h3>
+        <div class="codebox">
+          <pre id="mcp-config"><code>{
+  "mcpServers": {
+    "palimpsest": {
+      "type": "http",
+      "url": "https://api.seiche.info/palimpsest/mcp"
+    }
+  }
+}</code></pre>
+          <button class="copy-btn" type="button" data-copy="mcp-config">Copy config</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">The four tools</h2>
+    <div class="tool-grid ps-stagger">
+      <article class="tool ps-p1 ps-reveal"><h3><code>list_signals</code></h3><p>Discover every published instrument, its scope, current source URL and independent status.</p><p class="args">arguments: none · call this first</p></article>
+      <article class="tool ps-p1 ps-reveal"><h3><code>get_signal</code></h3><p>Fetch one full reading, with timestamp, provenance, caps and any untrusted third-party text labelled.</p><p class="args">arguments: name · max_rows (optional)</p></article>
+      <article class="tool ps-p1 ps-reveal"><h3><code>whats_happening</code></h3><p>Ask the board for its multiplicity-aware verdict, with coverage failures separated from findings.</p><p class="args">arguments: none · best first answer</p></article>
+      <article class="tool ps-p1 ps-reveal"><h3><code>gfw_reading</code></h3><p>Read Great Firewall network blocking beside model-layer censorship without collapsing the two.</p><p class="args">arguments: none</p></article>
+    </div>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">Try the live server</h2>
+    <div class="console ps-p3" aria-labelledby="console-title">
+      <div class="console-head">
+        <div>
+          <h2 id="console-title">Read-only MCP console</h2>
+          <p class="dev-copy">The buttons call the same production endpoint an agent uses. Nothing
+          here writes data or needs a credential.</p>
+        </div>
+        <span class="tk-chip tk-chip--ok">public endpoint</span>
+      </div>
+      <div class="console-actions">
+        <button class="ps-btn ps-btn--ghost" id="check-mcp" type="button">Check server</button>
+        <button class="ps-btn" id="run-verdict" type="button">Run whats_happening</button>
+      </div>
+      <p class="status" id="mcp-status" role="status" aria-live="polite">Ready. No request has been sent.</p>
+      <pre id="mcp-output" tabindex="0">The server response will appear here.</pre>
+    </div>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">Use the JSON API directly</h2>
+    <p class="dev-copy">For deterministic pipelines and notebooks, import the
+    <a href="/openapi.json">OpenAPI 3.1 document</a> or fetch a reading as ordinary JSON.
+    The files are cacheable, versionable and easy to archive.</p>
+    <div class="codebox ps-p2" style="padding:18px">
+      <pre id="rest-command"><code>curl -sS https://palimpsest.info/readings/board-alarm-latest.json \
+  | python3 -m json.tool</code></pre>
+      <button class="copy-btn" type="button" data-copy="rest-command">Copy request</button>
+    </div>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">OpenAI Responses API</h2>
+    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all four tools are
+    read-only, the example runs without per-call approval.</p>
+    <div class="codebox ps-p2" style="padding:18px">
+      <pre id="openai-example"><code>curl https://api.openai.com/v1/responses \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.6",
+    "tools": [{
+      "type": "mcp",
+      "server_label": "palimpsest",
+      "server_url": "https://api.seiche.info/palimpsest/mcp",
+      "require_approval": "never"
+    }],
+    "input": "What censorship signals are moving now? Cite timestamps and limitations."
+  }'</code></pre>
+      <button class="copy-btn" type="button" data-copy="openai-example">Copy request</button>
+    </div>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">ChatGPT app setup</h2>
+    <ol class="steps ps-stagger">
+      <li class="ps-p1 ps-reveal"><b>Enable Developer mode</b> in an eligible ChatGPT workspace.</li>
+      <li class="ps-p1 ps-reveal">Open <b>Settings → Apps → Create</b> and name the app “Palimpsest”.</li>
+      <li class="ps-p1 ps-reveal">Paste <b>https://api.seiche.info/palimpsest/mcp</b> as the MCP endpoint. No OAuth details are required.</li>
+      <li class="ps-p1 ps-reveal"><b>Review the four discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
+    </ol>
+  </section>
+
+  <section class="ps-defer">
+    <h2 class="ps-section-head">Use it honestly</h2>
+    <div class="note ps-p1">
+      <strong>Cite the specific reading and its generated timestamp.</strong> A single vantage does
+      not represent every user or all of China. A missing or stale measurement is not evidence of
+      calm. Model-evaluation suites with different probe banks or model rosters must not be pooled.
+      The API keeps these limits attached; downstream prose should keep them too.
+    </div>
+  </section>
+
+  <p class="foot">Free, MIT-licensed, and developed in the open. Read the
+  <a href="/for-researchers.html">researcher guide</a>, inspect the
+  <a href="https://github.com/beepboop2025/palimpsest">source</a>, or use the exact
+  <a href="/product-card.json">product-card guidance</a> to decide when Palimpsest belongs in an agent workflow.</p>
+</main>
+
+<script src="/assets/shell.js" defer></script>
+<script src="/assets/developers.js" defer></script>
+</body>
+</html>

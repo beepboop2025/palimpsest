@@ -113,6 +113,7 @@ NAV = [
         ],
     },
     {"label": "Data", "href": "/for-researchers.html"},
+    {"label": "Developers", "href": "/developers.html"},
     {"label": "Fund", "href": "/fund.html"},
 ]
 

@@ -14,6 +14,7 @@ about model evals has to be able to find its way here.
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import sys
@@ -354,3 +355,42 @@ def test_the_served_version_and_the_published_manifest_agree():
 # --------------------------------------------------------- request-size cap --
 def test_request_body_cap_is_bounded():
     assert 0 < mcp.MAX_BODY_BYTES <= 1024 * 1024
+
+
+# ---------------------------------------------------- browser-origin policy --
+def _handler_for(origin=None):
+    """Build a Handler without opening a socket so CORS stays unit-testable."""
+    handler = object.__new__(mcp.Handler)
+    handler.headers = {} if origin is None else {"Origin": origin}
+    handler.wfile = io.BytesIO()
+    handler.request_version = "HTTP/1.1"
+    handler.command = "OPTIONS"
+    handler.responses = mcp.Handler.responses
+    handler.log_request = lambda *args: None
+    handler.send_response_only = lambda code, message=None: setattr(handler, "status", code)
+    handler._headers_buffer = []
+    return handler
+
+
+def test_first_party_browser_origin_gets_narrow_cors_permission():
+    handler = _handler_for(mcp.SITE)
+    handler.do_OPTIONS()
+    headers = handler.wfile.getvalue().decode("latin-1")
+    assert handler.status == 204
+    assert f"Access-Control-Allow-Origin: {mcp.SITE}" in headers
+    assert "Access-Control-Allow-Origin: *" not in headers
+    assert "POST" in headers
+    assert "Content-Type" in headers
+
+
+def test_untrusted_browser_origin_is_rejected_before_dispatch():
+    handler = _handler_for("https://attacker.example")
+    handler._send = lambda code, payload=None: setattr(handler, "rejected", (code, payload))
+    assert handler._reject_untrusted_origin() is True
+    code, payload = handler.rejected
+    assert code == 403
+    assert payload["error"]["message"] == "origin not allowed"
+
+
+def test_non_browser_mcp_clients_need_no_origin_header():
+    assert _handler_for()._origin_allowed() is True
