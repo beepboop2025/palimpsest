@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-07T07:42:19.653609+00:00",
+  "generated_at": "2026-08-07T19:16:22.223682+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 254,
+  "attestations": 262,
   "preregistrations": 5,
-  "runs": 249,
+  "runs": 257,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,13 +17,13 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "76927c69be71291a61dfbbe517cc0559345401c3723393bbd01223847f7c5db2",
-  "head_hash": "9c70572c76436f95ee3a47373ad8eb441381a316048b39a55c0824715bc0e376",
+  "merkle_root": "f02c88a4c8affd86c4a0af7f41c81399ab157c698da84d91d5b661b067d6d53a",
+  "head_hash": "2b8279144f4acd95d80f22a8b9c7b68b513ba6a456ead84bfd98648113c0130c",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-08-07T07:42:19.653609+00:00",
+  "head_ts": "2026-08-07T19:16:22.223682+00:00",
   "recent_runs": [
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "openai/gpt-4o-mini",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -39,7 +39,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "openai/gpt-4o-mini",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -56,10 +56,10 @@
         "method_version": 3
       },
       "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "dcfb5a677278b196"
+      "responses_hash": "33e9344df7884d57"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "anthropic/claude-3-haiku",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -75,7 +75,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "anthropic/claude-3-haiku",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -92,10 +92,10 @@
         "method_version": 3
       },
       "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "67a3af7ae43aa3db"
+      "responses_hash": "3b1e7b968b9e1a8d"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "meta-llama/llama-3.3-70b-instruct",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -111,7 +111,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "meta-llama/llama-3.3-70b-instruct",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -128,10 +128,10 @@
         "method_version": 3
       },
       "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "8299c5d22563cc4a"
+      "responses_hash": "296c8a7b68f665bc"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "mistralai/mistral-nemo",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -147,7 +147,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-07T07:42:19.653609+00:00",
+      "ts": "2026-08-07T19:16:22.223682+00:00",
       "model": "mistralai/mistral-nemo",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -164,7 +164,7 @@
         "method_version": 3
       },
       "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "9d3381641748e0e2"
+      "responses_hash": "9a3d64a032453a0d"
     }
   ]
 }
