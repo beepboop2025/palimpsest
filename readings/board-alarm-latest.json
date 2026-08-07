@@ -1,37 +1,37 @@
 {
-  "generated_at": "2026-08-07T03:40:42.666028+00:00",
-  "board_e_value": 9.883,
+  "generated_at": "2026-08-07T08:01:38.577127+00:00",
+  "board_e_value": 8.898,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
     "alpha": 0.1,
     "k": 0,
-    "n_tested": 9,
+    "n_tested": 10,
     "threshold": null
   },
   "layers": {
     "network": {
-      "e": 17.575,
+      "e": 17.549,
       "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 64.023,
         "ioda_outages": 1.0,
-        "ooni_gfw": 2.349,
+        "ooni_gfw": 2.241,
         "tor_bridge_cn": 2.929
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 3.73,
+      "e": 3.756,
       "n_signals": 5,
       "state": "elevated",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 5.727,
-        "ddti_threat": 1.204,
-        "gdelt_containment": 4.633,
+        "ddti_novelty": 5.622,
+        "ddti_threat": 1.639,
+        "gdelt_containment": 4.436,
         "github_refuge": 6.085,
         "weibo_suppression": 1.0
       },
@@ -40,11 +40,13 @@
       ]
     },
     "model": {
-      "e": null,
-      "n_signals": 0,
-      "state": "no_data",
+      "e": 0.008,
+      "n_signals": 1,
+      "state": "calm",
       "corroborated": false,
-      "signals": {},
+      "signals": {
+        "refusal_churn": 0.008
+      },
       "recent_alarms": []
     }
   },
@@ -58,34 +60,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 2.349,
-      "n": 116,
-      "direction": "up",
-      "robust_z": 0.1,
+      "e": 2.2411,
+      "n": 117,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
-      "readings_since_alarm": 65,
+      "readings_since_alarm": 66,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 1.2038,
-      "n": 218,
+      "e": 1.6388,
+      "n": 219,
       "direction": "down",
-      "robust_z": -0.66,
+      "robust_z": -0.75,
       "driver_side": "down",
-      "readings_since_alarm": 10,
+      "readings_since_alarm": 11,
       "n_alarms_in_history": 3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 5.7272,
-      "n": 218,
+      "e": 5.6215,
+      "n": 219,
       "direction": "down",
       "robust_z": -6.07,
       "driver_side": "up",
-      "readings_since_alarm": 46,
+      "readings_since_alarm": 47,
       "n_alarms_in_history": 1,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -102,10 +104,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 4.6325,
-      "n": 125,
-      "direction": "down",
-      "robust_z": -0.67,
+      "e": 4.4359,
+      "n": 126,
+      "direction": "up",
+      "robust_z": 0.34,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -152,7 +154,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 74,
+      "n": 75,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -163,7 +165,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 74,
+      "n": 75,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -189,55 +191,59 @@
     },
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
-      "e": null,
+      "e": 0.008,
       "n_models": 4,
       "models": {
         "anthropic/claude-3-haiku": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 20,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
+          "state": "quiet",
+          "evalue": 0.0077,
+          "p0": 0.004663,
+          "pairs_seen": 22,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.004663,
+          "monitored_comparisons": 82
         },
         "meta-llama/llama-3.3-70b-instruct": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 20,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
+          "state": "quiet",
+          "evalue": 0.0077,
+          "p0": 0.008849,
+          "pairs_seen": 22,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.008849,
+          "monitored_comparisons": 82
         },
         "mistralai/mistral-nemo": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 20,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
+          "state": "quiet",
+          "evalue": 0.0089,
+          "p0": 0.114619,
+          "pairs_seen": 22,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.114619,
+          "monitored_comparisons": 82
         },
         "openai/gpt-4o-mini": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 20,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
+          "state": "quiet",
+          "evalue": 0.0077,
+          "p0": 0.004663,
+          "pairs_seen": 22,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.004663,
+          "monitored_comparisons": 82
         }
       },
-      "n_rows": 80,
+      "n_rows": 88,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 3.4,
+      "age_hours": 0.3,
       "bound_hours": 30.0,
-      "state": "calibrating",
-      "reason": "burn-in in progress: furthest model has 20 of 21 adjacent-run pairs"
+      "state": "quiet",
+      "thresholds": {
+        "watch": 20.0,
+        "alarm": 100.0
+      },
+      "guarantee": "panel e-value is the arithmetic mean of per-model anytime-valid mixture e-processes (valid under arbitrary dependence). Compound lifetime false-flag bound with 4 monitored models: WATCH at most 15%, ALARM at most 11% — each model's calibration can undershoot with probability 0.025, plus Ville's inequality when none does"
     }
   },
   "headline": "single layer elevated: content",
