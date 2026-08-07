@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-06T15:01:39.190345+00:00",
+  "generated_at": "2026-08-07T00:33:55.149932+00:00",
   "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
   "n_pairs_tested": 0,
   "n_confirmed": 0,
@@ -43,10 +43,25 @@
     },
     {
       "pair": [
+        "censored_planet",
+        "weibo_suppression"
+      ],
+      "overlap_days": 15,
+      "reason": "overlap 15d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "ddti_novelty",
+        "ioda_outages"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
         "ddti_novelty",
         "ooni_gfw"
       ],
-      "reason": "11 admissible shifts: smallest attainable p is 0.083, above alpha=0.05. Needs about 36d of overlapping daily history (has 26d)"
+      "reason": "12 admissible shifts: smallest attainable p is 0.077, above alpha=0.05. Needs about 36d of overlapping daily history (has 27d)"
     },
     {
       "pair": [
@@ -65,9 +80,16 @@
     {
       "pair": [
         "ddti_threat",
+        "ioda_outages"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
+        "ddti_threat",
         "ooni_gfw"
       ],
-      "reason": "11 admissible shifts: smallest attainable p is 0.083, above alpha=0.05. Needs about 36d of overlapping daily history (has 26d)"
+      "reason": "12 admissible shifts: smallest attainable p is 0.077, above alpha=0.05. Needs about 36d of overlapping daily history (has 27d)"
     },
     {
       "pair": [
@@ -82,6 +104,14 @@
         "tor_bridge_cn"
       ],
       "reason": "14 admissible shifts: smallest attainable p is 0.067, above alpha=0.05. Needs about 36d of overlapping daily history (has 29d)"
+    },
+    {
+      "pair": [
+        "gdelt_containment",
+        "ioda_outages"
+      ],
+      "overlap_days": 19,
+      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
     },
     {
       "pair": [
@@ -107,6 +137,14 @@
     {
       "pair": [
         "github_refuge",
+        "ioda_outages"
+      ],
+      "overlap_days": 19,
+      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "github_refuge",
         "ooni_gfw"
       ],
       "reason": "11 admissible shifts: smallest attainable p is 0.083, above alpha=0.05. Needs about 36d of overlapping daily history (has 26d)"
@@ -124,6 +162,21 @@
         "tor_bridge_cn"
       ],
       "reason": "13 admissible shifts: smallest attainable p is 0.071, above alpha=0.05. Needs about 36d of overlapping daily history (has 28d)"
+    },
+    {
+      "pair": [
+        "ioda_outages",
+        "refusal_drift"
+      ],
+      "overlap_days": 13,
+      "reason": "overlap 13d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "ioda_outages",
+        "weibo_suppression"
+      ],
+      "reason": "overlap 19d, need 20d"
     },
     {
       "pair": [
@@ -134,10 +187,33 @@
     },
     {
       "pair": [
+        "ooni_gfw",
+        "weibo_suppression"
+      ],
+      "reason": "overlap 19d, need 20d"
+    },
+    {
+      "pair": [
         "refusal_drift",
         "tor_bridge_cn"
       ],
       "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
+    },
+    {
+      "pair": [
+        "refusal_drift",
+        "weibo_suppression"
+      ],
+      "overlap_days": 13,
+      "reason": "overlap 13d — needs about 36d for the shift null to reach alpha=0.05"
+    },
+    {
+      "pair": [
+        "tor_bridge_cn",
+        "weibo_suppression"
+      ],
+      "overlap_days": 16,
+      "reason": "overlap 16d — needs about 36d for the shift null to reach alpha=0.05"
     }
   ],
   "preliminary": true,
