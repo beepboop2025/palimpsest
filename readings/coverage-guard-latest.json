@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-07T14:01:31.525115+00:00",
+  "generated_at": "2026-08-07T19:40:18.055961+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 118,
+      "n_pairs": 119,
       "metric_now": 59.4,
-      "denominator_now": 309500.0,
+      "denominator_now": 310024.0,
       "metric_robust_z": -0.1,
       "denominator_robust_z": 1.47,
-      "denominator_change_pct": 14.3,
+      "denominator_change_pct": 14.5,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 221,
-      "metric_now": 1.1015,
+      "n_pairs": 223,
+      "metric_now": 1.0159,
       "denominator_now": 209.0,
-      "metric_robust_z": -0.84,
+      "metric_robust_z": -0.93,
       "denominator_robust_z": 6.74,
       "denominator_change_pct": 23.7,
       "verdict": "NO_MOVE",
@@ -24,27 +24,27 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 221,
+      "n_pairs": 223,
       "metric_now": 20.0,
       "denominator_now": 209.0,
       "metric_robust_z": -6.07,
       "denominator_robust_z": 6.74,
       "denominator_change_pct": 23.7,
       "fit": {
-        "slope": -0.200506,
-        "intercept": 60.8999,
-        "correlation": -0.732
+        "slope": -0.1996,
+        "intercept": 60.7543,
+        "correlation": -0.737
       },
-      "residual_robust_z": -0.37,
+      "residual_robust_z": -0.38,
       "verdict": "COVERAGE_CONFOUNDED",
-      "note": "the measurement base moved 23.7% at the same time and tracks this metric historically (r=-0.73); conditioning on it shrinks the departure from z=-6.1 to z=-0.4. This reading is NOT evidence of a censorship change.",
+      "note": "the measurement base moved 23.7% at the same time and tracks this metric historically (r=-0.74); conditioning on it shrinks the departure from z=-6.1 to z=-0.4. This reading is NOT evidence of a censorship change.",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 127,
-      "metric_now": 5.0,
+      "n_pairs": 128,
+      "metric_now": 6.0,
       "denominator_now": 25.0,
-      "metric_robust_z": 0.0,
+      "metric_robust_z": 0.34,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -64,7 +64,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 76,
+      "n_pairs": 77,
       "metric_now": 0.0,
       "denominator_now": 0.0,
       "metric_robust_z": null,
