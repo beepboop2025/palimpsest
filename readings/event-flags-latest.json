@@ -1,46 +1,46 @@
 {
-  "generated_at": "2026-08-08T02:34:45.709785+00:00",
+  "generated_at": "2026-08-08T07:35:19.305072+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 2.125,
-      "n": 120,
+      "stat": 2.3414,
+      "n": 121,
       "n_alarms_in_history": 1,
       "age_hours": 0.2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 4.2216,
-      "n": 225,
+      "stat": 5.4717,
+      "n": 227,
       "n_alarms_in_history": 3,
-      "age_hours": 0.2,
+      "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 3.8604,
-      "n": 225,
+      "stat": 3.3419,
+      "n": 227,
       "n_alarms_in_history": 1,
-      "age_hours": 0.2,
+      "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
       "state": "calm",
-      "stat": 64.0235,
-      "n": 22,
+      "stat": 46.8967,
+      "n": 23,
       "n_alarms_in_history": 0,
-      "age_hours": 42.5,
+      "age_hours": 1.2,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.6105,
-      "n": 129,
+      "stat": 2.1095,
+      "n": 130,
       "n_alarms_in_history": 0,
-      "age_hours": 6.9,
+      "age_hours": 4.9,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 2.8783,
       "n": 65,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 5.0,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -71,14 +71,14 @@
       "state": "stale",
       "n": 392,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
-      "age_hours": 122.6,
+      "age_hours": 127.6,
       "bound_hours": 120.0,
-      "reason": "newest row is 122.6h old, past the 120h bound"
+      "reason": "newest row is 127.6h old, past the 120h bound"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 78,
+      "n": 79,
       "n_alarms_in_history": 0,
       "age_hours": 0.0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
@@ -86,9 +86,9 @@
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 78,
+      "n": 79,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
@@ -96,7 +96,7 @@
       "stat": 0.0,
       "n": 7,
       "n_alarms_in_history": 0,
-      "age_hours": 26.6,
+      "age_hours": 31.6,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -151,7 +151,7 @@
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 7.3,
+      "age_hours": 12.3,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
