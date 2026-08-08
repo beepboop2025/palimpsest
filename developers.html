@@ -180,11 +180,13 @@
     <p class="ps-kicker">Public API · remote MCP · no key</p>
     <h1 class="ps-h1">Give your agent evidence that can still be checked</h1>
     <p class="ps-lede">Palimpsest exposes current censorship measurements and tamper-evident
-    model evaluations through a read-only MCP server and stable JSON readings. Every result keeps
-    its timestamp, source, vantage and limitations attached.</p>
+    model evaluations through a read-only MCP server and stable JSON readings. A separate reviewed
+    ScamShield pack shares inert typologies and source links without making private message evidence
+    public. Every result keeps its timestamp, source, vantage and limitations attached.</p>
     <div class="dev-actions">
       <a class="ps-btn" href="#connect">Connect the MCP server</a>
       <a class="ps-btn ps-btn--ghost" href="/openapi.json">Import OpenAPI</a>
+      <a class="ps-btn ps-btn--ghost" href="#scamshield">ScamShield pack</a>
       <a class="ps-btn ps-btn--ghost" href="/product-card.json">Product card</a>
     </div>
     <div class="proof ps-stagger" aria-label="Service facts">
@@ -264,6 +266,36 @@
       <pre id="rest-command"><code>curl -sS https://palimpsest.info/readings/board-alarm-latest.json \
   | python3 -m json.tool</code></pre>
       <button class="copy-btn" type="button" data-copy="rest-command">Copy request</button>
+    </div>
+  </section>
+
+  <section class="ps-defer" id="scamshield">
+    <h2 class="ps-section-head">ScamShield reviewed bridge</h2>
+    <p class="dev-copy">The intelligence pack is a versioned static JSON contract, not a fifth MCP
+    tool. ScamShield loads its inert sources and typologies; a separate local stdin bridge can build
+    a private Evidence Capsule from a structured assessment.</p>
+    <div class="connect-grid">
+      <article class="connect ps-p2 ps-reveal">
+        <p class="ps-label">Public contract</p>
+        <h3>Inspect the reviewed pack</h3>
+        <p class="dev-copy"><code>scamshield-intelligence-pack/v1</code>, version
+        <code>2026-08-08.2</code>: 18 sources, 8 typologies, 3 dimensions, and the support ladder
+        <code>TYPOLOGY_MATCH</code> → <code>CORROBORATED_LEAD</code> → <code>DIRECT_LINK</code>.</p>
+        <div class="codebox">
+          <pre id="scamshield-command"><code>curl -sS https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json \
+  | python3 -m json.tool</code></pre>
+          <button class="copy-btn" type="button" data-copy="scamshield-command">Copy request</button>
+        </div>
+      </article>
+      <article class="connect ps-p2 ps-reveal">
+        <p class="ps-label">Privacy contract</p>
+        <h3>Keep the message-level record private</h3>
+        <p class="dev-copy">Raw Telegram text is hashed and not sent by default. Public output excludes
+        messages, exact IOCs, private capsules and owner-only liquidity values. Outward candidates are
+        privacy-minimized, marked <code>HUMAN_REVIEW_REQUIRED</code>, and never auto-published.</p>
+        <p class="dev-copy"><a href="/evidence-capsules.html#scamshield">Read the capsule boundary</a> ·
+        <a href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">Open @Scamshield_2_bot</a></p>
+      </article>
     </div>
   </section>
 

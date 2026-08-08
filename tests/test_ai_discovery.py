@@ -21,6 +21,21 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     assert len(card["do_not_use_for"]) >= 4
     assert card["access"]["openapi"] == "https://palimpsest.info/openapi.json"
     assert card["access"]["mcp"] == "https://api.seiche.info/palimpsest/mcp"
+    assert card["access"]["scamshield_bot"] == "https://t.me/Scamshield_2_bot"
+    bridge = card["integrations"]["scamshield"]
+    assert bridge["schema"] == "scamshield-intelligence-pack/v1"
+    assert bridge["version"] == "2026-08-08.2"
+    assert (bridge["source_count"], bridge["typology_count"]) == (18, 8)
+    assert bridge["dimensions"] == [
+        "laundering_mechanism",
+        "operating_ecosystem",
+        "predicate_offence",
+    ]
+    assert bridge["support_levels"] == [
+        "TYPOLOGY_MATCH",
+        "CORROBORATED_LEAD",
+        "DIRECT_LINK",
+    ]
 
 
 def test_openapi_only_advertises_readings_that_are_actually_published():
@@ -47,6 +62,9 @@ def test_developer_page_exposes_every_activation_path():
     assert "four discovered read-only tools" in page
     assert 'id="run-verdict"' in page and "whats_happening" in page
     assert "/assets/developers.js" in page
+    assert 'id="scamshield"' in page
+    assert "scamshield-intelligence-pack/v1" in page
+    assert "The intelligence pack is a versioned static JSON contract, not a fifth MCP" in page
 
 
 def test_discovery_files_and_home_link_to_the_developer_surface():
@@ -58,7 +76,34 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert "https://palimpsest.info/developers.html" in llms
     assert "https://palimpsest.info/openapi.json" in llms
     assert 'href="/developers.html"' in home
+    assert 'href="#scamshield"' in home
+    assert "https://t.me/Scamshield_2_bot" in home
     assert '"Developers", "href": "/developers.html"' in nav
+
+
+def test_scamshield_public_surfaces_share_one_bounded_contract():
+    pack = _json("integrations/scamshield/intelligence-pack-v1.json")
+    card = _json("product-card.json")["integrations"]["scamshield"]
+    assert card["schema"] == pack["schema"]
+    assert card["version"] == pack["version"]
+    assert card["source_count"] == len(pack["sources"]) == 18
+    assert card["typology_count"] == len(pack["typologies"]) == 8
+    assert card["support_levels"] == pack["method"]["support_levels"]
+
+    surfaces = {
+        name: (ROOT / name).read_text(encoding="utf-8")
+        for name in ("index.html", "developers.html", "evidence-capsules.html", "llms.txt")
+    }
+    for name, text in surfaces.items():
+        assert pack["schema"] in text, name
+        assert pack["version"] in text, name
+        assert "18" in text and "8" in text, name
+        assert "HUMAN_REVIEW_REQUIRED" in text, name
+
+    combined = "\n".join(surfaces.values())
+    assert "Raw Telegram text is hashed and" in combined
+    assert "never auto-published" in combined or "never auto-published" in combined.lower()
+    assert "not guilt" in combined
 
 
 def test_indexnow_ownership_key_is_self_consistent():

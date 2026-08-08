@@ -168,6 +168,40 @@ python3 scripts/evidence_capsule.py verify \
     </div>
   </section>
 
+  <section class="ec-section" id="scamshield">
+    <p class="ps-kicker">ScamShield private bridge</p>
+    <h2 class="ps-section-head">Preserve the assessment without publishing the message</h2>
+    <p class="ec-copy">The local ScamShield bridge builds a private Evidence Capsule from structured
+    detector, threat-family and provenance claims. Its public counterpart is
+    <code>scamshield-intelligence-pack/v1</code> version <code>2026-08-08.2</code>, with 18 reviewed
+    sources and 8 typologies. Raw Telegram text is represented by its SHA-256 and is not sent by
+    default. The capsule may keep exact indicators and matched terms for authorized review, but those
+    fields never pass into the public intelligence pack or outward review candidate.</p>
+    <div class="ec-grid ps-stagger" aria-label="ScamShield Evidence Capsule boundaries">
+      <article class="ec-card ps-p1">
+        <h2>Private capsule</h2>
+        <p>Stores structured claims, limitations, the original-message digest and any exact evidence
+        needed for authorized local review. A sampled investigative lead declares
+        <code>declared-nonrecomputable-v1</code> instead of pretending the larger ranking is present.</p>
+      </article>
+      <article class="ec-card ps-p2">
+        <h2>Public candidate</h2>
+        <p>Keeps broad tier and threat-family relationships, indicator counts, pseudonymized source and
+        limitations. It omits indicator values, matched fragments, messages and owner-only liquidity
+        values.</p>
+      </article>
+      <article class="ec-card ps-p3">
+        <h2>Human decision</h2>
+        <p>Every outward candidate says <code>HUMAN_REVIEW_REQUIRED</code>. The feed writes JSONL to
+        stdout; it does not publish, call a webhook or open a network connection.</p>
+      </article>
+    </div>
+    <div class="ec-actions">
+      <a class="ps-btn" href="/integrations/scamshield/intelligence-pack-v1.json">Open the public pack</a>
+      <a class="ps-btn ps-btn--ghost" href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">Open @Scamshield_2_bot</a>
+    </div>
+  </section>
+
   <section class="ec-section" id="meaning">
     <p class="ps-kicker">Read the result precisely</p>
     <h2 class="ps-section-head">What <code>ok</code> means, and what it does not mean</h2>
