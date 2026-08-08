@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-08T13:16:34.647473+00:00",
+  "generated_at": "2026-08-08T19:03:50.423599+00:00",
   "method_version": 1,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
@@ -8,60 +8,68 @@
   "window_days": 7,
   "since": "2026-08-01",
   "until": "2026-08-09",
-  "gfw_index": 78.5,
-  "n_measurements": 1078,
-  "n_tests_with_data": 4,
+  "gfw_index": 58.4,
+  "n_measurements": 280837,
+  "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
-      "available": false,
-      "reading": "no CN measurements in the window — abstaining for this test"
+      "available": true,
+      "anomaly_count": 161464,
+      "measurement_count": 279408,
+      "failure_count": 2431,
+      "anomaly_rate": 0.583,
+      "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 309,
-      "measurement_count": 320,
+      "anomaly_count": 316,
+      "measurement_count": 327,
       "failure_count": 0,
-      "anomaly_rate": 0.9656,
+      "anomaly_rate": 0.9664,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
-      "available": false,
-      "reading": "no CN measurements in the window — abstaining for this test"
+      "available": true,
+      "anomaly_count": 312,
+      "measurement_count": 326,
+      "failure_count": 0,
+      "anomaly_rate": 0.9571,
+      "reading": "96% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 306,
-      "measurement_count": 324,
+      "anomaly_count": 312,
+      "measurement_count": 330,
       "failure_count": 6,
-      "anomaly_rate": 0.9623,
+      "anomaly_rate": 0.963,
       "reading": "96% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 178,
-      "measurement_count": 187,
+      "anomaly_count": 183,
+      "measurement_count": 192,
       "failure_count": 0,
-      "anomaly_rate": 0.9519,
+      "anomaly_rate": 0.9531,
       "reading": "95% anomalous — heavily interfered with"
     },
     {
       "test": "psiphon",
       "label": "Psiphon circumvention",
       "available": true,
-      "anomaly_count": 48,
-      "measurement_count": 247,
+      "anomaly_count": 49,
+      "measurement_count": 254,
       "failure_count": 0,
-      "anomaly_rate": 0.1943,
+      "anomaly_rate": 0.1929,
       "reading": "19% anomalous — some interference"
     },
     {
@@ -107,6 +115,12 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "www.csis.org",
+      "anomaly_count": 28,
+      "measurement_count": 30,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "www.falundafa.org",
       "anomaly_count": 28,
       "measurement_count": 28,
@@ -122,12 +136,6 @@
       "domain": "www.cna.com.tw",
       "anomaly_count": 26,
       "measurement_count": 26,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.csis.org",
-      "anomaly_count": 26,
-      "measurement_count": 28,
       "anomaly_rate": 1.0
     },
     {
@@ -185,6 +193,12 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "secure.avaaz.org",
+      "anomaly_count": 24,
+      "measurement_count": 25,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "www.bahai.org",
       "anomaly_count": 24,
       "measurement_count": 24,
@@ -219,13 +233,7 @@
       "anomaly_count": 24,
       "measurement_count": 24,
       "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.washingtontimes.com",
-      "anomaly_count": 24,
-      "measurement_count": 24,
-      "anomaly_rate": 1.0
     }
   ],
-  "last_changed_at": "2026-08-08T13:16:34.647473+00:00"
+  "last_changed_at": "2026-08-08T19:03:50.423599+00:00"
 }
