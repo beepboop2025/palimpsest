@@ -51,6 +51,14 @@ research notebook or agent? [Evidence Capsules](https://palimpsest.info/evidence
 package the evidence, typed claims and explicit limitations into one inert JSON file with the
 same offline verification model.
 
+The reviewed [ScamShield intelligence pack](https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json)
+applies that boundary to scam research: 18 public sources and 8 typologies across three distinct
+dimensions, with support levels that describe evidence relationships rather than guilt or risk.
+ScamShield can create a private local Evidence Capsule while raw Telegram text stays hashed and is
+not sent by default; public candidates omit messages, exact indicators and owner-only liquidity
+values, require human review, and are never auto-published. The complete boundary is documented in
+[`integrations/scamshield/README.md`](integrations/scamshield/README.md).
+
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
 > (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
 > and the [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html).

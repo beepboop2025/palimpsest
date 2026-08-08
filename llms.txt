@@ -89,6 +89,29 @@ from a clone of the repository:
 
 It re-walks every hash link, recomputes the Merkle root, and fails loud on any break.
 
+## ScamShield reviewed bridge
+
+Palimpsest publishes a static, inert ScamShield intelligence pack at
+https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json. The current
+contract is `scamshield-intelligence-pack/v1`, version `2026-08-08.2`: 18 reviewed
+public sources, 8 typologies and 3 distinct dimensions (`laundering_mechanism`,
+`operating_ecosystem`, and `predicate_offence`). Its evidence-relationship ladder is
+`TYPOLOGY_MATCH`, `CORROBORATED_LEAD`, then `DIRECT_LINK`. These labels describe how a
+lead relates to evidence; they are not guilt, risk or liquidity scores.
+
+The bridge is intentionally asymmetric. ScamShield can load the public source and
+typology map, while a local stdin bridge turns a structured assessment into a private
+Evidence Capsule. Raw Telegram text is hashed and is not sent by default. The public
+pack never contains messages, exact IOCs, private capsules or owner-only liquidity
+values. Any outward candidate is privacy-minimized, says `HUMAN_REVIEW_REQUIRED`, and
+is never auto-published. Collection is limited to submitted messages, configured public
+channels and administrator-authorized surfaces; neither product claims visibility into
+all of Telegram.
+
+- Public pack: https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json
+- Telegram bot: https://t.me/Scamshield_2_bot
+- Bridge contract: https://github.com/beepboop2025/palimpsest/blob/main/integrations/scamshield/README.md
+
 ## Key pages
 
 - [OSINT China](https://palimpsest.info/osint-china.html): the continuous public roll-up across every China-facing signal, including per-source freshness, coverage failures and the complete machine-readable bundle
@@ -108,6 +131,8 @@ It re-walks every hash link, recomputes the Merkle root, and fails loud on any b
 - [OpenAPI 3.1 contract](https://palimpsest.info/openapi.json): stable public JSON readings for conventional clients and API importers
 - [Machine-readable product card](https://palimpsest.info/product-card.json): identity, use cases, limitations, evidence and public access points for retrieval systems
 - [Evidence Capsules](https://palimpsest.info/evidence-capsules.html): portable JSON claims bound to exact evidence bytes, with a dependency-free offline verifier and frozen downloads
+- [ScamShield intelligence pack](https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json): versioned public typologies, reviewed sources and explicit evidence-support levels; no Telegram messages or exact indicators
+- [ScamShield Telegram bot](https://t.me/Scamshield_2_bot): public bot entry point; sensitive review and liquidity commands remain owner-only
 - [All readings](https://palimpsest.info/readings/)
 - [Funding](https://palimpsest.info/fund.html): what it costs to keep the observatory measuring, and what a grant buys
 - [Source code & method (GitHub)](https://github.com/beepboop2025/palimpsest)

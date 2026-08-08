@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palimpsest · censorship observatory + verifiable AI eval registry</title>
-<meta name="description" content="Palimpsest measures censorship in China at the network, content and model layers, including a vantage measured from inside the country, and seals AI evaluation results into a tamper-evident public registry that nobody can revise after publication. Free, MIT licensed, open source. Watch the censor, never the censored.">
+<title>Palimpsest · verifiable public evidence + reviewed intelligence</title>
+<meta name="description" content="Palimpsest measures censorship, seals AI evaluations into a tamper-evident registry, and publishes a reviewed, privacy-minimized intelligence bridge for ScamShield. Free, MIT licensed, open source. Watch the censor, never the censored.">
 <meta name="keywords" content="AI evaluation registry, verifiable evals, tamper-evident, refusal drift, authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, DNS injection, middlebox interference, App Store censorship, blocklist keywords, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OONI, OSINT censorship">
 <meta name="author" content="Palimpsest">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -23,8 +23,8 @@
 <!-- Open Graph / social -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
-<meta property="og:description" content="Three things, one instrument. A censorship observatory measuring what China removes at the network, content and model layers, including a vantage from inside the country. A registry that seals AI evaluations so nobody can revise them afterwards. A free public good, MIT licensed.">
+<meta property="og:title" content="Palimpsest · verifiable public evidence + reviewed intelligence">
+<meta property="og:description" content="A censorship observatory, a tamper-evident AI evaluation registry, and a privacy-minimized ScamShield intelligence bridge. Free and MIT licensed.">
 <meta property="og:url" content="https://palimpsest.info/">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta property="og:image:width" content="1200">
@@ -32,8 +32,8 @@
 <meta property="og:image:alt" content="Palimpsest: AI evaluations, sealed the moment they are published. Nobody can revise the record. Not a lab, not a government, not us.">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Palimpsest · censorship observatory + verifiable AI eval registry">
-<meta name="twitter:description" content="What the apparatus removed, measured at the network, content and model layers, plus AI evaluations sealed so nobody can revise them after publication. Free and open source.">
+<meta name="twitter:title" content="Palimpsest · verifiable public evidence + reviewed intelligence">
+<meta name="twitter:description" content="Censorship measurements, sealed AI evaluations, and a reviewed ScamShield intelligence bridge that publishes typologies without exporting people.">
 <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
 <!-- Structured data: declares Palimpsest as a citable Dataset + Organization for AI/search engines -->
@@ -47,13 +47,13 @@
       "name": "Palimpsest",
       "url": "https://palimpsest.info/",
       "sameAs": ["https://github.com/beepboop2025/palimpsest"],
-      "description": "Open-source public-good observatory that measures authoritarian and AI-model censorship by treating deletion as data, and that seals its own AI evaluation results into a tamper-evident public registry."
+      "description": "Open-source public-good observatory that measures authoritarian and AI-model censorship, seals AI evaluation results, and publishes a reviewed, privacy-minimized ScamShield intelligence interchange."
     },
     {
       "@type": "WebSite",
       "@id": "https://palimpsest.info/#website",
       "url": "https://palimpsest.info/",
-      "name": "Palimpsest · censorship observatory + verifiable AI eval registry",
+      "name": "Palimpsest · verifiable public evidence + reviewed intelligence",
       "publisher": { "@id": "https://palimpsest.info/#org" },
       "inLanguage": "en"
     },
@@ -99,6 +99,22 @@
       "distribution": [
         { "@type": "DataDownload", "name": "Sealed registry, append-only", "encodingFormat": "application/x-ndjson", "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl" },
         { "@type": "DataDownload", "name": "Registry head state", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json" }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "@id": "https://palimpsest.info/#scamshield-intelligence-pack",
+      "name": "Palimpsest ScamShield Intelligence Pack",
+      "description": "A reviewed, inert map of 18 public sources and 8 scam and money-flow typologies across three dimensions. Support levels describe evidence relationships, not guilt or risk. Raw Telegram messages, exact indicators, private Evidence Capsules and owner-only liquidity values are excluded; outward candidates require human review and are never auto-published.",
+      "url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
+      "version": "2026-08-08.2",
+      "keywords": ["ScamShield", "scam typologies", "threat intelligence", "privacy-minimized intelligence", "Evidence Capsules"],
+      "creator": { "@id": "https://palimpsest.info/#org" },
+      "publisher": { "@id": "https://palimpsest.info/#org" },
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "distribution": [
+        { "@type": "DataDownload", "name": "ScamShield intelligence pack v1", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json" }
       ]
     }
   ]
@@ -163,6 +179,14 @@
     },
     {
       "@type": "Question",
+      "name": "What is the ScamShield reviewed bridge?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The ScamShield reviewed bridge lets ScamShield load a public, inert map of reviewed sources and typologies while keeping message-level evidence private. The current scamshield-intelligence-pack/v1 release is 2026-08-08.2, with 18 sources, 8 typologies and 3 dimensions. Raw Telegram text is hashed and not sent by default; the public pack excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values. Privacy-minimized publication candidates require human review and are never auto-published. TYPOLOGY_MATCH, CORROBORATED_LEAD and DIRECT_LINK describe evidence relationships, not guilt or risk."
+      }
+    },
+    {
+      "@type": "Question",
       "name": "Is Palimpsest free and open source?",
       "acceptedAnswer": {
         "@type": "Answer",
@@ -198,10 +222,11 @@
   .hero__note { font-family: var(--tk-font-mono); font-size: 11px; line-height: 1.6;
                 color: var(--tk-text-4); margin: 18px 0 0; max-width: 62ch; }
 
-  /* ---- the three doors ---- */
-  .doors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* ---- the four public surfaces ---- */
+  .doors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
            gap: 14px; margin: 30px 0 0; }
-  @media (max-width: 860px) { .doors { grid-template-columns: 1fr; } }
+  @media (max-width: 1120px) { .doors { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 680px) { .doors { grid-template-columns: 1fr; } }
   .door { display: flex; flex-direction: column; padding: 18px 20px 16px;
           text-decoration: none; color: inherit; min-height: 236px; }
   .door__k { display: flex; align-items: center; gap: 7px; margin: 0 0 9px;
@@ -370,14 +395,15 @@
     <img class="hero__logo" src="/brand/palimpsest-icon.svg" alt="Palimpsest logo" width="56" height="56">
     <p class="ps-kicker">Open source · public good · MIT</p>
     <h1 class="ps-h1">Palimpsest</h1>
-    <p class="ps-lede">Three things, one instrument. An observatory that measures what the Chinese
-    censorship apparatus removes, at the network, content and model layers. A registry that seals AI
-    evaluations the moment they publish, so nobody, including us, can revise a result afterwards. And a
-    free public good, funded by people who think this should exist rather than by anyone who buys it.
-    It watches the censor, never the censored.</p>
+    <p class="ps-lede">Four public surfaces, one evidence discipline. An observatory measures what the
+    Chinese censorship apparatus removes. A registry seals AI evaluations the moment they publish. A
+    reviewed ScamShield bridge shares public typologies without exporting Telegram messages or exact
+    indicators. The whole instrument remains a free public good, funded by people who think it should
+    exist rather than by anyone who buys it. It watches the censor, never the censored.</p>
     <div class="btn-row">
       <a class="ps-btn" href="/developers.html">Connect the API + MCP</a>
       <a class="ps-btn ps-btn--ghost" href="/for-researchers.html">Browse data and methods</a>
+      <a class="ps-btn ps-btn--ghost" href="/integrations/scamshield/intelligence-pack-v1.json">Open ScamShield pack</a>
     </div>
 
     <div class="doors ps-stagger">
@@ -406,6 +432,19 @@
         </p>
         <p class="door__go"><span class="fresh" data-fresh="hero-evals">reading the feed</span><br>
         For labs, eval and safety researchers <span aria-hidden="true">↓</span></p>
+      </a>
+
+      <a class="door ps-p3 ps-reveal" href="#scamshield">
+        <p class="door__k"><span class="ps-dot" style="color:var(--tk-live)" aria-hidden="true"></span>Reviewed intelligence bridge</p>
+        <h2 class="door__t">Share typologies, not people</h2>
+        <p class="door__b">ScamShield loads an inert, reviewed source map. Private Evidence Capsules
+        keep message-level evidence local; public candidates are minimized and human-reviewed.</p>
+        <p class="stat">
+          <span class="stat__line"><span class="stat__fig">18</span></span>
+          <span class="stat__cap">public sources · 8 typologies · 3 dimensions · pack 2026-08-08.2</span>
+        </p>
+        <p class="door__go"><span class="fresh">no automatic publication</span><br>
+        For threat researchers and ScamShield operators <span aria-hidden="true">↓</span></p>
       </a>
 
       <a class="door ps-p3 ps-reveal" href="#public-good">
@@ -785,9 +824,78 @@
 
   <div class="ps-wrap"><hr class="ps-rule"></div>
 
-  <!-- ══ 03 · A FUNDED PUBLIC GOOD ══════════════════════════════════════ -->
+  <!-- ══ 03 · SCAMSHIELD REVIEWED BRIDGE ════════════════════════════════ -->
+  <section class="pillar ps-wrap ps-defer" id="scamshield">
+    <p class="ps-section-head">03 / ScamShield reviewed bridge</p>
+
+    <div class="ps-band">
+      <div class="ps-pin">
+        <h2 class="ps-h2">Threat intelligence without exporting the people inside it</h2>
+        <p class="claim__lede">The public side is an inert, versioned map of reviewed sources and
+        scam and money-flow typologies. The private side turns a structured ScamShield assessment
+        into an Evidence Capsule over a local stdin bridge. The two sides are deliberately unequal:
+        public readers get method and provenance, while message-level evidence stays private.</p>
+        <div class="btn-row">
+          <a class="ps-btn" href="/integrations/scamshield/intelligence-pack-v1.json">Open the public pack</a>
+          <a class="ps-btn ps-btn--ghost" href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">Open @Scamshield_2_bot</a>
+          <a class="ps-btn ps-btn--ghost" href="/evidence-capsules.html#scamshield">Evidence Capsules</a>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="lead ps-p3 ps-reveal--deep">
+          <p class="sig__k">Public contract · reviewed release</p>
+          <h3 class="lead__t"><code>scamshield-intelligence-pack/v1</code></h3>
+          <p class="stat">
+            <span class="stat__line"><span class="stat__fig">18</span><span class="stat__unit"> sources</span></span>
+            <span class="stat__cap">8 typologies · 3 dimensions · version 2026-08-08.2</span>
+          </p>
+          <p class="lead__b"><code>TYPOLOGY_MATCH</code>, <code>CORROBORATED_LEAD</code> and
+          <code>DIRECT_LINK</code> state how a lead relates to evidence. They are not guilt, risk or
+          liquidity scores.</p>
+        </div>
+
+        <div class="sig-grid ps-stagger ps-reveal">
+          <div class="sig ps-p2">
+            <p class="sig__k">Public pack</p>
+            <h3 class="sig__t">Sources and bounded typologies</h3>
+            <p class="sig__b">The three dimensions remain separate: laundering mechanism, operating
+            ecosystem and predicate offence. A mechanism match does not silently become a claim about
+            the origin of funds.</p>
+          </div>
+
+          <div class="sig ps-p2">
+            <p class="sig__k">Private boundary</p>
+            <h3 class="sig__t">Message text stays local</h3>
+            <p class="sig__b">Raw Telegram text is hashed and is not sent by default. The public pack
+            excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values.</p>
+          </div>
+
+          <div class="sig ps-p2">
+            <p class="sig__k">Publication boundary</p>
+            <h3 class="sig__t">A candidate is not a post</h3>
+            <p class="sig__b">Outward candidates are privacy-minimized and labelled
+            <code>HUMAN_REVIEW_REQUIRED</code>. The bridge does not publish, call a webhook or open a
+            network connection.</p>
+          </div>
+        </div>
+
+        <div class="ps-p1 note ps-reveal">
+          <p class="note__h">Collection scope</p>
+          <p>The integration covers user-submitted messages, configured public channels and
+          administrator-authorized surfaces only. It does not claim visibility into all of Telegram,
+          investigate people automatically, or turn repeated wording from one source into independent
+          corroboration.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ps-wrap"><hr class="ps-rule"></div>
+
+  <!-- ══ 04 · A FUNDED PUBLIC GOOD ══════════════════════════════════════ -->
   <section class="pillar ps-wrap ps-defer" id="public-good">
-    <p class="ps-section-head">03 / A funded public good</p>
+    <p class="ps-section-head">04 / A funded public good</p>
 
     <div class="ps-band">
       <div class="ps-pin">
@@ -944,6 +1052,9 @@
     deposited outside our own infrastructure, at the Internet Archive and via OpenTimestamps onto Bitcoin,
     so the record does not rest on our word.</p>
 
+    <h3>What is the ScamShield reviewed bridge?</h3>
+    <p>The ScamShield reviewed bridge lets ScamShield load a public, inert map of reviewed sources and typologies while keeping message-level evidence private. The current scamshield-intelligence-pack/v1 release is 2026-08-08.2, with 18 sources, 8 typologies and 3 dimensions. Raw Telegram text is hashed and not sent by default; the public pack excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values. Privacy-minimized publication candidates require human review and are never auto-published. TYPOLOGY_MATCH, CORROBORATED_LEAD and DIRECT_LINK describe evidence relationships, not guilt or risk.</p>
+
     <h3>Is Palimpsest free and open source?</h3>
     <p>Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public good. It
     is never a commercial product and never monetizes the people or topics it observes. Its code, method,
@@ -964,6 +1075,7 @@
     censored. The internet stays free because people keep measuring the dark.<br>
     <a href="/readings/">Readings</a> · <a href="/for-researchers.html">Data and methods</a> ·
     <a href="/developers.html">API + MCP</a> ·
+    <a href="/integrations/scamshield/intelligence-pack-v1.json">ScamShield pack</a> ·
     <a href="/fund.html">Fund it</a> ·
     <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">GitHub</a></p>
   </div>
