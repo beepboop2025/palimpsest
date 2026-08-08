@@ -1,0 +1,765 @@
+{
+  "schema": "scamshield-intelligence-pack/v1",
+  "version": "2026-08-08.2",
+  "generated_at": "2026-08-08T00:00:00Z",
+  "publisher": {
+    "name": "Palimpsest",
+    "project_url": "https://palimpsest.info"
+  },
+  "method": {
+    "summary": "Public typologies support analytical leads, never automatic allegations about a person, wallet, channel, or transaction.",
+    "support_levels": [
+      "TYPOLOGY_MATCH",
+      "CORROBORATED_LEAD",
+      "DIRECT_LINK"
+    ],
+    "principles": [
+      "A laundering mechanism is not the same thing as a predicate source of funds.",
+      "Repeated indicators from one message or one provider count as one backer.",
+      "Message text alone cannot establish the origin of specific funds.",
+      "DIRECT_LINK requires an exact IOC match in an authoritative public record."
+    ]
+  },
+  "sources": [
+    {
+      "id": "hsi-cubs-2026",
+      "publisher": "Homeland Security Investigations",
+      "title": "Chinese Underground Banking System, Cornerstone Issue 73",
+      "published_at": "2026-06-09",
+      "url": "https://content.govdelivery.com/accounts/USDHSICE/bulletins/41a7800"
+    },
+    {
+      "id": "fincen-cmln-2025",
+      "publisher": "Financial Crimes Enforcement Network",
+      "title": "Advisory on the Use of Chinese Money Laundering Networks",
+      "published_at": "2025-08-28",
+      "url": "https://www.fincen.gov/system/files/2025-08/FinCEN-Advisory-CMLN-508.pdf"
+    },
+    {
+      "id": "treasury-nmlra-2024",
+      "publisher": "United States Department of the Treasury",
+      "title": "2024 National Money Laundering Risk Assessment",
+      "published_at": "2024-02-01",
+      "url": "https://home.treasury.gov/system/files/136/2024-National-Money-Laundering-Risk-Assessment.pdf"
+    },
+    {
+      "id": "unodc-convergence-2024",
+      "publisher": "United Nations Office on Drugs and Crime",
+      "title": "Transnational Organized Crime and the Convergence of Cyber-enabled Fraud, Underground Banking and Technological Innovation in Southeast Asia",
+      "published_at": "2024-10-01",
+      "url": "https://www.unodc.org/roseap/uploads/documents/Publications/2024/TOC_Convergence_Report_2024.pdf"
+    },
+    {
+      "id": "unodc-casinos-2024",
+      "publisher": "United Nations Office on Drugs and Crime",
+      "title": "Casinos, Money Laundering, Underground Banking, and Transnational Organized Crime in East and Southeast Asia",
+      "published_at": "2024-01-01",
+      "url": "https://www.unodc.org/roseap/uploads/documents/Publications/2024/Casino_Underground_Banking_Report_2024.pdf"
+    },
+    {
+      "id": "fatf-professional-2018",
+      "publisher": "Financial Action Task Force",
+      "title": "Professional Money Laundering",
+      "published_at": "2018-07-26",
+      "url": "https://www.fatf-gafi.org/en/publications/Methodsandtrends/Professional-money-laundering.html"
+    },
+    {
+      "id": "fatf-cyber-fraud-2023",
+      "publisher": "Financial Action Task Force",
+      "title": "Illicit Financial Flows from Cyber-enabled Fraud",
+      "published_at": "2023-11-09",
+      "url": "https://www.fatf-gafi.org/en/publications/Methodsandtrends/illicit-financial-flows-cyber-enabled-fraud.html"
+    },
+    {
+      "id": "fatf-wildlife-2020",
+      "publisher": "Financial Action Task Force",
+      "title": "Money Laundering and the Illegal Wildlife Trade",
+      "published_at": "2020-06-25",
+      "url": "https://www.fatf-gafi.org/en/publications/Environmentalcrime/Money-laundering-wildlife-trade.html"
+    },
+    {
+      "id": "fatf-virtual-assets-2020",
+      "publisher": "Financial Action Task Force",
+      "title": "Virtual Assets Red Flag Indicators of Money Laundering and Terrorist Financing",
+      "published_at": "2020-09-14",
+      "url": "https://www.fatf-gafi.org/en/publications/Methodsandtrends/Virtual-assets-red-flag-indicators.html"
+    },
+    {
+      "id": "doj-fortune-runner-2024",
+      "publisher": "United States Department of Justice",
+      "title": "Federal Indictment Alleges Alliance Between Sinaloa Cartel and Money Launderers Linked to Chinese Underground Banking",
+      "published_at": "2024-06-18",
+      "url": "https://www.justice.gov/usao-cdca/pr/federal-indictment-alleges-alliance-between-sinaloa-cartel-and-money-launderers-linked"
+    },
+    {
+      "id": "interpol-fraud-2026",
+      "publisher": "INTERPOL",
+      "title": "Global Financial Fraud Threat Assessment announcement",
+      "published_at": "2026-03-16",
+      "url": "https://www.interpol.int/News-and-Events/News/2026/INTERPOL-report-warns-of-increasingly-sophisticated-global-financial-fraud-threat"
+    },
+    {
+      "id": "interpol-wildlife",
+      "publisher": "INTERPOL",
+      "title": "Wildlife Crime",
+      "published_at": "2026-08-08",
+      "url": "https://www.interpol.int/Crimes/Environmental-crime/Wildlife-crime"
+    },
+    {
+      "id": "interpol-drug-trafficking",
+      "publisher": "INTERPOL",
+      "title": "Drug Trafficking",
+      "published_at": "2026-08-08",
+      "url": "https://www.interpol.int/Crimes/Drug-trafficking"
+    },
+    {
+      "id": "interpol-online-drugs-2019",
+      "publisher": "INTERPOL",
+      "title": "Online Drugs Ring: Israel Requests INTERPOL Purple Notice",
+      "published_at": "2019-03-18",
+      "url": "https://www.interpol.int/News-and-Events/News/2019/Online-drugs-ring-Israel-requests-INTERPOL-Purple-Notice"
+    },
+    {
+      "id": "unodc-world-drug-report-2025",
+      "publisher": "United Nations Office on Drugs and Crime",
+      "title": "World Drug Report 2025: Contemporary Drug Issues",
+      "published_at": "2025-06-26",
+      "url": "https://www.unodc.org/documents/data-and-analysis/WDR_2025/WDR25_B2_Contemporary_drug_issues.pdf"
+    },
+    {
+      "id": "unodc-wildlife-2024",
+      "publisher": "United Nations Office on Drugs and Crime",
+      "title": "World Wildlife Crime Report 2024",
+      "published_at": "2024-05-13",
+      "url": "https://www.unodc.org/documents/data-and-analysis/wildlife/2024/Wildlife_SpecialPoint_Final.pdf"
+    },
+    {
+      "id": "unodc-scam-centre-expansion-2025",
+      "publisher": "United Nations Office on Drugs and Crime",
+      "title": "Strategic Infiltration of Vulnerable Jurisdictions through Criminal Foreign Direct Investments",
+      "published_at": "2025-10-01",
+      "url": "https://www.unodc.org/roseap/uploads/documents/Publications/2025/UNODC_Alert_Strategic_infiltration_of_vulnerable_jurisdictions_through_criminal_foreign_direct_investments.pdf"
+    },
+    {
+      "id": "interpol-illicit-goods",
+      "publisher": "INTERPOL",
+      "title": "Illicit Goods",
+      "published_at": "2026-08-08",
+      "url": "https://www.interpol.int/Crimes/Illicit-goods"
+    }
+  ],
+  "typologies": [
+    {
+      "id": "china-underground-banking",
+      "dimension": "laundering_mechanism",
+      "label": "China-linked underground banking / feiqian",
+      "description": "Informal value transfer, mirror settlement, trade balancing, or broker netting associated with Chinese underground banking typologies.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "hsi-cubs-2026",
+        "fincen-cmln-2025",
+        "treasury-nmlra-2024",
+        "fatf-professional-2018"
+      ],
+      "limitations": [
+        "Chinese underground banking can serve legitimate remittance and currency-exchange needs as well as illicit activity.",
+        "A mechanism match does not identify the predicate offence or geographic origin of specific funds."
+      ],
+      "indicators": [
+        {
+          "id": "explicit-feiqian-or-mirror-system",
+          "label": "explicit feiqian, underground-bank, or mirror-transfer language",
+          "evidence_class": "mechanism",
+          "specificity": "high",
+          "any_terms": [
+            "fei qian",
+            "feiqian",
+            "fei-chien",
+            "flying money",
+            "underground bank",
+            "underground banking",
+            "mirror transaction",
+            "mirror transfer",
+            "地下钱庄",
+            "地下錢莊",
+            "对敲",
+            "對敲"
+          ]
+        },
+        {
+          "id": "capital-control-evasion",
+          "label": "capital-control or foreign-exchange-quota evasion",
+          "evidence_class": "motive",
+          "specificity": "medium",
+          "any_terms": [
+            "capital control",
+            "currency control",
+            "foreign exchange quota",
+            "50000 usd quota",
+            "50,000 usd quota",
+            "外汇额度",
+            "外匯額度"
+          ]
+        },
+        {
+          "id": "netted-value-settlement",
+          "label": "netted or near-instant value release without a matching cross-border wire",
+          "evidence_class": "settlement",
+          "specificity": "medium",
+          "any_terms": [
+            "net settlement",
+            "net difference",
+            "same day release",
+            "same-day release",
+            "near instant release",
+            "near-instant release",
+            "money never crosses",
+            "informal value transfer"
+          ]
+        },
+        {
+          "id": "trade-balancing",
+          "label": "trade or invoice balancing",
+          "evidence_class": "trade",
+          "specificity": "medium",
+          "any_terms": [
+            "trade based money laundering",
+            "trade-based money laundering",
+            "fake invoice",
+            "over invoice",
+            "over-invoice",
+            "under invoice",
+            "under-invoice",
+            "import export settlement"
+          ]
+        },
+        {
+          "id": "mule-crypto-local-leg",
+          "label": "USDT payment rail combined with sourced bank accounts",
+          "evidence_class": "local_rail",
+          "specificity": "low",
+          "all_signals": [
+            "upi_usdt_bridge"
+          ],
+          "any_signals": [
+            "account_rental_offer",
+            "account_sourcing_demand",
+            "account_use_solicitation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "golden-triangle-scam-casino",
+      "dimension": "operating_ecosystem",
+      "label": "Golden Triangle / Mekong scam-centre and casino ecosystem",
+      "description": "Casino, junket, scam-centre, and underground-banking infrastructure associated in public typologies with parts of the Mekong subregion.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "unodc-casinos-2024",
+        "unodc-convergence-2024",
+        "fatf-cyber-fraud-2023",
+        "interpol-fraud-2026"
+      ],
+      "limitations": [
+        "A place name, casino term, language, or cryptocurrency rail does not establish control by a particular criminal organization.",
+        "The ecosystem label concerns operating context, not the original predicate source of every payment."
+      ],
+      "indicators": [
+        {
+          "id": "mekong-compound-geography",
+          "label": "specific Mekong scam-compound or Golden Triangle geography",
+          "evidence_class": "geography",
+          "specificity": "high",
+          "any_terms": [
+            "golden triangle special economic zone",
+            "golden triangle sez",
+            "golden triangle casino",
+            "kk park",
+            "myawaddy",
+            "shwe kokko",
+            "sihanoukville",
+            "poipet",
+            "bavet"
+          ]
+        },
+        {
+          "id": "casino-junket-infrastructure",
+          "label": "casino or junket settlement infrastructure",
+          "evidence_class": "business_front",
+          "specificity": "medium",
+          "any_terms": [
+            "casino junket",
+            "vip room network",
+            "online casino settlement",
+            "crypto casino",
+            "white label gambling",
+            "white-label gambling",
+            "e-junket"
+          ]
+        },
+        {
+          "id": "scam-centre-operations",
+          "label": "scam-centre or forced-criminality operations",
+          "evidence_class": "operation",
+          "specificity": "medium",
+          "any_terms": [
+            "scam centre",
+            "scam center",
+            "fraud park",
+            "pig butchering",
+            "forced criminality",
+            "杀猪盘",
+            "殺豬盤"
+          ]
+        },
+        {
+          "id": "regional-payment-service",
+          "label": "regional fourth-party payment or motorcade terminology",
+          "evidence_class": "settlement",
+          "specificity": "medium",
+          "any_terms": [
+            "fourth party payment",
+            "fourth-party payment",
+            "motorcade service",
+            "running points",
+            "四方支付",
+            "车队",
+            "車隊",
+            "跑分"
+          ]
+        },
+        {
+          "id": "gambling-crypto-account-rail",
+          "label": "gambling solicitation combined with crypto or sourced-account rails",
+          "evidence_class": "local_rail",
+          "specificity": "low",
+          "all_signals": [
+            "gambling_insider_ad"
+          ],
+          "any_signals": [
+            "upi_usdt_bridge",
+            "account_rental_offer",
+            "account_sourcing_demand"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mexico-cartel-drug-proceeds",
+      "dimension": "predicate_offence",
+      "label": "Mexico-based cartel drug proceeds",
+      "description": "Drug proceeds associated with named Mexico-based cartels and professional laundering typologies, including mirror settlement and trade-based laundering.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "fincen-cmln-2025",
+        "treasury-nmlra-2024",
+        "doj-fortune-runner-2024"
+      ],
+      "limitations": [
+        "A self-authored cartel name or drug term is not proof that a transaction contains cartel proceeds.",
+        "A direct link requires an exact wallet, account, entity, or transaction match in an authoritative record."
+      ],
+      "indicators": [
+        {
+          "id": "named-mexico-cartel",
+          "label": "named Mexico-based cartel",
+          "evidence_class": "actor_claim",
+          "specificity": "high",
+          "any_terms": [
+            "sinaloa cartel",
+            "jalisco new generation cartel",
+            "cjng",
+            "gulf cartel",
+            "cártel de sinaloa",
+            "cartel de sinaloa"
+          ]
+        },
+        {
+          "id": "explicit-drug-proceeds",
+          "label": "explicit narcotics or synthetic-drug proceeds",
+          "evidence_class": "predicate_claim",
+          "specificity": "high",
+          "any_terms": [
+            "drug proceeds",
+            "narcotics proceeds",
+            "fentanyl proceeds",
+            "methamphetamine proceeds",
+            "cocaine proceeds",
+            "narco dollars",
+            "narco-dollars"
+          ]
+        },
+        {
+          "id": "peso-mirror-release",
+          "label": "US-dollar collection paired with rapid peso release",
+          "evidence_class": "settlement",
+          "specificity": "medium",
+          "any_terms": [
+            "peso mirror",
+            "release pesos",
+            "pesos released",
+            "black market peso exchange",
+            "usd cash pickup mexico"
+          ]
+        },
+        {
+          "id": "bulk-cash-crypto-trade-layering",
+          "label": "bulk cash combined with crypto or trade layering",
+          "evidence_class": "laundering_behavior",
+          "specificity": "medium",
+          "any_terms": [
+            "bulk cash pickup",
+            "structured cash deposits",
+            "cashiers checks",
+            "cashier checks",
+            "luxury goods shipment"
+          ],
+          "any_signals": [
+            "cash_pickup_delivery",
+            "upi_usdt_bridge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "illegal-wildlife-trade",
+      "dimension": "predicate_offence",
+      "label": "Illegal wildlife or timber trafficking proceeds",
+      "description": "Financial activity tied to illegal wildlife products, protected species, document evasion, or wildlife-trade concealment typologies.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "fatf-wildlife-2020",
+        "interpol-wildlife",
+        "unodc-wildlife-2024",
+        "fatf-professional-2018"
+      ],
+      "limitations": [
+        "Many wildlife, timber, medicine, and logistics terms also occur in legitimate regulated commerce.",
+        "Product language must be paired with evidence of illegality, concealment, suspicious payment, or an authoritative IOC link."
+      ],
+      "indicators": [
+        {
+          "id": "wildlife-product",
+          "label": "wildlife or protected-timber product",
+          "evidence_class": "commodity",
+          "specificity": "medium",
+          "any_terms": [
+            "pangolin scale",
+            "pangolin scales",
+            "elephant ivory",
+            "rhino horn",
+            "totoaba",
+            "shatoosh",
+            "red sandalwood",
+            "illegal rosewood",
+            "abalone shipment"
+          ]
+        },
+        {
+          "id": "explicit-wildlife-illegality",
+          "label": "explicit protected-species or permit evasion",
+          "evidence_class": "illegality",
+          "specificity": "high",
+          "any_terms": [
+            "no cites permit",
+            "without cites",
+            "protected species shipment",
+            "poached wildlife",
+            "illegal wildlife",
+            "wildlife contraband",
+            "fake cites",
+            "customs document fraud"
+          ]
+        },
+        {
+          "id": "concealed-wildlife-logistics",
+          "label": "concealed wildlife or timber logistics",
+          "evidence_class": "logistics",
+          "specificity": "medium",
+          "any_terms": [
+            "hidden in cargo",
+            "mixed with legal shipment",
+            "misdeclared species",
+            "wildlife courier",
+            "timber transshipment"
+          ]
+        },
+        {
+          "id": "wildlife-payment-language",
+          "label": "suspicious wildlife-trade payment language",
+          "evidence_class": "payment",
+          "specificity": "medium",
+          "any_terms": [
+            "wildlife payment",
+            "ivory payment",
+            "horn payment",
+            "pangolin payment",
+            "species broker commission"
+          ],
+          "any_signals": [
+            "wildlife_trade_offer",
+            "upi_usdt_bridge",
+            "commission_share_terms"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mule-crypto-cashout",
+      "dimension": "laundering_mechanism",
+      "label": "Money-mule and crypto cash-out infrastructure",
+      "description": "Recruitment or use of third-party accounts to receive, layer, settle, or convert suspicious payment flows.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "medium",
+      "source_refs": [
+        "fatf-cyber-fraud-2023",
+        "fatf-virtual-assets-2020",
+        "unodc-convergence-2024",
+        "interpol-fraud-2026"
+      ],
+      "limitations": [
+        "This mechanism can service many predicate offences and does not identify which offence produced the funds.",
+        "The detector establishes a message-pattern match, not the intent or guilt of a named person."
+      ],
+      "indicators": [
+        {
+          "id": "sourced-bank-account",
+          "label": "bank-account rental, sourcing, or use solicitation",
+          "evidence_class": "account",
+          "specificity": "high",
+          "any_signals": [
+            "account_rental_offer",
+            "account_sourcing_demand",
+            "account_use_solicitation"
+          ]
+        },
+        {
+          "id": "crypto-payment-bridge",
+          "label": "crypto paired with a domestic payment rail",
+          "evidence_class": "rail",
+          "specificity": "medium",
+          "any_signals": [
+            "upi_usdt_bridge",
+            "payin_payout_recruitment",
+            "cash_pickup_leg"
+          ]
+        },
+        {
+          "id": "commission-or-fast-settlement",
+          "label": "commission or unusually rapid settlement terms",
+          "evidence_class": "commercial_terms",
+          "specificity": "low",
+          "any_signals": [
+            "commission_share_terms",
+            "fast_settlement_window",
+            "throughput_limit_requirement"
+          ]
+        },
+        {
+          "id": "prepaid-or-freeze-risk",
+          "label": "prepayment or account-freeze risk allocation",
+          "evidence_class": "risk_allocation",
+          "specificity": "medium",
+          "any_signals": [
+            "prepaid_demand",
+            "freeze_compensation_offer",
+            "source_of_funds_waiver"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "telegram-narcotics-market",
+      "dimension": "predicate_offence",
+      "label": "Telegram-mediated narcotics-market activity",
+      "description": "A message pattern combining a controlled-drug commodity with observable online sale, payment, fulfilment, or concealment behaviour.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "interpol-drug-trafficking",
+        "interpol-online-drugs-2019",
+        "unodc-world-drug-report-2025"
+      ],
+      "limitations": [
+        "A text match is not chemical identification, proof of possession, or proof that a transaction occurred.",
+        "Medical, public-health, research, and news contexts can contain the same commodity terms and require human review."
+      ],
+      "indicators": [
+        {
+          "id": "controlled-drug-commodity",
+          "label": "specific controlled-drug or synthetic-drug commodity",
+          "evidence_class": "commodity",
+          "specificity": "high",
+          "any_terms": [
+            "crystal meth",
+            "methamphetamine",
+            "fentanyl",
+            "heroin",
+            "cocaine",
+            "mdma",
+            "ketamine",
+            "yaba",
+            "nitazene",
+            "mephedrone",
+            "冰毒",
+            "海洛因",
+            "可卡因",
+            "芬太尼"
+          ]
+        },
+        {
+          "id": "narcotics-transaction-pattern",
+          "label": "conjunctive narcotics sale or delivery pattern",
+          "evidence_class": "transaction_behavior",
+          "specificity": "high",
+          "any_signals": [
+            "narcotics_trade_offer"
+          ]
+        },
+        {
+          "id": "online-drug-payment-or-delivery",
+          "label": "online payment or door-to-door delivery mechanics",
+          "evidence_class": "fulfilment",
+          "specificity": "medium",
+          "any_terms": [
+            "door-to-door delivery",
+            "home delivery",
+            "discreet shipping",
+            "stealth shipping",
+            "bitcoin accepted",
+            "usdt accepted",
+            "cash on delivery"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cyber-enabled-fraud-market",
+      "dimension": "predicate_offence",
+      "label": "Cyber-enabled fraud or illicit-access market",
+      "description": "Task, advance-fee, impersonation, guaranteed-return, stolen-data, or access-market activity using online payment and contact rails.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "fatf-cyber-fraud-2023",
+        "interpol-fraud-2026",
+        "unodc-convergence-2024",
+        "interpol-illicit-goods"
+      ],
+      "limitations": [
+        "Shared vocabulary appears in victim reports and security research; message framing must be reviewed.",
+        "The pattern does not identify the operator, victim count, loss amount, or ultimate beneficiary."
+      ],
+      "indicators": [
+        {
+          "id": "cyber-fraud-behavior",
+          "label": "conjunctive cyber-fraud or illicit-access behavior",
+          "evidence_class": "fraud_behavior",
+          "specificity": "high",
+          "any_signals": [
+            "task_scam_pattern",
+            "investment_scam_pattern",
+            "impersonation_phishing_pattern",
+            "advance_fee_scam_pattern",
+            "stolen_data_offer"
+          ]
+        },
+        {
+          "id": "upfront-funds-or-guaranteed-return",
+          "label": "upfront payment, recharge, or guaranteed-return mechanic",
+          "evidence_class": "financial_mechanic",
+          "specificity": "medium",
+          "any_terms": [
+            "recharge first",
+            "deposit first",
+            "processing fee",
+            "release fee",
+            "guaranteed return",
+            "double your money",
+            "risk-free profit",
+            "充值",
+            "保证收益"
+          ]
+        },
+        {
+          "id": "credential-or-access-product",
+          "label": "credential theft or illicit access product",
+          "evidence_class": "access",
+          "specificity": "high",
+          "any_terms": [
+            "cvv dumps",
+            "card dumps",
+            "stealer logs",
+            "phishing kit",
+            "otp bot",
+            "sim-swap service",
+            "share otp",
+            "seed phrase"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scam-compound-forced-criminality",
+      "dimension": "operating_ecosystem",
+      "label": "Scam-compound forced-criminality ecosystem",
+      "description": "Recruitment, coercion, or operational language associated with scam centres and forced criminality in high-risk Southeast Asian operating environments.",
+      "minimum_indicators": 2,
+      "minimum_specificity": "high",
+      "source_refs": [
+        "unodc-convergence-2024",
+        "unodc-scam-centre-expansion-2025",
+        "interpol-fraud-2026"
+      ],
+      "limitations": [
+        "Geography and job language alone must never be treated as evidence of trafficking or forced criminality.",
+        "Potential victims and coerced workers require safeguarding, not automatic criminal labeling."
+      ],
+      "indicators": [
+        {
+          "id": "forced-labour-recruitment-pattern",
+          "label": "conjunctive forced-labour recruitment risk",
+          "evidence_class": "recruitment",
+          "specificity": "high",
+          "any_signals": [
+            "forced_labour_recruitment_risk"
+          ]
+        },
+        {
+          "id": "scam-compound-geography",
+          "label": "specific scam-compound geography",
+          "evidence_class": "geography",
+          "specificity": "high",
+          "any_terms": [
+            "myawaddy",
+            "shwe kokko",
+            "sihanoukville",
+            "golden triangle sez",
+            "kk park"
+          ]
+        },
+        {
+          "id": "coercive-employment-control",
+          "label": "passport, movement, debt, or irregular-border control",
+          "evidence_class": "coercion",
+          "specificity": "high",
+          "any_terms": [
+            "passport held",
+            "passport kept",
+            "cannot leave",
+            "debt bondage",
+            "border crossing",
+            "扣押护照",
+            "不能离开",
+            "偷渡"
+          ]
+        }
+      ]
+    }
+  ]
+}
