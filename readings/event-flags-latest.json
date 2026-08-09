@@ -1,28 +1,28 @@
 {
-  "generated_at": "2026-08-09T13:36:02.445807+00:00",
+  "generated_at": "2026-08-09T19:19:55.141365+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 8.4346,
-      "n": 126,
+      "stat": 17.4978,
+      "n": 127,
       "n_alarms_in_history": 1,
       "age_hours": 0.2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
-      "state": "watch",
-      "stat": 304.0699,
-      "n": 237,
-      "n_alarms_in_history": 3,
+      "state": "alarm",
+      "stat": 1752.2735,
+      "n": 239,
+      "n_alarms_in_history": 4,
       "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 2.1076,
-      "n": 237,
+      "stat": 2.0042,
+      "n": 239,
       "n_alarms_in_history": 1,
       "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
@@ -32,15 +32,15 @@
       "stat": 46.8967,
       "n": 23,
       "n_alarms_in_history": 0,
-      "age_hours": 31.2,
+      "age_hours": 37.0,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.7644,
-      "n": 135,
+      "stat": 2.1991,
+      "n": 136,
       "n_alarms_in_history": 0,
-      "age_hours": 5.9,
+      "age_hours": 5.7,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 1.9196,
       "n": 67,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 5.8,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -72,13 +72,13 @@
       "stat": 2.3321,
       "n": 395,
       "n_alarms_in_history": 6,
-      "age_hours": 85.6,
+      "age_hours": 91.3,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 83,
+      "n": 84,
       "n_alarms_in_history": 0,
       "age_hours": 0.0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
@@ -86,9 +86,9 @@
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 84,
+      "n": 85,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
@@ -96,7 +96,7 @@
       "stat": 0.9201,
       "n": 9,
       "n_alarms_in_history": 0,
-      "age_hours": 13.6,
+      "age_hours": 19.3,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -106,26 +106,65 @@
     },
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
-      "e": null,
-      "n_models": 0,
-      "models": {},
-      "n_rows": 92,
+      "e": 0.0032,
+      "n_models": 4,
+      "models": {
+        "anthropic/claude-3-haiku": {
+          "state": "quiet",
+          "evalue": 0.0015,
+          "p0": 0.004663,
+          "pairs_seen": 25,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.004663,
+          "monitored_comparisons": 205
+        },
+        "meta-llama/llama-3.3-70b-instruct": {
+          "state": "quiet",
+          "evalue": 0.0081,
+          "p0": 0.008849,
+          "pairs_seen": 25,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.008849,
+          "monitored_comparisons": 205
+        },
+        "mistralai/mistral-nemo": {
+          "state": "quiet",
+          "evalue": 0.0016,
+          "p0": 0.114619,
+          "pairs_seen": 25,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.114619,
+          "monitored_comparisons": 205
+        },
+        "openai/gpt-4o-mini": {
+          "state": "quiet",
+          "evalue": 0.0015,
+          "p0": 0.004663,
+          "pairs_seen": 25,
+          "pairs_needed": null,
+          "undetectable_at_or_below": 0.004663,
+          "monitored_comparisons": 205
+        }
+      },
+      "n_rows": 100,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 42.3,
+      "age_hours": 0.3,
       "bound_hours": 30.0,
-      "state": "stale",
-      "reason": "newest churn row is 42.3h old, past the 30h bound"
+      "state": "quiet",
+      "thresholds": {
+        "watch": 20.0,
+        "alarm": 100.0
+      },
+      "guarantee": "panel e-value is the arithmetic mean of per-model anytime-valid mixture e-processes (valid under arbitrary dependence). Compound lifetime false-flag bound with 4 monitored models: WATCH at most 15%, ALARM at most 11% — each model's calibration can undershoot with probability 0.025, plus Ville's inequality when none does"
     }
   },
   "active": [
     "ddti_threat"
   ],
-  "stale": [
-    "refusal_churn"
-  ],
+  "stale": [],
   "no_data": [
     "bleedthrough_capacity",
     "bleedthrough_pools",
@@ -134,7 +173,7 @@
   "closed": [
     "refusal_drift"
   ],
-  "n_reporting": 10,
+  "n_reporting": 11,
   "n_signals": 15,
   "n_open": 14,
   "headline": "elevated: ddti_threat"
