@@ -22,10 +22,15 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
 import scripts.data_darkness_pull as pull
+
+
+ROOT = Path(__file__).resolve().parent.parent
+WORKFLOW = ROOT / ".github" / "workflows" / "data-darkness-refresh.yml"
 
 
 # 2026-07-31 is a Friday; the first stubbed round runs Saturday 2026-08-01.
@@ -105,6 +110,48 @@ def _history(tmp_path):
     if not path.exists():
         return []
     return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+
+
+def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    build = "python -m scripts.build_osint_china"
+    seal = "python scripts/seal_readings.py"
+    tests = "tests/test_osint_china.py"
+    scrub = "python scripts/verify_public_surface.py"
+    push = "git push origin HEAD:main"
+
+    assert "python -m pip install --quiet --require-hashes" in text
+    assert "-r .github/osint-china-ci-requirements.txt" in text
+    assert text.count(build) == 2
+    assert text.count(seal) == 2
+    assert text.count(tests) == 2
+    assert text.count(scrub) == 2
+    assert "git pull --rebase origin main || true" not in text
+
+    collect_at = text.index("python -m scripts.data_darkness_pull")
+    build_at = text.index(build)
+    seal_at = text.index(seal)
+    tests_at = text.index(tests)
+    scrub_at = text.index(scrub)
+    commit_at = text.index("git commit")
+    assert collect_at < build_at < seal_at < tests_at < scrub_at < commit_at
+
+    for path in (
+        "readings/data-darkness-latest.json",
+        "readings/data-darkness-history.jsonl",
+        "readings/osint-china-latest.json",
+        "readings/readings-ledger.jsonl",
+    ):
+        assert text.count(path) >= 2
+
+    assert "if git rebase origin/main; then" in text
+    assert "git switch --detach origin/main" in text
+    retry_build = text.rindex(build)
+    retry_seal = text.rindex(seal)
+    retry_tests = text.rindex(tests)
+    retry_scrub = text.rindex(scrub)
+    push_at = text.rindex(push)
+    assert commit_at < retry_build < retry_seal < retry_tests < retry_scrub < push_at
 
 
 def test_an_unchanged_round_still_refreshes_the_observation_time(publish):
