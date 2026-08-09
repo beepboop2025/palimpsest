@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drug-price-observatory.vercel.app/data/narcoscope-palimpsest-v1.schema.json",
+  "title": "NarcoScope public China aggregate for Palimpsest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "artifactId",
+    "dataAsOf",
+    "geography",
+    "disclosure",
+    "datasets",
+    "exclusions",
+    "limitations"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./narcoscope-palimpsest-v1.schema.json"
+    },
+    "schemaVersion": {
+      "const": "narcoscope.palimpsest.china-aggregate.v1"
+    },
+    "artifactId": {
+      "const": "narcoscope.china.official-coverage"
+    },
+    "dataAsOf": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "geography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["country", "iso2", "iso3"],
+      "properties": {
+        "country": { "const": "China" },
+        "iso2": { "const": "CN" },
+        "iso3": { "const": "CHN" }
+      }
+    },
+    "disclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "sourcePolicy",
+        "subjectEntityDisclosure",
+        "exactAddressDisclosure",
+        "identifierDisclosure",
+        "illustrativeDataIncluded",
+        "runtimeCoupling"
+      ],
+      "properties": {
+        "level": { "const": "public_aggregate" },
+        "sourcePolicy": { "const": "official_only" },
+        "subjectEntityDisclosure": { "const": "none" },
+        "exactAddressDisclosure": { "const": "none" },
+        "identifierDisclosure": { "const": "none" },
+        "illustrativeDataIncluded": { "const": false },
+        "runtimeCoupling": { "const": "none_static_artifact" }
+      }
+    },
+    "datasets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retailDrugPrices",
+        "drugSeizures",
+        "precursorCorridorIncidents",
+        "ofacDesignations",
+        "wildlifeConfiscations"
+      ],
+      "properties": {
+        "retailDrugPrices": {
+          "allOf": [
+            { "$ref": "#/$defs/dataset" },
+            { "properties": { "datasetId": { "const": "retail_drug_prices" } } }
+          ]
+        },
+        "drugSeizures": {
+          "allOf": [
+            { "$ref": "#/$defs/dataset" },
+            { "properties": { "datasetId": { "const": "drug_seizures" } } }
+          ]
+        },
+        "precursorCorridorIncidents": {
+          "allOf": [
+            { "$ref": "#/$defs/dataset" },
+            { "properties": { "datasetId": { "const": "precursor_corridor_incidents" } } }
+          ]
+        },
+        "ofacDesignations": {
+          "allOf": [
+            { "$ref": "#/$defs/dataset" },
+            { "properties": { "datasetId": { "const": "ofac_designations" } } }
+          ]
+        },
+        "wildlifeConfiscations": {
+          "allOf": [
+            { "$ref": "#/$defs/dataset" },
+            { "properties": { "datasetId": { "const": "wildlife_confiscations" } } }
+          ]
+        }
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "classification", "reason"],
+        "properties": {
+          "component": { "type": "string", "minLength": 1 },
+          "classification": {
+            "enum": [
+              "illustrative",
+              "illustrative_or_constructed",
+              "unreviewed_leads",
+              "privacy_minimized"
+            ]
+          },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasetId",
+        "topic",
+        "sourceStatus",
+        "measurement",
+        "temporalCoverage",
+        "provenance",
+        "data",
+        "limitations"
+      ],
+      "properties": {
+        "datasetId": { "type": "string", "minLength": 1 },
+        "topic": { "type": "string", "minLength": 1 },
+        "sourceStatus": { "const": "official" },
+        "measurement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "valueType", "method", "unit", "grain"],
+          "properties": {
+            "status": { "enum": ["official_reported", "official_action_record"] },
+            "valueType": {
+              "enum": ["statistical_measurement", "administrative_measurement", "administrative_action"]
+            },
+            "method": { "type": "string", "minLength": 1 },
+            "unit": { "type": "string", "minLength": 1 },
+            "grain": { "type": "string", "minLength": 1 }
+          }
+        },
+        "temporalCoverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fromYear", "toYear", "snapshotDate"],
+          "properties": {
+            "kind": { "enum": ["year_range", "snapshot"] },
+            "fromYear": { "type": ["integer", "null"] },
+            "toYear": { "type": ["integer", "null"] },
+            "snapshotDate": { "type": ["string", "null"], "format": "date" }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["publisher", "title", "url", "sourceEdition", "localDataDate", "input"],
+          "properties": {
+            "publisher": { "type": "string", "minLength": 1 },
+            "title": { "type": "string", "minLength": 1 },
+            "url": { "type": "string", "format": "uri" },
+            "sourceEdition": { "type": "string", "minLength": 1 },
+            "localDataDate": { "type": ["string", "null"], "format": "date" },
+            "input": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              }
+            }
+          }
+        },
+        "data": {
+          "type": "object"
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

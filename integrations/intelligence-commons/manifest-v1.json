@@ -1,0 +1,187 @@
+{
+  "schema": "palimpsest-intelligence-commons-manifest/v1",
+  "version": "2026-08-09.3",
+  "title": "Palimpsest Intelligence Commons",
+  "scope": "A public, provenance-bearing map of China information controls, monetary plumbing, illicit-market observables, and reviewed laundering or scam signals across four independently governed projects.",
+  "claim_boundary": "The lanes are descriptive context, not a fused score or causal model. Temporal alignment or co-movement does not establish that drug proceeds, scams, censorship, underground banking, or any person or entity caused money-market stress, and no typology relationship establishes guilt.",
+  "projects": [
+    {
+      "id": "palimpsest",
+      "title": "Palimpsest",
+      "role": "Public OSINT index, evidence protocol, provenance ledger, and human-review publication boundary.",
+      "status": "ACTIVE",
+      "public_url": "https://palimpsest.info/osint-china.html",
+      "data_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "public_boundary": "Publishes public-source measurements and privacy-minimized reviewed aggregates; stale or absent collection remains visible and is never converted to a zero."
+    },
+    {
+      "id": "seiche",
+      "title": "Seiche",
+      "role": "Public money-market plumbing and funding-stress context with sealed market APIs.",
+      "status": "ACTIVE",
+      "public_url": "https://seiche.info/",
+      "data_url": "https://api.seiche.info/api/v2/markets/CN-CNY/overview",
+      "public_boundary": "Provides observed or derived monetary context under its own evidence and redistribution gates; intelligence-commons signals remain context-only and do not enter composites, forecasts, or trading eligibility."
+    },
+    {
+      "id": "scamshield",
+      "title": "ScamShield",
+      "role": "Consent-scoped and operator-authorized scam or suspicious-payment assessment with reviewed aggregate export.",
+      "status": "ACTIVE",
+      "public_url": "https://github.com/beepboop2025/scamshield",
+      "data_url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
+      "public_boundary": "Coverage is limited to submitted and configured authorized surfaces; public interchange excludes raw messages, exact indicators, private assessments, and unreviewed monetary sums."
+    },
+    {
+      "id": "narcoscope",
+      "title": "NarcoScope",
+      "role": "Public aggregate drug-market observatory with a deterministic official-source China handoff and declared coverage gaps.",
+      "status": "ACTIVE",
+      "public_url": "https://drug-price-observatory.vercel.app/",
+      "data_url": "https://drug-price-observatory.vercel.app/data/narcoscope-palimpsest-v1.json",
+      "public_boundary": "Only aggregate, licence-compatible observations cross the boundary. The live object contains official China dataset envelopes and excludes subject names, aliases, exact addresses, identifiers, private leads, and illustrative inputs."
+    }
+  ],
+  "lanes": [
+    {
+      "id": "information-controls",
+      "title": "Information controls",
+      "question": "What is being deleted, blocked, suppressed, rerouted, or made harder to observe in and around China?",
+      "project_ids": [
+        "palimpsest"
+      ],
+      "signal_ids": [
+        "ddti",
+        "ooni-gfw",
+        "in-path-interference",
+        "erasure-observatory",
+        "generative-firewall"
+      ],
+      "typology_ids": [],
+      "evidence_rule": "Show source, native cadence, event and knowledge time, freshness, coverage, method, and limitations; collection failure or silence is not evidence of calm."
+    },
+    {
+      "id": "monetary-plumbing",
+      "title": "Monetary plumbing",
+      "question": "What do observable CNY funding, fixing, cross-border, and market-plumbing measures say without importing illicit-flow assumptions?",
+      "project_ids": [
+        "palimpsest",
+        "seiche"
+      ],
+      "signal_ids": [
+        "china-econ",
+        "cny-fix-gap",
+        "stock-connect",
+        "seiche-cn-cny"
+      ],
+      "typology_ids": [],
+      "evidence_rule": "Preserve instrument, units, jurisdiction, event time, source licence, revision state, and Seiche eligibility; intelligence-commons context never enters a composite or forecast by default."
+    },
+    {
+      "id": "illicit-market-observables",
+      "title": "Illicit-market observables",
+      "question": "What do China's official aggregate prices, seizures, precursor incidents, designation coverage, and wildlife-confiscation coverage show, and where is the record too sparse to answer?",
+      "project_ids": [
+        "narcoscope"
+      ],
+      "signal_ids": [
+        "narcoscope-seizures",
+        "narcoscope-retail-prices",
+        "narcoscope-precursor-corridors",
+        "narcoscope-ofac-designations",
+        "narcoscope-wildlife-confiscations"
+      ],
+      "typology_ids": [
+        "telegram-narcotics-market",
+        "mexico-cartel-drug-proceeds"
+      ],
+      "evidence_rule": "Publish aggregate observations at their native jurisdiction and cadence with exact substance flags, source hashes, intervals where required, and no person-level edges or extrapolation from missing modalities."
+    },
+    {
+      "id": "reviewed-laundering-scam-signals",
+      "title": "Reviewed laundering and scam signals",
+      "question": "What bounded patterns and reviewed monetary events appear in ScamShield's authorized sampling frame?",
+      "project_ids": [
+        "scamshield",
+        "palimpsest"
+      ],
+      "signal_ids": [
+        "scamshield-reviewed-assessment",
+        "scamshield-illicit-liquidity"
+      ],
+      "typology_ids": [
+        "china-underground-banking",
+        "golden-triangle-scam-casino",
+        "mexico-cartel-drug-proceeds",
+        "illegal-wildlife-trade",
+        "mule-crypto-cashout",
+        "telegram-narcotics-market",
+        "cyber-enabled-fraud-market",
+        "scam-compound-forced-criminality"
+      ],
+      "evidence_rule": "Publish only privacy-minimized aggregates that pass coverage, source-dominance, review, redistribution, and support-level gates; a message pattern does not establish proceeds, origin, or guilt."
+    }
+  ],
+  "connections": [
+    {
+      "id": "palimpsest-to-scamshield-typologies",
+      "from_project_id": "palimpsest",
+      "to_project_id": "scamshield",
+      "direction": "ONE_WAY",
+      "status": "ACTIVE",
+      "contract": "scamshield-intelligence-pack/v1",
+      "data_url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
+      "claim_boundary": "The pack supplies inert reviewed source and typology definitions, not executable detection rules, case evidence, or attribution."
+    },
+    {
+      "id": "scamshield-to-palimpsest-reviewed-assessment",
+      "from_project_id": "scamshield",
+      "to_project_id": "palimpsest",
+      "direction": "ONE_WAY",
+      "status": "REVIEW_GATED",
+      "contract": "palimpsest-evidence-capsule/v1",
+      "data_url": "https://palimpsest.info/integrations/scamshield/",
+      "claim_boundary": "The active local bridge produces private capsules and human-review candidates only; it does not auto-publish raw messages, exact indicators, owner-only values, or message-only attribution."
+    },
+    {
+      "id": "palimpsest-to-seiche-china-context",
+      "from_project_id": "palimpsest",
+      "to_project_id": "seiche",
+      "direction": "ONE_WAY",
+      "status": "ACTIVE",
+      "contract": "osint-china.v1",
+      "data_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "claim_boundary": "Palimpsest readings are external context with their own freshness and provenance; they do not become independent corroboration when a mirror shares the same upstream pipeline."
+    },
+    {
+      "id": "seiche-to-palimpsest-monetary-context",
+      "from_project_id": "seiche",
+      "to_project_id": "palimpsest",
+      "direction": "ONE_WAY",
+      "status": "PLANNED",
+      "contract": "lab-evidence-envelope/v1",
+      "data_url": "https://api.seiche.info/api/v2/markets/CN-CNY/overview",
+      "claim_boundary": "A future public projection may show eligible observed market context, but no illicit-market lane becomes a Seiche model input and no cross-lane co-movement is a causal claim."
+    },
+    {
+      "id": "narcoscope-to-palimpsest-public-aggregate",
+      "from_project_id": "narcoscope",
+      "to_project_id": "palimpsest",
+      "direction": "ONE_WAY",
+      "status": "ACTIVE",
+      "contract": "narcoscope.palimpsest.china-aggregate.v1",
+      "data_url": "https://drug-price-observatory.vercel.app/data/narcoscope-palimpsest-v1.json",
+      "claim_boundary": "The live deterministic object contains five official, aggregate China dataset envelopes with provenance and limitations. The values do not establish a person-level link, market total, illicit source of funds, or causal relationship."
+    }
+  ],
+  "private_boundary": "Private owner-operated analysis may consume admitted public envelopes inward, but it is not a project in this public manifest, a dependency of any public project, or a source of public calibrated outputs. No private repository, filesystem path, implementation detail, code, data, parameter, or calibration crosses outward.",
+  "limitations": [
+    "The four projects have different sampling frames, jurisdictions, licences, revision policies, and cadences; records must not be silently joined or forward-filled.",
+    "The commons does not claim to show everything happening in China, all of Telegram, the total illicit economy, or unobserved financial flows.",
+    "Primary endpoints, archives, and mirrors that share one upstream collection pipeline count as one source group.",
+    "ScamShield reviewed events are bounded samples and must not be extrapolated into national proceeds or total platform activity.",
+    "NarcoScope-to-Palimpsest is active, producer-owned, and byte-pinned in Palimpsest; Seiche-to-Palimpsest remains a planned envelope projection.",
+    "Licence-restricted or privacy-controlled values remain redacted even when their source and coverage state are visible.",
+    "Cross-lane lag analysis requires a preregistered hypothesis, native-cadence alignment, an untouched holdout, independent sources, and publication of null results before any narrower association claim."
+  ]
+}
