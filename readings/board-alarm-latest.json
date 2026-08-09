@@ -1,36 +1,40 @@
 {
-  "generated_at": "2026-08-09T02:52:55.874266+00:00",
-  "board_e_value": 9.413,
+  "generated_at": "2026-08-09T07:41:22.802687+00:00",
+  "board_e_value": 13.058,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
-    "selected": [],
+    "selected": [
+      "censored_planet",
+      "ddti_threat"
+    ],
     "alpha": 0.1,
-    "k": 0,
-    "n_tested": 8,
-    "threshold": null
+    "k": 2,
+    "n_tested": 9,
+    "threshold": 45.0
   },
   "layers": {
     "network": {
-      "e": 17.299,
-      "n_signals": 3,
+      "e": 13.289,
+      "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 46.897,
         "ioda_outages": 1.0,
-        "ooni_gfw": 4.0
+        "ooni_gfw": 2.927,
+        "tor_bridge_cn": 2.332
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 4.682,
+      "e": 12.873,
       "n_signals": 5,
       "state": "calm",
       "corroborated": true,
       "signals": {
-        "ddti_novelty": 2.409,
-        "ddti_threat": 14.655,
-        "gdelt_containment": 3.284,
+        "ddti_novelty": 2.239,
+        "ddti_threat": 55.693,
+        "gdelt_containment": 3.371,
         "github_refuge": 2.061,
         "weibo_suppression": 1.0
       },
@@ -51,34 +55,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 3.9999,
-      "n": 124,
+      "e": 2.9269,
+      "n": 125,
       "direction": "down",
       "robust_z": -1.01,
-      "driver_side": "up",
-      "readings_since_alarm": 73,
+      "driver_side": "down",
+      "readings_since_alarm": 74,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 14.6545,
-      "n": 233,
+      "e": 55.6928,
+      "n": 235,
       "direction": "down",
-      "robust_z": -1.2,
+      "robust_z": -1.3,
       "driver_side": "down",
-      "readings_since_alarm": 25,
+      "readings_since_alarm": 27,
       "n_alarms_in_history": 3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 2.4088,
-      "n": 233,
+      "e": 2.2385,
+      "n": 235,
       "direction": "down",
-      "robust_z": -6.07,
+      "robust_z": -6.74,
       "driver_side": "up",
-      "readings_since_alarm": 61,
+      "readings_since_alarm": 63,
       "n_alarms_in_history": 1,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -95,11 +99,11 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 3.2838,
-      "n": 133,
-      "direction": "down",
-      "robust_z": -0.67,
-      "driver_side": "down",
+      "e": 3.3713,
+      "n": 134,
+      "direction": "up",
+      "robust_z": 1.01,
+      "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
@@ -132,12 +136,15 @@
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
-      "state": "stale",
-      "n": 392,
-      "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
-      "age_hours": 146.9,
-      "bound_hours": 120.0,
-      "reason": "newest row is 146.9h old, past the 120h bound"
+      "state": "calm",
+      "e": 2.3321,
+      "n": 395,
+      "direction": "up",
+      "robust_z": 0.66,
+      "driver_side": "down",
+      "readings_since_alarm": 90,
+      "n_alarms_in_history": 6,
+      "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
@@ -153,7 +160,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 82,
+      "n": 83,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -187,13 +194,13 @@
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 31.6,
+      "age_hours": 36.4,
       "bound_hours": 30.0,
       "state": "stale",
-      "reason": "newest churn row is 31.6h old, past the 30h bound"
+      "reason": "newest churn row is 36.4h old, past the 30h bound"
     }
   },
-  "headline": "no signal exceeds its own history beyond what chance explains",
+  "headline": "elevated signals: censored_planet, ddti_threat",
   "readings_to_days": {
     "bleedthrough_capacity": 125.0,
     "bleedthrough_pools": 125.0,
