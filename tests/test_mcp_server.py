@@ -394,3 +394,39 @@ def test_untrusted_browser_origin_is_rejected_before_dispatch():
 
 def test_non_browser_mcp_clients_need_no_origin_header():
     assert _handler_for()._origin_allowed() is True
+
+
+def test_http_tool_call_emits_one_privacy_safe_activation(capsys):
+    marker = "private-argument-must-not-reach-journal"
+    body = json.dumps(_rpc(
+        "tools/call",
+        {"name": "get_signal", "arguments": {"name": marker}},
+    )).encode()
+    handler = _handler_for()
+    handler.headers = {"Content-Length": str(len(body)),
+                       "X-Forwarded-For": "198.51.100.41"}
+    handler.rfile = io.BytesIO(body)
+    handler._send = lambda code, payload=None: setattr(
+        handler, "sent", (code, payload))
+
+    handler.do_POST()
+
+    assert handler.sent[0] == 200
+    captured = capsys.readouterr()
+    assert (
+        "mcp_activation product=palimpsest surface=public "
+        "tool=get_signal outcome=error origin=edge"
+    ) in captured.err
+    assert marker not in captured.err
+
+
+def test_http_discovery_does_not_count_as_activation(capsys):
+    body = json.dumps(_rpc("tools/list")).encode()
+    handler = _handler_for()
+    handler.headers = {"Content-Length": str(len(body))}
+    handler.rfile = io.BytesIO(body)
+    handler._send = lambda code, payload=None: None
+
+    handler.do_POST()
+
+    assert "mcp_activation" not in capsys.readouterr().err

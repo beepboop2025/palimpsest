@@ -24,6 +24,7 @@ the signal itself — cite them.
 from __future__ import annotations
 
 import json
+import sys
 import time
 import unicodedata
 import urllib.request
@@ -822,6 +823,29 @@ def dispatch(msg):
     return _error(msg_id, METHOD_NOT_FOUND, f"method not found: {method}")
 
 
+def _log_mcp_activation(msg, response, origin):
+    """Emit one bounded event for an HTTP tool call that actually ran.
+
+    Arguments, caller metadata, and arbitrary tool names are deliberately
+    excluded: the journal is an activation counter, not a request transcript.
+    """
+    if not isinstance(msg, dict) or msg.get("method") != "tools/call":
+        return
+    params = msg.get("params")
+    name = params.get("name") if isinstance(params, dict) else None
+    tool = name if name in TOOLS else "unknown"
+    result = response.get("result") if isinstance(response, dict) else None
+    failed = (isinstance(response, dict) and "error" in response) or (
+        isinstance(result, dict) and result.get("isError") is True)
+    outcome = "error" if failed else "success"
+    print(
+        f"mcp_activation product=palimpsest surface=public "
+        f"tool={tool} outcome={outcome} origin={origin}",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
 class Handler(BaseHTTPRequestHandler):
     def _origin_allowed(self) -> bool:
         origin = self.headers.get("Origin")
@@ -865,7 +889,14 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return self._send(400, _error(None, PARSE_ERROR, "empty or non-JSON body"))
         msgs = body if isinstance(body, list) else [body]
-        responses = [r for r in (dispatch(m) for m in msgs) if r is not None]
+        responses = []
+        for message in msgs:
+            response = dispatch(message)
+            if response is not None:
+                origin = ("edge" if self.headers.get("X-Forwarded-For")
+                          else "direct")
+                _log_mcp_activation(message, response, origin)
+                responses.append(response)
         if not responses:
             return self._send(202)
         return self._send(200, responses if isinstance(body, list) else responses[0])
