@@ -183,6 +183,7 @@ def test_manifest_has_the_exact_ui_shape_and_closed_public_project_set() -> None
     }
     assert manifest["schema"] == "palimpsest-intelligence-commons-manifest/v1"
     assert VERSION.fullmatch(manifest["version"])
+    assert manifest["version"] == "2026-08-09.4"
     assert manifest["title"] == "Palimpsest Intelligence Commons"
 
     project_fields = {
@@ -316,6 +317,9 @@ def test_pinned_narcoscope_object_is_aggregate_official_and_subject_free() -> No
 def test_current_seiche_and_scamshield_links_are_pinned() -> None:
     manifest = _load(MANIFEST_PATH)
     projects = {project["id"]: project for project in manifest["projects"]}
+    connections = {
+        connection["id"]: connection for connection in manifest["connections"]
+    }
     assert projects["seiche"]["public_url"] == "https://seiche.info/"
     assert projects["seiche"]["data_url"] == (
         "https://api.seiche.info/api/v2/markets/CN-CNY/overview"
@@ -326,6 +330,9 @@ def test_current_seiche_and_scamshield_links_are_pinned() -> None:
     assert projects["scamshield"]["data_url"] == (
         "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json"
     )
+    assert connections["scamshield-to-palimpsest-reviewed-assessment"][
+        "data_url"
+    ] == "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json"
 
 
 def test_claim_and_private_boundaries_fail_closed() -> None:
