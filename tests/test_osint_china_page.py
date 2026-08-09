@@ -195,3 +195,41 @@ def test_filter_controls_have_keyboard_native_semantics_and_touch_size():
     assert 'aria-pressed="true"' in page
     assert "min-height:44px" in page
     assert 'role="group" aria-label="Filter signals by intelligence layer"' in page
+
+
+def test_complete_records_are_structured_lazily_and_never_injected_as_markup():
+    page = PAGE.read_text(encoding="utf-8")
+    assert 'makeRecordDetails("inspect complete record", signal, signalFacts(signal))' in page
+    assert 'function structuredNode(label, value, path, depth)' in page
+    assert 'branch.addEventListener("toggle"' in page
+    assert 'details.addEventListener("toggle"' in page
+    assert 'getAttribute("data-rendered") === "true"' in page
+    assert 'depth >= 32' in page
+    assert 'Complete structured record' in page
+    assert '.textContent' in page
+    assert '.innerHTML' not in page
+
+
+def test_coverage_ledger_searches_the_retained_payload_not_only_card_copy():
+    page = PAGE.read_text(encoding="utf-8")
+    assert 'id="oc-search-input" type="search"' in page
+    assert 'id="oc-search-clear" type="button"' in page
+    assert 'JSON.stringify(signal).toLocaleLowerCase()' in page
+    assert 'currentSignals.filter(matchesQuery)' in page
+    assert 'No retained records match this search and layer.' in page
+
+
+def test_intelligence_commons_keeps_project_links_and_claim_boundaries_explicit():
+    page = PAGE.read_text(encoding="utf-8")
+    assert 'id="commons" hidden' in page
+    assert 'var COMMONS_FEED = "/integrations/intelligence-commons/manifest-v1.json"' in page
+    assert 'var SCAMSHIELD_PACK = "/integrations/scamshield/intelligence-pack-v1.json"' in page
+    assert 'var NARCOSCOPE_SNAPSHOT = "/integrations/intelligence-commons/narcoscope-palimpsest-v1.json"' in page
+    assert 'does not establish causation, criminal origin, or guilt' in page
+    assert 'No typology match presented as proof' in page
+    assert '"api.seiche.info", "drug-price-observatory.vercel.app", "github.com"' in page
+    assert 'optionalJson(COMMONS_FEED)' in page
+    assert 'optionalJson(SCAMSHIELD_PACK)' in page
+    assert 'optionalJson(NARCOSCOPE_SNAPSHOT)' in page
+    assert 'contract + " · " + boundary' in page
+    assert 'aggregate only; no designation subjects or exact identifiers' in page

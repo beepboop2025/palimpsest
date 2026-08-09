@@ -1,0 +1,606 @@
+{
+  "$schema": "./narcoscope-palimpsest-v1.schema.json",
+  "schemaVersion": "narcoscope.palimpsest.china-aggregate.v1",
+  "artifactId": "narcoscope.china.official-coverage",
+  "dataAsOf": "2026-08-03",
+  "geography": {
+    "country": "China",
+    "iso2": "CN",
+    "iso3": "CHN"
+  },
+  "disclosure": {
+    "level": "public_aggregate",
+    "sourcePolicy": "official_only",
+    "subjectEntityDisclosure": "none",
+    "exactAddressDisclosure": "none",
+    "identifierDisclosure": "none",
+    "illustrativeDataIncluded": false,
+    "runtimeCoupling": "none_static_artifact"
+  },
+  "datasets": {
+    "retailDrugPrices": {
+      "datasetId": "retail_drug_prices",
+      "topic": "drug_market_prices",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "statistical_measurement",
+        "method": "UNODC typical retail value, with a documented midpoint fallback for a complete minimum and maximum range",
+        "unit": "nominal USD per gram; purity in percent where reported",
+        "grain": "country, drug and year"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 2019,
+        "toYear": 2019,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "United Nations Office on Drugs and Crime",
+        "title": "World Drug Report 2025, Statistical Annex 8.1: Prices and purities of drugs",
+        "url": "https://www.unodc.org/documents/data-and-analysis/WDR_2025/Annex/8.1_Prices_and_purities_of_drugs.xlsx",
+        "sourceEdition": "2025",
+        "localDataDate": "2026-08-03",
+        "input": {
+          "path": "src/data/prices.ts",
+          "sha256": "e83f74acbbc19ba9f5d1669d729aeda5f799311be51bd3ef891f28730e23193c"
+        }
+      },
+      "data": {
+        "recordCount": 4,
+        "observations": [
+          {
+            "drug": "cannabis",
+            "year": 2019,
+            "priceUsdPerGram": 39.65,
+            "purityPct": null
+          },
+          {
+            "drug": "cocaine",
+            "year": 2019,
+            "priceUsdPerGram": 127.21,
+            "purityPct": 40
+          },
+          {
+            "drug": "heroin",
+            "year": 2019,
+            "priceUsdPerGram": 88.18,
+            "purityPct": 35
+          },
+          {
+            "drug": "methamphetamine",
+            "year": 2019,
+            "priceUsdPerGram": 50.13,
+            "purityPct": 72
+          }
+        ]
+      },
+      "limitations": [
+        "NarcoScope has one China year in this extract, so it cannot establish a trend.",
+        "Prices are nominal reported retail values and do not estimate market size or transaction volume.",
+        "A missing purity value means the source did not provide a usable value at the retained grain."
+      ]
+    },
+    "drugSeizures": {
+      "datasetId": "drug_seizures",
+      "topic": "drug_seizures",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "administrative_measurement",
+        "method": "Sum of UNODC-reported seizure quantities retained at country, drug and year grain",
+        "unit": "kilograms",
+        "grain": "country, drug and year, aggregated here by year and drug group"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 2019,
+        "toYear": 2023,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "United Nations Office on Drugs and Crime",
+        "title": "UNODC World Drug Report 2025 - Statistical Annex 7.1: Drug seizures 2019-2023 (kilograms)",
+        "url": "https://www.unodc.org/documents/data-and-analysis/WDR_2025/Annex/7.1_Drug_seizures_2019-2023.xlsx",
+        "sourceEdition": "World Drug Report 2025",
+        "localDataDate": "2026-07-03",
+        "input": {
+          "path": "src/data/seizures.json",
+          "sha256": "c0536294fbc104016f0d4cdb4a5add8766a4f72e968fed925de6f05e34cd0fc1"
+        }
+      },
+      "data": {
+        "sourceRowCount": 102,
+        "quantityKg": 152336.66,
+        "byYear": [
+          {
+            "year": 2019,
+            "sourceRowCount": 33,
+            "quantityKg": 61104,
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 5,
+                "quantityKg": 25306
+              },
+              {
+                "drugGroup": "Any other drugs/substances",
+                "sourceRowCount": 3,
+                "quantityKg": 4499
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 5,
+                "quantityKg": 14942
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 1,
+                "quantityKg": 155
+              },
+              {
+                "drugGroup": "Hallucinogens",
+                "sourceRowCount": 1,
+                "quantityKg": 0
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 2,
+                "quantityKg": 1768
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 10,
+                "quantityKg": 13945
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 5,
+                "quantityKg": 417
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 1,
+                "quantityKg": 72
+              }
+            ]
+          },
+          {
+            "year": 2020,
+            "sourceRowCount": 20,
+            "quantityKg": 31625.61,
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 4,
+                "quantityKg": 21985.13
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 4,
+                "quantityKg": 816.35
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 1,
+                "quantityKg": 582.2
+              },
+              {
+                "drugGroup": "Hallucinogens",
+                "sourceRowCount": 1,
+                "quantityKg": 0
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 1,
+                "quantityKg": 1406.8
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 7,
+                "quantityKg": 6686.94
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 1,
+                "quantityKg": 0.96
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 1,
+                "quantityKg": 147.23
+              }
+            ]
+          },
+          {
+            "year": 2021,
+            "sourceRowCount": 10,
+            "quantityKg": 22663.61,
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 1,
+                "quantityKg": 16385.59
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 4,
+                "quantityKg": 1206.03
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 1,
+                "quantityKg": 690.5
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 1,
+                "quantityKg": 456.6
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 2,
+                "quantityKg": 3837.1
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 1,
+                "quantityKg": 87.79
+              }
+            ]
+          },
+          {
+            "year": 2022,
+            "sourceRowCount": 19,
+            "quantityKg": 15640.15,
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 1,
+                "quantityKg": 10100
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 3,
+                "quantityKg": 588.5
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 1,
+                "quantityKg": 176.6
+              },
+              {
+                "drugGroup": "Hallucinogens",
+                "sourceRowCount": 1,
+                "quantityKg": 0.71
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 1,
+                "quantityKg": 1299.6
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 10,
+                "quantityKg": 2983.84
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 1,
+                "quantityKg": 81.5
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 1,
+                "quantityKg": 409.4
+              }
+            ]
+          },
+          {
+            "year": 2023,
+            "sourceRowCount": 20,
+            "quantityKg": 21303.29,
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 1,
+                "quantityKg": 14246.23
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 4,
+                "quantityKg": 526.32
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 1,
+                "quantityKg": 2568.39
+              },
+              {
+                "drugGroup": "Hallucinogens",
+                "sourceRowCount": 1,
+                "quantityKg": 0.04
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 1,
+                "quantityKg": 735
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 10,
+                "quantityKg": 3223.94
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 2,
+                "quantityKg": 3.37
+              }
+            ]
+          }
+        ],
+        "byDrugGroup": [
+          {
+            "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+            "sourceRowCount": 12,
+            "quantityKg": 88022.95
+          },
+          {
+            "drugGroup": "Any other drugs/substances",
+            "sourceRowCount": 3,
+            "quantityKg": 4499
+          },
+          {
+            "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+            "sourceRowCount": 20,
+            "quantityKg": 18079.2
+          },
+          {
+            "drugGroup": "Cocaine-type",
+            "sourceRowCount": 5,
+            "quantityKg": 4172.69
+          },
+          {
+            "drugGroup": "Hallucinogens",
+            "sourceRowCount": 4,
+            "quantityKg": 0.75
+          },
+          {
+            "drugGroup": "NPS",
+            "sourceRowCount": 6,
+            "quantityKg": 5666
+          },
+          {
+            "drugGroup": "Opioids",
+            "sourceRowCount": 39,
+            "quantityKg": 30676.82
+          },
+          {
+            "drugGroup": "Sedatives and tranquillizers",
+            "sourceRowCount": 9,
+            "quantityKg": 502.83
+          },
+          {
+            "drugGroup": "“Ecstasy”-type substances",
+            "sourceRowCount": 4,
+            "quantityKg": 716.42
+          }
+        ]
+      },
+      "limitations": [
+        "Seizures measure detected and reported enforcement events, not total production, movement or consumption.",
+        "Changes can reflect enforcement capacity, reporting practice and drug classification as well as underlying activity.",
+        "Summed kilograms combine drug categories and should not be interpreted as equivalent harm or value."
+      ]
+    },
+    "precursorCorridorIncidents": {
+      "datasetId": "precursor_corridor_incidents",
+      "topic": "precursor_flows",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "administrative_measurement",
+        "method": "Country-level corridor and incident quantities stated in the INCB Precursors Report 2025",
+        "unit": "kilograms as reported; one report-wide caveat may describe gross preparation weight",
+        "grain": "reported origin, destination, precursor class and year"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 2024,
+        "toYear": 2025,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "International Narcotics Control Board",
+        "title": "Precursors Report 2025",
+        "url": "https://www.incb.org/incb/en/precursors/technical_reports/precursors-technical-reports.html",
+        "sourceEdition": "2025, published February 2026",
+        "localDataDate": null,
+        "input": {
+          "path": "src/data/flows.ts",
+          "sha256": "a00091d345e34b4d8b2a6f9ebd43198fe64d59f79f032e2009b711d5625d8b0f"
+        }
+      },
+      "data": {
+        "includedIncidentCount": 3,
+        "reportedQuantityAcrossIncludedIncidentsKg": 7200,
+        "corridors": [
+          {
+            "originAttribution": "joint_origin_includes_china",
+            "reportedOrigin": "China / India",
+            "destination": "Australia",
+            "year": 2024,
+            "precursor": "meth_precursors",
+            "quantityKg": 1000
+          },
+          {
+            "originAttribution": "joint_origin_includes_china",
+            "reportedOrigin": "China / India",
+            "destination": "New Zealand",
+            "year": 2024,
+            "precursor": "meth_precursors",
+            "quantityKg": 1200
+          },
+          {
+            "originAttribution": "china_only",
+            "reportedOrigin": "China",
+            "destination": "European Union",
+            "year": 2025,
+            "precursor": "meth_pre_precursors",
+            "quantityKg": 5000
+          }
+        ]
+      },
+      "limitations": [
+        "These are selected reported incidents, not a complete flow series or an estimate of total precursor trade.",
+        "Rows reported with the joint origin China / India cannot be allocated to either country and remain explicitly joint.",
+        "Quantities describe seizures or incidents and do not measure successful movement or end-drug output."
+      ]
+    },
+    "ofacDesignations": {
+      "datasetId": "ofac_designations",
+      "topic": "official_designations",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_action_record",
+        "valueType": "administrative_action",
+        "method": "Count of scoped OFAC SDN records carrying China as a country of record",
+        "unit": "designation records",
+        "grain": "designated subject, program codes and countries of record; subject details removed from this bridge"
+      },
+      "temporalCoverage": {
+        "kind": "snapshot",
+        "fromYear": null,
+        "toYear": null,
+        "snapshotDate": "2026-08-03"
+      },
+      "provenance": {
+        "publisher": "US Department of the Treasury, Office of Foreign Assets Control",
+        "title": "US Treasury OFAC - Specially Designated Nationals List",
+        "url": "https://sanctionslist.ofac.treas.gov/Home/SdnList",
+        "sourceEdition": "SDN snapshot",
+        "localDataDate": "2026-08-03",
+        "input": {
+          "path": "src/data/designations.json",
+          "sha256": "46eebe112ee42d05c2f068902263f79c7e10b6d88c739811eaa51aa69498f812"
+        }
+      },
+      "data": {
+        "recordCount": 118,
+        "byEntityType": [
+          {
+            "entityType": "individual",
+            "count": 52
+          },
+          {
+            "entityType": "organization",
+            "count": 66
+          }
+        ],
+        "byProgram": [
+          {
+            "program": "ILLICIT-DRUGS-EO14059",
+            "label": "Illicit Drugs (E.O. 14059)",
+            "count": 54
+          },
+          {
+            "program": "SDNTK",
+            "label": "Narcotics Kingpin Act",
+            "count": 25
+          },
+          {
+            "program": "TCO",
+            "label": "Transnational Criminal Organization",
+            "count": 39
+          }
+        ],
+        "multiCountryRecordCount": 14
+      },
+      "limitations": [
+        "A designation is a published government action, not an adjudication of guilt or proof of described conduct.",
+        "China is a country of record from OFAC address data; it is not a nationality finding.",
+        "Program counts are not mutually exclusive because a record may carry more than one program code.",
+        "The bridge excludes every subject name, alias, entity number, address and identity field."
+      ]
+    },
+    "wildlifeConfiscations": {
+      "datasetId": "wildlife_confiscations",
+      "topic": "wildlife_confiscations",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "administrative_measurement",
+        "method": "Count of CITES Trade Database confiscation records with China as exporter or importer of record",
+        "unit": "confiscation records, not physical quantity",
+        "grain": "reporting record and country role, pre-aggregated here"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 1977,
+        "toYear": 2025,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "Convention on International Trade in Endangered Species of Wild Fauna and Flora",
+        "title": "CITES Trade Database - confiscation records (Source = I)",
+        "url": "https://trade.cites.org/",
+        "sourceEdition": "Trade Database extract",
+        "localDataDate": "2026-07-27",
+        "input": {
+          "path": "src/data/wildlifeSeizures.json",
+          "sha256": "af0aa9afd5f130e25bfb34e333e4e4af0a21e9bdd8fcb15ff11deda33dbf04ff"
+        }
+      },
+      "data": {
+        "datasetRecordCount": 232208,
+        "exporterOfRecord": {
+          "recordCount": 20214,
+          "rankInRetainedTable": 2
+        },
+        "importerOfRecord": {
+          "recordCount": 2222,
+          "rankInRetainedTable": 5
+        }
+      },
+      "limitations": [
+        "CITES quantities mix incompatible units, so this bridge counts records and never sums physical quantities.",
+        "Exporter and importer counts can overlap and must not be added into a China total.",
+        "Coverage includes only CITES-listed species and depends on party reporting and enforcement.",
+        "Recent years can be incomplete because annual reports arrive with a long lag."
+      ]
+    }
+  },
+  "exclusions": [
+    {
+      "component": "precursor_price_series",
+      "classification": "illustrative",
+      "reason": "NarcoScope marks the bundled precursor prices as illustrative pending a citable source."
+    },
+    {
+      "component": "myanmar_region_flow_volumes_and_meth_index",
+      "classification": "illustrative_or_constructed",
+      "reason": "The regional flow volumes are illustrative and the meth index is constructed, so neither enters an official bridge."
+    },
+    {
+      "component": "myanmar_precursor_inflows",
+      "classification": "illustrative",
+      "reason": "NarcoScope marks the bundled country-to-region precursor inflows as illustrative pending annex ingestion."
+    },
+    {
+      "component": "governed_scraper_observations",
+      "classification": "unreviewed_leads",
+      "reason": "The scraper output is an analyst work queue and never app data or a public factual record."
+    },
+    {
+      "component": "designation_subject_details",
+      "classification": "privacy_minimized",
+      "reason": "Names, aliases, entity numbers, addresses and identity fields are not part of the aggregate bridge."
+    }
+  ],
+  "limitations": [
+    "This artifact is a deterministic static summary of NarcoScope coverage, not a live feed or a risk score.",
+    "Datasets retain different meanings and must not be joined into a claim about a person, organization or causal relationship.",
+    "Official source status describes provenance, not completeness, truth of an allegation or adjudicated guilt.",
+    "Palimpsest should pin and verify input hashes before promoting a changed artifact."
+  ]
+}

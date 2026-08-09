@@ -77,6 +77,8 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert "https://palimpsest.info/openapi.json" in llms
     assert 'href="/developers.html"' in home
     assert 'href="#scamshield"' in home
+    assert 'href="/osint-china.html#commons"' in home
+    assert "structured evidence commons" in home.lower()
     assert "https://t.me/Scamshield_2_bot" in home
     assert '"Developers", "href": "/developers.html"' in nav
 
