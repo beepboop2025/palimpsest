@@ -39,34 +39,26 @@
       "source_id": "believability",
       "summary": "upstream status is not_ready",
       "title": "Believability read: degraded"
-    },
-    {
-      "id": "health-anchors",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "anchors",
-      "summary": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
-      "title": "Integrity anchors: degraded"
     }
   ],
-  "generated_at": "2026-08-10T03:44:09Z",
-  "headline": "Upstream board reports: single layer elevated: content. 32 of 33 configured sources report; 29 are live. Health qualifiers: 2 degraded, 1 stale, 1 missing.",
+  "generated_at": "2026-08-10T05:17:16Z",
+  "headline": "Upstream board reports: single layer elevated: content. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
-      "degraded": 2,
-      "live": 29,
+      "degraded": 1,
+      "live": 30,
       "missing": 1,
       "stale": 1
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 28,
+    "required_live": 29,
     "required_reporting": 30,
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "5af72ae8d4013332ce47c5abead7dd3edfd11065",
+  "input_commit": "5f16f10866a32b10ef2b790ad5a0daab31e7cbd7",
   "layers": [
     {
       "id": "command",
@@ -167,14 +159,14 @@
     },
     {
       "id": "integrity",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "anchors"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Integrity and witnessing"
     },
     {
@@ -192,7 +184,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 29,
+  "n_signals_live": 30,
   "n_signals_reporting": 32,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -202,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:01:33Z",
       "health": {
-        "age_hours": 0.71,
+        "age_hours": 2.262,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -513,7 +505,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:59:09Z",
       "health": {
-        "age_hours": 0.75,
+        "age_hours": 2.302,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -731,7 +723,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:01:33Z",
       "health": {
-        "age_hours": 0.71,
+        "age_hours": 2.262,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -867,7 +859,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:01:33Z",
       "health": {
-        "age_hours": 0.71,
+        "age_hours": 2.262,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1406,7 +1398,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:01:33Z",
       "health": {
-        "age_hours": 0.71,
+        "age_hours": 2.262,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1671,9 +1663,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-10T09:35:17Z",
+      "freshness_deadline": "2026-08-10T11:55:16Z",
       "health": {
-        "age_hours": 1.148,
+        "age_hours": 0.367,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1683,9 +1675,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 21635,
+        "bytes": 21616,
         "filename": "ddti-latest.json",
-        "sha256": "f16769c4e9e4ae400d8f42fd4453379f299938d57253a2d92c30b2a0b7a27472"
+        "sha256": "0514547af6c82f53c7be6813d1f7f4fc54975b4c02607ddaf85e039c0ed9604f"
       },
       "layer": "attention",
       "live": true,
@@ -1707,7 +1699,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 191.1,
+          "days_covered": 191.2,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1721,12 +1713,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-10T02:35:17.061119+00:00",
+        "generated_at": "2026-08-10T04:55:16.098754+00:00",
         "n_observations": 82,
         "n_terms": 184,
         "ranked": [
           {
-            "attention": 0.2323,
+            "attention": 0.2246,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-23T02:11:05+00:00",
@@ -1751,10 +1743,10 @@
               }
             ],
             "term": "state media",
-            "threat": 0.4065
+            "threat": 0.393
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1771,10 +1763,10 @@
               }
             ],
             "term": "AI Has Determined That My Press Card Is a Fake",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1791,10 +1783,10 @@
               }
             ],
             "term": "china youth daily",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1811,10 +1803,10 @@
               }
             ],
             "term": "information technology",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1831,10 +1823,10 @@
               }
             ],
             "term": "literacy",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1851,10 +1843,10 @@
               }
             ],
             "term": "media",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1871,10 +1863,10 @@
               }
             ],
             "term": "press accreditation",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -1891,10 +1883,10 @@
               }
             ],
             "term": "reputation",
-            "threat": 0.3999
+            "threat": 0.3867
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-25T04:55:16+00:00",
@@ -1911,10 +1903,10 @@
               }
             ],
             "term": "online media",
-            "threat": 0.3428
+            "threat": 0.3314
           },
           {
-            "attention": 0.2322,
+            "attention": 0.2245,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -1935,10 +1927,10 @@
               }
             ],
             "term": "investigative journalism",
-            "threat": 0.3096
+            "threat": 0.2993
           },
           {
-            "attention": 0.2323,
+            "attention": 0.2246,
             "burst_ratio": 0.82,
             "domain": "OTHER",
             "first_seen": "2026-02-20T20:32:28+00:00",
@@ -1963,10 +1955,10 @@
               }
             ],
             "term": "CDT translation",
-            "threat": 0.2323
+            "threat": 0.2246
           },
           {
-            "attention": 0.2294,
+            "attention": 0.2218,
             "burst_ratio": 0.64,
             "domain": "OTHER",
             "first_seen": "2026-02-11T05:21:06+00:00",
@@ -1991,10 +1983,10 @@
               }
             ],
             "term": "Culture & the Arts",
-            "threat": 0.2294
+            "threat": 0.2218
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": 0.6,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -2011,10 +2003,10 @@
               }
             ],
             "term": "AI",
-            "threat": 0.2285
+            "threat": 0.221
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": 0.75,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -2035,10 +2027,10 @@
               }
             ],
             "term": "artificial intelligence",
-            "threat": 0.2285
+            "threat": 0.221
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2055,10 +2047,10 @@
               }
             ],
             "term": "humor",
-            "threat": 0.2285
+            "threat": 0.221
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-02-11T05:21:06+00:00",
@@ -2075,10 +2067,10 @@
               }
             ],
             "term": "journalism",
-            "threat": 0.2285
+            "threat": 0.221
           },
           {
-            "attention": 0.2285,
+            "attention": 0.221,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2095,10 +2087,10 @@
               }
             ],
             "term": "journalists",
-            "threat": 0.2285
+            "threat": 0.221
           },
           {
-            "attention": 0.1377,
+            "attention": 0.1332,
             "burst_ratio": 0.73,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-02-11T07:18:26+00:00",
@@ -2123,10 +2115,10 @@
               }
             ],
             "term": "WeChat",
-            "threat": 0.1377
+            "threat": 0.1332
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2143,10 +2135,10 @@
               }
             ],
             "term": "Economics",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2163,10 +2155,10 @@
               }
             ],
             "term": "World Cup",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2183,10 +2175,10 @@
               }
             ],
             "term": "animal protection",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2203,10 +2195,10 @@
               }
             ],
             "term": "animals",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2223,10 +2215,10 @@
               }
             ],
             "term": "blue-collar workers",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2243,10 +2235,10 @@
               }
             ],
             "term": "business",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2263,10 +2255,10 @@
               }
             ],
             "term": "dogs",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2283,10 +2275,10 @@
               }
             ],
             "term": "extortion",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2303,10 +2295,10 @@
               }
             ],
             "term": "legislation",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2323,10 +2315,10 @@
               }
             ],
             "term": "market-economy",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2343,10 +2335,10 @@
               }
             ],
             "term": "protesters",
-            "threat": 0.0716
+            "threat": 0.0692
           },
           {
-            "attention": 0.0409,
+            "attention": 0.0396,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2363,7 +2355,7 @@
               }
             ],
             "term": "protests",
-            "threat": 0.0716
+            "threat": 0.0692
           }
         ],
         "source_feeds": {
@@ -2385,7 +2377,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-10T02:35:17Z",
+      "source_timestamp": "2026-08-10T04:55:16Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 184 count.",
       "title": "Deletion-directive term index"
@@ -2394,7 +2386,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:03:03Z",
       "health": {
-        "age_hours": 0.685,
+        "age_hours": 2.237,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2694,7 +2686,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:55:37Z",
       "health": {
-        "age_hours": 0.809,
+        "age_hours": 2.361,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2996,7 +2988,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:41:14Z",
       "health": {
-        "age_hours": 1.049,
+        "age_hours": 2.601,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3303,7 +3295,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-11T07:54:31Z",
       "health": {
-        "age_hours": 163.827,
+        "age_hours": 165.379,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3614,7 +3606,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-11T04:55:56Z",
       "health": {
-        "age_hours": 0.803,
+        "age_hours": 2.355,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3888,7 +3880,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:38:16Z",
       "health": {
-        "age_hours": 1.098,
+        "age_hours": 2.65,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4167,7 +4159,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:39:38Z",
       "health": {
-        "age_hours": 1.075,
+        "age_hours": 2.627,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4334,7 +4326,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T08:24:23Z",
       "health": {
-        "age_hours": 21.329,
+        "age_hours": 22.881,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4510,7 +4502,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:54:26Z",
       "health": {
-        "age_hours": 0.828,
+        "age_hours": 2.38,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6945,7 +6937,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:38:57Z",
       "health": {
-        "age_hours": 1.087,
+        "age_hours": 2.639,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6995,7 +6987,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T07:58:06Z",
       "health": {
-        "age_hours": 21.767,
+        "age_hours": 23.319,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7068,7 +7060,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:00:40Z",
       "health": {
-        "age_hours": 0.725,
+        "age_hours": 2.277,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7177,9 +7169,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-10T09:18:21Z",
+      "freshness_deadline": "2026-08-10T18:04:40Z",
       "health": {
-        "age_hours": 8.43,
+        "age_hours": 1.21,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7189,9 +7181,9 @@
       },
       "id": "erasure-observatory",
       "input": {
-        "bytes": 3750,
+        "bytes": 3911,
         "filename": "erasure-observatory-latest.json",
-        "sha256": "31e7bf34d398361e8cf732ce29497a3443076f5fbfadc0dd3dff64a5c60de05f"
+        "sha256": "d7f46b1386a1c060a86dac0f77dbc30ff5a84d03a6b60601e4685fe1699153bb"
       },
       "layer": "erasure",
       "live": true,
@@ -7201,13 +7193,13 @@
         "denominator": null,
         "label": "erasure index",
         "unit": "index",
-        "value": 37.6
+        "value": 38.0
       },
       "optional": false,
       "payload": {
         "cross_checks": [
           {
-            "age_hours": 12.9,
+            "age_hours": 21.7,
             "as_of": "2026-08-09T06:24:23.438218+00:00",
             "name": "Censored Planet interference",
             "note": "independent DNS/HTTP side-channel, confirms network layer",
@@ -7215,51 +7207,57 @@
             "value": 4.45
           },
           {
-            "age_hours": 5.7,
-            "as_of": "2026-08-09T13:34:31.302467+00:00",
+            "age_hours": 1.1,
+            "as_of": "2026-08-10T02:55:56.914005+00:00",
             "name": "Firewall event velocity",
             "note": "community-logged blocking/circumvention rate vs baseline",
             "unit": "x",
-            "value": 0.86
+            "value": 0.76
           }
         ],
         "cross_checks_withheld": [],
-        "erasure_index": 37.6,
-        "generated_at": "2026-08-09T19:18:21.772418+00:00",
+        "erasure_index": 38.0,
+        "generated_at": "2026-08-10T04:04:40.386161+00:00",
         "index_scale": "0-100; higher = more of the observed record removed or rewritten",
         "integrity": {
           "by_source": {
-            "baike-redaction": 16,
+            "baike-redaction": 17,
             "censored-planet": 24,
             "generative-firewall": 10,
-            "ooni-gfw": 108
+            "ooni-gfw": 109
           },
-          "entries": 158,
+          "entries": 160,
           "first_ts": "2026-07-11T15:18:29.250178+00:00",
-          "head_hash": "8edd8b255a755fedb5cb9fc956ee43c9b510ae40bde2477f98d8dd32dadaa188",
-          "head_ts": "2026-08-09T19:17:25.834524+00:00",
+          "head_hash": "5a437f338275f744665af2d9ad1a339180c4b0e9d784ef9bc25660e9904c7a4a",
+          "head_ts": "2026-08-10T04:04:40.386161+00:00",
           "ledger": "readings/erasure-ledger.jsonl",
-          "merkle_root": "84b34d25944d278d4620be97920a9d77318d64b17786dc0bf494d2fe69e5fc42",
+          "merkle_root": "117ef6b3e2c0fc43694f2889e3aff244c8253daa609f98cdba0dd2cb5bf5233c",
           "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped",
-          "sealed_this_run": [],
+          "sealed_this_run": [
+            {
+              "entry_hash": "5a437f338275f744665af2d9ad1a339180c4b0e9d784ef9bc25660e9904c7a4a",
+              "seq": 159,
+              "source": "ooni-gfw"
+            }
+          ],
           "verified": true,
           "verify_cmd": "python3 scripts/verify_ledger.py"
         },
-        "last_changed_at": "2026-08-09T19:17:25.834524+00:00",
+        "last_changed_at": "2026-08-10T04:04:40.386161+00:00",
         "layers": [
           {
-            "age_days": 0.01,
-            "age_hours": 0.2,
-            "as_of": "2026-08-09T19:06:45.400492+00:00",
+            "age_days": 0.06,
+            "age_hours": 1.4,
+            "as_of": "2026-08-10T02:38:16.566008+00:00",
             "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
             "layer": "network",
             "reading": "ooni-gfw-latest.json",
             "source": "OONI aggregation (probe_cc=CN)",
             "title": "Network erasure",
-            "value": 57.2
+            "value": 58.1
           },
           {
-            "age_days": 0.48,
+            "age_days": 0.85,
             "as_of": "2026-08-09T07:42:19.731491+00:00",
             "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
             "layer": "model",
@@ -7269,15 +7267,15 @@
             "value": 18.0
           },
           {
-            "age_hours": 238.8,
+            "age_hours": 247.6,
             "as_of": "2026-07-30T20:31:16.856256+00:00",
             "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
             "collector_status": "disabled_no_authorized_access",
             "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
             "layer": "narrative",
-            "pipeline_checked_at": "2026-08-09T19:01:32.990334+00:00",
+            "pipeline_checked_at": "2026-08-10T02:35:20.138661+00:00",
             "reading": "baike-redaction-latest.json",
-            "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 9.9 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
+            "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 10.3 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
             "status": "STALE",
             "title": "Narrative erasure",
             "value": null
@@ -7295,16 +7293,16 @@
       "raw_url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
       "scope": "Rolls up contributing erasure layers while retaining cross-checks and integrity state.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-09T19:18:21Z",
+      "source_timestamp": "2026-08-10T04:04:40Z",
       "status": "live",
-      "summary": "Rolls up contributing erasure layers while retaining cross-checks and integrity state. Latest payload reports erasure index at 37.6 index.",
+      "summary": "Rolls up contributing erasure layers while retaining cross-checks and integrity state. Latest payload reports erasure index at 38 index.",
       "title": "Erasure observatory"
     },
     {
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-11T04:40:09Z",
       "health": {
-        "age_hours": 1.066,
+        "age_hours": 2.618,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7393,11 +7391,11 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 247.214,
+        "age_hours": 248.766,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
-        "pipeline_checked_at": "2026-08-09T19:01:32.990334+00:00",
+        "pipeline_checked_at": "2026-08-10T02:35:20.138661+00:00",
         "reason": "freshness deadline has passed",
         "upstream_status": "disabled"
       },
@@ -7405,7 +7403,7 @@
       "input": {
         "bytes": 4205,
         "filename": "baike-redaction-latest.json",
-        "sha256": "bcab4d148c3b9073456d1b38bc8c1bdce300907de188943aa44af910909794e3"
+        "sha256": "50157261ce0d5f0ce2cdefb7eb0fdbb1e669028a6e6347c03b85950c941d2fc7"
       },
       "layer": "erasure",
       "live": false,
@@ -7518,7 +7516,7 @@
         "n_forked": 0,
         "observation_reason": "only 0/10 entities were comparable (fetch_failed×10). A 403 here is the source refusing this client, which is not by itself evidence about geography",
         "observation_status": "insufficient_data",
-        "pipeline_checked_at": "2026-08-09T19:01:32.990334+00:00",
+        "pipeline_checked_at": "2026-08-10T02:35:20.138661+00:00",
         "quarantined_history": [
           {
             "generated_at": "2026-07-30T20:25:46.041900+00:00",
@@ -7547,7 +7545,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-11T04:55:38Z",
       "health": {
-        "age_hours": 0.808,
+        "age_hours": 2.36,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7726,7 +7724,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T17:05:30Z",
       "health": {
-        "age_hours": 0.644,
+        "age_hours": 2.196,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7902,7 +7900,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T08:09:59Z",
       "health": {
-        "age_hours": 21.569,
+        "age_hours": 23.121,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8006,7 +8004,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-10T16:57:00Z",
       "health": {
-        "age_hours": 0.786,
+        "age_hours": 2.338,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8059,7 +8057,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T19:29:55Z",
       "health": {
-        "age_hours": 10.237,
+        "age_hours": 11.789,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8111,7 +8109,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T16:29:16Z",
       "health": {
-        "age_hours": 61.248,
+        "age_hours": 62.8,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8169,7 +8167,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T12:43:18Z",
       "health": {
-        "age_hours": 17.014,
+        "age_hours": 18.566,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8319,7 +8317,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 114.561,
+        "age_hours": 116.113,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8387,7 +8385,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-11T09:42:19Z",
       "health": {
-        "age_hours": 20.03,
+        "age_hours": 21.582,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13729,53 +13727,55 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-10T09:18:22Z",
+      "freshness_deadline": "2026-08-10T18:04:44Z",
       "health": {
-        "age_hours": 8.43,
+        "age_hours": 1.209,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "anchors",
       "input": {
-        "bytes": 488,
+        "bytes": 590,
         "filename": "anchors-latest.json",
-        "sha256": "b466a04ebe94cb6d6e565d09246ee434472146e12ca80bc46e92a89792df336c"
+        "sha256": "ba3431c8a96132fcebf516493a791d45691eb54e8c5d054f2299641fb5945b99"
       },
       "layer": "integrity",
-      "live": false,
+      "live": true,
       "method": "Merkle roots over committed ledgers with external timestamp witnesses",
       "method_version": null,
       "metric": null,
       "optional": false,
       "payload": {
-        "erasure_root": "84b34d25944d278d4620be97920a9d77318d64b17786dc0bf494d2fe69e5fc42",
-        "ots": "readings/anchors/roots-20260809T191822Z.txt.ots",
+        "erasure_root": "117ef6b3e2c0fc43694f2889e3aff244c8253daa609f98cdba0dd2cb5bf5233c",
+        "ots": "readings/anchors/roots-20260810T040444Z.txt.ots",
         "ots_status": "stamped",
         "readings_chain": "verified",
         "readings_problems": [],
-        "readings_root": "f762549a14cfe09a9dad9b5733d37d59e76e2384f82d8372948b7ca5c335a151",
-        "registry_root": "8c5ee368e696e9142b14dc5f2fea287c06db4836d3ac17e37d62e94609ea6a55",
-        "ts": "2026-08-09T19:18:22.313504+00:00",
-        "wayback_ok": 0,
-        "wayback_snapshots": []
+        "readings_root": "6185b560526d151fc74ec55835f31024dc2ee75fd45bae4288736ea594a865bd",
+        "registry_root": "791fd57384255bc85345f5f8a19d81c63a8b1eb46e7e9110955e56e93edd4754",
+        "ts": "2026-08-10T04:04:44.764800+00:00",
+        "wayback_ok": 1,
+        "wayback_snapshots": [
+          "https://web.archive.org/web/20260809084016/https://palimpsest.info/readings/eval-registry.jsonl"
+        ]
       },
       "raw_url": "https://palimpsest.info/readings/anchors-latest.json",
       "scope": "Publishes ledger roots and external witness status for independent integrity checks.",
       "source": "Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
-      "source_timestamp": "2026-08-09T19:18:22Z",
-      "status": "degraded",
-      "summary": "Publishes ledger roots and external witness status for independent integrity checks. Semantic health limitation: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded.",
+      "source_timestamp": "2026-08-10T04:04:44Z",
+      "status": "live",
+      "summary": "Publishes ledger roots and external witness status for independent integrity checks.",
       "title": "Integrity anchors"
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-10T04:29:16Z",
+      "freshness_deadline": "2026-08-10T06:14:16Z",
       "health": {
-        "age_hours": 0.248,
+        "age_hours": 0.05,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13785,9 +13785,9 @@
       },
       "id": "nemesis",
       "input": {
-        "bytes": 147061,
+        "bytes": 147048,
         "filename": "nemesis-latest.json",
-        "sha256": "1c9dcebedee234c1b35b22f07e6b2942319c7d73e7bd08c6d32be3bf0c9ced5a"
+        "sha256": "e10905bf7716ded4f6bc6b2dd5c2aaafcad1fc544866175814358a65a53297b0"
       },
       "layer": "nemesis",
       "live": true,
@@ -13845,7 +13845,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786332556.196,
+        "data_timestamp": 1786338856.189,
         "ddti": {
           "by_domain": {
             "ECONOMY": 4,
@@ -13857,13 +13857,13 @@
             "SOCIETY": 7,
             "UNREST": 7
           },
-          "generated_at": 1786332556.196,
+          "generated_at": 1786338856.189,
           "n_posts": 13,
           "n_posts_scored": 13,
           "n_terms": 171,
           "ranked": [
             {
-              "attention": 2.73,
+              "attention": 2.72,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13898,11 +13898,11 @@
               "tag_observations": 8,
               "term": "social media censorship",
               "text_observations": 0,
-              "threat": 2.73,
+              "threat": 2.72,
               "total": 8
             },
             {
-              "attention": 2.57,
+              "attention": 2.56,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13937,11 +13937,11 @@
               "tag_observations": 7,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 2.57,
+              "threat": 2.56,
               "total": 7
             },
             {
-              "attention": 2.51,
+              "attention": 2.5,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -13976,11 +13976,11 @@
               "tag_observations": 7,
               "term": "online censorship",
               "text_observations": 0,
-              "threat": 2.51,
+              "threat": 2.5,
               "total": 7
             },
             {
-              "attention": 1.26,
+              "attention": 1.25,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14007,7 +14007,7 @@
               "tag_observations": 2,
               "term": "investigative journalism",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 2.01,
               "total": 2
             },
             {
@@ -14030,7 +14030,7 @@
               "tag_observations": 1,
               "term": "china youth daily",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14053,7 +14053,7 @@
               "tag_observations": 1,
               "term": "humor",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14076,7 +14076,7 @@
               "tag_observations": 1,
               "term": "information technology",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14099,7 +14099,7 @@
               "tag_observations": 1,
               "term": "journalism",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14122,7 +14122,7 @@
               "tag_observations": 1,
               "term": "journalists",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14145,7 +14145,7 @@
               "tag_observations": 1,
               "term": "literacy",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14168,7 +14168,7 @@
               "tag_observations": 1,
               "term": "media",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14191,7 +14191,7 @@
               "tag_observations": 1,
               "term": "online media",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14214,7 +14214,7 @@
               "tag_observations": 1,
               "term": "press accreditation",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14237,7 +14237,7 @@
               "tag_observations": 1,
               "term": "reputation",
               "text_observations": 0,
-              "threat": 1.78,
+              "threat": 1.77,
               "total": 1
             },
             {
@@ -14268,7 +14268,7 @@
               "tag_observations": 2,
               "term": "artificial intelligence",
               "text_observations": 0,
-              "threat": 1.64,
+              "threat": 1.63,
               "total": 2
             },
             {
@@ -14299,7 +14299,7 @@
               "tag_observations": 2,
               "term": "arrests",
               "text_observations": 0,
-              "threat": 1.6,
+              "threat": 1.59,
               "total": 2
             },
             {
@@ -14338,7 +14338,7 @@
               "tag_observations": 3,
               "term": "state media",
               "text_observations": 0,
-              "threat": 1.6,
+              "threat": 1.59,
               "total": 3
             },
             {
@@ -14986,6 +14986,37 @@
               "total": 1
             },
             {
+              "attention": 0.8,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.4,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+                  "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "cyberspace administration of china",
+              "text_observations": 0,
+              "threat": 1.28,
+              "total": 2
+            },
+            {
               "attention": 1.22,
               "direct_signal_observations": 0,
               "domain": "OTHER",
@@ -15021,7 +15052,7 @@
               "tag_observations": 3,
               "term": "floods",
               "text_observations": 0,
-              "threat": 1.29,
+              "threat": 1.28,
               "total": 3
             },
             {
@@ -15060,42 +15091,11 @@
               "tag_observations": 3,
               "term": "natural disasters",
               "text_observations": 0,
-              "threat": 1.29,
+              "threat": 1.28,
               "total": 3
             },
             {
-              "attention": 0.8,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
-                  "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "cyberspace administration of china",
-              "text_observations": 0,
-              "threat": 1.28,
-              "total": 2
-            },
-            {
-              "attention": 1.22,
+              "attention": 1.21,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15134,7 +15134,7 @@
               "total": 3
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15153,11 +15153,11 @@
               "tag_observations": 1,
               "term": "changsha",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15176,11 +15176,11 @@
               "tag_observations": 1,
               "term": "cybersecurity",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15199,11 +15199,11 @@
               "tag_observations": 1,
               "term": "great firewall",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15222,11 +15222,11 @@
               "tag_observations": 1,
               "term": "hunan",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15245,11 +15245,11 @@
               "tag_observations": 1,
               "term": "internet",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15268,11 +15268,11 @@
               "tag_observations": 1,
               "term": "internet access",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15291,11 +15291,11 @@
               "tag_observations": 1,
               "term": "real name registration",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
-              "attention": 0.58,
+              "attention": 0.57,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15314,7 +15314,7 @@
               "tag_observations": 1,
               "term": "wi-fi",
               "text_observations": 0,
-              "threat": 1.27,
+              "threat": 1.26,
               "total": 1
             },
             {
@@ -15337,7 +15337,7 @@
               "tag_observations": 1,
               "term": "accountability",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15360,7 +15360,7 @@
               "tag_observations": 0,
               "term": "censored",
               "text_observations": 1,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15383,7 +15383,7 @@
               "tag_observations": 1,
               "term": "chengdu",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15406,7 +15406,7 @@
               "tag_observations": 1,
               "term": "henan",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15429,7 +15429,7 @@
               "tag_observations": 1,
               "term": "li zhi",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15452,7 +15452,7 @@
               "tag_observations": 1,
               "term": "mourning",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15475,7 +15475,7 @@
               "tag_observations": 1,
               "term": "state council",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15498,7 +15498,7 @@
               "tag_observations": 1,
               "term": "subway",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15521,7 +15521,7 @@
               "tag_observations": 1,
               "term": "zhengzhou",
               "text_observations": 0,
-              "threat": 1.14,
+              "threat": 1.13,
               "total": 1
             },
             {
@@ -15665,7 +15665,7 @@
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15692,11 +15692,11 @@
               "tag_observations": 2,
               "term": "dams",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15723,11 +15723,11 @@
               "tag_observations": 2,
               "term": "death toll",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15754,11 +15754,11 @@
               "tag_observations": 2,
               "term": "disaster relief",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15785,11 +15785,11 @@
               "tag_observations": 2,
               "term": "infrastructure",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15816,11 +15816,11 @@
               "tag_observations": 2,
               "term": "rainfall",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15847,11 +15847,11 @@
               "tag_observations": 2,
               "term": "reservoirs",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.7,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15878,11 +15878,11 @@
               "tag_observations": 2,
               "term": "typhoons",
               "text_observations": 0,
-              "threat": 0.71,
+              "threat": 0.7,
               "total": 2
             },
             {
-              "attention": 0.59,
+              "attention": 0.58,
               "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
@@ -15910,11 +15910,11 @@
               "tag_observations": 2,
               "term": "hong kong",
               "text_observations": 1,
-              "threat": 0.59,
+              "threat": 0.58,
               "total": 2
             },
             {
-              "attention": 0.5,
+              "attention": 0.49,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15941,7 +15941,7 @@
               "tag_observations": 2,
               "term": "wechat",
               "text_observations": 0,
-              "threat": 0.5,
+              "threat": 0.49,
               "total": 2
             },
             {
@@ -16014,7 +16014,7 @@
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16041,11 +16041,11 @@
               "tag_observations": 2,
               "term": "social media",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 2
             },
             {
-              "attention": 0.42,
+              "attention": 0.41,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16072,7 +16072,7 @@
               "tag_observations": 2,
               "term": "online public opinion",
               "text_observations": 0,
-              "threat": 0.42,
+              "threat": 0.41,
               "total": 2
             },
             {
@@ -16188,75 +16188,6 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "birth control",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "birth rate",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "births",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
                   "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
                   "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
                 }
@@ -16293,98 +16224,6 @@
             {
               "attention": 0.36,
               "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "children",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "SOCIETY",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "children education",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "children's rights",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "demographics",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
               "novelty": 0.0,
@@ -16401,52 +16240,6 @@
               ],
               "tag_observations": 1,
               "term": "discourse censorship",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "SOCIETY",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "education",
-              "text_observations": 0,
-              "threat": 0.36,
-              "total": 1
-            },
-            {
-              "attention": 0.36,
-              "direct_signal_observations": 0,
-              "domain": "SOCIETY",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "education reform",
               "text_observations": 0,
               "threat": 0.36,
               "total": 1
@@ -16567,7 +16360,214 @@
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "birth control",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "birth rate",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "births",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "children",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "SOCIETY",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "children education",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "children's rights",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "demographics",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "SOCIETY",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "education",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
+              "direct_signal_observations": 0,
+              "domain": "SOCIETY",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "education reform",
+              "text_observations": 0,
+              "threat": 0.35,
+              "total": 1
+            },
+            {
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16586,11 +16586,11 @@
               "tag_observations": 1,
               "term": "hukou",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16609,11 +16609,11 @@
               "tag_observations": 1,
               "term": "left-behind children",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -16632,11 +16632,11 @@
               "tag_observations": 1,
               "term": "migrant education",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16655,11 +16655,11 @@
               "tag_observations": 1,
               "term": "migrant workers",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16678,11 +16678,11 @@
               "tag_observations": 1,
               "term": "migrants",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16701,11 +16701,11 @@
               "tag_observations": 1,
               "term": "rural areas",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16724,11 +16724,11 @@
               "tag_observations": 1,
               "term": "rural children",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -16747,11 +16747,11 @@
               "tag_observations": 1,
               "term": "rural education",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16770,11 +16770,11 @@
               "tag_observations": 1,
               "term": "rural migration",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
-              "attention": 0.36,
+              "attention": 0.35,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16793,7 +16793,7 @@
               "tag_observations": 1,
               "term": "the great divide",
               "text_observations": 0,
-              "threat": 0.36,
+              "threat": 0.35,
               "total": 1
             },
             {
@@ -18087,7 +18087,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786332556.214,
+          "generated_at": 1786338856.197,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 2,
           "pct": 17,
@@ -18125,33 +18125,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786332556.224,
+        "generated_at": 1786338856.204,
         "health": {
           "freshness": {
-            "age_seconds": 0.028,
-            "core_data_at": 1786332556.196,
+            "age_seconds": 0.015,
+            "core_data_at": 1786338856.189,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.25,
-            "finished_at": 1786332556.224,
+            "duration_s": 0.22,
+            "finished_at": 1786338856.203,
             "healthy": true,
-            "id": 516,
-            "started_at": 1786332555.977,
+            "id": 523,
+            "started_at": 1786338855.978,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.25,
-            "finished_at": 1786332556.224,
+            "duration_s": 0.22,
+            "finished_at": 1786338856.203,
             "healthy": true,
-            "id": 516,
-            "started_at": 1786332555.977,
+            "id": 523,
+            "started_at": 1786338855.978,
             "status": "ok"
           },
-          "last_successful_run_at": 1786332556.224,
+          "last_successful_run_at": 1786338856.203,
           "live": true,
           "posts": 27,
           "ready": true,
@@ -18193,7 +18193,7 @@
             ],
             "score": 4.9,
             "term": "social media censorship",
-            "threat": 2.73
+            "threat": 2.72
           },
           {
             "domain": "INFORMATION",
@@ -18228,7 +18228,7 @@
             ],
             "score": 4.4,
             "term": "internet censorship",
-            "threat": 2.57
+            "threat": 2.56
           },
           {
             "domain": "INFORMATION",
@@ -18261,9 +18261,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 4.3,
+            "score": 4.2,
             "term": "online censorship",
-            "threat": 2.51
+            "threat": 2.5
           },
           {
             "domain": "INFORMATION",
@@ -18290,7 +18290,7 @@
             ],
             "score": 2.9,
             "term": "investigative journalism",
-            "threat": 2.02
+            "threat": 2.01
           },
           {
             "domain": "OTHER",
@@ -18309,7 +18309,7 @@
             ],
             "score": 2.7,
             "term": "china youth daily",
-            "threat": 1.78
+            "threat": 1.77
           },
           {
             "domain": "OTHER",
@@ -18328,7 +18328,7 @@
             ],
             "score": 2.7,
             "term": "humor",
-            "threat": 1.78
+            "threat": 1.77
           },
           {
             "domain": "OTHER",
@@ -18347,7 +18347,7 @@
             ],
             "score": 2.7,
             "term": "information technology",
-            "threat": 1.78
+            "threat": 1.77
           },
           {
             "domain": "INFORMATION",
@@ -18366,7 +18366,7 @@
             ],
             "score": 2.7,
             "term": "journalism",
-            "threat": 1.78
+            "threat": 1.77
           },
           {
             "domain": "OTHER",
@@ -18385,7 +18385,7 @@
             ],
             "score": 2.7,
             "term": "journalists",
-            "threat": 1.78
+            "threat": 1.77
           },
           {
             "domain": "OTHER",
@@ -18404,7 +18404,7 @@
             ],
             "score": 2.7,
             "term": "literacy",
-            "threat": 1.78
+            "threat": 1.77
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -18420,10 +18420,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786332556.224,
-          "ddti_generated_at": 1786332556.196,
-          "economic_generated_at": 1786332556.214,
-          "last_successful_run_at": 1786332556.224,
+          "data_updated_at": 1786338856.203,
+          "ddti_generated_at": 1786338856.189,
+          "economic_generated_at": 1786338856.197,
+          "last_successful_run_at": 1786338856.203,
           "latest_fetched_at": 1785967156.022,
           "latest_published_at": 1785961325.0
         }
@@ -18431,7 +18431,7 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-10T03:29:16Z",
+      "source_timestamp": "2026-08-10T05:14:16Z",
       "status": "live",
       "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 171 count.",
       "title": "Private runtime bridge"
