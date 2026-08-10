@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-08-09T19:19:55.141365+00:00",
+  "generated_at": "2026-08-10T02:59:09.497752+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 17.4978,
-      "n": 127,
+      "stat": 14.9528,
+      "n": 128,
       "n_alarms_in_history": 1,
-      "age_hours": 0.2,
+      "age_hours": 0.3,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
-      "state": "alarm",
-      "stat": 1752.2735,
-      "n": 239,
+      "state": "warming_up",
+      "stat": 0.0,
+      "n": 241,
       "n_alarms_in_history": 4,
-      "age_hours": 0.3,
+      "age_hours": 0.4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 2.0042,
-      "n": 239,
+      "stat": 1.9205,
+      "n": 241,
       "n_alarms_in_history": 1,
-      "age_hours": 0.3,
+      "age_hours": 0.4,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -32,23 +32,23 @@
       "stat": 46.8967,
       "n": 23,
       "n_alarms_in_history": 0,
-      "age_hours": 37.0,
+      "age_hours": 44.6,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.1991,
-      "n": 136,
+      "stat": 2.5317,
+      "n": 137,
       "n_alarms_in_history": 0,
-      "age_hours": 5.7,
+      "age_hours": 7.6,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
       "state": "calm",
-      "stat": 1.9196,
-      "n": 67,
+      "stat": 2.7799,
+      "n": 68,
       "n_alarms_in_history": 0,
-      "age_hours": 5.8,
+      "age_hours": 0.1,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -72,23 +72,23 @@
       "stat": 2.3321,
       "n": 395,
       "n_alarms_in_history": 6,
-      "age_hours": 91.3,
+      "age_hours": 99.0,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 84,
+      "n": 85,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 0.1,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 85,
+      "n": 86,
       "n_alarms_in_history": 0,
-      "age_hours": 0.2,
+      "age_hours": 0.3,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
@@ -96,7 +96,7 @@
       "stat": 0.9201,
       "n": 9,
       "n_alarms_in_history": 0,
-      "age_hours": 19.3,
+      "age_hours": 27.0,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -151,7 +151,7 @@
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 0.3,
+      "age_hours": 8.0,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
@@ -161,9 +161,7 @@
       "guarantee": "panel e-value is the arithmetic mean of per-model anytime-valid mixture e-processes (valid under arbitrary dependence). Compound lifetime false-flag bound with 4 monitored models: WATCH at most 15%, ALARM at most 11% — each model's calibration can undershoot with probability 0.025, plus Ville's inequality when none does"
     }
   },
-  "active": [
-    "ddti_threat"
-  ],
+  "active": [],
   "stale": [],
   "no_data": [
     "bleedthrough_capacity",
@@ -176,5 +174,5 @@
   "n_reporting": 11,
   "n_signals": 15,
   "n_open": 14,
-  "headline": "elevated: ddti_threat"
+  "headline": "no signal elevated, but only 11 of 14 signals are reporting"
 }
