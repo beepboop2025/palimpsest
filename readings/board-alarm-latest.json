@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-10T08:17:36.334880+00:00",
-  "board_e_value": 7.312,
+  "generated_at": "2026-08-10T14:08:03.161470+00:00",
+  "board_e_value": 7.256,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
@@ -11,28 +11,28 @@
   },
   "layers": {
     "network": {
-      "e": 16.151,
+      "e": 15.65,
       "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 46.897,
         "ioda_outages": 1.0,
-        "ooni_gfw": 13.219,
+        "ooni_gfw": 11.213,
         "tor_bridge_cn": 3.489
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 1.702,
+      "e": 1.992,
       "n_signals": 5,
       "state": "elevated",
       "corroborated": true,
       "signals": {
-        "data_darkness": 0.92,
-        "ddti_novelty": 1.851,
-        "gdelt_containment": 1.96,
-        "github_refuge": 2.78,
+        "data_darkness": 2.568,
+        "ddti_novelty": 1.792,
+        "gdelt_containment": 2.25,
+        "github_refuge": 2.349,
         "weibo_suppression": 1.0
       },
       "recent_alarms": [
@@ -40,12 +40,12 @@
       ]
     },
     "model": {
-      "e": 0.002,
+      "e": 0.001,
       "n_signals": 1,
       "state": "calm",
       "corroborated": false,
       "signals": {
-        "refusal_churn": 0.002
+        "refusal_churn": 0.001
       },
       "recent_alarms": []
     }
@@ -60,34 +60,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 13.2185,
-      "n": 129,
+      "e": 11.213,
+      "n": 130,
       "direction": "down",
-      "robust_z": -1.18,
+      "robust_z": -1.1,
       "driver_side": "down",
-      "readings_since_alarm": 78,
+      "readings_since_alarm": 79,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "warming_up",
       "e": 0.0,
-      "n": 243,
+      "n": 245,
       "direction": "down",
-      "robust_z": -1.4,
+      "robust_z": -1.42,
       "driver_side": null,
-      "readings_since_alarm": 4,
+      "readings_since_alarm": 6,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 1.8511,
-      "n": 243,
+      "e": 1.7923,
+      "n": 245,
       "direction": "down",
       "robust_z": -6.74,
       "driver_side": "up",
-      "readings_since_alarm": 71,
+      "readings_since_alarm": 73,
       "n_alarms_in_history": 1,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -104,8 +104,8 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 1.9603,
-      "n": 138,
+      "e": 2.2497,
+      "n": 139,
       "direction": "down",
       "robust_z": -0.67,
       "driver_side": "down",
@@ -115,10 +115,10 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 2.7799,
-      "n": 68,
-      "direction": "down",
-      "robust_z": -0.67,
+      "e": 2.3488,
+      "n": 69,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -154,7 +154,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 86,
+      "n": 87,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -165,7 +165,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 87,
+      "n": 88,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -175,10 +175,10 @@
     },
     "data_darkness": {
       "state": "calm",
-      "e": 0.9201,
-      "n": 9,
+      "e": 2.5683,
+      "n": 10,
       "direction": "up",
-      "robust_z": 1.41,
+      "robust_z": 2.02,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -191,52 +191,52 @@
     },
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
-      "e": 0.002,
+      "e": 0.0013,
       "n_models": 4,
       "models": {
         "anthropic/claude-3-haiku": {
           "state": "quiet",
-          "evalue": 0.0009,
+          "evalue": 0.0006,
           "p0": 0.004663,
-          "pairs_seen": 26,
+          "pairs_seen": 27,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 246
+          "monitored_comparisons": 287
         },
         "meta-llama/llama-3.3-70b-instruct": {
           "state": "quiet",
-          "evalue": 0.0048,
+          "evalue": 0.0029,
           "p0": 0.008849,
-          "pairs_seen": 26,
+          "pairs_seen": 27,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.008849,
-          "monitored_comparisons": 246
+          "monitored_comparisons": 287
         },
         "mistralai/mistral-nemo": {
           "state": "quiet",
-          "evalue": 0.0013,
+          "evalue": 0.0011,
           "p0": 0.114619,
-          "pairs_seen": 26,
+          "pairs_seen": 27,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.114619,
-          "monitored_comparisons": 237
+          "monitored_comparisons": 269
         },
         "openai/gpt-4o-mini": {
           "state": "quiet",
-          "evalue": 0.0009,
+          "evalue": 0.0006,
           "p0": 0.004663,
-          "pairs_seen": 26,
+          "pairs_seen": 27,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 246
+          "monitored_comparisons": 287
         }
       },
-      "n_rows": 104,
+      "n_rows": 108,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 5.7,
+      "age_hours": 6.1,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
