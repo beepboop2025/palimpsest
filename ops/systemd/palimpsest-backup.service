@@ -4,7 +4,7 @@ Documentation=file:///home/deploy/palimpsest/ops/backup/README.md
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
-ConditionPathIsExecutable=/home/deploy/palimpsest/ops/backup/palimpsest-backup.sh
+ConditionFileIsExecutable=/home/deploy/palimpsest/ops/backup/palimpsest-backup.sh
 
 [Service]
 Type=oneshot
