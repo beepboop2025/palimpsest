@@ -105,6 +105,6 @@ def test_data_publisher_keeps_a_fixed_subprocess_boundary():
 
     assert "shell=True" not in text
     assert '["git", *arguments]' in text
-    assert '[sys.executable, "-m", module]' in text
-    assert '[sys.executable, "scripts/verify_public_surface.py"]' in text
+    assert '[sys.executable, "-B", "-m", module]' in text
+    assert '[sys.executable, "-B", "scripts/verify_public_surface.py"]' in text
     assert "MODULE_RE.fullmatch(module)" in text

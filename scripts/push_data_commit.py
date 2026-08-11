@@ -160,12 +160,12 @@ def _module_rebuilder(
     def rebuild(repo: Path, subject: str) -> bool:
         for module in normalized_modules:
             subprocess.run(
-                [sys.executable, "-m", module],
+                [sys.executable, "-B", "-m", module],
                 cwd=repo,
                 check=True,
             )
         subprocess.run(
-            [sys.executable, "scripts/verify_public_surface.py"],
+            [sys.executable, "-B", "scripts/verify_public_surface.py"],
             cwd=repo,
             check=True,
         )
