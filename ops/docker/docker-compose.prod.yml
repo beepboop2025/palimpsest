@@ -223,7 +223,7 @@ services:
     pids_limit: 128
     cpus: 0.5
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${PALIMPSEST_API_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8000/healthz"]
       interval: 30s

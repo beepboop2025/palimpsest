@@ -19,3 +19,7 @@ def test_schema_gate_precedes_every_application_service():
     for name in ("worker", "beat", "worker-collectors", "worker-velocity", "api"):
         dependency = services[name]["depends_on"]["migrate"]
         assert dependency["condition"] == "service_completed_successfully"
+
+    assert services["api"]["ports"] == [
+        "127.0.0.1:${PALIMPSEST_API_PORT:-8000}:8000"
+    ]

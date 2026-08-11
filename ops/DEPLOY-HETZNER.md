@@ -199,6 +199,7 @@ PALIMPSEST_KILLFILE=/app/readings/state/STOP
 PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED=1
 PALIMPSEST_OBSERVATION_DIR=/app/data/observations
 PALIMPSEST_STATUS_PATH=/app/data/node-status.json
+PALIMPSEST_API_PORT=8000
 PALIMPSEST_ACTIVE_PROBES_ENABLED=0
 PALIMPSEST_LIVE=0
 ```
@@ -258,7 +259,8 @@ Leave both at `0` for the default passive public-source node.
 
 The optional read-only control plane reports process liveness, dependency
 readiness, collector freshness, and Prometheus-format metrics. It is hard-bound
-to localhost in Compose:
+to localhost in Compose. If another local service owns port 8000, choose an
+unused loopback port with `PALIMPSEST_API_PORT` in `.env`:
 
 ```bash
 ops/docker/prod-compose --profile collectors --profile api up -d --build
