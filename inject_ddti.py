@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 DASHBOARDS = ["dashboards/ddti_dashboard.html", "dashboards/ddti_observatory.html"]
