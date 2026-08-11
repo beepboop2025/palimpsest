@@ -38,13 +38,16 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     ]
 
 
-def test_openapi_only_advertises_readings_that_are_actually_published():
+def test_openapi_only_advertises_public_files_that_are_actually_published():
     spec = _json("openapi.json")
     assert spec["openapi"] == "3.1.0"
     assert spec["servers"] == [{"url": "https://palimpsest.info"}]
     assert len(spec["paths"]) >= 8
     for path, operations in spec["paths"].items():
-        assert path.startswith("/readings/") and path.endswith(".json")
+        assert (
+            path.startswith("/readings/")
+            and path.endswith((".json", ".jsonld"))
+        ) or path == "/datapackage.json"
         assert set(operations) == {"get"}
         assert (ROOT / path.lstrip("/")).is_file(), path
         assert "200" in operations["get"]["responses"]
@@ -81,6 +84,18 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert "structured evidence commons" in home.lower()
     assert "https://t.me/Scamshield_2_bot" in home
     assert '"Developers", "href": "/developers.html"' in nav
+
+
+def test_evidence_atlas_is_discoverable_by_humans_and_agents():
+    sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+    card = _json("product-card.json")
+
+    assert "https://palimpsest.info/data.html" in sitemap
+    assert "https://palimpsest.info/data.html" in llms
+    assert "https://palimpsest.info/readings/catalog.jsonld" in llms
+    assert card["evidence"]["data_catalog_json"].endswith("/readings/catalog.json")
+    assert card["access"]["dataset_catalog"] == "https://palimpsest.info/data.html"
 
 
 def test_scamshield_public_surfaces_share_one_bounded_contract():

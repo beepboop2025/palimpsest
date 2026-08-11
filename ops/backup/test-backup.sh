@@ -18,18 +18,19 @@ fail() {
 }
 
 repo="$fixture_root/repo"
+state_root="$fixture_root/state"
 backup_root="$fixture_root/backups"
 failed_root="$fixture_root/failed-backups"
 offsite_root="$fixture_root/offsite"
 fake_bin="$fixture_root/bin"
-mkdir -p "$repo/ops/docker" "$repo/readings" "$repo/data/raw" \
+mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
   "$backup_root" "$failed_root" "$offsite_root" "$fake_bin"
 
 printf 'services: {}\n' >"$repo/ops/docker/docker-compose.prod.yml"
 printf 'POSTGRES_USER=palimpsest\nPOSTGRES_DB=palimpsest\n' \
   >"$repo/ops/docker/.env"
-printf '{"status":"ok"}\n' >"$repo/readings/probe.json"
-printf 'immutable raw sample\n' >"$repo/data/raw/sample.txt"
+printf '{"status":"ok"}\n' >"$state_root/readings/probe.json"
+printf 'immutable raw sample\n' >"$state_root/data/raw/sample.txt"
 
 # These single-quoted strings are source code for the fake executable; their
 # variables must expand when that executable runs, not while this test writes it.
@@ -58,6 +59,7 @@ chmod 0755 "$fake_bin/docker" "$fake_bin/flock"
 common_env=(
   "PATH=$fake_bin:$PATH"
   "PALIMPSEST_ROOT=$repo"
+  "PALIMPSEST_STATE_ROOT=$state_root"
   "PALIMPSEST_BACKUP_RETENTION_DAYS=14"
   "PALIMPSEST_BACKUP_MIN_FREE_MB=64"
 )

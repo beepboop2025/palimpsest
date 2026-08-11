@@ -50,7 +50,9 @@ jobs:
         run: python -m scripts.import_nemesis_snapshot
 
       - name: Build the deterministic roll-up
-        run: python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
+        run: |
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
+          python -m scripts.build_data_catalog
 
       - name: Seal the exact readings that will be published
         run: python scripts/seal_readings.py
@@ -62,6 +64,7 @@ jobs:
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
+            tests/test_data_catalog.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
             tests/test_publication_contract.py \
@@ -75,7 +78,12 @@ jobs:
       - name: Create the candidate refresh commit
         id: candidate
         run: |
-          git add readings/osint-china-latest.json readings/readings-ledger.jsonl
+          git add \
+            readings/osint-china-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json
           if [ -e readings/nemesis-latest.json ]; then
             git add readings/nemesis-latest.json
           fi
@@ -119,6 +127,7 @@ jobs:
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
+          python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
       - name: Retest after a pre-publication ledger change
@@ -129,6 +138,7 @@ jobs:
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
+            tests/test_data_catalog.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
             tests/test_publication_contract.py \
@@ -143,7 +153,12 @@ jobs:
       - name: Replace the candidate with the revalidated bytes
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
-          git add readings/osint-china-latest.json readings/readings-ledger.jsonl
+          git add \
+            readings/osint-china-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json
           if [ -e readings/nemesis-latest.json ]; then
             git add readings/nemesis-latest.json
           fi
@@ -188,6 +203,7 @@ jobs:
         if: steps.push_attempt.outcome == 'failure'
         run: |
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
+          python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
       - name: Retest after a push race
@@ -198,6 +214,7 @@ jobs:
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
+            tests/test_data_catalog.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
             tests/test_publication_contract.py \
@@ -212,7 +229,12 @@ jobs:
       - name: Commit the race-safe rebuilt bytes
         if: steps.push_attempt.outcome == 'failure'
         run: |
-          git add readings/osint-china-latest.json readings/readings-ledger.jsonl
+          git add \
+            readings/osint-china-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json
           if [ -e readings/nemesis-latest.json ]; then
             git add readings/nemesis-latest.json
           fi

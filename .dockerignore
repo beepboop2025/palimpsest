@@ -1,0 +1,28 @@
+# Deny the whole repository by default. The production image needs only these
+# runtime modules, so git history, operator secrets, public readings and private
+# evidence never enter the Docker build context.
+**
+
+!requirements.txt
+!inject_ddti.py
+
+!api/
+!api/**
+!core/
+!core/**
+!collectors/
+!collectors/**
+!processors/
+!processors/**
+!storage/
+!storage/**
+!censorwatch/
+!censorwatch/**
+!config/
+!config/**
+!scripts/
+!scripts/**
+
+!ops/
+!ops/docker/
+!ops/docker/Dockerfile.app

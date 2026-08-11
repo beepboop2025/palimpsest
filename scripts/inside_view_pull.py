@@ -33,12 +33,13 @@ HIST = os.path.join(READINGS, "inside-view-history.jsonl")
 # single-ASN result no longer counts as blocked.
 METHOD_VERSION = 2
 
-# Globalping allows 250 unauthenticated probe-credits per rolling hour. A full
-# panel round costs len(PANEL) * (CN_PROBES + CONTROL_PROBES) = 49, so the
-# 6-hourly cadence spends 196/day against a 250/hour ceiling and no pre-flight
-# budget check is needed. If the budget is exhausted anyway, RateLimited is
-# raised mid-panel and the round abstains whole rather than publishing the
-# domains that happened to be measured before the wall.
+# Globalping allows 250 unauthenticated probe-credits per rolling hour. With
+# the current 11-domain panel, 14 CN probes and two controls, a full round costs
+# 176 credits. That fits as one atomic round but leaves no room for a second
+# overlapping run. The Hetzner schedule is therefore placed on hours that do
+# not overlap the six-hourly GitHub publication job. If the budget is exhausted
+# anyway, RateLimited is raised mid-panel and the round abstains whole rather
+# than publishing whichever domains happened to run first.
 
 
 def _band(rate: float) -> str:

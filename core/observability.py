@@ -117,12 +117,28 @@ def _normalise_spec(raw: Mapping[str, Any] | CollectorSpec) -> CollectorSpec:
     )
 
 
-def load_collector_specs(profile: str | None = None) -> tuple[CollectorSpec, ...]:
-    """Load the public monitoring contract from :mod:`core.collector_fleet`."""
+def load_collector_specs(
+    profile: str | None = None,
+    *,
+    include_collectors: bool = True,
+    include_warehouse: bool | None = None,
+) -> tuple[CollectorSpec, ...]:
+    """Load enabled acquisition contracts into one observability registry."""
 
-    from core.collector_fleet import expected_collector_specs
+    raw: list[Mapping[str, Any]] = []
+    if include_collectors:
+        from core.collector_fleet import expected_collector_specs
 
-    specs = tuple(_normalise_spec(item) for item in expected_collector_specs(profile))
+        raw.extend(expected_collector_specs(profile))
+    if include_warehouse is None:
+        from core.ooni_warehouse import warehouse_enabled
+
+        include_warehouse = warehouse_enabled()
+    if include_warehouse:
+        from core.ooni_warehouse import expected_warehouse_specs
+
+        raw.extend(expected_warehouse_specs())
+    specs = tuple(_normalise_spec(item) for item in raw)
     sources = [spec.source for spec in specs]
     if len(sources) != len(set(sources)):
         raise ValueError("collector specs contain duplicate sources")
@@ -539,13 +555,23 @@ def collect_node_status(
     """Collect the production node status, degrading safely if audit DB reads fail."""
 
     from core.collector_fleet import collection_profile, collectors_enabled
+    from core.ooni_warehouse import warehouse_enabled
 
-    profile = collection_profile()
-    enabled = collectors_enabled()
+    passive_enabled = collectors_enabled()
+    bulk_enabled = warehouse_enabled()
+    enabled = passive_enabled or bulk_enabled
+    profile = collection_profile() if passive_enabled or not bulk_enabled else "warehouse"
     raw_specs = (
         tuple(specs_provider(profile))
         if specs_provider is not None
-        else load_collector_specs(profile)
+        else load_collector_specs(
+            profile if passive_enabled else None,
+            # Retain the historical disabled registry when no acquisition leg
+            # is on; in warehouse-only mode do not report every passive job as
+            # missing merely because its separate profile is disabled.
+            include_collectors=passive_enabled or not enabled,
+            include_warehouse=bulk_enabled,
+        )
     )
     specs = tuple(_normalise_spec(item) for item in raw_specs)
     storage_available = True
@@ -555,7 +581,11 @@ def collect_node_status(
         logs = {}
         storage_available = False
 
-    execution_queues = DEFAULT_EXECUTION_QUEUES if enabled else ("default",)
+    execution_queues = ["default"]
+    if passive_enabled:
+        execution_queues.append("collectors")
+    if bulk_enabled:
+        execution_queues.append("warehouse")
     execution_storage_available = True
     try:
         heartbeats = dict(

@@ -61,6 +61,7 @@ CONTRACT = {
     "censored-planet":      _d("generated_at", ["source", "method"], "n_events"),
     "eval-registry":        _d("generated_at", ["registry", "verify_cmd"], "runs"),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
+    "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     # registered before its first round lands — see PENDING below
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -181,12 +182,23 @@ OPTIONAL_EXTERNAL = {
     "nemesis",
 }
 
+# Recurring publication jobs whose contract ships with the collector before the first
+# successful scheduled round. Unlike PENDING, these feeds are production-ready and may
+# already exist; unlike OPTIONAL_EXTERNAL, they are first-party publications rather than
+# deployment-specific imports. The exception can be removed once the first row is part of
+# every supported checkout, but the contract is enforced immediately in the publishing run.
+SCHEDULED_PUBLICATIONS = {
+    "research-corpus",
+}
+
 
 def test_no_contract_entry_describes_a_reading_that_does_not_exist():
     """Keeps the inventory honest as signals are retired, without punishing signals whose
     contract was agreed before their first round."""
     present = {_name(p) for p in _readings()}
-    stale = sorted(set(CONTRACT) - present - PENDING - OPTIONAL_EXTERNAL)
+    stale = sorted(
+        set(CONTRACT) - present - PENDING - OPTIONAL_EXTERNAL - SCHEDULED_PUBLICATIONS
+    )
     assert not stale, (
         f"CONTRACT describes readings that no longer exist: {stale}. Retire the entry, or "
         "move it to PENDING if the signal is built but not publishing yet.")
@@ -209,6 +221,16 @@ def test_optional_external_signals_are_pre_registered_not_silently_required():
     assert not unregistered, f"optional external signals have no contract: {unregistered}"
     assert not (OPTIONAL_EXTERNAL & PENDING), (
         "deployment-dependent signals must not also use one-time PENDING graduation semantics")
+
+
+def test_scheduled_publications_are_registered_and_have_distinct_semantics():
+    """A first-party scheduled feed is checked whether or not its first round has landed."""
+    unregistered = sorted(SCHEDULED_PUBLICATIONS - set(CONTRACT))
+    assert not unregistered, f"scheduled publications have no contract: {unregistered}"
+    assert not (SCHEDULED_PUBLICATIONS & PENDING), (
+        "production scheduled publications must not be marked as unfinished")
+    assert not (SCHEDULED_PUBLICATIONS & OPTIONAL_EXTERNAL), (
+        "first-party scheduled publications must not be marked as optional imports")
 
 
 @pytest.mark.parametrize("path", _readings(), ids=_name)

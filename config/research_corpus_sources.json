@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "user_agent": "palimpsest.info research-corpus collector/1.0 (metadata-only public Git reads; contact desk@palimpsest.info)",
+  "limits": {
+    "run_bytes": 8388608,
+    "history_bytes": 67108864,
+    "latest_bytes": 2097152,
+    "public_row_bytes": 262144,
+    "network_timeout_seconds": 25,
+    "max_ref_packets": 100000,
+    "max_ref_name_bytes": 1024
+  },
+  "sources": [
+    {
+      "id": "github-gov-takedowns",
+      "repository": "github/gov-takedowns",
+      "branch": "master",
+      "corpus_kind": "government-takedown-notices",
+      "source_status": "public-git-repository",
+      "sensitivity_class": "notice-bodies-and-affected-identifiers",
+      "publication_mode": "metadata-only",
+      "license": {
+        "status": "not-stated-by-upstream-repository",
+        "spdx": null,
+        "use_policy": "metadata-only-no-content-redistribution"
+      },
+      "ref_response_bytes": 524288
+    },
+    {
+      "id": "github-dmca",
+      "repository": "github/dmca",
+      "branch": "master",
+      "corpus_kind": "copyright-takedown-notices",
+      "source_status": "public-git-repository",
+      "sensitivity_class": "notice-bodies-and-affected-identifiers",
+      "publication_mode": "metadata-only",
+      "license": {
+        "status": "not-stated-by-upstream-repository",
+        "spdx": null,
+        "use_policy": "metadata-only-no-content-redistribution"
+      },
+      "ref_response_bytes": 4194304
+    },
+    {
+      "id": "citizenlab-test-lists",
+      "repository": "citizenlab/test-lists",
+      "branch": "master",
+      "corpus_kind": "censorship-measurement-test-lists",
+      "source_status": "public-git-repository",
+      "sensitivity_class": "url-test-target-corpus",
+      "publication_mode": "metadata-only",
+      "license": {
+        "status": "declared-by-upstream-repository",
+        "spdx": "CC-BY-NC-SA-4.0",
+        "use_policy": "metadata-only-no-content-redistribution"
+      },
+      "ref_response_bytes": 1048576
+    },
+    {
+      "id": "citizenlab-chat-censorship",
+      "repository": "citizenlab/chat-censorship",
+      "branch": "master",
+      "corpus_kind": "chat-censorship-research-artifacts",
+      "source_status": "public-git-repository",
+      "sensitivity_class": "keyword-and-trigger-corpus",
+      "publication_mode": "metadata-only",
+      "license": {
+        "status": "declared-by-upstream-repository",
+        "spdx": "CC-BY-NC-SA-4.0",
+        "use_policy": "metadata-only-no-content-redistribution"
+      },
+      "ref_response_bytes": 524288
+    },
+    {
+      "id": "gfwlist-gfwlist",
+      "repository": "gfwlist/gfwlist",
+      "branch": "master",
+      "corpus_kind": "circumvention-routing-rules",
+      "source_status": "public-git-repository",
+      "sensitivity_class": "network-target-rule-corpus",
+      "publication_mode": "metadata-only",
+      "license": {
+        "status": "declared-by-upstream-repository",
+        "spdx": "LGPL-2.1-only",
+        "use_policy": "metadata-only-no-content-redistribution"
+      },
+      "ref_response_bytes": 524288
+    }
+  ]
+}

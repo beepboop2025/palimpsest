@@ -199,7 +199,7 @@ def generate_ddti_index(self) -> dict:
 def queue_heartbeat(queue: str) -> dict:
     """Prove the complete beat -> broker -> named worker queue path is alive."""
 
-    if queue not in {"default", "collectors"}:
+    if queue not in {"default", "collectors", "warehouse"}:
         raise ValueError(f"unknown heartbeat queue: {queue!r}")
     import json
     import redis
@@ -390,5 +390,44 @@ def refresh_public_snapshot(self, name: str) -> dict:
         raise self.retry(
             exc=RuntimeError(result.get("error") or f"{name} snapshot failed"),
             countdown=10 * 60,
+        )
+    return result
+
+
+@app.task(
+    bind=True,
+    name="core.tasks.ingest_ooni_bulk_hour",
+    max_retries=1,
+    soft_time_limit=50 * 60,
+    time_limit=55 * 60,
+)
+def ingest_ooni_bulk_hour(self, hour: str | None = None) -> dict:
+    """Ingest one explicit or configured-lagged OONI S3 archive hour."""
+
+    from collectors.ooni_bulk import (
+        format_hour,
+        ingest_hour,
+        latest_lagged_hour,
+        load_config,
+        parse_hour,
+    )
+
+    # Freeze the default hour before the first attempt.  If Celery retries over
+    # an hour boundary it resumes this manifest instead of silently moving on.
+    target = parse_hour(hour) if hour is not None else latest_lagged_hour(load_config())
+    target_text = format_hour(target)
+    result = _run_with_lease(
+        "warehouse:ooni-bulk",
+        lambda: ingest_hour(hour=target),
+        timeout_s=55 * 60,
+        collector_name="ooni-bulk",
+    )
+    _log_snapshot_result(result)
+    logger.info("[ooni-bulk] warehouse run: %s", result)
+    if result.get("status") == "failed":
+        raise self.retry(
+            exc=RuntimeError(result.get("error") or "OONI bulk ingest failed"),
+            countdown=10 * 60,
+            kwargs={"hour": target_text},
         )
     return result

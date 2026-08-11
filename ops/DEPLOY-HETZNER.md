@@ -23,11 +23,17 @@ Files this runbook uses (all committed):
 
 | Workload | Box | Specs | Approx / mo |
 |----------|-----|-------|-------------|
-| Base stack (no velocity leg) | Hetzner CX22 | 2 vCPU / 4 GB / 40 GB | ~€4.5 |
-| Base + CensorWatch velocity (Playwright) | Hetzner CX32 | 4 vCPU / 8 GB / 80 GB | ~€7.5 |
+| Base stack (no velocity leg) | Hetzner CX23 | 2 vCPU / 4 GB / 40 GB | verify current console price |
+| Base + CensorWatch velocity, no warehouse | Hetzner CX33 | 4 vCPU / 8 GB / 80 GB | verify current console price |
+| OONI evidence warehouse | compute above + separate Volume | at least 1 TiB attached storage | check current console price |
+| All profiles, including velocity + warehouse | current plan with at least 16 GB RAM (for example CX43) | 16 GB+ RAM plus 1 TiB Volume | verify current console price |
 
-Start with **CX32** if there is any chance you enable the velocity leg; Chromium
-wants the headroom. Region: `fsn1`/`nbg1`/`hel1` (EU) are cheapest. The exit IP
+Start with **CX33** if you will enable the velocity leg without the warehouse;
+Chromium wants the headroom. The full `collectors,warehouse,velocity,api`
+topology has roughly 9 GiB of configured container ceilings before host and
+Docker overhead, so use at least 16 GB RAM for that combination. Region:
+`fsn1`/`nbg1`/`hel1` (EU) are usually cheapest; verify the live console price
+before ordering. The exit IP
 of this box does not need to be "in region" — that is the proxy's job (Step 6).
 
 ---
@@ -68,14 +74,19 @@ You will paste that clipboard into Hetzner. Never paste the other file
      region, not this box.
    - **Image**: choose **Ubuntu** → **24.04**.
    - **Type**: click the **Shared vCPU** tab, then the **x86 (Intel/AMD)** subtab,
-     then pick **CX32** (4 vCPU / 8 GB). If the cost worries you, **CX22** works
-     for the base stack; only the velocity leg needs CX32.
+     then pick **CX33** (4 vCPU / 8 GB) for base + velocity without the warehouse.
+     If the cost worries you, **CX23** works for the base stack. Choose a current
+     plan with at least 16 GB RAM when velocity and warehouse run together.
    - **Networking**: leave IPv4 + IPv6 both ticked (default).
    - **SSH keys**: click **Add SSH Key**, paste the clipboard from step 1a, give
      it a name like `macbook`. Make sure its checkbox ends up ticked.
-   - **Firewalls / Volumes / Placement / Labels**: skip all of these. You do not
+   - **Firewalls / Placement / Labels**: skip these for the base node. You do not
      need the cloud firewall here — the runbook's `ufw` step (Section 2) locks the
      box down anyway. You can add the cloud firewall later for extra safety.
+   - **Volumes**: the base node can skip this. If you will enable the OONI bulk
+     warehouse, attach a separate **1 TiB or larger** Volume and select Hetzner's
+     automatic Linux mount option. An 80 GB root disk cannot satisfy the
+     collector's 128 GiB free-space reserve.
    - **Backups**: optional tick (adds ~20% for automatic whole-box snapshots —
      cheap insurance; fine to enable).
    - **Name**: `palimpsest-1`.
@@ -148,6 +159,22 @@ cp ops/docker/.env.example ops/docker/.env
 chmod 600 ops/docker/.env
 nano ops/docker/.env         # set POSTGRES_PASSWORD, DATABASE_URL, OPENROUTER_API_KEY
 ```
+
+The application image runs as unprivileged UID/GID `10001`. Keep its mutable
+state outside the git checkout so collection never makes `git pull` dirty or
+mixes private node history with public workflow output. Seed the initial public
+readings once, then give the runtime identity ownership:
+
+```bash
+sudo install -d -o 10001 -g 10001 -m 0755 \
+  /var/lib/palimpsest/readings/state /var/lib/palimpsest/data
+sudo rsync -a --chown=10001:10001 readings/ /var/lib/palimpsest/readings/
+```
+
+The production `.env.example` already points
+`PALIMPSEST_READINGS_HOST_PATH` and `PALIMPSEST_DATA_HOST_PATH` at those
+operator-owned directories. Do this before the first Compose boot; mounting a
+checkout `:rw` neither solves Linux ownership nor separates code from state.
 
 Generate a strong DB password and paste it into BOTH `POSTGRES_PASSWORD` and the
 `DATABASE_URL` in `.env`:
@@ -255,7 +282,98 @@ PALIMPSEST_LIVE=1
 
 Leave both at `0` for the default passive public-source node.
 
-### 5b. Enable the local operator API
+### 5b. Opt in to the bounded OONI bulk warehouse
+
+This lane uses the large volume for copies of measurements OONI has already
+published. It does **not** probe networks, impersonate users, contact the URLs
+inside measurements, or create an in-country vantage. Direct Hetzner egress is
+therefore honest here: it is only a public archive download path.
+
+Keep the warehouse disabled until the large host volume is mounted and its
+exact directory is chosen. In the Hetzner console, attach a 1 TiB-or-larger
+Volume with automatic mounting enabled. On the host, verify that the chosen
+path is a real non-root mount and has more than the 128 GiB reserve:
+
+```bash
+findmnt --target /mnt/HC_Volume_<volume-id>
+test "$(findmnt -n -o TARGET --target /mnt/HC_Volume_<volume-id>)" != "/"
+df -h /mnt/HC_Volume_<volume-id>
+```
+
+If `findmnt` reports `/`, stop: creating a similarly named directory would put
+bulk data on the root disk. For an existing manually formatted Volume, ensure
+its filesystem UUID is present in `/etc/fstab`, run `sudo mount -a`, and repeat
+the checks above before continuing. Never run `mkfs` against a device that
+already contains data.
+
+Then create a bounded Palimpsest subtree and set these values in the
+operator-owned `.env` (the committed feature flag remains disabled):
+
+```bash
+sudo install -d -o 10001 -g 10001 -m 0750 \
+  /mnt/HC_Volume_<volume-id>/palimpsest/warehouse/ooni-bulk
+```
+
+UID/GID 10001 is the unprivileged application identity in the image; preparing
+the bind explicitly avoids Docker creating a root-owned, unwritable directory.
+Then configure the mapping:
+
+```dotenv
+PALIMPSEST_OONI_BULK_ENABLED=1
+PALIMPSEST_OONI_WAREHOUSE_DIR=/app/data/ooni-bulk
+PALIMPSEST_OONI_WAREHOUSE_HOST_PATH=/mnt/HC_Volume_<volume-id>/palimpsest/warehouse/ooni-bulk
+COMPOSE_PROFILES=collectors,warehouse,api
+```
+
+Bring up the isolated warehouse worker:
+
+```bash
+ops/docker/prod-compose --profile warehouse up -d --build
+ops/docker/prod-compose --profile warehouse logs --since 2h worker-warehouse
+```
+
+The reviewed allowlist and ceilings live in `config/ooni_bulk.json`. Defaults
+reserve 128 GiB of filesystem free space, limit this source to 768 GiB, cap one
+object at 2 GiB and a run at 12 GiB, and bound listing pages, response bytes,
+object count, expanded gzip bytes, JSON-line bytes, and public-history length.
+The volume path is configurable; the safe Compose default is the repository's
+git-ignored `../../data/ooni-bulk` directory, not an assumed host mount.
+
+Beat queues one latest three-hour-lagged UTC hour at a time on the dedicated
+`warehouse` queue. Queue expiry prevents a broker outage from replaying missed
+hours. The worker has two execution slots so its one-minute control heartbeat
+is not starved by a long stream; a Redis lease still permits only one OONI
+ingest at a time. To repair one known hour, and only one, use:
+
+```bash
+ops/docker/prod-compose --profile warehouse exec worker-warehouse \
+  python -m scripts.ooni_bulk_ingest --hour 2026-08-10T08
+```
+
+There is deliberately no `--since`, range, or automatic historical backfill.
+Each exact `raw/YYYYMMDD/HH/CC/test/` allowlisted prefix normally costs one
+unsigned S3 listing request (42 with the committed 6-country × 7-test scope),
+followed by GETs for at most 512 selected `.jsonl.gz` objects. Pagination is
+capped at four pages per scope (168 successful listing-page requests at the
+absolute ceiling). Each page/object request may retry twice after transport
+failure, so the worst-case attempt ceilings are 504 listing GETs and 1,536
+object GETs; a normal hour is 42 listings plus the objects present. The duplicate
+`.tar.gz` objects are never downloaded and redirects are refused. Manifests and
+SHA-256 checksums make a repeated hour reuse already validated local files.
+The 12 GiB run cap counts bytes consumed by failed attempts as well as successes.
+
+The raw objects/manifests stay on the private volume. Only sanitized aggregate
+counts are written to `readings/ooni-bulk-latest.json` and the bounded
+`readings/ooni-bulk-history.jsonl`; no measurement URL/input, probe identifier,
+S3 key, or local path is published.
+
+The existing nightly backup script archives the operator state root's
+`readings/` and `data/` directories. It does **not** follow a warehouse bind that
+points at `/mnt/...`. Back that volume up separately if you need a second local
+copy; do not assume the small node backup contains hundreds of gigabytes of raw
+OONI objects.
+
+### 5c. Enable the local operator API
 
 The optional read-only control plane reports process liveness, dependency
 readiness, collector freshness, and Prometheus-format metrics. It is hard-bound
@@ -444,7 +562,8 @@ $C ps                    # status
 $C logs -f worker        # follow a service
 $C restart beat worker   # restart the scheduler + index worker
 $C --profile collectors restart beat worker worker-collectors
-$C --profile collectors --profile api up -d --build   # deploy after git pull
+$C --profile warehouse restart beat worker-warehouse
+$C up -d --build            # deploy every COMPOSE_PROFILES service after git pull
 $C down                  # stop everything (volumes persist)
 
 # Emergency stop all fetching without tearing anything down:
@@ -453,8 +572,11 @@ $C exec worker touch /app/readings/state/STOP
 $C exec worker rm /app/readings/state/STOP
 ```
 
-Update flow: `git pull` on the box, then `up -d --build`. Compose recreates only
-changed services; Postgres/Redis data survive on their volumes.
+Set `COMPOSE_PROFILES` in `.env` to the installed optional topology (for
+example `collectors,warehouse,api`, adding `velocity` only when intentionally
+enabled). Update flow is then `git pull` followed by `ops/docker/prod-compose
+up -d --build`; no profiled worker is accidentally left on an old image.
+Postgres/Redis volumes and the external `/var/lib/palimpsest` state survive.
 
 ---
 
@@ -467,3 +589,10 @@ These are safe to launch without, but track them:
    making destructive or in-place column changes. Noted in `api/database.py`.
 2. **Secrets live in a `.env` on the box.** Fine for one node. If this grows to
    several, move to Hetzner's secret handling or SOPS-encrypted env in git.
+3. **OONI quota reconciliation is conservative but O(n).** The warehouse walks
+   its retained tree to prove byte usage and find abandoned partials. That is
+   fail-safe on an initially empty 1 TiB node, but will become expensive at
+   millions of objects. Before that scale, migrate to a checksummed,
+   crash-consistent usage ledger with durable pre-download reservations and a
+   controlled one-time reconciliation; never replace the scan with an
+   unverified cached counter that can undercount quota.

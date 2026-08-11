@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en" class="tk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Evidence Atlas · Palimpsest data catalog</title>
+  <meta name="description" content="Search every Palimpsest dataset by layer, collection mode, freshness, geography, source, cadence, method and license. Download current JSON and append-only histories.">
+  <link rel="canonical" href="https://palimpsest.info/data.html">
+  <link rel="alternate" type="application/json" href="https://palimpsest.info/readings/catalog.json" title="Palimpsest data catalog">
+  <link rel="alternate" type="application/ld+json" href="https://palimpsest.info/readings/catalog.jsonld" title="Palimpsest DCAT/schema.org catalog">
+  <link rel="alternate" type="application/json" href="https://palimpsest.info/datapackage.json" title="Palimpsest data package">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta property="og:site_name" content="Palimpsest">
+  <meta property="og:title" content="Evidence Atlas · Palimpsest">
+  <meta property="og:description" content="Thirty-plus public evidence streams, with their method, freshness, scope, rights and files visible in one catalog.">
+  <meta property="og:url" content="https://palimpsest.info/data.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "DataCatalog",
+    "name": "Palimpsest Evidence Atlas",
+    "description": "A machine-readable catalog of censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
+    "url": "https://palimpsest.info/data.html",
+    "publisher": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+    "isAccessibleForFree": true
+  }
+  </script>
+  <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+  <link rel="stylesheet" href="/assets/shell.css">
+  <link rel="stylesheet" href="/assets/data-catalog.css">
+</head>
+<body class="ps tk atlas">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-1">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html" aria-current="page">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main">
+  <header class="atlas-hero ps-wrap ps-wrap--wide">
+    <div class="atlas-hero__copy">
+      <p class="ps-kicker">Palimpsest · Evidence Atlas</p>
+      <h1>Find the evidence.<br><span>See how it was made.</span></h1>
+      <p class="atlas-lede">Every public signal in one machine-readable catalog: what it observes,
+        where it came from, when it last moved, what rights travel with it, and which file you can
+        download. Active, passive, derived, gated and stale are never collapsed into “available.”</p>
+      <div class="atlas-actions">
+        <a class="ps-btn" href="#datasets">Explore datasets</a>
+        <a class="ps-btn ps-btn--ghost" href="/readings/catalog.json">Catalog JSON</a>
+        <a class="ps-btn ps-btn--ghost" href="/readings/catalog.jsonld">JSON-LD</a>
+        <a class="ps-btn ps-btn--ghost" href="/datapackage.json">Data package</a>
+      </div>
+    </div>
+    <aside class="atlas-principle" aria-label="Publication boundary">
+      <p class="atlas-principle__label">Publication boundary</p>
+      <p class="atlas-principle__line"><b>Public</b><span>normalized readings, histories, methods, provenance</span></p>
+      <p class="atlas-principle__line"><b>Private</b><span>bulk raw archive, request manifests, sensitive source material</span></p>
+      <p class="atlas-principle__line"><b>Never</b><span>credentials, probe identities, private messages, inferred guilt</span></p>
+    </aside>
+  </header>
+
+  <section class="ps-wrap ps-wrap--wide atlas-summary" aria-label="Catalog summary">
+    <div class="atlas-stat"><span id="stat-datasets">—</span><small>documented datasets</small></div>
+    <div class="atlas-stat"><span id="stat-fresh">—</span><small>fresh public readings</small></div>
+    <div class="atlas-stat"><span id="stat-rows">—</span><small>published history rows</small></div>
+    <div class="atlas-stat"><span id="stat-bytes">—</span><small>public evidence files</small></div>
+    <p class="atlas-asof" id="catalog-asof" role="status">Loading catalog…</p>
+  </section>
+
+  <section class="ps-wrap ps-wrap--wide loom-section" aria-labelledby="loom-title">
+    <div class="atlas-section-head">
+      <div>
+        <p class="ps-kicker">Structure before score</p>
+        <h2 id="loom-title">The evidence loom</h2>
+      </div>
+      <p>Each thread shows what a method does to evidence. A collection can be current while its
+        conclusion abstains; a synthesis can be healthy while one input is stale. The paths remain
+        separate so those states remain visible.</p>
+    </div>
+    <div class="loom" id="loom" aria-label="Datasets arranged by evidence stage">
+      <div class="loom__head" aria-hidden="true">
+        <span>method</span><span>observe</span><span>corroborate</span><span>derive</span><span>quality</span><span>seal / archive</span>
+      </div>
+      <p class="loom__loading">Drawing evidence relationships…</p>
+    </div>
+  </section>
+
+  <section class="ps-wrap ps-wrap--wide atlas-directory" id="datasets" aria-labelledby="datasets-title">
+    <div class="atlas-section-head atlas-section-head--directory">
+      <div>
+        <p class="ps-kicker">Stable URLs · explicit rights</p>
+        <h2 id="datasets-title">Dataset directory</h2>
+      </div>
+      <p><span id="result-count">—</span> matches. Search is local to this page; no query leaves your browser. Collection target is not a publication SLA; the evidence timestamp is authoritative.</p>
+    </div>
+
+    <form class="atlas-filters" id="catalog-filters" role="search">
+      <label class="atlas-search">
+        <span>Search datasets, sources or countries</span>
+        <input id="catalog-search" type="search" autocomplete="off" placeholder="Try OONI, China, archive, model…">
+      </label>
+      <label><span>Layer</span><select id="filter-layer"><option value="">All layers</option></select></label>
+      <label><span>Collection</span><select id="filter-mode"><option value="">All modes</option></select></label>
+      <label><span>Evidence state</span><select id="filter-state"><option value="">All states</option></select></label>
+      <button type="reset" class="atlas-reset">Clear filters</button>
+    </form>
+
+    <div class="atlas-key" aria-label="Evidence state key">
+      <span><i class="state-dot state-dot--fresh"></i>fresh</span>
+      <span><i class="state-dot state-dot--stale"></i>stale / warming</span>
+      <span><i class="state-dot state-dot--gated"></i>gated / disabled</span>
+      <span><i class="state-dot state-dot--gated"></i>private node / no public distribution</span>
+      <span><i class="state-dot state-dot--pending"></i>pending / undated</span>
+    </div>
+
+    <div class="dataset-list" id="dataset-list" aria-live="polite">
+      <div class="atlas-empty">Loading the machine-readable catalog…</div>
+    </div>
+
+    <noscript>
+      <div class="atlas-empty">This explorer needs JavaScript for local filtering. Every file remains
+        directly available in the <a href="/readings/">plain readings directory</a> and
+        <a href="/readings/catalog.json">catalog JSON</a>.</div>
+    </noscript>
+  </section>
+
+  <section class="ps-wrap ps-wrap--wide atlas-contract" aria-labelledby="contract-title">
+    <p class="ps-kicker">A dataset is a contract</p>
+    <h2 id="contract-title">What every catalog record promises</h2>
+    <div class="atlas-contract__grid">
+      <article><b>01</b><h3>Provenance</h3><p>Named upstream sources, method documentation and a stable landing page.</p></article>
+      <article><b>02</b><h3>Time</h3><p>Evidence time stays separate from collection time and website deployment time.</p></article>
+      <article><b>03</b><h3>Denominator</h3><p>Headline counts travel with coverage, missingness, abstention and freshness state.</p></article>
+      <article><b>04</b><h3>Rights</h3><p>Source-specific licenses are shown per dataset; “open GitHub repo” is not treated as a license.</p></article>
+      <article><b>05</b><h3>Files</h3><p>Current JSON and append-only history are distinct distributions with predictable URLs.</p></article>
+      <article><b>06</b><h3>Limits</h3><p>Active measurement, authorization, model cost and privacy boundaries are named, not hidden.</p></article>
+    </div>
+  </section>
+</main>
+
+<footer class="atlas-footer ps-wrap ps-wrap--wide">
+  <p>Palimpsest is a free public observatory. Start with the <a href="/for-researchers.html">methods</a>,
+    use the <a href="/developers.html">API and MCP guide</a>, or inspect the
+    <a href="https://github.com/beepboop2025/palimpsest">source code</a>.</p>
+</footer>
+
+<script src="/assets/shell.js" defer></script>
+<script src="/assets/data-catalog.js" defer></script>
+</body>
+</html>

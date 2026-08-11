@@ -23,6 +23,7 @@ private accounts, or asks anyone inside China to act.
 | **China Digital Times** — main, MiniTrue (leaked directives), news feeds | Public RSS, no key | Editorially curated deletions + censorship directives, each tagged with topic categories — the selectivity/novelty backbone | English-fronted, editorial selection; a numerator without a denominator |
 | **GDELT 2.0 DOC API** | Public JSON, no key | Worldwide media volume for a term — the cross-signal that separates *containment* from *blackout* | Coverage/translation bias; topic-level only, never about individuals |
 | **Internet Archive Wayback CDX API** | Public JSON, no key | Full capture timeline (timestamp + HTTP status + content digest) of a public Chinese URL — a *retroactive* outside-the-wall observer that brackets a deletion or silent rewrite with archive-witnessed timestamps and a permanent citable snapshot on each side | Only covers URLs the Archive crawled; the deletion moment is bracketed by capture cadence, not instantaneous (reported as an explicit bracket, never a false-precise time) |
+| **OONI** — aggregation API + public bulk S3 archive | Public JSON/XML and `.jsonl.gz`, no key | Network-layer anomaly summaries plus reproducible hourly country/test aggregates from measurements OONI Probe users already submitted | OONI's volunteer vantage distribution is uneven. The opt-in bulk lane downloads one lagged hour from fixed allowlists; it never probes, contacts measurement inputs, or publishes URLs/probe identifiers |
 
 ## Confirmed-deletion archives
 
@@ -45,7 +46,6 @@ With the flag unset it is inert in every respect.
 These are not Palimpsest collectors; they are neighbours whose public data Palimpsest is built
 to complement and share back with:
 
-- **OONI** — network-layer blocking measurement.
 - **Citizen Lab** — keyword/app censorship research and forensic reports.
 - **GreatFire** — URL/keyword blocking and brand-level censorship transparency.
 - **[`paulpogoda/OSINT-Tools-China`](https://github.com/paulpogoda/OSINT-Tools-China)** — an

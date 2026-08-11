@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "source": {
+    "endpoint": "https://api.cloudflare.com/client/v4/radar/tcp_resets_timeouts/timeseries_groups",
+    "credential_env": "CLOUDFLARE_API_TOKEN",
+    "credential_file": "/run/secrets/cloudflare_radar_api_token",
+    "attribution": "Cloudflare Radar",
+    "license": "CC BY-NC 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "api_documentation_url": "https://developers.cloudflare.com/api/resources/radar/subresources/tcp_resets_timeouts/methods/timeseries_groups/",
+    "method_documentation_url": "https://developers.cloudflare.com/radar/glossary/#tcp-resets-and-timeouts"
+  },
+  "geographies": [
+    "CN",
+    "IR",
+    "MM",
+    "PK",
+    "RU",
+    "TR"
+  ],
+  "aggregation": {
+    "interval": "1h",
+    "date_range": "7d",
+    "format": "JSON",
+    "normalization": "PERCENTAGE",
+    "stages": [
+      "post_syn",
+      "post_ack",
+      "post_psh",
+      "later_in_flow",
+      "no_match"
+    ]
+  },
+  "limits": {
+    "timeout_seconds": 15,
+    "retries": 2,
+    "minimum_request_interval_seconds": 1.0,
+    "maximum_retry_delay_seconds": 8.0,
+    "max_request_attempts_per_run": 18,
+    "response_bytes": 1048576,
+    "max_points_per_geography": 200
+  }
+}

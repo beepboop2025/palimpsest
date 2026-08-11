@@ -11,6 +11,8 @@ Run the API/index worker:
     celery -A core.scheduler worker -c 2
 Run the isolated passive collector worker (when enabled):
     celery -A core.scheduler worker -Q collectors -c 2
+Run the isolated OONI bulk warehouse worker (when enabled):
+    celery -A core.scheduler worker -Q warehouse -c 2
 Run the isolated CensorWatch worker (when enabled):
     celery -A core.scheduler worker -Q censorwatch -c 2
 Run beat:
@@ -43,6 +45,11 @@ app.conf.update(
     worker_max_tasks_per_child=200,
     result_expires=24 * 3600,
     broker_transport_options={"visibility_timeout": 3600},
+    task_routes={
+        # Keep manual/retry invocation on the same isolated high-volume lane;
+        # beat entries also name the queue explicitly for auditability.
+        "core.tasks.ingest_ooni_bulk_hour": {"queue": "warehouse"},
+    },
 )
 
 # Register task modules. CensorWatch tasks are inert unless CENSORWATCH_ENABLED.
@@ -77,6 +84,10 @@ def build_beat_schedule() -> dict:
     if collectors_enabled():
         from core.collector_fleet import build_collector_schedule
         schedule.update(build_collector_schedule())
+    from core.ooni_warehouse import warehouse_enabled
+    if warehouse_enabled():
+        from core.ooni_warehouse import build_warehouse_schedule
+        schedule.update(build_warehouse_schedule())
     if is_enabled():
         try:
             from censorwatch.beat import build_censorwatch_schedule

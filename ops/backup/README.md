@@ -11,6 +11,12 @@ Work is written under `.incomplete-*` and renamed to `YYYYMMDDTHHMMSSZ` only
 after both archives validate. The job uses `flock`, so timer catch-up cannot
 overlap a manually started backup.
 
+`PALIMPSEST_ROOT` locates immutable application code and Compose configuration.
+`PALIMPSEST_STATE_ROOT` separately locates the operator-owned `readings/` and
+`data/` directories (normally `/var/lib/palimpsest`). Keeping them separate
+prevents collectors from dirtying the git checkout. The archive still uses the
+portable top-level names `readings/` and `data/` regardless of the host path.
+
 ## Install the nightly timer
 
 From `/home/deploy/palimpsest` on the node:

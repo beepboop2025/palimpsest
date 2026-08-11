@@ -29,6 +29,7 @@ require_absolute_nonroot_path() {
 }
 
 repo_root="${PALIMPSEST_ROOT:-/home/deploy/palimpsest}"
+state_root="${PALIMPSEST_STATE_ROOT:-}"
 backup_root="${PALIMPSEST_BACKUP_DIR:-/home/deploy/backups/palimpsest}"
 retention_days="${PALIMPSEST_BACKUP_RETENTION_DAYS:-14}"
 minimum_free_mb="${PALIMPSEST_BACKUP_MIN_FREE_MB:-1024}"
@@ -54,12 +55,19 @@ done
 [[ -d "$repo_root" ]] || die "repository does not exist: $repo_root"
 repo_root="$(cd "$repo_root" && pwd -P)"
 require_absolute_nonroot_path PALIMPSEST_ROOT "$repo_root"
+if [[ -z "$state_root" ]]; then
+  state_root="$repo_root"
+fi
+require_absolute_nonroot_path PALIMPSEST_STATE_ROOT "$state_root"
+[[ -d "$state_root" ]] || die "state root does not exist: $state_root"
+state_root="$(cd "$state_root" && pwd -P)"
+require_absolute_nonroot_path PALIMPSEST_STATE_ROOT "$state_root"
 compose_file="$repo_root/ops/docker/docker-compose.prod.yml"
 compose_env="$repo_root/ops/docker/.env"
 [[ -r "$compose_file" ]] || die "Compose file is not readable: $compose_file"
 [[ -r "$compose_env" ]] || die "production env is not readable: $compose_env"
-[[ -d "$repo_root/readings" ]] || die "readings directory is missing"
-[[ -d "$repo_root/data" ]] || die "data directory is missing"
+[[ -d "$state_root/readings" ]] || die "readings directory is missing from state root"
+[[ -d "$state_root/data" ]] || die "data directory is missing from state root"
 
 mkdir -p -- "$backup_root"
 backup_root="$(cd "$backup_root" && pwd -P)"
@@ -67,6 +75,9 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 [[ "$backup_root" != "$repo_root" ]] || die "backup directory cannot be the repository"
 [[ "$backup_root/" != "$repo_root/"* ]] || \
   die "backup directory cannot live inside the repository"
+[[ "$backup_root" != "$state_root" ]] || die "backup directory cannot equal the state root"
+[[ "$backup_root/" != "$state_root/"* && "$state_root/" != "$backup_root/"* ]] || \
+  die "backup directory and state root must not contain one another"
 
 exec 9>"$backup_root/.backup.lock"
 flock -n 9 || die "another backup is already running"
@@ -123,7 +134,7 @@ log "validating the PostgreSQL archive with pg_restore --list"
 
 log "archiving readings/ and data/"
 tar --create --gzip --file "$staging_dir/artifacts.tar.gz" \
-  --directory "$repo_root" -- readings data
+  --directory "$state_root" -- readings data
 tar --list --gzip --file "$staging_dir/artifacts.tar.gz" \
   >"$staging_dir/artifacts.list"
 [[ -s "$staging_dir/artifacts.list" ]] || die "artifact archive listing is empty"

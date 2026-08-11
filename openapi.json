@@ -16,16 +16,41 @@
         "type": "object",
         "description": "A published reading whose exact fields depend on the named instrument.",
         "additionalProperties": true
+      },
+      "DataCatalog": {
+        "type": "object",
+        "description": "The Evidence Atlas catalog with provenance, rights, cadence, freshness and distribution metadata.",
+        "required": ["schema", "generated_at", "summary", "datasets"],
+        "additionalProperties": true
       }
     },
     "responses": {
       "Reading": {
         "description": "Published JSON reading",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Reading"}}}
+      },
+      "DataCatalog": {
+        "description": "Published machine-readable dataset catalog",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DataCatalog"}}}
       }
     }
   },
   "paths": {
+    "/readings/catalog.json": {"get": {
+      "operationId": "getEvidenceAtlasCatalog",
+      "summary": "Discover every documented dataset, its provenance, freshness, rights and files",
+      "responses": {"200": {"$ref": "#/components/responses/DataCatalog"}}
+    }},
+    "/readings/catalog.jsonld": {"get": {
+      "operationId": "getEvidenceAtlasJsonLd",
+      "summary": "Discover available datasets as schema.org/DCAT JSON-LD",
+      "responses": {"200": {"description": "JSON-LD data catalog", "content": {"application/ld+json": {"schema": {"type": "object", "additionalProperties": true}}}}}
+    }},
+    "/datapackage.json": {"get": {
+      "operationId": "getEvidenceDataPackage",
+      "summary": "Discover currently available files as a Frictionless-style data package",
+      "responses": {"200": {"description": "Data package", "content": {"application/json": {"schema": {"type": "object", "additionalProperties": true}}}}}
+    }},
     "/readings/board-alarm-latest.json": {"get": {
       "operationId": "getCensorshipBoardAlarm",
       "summary": "Read the cross-signal board verdict and multiplicity-aware alarm state",

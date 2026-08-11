@@ -2,8 +2,8 @@
 
 The canonical website is still published by the public GitHub workflows.  This
 module serves a different purpose: keep a durable Hetzner measurement node
-collecting between those publication runs.  Only keyless, read-only,
-vantage-insensitive sources are admitted here.  Active probing, browser-based
+collecting between those publication runs.  Only keyless or explicitly gated,
+read-only, vantage-insensitive sources are admitted here. Active probing, browser-based
 CensorWatch, and model-API readings remain on their separately gated paths.
 
 Two profiles are available:
@@ -97,6 +97,8 @@ SNAPSHOT_OUTPUTS = {
     "cny-fix-gap": "readings/cny-fix-gap-latest.json",
     "blocklist": "readings/blocklist-latest.json",
     "believability": "readings/believability-latest.json",
+    "cloudflare-radar-tcp": "readings/cloudflare-radar-tcp-latest.json",
+    "research-corpus": "readings/research-corpus-latest.json",
 }
 
 
@@ -133,6 +135,12 @@ _STANDARD = {
     "believability": Cadence(
         43, 6, day_of_month=18, expires_s=3 * 24 * 3600,
         interval_s=31 * 24 * 3600, grace_s=9 * 24 * 3600,
+    ),
+    "cloudflare-radar-tcp": Cadence(
+        49, "*/3", expires_s=2 * 3600, interval_s=3 * 3600,
+    ),
+    "research-corpus": Cadence(
+        31, "*/12", expires_s=8 * 3600, interval_s=12 * 3600,
     ),
 }
 
@@ -174,12 +182,26 @@ _VIGOROUS = {
         43, 6, day_of_month=18, expires_s=3 * 24 * 3600,
         interval_s=31 * 24 * 3600, grace_s=9 * 24 * 3600,
     ),
+    "cloudflare-radar-tcp": Cadence(
+        49, "*", expires_s=45 * 60, interval_s=3600,
+    ),
+    "research-corpus": Cadence(
+        31, "*/6", expires_s=4 * 3600, interval_s=6 * 3600,
+    ),
 }
 
 
 _ACTIVE = {
-    "standard": Cadence(47, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "vigorous": Cadence(47, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
+    # The canonical GitHub publication run starts at :41 on 00/06/12/18 UTC.
+    # One current panel consumes 176 of Globalping's 250 hourly probe credits,
+    # so a second full run in the same rolling hour cannot fit. Keep this node's
+    # independently gated rounds on odd UTC hours instead of racing that job.
+    "standard": Cadence(
+        47, "1,7,13,19", expires_s=4 * 3600, interval_s=6 * 3600,
+    ),
+    "vigorous": Cadence(
+        47, "1-23/2", expires_s=90 * 60, interval_s=2 * 3600,
+    ),
 }
 
 
@@ -195,6 +217,13 @@ def active_probes_enabled() -> bool:
     active = os.getenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "").strip().lower()
     live = os.getenv("PALIMPSEST_LIVE", "").strip().lower()
     return active in _TRUTHY and live in _TRUTHY
+
+
+def cloudflare_radar_enabled() -> bool:
+    """Schedule the token-gated passive feed only after an explicit opt-in."""
+
+    enabled = os.getenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", "").strip().lower()
+    return enabled in _TRUTHY
 
 
 def collection_profile() -> str:
@@ -245,6 +274,8 @@ def _head_cadence(profile: str) -> Cadence:
 
 def _effective_cadences(profile: str) -> dict[str, Cadence]:
     cadences = dict(_VIGOROUS if profile == "vigorous" else _STANDARD)
+    if not cloudflare_radar_enabled():
+        cadences.pop("cloudflare-radar-tcp", None)
     if active_probes_enabled():
         cadences["inside-view"] = _ACTIVE[profile]
     return cadences
@@ -321,6 +352,8 @@ _COUNT_PATHS = {
     "data-darkness": ("n_series_reporting",),
     "blocklist": ("n_additions",),
     "believability": ("n_components_present",),
+    "cloudflare-radar-tcp": ("geographies",),
+    "research-corpus": ("n_sources",),
 }
 
 
@@ -340,6 +373,8 @@ def _observation(path: Path, source: str | None = None) -> tuple[str | None, int
     if _COUNT_PATHS.get(source or ""):
         if isinstance(current, (int, float)) and not isinstance(current, bool):
             return str(token) if token is not None else None, int(current)
+        if isinstance(current, (list, dict)):
+            return str(token) if token is not None else None, len(current)
     count_fields = (
         "n_observations",
         "n_measurements",
@@ -440,6 +475,18 @@ def _invoke_snapshot(name: str, root: Path) -> None:
     elif name == "believability":
         from scripts.believability_pull import main
         main()
+    elif name == "cloudflare-radar-tcp":
+        from scripts.cloudflare_radar_tcp_pull import main
+
+        code = main([])
+        if code:
+            raise RuntimeError("Cloudflare Radar TCP collector failed")
+    elif name == "research-corpus":
+        from scripts.research_corpus_ingest import main
+
+        code = main(["--readings", str(root / "readings")])
+        if code:
+            raise RuntimeError("research-corpus collector failed")
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 

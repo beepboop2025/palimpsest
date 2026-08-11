@@ -11,7 +11,9 @@ name: Refresh Inside View signal
 # PALIMPSEST_LIVE is set here deliberately rather than gated behind a secret.
 # The other live-gated collectors probe from OUR egress, which is what that gate
 # protects; this one does not. What it consumes is Globalping's public credit
-# budget (250/hour unauthenticated), and one round costs well under that.
+# budget (250/hour unauthenticated), and one current round costs 176 credits.
+# Hetzner's independently gated schedule runs on different UTC hours so two
+# full rounds do not collide inside the same rolling-hour budget.
 
 on:
   schedule:

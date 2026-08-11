@@ -7,14 +7,20 @@
 # private compose network, never on the host.
 #
 # Optional pieces are behind compose profiles so the base `up` stays lean:
+#   --profile warehouse adds the bounded OONI bulk worker
 #   --profile velocity  adds the CensorWatch (Playwright) worker
 #   --profile api       adds the FastAPI service on a localhost-only port
 #
 # Usage:
-#   docker compose -f ops/docker/docker-compose.prod.yml up -d --build
-#   docker compose -f ops/docker/docker-compose.prod.yml --profile collectors up -d --build
-#   docker compose -f ops/docker/docker-compose.prod.yml --profile velocity up -d --build
-#   docker compose -f ops/docker/docker-compose.prod.yml --profile api up -d --build
+#   ops/docker/prod-compose up -d --build
+#   ops/docker/prod-compose --profile collectors up -d --build
+#   ops/docker/prod-compose --profile warehouse up -d --build
+#   ops/docker/prod-compose --profile velocity up -d --build
+#   ops/docker/prod-compose --profile api up -d --build
+#
+# The wrapper supplies ops/docker/.env to both Compose interpolation and the
+# container env_file. Running the long `docker compose -f ...` form from the
+# repository root without `--env-file ops/docker/.env` is not equivalent.
 
 # Keep the project name stable across interactive deploys and systemd jobs. An
 # explicit `-p`/COMPOSE_PROJECT_NAME still overrides this when an operator needs
@@ -58,11 +64,15 @@ x-app: &app
     PALIMPSEST_ALERT_WEBHOOK_URL: ${PALIMPSEST_ALERT_WEBHOOK_URL:-}
     PALIMPSEST_ACTIVE_PROBES_ENABLED: ${PALIMPSEST_ACTIVE_PROBES_ENABLED:-0}
     PALIMPSEST_LIVE: ${PALIMPSEST_LIVE:-0}
+    PALIMPSEST_OONI_BULK_ENABLED: ${PALIMPSEST_OONI_BULK_ENABLED:-0}
+    PALIMPSEST_OONI_WAREHOUSE_DIR: ${PALIMPSEST_OONI_WAREHOUSE_DIR:-/app/data/ooni-bulk}
   # Bind the repo's readings/ and private data/ so durable state survives image
-  # rebuilds. The application root stays read-only.
+  # rebuilds. Production points these variables at operator-owned paths outside
+  # the git checkout; the relative fallbacks keep local development convenient.
+  # The application root stays read-only.
   volumes:
-    - ../../readings:/app/readings:rw
-    - ../../data:/app/data:rw
+    - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:rw
+    - ${PALIMPSEST_DATA_HOST_PATH:-../../data}:/app/data:rw
   read_only: true
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
@@ -178,12 +188,42 @@ services:
     profiles: ["collectors"]
     depends_on: *runtime-depends
     command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "collectors", "--prefetch-multiplier=1", "-n", "collectors@%h"]
+    secrets:
+      - cloudflare_radar_api_token
     mem_limit: 1536m
     memswap_limit: 1536m
     pids_limit: 256
     cpus: 1.5
     healthcheck:
       test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"collectors@$$HOSTNAME\" --timeout 5 | grep -q pong"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+  # --- opt-in OONI bulk warehouse ----------------------------------------
+  # One process owns the high-volume lane.  The nested bind mount can point at
+  # the Hetzner volume while the safe local default remains under repo data/.
+  # There are no ports and no AWS credentials: this worker performs unsigned,
+  # read-only S3 listing/downloads and publishes aggregate readings only.
+  worker-warehouse:
+    <<: *app
+    profiles: ["warehouse"]
+    depends_on: *runtime-depends
+    # One slot may spend most of an hour streaming an archive. The second is
+    # reserved for the minute heartbeat/control path; the Redis lease in the
+    # task still permits only one OONI ingest to run at a time.
+    command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "warehouse", "--prefetch-multiplier=1", "-n", "warehouse@%h"]
+    volumes:
+      - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:rw
+      - ${PALIMPSEST_OONI_WAREHOUSE_HOST_PATH:-../../data/ooni-bulk}:/app/data/ooni-bulk:rw
+    stop_grace_period: 120s
+    mem_limit: 2048m
+    memswap_limit: 2048m
+    pids_limit: 256
+    cpus: 2.0
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"warehouse@$$HOSTNAME\" --timeout 5 | grep -q pong"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -216,8 +256,8 @@ services:
     depends_on: *runtime-depends
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     volumes:
-      - ../../readings:/app/readings:ro
-      - ../../data:/app/data:ro
+      - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:ro
+      - ${PALIMPSEST_DATA_HOST_PATH:-../../data}:/app/data:ro
     mem_limit: 512m
     memswap_limit: 512m
     pids_limit: 128
@@ -234,3 +274,9 @@ services:
 volumes:
   pgdata:
   redisdata:
+
+secrets:
+  # The committed default is intentionally empty. To enable Radar, point this
+  # variable at a chmod-600 host file and set the separate schedule flag.
+  cloudflare_radar_api_token:
+    file: ${PALIMPSEST_CLOUDFLARE_TOKEN_FILE:-./cloudflare-radar-token.disabled}

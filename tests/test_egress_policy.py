@@ -120,6 +120,12 @@ _ALLOWED = {
     "collectors/ooni_gfw.py":
         "GET the OONI aggregation API; caller-set read cap plus a 429 backoff loop that any "
         "migration must preserve — the retry is politeness, not decoration.",
+    "collectors/ooni_bulk.py":
+        "Unsigned GET-only access to the fixed public ooni-data-eu-fra S3 hostname. It lists "
+        "only exact allowlisted hourly country/test prefixes and streams only .jsonl.gz "
+        "objects through response/object/run, decompression, quota, and free-space caps; "
+        "redirects are disabled. The buffered safe_fetch API cannot provide the required "
+        "atomic streaming-to-disk contract for multi-gigabyte objects.",
     "collectors/stock_connect.py":
         "GET the HKEX daily-statistics file; plain migration candidate — uncapped body read.",
     "collectors/wayback_vantage.py":

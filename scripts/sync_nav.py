@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Static pages, and the site-absolute path each one is served at.
 PAGES = {
     "index.html": "/",
+    "data.html": "/data.html",
     "osint-china.html": "/osint-china.html",
     "china-brief.html": "/china-brief.html",
     "readings/generative-firewall-index.html": "/readings/generative-firewall-index.html",

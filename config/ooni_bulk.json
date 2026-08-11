@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "source": {
+    "bucket": "ooni-data-eu-fra",
+    "endpoint": "https://ooni-data-eu-fra.s3.amazonaws.com",
+    "key_prefix": "raw"
+  },
+  "countries": [
+    "CN",
+    "IR",
+    "MM",
+    "PK",
+    "RU",
+    "TR"
+  ],
+  "tests": [
+    "webconnectivity",
+    "telegram",
+    "whatsapp",
+    "signal",
+    "tor",
+    "psiphon",
+    "riseupvpn"
+  ],
+  "lag_hours": 3,
+  "limits": {
+    "listing_response_bytes": 4194304,
+    "listing_pages_per_scope": 4,
+    "max_objects_per_run": 512,
+    "object_bytes": 2147483648,
+    "run_bytes": 12884901888,
+    "uncompressed_object_bytes": 17179869184,
+    "json_line_bytes": 67108864,
+    "source_quota_bytes": 824633720832,
+    "free_space_reserve_bytes": 137438953472,
+    "history_entries": 2160,
+    "network_timeout_seconds": 120,
+    "network_retries": 2
+  }
+}

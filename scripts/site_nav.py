@@ -112,7 +112,7 @@ NAV = [
             },
         ],
     },
-    {"label": "Data", "href": "/for-researchers.html"},
+    {"label": "Data", "href": "/data.html"},
     {"label": "Developers", "href": "/developers.html"},
     {"label": "Fund", "href": "/fund.html"},
 ]
@@ -200,7 +200,7 @@ def render(current: str = "") -> str:
         pid = f"ps-fly-{i}"
         within = ' data-within=""' if _within(item, current) else ""
         wide = " ps-flyout--wide" if len(item["columns"]) > 1 else ""
-        out.append(f'    <div class="ps-nav__item">')
+        out.append('    <div class="ps-nav__item">')
         out.append(
             f'      <button class="ps-nav__link" type="button" aria-expanded="false" '
             f'aria-controls="{pid}"{within}>{_esc(item["label"])}'

@@ -1,0 +1,1775 @@
+{
+  "schema": "palimpsest-data-catalog/v1",
+  "generated_at": "2026-08-11T12:18:23.134164Z",
+  "id": "palimpsest-evidence-atlas",
+  "name": "Palimpsest Evidence Atlas",
+  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
+  "cadence_semantics": "Dataset cadence is the intended collection target, not a guaranteed website publication interval; artifact timestamps and evidence_state are authoritative.",
+  "publisher": "Palimpsest",
+  "homepage": "https://palimpsest.info/data.html",
+  "contact": "desk@palimpsest.info",
+  "summary": {
+    "datasets": 36,
+    "states": {
+      "disabled": 1,
+      "fresh": 27,
+      "gated": 4,
+      "pending": 1,
+      "private-node": 1,
+      "stale": 1,
+      "warming": 1
+    },
+    "layers": {
+      "content": 8,
+      "cross-layer": 6,
+      "integrity": 1,
+      "model": 3,
+      "network": 10,
+      "platform": 3,
+      "state": 5
+    },
+    "published_bytes": 1433159,
+    "history_rows": 2442
+  },
+  "datasets": [
+    {
+      "id": "ddti",
+      "name": "Domestic Discourse Tightening Index",
+      "description": "Ranks topics receiving censor attention in China Digital Times' curated deletion and directive feeds; it measures attention allocation, not a population deletion rate.",
+      "layer": "content",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT3H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "China Digital Times"
+      ],
+      "latest": "readings/ddti-latest.json",
+      "history": "readings/ddti-history.jsonl",
+      "landing_page": "dashboards/ddti_observatory.html",
+      "method": "docs/METHODOLOGY.md",
+      "count_fields": [
+        "n_observations",
+        "n_terms"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest code and derived fields; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:38:12.890800Z",
+        "age_seconds": 16810,
+        "counts": {
+          "n_observations": 81,
+          "n_terms": 190
+        },
+        "latest_bytes": 23093,
+        "history_bytes": 40461,
+        "history_rows": 251,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/ddti-latest.json",
+        "history": "https://palimpsest.info/readings/ddti-history.jsonl",
+        "landing_page": "https://palimpsest.info/dashboards/ddti_observatory.html",
+        "method": "https://palimpsest.info/docs/METHODOLOGY.md"
+      }
+    },
+    {
+      "id": "ooni-gfw",
+      "name": "OONI Great Firewall signal",
+      "description": "Windowed China blocking rates from openly published OONI measurements, with denominators and per-test evidence kept visible.",
+      "layer": "network",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT2H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "OONI"
+      ],
+      "latest": "readings/ooni-gfw-latest.json",
+      "history": "readings/ooni-gfw-history.jsonl",
+      "landing_page": "readings/ooni-gfw.html",
+      "method": "docs/MEASURING-GFW-DNS-INJECTION.md",
+      "count_fields": [
+        "n_measurements",
+        "n_tests_with_data"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:42:10.135979Z",
+        "age_seconds": 16572,
+        "counts": {
+          "n_measurements": 242714,
+          "n_tests_with_data": 6
+        },
+        "latest_bytes": 6128,
+        "history_bytes": 20974,
+        "history_rows": 133,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+        "history": "https://palimpsest.info/readings/ooni-gfw-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/ooni-gfw.html",
+        "method": "https://palimpsest.info/docs/MEASURING-GFW-DNS-INJECTION.md"
+      }
+    },
+    {
+      "id": "ooni-bulk",
+      "name": "OONI bulk evidence warehouse",
+      "description": "Hourly, country- and test-scoped replication of OONI JSONL evidence with byte budgets, checksums, resumable manifests, and privacy-minimized public rollups.",
+      "layer": "network",
+      "stage": "archive",
+      "collection_mode": "passive-bulk",
+      "status": "private-node",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "sources": [
+        "OONI Open Data on AWS"
+      ],
+      "latest": "readings/ooni-bulk-latest.json",
+      "history": "readings/ooni-bulk-history.jsonl",
+      "landing_page": "data.html#dataset-ooni-bulk",
+      "method": "docs/HETZNER-NODE-ARCHITECTURE.md",
+      "count_fields": [
+        "measurements",
+        "objects",
+        "compressed_bytes"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      },
+      "artifacts": {
+        "evidence_state": "private-node",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/ooni-bulk-latest.json",
+        "history": "https://palimpsest.info/readings/ooni-bulk-history.jsonl",
+        "landing_page": "https://palimpsest.info/data.html#dataset-ooni-bulk",
+        "method": "https://palimpsest.info/docs/HETZNER-NODE-ARCHITECTURE.md"
+      }
+    },
+    {
+      "id": "inside-view",
+      "name": "Inside View",
+      "description": "Controlled DNS comparisons from consented Globalping cloud probes in mainland China against independent control locations.",
+      "layer": "network",
+      "stage": "observation",
+      "collection_mode": "active-consented",
+      "status": "gated",
+      "cadence": "PT2H",
+      "geography": [
+        "CN",
+        "DE",
+        "NL"
+      ],
+      "sources": [
+        "Globalping",
+        "Team Cymru"
+      ],
+      "latest": "readings/inside-view-latest.json",
+      "history": "readings/inside-view-history.jsonl",
+      "landing_page": "readings/inside-view.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "panel_size",
+        "n_censored_answered",
+        "n_censored_blocked"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest output; provider terms apply",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": "2026-08-11T07:49:24.591431Z",
+        "age_seconds": 16138,
+        "counts": {
+          "panel_size": 11,
+          "n_censored_answered": 5,
+          "n_censored_blocked": 5
+        },
+        "latest_bytes": 69720,
+        "history_bytes": 3471,
+        "history_rows": 23,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/inside-view-latest.json",
+        "history": "https://palimpsest.info/readings/inside-view-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/inside-view.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "cloudflare-radar-tcp",
+      "name": "Cloudflare passive TCP telemetry",
+      "description": "Country-level reset and timeout stage distributions from Cloudflare's passive network sample; useful for corroboration, never treated as causal proof of censorship.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive-upstream",
+      "status": "gated",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "sources": [
+        "Cloudflare Radar"
+      ],
+      "latest": "readings/cloudflare-radar-tcp-latest.json",
+      "history": "readings/cloudflare-radar-tcp-history.jsonl",
+      "landing_page": "data.html#dataset-cloudflare-radar-tcp",
+      "method": "docs/CLOUDFLARE-RADAR-TCP.md",
+      "count_fields": [
+        "geographies"
+      ],
+      "license": {
+        "name": "CC BY-NC 4.0",
+        "url": "https://creativecommons.org/licenses/by-nc/4.0/"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/cloudflare-radar-tcp-latest.json",
+        "history": "https://palimpsest.info/readings/cloudflare-radar-tcp-history.jsonl",
+        "landing_page": "https://palimpsest.info/data.html#dataset-cloudflare-radar-tcp",
+        "method": "https://palimpsest.info/docs/CLOUDFLARE-RADAR-TCP.md"
+      }
+    },
+    {
+      "id": "in-path-interference",
+      "name": "In-path interference",
+      "description": "OONI-derived middlebox rewriting and transport anomaly families kept separate from reachability and execution failures.",
+      "layer": "network",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT2H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "OONI"
+      ],
+      "latest": "readings/in-path-interference-latest.json",
+      "history": "readings/in-path-interference-history.jsonl",
+      "landing_page": "readings/in-path-interference.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:44:12.309620Z",
+        "age_seconds": 16450,
+        "counts": {},
+        "latest_bytes": 4226,
+        "history_bytes": 5792,
+        "history_rows": 44,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/in-path-interference-latest.json",
+        "history": "https://palimpsest.info/readings/in-path-interference-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/in-path-interference.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "censored-planet",
+      "name": "Censored Planet side-channel",
+      "description": "Independent longitudinal Internet-wide interference rates and alert events from the Censored Planet observatory.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Censored Planet"
+      ],
+      "latest": "readings/censored-planet-latest.json",
+      "history": "readings/censored-planet-history.jsonl",
+      "landing_page": "readings/ooni-gfw.html",
+      "method": "docs/CENSORED-PLANET-INGEST.md",
+      "count_fields": [
+        "series_points",
+        "n_events"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest publishes attribution and provenance",
+        "url": "https://censoredplanet.org/data/raw"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T06:30:44.958713Z",
+        "age_seconds": 20858,
+        "counts": {
+          "series_points": 70,
+          "n_events": 0
+        },
+        "latest_bytes": 3377,
+        "history_bytes": 2447,
+        "history_rows": 24,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/censored-planet-latest.json",
+        "history": "https://palimpsest.info/readings/censored-planet-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/ooni-gfw.html",
+        "method": "https://palimpsest.info/docs/CENSORED-PLANET-INGEST.md"
+      }
+    },
+    {
+      "id": "ioda-outages",
+      "name": "IODA outage evidence",
+      "description": "Independent BGP, active-probing, and telescope outage events used to distinguish censorship from wider connectivity loss.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT2H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Georgia Tech IODA"
+      ],
+      "latest": "readings/ioda-outages-latest.json",
+      "history": "readings/ioda-outages-history.jsonl",
+      "landing_page": "readings/index.html#network",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [],
+      "license": {
+        "name": "Upstream terms; Palimpsest derived output MIT",
+        "url": "https://ioda.inetintel.cc.gatech.edu/"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:43:31Z",
+        "age_seconds": 16492,
+        "counts": {},
+        "latest_bytes": 668,
+        "history_bytes": 12922,
+        "history_rows": 91,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/ioda-outages-latest.json",
+        "history": "https://palimpsest.info/readings/ioda-outages-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#network",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "net4people",
+      "name": "net4people event stream",
+      "description": "Recent, publicly discussed censorship and circumvention events extracted from the net4people research forum.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "net4people/bbs"
+      ],
+      "latest": "readings/net4people-latest.json",
+      "history": "readings/net4people-history.jsonl",
+      "landing_page": "readings/index.html#network",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_recent",
+        "n_blocking",
+        "n_circumvention"
+      ],
+      "license": {
+        "name": "Repository and contributor terms apply",
+        "url": "https://github.com/net4people/bbs"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T02:48:39.340173Z",
+        "age_seconds": 34183,
+        "counts": {
+          "n_recent": 7,
+          "n_blocking": 1,
+          "n_circumvention": 1
+        },
+        "latest_bytes": 7157,
+        "history_bytes": 2448,
+        "history_rows": 17,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/net4people-latest.json",
+        "history": "https://palimpsest.info/readings/net4people-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#network",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "circumvention-demand",
+      "name": "Circumvention demand",
+      "description": "Tor usage telemetry used as a demand-side cross-check, with transport changes retained as context rather than causal proof.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Tor Metrics"
+      ],
+      "latest": "readings/circumvention-demand-latest.json",
+      "history": "readings/circumvention-demand-history.jsonl",
+      "landing_page": "readings/index.html#network",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "CC0 source data",
+        "url": "https://metrics.torproject.org/collector.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T06:04:33Z",
+        "age_seconds": 22430,
+        "counts": {
+          "history_days": 407
+        },
+        "latest_bytes": 1075,
+        "history_bytes": 116983,
+        "history_rows": 407,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/circumvention-demand-latest.json",
+        "history": "https://palimpsest.info/readings/circumvention-demand-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#network",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "vantage-fusion",
+      "name": "Vantage fusion interval",
+      "description": "Fuses OONI, Censored Planet, and event evidence into an uncertainty interval; it refuses to publish a false point estimate when vantages diverge.",
+      "layer": "network",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest derived from OONI, Censored Planet, net4people"
+      ],
+      "latest": "readings/vantage-fusion-latest.json",
+      "history": "readings/vantage-fusion-history.jsonl",
+      "landing_page": "data.html#dataset-vantage-fusion",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [],
+      "license": {
+        "name": "Mixed upstream licenses; see component datasets",
+        "url": "https://palimpsest.info/for-researchers.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:58:13.867222Z",
+        "age_seconds": 15609,
+        "counts": {},
+        "latest_bytes": 2093,
+        "history_bytes": 517,
+        "history_rows": 3,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/vantage-fusion-latest.json",
+        "history": "https://palimpsest.info/readings/vantage-fusion-history.jsonl",
+        "landing_page": "https://palimpsest.info/data.html#dataset-vantage-fusion",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "weibo-hotsearch",
+      "name": "Weibo allowed-attention denominator",
+      "description": "Archived hot-search boards provide the visible-attention denominator needed to avoid treating topic popularity as deletion pressure.",
+      "layer": "content",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Public Weibo hot-search archive"
+      ],
+      "latest": "readings/weibo-hotsearch-latest.json",
+      "history": "readings/weibo-hotsearch-history.jsonl",
+      "landing_page": "readings/index.html#content",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "board_entries",
+        "ddti_terms_joined"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "stale",
+        "observed_at": "2026-08-11T07:50:19Z",
+        "age_seconds": 16084,
+        "counts": {
+          "board_entries": 2411,
+          "ddti_terms_joined": 0
+        },
+        "latest_bytes": 7089,
+        "history_bytes": 24810,
+        "history_rows": 90,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+        "history": "https://palimpsest.info/readings/weibo-hotsearch-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "gdelt",
+      "name": "GDELT cross-signal",
+      "description": "Compares topics drawing domestic censor attention with global news coverage and abstains when the global denominator is unavailable.",
+      "layer": "content",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT3H",
+      "geography": [
+        "GLOBAL",
+        "CN"
+      ],
+      "sources": [
+        "GDELT"
+      ],
+      "latest": "readings/gdelt-latest.json",
+      "history": "readings/gdelt-history.jsonl",
+      "landing_page": "readings/index.html#content",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_terms",
+        "n_with_global_data",
+        "n_blackout",
+        "n_containment"
+      ],
+      "license": {
+        "name": "GDELT source terms; Palimpsest derived output MIT",
+        "url": "https://www.gdeltproject.org/"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:58:41.047938Z",
+        "age_seconds": 15582,
+        "counts": {
+          "n_terms": 25,
+          "n_with_global_data": 7,
+          "n_blackout": 0,
+          "n_containment": 7
+        },
+        "latest_bytes": 6720,
+        "history_bytes": 22756,
+        "history_rows": 143,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/gdelt-latest.json",
+        "history": "https://palimpsest.info/readings/gdelt-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "github-refuge",
+      "name": "GitHub as refuge",
+      "description": "Watches a bounded public repository panel for disappearance and pressure events without equating an API failure with removal.",
+      "layer": "content",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GitHub public repositories"
+      ],
+      "latest": "readings/github-refuge-latest.json",
+      "history": "readings/github-refuge-history.jsonl",
+      "landing_page": "readings/index.html#content",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_watched",
+        "n_present",
+        "n_pressure_events"
+      ],
+      "license": {
+        "name": "Repository-specific upstream licenses",
+        "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T02:38:03.432101Z",
+        "age_seconds": 34819,
+        "counts": {
+          "n_watched": 7,
+          "n_present": 7,
+          "n_pressure_events": 1
+        },
+        "latest_bytes": 3742,
+        "history_bytes": 9029,
+        "history_rows": 70,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/github-refuge-latest.json",
+        "history": "https://palimpsest.info/readings/github-refuge-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "research-corpus",
+      "name": "Public research-corpus ledger",
+      "description": "Tracks exact default-branch commit cursors and aggregate Git ref counts for five censorship-research repositories without republishing notice bodies, affected identifiers, URL test targets, keyword lists, or routing rules.",
+      "layer": "content",
+      "stage": "source-metadata",
+      "collection_mode": "passive-upstream",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "github/gov-takedowns",
+        "github/dmca",
+        "citizenlab/test-lists",
+        "citizenlab/chat-censorship",
+        "gfwlist/gfwlist"
+      ],
+      "latest": "readings/research-corpus-latest.json",
+      "history": "readings/research-corpus-history.jsonl",
+      "landing_page": "data.html#dataset-research-corpus",
+      "method": "docs/RESEARCH-CORPUS-INGEST.md",
+      "count_fields": [
+        "n_sources",
+        "n_changed",
+        "n_unchanged"
+      ],
+      "license": {
+        "name": "Metadata-only aggregate; repository-specific upstream licenses",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/docs/RESEARCH-CORPUS-INGEST.md"
+      },
+      "artifacts": {
+        "evidence_state": "pending",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/research-corpus-latest.json",
+        "history": "https://palimpsest.info/readings/research-corpus-history.jsonl",
+        "landing_page": "https://palimpsest.info/data.html#dataset-research-corpus",
+        "method": "https://palimpsest.info/docs/RESEARCH-CORPUS-INGEST.md"
+      }
+    },
+    {
+      "id": "wayback",
+      "name": "Wayback reconstruction",
+      "description": "Reconstructs prior public states for watched URLs and separates deletion, mutation, reachability, and archival absence.",
+      "layer": "content",
+      "stage": "archive",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive CDX"
+      ],
+      "latest": "readings/wayback-latest.json",
+      "history": "readings/wayback-history.jsonl",
+      "landing_page": "readings/index.html#content",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_watched",
+        "n_deletions",
+        "n_mutations",
+        "n_reachable"
+      ],
+      "license": {
+        "name": "Internet Archive terms; Palimpsest metadata MIT",
+        "url": "https://archive.org/about/terms.php"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T02:33:23.604399Z",
+        "age_seconds": 35099,
+        "counts": {
+          "n_watched": 4,
+          "n_deletions": 0,
+          "n_mutations": 0,
+          "n_reachable": 2
+        },
+        "latest_bytes": 1453,
+        "history_bytes": 7380,
+        "history_rows": 60,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/wayback-latest.json",
+        "history": "https://palimpsest.info/readings/wayback-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "app-storefront",
+      "name": "App Storefront panel",
+      "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
+      "layer": "platform",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT2H",
+      "geography": [
+        "CN",
+        "US"
+      ],
+      "sources": [
+        "Apple iTunes Search API"
+      ],
+      "latest": "readings/app-storefront-latest.json",
+      "history": "readings/app-storefront-history.jsonl",
+      "landing_page": "readings/app-store.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "panel_size",
+        "n_tracked",
+        "n_delisted"
+      ],
+      "license": {
+        "name": "Apple service terms; Palimpsest derived output MIT",
+        "url": "https://www.apple.com/legal/internet-services/itunes/"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T08:02:16.410643Z",
+        "age_seconds": 15366,
+        "counts": {
+          "panel_size": 12,
+          "n_tracked": 10,
+          "n_delisted": 6
+        },
+        "latest_bytes": 3519,
+        "history_bytes": 428,
+        "history_rows": 2,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/app-storefront-latest.json",
+        "history": "https://palimpsest.info/readings/app-storefront-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/app-store.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "apple-censorship",
+      "name": "AppleCensorship country corpus",
+      "description": "Country-level app availability composition and peer comparison from GreatFire's public AppleCensorship corpus.",
+      "layer": "platform",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire AppleCensorship"
+      ],
+      "latest": "readings/apple-censorship-latest.json",
+      "history": "readings/apple-censorship-history.jsonl",
+      "landing_page": "readings/app-store.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "country.total_tested"
+      ],
+      "license": {
+        "name": "Upstream terms; Palimpsest attribution required",
+        "url": "https://applecensorship.com/"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T06:29:14.249571Z",
+        "age_seconds": 20948,
+        "counts": {
+          "country.total_tested": 108818
+        },
+        "latest_bytes": 1910,
+        "history_bytes": 4298,
+        "history_rows": 14,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/apple-censorship-latest.json",
+        "history": "https://palimpsest.info/readings/apple-censorship-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/app-store.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "blocklist",
+      "name": "Blocklist archaeology",
+      "description": "Version-to-version keyword additions with hashes and source provenance; evidence samples are bounded and interpretation remains separate.",
+      "layer": "platform",
+      "stage": "archive",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1W",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Citizen Lab chat-censorship"
+      ],
+      "latest": "readings/blocklist-latest.json",
+      "history": "readings/blocklist-history.jsonl",
+      "landing_page": "readings/blocklist.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_additions",
+        "n_gazetteer_proposals"
+      ],
+      "license": {
+        "name": "CC BY-NC-SA 4.0 source data",
+        "url": "https://github.com/citizenlab/chat-censorship"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-10T05:52:27.182828Z",
+        "age_seconds": 109555,
+        "counts": {
+          "n_additions": 503,
+          "n_gazetteer_proposals": 17
+        },
+        "latest_bytes": 8594,
+        "history_bytes": 519,
+        "history_rows": 3,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/blocklist-latest.json",
+        "history": "https://palimpsest.info/readings/blocklist-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/blocklist.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "baike-redaction",
+      "name": "Baike redaction differential",
+      "description": "Entity-page comparison method retained for authorized access; the public artifact explicitly reports when collection is unavailable.",
+      "layer": "content",
+      "stage": "observation",
+      "collection_mode": "authorized-access",
+      "status": "disabled",
+      "cadence": "P1D",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Baidu Baike"
+      ],
+      "latest": "readings/baike-redaction-latest.json",
+      "history": "readings/baike-redaction-history.jsonl",
+      "landing_page": "readings/index.html#content",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_entities",
+        "n_comparable",
+        "n_forked"
+      ],
+      "license": {
+        "name": "Upstream rights retained",
+        "url": "https://baike.baidu.com/"
+      },
+      "artifacts": {
+        "evidence_state": "disabled",
+        "observed_at": "2026-07-30T20:31:16.856256Z",
+        "age_seconds": 1007226,
+        "counts": {
+          "n_entities": 10,
+          "n_comparable": 0,
+          "n_forked": 0
+        },
+        "latest_bytes": 4205,
+        "history_bytes": 1006,
+        "history_rows": 5,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/baike-redaction-latest.json",
+        "history": "https://palimpsest.info/readings/baike-redaction-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "data-darkness",
+      "name": "Official-data darkness",
+      "description": "Tracks publication freshness across official monetary, statistical, exchange, and rail surfaces while separating unreachability from missing publication.",
+      "layer": "state",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT12H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "PBOC",
+        "SAFE",
+        "NBS",
+        "NRA"
+      ],
+      "latest": "readings/data-darkness-latest.json",
+      "history": "readings/data-darkness-history.jsonl",
+      "landing_page": "readings/index.html#state",
+      "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
+      "count_fields": [
+        "n_series_watched",
+        "n_series_reporting"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-10T11:15:32Z",
+        "age_seconds": 90171,
+        "counts": {
+          "n_series_watched": 7,
+          "n_series_reporting": 7
+        },
+        "latest_bytes": 3886,
+        "history_bytes": 2129,
+        "history_rows": 10,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/data-darkness-latest.json",
+        "history": "https://palimpsest.info/readings/data-darkness-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "china-econ",
+      "name": "China economic telemetry",
+      "description": "Bitemporal observations of official CFETS and related benchmarks, retaining publication and effective dates separately.",
+      "layer": "state",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "PT3H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "CFETS",
+        "official statistical publications"
+      ],
+      "latest": "readings/china-econ-latest.json",
+      "history": "readings/china-econ-history.jsonl",
+      "landing_page": "readings/index.html#state",
+      "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:51:44Z",
+        "age_seconds": 15999,
+        "counts": {
+          "history_days": 41
+        },
+        "latest_bytes": 737,
+        "history_bytes": 12160,
+        "history_rows": 41,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-econ-latest.json",
+        "history": "https://palimpsest.info/readings/china-econ-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "cny-fix-gap",
+      "name": "CNY fixing gap",
+      "description": "Same-day comparison between China's central parity and independent central-bank reference rates, with explicit abstention when date parity is absent.",
+      "layer": "state",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "EU",
+        "CA"
+      ],
+      "sources": [
+        "CFETS",
+        "ECB",
+        "Bank of Canada"
+      ],
+      "latest": "readings/cny-fix-gap-latest.json",
+      "history": "readings/cny-fix-gap-history.jsonl",
+      "landing_page": "readings/index.html#state",
+      "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest derived output MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-10T17:50:33Z",
+        "age_seconds": 66470,
+        "counts": {
+          "history_days": 6
+        },
+        "latest_bytes": 1429,
+        "history_bytes": 750,
+        "history_rows": 6,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
+        "history": "https://palimpsest.info/readings/cny-fix-gap-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "believability",
+      "name": "Physical-economy believability band",
+      "description": "A transparent band from electricity, rail freight, credit, coal, and steel telemetry that is kept as a counterpoint rather than a replacement statistic.",
+      "layer": "state",
+      "stage": "synthesis",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1M",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "NBS",
+        "PBOC",
+        "NRA"
+      ],
+      "latest": "readings/believability-latest.json",
+      "history": "readings/believability-history.jsonl",
+      "landing_page": "readings/index.html#state",
+      "method": "docs/BELIEVABILITY.md",
+      "count_fields": [
+        "n_components_present",
+        "n_components_required",
+        "n_history"
+      ],
+      "license": {
+        "name": "Official-source rights retained; Palimpsest derived output MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-05T09:10:30Z",
+        "age_seconds": 529673,
+        "counts": {
+          "n_components_present": 3,
+          "n_components_required": 3,
+          "n_history": 0
+        },
+        "latest_bytes": 1917,
+        "history_bytes": 164,
+        "history_rows": 1,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/believability-latest.json",
+        "history": "https://palimpsest.info/readings/believability-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/BELIEVABILITY.md"
+      }
+    },
+    {
+      "id": "stock-connect",
+      "name": "Stock Connect flows",
+      "description": "Weekday northbound and southbound flow observations from HKEX, with source units and publication dates preserved.",
+      "layer": "state",
+      "stage": "observation",
+      "collection_mode": "passive",
+      "status": "live",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "HKEX"
+      ],
+      "latest": "readings/stock-connect-latest.json",
+      "history": "readings/stock-connect-history.jsonl",
+      "landing_page": "readings/index.html#state",
+      "method": "docs/CHINA-ECONOMIC-OBSERVATORY.md",
+      "count_fields": [
+        "history_days"
+      ],
+      "license": {
+        "name": "HKEX source terms; Palimpsest metadata MIT",
+        "url": "https://www.hkex.com.hk/"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-10T14:34:15Z",
+        "age_seconds": 78248,
+        "counts": {
+          "history_days": 150
+        },
+        "latest_bytes": 734,
+        "history_bytes": 26141,
+        "history_rows": 150,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/stock-connect-latest.json",
+        "history": "https://palimpsest.info/readings/stock-connect-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#state",
+        "method": "https://palimpsest.info/docs/CHINA-ECONOMIC-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "silence-index",
+      "name": "Silence Index",
+      "description": "Compares domestic censor-attention topics with globally visible coverage and an allowed-attention denominator; abstention is a first-class output.",
+      "layer": "content",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest derived from DDTI, Weibo, GDELT"
+      ],
+      "latest": "readings/silence-index-latest.json",
+      "history": "readings/silence-index-history.jsonl",
+      "landing_page": "readings/index.html#content",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_topics_considered",
+        "n_scored",
+        "n_abstained"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; see component datasets",
+        "url": "https://palimpsest.info/for-researchers.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:45:50Z",
+        "age_seconds": 16353,
+        "counts": {
+          "n_topics_considered": 25,
+          "n_scored": 0,
+          "n_abstained": 25
+        },
+        "latest_bytes": 6633,
+        "history_bytes": 7380,
+        "history_rows": 41,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/silence-index-latest.json",
+        "history": "https://palimpsest.info/readings/silence-index-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#content",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "event-flags",
+      "name": "Anytime-valid event flags",
+      "description": "Conformal change alarms over source histories with explicit reporting, stale, closed, and no-data states.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "latest": "readings/event-flags-latest.json",
+      "history": "readings/event-flags-history.jsonl",
+      "landing_page": "readings/index.html#stats",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_signals",
+        "n_reporting",
+        "n_open"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:54:58.953125Z",
+        "age_seconds": 15804,
+        "counts": {
+          "n_signals": 15,
+          "n_reporting": 11,
+          "n_open": 14
+        },
+        "latest_bytes": 6527,
+        "history_bytes": 11887,
+        "history_rows": 26,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/event-flags-latest.json",
+        "history": "https://palimpsest.info/readings/event-flags-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "board-alarm",
+      "name": "Multiplicity-controlled board alarm",
+      "description": "Layer-aware e-value board that pays for multiple testing and shows evidence coverage beside every alarm state.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "latest": "readings/board-alarm-latest.json",
+      "history": "readings/board-alarm-history.jsonl",
+      "landing_page": "readings/index.html#stats",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:58:34.416599Z",
+        "age_seconds": 15588,
+        "counts": {},
+        "latest_bytes": 10290,
+        "history_bytes": 2896,
+        "history_rows": 17,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/board-alarm-latest.json",
+        "history": "https://palimpsest.info/readings/board-alarm-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "coverage-guard",
+      "name": "Coverage guard",
+      "description": "Detects sample and source-coverage degradation so a smaller denominator is not silently presented as a calmer signal.",
+      "layer": "cross-layer",
+      "stage": "quality",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "latest": "readings/coverage-guard-latest.json",
+      "history": "readings/coverage-guard-history.jsonl",
+      "landing_page": "readings/index.html#stats",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:58:34.489985Z",
+        "age_seconds": 15588,
+        "counts": {},
+        "latest_bytes": 4671,
+        "history_bytes": 4069,
+        "history_rows": 13,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/coverage-guard-latest.json",
+        "history": "https://palimpsest.info/readings/coverage-guard-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "cross-layer",
+      "name": "Cross-layer timing",
+      "description": "Daily-collapsed lead and lag estimates across independent layers; it labels temporal order and never upgrades it to causation.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "warming",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories"
+      ],
+      "latest": "readings/cross-layer-latest.json",
+      "history": "readings/cross-layer-history.jsonl",
+      "landing_page": "readings/index.html#stats",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_pairs_tested",
+        "n_confirmed"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": "2026-08-11T07:58:34.690134Z",
+        "age_seconds": 15588,
+        "counts": {
+          "n_pairs_tested": 0,
+          "n_confirmed": 0
+        },
+        "latest_bytes": 7991,
+        "history_bytes": 91,
+        "history_rows": 1,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/cross-layer-latest.json",
+        "history": "https://palimpsest.info/readings/cross-layer-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/index.html#stats",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "forecast-ledger",
+      "name": "Forecast ledger",
+      "description": "Scores Palimpsest's own forecasts against later observations, including misses and results that are not yet scoreable.",
+      "layer": "cross-layer",
+      "stage": "quality",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest event histories"
+      ],
+      "latest": "readings/forecast-ledger-latest.json",
+      "history": "readings/forecast-ledger-history.jsonl",
+      "landing_page": "for-researchers.html#forecast",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_forecasts",
+        "n_signals_scored",
+        "n_beating_baseline"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T07:58:34.579131Z",
+        "age_seconds": 15588,
+        "counts": {
+          "n_forecasts": 1261,
+          "n_signals_scored": 8,
+          "n_beating_baseline": 4
+        },
+        "latest_bytes": 13090,
+        "history_bytes": 53266,
+        "history_rows": 63,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/forecast-ledger-latest.json",
+        "history": "https://palimpsest.info/readings/forecast-ledger-history.jsonl",
+        "landing_page": "https://palimpsest.info/for-researchers.html#forecast",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "erasure-observatory",
+      "name": "Information Erasure Observatory",
+      "description": "Composite across network, narrative, and model layers, computed only over reporting layers and committed to a hash-chained ledger.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived-sealed",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest layer readings"
+      ],
+      "latest": "readings/erasure-observatory-latest.json",
+      "history": "readings/erasure-observatory-history.jsonl",
+      "landing_page": "readings/erasure-observatory.html",
+      "method": "docs/ERASURE-OBSERVATORY.md",
+      "count_fields": [
+        "layers_contributing"
+      ],
+      "license": {
+        "name": "Mixed upstream licenses; composite method MIT",
+        "url": "https://palimpsest.info/for-researchers.html"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T03:34:57.479042Z",
+        "age_seconds": 31405,
+        "counts": {
+          "layers_contributing": 2
+        },
+        "latest_bytes": 3910,
+        "history_bytes": 33344,
+        "history_rows": 122,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/erasure-observatory-latest.json",
+        "history": "https://palimpsest.info/readings/erasure-observatory-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/erasure-observatory.html",
+        "method": "https://palimpsest.info/docs/ERASURE-OBSERVATORY.md"
+      }
+    },
+    {
+      "id": "generative-firewall",
+      "name": "Generative Firewall Index",
+      "description": "Frozen bilingual prompt suites measure refusal and state-narrative substitution in state-aligned models against separately interpreted controls.",
+      "layer": "model",
+      "stage": "observation",
+      "collection_mode": "model-api",
+      "status": "gated",
+      "cadence": "P1D",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs and sealed Palimpsest probe bank"
+      ],
+      "latest": "readings/latest.json",
+      "history": "readings/history.jsonl",
+      "landing_page": "readings/generative-firewall-index.html",
+      "method": "docs/METHODOLOGY.md",
+      "count_fields": [],
+      "license": {
+        "name": "MIT for method and derived scores; provider terms for outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": "2026-08-11T08:01:37.529083Z",
+        "age_seconds": 15405,
+        "counts": {},
+        "latest_bytes": 197683,
+        "history_bytes": 124411,
+        "history_rows": 37,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/latest.json",
+        "history": "https://palimpsest.info/readings/history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/generative-firewall-index.html",
+        "method": "https://palimpsest.info/docs/METHODOLOGY.md"
+      }
+    },
+    {
+      "id": "refusal-drift",
+      "name": "Frontier refusal churn",
+      "description": "Compares each model only with its own prior frozen-suite run and publishes churn separately from the closed v1 drift series.",
+      "layer": "model",
+      "stage": "observation",
+      "collection_mode": "model-api",
+      "status": "gated",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Hosted model APIs and sealed Palimpsest probe bank"
+      ],
+      "latest": "readings/refusal-drift-latest.json",
+      "history": "readings/refusal-drift-history.jsonl",
+      "landing_page": "readings/eval-registry.html#drift",
+      "method": "docs/FRONTIER-DRIFT.md",
+      "count_fields": [
+        "n_prompts",
+        "n_models"
+      ],
+      "license": {
+        "name": "MIT for method and derived scores; provider terms for outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": "2026-08-11T02:28:16.121324Z",
+        "age_seconds": 35407,
+        "counts": {},
+        "latest_bytes": 70331,
+        "history_bytes": 60958,
+        "history_rows": 109,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/refusal-drift-latest.json",
+        "history": "https://palimpsest.info/readings/refusal-drift-history.jsonl",
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html#drift",
+        "method": "https://palimpsest.info/docs/FRONTIER-DRIFT.md"
+      }
+    },
+    {
+      "id": "eval-registry",
+      "name": "Verifiable evaluation registry",
+      "description": "Append-only, pre-registered model-evaluation runs with hash links, Merkle roots, and independently recomputable verification status.",
+      "layer": "model",
+      "stage": "integrity",
+      "collection_mode": "derived-sealed",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest sealed evaluation runs"
+      ],
+      "latest": "readings/eval-registry-latest.json",
+      "history": "readings/eval-registry.jsonl",
+      "landing_page": "readings/eval-registry.html",
+      "method": "docs/EVAL-REGISTRY.md",
+      "count_fields": [
+        "runs",
+        "models",
+        "problems"
+      ],
+      "license": {
+        "name": "MIT for registry code and metadata; provider terms for model outputs",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T02:28:16.121324Z",
+        "age_seconds": 35407,
+        "counts": {
+          "runs": 304,
+          "models": 6,
+          "problems": 0
+        },
+        "latest_bytes": 5278,
+        "history_bytes": 206927,
+        "history_rows": 309,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/eval-registry-latest.json",
+        "history": "https://palimpsest.info/readings/eval-registry.jsonl",
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html",
+        "method": "https://palimpsest.info/docs/EVAL-REGISTRY.md"
+      }
+    },
+    {
+      "id": "anchors",
+      "name": "External integrity anchors",
+      "description": "Deposits ledger roots outside Palimpsest's infrastructure and reports verification problems without hiding partial failure.",
+      "layer": "integrity",
+      "stage": "integrity",
+      "collection_mode": "derived-sealed",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "GLOBAL"
+      ],
+      "sources": [
+        "Internet Archive",
+        "OpenTimestamps"
+      ],
+      "latest": "readings/anchors-latest.json",
+      "history": "readings/anchors.jsonl",
+      "landing_page": "readings/eval-registry.html#anchors",
+      "method": "docs/INTEGRITY.md",
+      "count_fields": [
+        "wayback_snapshots",
+        "readings_problems"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-11T03:35:02.132813Z",
+        "age_seconds": 31401,
+        "counts": {
+          "wayback_snapshots": 2,
+          "readings_problems": 0
+        },
+        "latest_bytes": 692,
+        "history_bytes": 119777,
+        "history_rows": 116,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/anchors-latest.json",
+        "history": "https://palimpsest.info/readings/anchors.jsonl",
+        "landing_page": "https://palimpsest.info/readings/eval-registry.html#anchors",
+        "method": "https://palimpsest.info/docs/INTEGRITY.md"
+      }
+    }
+  ]
+}

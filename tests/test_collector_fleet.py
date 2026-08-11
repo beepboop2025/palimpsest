@@ -23,6 +23,7 @@ from core.collector_fleet import (  # noqa: E402
     _observation,
     active_probes_enabled,
     build_collector_schedule,
+    cloudflare_radar_enabled,
     collection_profile,
     collectors_enabled,
     ddti_head_config,
@@ -109,11 +110,55 @@ def test_active_probe_leg_needs_both_explicit_gates(monkeypatch):
     assert "collect-snapshot-inside-view" in build_collector_schedule("vigorous")
 
 
+def test_active_probe_hours_do_not_collide_with_public_globalping_job(monkeypatch):
+    monkeypatch.setenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "1")
+    monkeypatch.setenv("PALIMPSEST_LIVE", "1")
+
+    public_hours = {0, 6, 12, 18}
+    for profile in ("standard", "vigorous"):
+        entry = build_collector_schedule(profile)["collect-snapshot-inside-view"]
+        assert set(entry["schedule"].hour).isdisjoint(public_hours)
+
+
+def test_cloudflare_passive_feed_needs_its_own_explicit_gate(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
+    assert cloudflare_radar_enabled() is False
+    assert "collect-snapshot-cloudflare-radar-tcp" not in build_collector_schedule(
+        "vigorous"
+    )
+
+    monkeypatch.setenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", "1")
+    assert cloudflare_radar_enabled() is True
+    assert "collect-snapshot-cloudflare-radar-tcp" in build_collector_schedule(
+        "vigorous"
+    )
+
+
+def test_research_corpus_has_bounded_standard_and_vigorous_cadences(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
+    monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
+
+    standard = next(
+        spec for spec in expected_collector_specs("standard")
+        if spec["source"] == "research-corpus"
+    )
+    vigorous = next(
+        spec for spec in expected_collector_specs("vigorous")
+        if spec["source"] == "research-corpus"
+    )
+    assert standard["output_path"] == "readings/research-corpus-latest.json"
+    assert standard["cadence_seconds"] == 12 * 3600
+    assert vigorous["cadence_seconds"] == 6 * 3600
+    assert "collect-snapshot-research-corpus" in build_collector_schedule("standard")
+    assert "collect-snapshot-research-corpus" in build_collector_schedule("vigorous")
+
+
 def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
+    monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 21  # feed head + index processor + 19 passive snapshots
+    assert len(specs) == 22  # feed head + index processor + 20 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -175,6 +220,12 @@ def test_snapshot_success_requires_the_observation_token_to_advance(tmp_path):
     ("believability", {
         "generated_at": "t", "n_components_present": 3,
     }, 3),
+    ("cloudflare-radar-tcp", {
+        "generated_at": "t", "geographies": [{"location": "CN"}, {"location": "IR"}],
+    }, 2),
+    ("research-corpus", {
+        "generated_at": "t", "n_sources": 5, "n_changed": 1,
+    }, 5),
 ])
 def test_record_count_is_source_specific(tmp_path, source, document, expected):
     path = tmp_path / "reading.json"
@@ -257,6 +308,17 @@ def test_blocklist_acquires_before_it_analyses(monkeypatch, tmp_path):
 
     _invoke_snapshot("blocklist", tmp_path)
     assert events == ["acquire", "publish"]
+
+
+def test_research_corpus_invokes_the_bounded_cli_with_fleet_readings(
+    monkeypatch, tmp_path,
+):
+    seen = []
+    import scripts.research_corpus_ingest as ingest
+
+    monkeypatch.setattr(ingest, "main", lambda argv: seen.append(argv) or 0)
+    _invoke_snapshot("research-corpus", tmp_path)
+    assert seen == [["--readings", str(tmp_path / "readings")]]
 
 
 def test_ddti_head_passes_the_bounded_config_to_the_collector():

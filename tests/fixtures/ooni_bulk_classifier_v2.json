@@ -1,0 +1,230 @@
+[
+  {
+    "id": "signal-blocked-status",
+    "country": "CN",
+    "archive_test": "signal",
+    "test_name": "signal",
+    "test_keys": {
+      "signal_backend_failure": "generic_timeout_error",
+      "signal_backend_status": "blocked"
+    },
+    "negative": true
+  },
+  {
+    "id": "signal-ok-status",
+    "country": "CN",
+    "archive_test": "signal",
+    "test_name": "signal",
+    "test_keys": {
+      "signal_backend_failure": null,
+      "signal_backend_status": "ok"
+    },
+    "negative": false
+  },
+  {
+    "id": "tor-zero-of-n-with-empty-category",
+    "country": "CN",
+    "archive_test": "tor",
+    "test_name": "tor",
+    "test_keys": {
+      "dir_port_total": 10,
+      "dir_port_accessible": 0,
+      "obfs4_total": 14,
+      "obfs4_accessible": 0,
+      "or_port_dirauth_total": 10,
+      "or_port_dirauth_accessible": 0,
+      "or_port_total": 0,
+      "or_port_accessible": 0
+    },
+    "negative": true
+  },
+  {
+    "id": "tor-partial-access",
+    "country": "IR",
+    "archive_test": "tor",
+    "test_name": "tor",
+    "test_keys": {
+      "dir_port_total": 10,
+      "dir_port_accessible": 10,
+      "obfs4_total": 14,
+      "obfs4_accessible": 3,
+      "or_port_dirauth_total": 0,
+      "or_port_dirauth_accessible": 0,
+      "or_port_total": 0,
+      "or_port_accessible": 0
+    },
+    "negative": true
+  },
+  {
+    "id": "tor-full-access-and-zero-of-zero",
+    "country": "IR",
+    "archive_test": "tor",
+    "test_name": "tor",
+    "test_keys": {
+      "dir_port_total": 10,
+      "dir_port_accessible": 10,
+      "obfs4_total": 14,
+      "obfs4_accessible": 14,
+      "or_port_dirauth_total": 0,
+      "or_port_dirauth_accessible": 0,
+      "or_port_total": 0,
+      "or_port_accessible": 0
+    },
+    "negative": false
+  },
+  {
+    "id": "telegram-web-blocked-with-false-booleans",
+    "country": "IR",
+    "archive_test": "telegram",
+    "test_name": "telegram",
+    "test_keys": {
+      "telegram_http_blocking": false,
+      "telegram_tcp_blocking": false,
+      "telegram_web_failure": "generic_timeout_error",
+      "telegram_web_status": "blocked"
+    },
+    "negative": true
+  },
+  {
+    "id": "telegram-dc-blocked",
+    "country": "IR",
+    "archive_test": "telegram",
+    "test_name": "telegram",
+    "test_keys": {
+      "telegram_http_blocking": true,
+      "telegram_tcp_blocking": false,
+      "telegram_web_failure": null,
+      "telegram_web_status": "ok"
+    },
+    "negative": true
+  },
+  {
+    "id": "telegram-ok",
+    "country": "IR",
+    "archive_test": "telegram",
+    "test_name": "telegram",
+    "test_keys": {
+      "telegram_http_blocking": false,
+      "telegram_tcp_blocking": false,
+      "telegram_web_failure": null,
+      "telegram_web_status": "ok"
+    },
+    "negative": false
+  },
+  {
+    "id": "whatsapp-registration-and-web-blocked",
+    "country": "IR",
+    "archive_test": "whatsapp",
+    "test_name": "whatsapp",
+    "test_keys": {
+      "registration_server_status": "blocked",
+      "whatsapp_endpoints_status": "ok",
+      "whatsapp_endpoints_blocked": [],
+      "whatsapp_web_status": "blocked"
+    },
+    "negative": true
+  },
+  {
+    "id": "whatsapp-legacy-blocked-endpoint-list",
+    "country": "IR",
+    "archive_test": "whatsapp",
+    "test_name": "whatsapp",
+    "test_keys": {
+      "registration_server_status": "ok",
+      "whatsapp_endpoints_blocked": ["endpoint-redacted"],
+      "whatsapp_web_status": "ok"
+    },
+    "negative": true
+  },
+  {
+    "id": "whatsapp-ok",
+    "country": "IR",
+    "archive_test": "whatsapp",
+    "test_name": "whatsapp",
+    "test_keys": {
+      "registration_server_status": "ok",
+      "whatsapp_endpoints_status": "ok",
+      "whatsapp_endpoints_blocked": [],
+      "whatsapp_web_status": "ok"
+    },
+    "negative": false
+  },
+  {
+    "id": "web-connectivity-inaccessible",
+    "country": "CN",
+    "archive_test": "webconnectivity",
+    "test_name": "web_connectivity",
+    "test_keys": {
+      "accessible": false,
+      "blocking": false
+    },
+    "negative": true
+  },
+  {
+    "id": "web-connectivity-accessible",
+    "country": "CN",
+    "archive_test": "webconnectivity",
+    "test_name": "web_connectivity",
+    "test_keys": {
+      "accessible": true,
+      "blocking": false
+    },
+    "negative": false
+  },
+  {
+    "id": "psiphon-bootstrap-failure",
+    "country": "IR",
+    "archive_test": "psiphon",
+    "test_name": "psiphon",
+    "test_keys": {
+      "failure": "unknown_failure: tunnel establishment timeout",
+      "max_runtime": 300
+    },
+    "negative": true
+  },
+  {
+    "id": "psiphon-working",
+    "country": "CN",
+    "archive_test": "psiphon",
+    "test_name": "psiphon",
+    "test_keys": {
+      "bootstrap_time": 13.3054187,
+      "failure": null,
+      "max_runtime": 300
+    },
+    "negative": false
+  },
+  {
+    "id": "riseupvpn-api-failure",
+    "country": "RU",
+    "archive_test": "riseupvpn",
+    "test_name": "riseupvpn",
+    "test_keys": {
+      "api_failures": ["generic_timeout_error"],
+      "ca_cert_status": true
+    },
+    "negative": true
+  },
+  {
+    "id": "riseupvpn-certificate-failure",
+    "country": "RU",
+    "archive_test": "riseupvpn",
+    "test_name": "riseupvpn",
+    "test_keys": {
+      "api_failures": null,
+      "ca_cert_status": false
+    },
+    "negative": true
+  },
+  {
+    "id": "riseupvpn-ok",
+    "country": "RU",
+    "archive_test": "riseupvpn",
+    "test_name": "riseupvpn",
+    "test_keys": {
+      "api_failures": null,
+      "ca_cert_status": true
+    },
+    "negative": false
+  }
+]

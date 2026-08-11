@@ -1,0 +1,1012 @@
+{
+  "@context": "https://schema.org",
+  "@type": "DataCatalog",
+  "name": "Palimpsest Evidence Atlas",
+  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
+  "url": "https://palimpsest.info/data.html",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Palimpsest",
+    "url": "https://palimpsest.info/"
+  },
+  "dateModified": "2026-08-11T12:18:23.134164Z",
+  "dataset": [
+    {
+      "@type": "Dataset",
+      "identifier": "ddti",
+      "name": "Domestic Discourse Tightening Index",
+      "description": "Ranks topics receiving censor attention in China Digital Times' curated deletion and directive feeds; it measures attention allocation, not a population deletion rate.",
+      "url": "https://palimpsest.info/dashboards/ddti_observatory.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT3H",
+      "dateModified": "2026-08-11T07:38:12.890800Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Domestic Discourse Tightening Index — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/ddti-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Domestic Discourse Tightening Index — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/ddti-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "ooni-gfw",
+      "name": "OONI Great Firewall signal",
+      "description": "Windowed China blocking rates from openly published OONI measurements, with denominators and per-test evidence kept visible.",
+      "url": "https://palimpsest.info/readings/ooni-gfw.html",
+      "license": "https://github.com/ooni/license/blob/master/data/LICENSE.md",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT2H",
+      "dateModified": "2026-08-11T07:42:10.135979Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "OONI Great Firewall signal — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "OONI Great Firewall signal — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/ooni-gfw-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "ooni-bulk",
+      "name": "OONI bulk evidence warehouse",
+      "description": "Hourly, country- and test-scoped replication of OONI JSONL evidence with byte budgets, checksums, resumable manifests, and privacy-minimized public rollups.",
+      "url": "https://palimpsest.info/data.html#dataset-ooni-bulk",
+      "license": "https://github.com/ooni/license/blob/master/data/LICENSE.md",
+      "spatialCoverage": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "inside-view",
+      "name": "Inside View",
+      "description": "Controlled DNS comparisons from consented Globalping cloud probes in mainland China against independent control locations.",
+      "url": "https://palimpsest.info/readings/inside-view.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "DE",
+        "NL"
+      ],
+      "temporalResolution": "PT2H",
+      "dateModified": "2026-08-11T07:49:24.591431Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Inside View — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/inside-view-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Inside View — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/inside-view-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "cloudflare-radar-tcp",
+      "name": "Cloudflare passive TCP telemetry",
+      "description": "Country-level reset and timeout stage distributions from Cloudflare's passive network sample; useful for corroboration, never treated as causal proof of censorship.",
+      "url": "https://palimpsest.info/data.html#dataset-cloudflare-radar-tcp",
+      "license": "https://creativecommons.org/licenses/by-nc/4.0/",
+      "spatialCoverage": [
+        "CN",
+        "IR",
+        "MM",
+        "PK",
+        "RU",
+        "TR"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "in-path-interference",
+      "name": "In-path interference",
+      "description": "OONI-derived middlebox rewriting and transport anomaly families kept separate from reachability and execution failures.",
+      "url": "https://palimpsest.info/readings/in-path-interference.html",
+      "license": "https://github.com/ooni/license/blob/master/data/LICENSE.md",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT2H",
+      "dateModified": "2026-08-11T07:44:12.309620Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "In-path interference — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/in-path-interference-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "In-path interference — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/in-path-interference-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "censored-planet",
+      "name": "Censored Planet side-channel",
+      "description": "Independent longitudinal Internet-wide interference rates and alert events from the Censored Planet observatory.",
+      "url": "https://palimpsest.info/readings/ooni-gfw.html",
+      "license": "https://censoredplanet.org/data/raw",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-11T06:30:44.958713Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Censored Planet side-channel — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/censored-planet-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Censored Planet side-channel — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/censored-planet-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "ioda-outages",
+      "name": "IODA outage evidence",
+      "description": "Independent BGP, active-probing, and telescope outage events used to distinguish censorship from wider connectivity loss.",
+      "url": "https://palimpsest.info/readings/index.html#network",
+      "license": "https://ioda.inetintel.cc.gatech.edu/",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT2H",
+      "dateModified": "2026-08-11T07:43:31Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "IODA outage evidence — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/ioda-outages-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "IODA outage evidence — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/ioda-outages-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "net4people",
+      "name": "net4people event stream",
+      "description": "Recent, publicly discussed censorship and circumvention events extracted from the net4people research forum.",
+      "url": "https://palimpsest.info/readings/index.html#network",
+      "license": "https://github.com/net4people/bbs",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T02:48:39.340173Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "net4people event stream — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/net4people-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "net4people event stream — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/net4people-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "circumvention-demand",
+      "name": "Circumvention demand",
+      "description": "Tor usage telemetry used as a demand-side cross-check, with transport changes retained as context rather than causal proof.",
+      "url": "https://palimpsest.info/readings/index.html#network",
+      "license": "https://metrics.torproject.org/collector.html",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-11T06:04:33Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Circumvention demand — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/circumvention-demand-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Circumvention demand — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/circumvention-demand-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "vantage-fusion",
+      "name": "Vantage fusion interval",
+      "description": "Fuses OONI, Censored Planet, and event evidence into an uncertainty interval; it refuses to publish a false point estimate when vantages diverge.",
+      "url": "https://palimpsest.info/data.html#dataset-vantage-fusion",
+      "license": "https://palimpsest.info/for-researchers.html",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T07:58:13.867222Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Vantage fusion interval — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/vantage-fusion-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Vantage fusion interval — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/vantage-fusion-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "weibo-hotsearch",
+      "name": "Weibo allowed-attention denominator",
+      "description": "Archived hot-search boards provide the visible-attention denominator needed to avoid treating topic popularity as deletion pressure.",
+      "url": "https://palimpsest.info/readings/index.html#content",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": "2026-08-11T07:50:19Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Weibo allowed-attention denominator — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Weibo allowed-attention denominator — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/weibo-hotsearch-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "gdelt",
+      "name": "GDELT cross-signal",
+      "description": "Compares topics drawing domestic censor attention with global news coverage and abstains when the global denominator is unavailable.",
+      "url": "https://palimpsest.info/readings/index.html#content",
+      "license": "https://www.gdeltproject.org/",
+      "spatialCoverage": [
+        "GLOBAL",
+        "CN"
+      ],
+      "temporalResolution": "PT3H",
+      "dateModified": "2026-08-11T07:58:41.047938Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "GDELT cross-signal — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/gdelt-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "GDELT cross-signal — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/gdelt-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "github-refuge",
+      "name": "GitHub as refuge",
+      "description": "Watches a bounded public repository panel for disappearance and pressure events without equating an API failure with removal.",
+      "url": "https://palimpsest.info/readings/index.html#content",
+      "license": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T02:38:03.432101Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "GitHub as refuge — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/github-refuge-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "GitHub as refuge — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/github-refuge-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "research-corpus",
+      "name": "Public research-corpus ledger",
+      "description": "Tracks exact default-branch commit cursors and aggregate Git ref counts for five censorship-research repositories without republishing notice bodies, affected identifiers, URL test targets, keyword lists, or routing rules.",
+      "url": "https://palimpsest.info/data.html#dataset-research-corpus",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/docs/RESEARCH-CORPUS-INGEST.md",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "wayback",
+      "name": "Wayback reconstruction",
+      "description": "Reconstructs prior public states for watched URLs and separates deletion, mutation, reachability, and archival absence.",
+      "url": "https://palimpsest.info/readings/index.html#content",
+      "license": "https://archive.org/about/terms.php",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T02:33:23.604399Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Wayback reconstruction — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/wayback-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Wayback reconstruction — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/wayback-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "app-storefront",
+      "name": "App Storefront panel",
+      "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
+      "url": "https://palimpsest.info/readings/app-store.html",
+      "license": "https://www.apple.com/legal/internet-services/itunes/",
+      "spatialCoverage": [
+        "CN",
+        "US"
+      ],
+      "temporalResolution": "PT2H",
+      "dateModified": "2026-08-11T08:02:16.410643Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "App Storefront panel — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/app-storefront-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "App Storefront panel — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/app-storefront-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "apple-censorship",
+      "name": "AppleCensorship country corpus",
+      "description": "Country-level app availability composition and peer comparison from GreatFire's public AppleCensorship corpus.",
+      "url": "https://palimpsest.info/readings/app-store.html",
+      "license": "https://applecensorship.com/",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-11T06:29:14.249571Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "AppleCensorship country corpus — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/apple-censorship-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "AppleCensorship country corpus — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/apple-censorship-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "blocklist",
+      "name": "Blocklist archaeology",
+      "description": "Version-to-version keyword additions with hashes and source provenance; evidence samples are bounded and interpretation remains separate.",
+      "url": "https://palimpsest.info/readings/blocklist.html",
+      "license": "https://github.com/citizenlab/chat-censorship",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1W",
+      "dateModified": "2026-08-10T05:52:27.182828Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Blocklist archaeology — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/blocklist-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Blocklist archaeology — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/blocklist-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "baike-redaction",
+      "name": "Baike redaction differential",
+      "description": "Entity-page comparison method retained for authorized access; the public artifact explicitly reports when collection is unavailable.",
+      "url": "https://palimpsest.info/readings/index.html#content",
+      "license": "https://baike.baidu.com/",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-07-30T20:31:16.856256Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Baike redaction differential — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/baike-redaction-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Baike redaction differential — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/baike-redaction-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "data-darkness",
+      "name": "Official-data darkness",
+      "description": "Tracks publication freshness across official monetary, statistical, exchange, and rail surfaces while separating unreachability from missing publication.",
+      "url": "https://palimpsest.info/readings/index.html#state",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT12H",
+      "dateModified": "2026-08-10T11:15:32Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Official-data darkness — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Official-data darkness — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/data-darkness-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "china-econ",
+      "name": "China economic telemetry",
+      "description": "Bitemporal observations of official CFETS and related benchmarks, retaining publication and effective dates separately.",
+      "url": "https://palimpsest.info/readings/index.html#state",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT3H",
+      "dateModified": "2026-08-11T07:51:44Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "China economic telemetry — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/china-econ-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "China economic telemetry — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/china-econ-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "cny-fix-gap",
+      "name": "CNY fixing gap",
+      "description": "Same-day comparison between China's central parity and independent central-bank reference rates, with explicit abstention when date parity is absent.",
+      "url": "https://palimpsest.info/readings/index.html#state",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "EU",
+        "CA"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-10T17:50:33Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "CNY fixing gap — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "CNY fixing gap — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/cny-fix-gap-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "believability",
+      "name": "Physical-economy believability band",
+      "description": "A transparent band from electricity, rail freight, credit, coal, and steel telemetry that is kept as a counterpoint rather than a replacement statistic.",
+      "url": "https://palimpsest.info/readings/index.html#state",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1M",
+      "dateModified": "2026-08-05T09:10:30Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Physical-economy believability band — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/believability-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Physical-economy believability band — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/believability-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "stock-connect",
+      "name": "Stock Connect flows",
+      "description": "Weekday northbound and southbound flow observations from HKEX, with source units and publication dates preserved.",
+      "url": "https://palimpsest.info/readings/index.html#state",
+      "license": "https://www.hkex.com.hk/",
+      "spatialCoverage": [
+        "CN",
+        "HK"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-10T14:34:15Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Stock Connect flows — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/stock-connect-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Stock Connect flows — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/stock-connect-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "silence-index",
+      "name": "Silence Index",
+      "description": "Compares domestic censor-attention topics with globally visible coverage and an allowed-attention denominator; abstention is a first-class output.",
+      "url": "https://palimpsest.info/readings/index.html#content",
+      "license": "https://palimpsest.info/for-researchers.html",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T07:45:50Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Silence Index — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/silence-index-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Silence Index — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/silence-index-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "event-flags",
+      "name": "Anytime-valid event flags",
+      "description": "Conformal change alarms over source histories with explicit reporting, stale, closed, and no-data states.",
+      "url": "https://palimpsest.info/readings/index.html#stats",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T07:54:58.953125Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Anytime-valid event flags — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/event-flags-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Anytime-valid event flags — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/event-flags-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "board-alarm",
+      "name": "Multiplicity-controlled board alarm",
+      "description": "Layer-aware e-value board that pays for multiple testing and shows evidence coverage beside every alarm state.",
+      "url": "https://palimpsest.info/readings/index.html#stats",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T07:58:34.416599Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Multiplicity-controlled board alarm — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/board-alarm-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Multiplicity-controlled board alarm — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/board-alarm-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "coverage-guard",
+      "name": "Coverage guard",
+      "description": "Detects sample and source-coverage degradation so a smaller denominator is not silently presented as a calmer signal.",
+      "url": "https://palimpsest.info/readings/index.html#stats",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T07:58:34.489985Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Coverage guard — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/coverage-guard-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Coverage guard — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/coverage-guard-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "cross-layer",
+      "name": "Cross-layer timing",
+      "description": "Daily-collapsed lead and lag estimates across independent layers; it labels temporal order and never upgrades it to causation.",
+      "url": "https://palimpsest.info/readings/index.html#stats",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-11T07:58:34.690134Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Cross-layer timing — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/cross-layer-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Cross-layer timing — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/cross-layer-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "forecast-ledger",
+      "name": "Forecast ledger",
+      "description": "Scores Palimpsest's own forecasts against later observations, including misses and results that are not yet scoreable.",
+      "url": "https://palimpsest.info/for-researchers.html#forecast",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T07:58:34.579131Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Forecast ledger — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/forecast-ledger-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Forecast ledger — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/forecast-ledger-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "erasure-observatory",
+      "name": "Information Erasure Observatory",
+      "description": "Composite across network, narrative, and model layers, computed only over reporting layers and committed to a hash-chained ledger.",
+      "url": "https://palimpsest.info/readings/erasure-observatory.html",
+      "license": "https://palimpsest.info/for-researchers.html",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T03:34:57.479042Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Information Erasure Observatory — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/erasure-observatory-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Information Erasure Observatory — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/erasure-observatory-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "generative-firewall",
+      "name": "Generative Firewall Index",
+      "description": "Frozen bilingual prompt suites measure refusal and state-narrative substitution in state-aligned models against separately interpreted controls.",
+      "url": "https://palimpsest.info/readings/generative-firewall-index.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-11T08:01:37.529083Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Generative Firewall Index — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Generative Firewall Index — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "refusal-drift",
+      "name": "Frontier refusal churn",
+      "description": "Compares each model only with its own prior frozen-suite run and publishes churn separately from the closed v1 drift series.",
+      "url": "https://palimpsest.info/readings/eval-registry.html#drift",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T02:28:16.121324Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Frontier refusal churn — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/refusal-drift-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Frontier refusal churn — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/refusal-drift-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "eval-registry",
+      "name": "Verifiable evaluation registry",
+      "description": "Append-only, pre-registered model-evaluation runs with hash links, Merkle roots, and independently recomputable verification status.",
+      "url": "https://palimpsest.info/readings/eval-registry.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T02:28:16.121324Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Verifiable evaluation registry — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Verifiable evaluation registry — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "anchors",
+      "name": "External integrity anchors",
+      "description": "Deposits ledger roots outside Palimpsest's infrastructure and reports verification problems without hiding partial failure.",
+      "url": "https://palimpsest.info/readings/eval-registry.html#anchors",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-11T03:35:02.132813Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "External integrity anchors — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/anchors-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "External integrity anchors — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/anchors.jsonl"
+        }
+      ]
+    }
+  ]
+}
