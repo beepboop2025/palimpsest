@@ -1,7 +1,7 @@
 # Deploying Palimpsest on a Hetzner Cloud VPS
 
 This runbook stands up the always-on backend (Postgres, Redis, the Celery beat
-scheduler, and the collector worker) on a single Hetzner box, plus the weekly
+scheduler, the index worker, and an opt-in passive collector fleet) on a single Hetzner box, plus the weekly
 Generative Firewall Index (GFI) reading as a hardened throwaway container.
 
 The dashboards are static and live on GitHub Pages, so this box publishes **no
@@ -185,6 +185,53 @@ docker compose -f ops/docker/docker-compose.prod.yml logs worker  # tasks being 
 The beat schedule lives in `core/scheduler.py`; tasks land in the `celery` queue
 and the worker runs them. That is the whole always-on loop.
 
+### 5a. Enable the 24/7 passive collector fleet
+
+The base stack intentionally starts with acquisition disabled. This prevents a
+fresh clone from contacting public sources merely because someone ran Compose.
+On a dedicated measurement node, set these values in `ops/docker/.env`:
+
+```dotenv
+PALIMPSEST_COLLECTORS_ENABLED=1
+PALIMPSEST_COLLECTION_PROFILE=vigorous
+PALIMPSEST_KILLFILE=/app/readings/state/STOP
+```
+
+Then start the isolated collector queue:
+
+```bash
+docker compose -f ops/docker/docker-compose.prod.yml \
+  --profile collectors up -d --build
+```
+
+The vigorous profile does two different kinds of work:
+
+- the CDT feed head is ingested every 30 minutes into immutable raw storage and
+  PostgreSQL; conflict-safe upserts prevent a repeated feed item becoming a
+  duplicate;
+- the full DDTI archive sweep remains every three hours, while fast-moving
+  aggregate signals (Weibo-board archive, OONI, IODA, app storefront) are sampled
+  more often than the public workflow. Daily upstreams remain daily.
+
+All jobs use the dedicated `collectors` queue, carry queue expiries (so an outage
+does not replay stale requests), take a Redis non-overlap lease, and check the
+global kill switch before egress. Verify the active schedule and first results:
+
+```bash
+C="docker compose -f ops/docker/docker-compose.prod.yml --profile collectors"
+$C ps
+$C exec beat python -c \
+  'from core.scheduler import app; print("\n".join(sorted(app.conf.beat_schedule)))'
+$C logs --since 30m worker-collectors
+$C exec postgres psql -U palimpsest -d palimpsest -c \
+  'select source,status,records_collected,run_at from collection_logs order by run_at desc limit 20;'
+```
+
+The Hetzner files are a denser private measurement record; they do **not** push
+to the canonical repository. GitHub Actions remains the public publication and
+verification boundary, so a server compromise cannot silently rewrite the
+public observatory.
+
 ---
 
 ## 6. (Optional) Enable the CensorWatch velocity leg
@@ -331,12 +378,15 @@ C="docker compose -f ops/docker/docker-compose.prod.yml"
 
 $C ps                    # status
 $C logs -f worker        # follow a service
-$C restart beat worker   # restart the scheduler + worker
-$C pull && $C up -d --build   # deploy new code after git pull
+$C restart beat worker   # restart the scheduler + index worker
+$C --profile collectors restart beat worker worker-collectors
+$C pull && $C --profile collectors up -d --build   # deploy new code after git pull
 $C down                  # stop everything (volumes persist)
 
 # Emergency stop all fetching without tearing anything down:
-$C exec worker touch /app/readings/state/STOP   # then set PALIMPSEST_KILLFILE to match in .env
+$C exec worker touch /app/readings/state/STOP
+# Resume after inspection:
+$C exec worker rm /app/readings/state/STOP
 ```
 
 Update flow: `git pull` on the box, then `up -d --build`. Compose recreates only

@@ -61,14 +61,16 @@ def inject_dashboard(path: Path, index: dict) -> str:
     return "updated" if _write_if_changed(path, new) else "unchanged"
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--index", required=True)
-    ap.add_argument("--repo", default=".")
-    args = ap.parse_args()
+def publish_index_file(index_path: str | Path, repo_path: str | Path = ".") -> list[str]:
+    """Publish one computed index and return the files that changed.
 
-    repo = Path(args.repo).resolve()
-    index = json.loads(Path(args.index).read_text(encoding="utf-8"))
+    Keeping the file-to-site adapter callable lets the always-on measurement
+    node use the exact same publication bytes as the public workflow without
+    invoking a shell command or teaching the collector a second output schema.
+    """
+
+    repo = Path(repo_path).resolve()
+    index = json.loads(Path(index_path).read_text(encoding="utf-8"))
     ranked = _denoise(index.get("ranked", []))
     index["ranked"] = ranked  # publish the cleaned ranking everywhere
     if not ranked:
@@ -133,6 +135,16 @@ def main() -> None:
 
     print(f"\nchanged files: {changed if changed else 'none'}")
     print(f"top term: {top.get('term')} (threat {top.get('threat')})")
+    return changed
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--index", required=True)
+    ap.add_argument("--repo", default=".")
+    args = ap.parse_args()
+
+    changed = publish_index_file(args.index, args.repo)
     # exit 0 if changed, 3 if nothing changed (caller skips commit)
     raise SystemExit(0 if changed else 3)
 

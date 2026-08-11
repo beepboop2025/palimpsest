@@ -24,12 +24,19 @@ import hashlib
 import logging
 import math
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
 import pandas as pd
 
 from core.base_collector import BaseCollector
+from core.exceptions import RateLimitError, SourceDownError
 
 logger = logging.getLogger(__name__)
+
+PALIMPSEST_UA = (
+    "Palimpsest/0.2 (+https://palimpsest.info; open-source censorship "
+    "research; use=reference)"
+)
 
 # Deletion feeds are untrusted external XML — use defusedxml to block XXE and
 # billion-laughs attacks. Fall back to stdlib only if defusedxml is absent, and
@@ -246,24 +253,38 @@ class DDTIProbeCollector(BaseCollector):
         super().__init__(config)
         # [{name, url}] candidate deletion feeds, from sources.yaml.
         self.feeds = config.get("deletion_feeds", [])
+        self.user_agent = config.get("user_agent", PALIMPSEST_UA)
+        self.reachability = {}
 
     async def collect(self) -> list[dict]:
         records = []
         reachability = {}
+        successful_feeds = 0
+        rate_limited = False
         for feed in self.feeds:
             name, url = feed.get("name", feed["url"]), feed["url"]
             try:
-                resp = await self._http.get(url, headers={"User-Agent": "Mozilla/5.0"})
+                resp = await self._http.get(url, headers={"User-Agent": self.user_agent})
                 reachability[name] = resp.status_code
+                if resp.status_code == 429:
+                    rate_limited = True
+                    logger.warning(f"[DDTI] {name} → HTTP 429")
+                    continue
                 if resp.status_code != 200:
                     logger.warning(f"[DDTI] {name} → HTTP {resp.status_code}")
                     continue
+                successful_feeds += 1
                 records.extend(self._parse_feed_items(name, resp.text))
             except Exception as e:
                 reachability[name] = f"error:{type(e).__name__}"
                 logger.warning(f"[DDTI] {name} unreachable: {e}")
 
+        self.reachability = reachability
         logger.info(f"[DDTI] reachability={reachability} | observations={len(records)}")
+        if self.feeds and successful_feeds == 0:
+            if rate_limited:
+                raise RateLimitError(self.name, retry_after=30 * 60)
+            raise SourceDownError(self.name, url=",".join(f["url"] for f in self.feeds))
         return records
 
     def _parse_feed_items(self, source: str, text: str) -> list[dict]:
@@ -275,13 +296,27 @@ class DDTIProbeCollector(BaseCollector):
         rows = []
         for r in raw_data:
             url = r.get("url", "")
+            published = datetime.now(timezone.utc)
+            raw_published = r.get("published_at")
+            if raw_published:
+                try:
+                    published = parsedate_to_datetime(raw_published)
+                    if published.tzinfo is None:
+                        published = published.replace(tzinfo=timezone.utc)
+                except (TypeError, ValueError, OverflowError):
+                    try:
+                        published = datetime.fromisoformat(str(raw_published))
+                        if published.tzinfo is None:
+                            published = published.replace(tzinfo=timezone.utc)
+                    except (TypeError, ValueError):
+                        published = datetime.now(timezone.utc)
             rows.append({
                 "title": r.get("title", "")[:280],
                 "full_text": r.get("text", ""),
                 "url": url,
                 "url_hash": hashlib.sha256(url.encode()).hexdigest()[:32] if url else None,
                 "author": r.get("source", "ddti"),
-                "published_at": datetime.now(timezone.utc),
+                "published_at": published,
                 "category": "ddti_deletion",
                 "metadata": {
                     "feed": r.get("source"),

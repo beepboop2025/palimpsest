@@ -1,0 +1,191 @@
+"""The Hetzner collector fleet is bounded, opt-in, and fail-loud.
+
+These tests are completely offline: runner invocation, the kill switch, and the
+collector shell are injected.  They pin the operational contract rather than
+calling any public source.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("celery", reason="the fleet schedule is a Celery beat fragment")
+
+from core.collector_fleet import (  # noqa: E402
+    COLLECTOR_QUEUE,
+    CDT_ROOT_FEED,
+    SNAPSHOT_OUTPUTS,
+    build_collector_schedule,
+    collection_profile,
+    collectors_enabled,
+    ddti_head_config,
+    run_ddti_head,
+    run_snapshot_job,
+)
+
+
+class _Live:
+    def is_halted(self):
+        return False
+
+
+class _Halted:
+    def is_halted(self):
+        return True
+
+
+def _write_observation(root: Path, name: str, generated_at: str, count: int = 7):
+    path = root / SNAPSHOT_OUTPUTS[name]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "generated_at": generated_at,
+        "n_measurements": count,
+    }), encoding="utf-8")
+
+
+def test_fleet_is_inert_until_explicitly_enabled(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_COLLECTORS_ENABLED", raising=False)
+    assert collectors_enabled() is False
+    monkeypatch.setenv("PALIMPSEST_COLLECTORS_ENABLED", "YES")
+    assert collectors_enabled() is True
+
+
+def test_profile_is_validated_instead_of_silently_falling_back(monkeypatch):
+    monkeypatch.setenv("PALIMPSEST_COLLECTION_PROFILE", "reckless")
+    with pytest.raises(ValueError, match="standard.*vigorous"):
+        collection_profile()
+
+
+def test_vigorous_schedule_routes_every_job_to_the_isolated_queue():
+    schedule = build_collector_schedule("vigorous")
+
+    assert set(SNAPSHOT_OUTPUTS) <= {
+        name.removeprefix("collect-snapshot-")
+        for name in schedule
+        if name.startswith("collect-snapshot-")
+    }
+    assert "collect-ddti-feed-head" in schedule
+    for entry in schedule.values():
+        assert entry["options"]["queue"] == COLLECTOR_QUEUE
+        assert entry["options"]["expires"] > 0
+
+
+def test_vigorous_profile_really_samples_fast_sources_more_often():
+    vigorous = build_collector_schedule("vigorous")
+    standard = build_collector_schedule("standard")
+
+    assert "* *" in str(vigorous["collect-snapshot-weibo-hotsearch"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-weibo-hotsearch"]["schedule"])
+    assert "5,35" in str(vigorous["collect-ddti-feed-head"]["schedule"])
+    assert "*/3" in str(standard["collect-ddti-feed-head"]["schedule"])
+
+
+def test_ddti_head_is_one_honestly_identified_request_not_a_repeat_archive_sweep():
+    cfg = ddti_head_config("vigorous")
+    assert cfg["deletion_feeds"] == [
+        {"name": "cdt_root_head", "url": CDT_ROOT_FEED}
+    ]
+    assert cfg["retry_count"] == 3
+    assert cfg["circuit_breaker_threshold"] >= 3
+
+
+def test_snapshot_success_requires_the_observation_token_to_advance(tmp_path):
+    _write_observation(tmp_path, "ooni-gfw", "2026-08-11T08:00:00Z", count=3)
+
+    def invoke(name, root):
+        _write_observation(root, name, "2026-08-11T10:00:00Z", count=42)
+
+    result = run_snapshot_job(
+        "ooni-gfw", root=tmp_path, invoke=invoke, kill_switch=_Live())
+
+    assert result["status"] == "success"
+    assert result["records_collected"] == 42
+    assert result["generated_at"] == "2026-08-11T10:00:00Z"
+
+
+def test_normal_return_without_a_new_observation_is_an_abstention(tmp_path):
+    _write_observation(tmp_path, "ioda-outages", "2026-08-11T08:00:00Z")
+
+    result = run_snapshot_job(
+        "ioda-outages",
+        root=tmp_path,
+        invoke=lambda _name, _root: None,
+        kill_switch=_Live(),
+    )
+
+    assert result["status"] == "abstained"
+    assert result["records_collected"] == 0
+    assert "no new observation" in result["error"]
+
+
+def test_kill_switch_stops_the_job_before_invocation(tmp_path):
+    called = False
+
+    def invoke(_name, _root):
+        nonlocal called
+        called = True
+
+    result = run_snapshot_job(
+        "wayback", root=tmp_path, invoke=invoke, kill_switch=_Halted())
+
+    assert result["status"] == "halted"
+    assert called is False
+
+
+def test_runner_failure_is_structured_and_does_not_fabricate_a_reading(tmp_path):
+    def fail(_name, _root):
+        raise OSError("upstream unavailable")
+
+    result = run_snapshot_job(
+        "net4people", root=tmp_path, invoke=fail, kill_switch=_Live())
+
+    assert result["status"] == "failed"
+    assert result["records_collected"] == 0
+    assert "OSError" in result["error"]
+    assert not (tmp_path / SNAPSHOT_OUTPUTS["net4people"]).exists()
+
+
+def test_task_argument_cannot_select_an_arbitrary_module(tmp_path):
+    with pytest.raises(KeyError, match="unknown snapshot job"):
+        run_snapshot_job("os.system", root=tmp_path, kill_switch=_Live())
+
+
+def test_ddti_head_passes_the_bounded_config_to_the_collector():
+    seen = {}
+
+    class FakeCollector:
+        def __init__(self, config):
+            seen.update(config)
+
+        async def run(self):
+            await asyncio.sleep(0)
+            return {"status": "success", "records_collected": 12}
+
+    result = run_ddti_head(
+        profile="vigorous",
+        collector_factory=FakeCollector,
+        kill_switch=_Live(),
+    )
+
+    assert result["status"] == "success"
+    assert result["records_collected"] == 12
+    assert seen["deletion_feeds"][0]["url"] == CDT_ROOT_FEED
+
+
+def test_ddti_head_honours_the_same_global_kill_switch():
+    constructed = False
+
+    def factory(_config):
+        nonlocal constructed
+        constructed = True
+        raise AssertionError("must not construct a network collector while halted")
+
+    result = run_ddti_head(
+        profile="vigorous", collector_factory=factory, kill_switch=_Halted())
+
+    assert result["status"] == "halted"
+    assert constructed is False

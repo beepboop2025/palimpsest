@@ -46,6 +46,26 @@ class Article(Base):
     )
 
 
+class CollectionLog(Base):
+    """Durable audit row for every collector or snapshot run."""
+
+    __tablename__ = "collection_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source = Column(String(64), nullable=False)
+    status = Column(String(16), nullable=False)
+    records_collected = Column(Integer, default=0)
+    duration_seconds = Column(Float, default=0)
+    error_message = Column(Text, nullable=True)
+    run_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("idx_log_source", "source"),
+        Index("idx_log_status", "status"),
+        Index("idx_log_run_at", "run_at"),
+    )
+
+
 class DDTIIndexSnapshot(Base):
     """Time-series of DDTI selectivity/novelty index computations.
 

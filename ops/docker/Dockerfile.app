@@ -52,6 +52,9 @@ COPY --chown=palimpsest:palimpsest storage/      storage/
 COPY --chown=palimpsest:palimpsest censorwatch/  censorwatch/
 COPY --chown=palimpsest:palimpsest config/       config/
 COPY --chown=palimpsest:palimpsest scripts/      scripts/
+# Shared DDTI file-to-reading adapter.  The node calls the same function the
+# public workflow uses, keeping one output schema without invoking a shell.
+COPY --chown=palimpsest:palimpsest inject_ddti.py inject_ddti.py
 
 RUN mkdir -p /app/readings/state /app/data && chown -R palimpsest:palimpsest /app/readings /app/data
 

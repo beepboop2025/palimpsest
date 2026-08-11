@@ -25,7 +25,7 @@ import pandas as pd
 
 from core.circuit_breaker import CircuitBreaker
 from core.exceptions import (
-    ParseError, RateLimitError, SchemaChangedError, SourceDownError,
+    ParseError, RateLimitError, SchemaChangedError, SourceDownError, StorageError,
 )
 
 logger = logging.getLogger(__name__)
@@ -152,8 +152,8 @@ class BaseCollector(ABC):
             return self._result("success", records, duration)
 
         except (SourceDownError, RateLimitError) as e:
-            self._consecutive_failures += 1
             self._circuit_breaker.record_failure()
+            self._consecutive_failures = self._circuit_breaker.failure_count
             duration = time.monotonic() - start
             self._report_health("failed", str(e))
             self._log_collection("failed", 0, duration, str(e))
@@ -162,8 +162,8 @@ class BaseCollector(ABC):
             return self._result("failed", 0, duration, str(e))
 
         except (SchemaChangedError, ParseError) as e:
-            self._consecutive_failures += 1
             self._circuit_breaker.record_failure()
+            self._consecutive_failures = self._circuit_breaker.failure_count
             duration = time.monotonic() - start
             self._report_health("failed", str(e))
             self._log_collection("failed", 0, duration, str(e))
@@ -172,8 +172,8 @@ class BaseCollector(ABC):
             return self._result("failed", 0, duration, str(e))
 
         except Exception as e:
-            self._consecutive_failures += 1
             self._circuit_breaker.record_failure()
+            self._consecutive_failures = self._circuit_breaker.failure_count
             duration = time.monotonic() - start
             self._report_health("failed", str(e))
             self._log_collection("failed", 0, duration, str(e))
@@ -305,13 +305,17 @@ class BaseCollector(ABC):
             return 0
 
         try:
-            from storage.models import EconomicData, Article
             from api.database import SessionLocal
 
             db = SessionLocal()
             try:
                 count = 0
                 if self.source_type in ("api", "file", "structured"):
+                    # The censorship-only Palimpsest schema normally has no
+                    # structured collectors. Import its optional model only on
+                    # that path so article ingestion does not depend on a table
+                    # it never uses.
+                    from storage.models import EconomicData
                     for _, row in df.iterrows():
                         record = EconomicData(
                             source=self.name,
@@ -326,33 +330,68 @@ class BaseCollector(ABC):
                         db.merge(record)
                         count += 1
                 else:
+                    from storage.models import Article
+                    # ``Session.merge`` keys on the primary key, not url_hash.
+                    # New feed rows have no id, so the old code attempted a fresh
+                    # INSERT on every poll and the second cycle violated the
+                    # unique url_hash constraint.  One conflict then rolled back
+                    # the genuinely new items in the same batch.  Use the actual
+                    # natural key and carry the metadata the DDTI processor reads.
+                    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+                    now = datetime.now(timezone.utc)
+                    values_by_hash = {}
                     for _, row in df.iterrows():
                         import hashlib
-                        url = row.get("url", "")
-                        url_hash = hashlib.sha256(url.encode()).hexdigest()[:32] if url else None
-
-                        article = Article(
-                            source=self.name,
-                            source_type=self.source_type,
-                            url=url,
-                            url_hash=url_hash,
-                            title=row.get("title", ""),
-                            author=row.get("author", ""),
-                            published_at=row.get("published_at", datetime.now(timezone.utc)),
-                            collected_at=datetime.now(timezone.utc),
-                            full_text=row.get("full_text", row.get("description", "")),
-                            raw_path=raw_path,
-                            category=row.get("category", ""),
+                        url = str(row.get("url") or "")
+                        url_hash = (
+                            str(row.get("url_hash") or "")
+                            or (hashlib.sha256(url.encode()).hexdigest()[:32] if url else "")
                         )
-                        db.merge(article)
-                        count += 1
+                        if not url_hash:
+                            # A URL-less article has no stable identity and
+                            # cannot be safely de-duplicated across a 24/7 loop.
+                            logger.warning("[%s] skipping article without a stable URL", self.name)
+                            continue
+                        values_by_hash[url_hash] = {
+                            "source": self.name,
+                            "source_type": self.source_type,
+                            "url": url,
+                            "url_hash": url_hash,
+                            "title": row.get("title", ""),
+                            "author": row.get("author", ""),
+                            "published_at": row.get("published_at", now),
+                            "collected_at": now,
+                            "full_text": row.get("full_text", row.get("description", "")),
+                            "raw_path": raw_path,
+                            "category": row.get("category", ""),
+                            "extra_data": row.get("metadata", {}) or {},
+                        }
+
+                    values = list(values_by_hash.values())
+                    if values:
+                        stmt = pg_insert(Article.__table__).values(values)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["url_hash"],
+                            set_={
+                                "title": stmt.excluded.title,
+                                "author": stmt.excluded.author,
+                                "published_at": stmt.excluded.published_at,
+                                "full_text": stmt.excluded.full_text,
+                                "raw_path": stmt.excluded.raw_path,
+                                "category": stmt.excluded.category,
+                                "extra_data": stmt.excluded.extra_data,
+                            },
+                        )
+                        db.execute(stmt)
+                    count += len(values)
                 db.commit()
                 return count
             finally:
                 db.close()
         except Exception as e:
             logger.error(f"[{self.name}] Upsert failed: {e}")
-            return 0
+            raise StorageError(raw_path, str(e)) from e
 
     @staticmethod
     def _result(status: str, records: int, duration: float, error: str = "") -> dict:

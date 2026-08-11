@@ -1,13 +1,16 @@
 """Celery application and beat schedule for the Palimpsest censorship observatory.
 
-Slim, censorship-only scheduler. It defines one Celery ``app``, autodiscovers the
-DDTI index task and the CensorWatch velocity tasks, and assembles the beat
-schedule. The CensorWatch velocity leg is merged in ONLY when
+It defines one Celery ``app`` and assembles three deliberately separate legs:
+the DDTI processor, the opt-in passive public-source fleet, and CensorWatch.
+The passive fleet is merged only when ``PALIMPSEST_COLLECTORS_ENABLED`` is set;
+the CensorWatch velocity leg is merged only when
 ``CENSORWATCH_ENABLED`` is set, so the deletion-detection machinery is inert by
 default (matching its isolated, feature-flagged design).
 
 Run the API/index worker:
     celery -A core.scheduler worker -c 2
+Run the isolated passive collector worker (when enabled):
+    celery -A core.scheduler worker -Q collectors -c 2
 Run the isolated CensorWatch worker (when enabled):
     celery -A core.scheduler worker -Q censorwatch -c 2
 Run beat:
@@ -33,6 +36,7 @@ app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_acks_late=True,
+    worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=200,
 )
 
@@ -41,7 +45,7 @@ app.autodiscover_tasks(["core", "censorwatch"])
 
 
 def _base_schedule() -> dict:
-    """Selectivity/novelty index — always on. Pulls CDT, recomputes the index."""
+    """Selectivity/novelty processor — always on; acquisition is a separate leg."""
     return {
         "ddti-generate-index": {
             "task": "core.tasks.generate_ddti_index",
@@ -52,6 +56,10 @@ def _base_schedule() -> dict:
 
 def build_beat_schedule() -> dict:
     schedule = _base_schedule()
+    from core.collector_fleet import collectors_enabled
+    if collectors_enabled():
+        from core.collector_fleet import build_collector_schedule
+        schedule.update(build_collector_schedule())
     if is_enabled():
         try:
             from censorwatch.beat import build_censorwatch_schedule

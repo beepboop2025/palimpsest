@@ -3,6 +3,11 @@
 This directory runs Palimpsest's **outbound** collector — the recurring
 Generative Firewall Index reading — inside a disposable, isolated container.
 
+For the separate always-on, keyless public-source fleet used by a dedicated
+measurement node, see `docker-compose.prod.yml`'s opt-in `collectors` profile and
+Step 5a of `ops/DEPLOY-HETZNER.md`. That worker uses its own Celery queue and does
+not contain or run the model-API reading described below.
+
 The reading reaches out to a public model API, grades the responses with the
 repo's own lexical rule-set, and writes an auditable point into `readings/`.
 That is the whole job. It is an **outbound scraper in a box**: it publishes no

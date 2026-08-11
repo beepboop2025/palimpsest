@@ -12,6 +12,7 @@
 #
 # Usage:
 #   docker compose -f ops/docker/docker-compose.prod.yml up -d --build
+#   docker compose -f ops/docker/docker-compose.prod.yml --profile collectors up -d --build
 #   docker compose -f ops/docker/docker-compose.prod.yml --profile velocity up -d --build
 
 x-app: &app
@@ -68,6 +69,24 @@ services:
   beat:
     <<: *app
     command: ["celery", "-A", "core.scheduler", "beat", "--pidfile=", "-s", "/app/readings/state/celerybeat-schedule"]
+
+  # --- opt-in public-source collection fleet -----------------------------
+  # Outbound-only, keyless sources.  A dedicated queue means a slow archive
+  # or aggregate API never blocks the index worker.  The worker is read-only
+  # except for the two explicit durable data mounts inherited from x-app.
+  worker-collectors:
+    <<: *app
+    profiles: ["collectors"]
+    command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "collectors", "--prefetch-multiplier=1", "-n", "collectors@%h"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    pids_limit: 256
+    cpus: 1.5
 
   # --- optional: CensorWatch velocity leg (Playwright) --------------------
   # Requires WITH_BROWSER=true at build time and CENSORWATCH_ENABLED=1 in .env.
