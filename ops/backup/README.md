@@ -48,6 +48,35 @@ copy directory must already be mounted and writable; the job refuses to create
 it. Local retention does not prune the remote. An uploader hook must be an
 absolute executable path, not a shell command.
 
+The job intentionally fails when any included evidence file is unreadable. Do
+not work around that by changing ownership or widening a private subtree to its
+ordinary group or to everyone. For an isolated mode-0600 artifact that belongs
+in the backup, derive the effective service principal rather than assuming the
+generic `deploy` layout or the Palimpsest-specific `palimpsest` override:
+
+```bash
+BACKUP_USER="$(systemctl show --property=User --value palimpsest-backup.service)"
+test -n "$BACKUP_USER"
+getent passwd "$BACKUP_USER" >/dev/null
+
+# Replace this placeholder with one reviewed, absolute regular-file path.
+EVIDENCE_FILE=/absolute/path/to/the/exact-unreadable-artifact
+test -f "$EVIDENCE_FILE" && test ! -L "$EVIDENCE_FILE"
+BEFORE_HASH="$(sudo sha256sum -- "$EVIDENCE_FILE")"
+BEFORE_OWNER_SIZE="$(sudo stat -c '%u:%g:%s' -- "$EVIDENCE_FILE")"
+sudo setfacl -m "u:${BACKUP_USER}:r--" -- "$EVIDENCE_FILE"
+sudo -u "$BACKUP_USER" test -r "$EVIDENCE_FILE"
+test "$BEFORE_HASH" = "$(sudo sha256sum -- "$EVIDENCE_FILE")"
+test "$BEFORE_OWNER_SIZE" = "$(sudo stat -c '%u:%g:%s' -- "$EVIDENCE_FILE")"
+sudo getfacl -cp -- "$EVIDENCE_FILE"
+```
+
+If the final read check reports a traversal error, use `namei -l` to identify
+the exact inaccessible parent and grant that principal execute-only access on
+only that parent. POSIX `stat` group bits reflect the ACL mask; the final
+`getfacl` output must retain `group::---` and `other::---`, with only the named
+backup identity receiving read access.
+
 For interactive stack operations, use `ops/docker/prod-compose`. It supplies
 the same `.env` to both Compose interpolation and the running containers; a
 bare `docker compose -f ...` command can otherwise render defaults before the

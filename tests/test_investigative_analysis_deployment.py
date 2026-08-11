@@ -13,6 +13,8 @@ VERIFIER = ROOT / "ops/investigative-analysis/verify-host-bundle.sh"
 SERVICE = ROOT / "ops/systemd/palimpsest-investigative-analysis.service"
 README = ROOT / "ops/investigative-analysis/README.md"
 DEPLOY_GUIDE = ROOT / "ops/DEPLOY-HETZNER.md"
+BACKUP_README = ROOT / "ops/backup/README.md"
+BLEEDTHROUGH_README = ROOT / "ops/bleedthrough/README.md"
 
 
 def _temporary_wrapper_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
@@ -26,9 +28,7 @@ def _temporary_wrapper_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         "services: {}\n", encoding="utf-8"
     )
     (docker_dir / ".env").write_text("NODE_TEST=1\n", encoding="utf-8")
-    (repository / ".gitignore").write_text(
-        "/ops/docker/.env\n", encoding="utf-8"
-    )
+    (repository / ".gitignore").write_text("/ops/docker/.env\n", encoding="utf-8")
     fake_docker = fake_bin / "docker"
     fake_docker.write_text(
         "#!/usr/bin/env bash\n"
@@ -172,7 +172,7 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
     assert 'bundle_root="/usr/local/libexec/palimpsest-analysis"' in source
     assert "core/investigative_candidates.py" in source
     assert 'show "$revision:$repository_path"' in source
-    assert 'safe.directory=$repo_root' in source
+    assert "safe.directory=$repo_root" in source
     assert "MANIFEST.sha256" in source
     assert "verify-host-bundle.sh" in source
     assert source.count("status --porcelain=v1 --untracked-files=all") == 2
@@ -181,6 +181,26 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
     )
     assert source.index("systemctl daemon-reload") < source.index(
         'mv -Tf "$receipt_tmp" "$receipt_path"'
+    )
+    assert 'runtime_name="palimpsest-analysis"' in source
+    assert 'runtime_id="10001"' in source
+    assert "--ensure-identity" in source
+    assert 'mode="identity-only"' in source
+    assert "groupadd --system --gid" in source
+    assert "groupdel" in source
+    assert "useradd --system --uid" in source
+    assert "--home-dir /nonexistent --no-create-home" in source
+    assert "passwd --status" in source
+    assert "password_state" in source and '== "L"' in source
+    assert "analysis identity is partial or collides" in source
+    assert "enumerate_identity_record" in source
+    assert "cannot prove the analysis group name/GID is unique" in source
+    assert "cannot prove the analysis user name/UID is unique" in source
+    assert source.index('if [[ "$mode" == "identity-only" ]]') < source.index(
+        "docker image inspect"
+    )
+    assert source.index("docker image inspect") < source.index(
+        "\nensure_runtime_identity\n\nsystemd-analyze"
     )
 
 
@@ -211,6 +231,8 @@ def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
 def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> None:
     documentation = README.read_text(encoding="utf-8")
     deploy_guide = DEPLOY_GUIDE.read_text(encoding="utf-8")
+    backup_documentation = BACKUP_README.read_text(encoding="utf-8")
+    bleedthrough_documentation = BLEEDTHROUGH_README.read_text(encoding="utf-8")
 
     assert "Only 48 complete run snapshots" in documentation
     assert "512 MiB" in documentation
@@ -221,10 +243,42 @@ def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> N
     assert "PALIMPSEST_ANALYSIS_IMAGE" in documentation
     assert "Environment variables that appear to override" in documentation
     assert "copied by rsync/SCP" in documentation
-    for instructions in (documentation, deploy_guide):
-        assert "u:10001:rwX /var/lib/palimpsest/readings" in instructions
-        assert "d:u:10001:rwx" in instructions
+    assert "217/USER" in documentation
+    assert "palimpsest-analysis" in documentation
+    for instructions in (
+        documentation,
+        deploy_guide,
+        bleedthrough_documentation,
+    ):
+        identity_preflight = instructions.index("--ensure-identity")
+        first_identity_grant = min(
+            offset
+            for marker in (
+                "-o palimpsest-analysis",
+                "u:palimpsest-analysis:",
+                "--chown=palimpsest-analysis:",
+            )
+            if (offset := instructions.find(marker)) >= 0
+        )
+        assert identity_preflight < first_identity_grant
+        assert "u:palimpsest-analysis:rwX /var/lib/palimpsest/readings" in (
+            instructions
+        )
+        assert "d:u:palimpsest-analysis:rwx" in instructions
         assert "u:10001:rX /var/lib/palimpsest/readings" not in instructions
+        assert "-o 10001" not in instructions
+        assert "--chown=10001" not in instructions
+    assert "prod-compose port api 8000" in deploy_guide
+    assert "127.0.0.1:8000/healthz" not in deploy_guide
+    assert "group::---" in deploy_guide
+    assert "systemctl show --property=User --value" in backup_documentation
+    assert "EVIDENCE_FILE=/absolute/path/to/the/exact-unreadable-artifact" in (
+        backup_documentation
+    )
+    assert 'setfacl -m "u:${BACKUP_USER}:r--"' in backup_documentation
+    assert 'sudo -u "$BACKUP_USER" test -r' in backup_documentation
+    assert "BEFORE_HASH" in backup_documentation
+    assert "BEFORE_OWNER_SIZE" in backup_documentation
 
 
 def test_app_image_carries_the_compose_supplied_revision_label() -> None:

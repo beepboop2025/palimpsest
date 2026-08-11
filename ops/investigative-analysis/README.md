@@ -63,27 +63,37 @@ revision label, installs a root-owned versioned runner bundle, switches the
 Before every run, systemd verifies the bundle's SHA-256 manifest and requires its
 revision file to byte-match that deployed receipt.
 
+The installer also creates or validates a locked `palimpsest-analysis` host
+identity at UID/GID 10001, with `/nonexistent` as its home and `nologin` as its
+shell. This NSS record is required even though every path and container already
+uses numeric ownership; without it, systemd fails the unit with `217/USER`.
+
 Installation must run from the Git-backed stable release path (on the canonical
 node, `/home/palimpsest/palimpsest`). A code tree copied by rsync/SCP without
 `.git` metadata is intentionally unsupported and will fail provenance checks.
 
 ```sh
+# Reserve UID/GID 10001 before granting it ownership or ACL access. This mode
+# validates the clean checkout and all four name/ID slots, but installs no unit.
+sudo bash ops/investigative-analysis/install-host-bundle.sh --ensure-identity
+
 sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
-sudo install -d -o 10001 -g 10001 -m 0700 \
+sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0700 \
   /var/lib/palimpsest-analysis/runs \
   /var/lib/palimpsest-analysis/private
 # UID 10001 is also the collector identity. Preserve its write/default-write
 # access to readings; systemd presents that source read-only to this unit.
-sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings
 sudo find /var/lib/palimpsest/readings -type d \
-  -exec setfacl -m d:u:10001:rwx {} +
+  -exec setfacl -m d:u:palimpsest-analysis:rwx {} +
 # The separate RSS newswire tree is analysis input only for this identity.
-sudo setfacl -R -m u:10001:rX /var/lib/palimpsest/newswire
+sudo setfacl -R -m u:palimpsest-analysis:rX /var/lib/palimpsest/newswire
 sudo find /var/lib/palimpsest/newswire -type d \
-  -exec setfacl -m d:u:10001:rX {} +
+  -exec setfacl -m d:u:palimpsest-analysis:rX {} +
 
 # First install: these units may not exist yet. The installer itself verifies
-# that neither unit is active and refuses an unknown state.
+# that neither unit is active and refuses an unknown state. It also revalidates
+# the identity before installing the root-owned bundle and units.
 sudo systemctl stop palimpsest-investigative-analysis.timer 2>/dev/null || true
 sudo systemctl stop palimpsest-investigative-analysis.service 2>/dev/null || true
 sudo bash ops/investigative-analysis/install-host-bundle.sh

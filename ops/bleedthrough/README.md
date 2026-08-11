@@ -66,12 +66,15 @@ sudo install -d -o palimpsest -g palimpsest -m 0750 \
 # only the two sanitized files. The collector remains the directory owner.
 sudo install -d -o palimpsest -g caddy -m 0750 \
   /var/lib/palimpsest/readings
-# The Docker acquisition fleet runs as the distinct, unprivileged identity
-# 10001:10001. Preserve the BLEEDTHROUGH owner and Caddy group, while granting
-# that exact runtime identity access to existing and newly created readings.
-sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+# Reserve the Docker fleet's UID/GID before granting it any host access. The
+# preflight refuses name/ID collisions and installs no service or bundle.
+sudo bash /home/palimpsest/palimpsest/ops/investigative-analysis/install-host-bundle.sh \
+  --ensure-identity
+# Preserve the BLEEDTHROUGH owner and Caddy group while granting that validated
+# locked identity access to existing and newly created readings.
+sudo setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings
 sudo find /var/lib/palimpsest/readings -type d \
-  -exec setfacl -m d:u:10001:rwx {} +
+  -exec setfacl -m d:u:palimpsest-analysis:rwx {} +
 sudo install -o root -g palimpsest -m 0640 \
   /home/palimpsest/palimpsest/ops/bleedthrough/bleedthrough.env.example \
   /etc/palimpsest/bleedthrough.env

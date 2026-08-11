@@ -75,11 +75,16 @@ def test_environment_records_fixed_box_consent_kill_switch_and_durable_paths():
         assert f"{variable}=/var/lib/palimpsest/" in env
 
 
-def test_install_preserves_access_for_the_distinct_container_identity():
+def test_install_preflights_and_preserves_access_for_the_shared_identity():
     runbook = RUNBOOK.read_text(encoding="utf-8")
 
-    assert "setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings" in runbook
-    assert "-exec setfacl -m d:u:10001:rwx {} +" in runbook
+    preflight = runbook.index("--ensure-identity")
+    access_grant = runbook.index(
+        "setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings"
+    )
+    assert preflight < access_grant
+    assert "-exec setfacl -m d:u:palimpsest-analysis:rwx {} +" in runbook
+    assert "u:10001:" not in runbook
     assert "world-write" in runbook
 
 

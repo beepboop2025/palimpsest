@@ -181,13 +181,24 @@ external state paths mean this code-tree swap does not move collected data.
 
 The application image runs as unprivileged UID/GID `10001`. Keep its mutable
 state outside the git checkout so collection never makes `git pull` dirty or
-mixes private node history with public workflow output. Seed the initial public
-readings once, then give the runtime identity ownership:
+mixes private node history with public workflow output. Before assigning that
+numeric ID to any path, reserve it with the repository's fail-closed identity
+preflight. It checks all user/group name-and-ID slots before creating anything
+and refuses partial or colliding host state:
 
 ```bash
-sudo install -d -o 10001 -g 10001 -m 0755 \
+sudo bash ops/investigative-analysis/install-host-bundle.sh --ensure-identity
+```
+
+Seed the initial public readings once, then give the validated locked identity
+ownership by name:
+
+```bash
+sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0755 \
   /var/lib/palimpsest/readings/state /var/lib/palimpsest/data
-sudo rsync -a --chown=10001:10001 readings/ /var/lib/palimpsest/readings/
+sudo rsync -a \
+  --chown=palimpsest-analysis:palimpsest-analysis \
+  readings/ /var/lib/palimpsest/readings/
 ```
 
 If the host BLEEDTHROUGH service also owns this tree as UID 1001, keep that
@@ -195,9 +206,9 @@ ownership and grant the container identity a named/default ACL after any
 `install -d -m` command (which can otherwise narrow the ACL mask):
 
 ```bash
-sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings
 sudo find /var/lib/palimpsest/readings -type d \
-  -exec setfacl -m d:u:10001:rwx {} +
+  -exec setfacl -m d:u:palimpsest-analysis:rwx {} +
 ```
 
 Verify from `worker-collectors`, `worker-warehouse`, and `beat` that the directory
@@ -373,7 +384,7 @@ Then create a bounded Palimpsest subtree and set these values in the
 operator-owned `.env` (the committed feature flag remains disabled):
 
 ```bash
-sudo install -d -o 10001 -g 10001 -m 0750 \
+sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0750 \
   /mnt/HC_Volume_<volume-id>/palimpsest/warehouse/ooni-bulk
 ```
 
@@ -445,14 +456,16 @@ unused loopback port with `PALIMPSEST_API_PORT` in `.env`:
 
 ```bash
 ops/docker/prod-compose --profile collectors --profile api up -d --build
-curl --fail http://127.0.0.1:8000/healthz
-curl --fail http://127.0.0.1:8000/readyz
-curl --fail http://127.0.0.1:8000/api/v1/node/status
-curl --fail http://127.0.0.1:8000/metrics
+PALIMPSEST_API_ENDPOINT="$(ops/docker/prod-compose port api 8000)"
+test -n "$PALIMPSEST_API_ENDPOINT"
+curl --fail "http://$PALIMPSEST_API_ENDPOINT/healthz"
+curl --fail "http://$PALIMPSEST_API_ENDPOINT/readyz"
+curl --fail "http://$PALIMPSEST_API_ENDPOINT/api/v1/node/status"
+curl --fail "http://$PALIMPSEST_API_ENDPOINT/metrics"
 ```
 
 Do not change the bind to `0.0.0.0` merely for convenience. Use SSH port
-forwarding (`ssh -L 8000:127.0.0.1:8000 deploy@HOST`) for remote operator access.
+forwarding to the configured loopback port for remote operator access.
 `PALIMPSEST_ALERT_WEBHOOK_URL` is blank by default. If configured, the status
 task sends a bounded, sanitized summary when health enters a non-healthy state—not
 raw observations and not a heartbeat on every run.
@@ -465,26 +478,33 @@ image with Docker networking disabled, and writes candidate questions only to
 `/var/lib/palimpsest-analysis/private`. It never edits the public investigation
 configuration or publishes to the website.
 
-Prepare its fixed storage roots and source ACLs. The shared UID 10001 is also
-the collector identity, so it must retain write/default-write access to
-`readings`; the analysis unit makes that tree read-only inside its own systemd
-sandbox. RSS `newswire` is a separate source tree and needs read access only:
+The identity preflight in Step 4 has already reserved UID/GID 10001, and the
+full installer below revalidates it. Prepare fixed storage roots and source ACLs
+using that validated name. The identity is also used by collectors, so it must
+retain write/default-write access to `readings`; the analysis unit makes that
+tree read-only inside its own systemd sandbox. RSS `newswire` is a separate
+source tree and needs read access only:
 
 ```bash
 sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
-sudo install -d -o 10001 -g 10001 -m 0700 \
+sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0700 \
   /var/lib/palimpsest-analysis/runs \
   /var/lib/palimpsest-analysis/private
-sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings
 sudo find /var/lib/palimpsest/readings -type d \
-  -exec setfacl -m d:u:10001:rwx {} +
-sudo setfacl -R -m u:10001:rX /var/lib/palimpsest/newswire
+  -exec setfacl -m d:u:palimpsest-analysis:rwx {} +
+sudo setfacl -R -m u:palimpsest-analysis:rX /var/lib/palimpsest/newswire
 sudo find /var/lib/palimpsest/newswire -type d \
-  -exec setfacl -m d:u:10001:rX {} +
+  -exec setfacl -m d:u:palimpsest-analysis:rX {} +
 ```
 
 The application image must already have been built from the clean checked-out
 commit. Install and certify that exact deploy, then start one immediate check:
+
+The installer revalidates the locked `palimpsest-analysis` NSS identity at
+UID/GID 10001, with no home and a `nologin` shell, before it installs anything.
+Numeric file ownership by itself is insufficient: systemd refuses `User=10001`
+with `217/USER` when the host has no matching passwd/group records.
 
 ```bash
 sudo systemctl stop palimpsest-investigative-analysis.timer 2>/dev/null || true
@@ -670,6 +690,16 @@ coordination work across a host restart.
   directory or an executable uploader hook. Installation, off-host settings,
   checksum verification, and a non-destructive restore drill are in
   [`ops/backup/README.md`](backup/README.md).
+
+  The backup service fails closed when any included evidence file is unreadable.
+  Do not solve that by changing evidence ownership or making a private tree
+  group/world-readable. For isolated mode-0600 artifacts, record their hashes,
+  derive the actual backup principal from the unit's effective `User`, grant it
+  a named read ACL on the exact files plus traverse on only the required parents,
+  and confirm hashes/owners/sizes are unchanged before retrying. With POSIX ACLs,
+  `stat` group bits display the ACL mask; use `getfacl` to confirm `group::---`,
+  `other::---`, and the one named read grant. The exact fail-closed procedure is
+  in [`ops/backup/README.md`](backup/README.md).
 
 - **Hetzner snapshots / backups** — enable the server's automatic backup option
   (~20% surcharge) for whole-box rollback. Cheap insurance for a single node.

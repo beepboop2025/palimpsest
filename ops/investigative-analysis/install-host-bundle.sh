@@ -9,18 +9,31 @@ die() {
 }
 
 [[ "$EUID" -eq 0 ]] || die "run this installer as root"
-(( $# <= 1 )) || die "usage: $0 [image-reference]"
+(( $# <= 1 )) || die "usage: $0 [--ensure-identity|image-reference]"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "$script_dir/../.." && pwd -P)"
-image_ref="${1:-palimpsest/app:local}"
-[[ -n "$image_ref" && "$image_ref" != -* && "$image_ref" != *[[:space:]]* ]] \
-  || die "image reference is empty or malformed"
+mode="install"
+image_ref="palimpsest/app:local"
+if (( $# == 1 )); then
+  if [[ "$1" == "--ensure-identity" ]]; then
+    mode="identity-only"
+  else
+    image_ref="$1"
+  fi
+fi
+if [[ "$mode" == "install" ]]; then
+  [[ -n "$image_ref" && "$image_ref" != -* \
+      && "$image_ref" != *[[:space:]]* ]] \
+    || die "image reference is empty or malformed"
+fi
 bundle_root="/usr/local/libexec/palimpsest-analysis"
 receipt_dir="/etc/palimpsest"
 receipt_path="$receipt_dir/deployed-commit"
 service_name="palimpsest-investigative-analysis.service"
 timer_name="palimpsest-investigative-analysis.timer"
+runtime_name="palimpsest-analysis"
+runtime_id="10001"
 
 # Prevent an invoking shell from redirecting Git's object/index/worktree view
 # away from the checkout whose files this installer copies.
@@ -29,11 +42,111 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
 unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH
 export DOCKER_HOST="unix:///var/run/docker.sock"
 
-for command_name in chmod chown cmp docker git install ln mktemp mv readlink rm \
-  sha256sum stat sync systemctl systemd-analyze; do
+for command_name in getent git groupadd groupdel passwd readlink useradd; do
   command -v "$command_name" >/dev/null 2>&1 \
     || die "required command is missing: $command_name"
 done
+if [[ "$mode" == "install" ]]; then
+  for command_name in chmod chown cmp docker install ln mktemp mv rm sha256sum \
+    stat sync systemctl systemd-analyze; do
+    command -v "$command_name" >/dev/null 2>&1 \
+      || die "required command is missing: $command_name"
+  done
+fi
+
+nologin_shell="$(command -v nologin)" \
+  || die "required command is missing: nologin"
+
+enumerate_identity_record() {
+  local database="$1"
+  local rows row record_name record_id match=""
+
+  rows="$(getent "$database")" || return 1
+  while IFS= read -r row; do
+    [[ -n "$row" ]] || continue
+    IFS=: read -r record_name _ record_id _ <<<"$row"
+    [[ "$record_name" == "$runtime_name" || "$record_id" == "$runtime_id" ]] \
+      || continue
+    [[ -z "$match" ]] || return 2
+    match="$row"
+  done <<<"$rows"
+  printf '%s' "$match"
+}
+
+ensure_runtime_identity() {
+  local group_by_name group_by_id group_enumerated group_name group_id
+  local user_by_name user_by_id user_enumerated
+  local user_name user_id user_group user_home user_shell
+  local password_name password_state canonical_expected_shell canonical_user_shell
+  local created_group="false"
+
+  group_by_name="$(getent group "$runtime_name" || true)"
+  group_by_id="$(getent group "$runtime_id" || true)"
+  user_by_name="$(getent passwd "$runtime_name" || true)"
+  user_by_id="$(getent passwd "$runtime_id" || true)"
+  group_enumerated="$(enumerate_identity_record group)" \
+    || die "cannot prove the analysis group name/GID is unique"
+  user_enumerated="$(enumerate_identity_record passwd)" \
+    || die "cannot prove the analysis user name/UID is unique"
+  [[ "$group_by_name" == "$group_enumerated" \
+      && "$group_by_id" == "$group_enumerated" \
+      && "$user_by_name" == "$user_enumerated" \
+      && "$user_by_id" == "$user_enumerated" ]] \
+    || die "keyed and enumerated analysis identity records disagree"
+
+  if [[ -z "$group_by_name" && -z "$group_by_id" \
+      && -z "$user_by_name" && -z "$user_by_id" ]]; then
+    groupadd --system --gid "$runtime_id" "$runtime_name" \
+      || die "cannot create the analysis group"
+    created_group="true"
+    if ! useradd --system --uid "$runtime_id" --gid "$runtime_id" \
+        --home-dir /nonexistent --no-create-home --shell "$nologin_shell" \
+        "$runtime_name"; then
+      groupdel "$runtime_name" \
+        || die "user creation failed and the new analysis group could not be rolled back"
+      die "cannot create the analysis user; the new group was rolled back"
+    fi
+    user_by_name="$(getent passwd "$runtime_name" || true)"
+    user_by_id="$(getent passwd "$runtime_id" || true)"
+    group_by_name="$(getent group "$runtime_name" || true)"
+    group_by_id="$(getent group "$runtime_id" || true)"
+    group_enumerated="$(enumerate_identity_record group)" \
+      || die "cannot prove the new analysis group is unique"
+    user_enumerated="$(enumerate_identity_record passwd)" \
+      || die "cannot prove the new analysis user is unique"
+    [[ "$group_by_name" == "$group_enumerated" \
+        && "$group_by_id" == "$group_enumerated" \
+        && "$user_by_name" == "$user_enumerated" \
+        && "$user_by_id" == "$user_enumerated" ]] \
+      || die "new keyed and enumerated analysis identity records disagree"
+  elif [[ -z "$group_by_name" || -z "$group_by_id" \
+      || -z "$user_by_name" || -z "$user_by_id" ]]; then
+    die "analysis identity is partial or collides; no account changes were made"
+  fi
+
+  [[ -n "$group_by_name" && "$group_by_name" == "$group_by_id" ]] \
+    || die "UID/GID 10001 group identity is missing or collides"
+  IFS=: read -r group_name _ group_id _ <<<"$group_by_name"
+  [[ "$group_name" == "$runtime_name" && "$group_id" == "$runtime_id" ]] \
+    || die "analysis group does not match palimpsest-analysis:10001"
+  [[ -n "$user_by_name" && "$user_by_name" == "$user_by_id" ]] \
+    || die "UID/GID 10001 user identity is missing or collides"
+  IFS=: read -r user_name _ user_id user_group _ user_home user_shell \
+    <<<"$user_by_name"
+  canonical_expected_shell="$(readlink -f -- "$nologin_shell" 2>/dev/null || true)"
+  canonical_user_shell="$(readlink -f -- "$user_shell" 2>/dev/null || true)"
+  [[ "$user_name" == "$runtime_name" && "$user_id" == "$runtime_id" \
+      && "$user_group" == "$runtime_id" && "$user_home" == "/nonexistent" \
+      && -n "$canonical_expected_shell" \
+      && "$canonical_user_shell" == "$canonical_expected_shell" ]] \
+    || die "analysis user is not the locked no-home UID/GID 10001 identity"
+  read -r password_name password_state _ < <(passwd --status "$runtime_name")
+  [[ "$password_name" == "$runtime_name" && "$password_state" == "L" ]] \
+    || die "analysis user password is not locked"
+
+  [[ "$created_group" == "false" || -n "$user_by_name" ]] \
+    || die "analysis identity creation did not converge"
+}
 
 if ! revision="$(
   git -c "safe.directory=$repo_root" -C "$repo_root" \
@@ -49,6 +162,13 @@ if ! checkout_status="$(
 fi
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || die "Git returned a malformed revision"
 [[ -z "$checkout_status" ]] || die "checkout has modified or untracked files"
+
+if [[ "$mode" == "identity-only" ]]; then
+  ensure_runtime_identity
+  printf 'validated Palimpsest analysis identity %s:%s\n' \
+    "$runtime_name" "$runtime_id"
+  exit 0
+fi
 
 verify_git_blob() {
   local repository_path="$1"
@@ -91,6 +211,8 @@ read -r image_revision image_id extra <<<"$image_metadata"
   || die "image revision does not match checked-out HEAD"
 [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] \
   || die "image inspection returned a malformed immutable ID"
+
+ensure_runtime_identity
 
 systemd-analyze verify \
   "$repo_root/ops/systemd/$service_name" \
