@@ -13,6 +13,7 @@ published too and a test containing a forbidden shape fails its own check.
 
 Standard library, offline.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -23,8 +24,14 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scripts.verify_public_surface import (SELF, _findings_in, check,  # noqa: E402
-                                           identity_rules, render, tracked_files)
+from scripts.verify_public_surface import (  # noqa: E402
+    SELF,
+    _findings_in,
+    check,
+    identity_rules,
+    render,
+    tracked_files,
+)
 
 WORKFLOWS = ROOT / ".github" / "workflows"
 
@@ -66,7 +73,8 @@ def test_one_allowed_address_does_not_allow_its_whole_domain():
 
     neighbour = "someperson@" + "eastmoney.com"
     assert _findings_in("docs/x.md", f"reports go to {neighbour}", ()), (
-        "an allowed address widened into an allowed domain")
+        "an allowed address widened into an allowed domain"
+    )
 
 
 def test_an_identity_rule_matches_without_being_echoed():
@@ -89,6 +97,7 @@ def test_the_checker_reads_what_pages_serves():
 
 # ── a rule of several words survives being wrapped ────────────────────────────
 
+
 def test_a_multi_word_rule_is_caught_across_a_line_break():
     """Most rules are two or three words, and any formatter that wraps prose can put a
     newline in the middle of one. Matching line by line looks for the words in a place they
@@ -97,11 +106,16 @@ def test_a_multi_word_rule_is_caught_across_a_line_break():
     inline = _findings_in("docs/x.md", f"measured by {rule} in July", (rule,))
     assert inline, "the rule did not fire on one line"
 
-    wrapped = _findings_in("docs/x.md", "measured by Some\nAssembled Name in July", (rule,))
-    assert wrapped, "a wrapped rule went unmatched, and a wrap is invisible when published"
+    wrapped = _findings_in(
+        "docs/x.md", "measured by Some\nAssembled Name in July", (rule,)
+    )
+    assert wrapped, (
+        "a wrapped rule went unmatched, and a wrap is invisible when published"
+    )
 
-    indented = _findings_in("docs/x.md", "measured by Some Assembled\n   Name in July",
-                            (rule,))
+    indented = _findings_in(
+        "docs/x.md", "measured by Some Assembled\n   Name in July", (rule,)
+    )
     assert indented, "the leading indent of the next line defeated the match"
 
 
@@ -116,6 +130,7 @@ def test_a_wrapped_match_is_reported_on_the_line_it_starts_on():
 
 # ── the check blocks a leak and does not block a corpus ───────────────────────
 
+
 def test_a_shape_in_a_collected_corpus_warns_rather_than_blocks():
     """readings/ and the fixture trees hold pages and transcripts collected from the world.
     A third party's address inside one is the subject matter. Blocking on it would stop every
@@ -126,14 +141,17 @@ def test_a_shape_in_a_collected_corpus_warns_rather_than_blocks():
 
     corpus = _findings_in("readings/refusal-drift-transcripts.json", line, ())
     assert corpus, "a collected corpus was not read at all"
-    assert not any(f.blocking for f in corpus), "a scraped address blocked the push path"
+    assert not any(f.blocking for f in corpus), (
+        "a scraped address blocked the push path"
+    )
 
     fixture = _findings_in("censorwatch/tests/fixtures/guba_list.html", line, ())
     assert fixture and not any(f.blocking for f in fixture)
 
     authored = _findings_in("docs/x.md", line, ())
     assert authored and all(f.blocking for f in authored), (
-        "an address in an authored page has to block: that is the leak this exists for")
+        "an address in an authored page has to block: that is the leak this exists for"
+    )
 
 
 GENERATED_FROM_THE_CDT_FEED = (
@@ -152,12 +170,15 @@ def test_a_scraped_shape_in_a_generated_artifact_warns_rather_than_blocks(path):
     article title would then exit 1 in the step before `git push` and kill that cron on every
     tick, silently, with nothing published to show for it."""
     address = "someperson@" + "somemailprovider.com"
-    for line in (f"<li>reports go to {address}</li>",
-                 "<li>" + "TODO" + "(someone): a headline shaped like an annotation</li>"):
+    for line in (
+        f"<li>reports go to {address}</li>",
+        "<li>" + "TODO" + "(someone): a headline shaped like an annotation</li>",
+    ):
         found = _findings_in(path, line, ())
         assert found, f"{path} was not read at all"
         assert not any(f.blocking for f in found), (
-            f"a scraped shape in {path} blocks the refresh push path")
+            f"a scraped shape in {path} blocks the refresh push path"
+        )
 
 
 @pytest.mark.parametrize("path", GENERATED_FROM_THE_CDT_FEED)
@@ -167,7 +188,8 @@ def test_an_identity_rule_still_blocks_in_a_generated_artifact(path):
     secret = "a-string-that-must-not-be-published"
     found = _findings_in(path, f"measured from {secret}", (secret,))
     assert found and all(f.blocking for f in found), (
-        f"the identity rules stopped blocking on {path}")
+        f"the identity rules stopped blocking on {path}"
+    )
     assert all(secret not in render(f) for f in found)
 
 
@@ -176,8 +198,10 @@ def test_each_generated_artifact_is_one_a_refresh_workflow_stages(path):
     """The list above is hand-written, so it is only worth anything while it names the files
     the crons actually commit. A rename that lands in the workflow and not here puts the
     outage straight back."""
-    staged = "".join((WORKFLOWS / name).read_text(encoding="utf-8")
-                     for name in ("china-brief-refresh.yml", "ddti-refresh.yml"))
+    staged = "".join(
+        (WORKFLOWS / name).read_text(encoding="utf-8")
+        for name in ("china-brief-refresh.yml", "ddti-refresh.yml")
+    )
     assert path in staged, f"no refresh workflow commits {path} any more"
 
 
@@ -190,6 +214,7 @@ def test_a_rule_match_blocks_even_in_a_collected_corpus():
 
 
 # ── the checker does not exempt itself from the rules that matter ─────────────
+
 
 def test_the_checker_is_not_exempt_from_the_identity_rules(tmp_path, monkeypatch):
     """The script is a tracked file and is therefore published like any other. Waiving the
@@ -206,7 +231,9 @@ def test_the_checker_is_not_exempt_from_the_identity_rules(tmp_path, monkeypatch
     assert all(secret not in render(f) for f in found)
 
 
-def test_a_file_the_checker_cannot_decode_is_reported_not_skipped(tmp_path, monkeypatch):
+def test_a_file_the_checker_cannot_decode_is_reported_not_skipped(
+    tmp_path, monkeypatch
+):
     """A published byte string this checker cannot read is not a pass: a name survives any
     encoding the checker declines to open. Silence here is how an unscanned file ships."""
     target = tmp_path / "docs" / "opaque.txt"
@@ -221,15 +248,20 @@ def test_a_file_the_checker_cannot_decode_is_reported_not_skipped(tmp_path, monk
 
 # ── the check has to run before the thing that publishes, in the same job ─────
 
+
 def _jobs(text: str) -> list:
     """The workflow's jobs, split on the two-space keys under `jobs:`. A YAML parser is not
     available to the stdlib-only suite, and the indentation in this repository is uniform."""
     body = text.split("\njobs:", 1)[-1]
-    lines = [l for l in body.splitlines() if not l.lstrip().startswith("#")]
+    lines = [line for line in body.splitlines() if not line.lstrip().startswith("#")]
     jobs, current = [], None
     for line in lines:
-        if (len(line) > 2 and line[:2] == "  " and line[2] != " "
-                and line.rstrip().endswith(":")):
+        if (
+            len(line) > 2
+            and line[:2] == "  "
+            and line[2] != " "
+            and line.rstrip().endswith(":")
+        ):
             current = [line]
             jobs.append(current)
         elif current is not None:
@@ -241,8 +273,17 @@ def _workflows_that_push():
     """Both suffixes. GitHub reads .yaml exactly as it reads .yml, so a checker that globs
     one of them leaves a workflow that can push without ever being looked at."""
     files = list(WORKFLOWS.glob("*.yml")) + list(WORKFLOWS.glob("*.yaml"))
-    return sorted((p for p in files if "git push" in p.read_text(encoding="utf-8")),
-                  key=lambda p: p.name)
+    publish_markers = ("git push", "python scripts/push_data_commit.py")
+    return sorted(
+        (
+            path
+            for path in files
+            if any(
+                marker in path.read_text(encoding="utf-8") for marker in publish_markers
+            )
+        ),
+        key=lambda path: path.name,
+    )
 
 
 def test_there_are_workflows_that_push():
@@ -260,18 +301,28 @@ def test_the_scrub_runs_before_the_push_that_publishes(wf):
     B, yet the scrub's line number in the file is lower either way.
     """
     jobs = _jobs(wf.read_text(encoding="utf-8"))
-    pushers = [j for j in jobs if "git push" in j]
+    publish_markers = ("git push", "python scripts/push_data_commit.py")
+    pushers = [job for job in jobs if any(marker in job for marker in publish_markers)]
     assert pushers, f"{wf.name} was selected for pushing and no job in it pushes"
     for job in pushers:
         name = job.splitlines()[0].strip()
-        scrub = [i for i, l in enumerate(job.splitlines())
-                 if "verify_public_surface.py" in l]
-        push = [i for i, l in enumerate(job.splitlines()) if "git push" in l]
+        scrub = [
+            i
+            for i, line in enumerate(job.splitlines())
+            if "verify_public_surface.py" in line
+        ]
+        push = [
+            i
+            for i, line in enumerate(job.splitlines())
+            if any(marker in line for marker in publish_markers)
+        ]
         assert scrub, (
-            f"{wf.name} job {name} pushes to a published branch and never runs the scrub")
+            f"{wf.name} job {name} pushes to a published branch and never runs the scrub"
+        )
         assert min(scrub) < min(push), (
             f"{wf.name} job {name} runs the scrub after the push, so a match is found "
-            "after publication")
+            "after publication"
+        )
 
 
 def test_the_publish_path_does_not_depend_on_a_secret():
@@ -285,4 +336,5 @@ def test_the_publish_path_does_not_depend_on_a_secret():
             if "verify_public_surface.py" in line and not line.lstrip().startswith("#"):
                 assert "--require-rules" not in line, (
                     f"{wf.name} gates its push on a secret being present, so a missing "
-                    "secret stops the refresh instead of reporting on it")
+                    "secret stops the refresh instead of reporting on it"
+                )

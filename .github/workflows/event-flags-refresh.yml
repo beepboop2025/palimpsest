@@ -44,6 +44,8 @@ jobs:
         run: python scripts/verify_public_surface.py
 
       - name: Commit & push if the flags changed
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
@@ -52,6 +54,8 @@ jobs:
             echo "no change"
           else
             git commit -m "data: conformal event flags refresh ($(date -u +%FT%TZ)) [skip ci]"
-            git pull --rebase origin main || true
-            git push
+            python scripts/push_data_commit.py \
+              --rebuild-module scripts.conformal_events_pull \
+              --stage readings/event-flags-latest.json \
+              --stage readings/event-flags-history.jsonl
           fi

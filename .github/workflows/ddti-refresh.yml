@@ -65,5 +65,6 @@ jobs:
             echo "no data change — nothing to publish"
           else
             git commit -m "data: live DDTI refresh ($(date -u +%FT%TZ)) [skip ci]"
-            git push
+            python scripts/push_data_commit.py \
+              --input-path readings/wayback-latest.json
           fi

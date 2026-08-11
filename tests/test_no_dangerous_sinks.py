@@ -4,6 +4,7 @@ Locks in the input-safety audit. A hostile server can only ever hand us bytes; t
 must never reach a code-execution sink. This test scans the source tree and fails if a
 dangerous sink is introduced on a collection/processing path. Standard-library only.
 """
+
 import pathlib
 import re
 
@@ -14,8 +15,18 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # are in scope. ops/witness is DELIBERATELY a separate from-scratch implementation — it must
 # be able to check the observatory without sharing the observatory's code — so it is scanned
 # here but never refactored to import from core/.
-SCANNED_DIRS = ["collectors", "processors", "core", "censorwatch", "api", "storage", "scripts",
-                "mcp", "demo", "ops"]
+SCANNED_DIRS = [
+    "collectors",
+    "processors",
+    "core",
+    "censorwatch",
+    "api",
+    "storage",
+    "scripts",
+    "mcp",
+    "demo",
+    "ops",
+]
 
 # Real call sites, not substrings of longer identifiers. `compile`/`re.compile` are fine and
 # excluded; `eval(`/`exec(` as bare calls are not.
@@ -40,8 +51,12 @@ _SINKS = re.compile(
 #   "-z"]) to enumerate exactly the files Pages publishes. Fixed argv, no shell, and the
 #   argument vector contains no runtime input at all; the only thing it reads is the tree
 #   already on disk. It is a pre-publication check and never runs on a collection path.
+#   push_data_commit.py: invokes only the fixed git executable, the current Python
+#   interpreter with a module name constrained to scripts.<identifier>, and the fixed
+#   public-surface verifier. It never places collected bytes in an argv or a shell.
 _ALLOWED = {
     ("scripts/anchor_roots.py", "subprocess."),
+    ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
 
@@ -70,7 +85,9 @@ def test_no_code_execution_sinks_on_collection_paths():
                 continue
             if m:
                 offenders.append(f"{rel}:{i}: {line.strip()}")
-    assert not offenders, "dangerous execution sink(s) introduced:\n" + "\n".join(offenders)
+    assert not offenders, "dangerous execution sink(s) introduced:\n" + "\n".join(
+        offenders
+    )
 
 
 def test_allowlisted_file_never_uses_shell_or_untrusted_argv():
@@ -78,4 +95,16 @@ def test_allowlisted_file_never_uses_shell_or_untrusted_argv():
     shell. Pin that shape so a later edit cannot widen the hole quietly."""
     text = (ROOT / "scripts" / "anchor_roots.py").read_text(encoding="utf-8")
     assert "shell=True" not in text
-    assert '["ots", "stamp", stamp_path]' in text  # the one permitted invocation, verbatim
+    assert (
+        '["ots", "stamp", stamp_path]' in text
+    )  # the one permitted invocation, verbatim
+
+
+def test_data_publisher_keeps_a_fixed_subprocess_boundary():
+    text = (ROOT / "scripts" / "push_data_commit.py").read_text(encoding="utf-8")
+
+    assert "shell=True" not in text
+    assert '["git", *arguments]' in text
+    assert '[sys.executable, "-m", module]' in text
+    assert '[sys.executable, "scripts/verify_public_surface.py"]' in text
+    assert "MODULE_RE.fullmatch(module)" in text

@@ -55,6 +55,7 @@ jobs:
             echo "no change"
           else
             git commit -m "data: silence index refresh ($(date -u +%FT%TZ)) [skip ci]"
-            git pull --rebase origin main || true
-            git push
+            python scripts/push_data_commit.py \
+              --input-path readings/ddti-latest.json \
+              --input-path readings/weibo-hotsearch-latest.json
           fi
