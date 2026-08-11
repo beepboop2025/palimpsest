@@ -729,12 +729,24 @@ example `collectors,warehouse,api`, adding `velocity` only when intentionally
 enabled). Deploy with this ordered sequence so the image, root-owned analytical
 bundle, and atomic commit receipt cannot describe different revisions:
 
+The Common Crawl step also requires the audited official `cc-downloader` 1.0.1
+at `/usr/local/bin/cc-downloader` as a real root-owned executable, not a symlink;
+the network-lane runbook gives the release-hash and crawl-plan procedure. The
+manual local filter likewise requires the audited real root-owned DuckDB 1.5.5
+executable at `/usr/local/bin/duckdb`. Its first reviewed install enrolls a
+root-owned SHA-256 pin, and later drift fails closed; run it only through
+`palimpsest-common-crawl-filter@<crawl>.service`, never a raw login shell.
+
 ```bash
 cd /home/palimpsest/palimpsest
 test -e .git
 sudo systemctl stop palimpsest-investigative-analysis.timer
 sudo systemctl stop palimpsest-common-crawl-import.path 2>/dev/null || true
 sudo systemctl stop palimpsest-common-crawl-context.timer 2>/dev/null || true
+sudo systemctl disable --now palimpsest-bleedthrough.timer 2>/dev/null || true
+sudo systemctl stop palimpsest-bleedthrough.service 2>/dev/null || true
+sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null || true
+sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || true
 # A running oneshot is allowed to finish; never replace its bundle underneath it.
 while systemctl is-active --quiet palimpsest-investigative-analysis.service; do
   sleep 2
@@ -756,16 +768,22 @@ sudo systemctl start palimpsest-investigative-analysis.service
 sudo systemctl enable --now palimpsest-common-crawl-import.path
 sudo systemctl enable --now palimpsest-common-crawl-context.timer
 sudo systemctl start palimpsest-common-crawl-import.service
+sudo systemctl enable --now palimpsest-bleedthrough.timer
 ```
 
 The Compose wrapper and both bundle installers fail closed on Git-status errors
 and a dirty checkout. The investigative installer writes
 `/etc/palimpsest/deployed-commit` only as its final commit point. The Common
 Crawl installer then requires that receipt to match before it switches its own
-immutable bundle. If either fails, keep the affected timers stopped and
-investigate; do not hand-edit the receipt. No profiled worker is accidentally
-left on an old image. PostgreSQL/Redis volumes and the external
-`/var/lib/palimpsest` state survive.
+immutable bundle. It also installs and validates the revision-bound shared
+network-lane helper, root-owned bundled BLEED runtime, BLEED/mirror/filter units,
+and root-owned network/data lock ACLs. BLEED remains
+held until that installer succeeds. The installer never enables or starts a
+Common Crawl mirror; each reviewed crawl remains a manual action with no timer.
+If either installer fails, keep the affected timers stopped and investigate; do
+not hand-edit the receipt. No profiled worker is accidentally left on an old
+image. PostgreSQL/Redis volumes and the external `/var/lib/palimpsest` state
+survive.
 
 ---
 

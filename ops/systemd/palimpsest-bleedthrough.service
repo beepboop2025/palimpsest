@@ -1,18 +1,27 @@
 [Unit]
 Description=Measure GFW DNS-injector telemetry from the Palimpsest Hetzner vantage
-Documentation=file:///home/palimpsest/palimpsest/ops/bleedthrough/README.md
+Documentation=file:///usr/local/libexec/palimpsest-network-lane/current/README.md
 Wants=network-online.target
 After=network-online.target
-ConditionFileIsExecutable=/home/palimpsest/palimpsest/ops/bleedthrough_prober.sh
+ConditionFileIsExecutable=/usr/local/libexec/palimpsest-network-lane/current/ops/bleedthrough_prober.sh
+ConditionFileIsExecutable=/usr/local/libexec/palimpsest-network-lane/current/network_lane.py
+ConditionFileIsExecutable=/usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+ConditionPathExists=/usr/local/libexec/palimpsest-network-lane/current/MANIFEST.sha256
+ConditionPathExists=/usr/local/libexec/palimpsest-network-lane/current/REVISION
+ConditionPathExists=/etc/palimpsest/deployed-commit
 ConditionPathExists=/etc/palimpsest/bleedthrough.env
+ConditionPathIsDirectory=/var/lib/palimpsest/network-lane
 
 [Service]
 Type=oneshot
 User=palimpsest
 Group=palimpsest
-WorkingDirectory=/home/palimpsest/palimpsest
+WorkingDirectory=/usr/local/libexec/palimpsest-network-lane/current
 EnvironmentFile=/etc/palimpsest/bleedthrough.env
-ExecStart=/home/palimpsest/palimpsest/ops/bleedthrough_prober.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-network-lane/current/REVISION /etc/palimpsest/deployed-commit
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-network-lane/current/network_lane.py --state-dir /var/lib/palimpsest/network-lane bleedthrough --quiet-seconds 900
+SuccessExitStatus=75
 
 # 216 targets × 24 probes × a 1.2s receive window is already ~104 minutes before
 # BGP refresh, curation, and network variance. The durable flock separately prevents
@@ -28,10 +37,10 @@ MemoryMax=512M
 # Code and host configuration are read-only. Only private BLEEDTHROUGH state and
 # sanitized reading artifacts are writable by this service.
 ProtectSystem=strict
-ProtectHome=read-only
-ReadOnlyPaths=/home/palimpsest/palimpsest
-ReadWritePaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings
-NoExecPaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-network-lane /etc/palimpsest/deployed-commit
+ReadWritePaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings /var/lib/palimpsest/network-lane/lane.lock /var/lib/palimpsest/network-lane/state /var/lib/palimpsest/network-lane/receipts
+NoExecPaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings /var/lib/palimpsest/network-lane/state /var/lib/palimpsest/network-lane/receipts
 PrivateTmp=true
 PrivateDevices=true
 PrivateMounts=true

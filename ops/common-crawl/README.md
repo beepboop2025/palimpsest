@@ -36,8 +36,13 @@ sudo systemctl stop palimpsest-common-crawl-import.path 2>/dev/null || true
 sudo systemctl stop palimpsest-common-crawl-context.timer 2>/dev/null || true
 sudo systemctl stop palimpsest-common-crawl-import.service 2>/dev/null || true
 sudo systemctl stop palimpsest-common-crawl-context.service 2>/dev/null || true
+sudo systemctl disable --now palimpsest-bleedthrough.timer 2>/dev/null || true
+sudo systemctl stop palimpsest-bleedthrough.service 2>/dev/null || true
+sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null || true
+sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || true
 sudo bash ops/common-crawl/install-host-bundle.sh \
   --warehouse-source /mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
+sudo systemctl enable --now palimpsest-bleedthrough.timer
 ```
 
 Run this only after the production image and investigative bundle have certified
@@ -45,25 +50,49 @@ the same clean Git revision. The installer does not rewrite that global receipt.
 It verifies the receipt, stages a content-hashed bundle below
 `/usr/local/libexec/palimpsest-common-crawl/<commit>/`, verifies every imported
 byte, installs the bind mount, and switches `current` atomically.
+The same transaction installs a separately hashed network-lane bundle, exact
+Git-verified tmpfiles/systemd definitions, and validates the shared ACL. It
+leaves BLEEDTHROUGH stopped and never starts or enables a mirror; only re-enable
+the BLEED timer after the installer succeeds.
+
+## Mirror one reviewed URL Index partition
+
+The manual mirror and scheduled BLEED measurement share one root-owned lock
+inode. Install Common Crawl's official `cc-downloader` 1.0.1 as a real
+root-owned file at `/usr/local/bin/cc-downloader`, prepare the root-owned path
+manifest and crawl plan described in `ops/network-lane/README.md`, then run one
+instance explicitly:
+
+```bash
+CRAWL=CC-MAIN-2026-30
+MIRROR_UNIT="palimpsest-common-crawl-mirror@${CRAWL}.service"
+sudo systemctl start "$MIRROR_UNIT"
+sudo journalctl -u "$MIRROR_UNIT" -n 200 --no-pager
+```
+
+There is intentionally no mirror timer. The wrapper validates the crawl ID,
+manifest scope/hash/count, pinned downloader version/hash, dedicated Volume,
+thread/retry bounds, and a fixed 256 GiB free-space reserve before launch. Its
+durable receipt records start/end, exit status, and free bytes before/after.
+BLEED waits at least 15 minutes after the completion stamp. An orphaned active
+marker requires the exact reconciliation procedure in the network-lane runbook.
 
 ## Produce a bulk export
 
 Common Crawl's CDX server is for bounded lookups and is heavily rate limited. Do
 not walk domains through it. Mirror the desired monthly URL Index Parquet
-partition to storage sized for the job, then generate the exact DuckDB query:
+partition to storage sized for the job. The runner creates one crawl-specific
+spill directory below the separately mounted warehouse. Run only the committed
+manual filter template; do not invoke raw DuckDB from a login shell:
 
 ```bash
-cd /usr/local/libexec/palimpsest-common-crawl/current
-python3 -m scripts.common_crawl_lake sql \
-  --crawl CC-MAIN-2026-30 \
-  --index-glob '/srv/common-crawl/cc-index/crawl=CC-MAIN-2026-30/subset=warc/*.parquet' \
-  --output '/var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.jsonl.gz.staging' \
-  > /run/palimpsest-common-crawl-export.sql
-duckdb < /run/palimpsest-common-crawl-export.sql
-sudo chown palimpsest-analysis:palimpsest-analysis \
+CRAWL=CC-MAIN-2026-30
+FILTER_UNIT="palimpsest-common-crawl-filter@${CRAWL}.service"
+sudo systemctl start "$FILTER_UNIT"
+sudo journalctl -u "$FILTER_UNIT" -n 200 --no-pager
+sudo -u palimpsest-analysis gzip -t \
   /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.jsonl.gz.staging
-sudo chmod 0640 \
-  /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.jsonl.gz.staging
+# Only after an operator reviews the hidden staging artifact:
 sudo -u palimpsest-analysis mv \
   /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.jsonl.gz.staging \
   /var/lib/palimpsest/common-crawl/inbox/CC-MAIN-2026-30.jsonl.gz
@@ -72,7 +101,25 @@ sudo -u palimpsest-analysis mv \
 The generated query selects only the ten reviewed institutional hosts and only
 URL, time, response metadata, digest, language, MIME type, and WARC locator
 fields. It does not export page bodies. DuckDB is an operator dependency for the
-bulk query, not an application runtime dependency.
+bulk query, not an application runtime dependency. Install it as a real
+root-owned executable at `/usr/local/bin/duckdb` reporting exact version 1.5.5.
+On the first reviewed install, the host installer enrolls its SHA-256 in the
+root-owned, immutable `/etc/palimpsest/duckdb.sha256`; later binary drift fails
+closed. The filter takes the root-owned dataset lock before accepting input,
+requires the latest matching mirror to have a successful exit and valid
+manifest/inventory receipt, recomputes the exact inventory under that lock, and
+rejects any surviving active marker even if paths and sizes still match. It
+keeps the lock until DuckDB and receipt publication finish. This also serializes
+filter template instances. A private atomic receipt below `.filter-receipts/`
+binds the Git revision, DuckDB version/hash, generated SQL hash, mirror receipt
+hash, input inventory, and staged output size/hash. Every generated query sets a 3 GB
+DuckDB memory limit, two worker threads, a validated crawl-specific spill
+directory, and a 128 GB spill ceiling. The service separately enforces
+`MemoryHigh=5G`, `MemoryMax=6G`, no swap, two CPU cores, idle I/O scheduling,
+and a 160 GiB start-time free-space reserve. It has a private network namespace
+plus `IPAddressDeny=any`. It writes only the exact hidden staging name and never
+moves data into `inbox/`, publishes to the website, or runs from a timer. A stale
+staging file or non-empty spill directory blocks retry pending operator review.
 
 The path unit notices the completed export and runs an idempotent import. For a
 manual first run:

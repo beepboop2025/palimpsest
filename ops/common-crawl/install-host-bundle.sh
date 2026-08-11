@@ -17,7 +17,10 @@ repo_root="$(cd "$script_dir/../.." && pwd -P)"
 warehouse_source="$2"
 state_root="/var/lib/palimpsest/common-crawl"
 bundle_root="/usr/local/libexec/palimpsest-common-crawl"
+lane_state_root="/var/lib/palimpsest/network-lane"
+lane_bundle_root="/usr/local/libexec/palimpsest-network-lane"
 receipt_path="/etc/palimpsest/deployed-commit"
+duckdb_pin_path="/etc/palimpsest/duckdb.sha256"
 mount_template="$script_dir/palimpsest-common-crawl.mount.in"
 minimum_initial_free_bytes=$((256 * 1024 * 1024 * 1024))
 service_units=(
@@ -25,14 +28,21 @@ service_units=(
   palimpsest-common-crawl-import.path
   palimpsest-common-crawl-context.service
   palimpsest-common-crawl-context.timer
+  palimpsest-common-crawl-filter@.service
+)
+network_units=(
+  palimpsest-bleedthrough.service
+  palimpsest-bleedthrough.timer
+  palimpsest-common-crawl-mirror@.service
 )
 
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
   GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 
-for command_name in awk bash chmod chown cmp df dirname find findmnt getent git \
-  install ln mktemp mountpoint mv readlink realpath rm sed sha256sum stat sync \
-  systemctl systemd-analyze systemd-escape; do
+for command_name in awk bash chmod chown cmp df dirname find findmnt getent \
+  getfacl git install ln mktemp mountpoint mv pgrep readlink realpath rm sed \
+  sha256sum sort stat sync systemctl systemd-analyze systemd-escape \
+  systemd-tmpfiles; do
   command -v "$command_name" >/dev/null 2>&1 \
     || die "required command is missing: $command_name"
 done
@@ -88,6 +98,67 @@ IFS= read -r deployed_revision <"$receipt_path" \
 [[ "$deployed_revision" == "$revision" ]] \
   || die "deployed commit receipt does not match Git HEAD"
 
+[[ -f /usr/local/bin/cc-downloader && ! -L /usr/local/bin/cc-downloader \
+    && -x /usr/local/bin/cc-downloader ]] \
+  || die "cc-downloader must be a real executable at /usr/local/bin/cc-downloader"
+[[ "$(stat -c '%u:%g' /usr/local/bin/cc-downloader)" == "0:0" ]] \
+  || die "cc-downloader must be owned by root:root"
+downloader_mode="$(stat -c '%a' /usr/local/bin/cc-downloader)"
+[[ "$downloader_mode" =~ ^[0-7]{3,4}$ ]] \
+  || die "cc-downloader has an unreadable mode"
+(( (8#$downloader_mode & 0022) == 0 )) \
+  || die "cc-downloader must not be group/world-writable"
+[[ "$(/usr/local/bin/cc-downloader --version)" == "cc-downloader 1.0.1" ]] \
+  || die "cc-downloader must report exact version 1.0.1"
+
+validate_and_enroll_duckdb() {
+  local duckdb_path="${duckdb_path:-/usr/local/bin/duckdb}"
+  local pin_parent pin_parent_mode duckdb_mode duckdb_version duckdb_sha256
+  local pinned_duckdb_sha256
+  [[ -f "$duckdb_path" && ! -L "$duckdb_path" && -x "$duckdb_path" ]] \
+    || die "DuckDB must be a real executable at $duckdb_path"
+  [[ "$(stat -c '%u:%g' "$duckdb_path")" == "0:0" ]] \
+    || die "DuckDB must be owned by root:root"
+  duckdb_mode="$(stat -c '%a' "$duckdb_path")"
+  [[ "$duckdb_mode" =~ ^[0-7]{3,4}$ ]] \
+    || die "DuckDB has an unreadable mode"
+  (( (8#$duckdb_mode & 0022) == 0 )) \
+    || die "DuckDB must not be group/world-writable"
+  duckdb_version="$("$duckdb_path" --version)"
+  [[ "$duckdb_version" =~ ^v1\.5\.5([[:space:]].*)?$ ]] \
+    || die "DuckDB must report exact version 1.5.5"
+  duckdb_sha256="$(sha256sum "$duckdb_path" | awk '{print $1}')"
+  [[ "$duckdb_sha256" =~ ^[0-9a-f]{64}$ ]] \
+    || die "cannot compute DuckDB SHA-256"
+  pin_parent="$(dirname -- "$duckdb_pin_path")"
+  [[ -d "$pin_parent" && ! -L "$pin_parent" \
+      && "$(stat -c '%u:%g' "$pin_parent")" == "0:0" ]] \
+    || die "DuckDB hash pin parent is unsafe"
+  pin_parent_mode="$(stat -c '%a' "$pin_parent")"
+  [[ "$pin_parent_mode" =~ ^[0-7]{3,4}$ ]] \
+    || die "DuckDB hash pin parent has an unreadable mode"
+  (( (8#$pin_parent_mode & 0022) == 0 )) \
+    || die "DuckDB hash pin parent is writable by group/other"
+  if [[ -e "$duckdb_pin_path" || -L "$duckdb_pin_path" ]]; then
+    [[ -f "$duckdb_pin_path" && ! -L "$duckdb_pin_path" \
+        && "$(stat -c '%u:%g:%a:%h' "$duckdb_pin_path")" == "0:0:444:1" ]] \
+      || die "DuckDB hash pin ownership/mode/link count is unsafe"
+    IFS= read -r pinned_duckdb_sha256 <"$duckdb_pin_path" \
+      || die "cannot read DuckDB hash pin"
+    [[ "$pinned_duckdb_sha256" == "$duckdb_sha256" ]] \
+      || die "DuckDB does not match the enrolled root-owned SHA-256 pin"
+  else
+    duckdb_pin_tmp="$(mktemp "$pin_parent/.duckdb.sha256.XXXXXX")"
+    printf '%s\n' "$duckdb_sha256" >"$duckdb_pin_tmp"
+    chown root:root "$duckdb_pin_tmp"
+    chmod 0444 "$duckdb_pin_tmp"
+    sync -f "$duckdb_pin_tmp"
+    mv -T "$duckdb_pin_tmp" "$duckdb_pin_path"
+    duckdb_pin_tmp=""
+    sync -f "$pin_parent"
+  fi
+}
+
 bash "$repo_root/ops/investigative-analysis/install-host-bundle.sh" --ensure-identity
 user_record="$(getent passwd palimpsest-analysis || true)"
 group_record="$(getent group palimpsest-analysis || true)"
@@ -109,6 +180,50 @@ for unit_name in "${service_units[@]}"; do
     *) die "$unit_name must be stopped before installation" ;;
   esac
 done
+
+# The old BLEED unit does not know about the shared lane. Hold both the timer and
+# service down until the revision-bound helper, ACL, and replacement unit exist.
+for unit_name in palimpsest-bleedthrough.timer palimpsest-bleedthrough.service; do
+  load_state="$(systemctl show --property=LoadState --value "$unit_name" 2>/dev/null || true)"
+  [[ -z "$load_state" || "$load_state" == "not-found" ]] && continue
+  active_state="$(systemctl show --property=ActiveState --value "$unit_name" 2>/dev/null)" \
+    || die "cannot verify systemd state for $unit_name"
+  case "$active_state" in
+    inactive|failed) ;;
+    *) die "$unit_name must be stopped before network-lane installation" ;;
+  esac
+done
+bleed_timer_enablement="$(
+  systemctl is-enabled palimpsest-bleedthrough.timer 2>/dev/null || true
+)"
+case "$bleed_timer_enablement" in
+  ""|disabled|masked|not-found) ;;
+  *) die "palimpsest-bleedthrough.timer must be disabled during installation" ;;
+esac
+active_mirrors="$(
+  systemctl list-units --state=activating,active,reloading,deactivating \
+    --no-legend --plain 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null \
+    || true
+)"
+[[ -z "$active_mirrors" ]] \
+  || die "all Common Crawl mirror instances must be stopped before installation"
+active_filters="$(
+  systemctl list-units --state=activating,active,reloading,deactivating \
+    --no-legend --plain 'palimpsest-common-crawl-filter@*.service' 2>/dev/null \
+    || true
+)"
+[[ -z "$active_filters" ]] \
+  || die "all Common Crawl filter instances must be stopped before installation"
+if pgrep -u palimpsest -f '/ops/bleedthrough_prober[.]sh([[:space:]]|$)' >/dev/null; then
+  die "a BLEEDTHROUGH prober remains outside the stopped unit"
+fi
+if pgrep -u palimpsest-analysis -f '(^|/)cc-downloader([[:space:]]|$)' >/dev/null; then
+  die "a Common Crawl downloader remains outside the stopped unit"
+fi
+if pgrep -u palimpsest-analysis \
+    -f '(^|[[:space:]])/usr/local/bin/[d]uckdb([[:space:]]|$)' >/dev/null; then
+  die "a DuckDB filter remains outside the stopped unit"
+fi
 
 install -d -o palimpsest-analysis -g palimpsest-analysis -m 0750 \
   "$warehouse_source" "$warehouse_source/inbox"
@@ -134,29 +249,192 @@ verify_git_blob() {
     || die "installed bytes do not match Git HEAD: $repository_path"
 }
 
-install -d -o root -g root -m 0755 "$bundle_root"
+install_verified_file() {
+  local repository_path="$1"
+  local installed_path="$2"
+  local installed_mode="$3"
+  install -o root -g root -m "$installed_mode" \
+    "$repo_root/$repository_path" "$installed_path"
+  verify_git_blob "$repository_path" "$installed_path"
+}
+
+require_exact_acl() {
+  local acl_path="$1"
+  local expected_acl="$2"
+  local actual_acl normalized_expected_acl
+  actual_acl="$(
+    getfacl -cp -- "$acl_path" \
+      | sed '/^[[:space:]]*$/d' \
+      | LC_ALL=C sort
+  )"
+  normalized_expected_acl="$(
+    printf '%s\n' "$expected_acl" \
+      | sed '/^[[:space:]]*$/d' \
+      | LC_ALL=C sort
+  )"
+  [[ "$actual_acl" == "$normalized_expected_acl" ]] \
+    || die "network-lane ACL does not exactly match policy on $acl_path"
+}
+
+validate_network_lane_state() {
+  [[ -d "$lane_state_root" && ! -L "$lane_state_root" \
+      && -O "$lane_state_root" && -G "$lane_state_root" ]] \
+    || die "network-lane root must be a real root-owned directory"
+  for lock_name in lane.lock dataset.lock; do
+    lock_path="$lane_state_root/$lock_name"
+    [[ -f "$lock_path" && ! -L "$lock_path" \
+        && -O "$lock_path" && -G "$lock_path" \
+        && "$(stat -c '%h' "$lock_path")" == "1" ]] \
+      || die "network-lane $lock_name must be a real root-owned regular file"
+  done
+  for shared_directory in state receipts; do
+    shared_path="$lane_state_root/$shared_directory"
+    [[ -d "$shared_path" && ! -L "$shared_path" \
+        && -O "$shared_path" && -G "$shared_path" ]] \
+      || die "network-lane $shared_directory must be a real root-owned directory"
+  done
+
+  require_exact_acl "$lane_state_root" $'user::rwx\nuser:palimpsest:r-x\nuser:palimpsest-analysis:r-x\ngroup::r-x\nmask::r-x\nother::---\ndefault:user::rwx\ndefault:user:palimpsest:r-x\ndefault:user:palimpsest-analysis:r-x\ndefault:group::r-x\ndefault:mask::r-x\ndefault:other::---'
+  require_exact_acl "$lane_state_root/lane.lock" $'user::rw-\nuser:palimpsest:rw-\nuser:palimpsest-analysis:rw-\ngroup::r--\nmask::rw-\nother::---'
+  require_exact_acl "$lane_state_root/dataset.lock" $'user::rw-\nuser:palimpsest-analysis:rw-\ngroup::r--\nmask::rw-\nother::---'
+  for shared_directory in state receipts; do
+    shared_path="$lane_state_root/$shared_directory"
+    require_exact_acl "$shared_path" $'user::rwx\nuser:palimpsest:rwx\nuser:palimpsest-analysis:rwx\ngroup::r-x\nmask::rwx\nother::---\ndefault:user::rwx\ndefault:user:palimpsest:rwx\ndefault:user:palimpsest-analysis:rwx\ndefault:group::r-x\ndefault:mask::rwx\ndefault:other::---'
+  done
+}
+
+validate_lane_bundle_permissions() {
+  local candidate_bundle="$1"
+  local relative_path expected_mode candidate_path
+  for relative_path in . ops scripts collectors core config; do
+    candidate_path="$candidate_bundle/$relative_path"
+    [[ -d "$candidate_path" && ! -L "$candidate_path" \
+        && "$(stat -c '%u:%g:%a' "$candidate_path")" == "0:0:755" ]] \
+      || die "network-lane bundle directory is unsafe: $relative_path"
+  done
+  for specification in \
+    'README.md:444' \
+    'REVISION:444' \
+    'MANIFEST.sha256:444' \
+    'mirror-config.example.json:444' \
+    'network_lane.py:555' \
+    'verify-host-bundle.sh:555' \
+    'ops/bleedthrough_prober.sh:555' \
+    'scripts/bleedthrough_fetch_prefixes.py:444' \
+    'scripts/bleedthrough_curate.py:444' \
+    'scripts/bleedthrough_pull.py:444' \
+    'collectors/__init__.py:444' \
+    'collectors/bleedthrough.py:444' \
+    'collectors/undertext.py:444' \
+    'core/__init__.py:444' \
+    'core/claim_support.py:444' \
+    'core/governance.py:444' \
+    'config/bleedthrough_asns.json:444'; do
+    IFS=: read -r relative_path expected_mode <<<"$specification"
+    candidate_path="$candidate_bundle/$relative_path"
+    [[ -f "$candidate_path" && ! -L "$candidate_path" ]] \
+      || die "network-lane bundle file is unsafe: $relative_path"
+    [[ "$(stat -c '%u:%g:%a:%h' "$candidate_path")" \
+        == "0:0:$expected_mode:1" ]] \
+      || die "network-lane bundle ownership/mode/link count is unsafe: $relative_path"
+  done
+}
+
+install -d -o root -g root -m 0755 "$bundle_root" "$lane_bundle_root"
 bundle_tmp="$(mktemp -d "$bundle_root/.bundle-$revision.XXXXXX")"
 chown root:root "$bundle_tmp"
 chmod 0755 "$bundle_tmp"
+lane_bundle_tmp="$(mktemp -d "$lane_bundle_root/.bundle-$revision.XXXXXX")"
+chown root:root "$lane_bundle_tmp"
+chmod 0755 "$lane_bundle_tmp"
+for directory in ops scripts collectors core config; do
+  install -d -o root -g root -m 0755 "$lane_bundle_tmp/$directory"
+done
 unit_stage="$(mktemp -d /run/palimpsest-common-crawl-units.XXXXXX)"
 link_tmp="$bundle_root/.current.$$.tmp"
+lane_link_tmp="$lane_bundle_root/.current.$$.tmp"
+previous_lane_current=""
+lane_current_switched=0
 
 cleanup() {
+  if (( lane_current_switched == 1 )); then
+    if [[ -n "$previous_lane_current" ]]; then
+      rollback_link="$lane_bundle_root/.rollback-current.$$.tmp"
+      ln -s "$previous_lane_current" "$rollback_link"
+      mv -Tf "$rollback_link" "$lane_bundle_root/current"
+    else
+      rm -f -- "$lane_bundle_root/current"
+    fi
+    sync -f "$lane_bundle_root"
+  fi
+  if [[ -n "${duckdb_pin_tmp:-}" && -f "$duckdb_pin_tmp" ]]; then
+    rm -- "$duckdb_pin_tmp"
+  fi
   if [[ -n "${bundle_tmp:-}" && -d "$bundle_tmp" ]]; then
     rm -rf -- "$bundle_tmp"
   fi
   if [[ -n "${unit_stage:-}" && -d "$unit_stage" ]]; then
     rm -rf -- "$unit_stage"
   fi
+  if [[ -n "${lane_bundle_tmp:-}" && -d "$lane_bundle_tmp" ]]; then
+    rm -rf -- "$lane_bundle_tmp"
+  fi
   if [[ -L "${link_tmp:-}" ]]; then
     rm -- "$link_tmp"
+  fi
+  if [[ -L "${lane_link_tmp:-}" ]]; then
+    rm -- "$lane_link_tmp"
   fi
 }
 trap cleanup EXIT
 
+validate_and_enroll_duckdb
+
 for directory in collectors config core processors scripts; do
   install -d -o root -g root -m 0755 "$bundle_tmp/$directory"
 done
+lane_bundle_files=(
+  "ops/network-lane/README.md:README.md:0444"
+  "ops/network-lane/mirror-config.example.json:mirror-config.example.json:0444"
+  "ops/network-lane/network_lane.py:network_lane.py:0555"
+  "ops/network-lane/verify-host-bundle.sh:verify-host-bundle.sh:0555"
+  "ops/bleedthrough_prober.sh:ops/bleedthrough_prober.sh:0555"
+  "scripts/bleedthrough_fetch_prefixes.py:scripts/bleedthrough_fetch_prefixes.py:0444"
+  "scripts/bleedthrough_curate.py:scripts/bleedthrough_curate.py:0444"
+  "scripts/bleedthrough_pull.py:scripts/bleedthrough_pull.py:0444"
+  "collectors/__init__.py:collectors/__init__.py:0444"
+  "collectors/bleedthrough.py:collectors/bleedthrough.py:0444"
+  "collectors/undertext.py:collectors/undertext.py:0444"
+  "core/__init__.py:core/__init__.py:0444"
+  "core/claim_support.py:core/claim_support.py:0444"
+  "core/governance.py:core/governance.py:0444"
+  "config/bleedthrough_asns.json:config/bleedthrough_asns.json:0444"
+)
+for specification in "${lane_bundle_files[@]}"; do
+  IFS=: read -r source_path destination_path file_mode <<<"$specification"
+  install_verified_file \
+    "$source_path" "$lane_bundle_tmp/$destination_path" "$file_mode"
+done
+printf '%s\n' "$revision" >"$lane_bundle_tmp/REVISION"
+chown root:root "$lane_bundle_tmp/REVISION"
+chmod 0444 "$lane_bundle_tmp/REVISION"
+(
+  cd "$lane_bundle_tmp"
+  sha256sum \
+    README.md REVISION mirror-config.example.json network_lane.py \
+    verify-host-bundle.sh ops/bleedthrough_prober.sh \
+    scripts/bleedthrough_fetch_prefixes.py \
+    scripts/bleedthrough_curate.py scripts/bleedthrough_pull.py \
+    collectors/__init__.py collectors/bleedthrough.py collectors/undertext.py \
+    core/__init__.py core/claim_support.py core/governance.py \
+    config/bleedthrough_asns.json >MANIFEST.sha256
+)
+chown root:root "$lane_bundle_tmp/MANIFEST.sha256"
+chmod 0444 "$lane_bundle_tmp/MANIFEST.sha256"
+(cd "$lane_bundle_tmp" && sha256sum --quiet --check MANIFEST.sha256) \
+  || die "staged network-lane bundle failed validation"
+validate_lane_bundle_permissions "$lane_bundle_tmp"
+sync -f "$lane_bundle_tmp"
 bundle_files=(
   "ops/common-crawl/README.md:README.md:0444"
   "collectors/__init__.py:collectors/__init__.py:0444"
@@ -170,6 +448,7 @@ bundle_files=(
   "processors/editorial_priority.py:processors/editorial_priority.py:0444"
   "scripts/common_crawl_lake.py:scripts/common_crawl_lake.py:0444"
   "ops/common-crawl/verify-host-bundle.sh:verify-host-bundle.sh:0555"
+  "ops/common-crawl/run_duckdb_filter.py:run_duckdb_filter.py:0555"
 )
 for specification in "${bundle_files[@]}"; do
   IFS=: read -r source_path destination_path file_mode <<<"$specification"
@@ -189,7 +468,7 @@ chmod 0444 "$bundle_tmp/REVISION"
     core/__init__.py core/governance.py core/safe_fetch.py \
     processors/__init__.py processors/archive_context.py \
     processors/editorial_priority.py scripts/common_crawl_lake.py \
-    verify-host-bundle.sh >MANIFEST.sha256
+    run_duckdb_filter.py verify-host-bundle.sh >MANIFEST.sha256
 )
 chown root:root "$bundle_tmp/MANIFEST.sha256"
 chmod 0444 "$bundle_tmp/MANIFEST.sha256"
@@ -225,6 +504,45 @@ else
   bundle_tmp=""
   sync -f "$bundle_root"
 fi
+[[ -f "$bundle_final/run_duckdb_filter.py" \
+    && ! -L "$bundle_final/run_duckdb_filter.py" \
+    && "$(stat -c '%u:%g:%a:%h' "$bundle_final/run_duckdb_filter.py")" \
+      == "0:0:555:1" ]] \
+  || die "Common Crawl DuckDB runner ownership/mode/link count is unsafe"
+
+lane_bundle_final="$lane_bundle_root/$revision"
+if [[ -e "$lane_bundle_final" ]]; then
+  [[ -d "$lane_bundle_final" && ! -L "$lane_bundle_final" ]] \
+    || die "existing network-lane revision bundle is unsafe"
+  [[ "$(stat -c '%u:%g:%a' "$lane_bundle_final")" == "0:0:755" ]] \
+    || die "existing network-lane bundle ownership or mode is unsafe"
+  validate_lane_bundle_permissions "$lane_bundle_final"
+  cmp -s "$lane_bundle_tmp/MANIFEST.sha256" "$lane_bundle_final/MANIFEST.sha256" \
+    || die "existing network-lane revision has different contents"
+  (cd "$lane_bundle_final" && sha256sum --quiet --check MANIFEST.sha256) \
+    || die "existing network-lane revision bundle failed validation"
+else
+  mv -T "$lane_bundle_tmp" "$lane_bundle_final"
+  lane_bundle_tmp=""
+  sync -f "$lane_bundle_root"
+fi
+validate_lane_bundle_permissions "$lane_bundle_final"
+
+# Both network units remain disabled/stopped. Publish the validated helper now
+# so first-install systemd verification can resolve its absolute ExecStart path.
+if [[ -e "$lane_bundle_root/current" || -L "$lane_bundle_root/current" ]]; then
+  [[ -L "$lane_bundle_root/current" ]] \
+    || die "current network-lane path must be a revision symlink"
+  previous_lane_current="$(readlink "$lane_bundle_root/current")"
+  [[ "$previous_lane_current" =~ ^[0-9a-f]{40}$ ]] \
+    || die "existing network-lane current target is malformed"
+fi
+ln -s "$revision" "$lane_link_tmp"
+mv -Tf "$lane_link_tmp" "$lane_bundle_root/current"
+lane_current_switched=1
+[[ "$(readlink "$lane_bundle_root/current")" == "$revision" ]] \
+  || die "current network-lane bundle link is invalid"
+sync -f "$lane_bundle_root"
 
 mount_unit="$(systemd-escape --path --suffix=mount "$state_root")"
 [[ "$mount_unit" == 'var-lib-palimpsest-common\x2dcrawl.mount' ]] \
@@ -233,12 +551,35 @@ sed "s|@WAREHOUSE_SOURCE@|$warehouse_source|g" \
   "$mount_template" >"$unit_stage/$mount_unit"
 for unit_name in "${service_units[@]}"; do
   install -m 0644 "$repo_root/ops/systemd/$unit_name" "$unit_stage/$unit_name"
+  verify_git_blob "ops/systemd/$unit_name" "$unit_stage/$unit_name"
 done
+for unit_name in "${network_units[@]}"; do
+  install -m 0644 "$repo_root/ops/systemd/$unit_name" "$unit_stage/$unit_name"
+  verify_git_blob "ops/systemd/$unit_name" "$unit_stage/$unit_name"
+done
+install -m 0644 "$repo_root/ops/systemd/palimpsest-network-lane.tmpfiles.conf" \
+  "$unit_stage/palimpsest-network-lane.tmpfiles.conf"
+verify_git_blob \
+  "ops/systemd/palimpsest-network-lane.tmpfiles.conf" \
+  "$unit_stage/palimpsest-network-lane.tmpfiles.conf"
 unit_paths=("$unit_stage/$mount_unit")
-for unit_name in "${service_units[@]}"; do
+for unit_name in "${service_units[@]}" "${network_units[@]}"; do
   unit_paths+=("$unit_stage/$unit_name")
 done
 systemd-analyze verify "${unit_paths[@]}"
+
+final_revision="$(
+  git -c "safe.directory=$repo_root" -C "$repo_root" rev-parse --verify HEAD
+)"
+checkout_status="$(
+  git -c "safe.directory=$repo_root" -C "$repo_root" \
+    status --porcelain=v1 --untracked-files=all
+)"
+[[ "$final_revision" == "$revision" && -z "$checkout_status" ]] \
+  || die "checkout changed while systemd units were validated"
+IFS= read -r deployed_revision <"$receipt_path"
+[[ "$deployed_revision" == "$revision" ]] \
+  || die "deployed receipt changed while systemd units were validated"
 
 install -o root -g root -m 0644 \
   "$unit_stage/$mount_unit" "/etc/systemd/system/$mount_unit"
@@ -247,8 +588,22 @@ for unit_name in "${service_units[@]}"; do
     "$unit_stage/$unit_name" "/etc/systemd/system/$unit_name"
   verify_git_blob "ops/systemd/$unit_name" "/etc/systemd/system/$unit_name"
 done
+for unit_name in "${network_units[@]}"; do
+  install -o root -g root -m 0644 \
+    "$unit_stage/$unit_name" "/etc/systemd/system/$unit_name"
+  verify_git_blob "ops/systemd/$unit_name" "/etc/systemd/system/$unit_name"
+done
+install -o root -g root -m 0644 \
+  "$unit_stage/palimpsest-network-lane.tmpfiles.conf" \
+  "/etc/tmpfiles.d/palimpsest-network-lane.conf"
+verify_git_blob \
+  "ops/systemd/palimpsest-network-lane.tmpfiles.conf" \
+  "/etc/tmpfiles.d/palimpsest-network-lane.conf"
+systemd-tmpfiles --create /etc/tmpfiles.d/palimpsest-network-lane.conf
+validate_network_lane_state
 cmp -s "$unit_stage/$mount_unit" "/etc/systemd/system/$mount_unit" \
   || die "installed mount unit differs from its validated rendering"
+
 systemctl daemon-reload
 systemctl enable --now "$mount_unit"
 mountpoint -q "$state_root" || die "stable warehouse path is not a mountpoint"
@@ -260,6 +615,9 @@ mv -Tf "$link_tmp" "$bundle_root/current"
 [[ "$(readlink "$bundle_root/current")" == "$revision" ]] \
   || die "current Common Crawl bundle link is invalid"
 sync -f "$bundle_root"
+lane_current_switched=0
 
 printf 'installed Palimpsest Common Crawl bundle %s at %s\n' \
   "$revision" "$warehouse_source"
+printf '%s\n' \
+  'BLEEDTHROUGH remains stopped; no Common Crawl mirror was enabled or started.'

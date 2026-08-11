@@ -17,7 +17,10 @@ country vantage, never a hostname or address.
 palimpsest-bleedthrough.timer (6h + stable random delay)
     |
     v
-bleedthrough_prober.sh (authorization -> durable flock -> coarse provenance)
+network_lane.py (shared flock -> 15m mirror quiet gate -> durable receipt)
+    |
+    v
+bleedthrough_prober.sh (authorization -> local round lock -> coarse provenance)
     |
     +-- RIPEstat HTTPS --------> private prefixes.json (atomic)
     +-- benign control DNS ----> private targets.json  (atomic)
@@ -27,9 +30,15 @@ bleedthrough_prober.sh (authorization -> durable flock -> coarse provenance)
                        sanitized latest/history (atomic)
 ```
 
-- `/home/palimpsest/palimpsest` is immutable application code.
+- `/usr/local/libexec/palimpsest-network-lane/<commit>/` is the root-owned,
+  manifest-verified BLEED prober/runtime. The service does not execute the
+  mutable checkout, and each lane receipt binds its prober SHA-256.
+- `/var/lib/palimpsest/network-lane` holds the root-owned shared lock inode,
+  mutable active/completion stamps, dataset lock, and receipts. Its root is not
+  directory-writable by either service identity; only `state/` and `receipts/`
+  are shared.
 - `/var/lib/palimpsest/bleedthrough` is private operational state: prefixes,
-  curated targets, the longitudinal baseline, and the non-overlap lock.
+  curated targets, the longitudinal baseline, and the method's local round lock.
 - `/var/lib/palimpsest/readings` contains sanitized publication artifacts. A
   no-injection round abstains and leaves the prior reading byte-for-byte intact.
 - Caddy exposes only `bleedthrough-latest.json` and
@@ -43,19 +52,23 @@ bleedthrough_prober.sh (authorization -> durable flock -> coarse provenance)
   next probe boundary.
 - Every writer uses file `fsync`, same-directory atomic replacement, and a
   best-effort directory `fsync`. A failed replacement cannot expose partial JSON.
-- The timer, systemd's oneshot state, and a durable `flock` jointly prevent
-  overlapping scheduled and manual rounds.
+- The timer, systemd's oneshot state, and the shared durable `flock` jointly
+  prevent overlap with both scheduled/manual BLEED rounds and manual Common
+  Crawl mirrors. A completion quiet window adds 15 minutes before BLEED resumes.
 
 The unit permits outbound `AF_INET`/`AF_INET6` plus local `AF_UNIX` name-service
-plumbing. It grants no capabilities, exposes no devices, mounts the checkout
-read-only, and permits writes only to the two state directories above.
+plumbing. It grants no capabilities, exposes no devices, mounts the root-owned
+bundle read-only, and permits writes only to BLEED/readings state plus the lock and two
+mutable network-lane subdirectories named above.
 
 ## Install (do not run from CI)
 
 These commands assume the repository is already deployed at
 `/home/palimpsest/palimpsest` and the `palimpsest` user/group already own the
 deployment. Review the environment file before enabling anything: starting the
-service performs the authorized active measurement.
+service performs the authorized active measurement. The Common Crawl installer
+owns the revision-bound network helper, tmpfiles ACL, BLEED unit/timer, and
+mirror unit; do not reinstall those files by hand.
 
 ```bash
 sudo install -d -o root -g root -m 0755 /etc/palimpsest
@@ -84,19 +97,23 @@ git -C /path/to/reviewed/checkout rev-parse HEAD \
   | sudo tee /etc/palimpsest/deployed-commit >/dev/null
 sudo chown root:root /etc/palimpsest/deployed-commit
 sudo chmod 0644 /etc/palimpsest/deployed-commit
-sudo install -o root -g root -m 0644 \
-  /home/palimpsest/palimpsest/ops/systemd/palimpsest-bleedthrough.service \
-  /etc/systemd/system/palimpsest-bleedthrough.service
-sudo install -o root -g root -m 0644 \
-  /home/palimpsest/palimpsest/ops/systemd/palimpsest-bleedthrough.timer \
-  /etc/systemd/system/palimpsest-bleedthrough.timer
-sudo systemd-analyze verify \
-  /etc/systemd/system/palimpsest-bleedthrough.service \
-  /etc/systemd/system/palimpsest-bleedthrough.timer
-sudo systemctl daemon-reload
+sudo systemctl disable --now palimpsest-bleedthrough.timer 2>/dev/null || true
+sudo systemctl stop palimpsest-bleedthrough.service 2>/dev/null || true
+sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null || true
+sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || true
+sudo bash /home/palimpsest/palimpsest/ops/common-crawl/install-host-bundle.sh \
+  --warehouse-source \
+  /mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
 sudo systemctl enable --now palimpsest-bleedthrough.timer
-sudo systemctl start palimpsest-bleedthrough.service
 ```
+
+That installer must succeed before BLEED is re-enabled. It refuses an active
+legacy BLEED timer/service, any active mirror/filter, a leftover
+prober/downloader/DuckDB process, a
+dirty or revision-mismatched checkout, an unsafe downloader, or an invalid
+network-lane ACL. It does not start a Common Crawl mirror. A busy lock, mirror
+quiet window, or unreconciled orphan returns 75; systemd treats that as a cleanly
+skipped BLEED round and the next six-hour activation retries.
 
 Do not replace this named ACL with world-write permissions. `KillSwitch` is
 fail-closed: if UID 10001 cannot traverse `readings/state` to check `STOP`, every

@@ -54,7 +54,15 @@ _SINKS = re.compile(
 #   push_data_commit.py: invokes only the fixed git executable, the current Python
 #   interpreter with a module name constrained to scripts.<identifier>, and the fixed
 #   public-surface verifier. It never places collected bytes in an argv or a shell.
+#   network_lane.py: invokes only the pinned cc-downloader, the revision-bundled
+#   BLEEDTHROUGH prober, and each tool's fixed --version command. Root-owned plans
+#   supply bounded path arguments; fetched bytes never become argv or shell text.
+#   run_duckdb_filter.py: invokes the root-owned, hash-pinned DuckDB binary with no
+#   argv derived from evidence. Its stdin is deterministic SQL generated from the
+#   reviewed institutional-host config and root-owned crawl plan.
 _ALLOWED = {
+    ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
+    ("ops/network-lane/network_lane.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
@@ -108,3 +116,21 @@ def test_data_publisher_keeps_a_fixed_subprocess_boundary():
     assert '[sys.executable, "-B", "-m", module]' in text
     assert '[sys.executable, "-B", "scripts/verify_public_surface.py"]' in text
     assert "MODULE_RE.fullmatch(module)" in text
+
+
+def test_network_lane_keeps_fixed_no_shell_process_boundaries():
+    lane = (ROOT / "ops/network-lane/network_lane.py").read_text(encoding="utf-8")
+    local_filter = (ROOT / "ops/common-crawl/run_duckdb_filter.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "shell=True" not in lane and "shell=True" not in local_filter
+    assert '[str(path), "--version"]' in lane
+    assert (
+        'command = [\n        str(downloader_path),\n        "download",'
+        in lane
+    )
+    assert "command=[str(prober_path)]" in lane
+    assert '[str(path), "--version"]' in local_filter
+    assert "[str(duckdb_path)]" in local_filter
+    assert "input=sql.encode(\"utf-8\")" in local_filter

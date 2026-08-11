@@ -99,6 +99,12 @@ def build_parser() -> argparse.ArgumentParser:
     sql.add_argument("--crawl", required=True)
     sql.add_argument("--index-glob", required=True)
     sql.add_argument("--output", required=True)
+    sql.add_argument(
+        "--temp-directory",
+        type=Path,
+        required=True,
+        help="existing spill directory below --warehouse on its non-root filesystem",
+    )
 
     probe = subparsers.add_parser("probe", help="one bounded exact-URL index diagnostic")
     probe.add_argument("url")
@@ -187,7 +193,12 @@ def run(args: argparse.Namespace) -> dict | str:
         }
     if args.command == "sql":
         return render_duckdb_export_sql(
-            args.crawl, args.index_glob, args.output, config_path=args.config
+            args.crawl,
+            args.index_glob,
+            args.output,
+            temp_directory=args.temp_directory,
+            bulk_volume_root=paths["root"],
+            config_path=args.config,
         )
     if args.command == "probe":
         result = probe_exact_url(args.url, config_path=args.config, limit=args.limit)

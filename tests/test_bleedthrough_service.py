@@ -30,22 +30,46 @@ def test_systemd_service_is_fixed_user_least_privilege_and_state_separated():
     unit = SERVICE.read_text(encoding="utf-8")
 
     assert "User=palimpsest" in unit and "Group=palimpsest" in unit
-    assert "WorkingDirectory=/home/palimpsest/palimpsest" in unit
+    assert (
+        "WorkingDirectory=/usr/local/libexec/palimpsest-network-lane/current"
+        in unit
+    )
     assert "EnvironmentFile=/etc/palimpsest/bleedthrough.env" in unit
     assert (
         "ConditionFileIsExecutable="
-        "/home/palimpsest/palimpsest/ops/bleedthrough_prober.sh"
+        "/usr/local/libexec/palimpsest-network-lane/current/"
+        "ops/bleedthrough_prober.sh"
     ) in unit
     assert "ProtectSystem=strict" in unit
-    assert "ProtectHome=read-only" in unit
-    assert "ReadOnlyPaths=/home/palimpsest/palimpsest" in unit
+    assert "ProtectHome=true" in unit
+    assert "/home/palimpsest/palimpsest" not in unit
     assert (
-        "ReadWritePaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings"
+        "ReadWritePaths=/var/lib/palimpsest/bleedthrough "
+        "/var/lib/palimpsest/readings "
+        "/var/lib/palimpsest/network-lane/lane.lock "
+        "/var/lib/palimpsest/network-lane/state "
+        "/var/lib/palimpsest/network-lane/receipts"
+    ) in unit
+    assert (
+        "ExecStart=/usr/bin/python3 "
+        "/usr/local/libexec/palimpsest-network-lane/current/network_lane.py "
+        "--state-dir /var/lib/palimpsest/network-lane "
+        "bleedthrough --quiet-seconds 900"
     ) in unit
     assert "NoNewPrivileges=true" in unit
     assert "CapabilityBoundingSet=\n" in unit
     assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in unit
     assert "TimeoutStartSec=3h" in unit
+    assert "SuccessExitStatus=75" in unit
+    assert (
+        "ExecStartPre=/usr/bin/cmp -s "
+        "/usr/local/libexec/palimpsest-network-lane/current/REVISION "
+        "/etc/palimpsest/deployed-commit"
+    ) in unit
+    assert (
+        "ExecStartPre=/bin/sh "
+        "/usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh"
+    ) in unit
 
 
 def test_timer_runs_every_six_hours_with_nonzero_random_offset():

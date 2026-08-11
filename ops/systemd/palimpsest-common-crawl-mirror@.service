@@ -1,0 +1,62 @@
+[Unit]
+Description=Mirror reviewed Common Crawl URL Index paths for %i
+Documentation=file:///usr/local/libexec/palimpsest-network-lane/current/README.md
+Wants=network-online.target
+After=network-online.target systemd-tmpfiles-setup.service
+RequiresMountsFor=/mnt /var/lib/palimpsest/network-lane
+ConditionFileIsExecutable=/usr/bin/python3
+ConditionFileIsExecutable=/usr/local/bin/cc-downloader
+ConditionFileIsExecutable=/usr/local/libexec/palimpsest-network-lane/current/network_lane.py
+ConditionFileIsExecutable=/usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+ConditionPathExists=/usr/local/libexec/palimpsest-network-lane/current/MANIFEST.sha256
+ConditionPathExists=/usr/local/libexec/palimpsest-network-lane/current/REVISION
+ConditionPathExists=/etc/palimpsest/deployed-commit
+ConditionPathExists=/etc/palimpsest/common-crawl-mirror/%i.json
+ConditionPathIsDirectory=/mnt
+ConditionPathIsDirectory=/var/lib/palimpsest/network-lane
+
+[Service]
+Type=oneshot
+User=10001
+Group=10001
+WorkingDirectory=/
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-network-lane/current/REVISION /etc/palimpsest/deployed-commit
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-network-lane/current/network_lane.py --state-dir /var/lib/palimpsest/network-lane mirror --crawl %i --config /etc/palimpsest/common-crawl-mirror/%i.json
+TimeoutStartSec=36h
+UMask=0007
+Nice=15
+IOSchedulingClass=idle
+TasksMax=64
+MemoryMax=1G
+
+# The template is started only by an operator. It has no timer and accepts no
+# command string: the wrapper validates %i, a root-owned JSON plan, the pinned
+# downloader, and every path in the root-owned manifest before exec.
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-network-lane /usr/local/bin/cc-downloader /etc/palimpsest/common-crawl-mirror /etc/palimpsest/deployed-commit /var/lib/palimpsest/network-lane
+ReadWritePaths=/mnt /var/lib/palimpsest/network-lane/lane.lock /var/lib/palimpsest/network-lane/dataset.lock /var/lib/palimpsest/network-lane/state /var/lib/palimpsest/network-lane/receipts
+NoExecPaths=/mnt /var/lib/palimpsest/network-lane/state /var/lib/palimpsest/network-lane/receipts
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
