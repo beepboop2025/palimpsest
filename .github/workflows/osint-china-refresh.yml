@@ -50,7 +50,7 @@ jobs:
         run: python -m scripts.import_nemesis_snapshot
 
       - name: Import the pinned BLEEDTHROUGH public aggregate
-        run: python -m scripts.import_bleedthrough_snapshot
+        run: python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
 
       - name: Build the deterministic roll-up
         run: |
@@ -149,7 +149,7 @@ jobs:
           NEMESIS_SNAPSHOT_HMAC_KEY: ${{ secrets.NEMESIS_SNAPSHOT_HMAC_KEY }}
         run: |
           python -m scripts.import_nemesis_snapshot
-          python -m scripts.import_bleedthrough_snapshot
+          python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
 
       - name: Rebuild and reseal after a pre-publication ledger change
         if: steps.prepublish_sync.outputs.rebuild == 'true'
@@ -248,7 +248,7 @@ jobs:
           NEMESIS_SNAPSHOT_HMAC_KEY: ${{ secrets.NEMESIS_SNAPSHOT_HMAC_KEY }}
         run: |
           python -m scripts.import_nemesis_snapshot
-          python -m scripts.import_bleedthrough_snapshot
+          python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
 
       - name: Rebuild and reseal after a push race
         if: steps.push_attempt.outcome == 'failure'

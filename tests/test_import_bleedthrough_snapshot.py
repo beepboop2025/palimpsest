@@ -115,6 +115,7 @@ def test_origin_is_a_code_constant_and_fetch_is_bounded_without_redirects(tmp_pa
         "history",
         "fetcher",
         "now",
+        "allow_empty_bootstrap_404",
     ]
     assert calls == [
         (
@@ -137,6 +138,123 @@ def test_origin_is_a_code_constant_and_fetch_is_bounded_without_redirects(tmp_pa
     )
     assert "BLEEDTHROUGH_SNAPSHOT_URL" not in source
     assert "--url" not in source
+
+
+def test_explicit_bootstrap_flag_allows_only_the_initial_exact_404(tmp_path):
+    output = tmp_path / "latest.json"
+    history = tmp_path / "history.jsonl"
+
+    def not_published(_url, **_kwargs):
+        raise importer.FetchError("http status 404")
+
+    result = importer.import_snapshot(
+        output=output,
+        history=history,
+        fetcher=not_published,
+        now=NOW,
+        allow_empty_bootstrap_404=True,
+    )
+
+    assert result is None
+    assert not output.exists()
+    assert not history.exists()
+
+    with pytest.raises(importer.BleedthroughImportError, match="download failed"):
+        importer.import_snapshot(
+            output=output,
+            history=history,
+            fetcher=not_published,
+            now=NOW,
+        )
+
+
+@pytest.mark.parametrize("existing_name", ["latest.json", "history.jsonl"])
+def test_bootstrap_404_is_fatal_after_either_local_artifact_exists(
+    tmp_path, existing_name
+):
+    output = tmp_path / "latest.json"
+    history = tmp_path / "history.jsonl"
+    (tmp_path / existing_name).write_bytes(b"prior-publication-state\n")
+
+    def disappeared(_url, **_kwargs):
+        raise importer.FetchError("http status 404")
+
+    with pytest.raises(importer.BleedthroughImportError, match="download failed"):
+        importer.import_snapshot(
+            output=output,
+            history=history,
+            fetcher=disappeared,
+            now=NOW,
+            allow_empty_bootstrap_404=True,
+        )
+
+
+def test_bootstrap_flag_never_excuses_other_fetch_or_content_failures(tmp_path):
+    output = tmp_path / "latest.json"
+    history = tmp_path / "history.jsonl"
+
+    def unavailable(_url, **_kwargs):
+        raise importer.FetchError("http status 503")
+
+    with pytest.raises(importer.BleedthroughImportError, match="download failed"):
+        importer.import_snapshot(
+            output=output,
+            history=history,
+            fetcher=unavailable,
+            now=NOW,
+            allow_empty_bootstrap_404=True,
+        )
+    with pytest.raises(importer.BleedthroughImportError, match="valid bounded JSON"):
+        importer.import_snapshot(
+            output=output,
+            history=history,
+            fetcher=_fetch(b"not-json"),
+            now=NOW,
+            allow_empty_bootstrap_404=True,
+        )
+
+    importer.import_snapshot(
+        output=output,
+        history=history,
+        fetcher=_fetch(_wire()),
+        now=NOW,
+        allow_empty_bootstrap_404=True,
+    )
+    equivocation = _snapshot()
+    equivocation["max_process_count"] += 1
+    with pytest.raises(importer.BleedthroughImportError, match="equivocated"):
+        importer.import_snapshot(
+            output=output,
+            history=history,
+            fetcher=_fetch(_wire(equivocation)),
+            now=NOW,
+            allow_empty_bootstrap_404=True,
+        )
+
+
+def test_cli_bootstrap_flag_reports_pending_without_writing(
+    monkeypatch, tmp_path, capsys
+):
+    calls = []
+
+    def bootstrap(**kwargs):
+        calls.append(kwargs)
+        return None
+
+    monkeypatch.setattr(importer, "import_snapshot", bootstrap)
+    result = importer.main(
+        [
+            "--output",
+            str(tmp_path / "latest.json"),
+            "--history",
+            str(tmp_path / "history.jsonl"),
+            "--allow-empty-bootstrap-404",
+        ]
+    )
+
+    assert result == 0
+    assert calls[0]["allow_empty_bootstrap_404"] is True
+    assert "bootstrap pending" in capsys.readouterr().out
 
 
 def test_hard_deadline_stops_a_trickling_or_stalled_fetcher(tmp_path, monkeypatch):
@@ -579,6 +697,7 @@ def test_workflow_imports_tests_and_stages_the_artifacts_in_every_race_path():
             text.index(start_marker) : text.index(end_marker, text.index(start_marker))
         ]
         assert branch.count("python -m scripts.import_bleedthrough_snapshot") == 1
+        assert branch.count("--allow-empty-bootstrap-404") == 1
         assert branch.count("python -m scripts.build_osint_china") == 1
         assert branch.count("tests/test_import_bleedthrough_snapshot.py") == 1
         assert branch.count("readings/bleedthrough-latest.json") == 1

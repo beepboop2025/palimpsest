@@ -213,6 +213,10 @@ stdlib-only boundary pins the latest URL, disables redirects, caps the body at 2
 validates closed schema/clock/provenance/privacy invariants, and atomically advances the
 last-good reading. Its local history is derived from the validated semantic-change tuple, so
 the website never has to accept a potentially inconsistent two-file remote snapshot.
+Before the first node publication only, the workflow's explicit
+`--allow-empty-bootstrap-404` flag treats an HTTP 404 as a successful no-op when neither
+local latest nor history exists. Every other fetch failure, and any 404 after either local
+artifact exists, remains fatal.
 
 Province granularity is currently ASN-level (Beijing/Shanghai/Guangdong via province-specific
 ASNs; national backbones tagged `CN`). True per-province resolution for regional-firewall

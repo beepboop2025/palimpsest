@@ -1011,7 +1011,7 @@ def _write_atomic(path: Path, payload: bytes) -> None:
                 pass
 
 
-def _download(fetcher: Fetcher) -> bytes:
+def _download(fetcher: Fetcher, *, allow_not_found: bool = False) -> bytes | None:
     try:
         with _hard_deadline(TIMEOUT_SECONDS):
             payload = fetcher(
@@ -1026,7 +1026,20 @@ def _download(fetcher: Fetcher) -> bytes:
                     "Pragma": "no-cache",
                 },
             )
-    except (FetchError, OSError, TimeoutError) as exc:
+    except FetchError as exc:
+        # ``safe_fetch_bytes`` currently exposes status failures through this exact,
+        # stable message.  Keep the exception match deliberately narrow: DNS/TLS/socket
+        # failures, redirects, 403/5xx responses, and future subclasses must remain fatal.
+        if (
+            allow_not_found
+            and type(exc) is FetchError
+            and exc.args == ("http status 404",)
+        ):
+            return None
+        raise BleedthroughImportError(
+            f"BLEEDTHROUGH download failed ({type(exc).__name__})"
+        ) from exc
+    except (OSError, TimeoutError) as exc:
         raise BleedthroughImportError(
             f"BLEEDTHROUGH download failed ({type(exc).__name__})"
         ) from exc
@@ -1043,11 +1056,35 @@ def import_snapshot(
     history: Path = DEFAULT_HISTORY,
     fetcher: Fetcher = safe_fetch_bytes,
     now: float | None = None,
-) -> dict[str, Any]:
+    allow_empty_bootstrap_404: bool = False,
+) -> dict[str, Any] | None:
     """Fetch, validate, and atomically advance the pinned last-good publication."""
     checked_at = time.time() if now is None else float(now)
-    document = validate_document(_parse_json(_download(fetcher)), now=checked_at)
-    previous = _read_existing(Path(output), now=checked_at)
+    output_path = Path(output)
+    history_path = Path(history)
+
+    # A scheduled workflow can exist before the node has produced its first artifact.
+    # This opt-in treats only that exact initial 404 as an honest no-op.  lstat also
+    # counts dangling symlinks as local state, and the second check closes the small
+    # fetch-time race before returning success.
+    local_artifact_exists = any(
+        path.exists() or path.is_symlink() for path in (output_path, history_path)
+    )
+    payload = _download(
+        fetcher,
+        allow_not_found=allow_empty_bootstrap_404 and not local_artifact_exists,
+    )
+    if payload is None:
+        if any(
+            path.exists() or path.is_symlink() for path in (output_path, history_path)
+        ):
+            raise BleedthroughImportError(
+                "BLEEDTHROUGH endpoint returned 404 after local publication began"
+            )
+        return None
+
+    document = validate_document(_parse_json(payload), now=checked_at)
+    previous = _read_existing(output_path, now=checked_at)
     if previous is not None:
         incoming_epoch = datetime.fromisoformat(
             document["generated_at"].replace("Z", "+00:00")
@@ -1064,7 +1101,7 @@ def import_snapshot(
                 "BLEEDTHROUGH equivocated at an existing generation timestamp"
             )
 
-    rows = _read_history(Path(history), now=checked_at)
+    rows = _read_history(history_path, now=checked_at)
     next_rows = _prepare_history(document, previous, rows)
     history_payload = _history_bytes(next_rows)
     latest_payload = serialize_document(document)
@@ -1072,9 +1109,9 @@ def import_snapshot(
     # History lands first.  If latest replacement then fails, the old latest remains valid
     # and the next run recognizes the already-written history row as a recoverable retry.
     if history_payload != _history_bytes(rows):
-        _write_atomic(Path(history), history_payload)
-    if previous != document or not Path(output).exists():
-        _write_atomic(Path(output), latest_payload)
+        _write_atomic(history_path, history_payload)
+    if previous != document or not output_path.exists():
+        _write_atomic(output_path, latest_payload)
     return document
 
 
@@ -1092,12 +1129,30 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_HISTORY,
         help="atomic destination for locally derived semantic-change history",
     )
+    parser.add_argument(
+        "--allow-empty-bootstrap-404",
+        action="store_true",
+        help=(
+            "succeed without writing only when the fixed endpoint returns 404 and "
+            "neither local artifact exists"
+        ),
+    )
     args = parser.parse_args(argv)
     try:
-        document = import_snapshot(output=args.output, history=args.history)
+        document = import_snapshot(
+            output=args.output,
+            history=args.history,
+            allow_empty_bootstrap_404=args.allow_empty_bootstrap_404,
+        )
     except BleedthroughImportError as exc:
         print(f"BLEEDTHROUGH import refused: {exc}", file=os.sys.stderr)
         return 1
+    if document is None:
+        print(
+            "BLEEDTHROUGH bootstrap pending: the fixed endpoint has no first "
+            "publication yet"
+        )
+        return 0
     digest = hashlib.sha256(serialize_document(document)).hexdigest()[:16]
     print(
         "imported fixed BLEEDTHROUGH snapshot "

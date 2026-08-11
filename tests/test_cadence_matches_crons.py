@@ -28,7 +28,16 @@ WORKFLOWS = REPO / ".github" / "workflows"
 # and there is nothing to compare it against. Named here rather than silently
 # skipped, so adding a workflow for one of them makes this list wrong on
 # purpose.
-NO_COMMITTED_CRON = {"bleedthrough_pools", "bleedthrough_capacity"}
+NO_COMMITTED_CRON = set()
+
+# These signals are measured by a remote, receipt-bound systemd producer and
+# merely *polled* by GitHub.  Their statistical cadence comes from the producer
+# timer; the workflow cron only needs to be at least as frequent so it does not
+# routinely miss a completed publication.
+REMOTE_PRODUCER_TIMERS = {
+    "bleedthrough_pools": REPO / "ops/systemd/palimpsest-bleedthrough.timer",
+    "bleedthrough_capacity": REPO / "ops/systemd/palimpsest-bleedthrough.timer",
+}
 
 CRON_LINE = re.compile(r"^\s*-\s*cron:\s*[\"']?([^\"'#]+?)[\"']?\s*(?:#.*)?$")
 
@@ -77,6 +86,20 @@ def workflow_crons(path: Path) -> list[str]:
     return [m.group(1).strip()
             for m in (CRON_LINE.match(line) for line in path.read_text(encoding="utf-8").splitlines())
             if m]
+
+
+def systemd_runs_per_day(path: Path) -> float:
+    """Return the nominal daily firings for this repository's fixed timer form."""
+    calendar = next(
+        line.removeprefix("OnCalendar=").strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.startswith("OnCalendar=")
+    )
+    match = re.fullmatch(r"\*-\*-\* ([0-9,]+):[0-9]{2}:[0-9]{2} UTC", calendar)
+    assert match, f"systemd calendar form not modelled: {calendar}"
+    hours = [int(hour) for hour in match.group(1).split(",")]
+    assert len(hours) == len(set(hours)) and all(0 <= hour <= 23 for hour in hours)
+    return float(len(hours))
 
 
 def producing_workflow(history_filename: str) -> Path | None:
@@ -130,6 +153,17 @@ def test_declared_cadence_matches_the_committed_crons():
         crons = workflow_crons(wf)
         assert crons, f"{wf.name} produces {history_filename} but declares no cron"
         actual = sum(runs_per_day(c) for c in crons)
+        producer_timer = REMOTE_PRODUCER_TIMERS.get(signal)
+        if producer_timer is not None:
+            producer_actual = systemd_runs_per_day(producer_timer)
+            assert CADENCE_PER_DAY[signal] == pytest.approx(producer_actual), (
+                f"{signal}: board_alarm declares {CADENCE_PER_DAY[signal]}/day but "
+                f"{producer_timer.name} runs {producer_actual}/day")
+            assert actual >= producer_actual, (
+                f"{signal}: importer polls {actual}/day, slower than its "
+                f"{producer_actual}/day producer")
+            checked.append(signal)
+            continue
         assert CADENCE_PER_DAY[signal] == pytest.approx(actual), (
             f"{signal}: board_alarm declares {CADENCE_PER_DAY[signal]}/day but "
             f"{wf.name} runs {actual}/day ({', '.join(crons)})")
