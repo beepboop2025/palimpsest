@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 
 from collectors.inside_view import (PANEL, RateLimited, _role, control_state,
                                     observe_panel, regional_divergence)
@@ -36,10 +37,62 @@ METHOD_VERSION = 2
 # Globalping allows 250 unauthenticated probe-credits per rolling hour. With
 # the current 11-domain panel, 14 CN probes and two controls, a full round costs
 # 176 credits. That fits as one atomic round but leaves no room for a second
-# overlapping run. The Hetzner schedule is therefore placed on hours that do
-# not overlap the six-hourly GitHub publication job. If the budget is exhausted
-# anyway, RateLimited is raised mid-panel and the round abstains whole rather
-# than publishing whichever domains happened to run first.
+# overlapping run. The checked-in owner contract prevents two platforms from
+# scheduling it, while this runner independently rejects queued/manual duplicate
+# runs until more than 65 minutes have elapsed since the latest successful
+# observation. The extra five minutes cover the fact that generated_at marks the
+# start of a round, before its final API request completes. If the budget is
+# exhausted anyway, RateLimited is raised mid-panel and the round abstains whole
+# rather than publishing whichever domains happened to run first.
+ROLLING_CREDIT_GUARD = timedelta(minutes=65)
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+_UTC_TIMESTAMP = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)"
+)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_observation_time(value: object) -> datetime:
+    """Parse only the UTC ISO-8601 shape emitted by this publisher."""
+
+    if not isinstance(value, str) or _UTC_TIMESTAMP.fullmatch(value) is None:
+        raise ValueError("generated_at is not a strict UTC ISO-8601 timestamp")
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError("generated_at is not a real calendar timestamp") from exc
+    if parsed.utcoffset() != timedelta(0):
+        raise ValueError("generated_at is not UTC")
+    return parsed.astimezone(timezone.utc)
+
+
+def _rolling_credit_guard(now: datetime, path: str) -> tuple[bool, str]:
+    """Fail closed unless a prior successful observation is safely outside the window."""
+
+    if not os.path.exists(path):
+        return True, "no prior successful observation"
+    try:
+        with open(path, encoding="utf-8") as handle:
+            latest = json.load(handle)
+        if not isinstance(latest, dict):
+            raise ValueError("latest reading is not an object")
+        observed_at = _parse_observation_time(latest.get("generated_at"))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        return False, f"latest observation cannot be validated ({exc})"
+
+    age = now - observed_at
+    if age < timedelta(0):
+        return False, "latest observation timestamp is in the future"
+    if age <= ROLLING_CREDIT_GUARD:
+        return False, (
+            f"latest successful observation is {int(age.total_seconds())}s old; "
+            f"requires >{int(ROLLING_CREDIT_GUARD.total_seconds())}s"
+        )
+    return True, "latest successful observation is outside the rolling-credit window"
 
 
 def _band(rate: float) -> str:
@@ -55,10 +108,16 @@ def _band(rate: float) -> str:
 
 
 def main() -> None:
-    now = datetime.now(timezone.utc)
+    now = _utc_now()
 
-    if not os.getenv("PALIMPSEST_LIVE"):
+    if os.getenv("PALIMPSEST_LIVE", "").strip().lower() not in _TRUTHY:
         print("inside-view: inert (set PALIMPSEST_LIVE=1) — abstaining")
+        return
+
+    safe, reason = _rolling_credit_guard(now, OUT)
+    if not safe:
+        print(f"inside-view: rolling-credit guard — {reason} — "
+              "abstaining without probing; latest reading preserved")
         return
 
     try:

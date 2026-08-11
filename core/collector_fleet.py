@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass
@@ -30,6 +31,7 @@ from typing import Callable
 
 from celery.schedules import crontab
 
+from core.active_probe_owner import ActiveProbeOwnerError, active_probe_owner
 from core.governance import KillSwitch
 
 
@@ -38,6 +40,7 @@ COLLECTOR_QUEUE = "collectors"
 CDT_ROOT_FEED = "https://chinadigitaltimes.net/feed/"
 _TRUTHY = {"1", "true", "yes", "on"}
 _PROFILES = {"standard", "vigorous"}
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -192,10 +195,10 @@ _VIGOROUS = {
 
 
 _ACTIVE = {
-    # The canonical GitHub publication run starts at :41 on 00/06/12/18 UTC.
-    # One current panel consumes 176 of Globalping's 250 hourly probe credits,
-    # so a second full run in the same rolling hour cannot fit. Keep this node's
-    # independently gated rounds on odd UTC hours instead of racing that job.
+    # These offsets are traffic hygiene for a deployment whose checked-in owner
+    # is ``hetzner``; they are not the mutual-exclusion mechanism. GitHub may
+    # delay cron jobs past their nominal hour. The checked-in single-owner
+    # contract is what prevents both platforms consuming the 250-credit budget.
     "standard": Cadence(
         47, "1,7,13,19", expires_s=4 * 3600, interval_s=6 * 3600,
     ),
@@ -212,11 +215,18 @@ def collectors_enabled() -> bool:
 
 
 def active_probes_enabled() -> bool:
-    """Require two explicit gates before scheduling the Globalping probe leg."""
+    """Require Hetzner ownership plus both local gates for Globalping probes."""
 
     active = os.getenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "").strip().lower()
     live = os.getenv("PALIMPSEST_LIVE", "").strip().lower()
-    return active in _TRUTHY and live in _TRUTHY
+    try:
+        owner = active_probe_owner()
+    except ActiveProbeOwnerError as exc:
+        # A broken contract must not take the passive fleet down, but it can
+        # never be interpreted as permission to issue active probes.
+        log.error("Inside View active-probe owner is invalid; disabling it: %s", exc)
+        return False
+    return owner == "hetzner" and active in _TRUTHY and live in _TRUTHY
 
 
 def cloudflare_radar_enabled() -> bool:

@@ -10,9 +10,8 @@ Offline: the network path is stubbed out entirely and only the writer runs.
 """
 from __future__ import annotations
 
-import importlib
 import json
-import os
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -35,6 +34,16 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "READINGS", str(tmp_path))
     monkeypatch.setattr(pull, "OUT", str(tmp_path / "inside-view-latest.json"))
     monkeypatch.setattr(pull, "HIST", str(tmp_path / "inside-view-history.jsonl"))
+    clock = datetime(2026, 8, 11, 0, 0, tzinfo=timezone.utc)
+
+    def next_round_time():
+        nonlocal clock
+        current = clock
+        # Publication tests model distinct scheduled rounds, not duplicate jobs.
+        clock += timedelta(hours=2)
+        return current
+
+    monkeypatch.setattr(pull, "_utc_now", next_round_time)
 
     def run(block_rate=1.0, control_state="SIGHTED"):
         # One censored domain per round; forged when the round is meant to read
@@ -64,7 +73,7 @@ def _history(tmp_path):
     path = tmp_path / "inside-view-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def test_a_repeated_finding_still_refreshes_the_observation_time(publish):

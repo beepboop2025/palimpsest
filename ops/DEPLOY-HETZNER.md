@@ -271,16 +271,47 @@ content-addressed archive at `/app/data/observations` when
 deduplicate by SHA-256 while changed readings remain available for longitudinal
 analysis.
 
-**Inside View is not part of the passive schedule.** It asks third-party probes
-to make live network observations, so it has two explicit gates. Only an
-operator who deliberately sets both values below will add it to beat:
+**Inside View has exactly one checked-in scheduler owner.** The strict contract
+in [`config/active_probe_owner.json`](../config/active_probe_owner.json) names
+either `github` or `hetzner`; the canonical/default owner is `github`. Both
+platforms read that same file before they can command Globalping:
+
+- with `inside_view_owner: "github"`, the public workflow may measure and the
+  Hetzner fleet cannot add the task, even if its legacy local gates are set;
+- with `inside_view_owner: "hetzner"`, the public workflow checks out the
+  revision, reports delegated ownership, and skips every probe and publish
+  step. The node still requires both local gates below before beat adds the
+  task.
+
+Keep the canonical node at the zero values shown above:
 
 ```dotenv
-PALIMPSEST_ACTIVE_PROBES_ENABLED=1
-PALIMPSEST_LIVE=1
+PALIMPSEST_ACTIVE_PROBES_ENABLED=0
+PALIMPSEST_LIVE=0
 ```
 
-Leave both at `0` for the default passive public-source node.
+Do not use clock offsets as mutual exclusion. A scheduled GitHub job may start
+well after its nominal cron minute, and one 176-credit Inside View round leaves
+too little of Globalping's 250-credit rolling-hour allowance for a second full
+round. The owner contract is the exclusion mechanism; the different cron
+minutes are only traffic-spreading hygiene. As a second fail-safe shared by all
+entrypoints, `scripts/inside_view_pull.py` refuses to probe unless the latest
+successful observation is strictly more than 65 minutes old. A recent,
+malformed, missing-timestamp, or future-dated latest reading makes the runner
+abstain before egress and leaves the last-good bytes untouched. Only a genuinely
+absent latest file permits the first round.
+
+An ownership transfer must be ordered so the old owner stops first. For a
+GitHub-to-Hetzner handoff, merge the owner change while the node gates remain
+`0`, confirm the public workflow now abstains, wait at least one rolling hour
+plus the guard margin (currently 65 minutes total) after the last public
+measurement started, deploy that exact revision, then
+set both node gates to `1` and recreate beat and `worker-collectors`. For the
+reverse handoff, set both node gates to `0`, recreate beat and the collector
+worker, confirm no Inside View task is active or queued, wait the same 65 minutes
+after its last run started, and only then merge `inside_view_owner: "github"`. Never
+manually queue the task unless the deployed revision names `hetzner` and both
+local gates are enabled.
 
 ### 5b. Opt in to the bounded OONI bulk warehouse
 

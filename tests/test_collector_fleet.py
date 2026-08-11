@@ -15,6 +15,8 @@ import pytest
 
 pytest.importorskip("celery", reason="the fleet schedule is a Celery beat fragment")
 
+import core.collector_fleet as collector_fleet  # noqa: E402
+from core.active_probe_owner import ActiveProbeOwnerError  # noqa: E402
 from core.collector_fleet import (  # noqa: E402
     COLLECTOR_QUEUE,
     CDT_ROOT_FEED,
@@ -99,8 +101,17 @@ def test_six_more_passive_methods_are_in_the_always_on_fleet(monkeypatch):
     assert "inside-view" not in names
 
 
-def test_active_probe_leg_needs_both_explicit_gates(monkeypatch):
+def test_active_probe_leg_needs_hetzner_ownership_and_both_explicit_gates(
+    monkeypatch,
+):
     monkeypatch.setenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "1")
+    monkeypatch.setenv("PALIMPSEST_LIVE", "true")
+    monkeypatch.setattr(collector_fleet, "active_probe_owner", lambda: "github")
+
+    assert active_probes_enabled() is False
+    assert "collect-snapshot-inside-view" not in build_collector_schedule("vigorous")
+
+    monkeypatch.setattr(collector_fleet, "active_probe_owner", lambda: "hetzner")
     monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
     assert active_probes_enabled() is False
     assert "collect-snapshot-inside-view" not in build_collector_schedule("vigorous")
@@ -110,7 +121,25 @@ def test_active_probe_leg_needs_both_explicit_gates(monkeypatch):
     assert "collect-snapshot-inside-view" in build_collector_schedule("vigorous")
 
 
-def test_active_probe_hours_do_not_collide_with_public_globalping_job(monkeypatch):
+def test_invalid_owner_contract_fails_closed_without_stopping_passive_fleet(
+    monkeypatch,
+):
+    def invalid_owner():
+        raise ActiveProbeOwnerError("broken test contract")
+
+    monkeypatch.setattr(collector_fleet, "active_probe_owner", invalid_owner)
+    monkeypatch.setenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "1")
+    monkeypatch.setenv("PALIMPSEST_LIVE", "1")
+
+    schedule = build_collector_schedule("vigorous")
+    assert "collect-snapshot-inside-view" not in schedule
+    assert "collect-snapshot-ooni-gfw" in schedule
+
+
+def test_hetzner_owner_keeps_a_nominal_offset_from_public_globalping_job(
+    monkeypatch,
+):
+    monkeypatch.setattr(collector_fleet, "active_probe_owner", lambda: "hetzner")
     monkeypatch.setenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "1")
     monkeypatch.setenv("PALIMPSEST_LIVE", "1")
 

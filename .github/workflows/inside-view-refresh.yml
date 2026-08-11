@@ -12,8 +12,13 @@ name: Refresh Inside View signal
 # The other live-gated collectors probe from OUR egress, which is what that gate
 # protects; this one does not. What it consumes is Globalping's public credit
 # budget (250/hour unauthenticated), and one current round costs 176 credits.
-# Hetzner's independently gated schedule runs on different UTC hours so two
-# full rounds do not collide inside the same rolling-hour budget.
+# GitHub cron can be delayed beyond its nominal hour, so clock offsets cannot
+# safely coordinate a second scheduler. The checked-in active-probe owner is
+# resolved after checkout and every probe/publish step is gated on that value.
+# Queued events can carry an older event SHA, so checkout explicitly resolves
+# current `main` before the guard reads the latest observation. The runner then
+# fails closed unless that observation is strictly older than 65 minutes (and
+# its timestamp is trustworthy), protecting against queued/manual duplicates.
 
 on:
   schedule:
@@ -35,15 +40,28 @@ jobs:
       PALIMPSEST_LIVE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: main
+
+      - name: Resolve the checked-in active-probe owner
+        id: active_probe_owner
+        run: echo "inside_view=$(python -m core.active_probe_owner)" >> "$GITHUB_OUTPUT"
+
+      - name: Report delegated ownership
+        if: steps.active_probe_owner.outputs.inside_view != 'github'
+        run: echo "Inside View is owned by the Hetzner scheduler in this revision; abstaining."
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        if: steps.active_probe_owner.outputs.inside_view == 'github'
         with:
           python-version: "3.12"
 
       - name: Measure from inside China and publish the Inside View signal
+        if: steps.active_probe_owner.outputs.inside_view == 'github'
         run: python -m scripts.inside_view_pull
 
       - name: Read the public surface before pushing it
+        if: steps.active_probe_owner.outputs.inside_view == 'github'
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
         # workflow cannot cover this commit: it carries [skip ci], and GitHub skips the
@@ -55,6 +73,7 @@ jobs:
         run: python scripts/verify_public_surface.py
 
       - name: Commit & push if the signal changed
+        if: steps.active_probe_owner.outputs.inside_view == 'github'
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"

@@ -9,7 +9,6 @@ from __future__ import annotations
 import importlib.util
 import hashlib
 import json
-import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -94,7 +93,10 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert declared == published
     assert {spec.filename for spec in mod.SIGNALS} >= {"latest.json", "anchors-latest.json"}
     assert mod.EXCLUDED_LATEST_FILES == {
-        "eval-registry-latest.json", "refusal-drift-latest.json"}
+        "eval-registry-latest.json",
+        "research-corpus-latest.json",
+        "refusal-drift-latest.json",
+    }
 
 
 def test_manifest_has_stable_unique_ids_files_layers_and_freshness(mod):

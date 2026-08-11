@@ -1,10 +1,10 @@
 """Publication invariants for the long-running eval/erasure refresh.
 
-The model sweep takes long enough that another readings workflow will normally push
-while it is running. A swallowed rebase failure left Actions on a detached rebase
-HEAD; six consecutive runs then measured and verified fresh evals but discarded them
-at ``git push``. These tests keep publication failure loud and preserve the expensive
-model result while shared ledgers are rebuilt on the current public head.
+The model sweep takes long enough that other readings workflows can push repeatedly
+while it is running. A swallowed rebase failure once discarded six fresh evals, and a
+later run exhausted its one-shot race recovery when two publishers won in succession.
+These tests keep publication failure loud and preserve the expensive model result while
+shared ledgers are rebuilt on the current public head before every retry.
 """
 from pathlib import Path
 
@@ -22,6 +22,9 @@ def test_eval_refresh_is_race_safe_and_never_swallows_a_rebase_failure():
     assert "git switch --detach origin/main" in text
     assert text.count("git push origin HEAD:main") == 2
     assert "continue-on-error: true" in text
+    assert "for attempt in 1 2; do" in text
+    assert "FATAL: erasure publication lost both bounded retries" in text
+    assert "--force" not in text
 
 
 def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
@@ -35,14 +38,67 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
     assert text.count("python -m scripts.verify_eval_registry") == 3
     assert text.count("python scripts/verify_public_surface.py") == 3
 
-    race = text.index("Synchronize the measured result after a push race")
-    restore = text.index("git restore --source=origin/main", race)
-    rebuild = text.index("python3 scripts/seal_readings.py || rc=$?", restore)
+    race = text.index("Recollect, reverify, and retry after a push race")
+    refresh = text.index("git fetch origin main", race)
+    reset = text.index("git switch --detach origin/main", refresh)
+    restore = text.index('git checkout "$measurement_commit"', reset)
+    aggregate = text.index("python -m scripts.erasure_pull", restore)
+    rebuild = text.index("python3 scripts/seal_readings.py || rc=$?", aggregate)
     verify = text.index("python -m scripts.verify_eval_registry", rebuild)
     anchor = text.index("python -m scripts.anchor_roots", verify)
     scrub = text.index("python scripts/verify_public_surface.py", anchor)
     final_push = text.rindex("git push origin HEAD:main")
-    assert race < restore < rebuild < verify < anchor < scrub < final_push
+    assert (
+        race
+        < refresh
+        < reset
+        < restore
+        < aggregate
+        < rebuild
+        < verify
+        < anchor
+        < scrub
+        < final_push
+    )
+
+
+def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    race = text.index("Recollect, reverify, and retry after a push race")
+    preserve_start = text.index("# Carry forward only this run's measured/model artifacts", race)
+    preserve_end = text.index("            done", preserve_start)
+    preserved = text[preserve_start:preserve_end]
+
+    for derived_path in (
+        "readings/erasure-observatory-latest.json",
+        "readings/erasure-observatory-history.jsonl",
+        "readings/erasure-ledger.jsonl",
+        "readings/readings-ledger.jsonl",
+        "readings/anchors.jsonl",
+        "readings/anchors-latest.json",
+        "readings/anchors/",
+    ):
+        assert derived_path not in preserved
+
+    retry = text[race:]
+    loop = retry.index("for attempt in 1 2; do")
+    refresh = retry.index("git fetch origin main", loop)
+    reset = retry.index("git switch --detach origin/main", refresh)
+    rebuild = retry.index("python -m scripts.erasure_pull", reset)
+    seal = retry.index("python3 scripts/seal_readings.py || rc=$?", rebuild)
+    verify_ledger = retry.index("python -m scripts.verify_ledger", seal)
+    verify_eval = retry.index("python -m scripts.verify_eval_registry", verify_ledger)
+    verify_transcripts = retry.index(
+        "python -m scripts.verify_refusal_transcripts", verify_eval
+    )
+    verify_seal = retry.index("python3 scripts/seal_readings.py --check", verify_transcripts)
+    anchor = retry.index("python -m scripts.anchor_roots", verify_seal)
+    scrub = retry.index("python scripts/verify_public_surface.py", anchor)
+    commit = retry.index('git commit -C "$measurement_commit"', scrub)
+    push = retry.index("if git push origin HEAD:main; then", commit)
+    assert loop < refresh < reset < rebuild < seal < verify_ledger
+    assert verify_ledger < verify_eval < verify_transcripts < verify_seal
+    assert verify_seal < anchor < scrub < commit < push
 
 
 def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
@@ -50,6 +106,12 @@ def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
 
     assert "timeout-minutes: 150" in text
     assert "timeout-minutes: 110" in text
+    race = text.index("Recollect, reverify, and retry after a push race")
+    staging_start = text.index(
+        "for p in readings/erasure-observatory-latest.json", race
+    )
+    staging_end = text.index("            done", staging_start)
+    retry_staging = text[staging_start:staging_end]
     for path in (
         "readings/eval-registry.jsonl",
         "readings/eval-registry-latest.json",
@@ -61,4 +123,4 @@ def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
         "readings/anchors.jsonl",
         "readings/anchors-latest.json",
     ):
-        assert text.count(path) >= 3, path
+        assert path in retry_staging, path
