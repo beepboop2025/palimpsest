@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Run the production stack with one authoritative environment file for both
+# Compose interpolation and container runtime configuration.
+
+set -Eeuo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+env_file="${PALIMPSEST_ENV_FILE:-$script_dir/.env}"
+
+if [[ "$env_file" != /* ]]; then
+  env_file="$(cd "$(dirname "$env_file")" && pwd -P)/$(basename "$env_file")"
+fi
+if [[ ! -r "$env_file" ]]; then
+  printf 'palimpsest: production env is not readable: %s\n' "$env_file" >&2
+  exit 1
+fi
+
+export PALIMPSEST_ENV_FILE="$env_file"
+exec docker compose \
+  --project-name "${COMPOSE_PROJECT_NAME:-palimpsest}" \
+  --env-file "$env_file" \
+  -f "$script_dir/docker-compose.prod.yml" \
+  "$@"

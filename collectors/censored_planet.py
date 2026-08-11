@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import urllib.error
 import urllib.request
 
@@ -23,20 +24,39 @@ log = logging.getLogger(__name__)
 
 ENDPOINT = "https://data.censoredplanet.org/query"
 USER_AGENT = "palimpsest.info observatory (Censored Planet open-data ingest)"
+MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 
 
-def _gql(query: str, variables: dict | None = None, timeout: float = 30.0):
+def _gql(
+    query: str,
+    variables: dict | None = None,
+    timeout: float = 30.0,
+    *,
+    retries: int = 2,
+    sleeper=time.sleep,
+):
     """One GraphQL call. Fail-soft: returns None on transport error or GraphQL
     error, so the caller abstains rather than publishing a false zero."""
     body = json.dumps({"query": query, "variables": variables or {}}).encode()
     req = urllib.request.Request(ENDPOINT, data=body,
                                  headers={"content-type": "application/json",
                                           "User-Agent": USER_AGENT})
-    try:
-        raw = urllib.request.urlopen(req, timeout=timeout).read(16 * 1024 * 1024)
-        doc = json.loads(raw)
-    except (urllib.error.URLError, urllib.error.HTTPError, ValueError, OSError) as e:
-        log.warning("Censored Planet fetch failed: %s", e)
+    doc = None
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                raw = response.read(MAX_RESPONSE_BYTES + 1)
+            if len(raw) > MAX_RESPONSE_BYTES:
+                log.warning("Censored Planet response exceeded %s bytes", MAX_RESPONSE_BYTES)
+                return None
+            doc = json.loads(raw)
+            break
+        except (urllib.error.URLError, urllib.error.HTTPError, ValueError, OSError) as exc:
+            if attempt >= retries:
+                log.warning("Censored Planet fetch failed after %s attempts: %s", attempt + 1, exc)
+                return None
+            sleeper(2 ** attempt)
+    if not isinstance(doc, dict):
         return None
     if doc.get("errors"):
         log.warning("Censored Planet GraphQL error: %s", doc["errors"])

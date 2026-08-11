@@ -52,14 +52,26 @@ class Cadence:
     minute: str | int
     hour: str | int = "*"
     day_of_week: str | int = "*"
+    day_of_month: str | int = "*"
     expires_s: int = 3600
+    interval_s: int = 24 * 3600
+    grace_s: int | None = None
 
     def schedule(self):
         return crontab(
             minute=self.minute,
             hour=self.hour,
             day_of_week=self.day_of_week,
+            day_of_month=self.day_of_month,
         )
+
+    @property
+    def freshness_grace_s(self) -> int:
+        """Additional time beyond one cadence before a job becomes stale."""
+
+        if self.grace_s is not None:
+            return self.grace_s
+        return max(int(self.interval_s * 1.5), 3600)
 
 
 # Outputs are the observable commit point for a job.  A runner returning normally
@@ -79,24 +91,49 @@ SNAPSHOT_OUTPUTS = {
     "net4people": "readings/net4people-latest.json",
     "circumvention-demand": "readings/circumvention-demand-latest.json",
     "stock-connect": "readings/stock-connect-latest.json",
+    "apple-censorship": "readings/apple-censorship-latest.json",
+    "censored-planet": "readings/censored-planet-latest.json",
+    "data-darkness": "readings/data-darkness-latest.json",
+    "cny-fix-gap": "readings/cny-fix-gap-latest.json",
+    "blocklist": "readings/blocklist-latest.json",
+    "believability": "readings/believability-latest.json",
 }
 
 
 _STANDARD = {
-    "ddti": Cadence(17, "*/3", expires_s=2 * 3600),
-    "ooni-gfw": Cadence(23, "*/6", expires_s=4 * 3600),
-    "ioda-outages": Cadence(29, "*/6", expires_s=4 * 3600),
-    "weibo-hotsearch": Cadence(41, "*/6", expires_s=4 * 3600),
-    "app-storefront": Cadence(53, "*/6", expires_s=4 * 3600),
-    "china-econ": Cadence(41, "*/6", expires_s=4 * 3600),
-    "inside-view": Cadence(47, "*/6", expires_s=4 * 3600),
-    "in-path-interference": Cadence(29, "*/6", expires_s=4 * 3600),
-    "gdelt": Cadence(47, "*/6", expires_s=4 * 3600),
-    "github-refuge": Cadence(37, "*/12", expires_s=8 * 3600),
-    "wayback": Cadence(23, "*/12", expires_s=8 * 3600),
-    "net4people": Cadence(41, "*/12", expires_s=8 * 3600),
+    "ddti": Cadence(17, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "ooni-gfw": Cadence(23, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "ioda-outages": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "weibo-hotsearch": Cadence(41, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "app-storefront": Cadence(53, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "china-econ": Cadence(41, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "in-path-interference": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "gdelt": Cadence(47, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "github-refuge": Cadence(37, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "wayback": Cadence(23, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "net4people": Cadence(41, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "circumvention-demand": Cadence(17, 5, expires_s=12 * 3600),
-    "stock-connect": Cadence(23, 13, day_of_week="1-5", expires_s=8 * 3600),
+    "stock-connect": Cadence(
+        23, 13, day_of_week="1-5", expires_s=8 * 3600,
+        grace_s=3 * 24 * 3600,
+    ),
+    # Six additional, independently useful passive methods.  Their cadences
+    # follow the upstream data rhythm rather than the machine's available CPU.
+    "apple-censorship": Cadence(11, 7, expires_s=12 * 3600),
+    "censored-planet": Cadence(13, 8, expires_s=12 * 3600),
+    "data-darkness": Cadence(7, 10, expires_s=12 * 3600),
+    "cny-fix-gap": Cadence(
+        15, 13, day_of_week="1-5", expires_s=8 * 3600,
+        grace_s=3 * 24 * 3600,
+    ),
+    "blocklist": Cadence(
+        29, 4, day_of_week=1, expires_s=3 * 24 * 3600,
+        interval_s=7 * 24 * 3600, grace_s=3 * 24 * 3600,
+    ),
+    "believability": Cadence(
+        43, 6, day_of_month=18, expires_s=3 * 24 * 3600,
+        interval_s=31 * 24 * 3600, grace_s=9 * 24 * 3600,
+    ),
 }
 
 
@@ -104,20 +141,45 @@ _STANDARD = {
 # than the standard profile samples them, so these cadences add observations; the
 # daily sources remain daily because polling them more often adds traffic, not data.
 _VIGOROUS = {
-    "ddti": Cadence(17, "*/3", expires_s=2 * 3600),
-    "ooni-gfw": Cadence(11, "*/2", expires_s=90 * 60),
-    "ioda-outages": Cadence(19, "*/2", expires_s=90 * 60),
-    "weibo-hotsearch": Cadence(27, "*", expires_s=45 * 60),
-    "app-storefront": Cadence(33, "*/2", expires_s=90 * 60),
-    "china-econ": Cadence(41, "*/3", expires_s=2 * 3600),
-    "inside-view": Cadence(47, "*/2", expires_s=90 * 60),
-    "in-path-interference": Cadence(53, "*/2", expires_s=90 * 60),
-    "gdelt": Cadence(59, "*/3", expires_s=2 * 3600),
-    "github-refuge": Cadence(14, "*/6", expires_s=4 * 3600),
-    "wayback": Cadence(22, "*/6", expires_s=4 * 3600),
-    "net4people": Cadence(30, "*/6", expires_s=4 * 3600),
+    "ddti": Cadence(17, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "ooni-gfw": Cadence(11, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
+    "ioda-outages": Cadence(19, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
+    "weibo-hotsearch": Cadence(27, "*", expires_s=45 * 60, interval_s=3600),
+    "app-storefront": Cadence(33, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
+    "china-econ": Cadence(41, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "in-path-interference": Cadence(53, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
+    "gdelt": Cadence(59, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "github-refuge": Cadence(14, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "wayback": Cadence(22, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "net4people": Cadence(30, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "circumvention-demand": Cadence(38, 5, expires_s=12 * 3600),
-    "stock-connect": Cadence(46, 13, day_of_week="1-5", expires_s=8 * 3600),
+    "stock-connect": Cadence(
+        46, 13, day_of_week="1-5", expires_s=8 * 3600,
+        grace_s=3 * 24 * 3600,
+    ),
+    "apple-censorship": Cadence(11, 7, expires_s=12 * 3600),
+    "censored-planet": Cadence(13, 8, expires_s=12 * 3600),
+    "data-darkness": Cadence(
+        7, "0,12", expires_s=8 * 3600, interval_s=12 * 3600,
+    ),
+    "cny-fix-gap": Cadence(
+        15, 13, day_of_week="1-5", expires_s=8 * 3600,
+        grace_s=3 * 24 * 3600,
+    ),
+    "blocklist": Cadence(
+        29, 4, day_of_week=1, expires_s=3 * 24 * 3600,
+        interval_s=7 * 24 * 3600, grace_s=3 * 24 * 3600,
+    ),
+    "believability": Cadence(
+        43, 6, day_of_month=18, expires_s=3 * 24 * 3600,
+        interval_s=31 * 24 * 3600, grace_s=9 * 24 * 3600,
+    ),
+}
+
+
+_ACTIVE = {
+    "standard": Cadence(47, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "vigorous": Cadence(47, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
 }
 
 
@@ -125,6 +187,14 @@ def collectors_enabled() -> bool:
     """Whether the always-on passive fleet is explicitly enabled."""
 
     return os.getenv("PALIMPSEST_COLLECTORS_ENABLED", "").strip().lower() in _TRUTHY
+
+
+def active_probes_enabled() -> bool:
+    """Require two explicit gates before scheduling the Globalping probe leg."""
+
+    active = os.getenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "").strip().lower()
+    live = os.getenv("PALIMPSEST_LIVE", "").strip().lower()
+    return active in _TRUTHY and live in _TRUTHY
 
 
 def collection_profile() -> str:
@@ -159,7 +229,56 @@ def ddti_head_config(profile: str | None = None) -> dict:
         "rate_limit": 2.0,
         "circuit_breaker_threshold": 4,
         "circuit_breaker_cooldown": 30 * 60,
+        # The Celery task owns the one durable terminal log row.  Full DDTI
+        # archive runs keep BaseCollector's default logging behavior.
+        "log_collection": False,
     }
+
+
+def _head_cadence(profile: str) -> Cadence:
+    return (
+        Cadence("5,35", expires_s=25 * 60, interval_s=30 * 60)
+        if profile == "vigorous"
+        else Cadence(5, "*/3", expires_s=2 * 3600, interval_s=3 * 3600)
+    )
+
+
+def _effective_cadences(profile: str) -> dict[str, Cadence]:
+    cadences = dict(_VIGOROUS if profile == "vigorous" else _STANDARD)
+    if active_probes_enabled():
+        cadences["inside-view"] = _ACTIVE[profile]
+    return cadences
+
+
+def expected_collector_specs(profile: str | None = None) -> list[dict]:
+    """Stable control-plane registry for every job expected on this node."""
+
+    chosen = profile or collection_profile()
+    if chosen not in _PROFILES:
+        raise ValueError(f"unknown collection profile: {chosen!r}")
+    head = _head_cadence(chosen)
+    specs = [{
+        "source": "ddti-feed-head",
+        "output_path": None,
+        "cadence_seconds": head.interval_s,
+        "grace_seconds": head.freshness_grace_s,
+        "task_name": "core.tasks.collect_ddti_feed_head",
+    }, {
+        "source": "ddti-index",
+        "output_path": None,
+        "cadence_seconds": 30 * 60,
+        "grace_seconds": 45 * 60,
+        "task_name": "core.tasks.generate_ddti_index",
+    }]
+    for name, cadence in _effective_cadences(chosen).items():
+        specs.append({
+            "source": name,
+            "output_path": SNAPSHOT_OUTPUTS[name],
+            "cadence_seconds": cadence.interval_s,
+            "grace_seconds": cadence.freshness_grace_s,
+            "task_name": "core.tasks.refresh_public_snapshot",
+        })
+    return specs
 
 
 def build_collector_schedule(profile: str | None = None) -> dict:
@@ -168,14 +287,15 @@ def build_collector_schedule(profile: str | None = None) -> dict:
     chosen = profile or collection_profile()
     if chosen not in _PROFILES:
         raise ValueError(f"unknown collection profile: {chosen!r}")
-    cadences = _VIGOROUS if chosen == "vigorous" else _STANDARD
-
-    head = (
-        Cadence("5,35", expires_s=25 * 60)
-        if chosen == "vigorous"
-        else Cadence(5, "*/3", expires_s=2 * 3600)
-    )
+    cadences = _effective_cadences(chosen)
+    head = _head_cadence(chosen)
     schedule = {
+        "heartbeat-collectors": {
+            "task": "core.tasks.queue_heartbeat",
+            "schedule": crontab(minute="*"),
+            "args": ["collectors"],
+            "options": {"queue": COLLECTOR_QUEUE, "expires": 50},
+        },
         "collect-ddti-feed-head": {
             "task": "core.tasks.collect_ddti_feed_head",
             "schedule": head.schedule(),
@@ -195,7 +315,16 @@ def build_collector_schedule(profile: str | None = None) -> dict:
     return schedule
 
 
-def _observation(path: Path) -> tuple[str | None, int]:
+_COUNT_PATHS = {
+    "apple-censorship": ("country", "total_tested"),
+    "censored-planet": ("series_points",),
+    "data-darkness": ("n_series_reporting",),
+    "blocklist": ("n_additions",),
+    "believability": ("n_components_present",),
+}
+
+
+def _observation(path: Path, source: str | None = None) -> tuple[str | None, int]:
     """Return a latest-reading token and a useful record count."""
 
     try:
@@ -203,6 +332,14 @@ def _observation(path: Path) -> tuple[str | None, int]:
     except (OSError, ValueError, TypeError):
         return None, 0
     token = doc.get("generated_at") or doc.get("as_of") or doc.get("timestamp")
+    if source == "cny-fix-gap":
+        return str(token) if token is not None else None, 1 if token is not None else 0
+    current = doc
+    for part in _COUNT_PATHS.get(source or "", ()):
+        current = current.get(part) if isinstance(current, dict) else None
+    if _COUNT_PATHS.get(source or ""):
+        if isinstance(current, (int, float)) and not isinstance(current, bool):
+            return str(token) if token is not None else None, int(current)
     count_fields = (
         "n_observations",
         "n_measurements",
@@ -212,11 +349,17 @@ def _observation(path: Path) -> tuple[str | None, int]:
         "n_terms",
         "history_days",
         "series_points",
+        "n_series_reporting",
+        "n_additions",
+        "n_components_present",
     )
-    for field in count_fields:
-        value = doc.get(field)
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            return str(token) if token is not None else None, int(value)
+    counts = [
+        int(doc[field]) for field in count_fields
+        if isinstance(doc.get(field), (int, float))
+        and not isinstance(doc.get(field), bool)
+    ]
+    if counts:
+        return str(token) if token is not None else None, max(counts)
     return str(token) if token is not None else None, 1 if token is not None else 0
 
 
@@ -276,6 +419,27 @@ def _invoke_snapshot(name: str, root: Path) -> None:
     elif name == "stock-connect":
         from scripts.stock_connect_pull import main
         main()
+    elif name == "apple-censorship":
+        from scripts.apple_censorship_pull import main
+        main()
+    elif name == "censored-planet":
+        from scripts.censored_planet_pull import main
+        main()
+    elif name == "data-darkness":
+        from scripts.data_darkness_pull import main
+        main()
+    elif name == "cny-fix-gap":
+        from scripts.cny_fix_gap_pull import main
+        main()
+    elif name == "blocklist":
+        from scripts.blocklist_pull import main as publish
+        from scripts.fetch_citizenlab_blocklists import main as acquire
+
+        acquire()
+        publish()
+    elif name == "believability":
+        from scripts.believability_pull import main
+        main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 
@@ -293,7 +457,7 @@ def run_snapshot_job(
         raise KeyError(f"unknown snapshot job: {name}")
     repo = Path(root) if root is not None else ROOT
     output = repo / SNAPSHOT_OUTPUTS[name]
-    before, _ = _observation(output)
+    before, _ = _observation(output, name)
     started = time.monotonic()
     kill = kill_switch or KillSwitch()
     if kill.is_halted():
@@ -326,9 +490,9 @@ def run_snapshot_job(
             "error": f"{type(exc).__name__}: {exc}",
         }
 
-    after, records = _observation(output)
+    after, records = _observation(output, name)
     status = "success" if after is not None and after != before else "abstained"
-    return {
+    result = {
         "collector": name,
         "status": status,
         "records_collected": records if status == "success" else 0,
@@ -336,6 +500,24 @@ def run_snapshot_job(
         "generated_at": after,
         "error": "" if status == "success" else "runner produced no new observation",
     }
+    if status == "success":
+        from core.artifact_store import archive_enabled, archive_observation
+
+        if archive_enabled():
+            try:
+                result["artifact"] = archive_observation(
+                    name, output, repo_root=repo
+                )
+            except Exception as exc:
+                result.update({
+                    "status": "failed",
+                    "records_collected": 0,
+                    "error": (
+                        "normalized observation archive failed: "
+                        f"{type(exc).__name__}: {exc}"
+                    ),
+                })
+    return result
 
 
 def run_ddti_head(

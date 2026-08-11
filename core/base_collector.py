@@ -54,6 +54,7 @@ class BaseCollector(ABC):
         self.retry_backoff = config.get("retry_backoff", 2.0)
         self.timeout = config.get("timeout", 30)
         self.rate_limit = config.get("rate_limit", 1.0)
+        self.log_collection = bool(config.get("log_collection", True))
 
         self._consecutive_failures = 0
         self._last_request_at = 0.0
@@ -112,10 +113,15 @@ class BaseCollector(ABC):
                 f"({self._circuit_breaker.failure_count} consecutive failures)"
             )
             self._report_health("circuit_open", "Circuit breaker is open")
-            return self._result(
+            result = self._result(
                 "circuit_open", 0, time.monotonic() - start,
                 f"Circuit breaker open after {self._circuit_breaker.failure_count} failures"
             )
+            self._log_collection(
+                result["status"], result["records_collected"],
+                result["duration_seconds"], result["error"],
+            )
+            return result
 
         self._report_health("running")
 
@@ -123,8 +129,10 @@ class BaseCollector(ABC):
             # 1. Collect raw data with retry
             raw_data = await self._retry_with_backoff(self.collect)
             if not raw_data:
+                duration = time.monotonic() - start
                 self._report_health("success", "No new data")
-                return self._result("success", 0, time.monotonic() - start)
+                self._log_collection("success", 0, duration)
+                return self._result("success", 0, duration)
 
             # 2. Store raw data (immutable)
             raw_path = self._store_raw(raw_data)
@@ -253,6 +261,8 @@ class BaseCollector(ABC):
 
     def _log_collection(self, status: str, records: int, duration: float, error: str = ""):
         """Log collection result to database."""
+        if not self.log_collection:
+            return
         try:
             from storage.models import CollectionLog
             from api.database import SessionLocal

@@ -4,15 +4,18 @@ This runbook stands up the always-on backend (Postgres, Redis, the Celery beat
 scheduler, the index worker, and an opt-in passive collector fleet) on a single Hetzner box, plus the weekly
 Generative Firewall Index (GFI) reading as a hardened throwaway container.
 
-The dashboards are static and live on GitHub Pages, so this box publishes **no
-inbound service**. It is an outbound-only measurement node: the only ports open
-to the internet are SSH (and only if you later opt into serving the API).
+The dashboards are static and live on GitHub Pages. By default this box
+publishes **no inbound service**. The optional operator API binds only to
+`127.0.0.1`, so enabling it does not open a public port; expose it only through
+an authenticated reverse proxy if you deliberately add one later.
 
 Files this runbook uses (all committed):
 - `ops/docker/Dockerfile.app` — the long-running app image
 - `ops/docker/docker-compose.prod.yml` — the stack
 - `ops/docker/.env.example` — env template (copy to `.env` on the box)
 - `ops/docker/Dockerfile` + `ops/docker/docker-compose.yml` — the existing GFI sandbox
+- `ops/backup/` + `ops/systemd/palimpsest-backup.*` — validated backup job and timer
+- `docs/HETZNER-NODE-ARCHITECTURE.md` — data flow, health semantics, and tradeoffs
 
 ---
 
@@ -160,26 +163,24 @@ you can start direct and add the proxy later without a rebuild.
 
 ## 5. First boot
 
-Build and start the base stack (Postgres, Redis, beat, worker):
+Build and start the base stack (Postgres, Redis, schema gate, beat, worker):
 
 ```bash
 cd ~/palimpsest
-docker compose -f ops/docker/docker-compose.prod.yml up -d --build
+ops/docker/prod-compose up -d --build
 ```
 
-Create the tables once (no Alembic yet — see "Production gaps" below):
-
-```bash
-docker compose -f ops/docker/docker-compose.prod.yml exec worker \
-  python -c "from api.database import init_db; init_db()"
-```
+The one-shot `migrate` service runs `init_db()` first. Every long-running app
+service requires it to exit successfully, so additive tables cannot be skipped
+during an upgrade. Compose leaves the successful migrator in `Exited (0)`;
+that is expected.
 
 Verify:
 
 ```bash
-docker compose -f ops/docker/docker-compose.prod.yml ps          # all healthy/up
-docker compose -f ops/docker/docker-compose.prod.yml logs -f beat # beat emitting ticks
-docker compose -f ops/docker/docker-compose.prod.yml logs worker  # tasks being received
+ops/docker/prod-compose ps           # all healthy/up
+ops/docker/prod-compose logs -f beat # beat emitting ticks
+ops/docker/prod-compose logs worker  # tasks being received
 ```
 
 The beat schedule lives in `core/scheduler.py`; tasks land in the `celery` queue
@@ -195,13 +196,17 @@ On a dedicated measurement node, set these values in `ops/docker/.env`:
 PALIMPSEST_COLLECTORS_ENABLED=1
 PALIMPSEST_COLLECTION_PROFILE=vigorous
 PALIMPSEST_KILLFILE=/app/readings/state/STOP
+PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED=1
+PALIMPSEST_OBSERVATION_DIR=/app/data/observations
+PALIMPSEST_STATUS_PATH=/app/data/node-status.json
+PALIMPSEST_ACTIVE_PROBES_ENABLED=0
+PALIMPSEST_LIVE=0
 ```
 
 Then start the isolated collector queue:
 
 ```bash
-docker compose -f ops/docker/docker-compose.prod.yml \
-  --profile collectors up -d --build
+ops/docker/prod-compose --profile collectors up -d --build
 ```
 
 The vigorous profile does two different kinds of work:
@@ -218,7 +223,7 @@ does not replay stale requests), take a Redis non-overlap lease, and check the
 global kill switch before egress. Verify the active schedule and first results:
 
 ```bash
-C="docker compose -f ops/docker/docker-compose.prod.yml --profile collectors"
+C="ops/docker/prod-compose --profile collectors"
 $C ps
 $C exec beat python -c \
   'from core.scheduler import app; print("\n".join(sorted(app.conf.beat_schedule)))'
@@ -232,6 +237,43 @@ to the canonical repository. GitHub Actions remains the public publication and
 verification boundary, so a server compromise cannot silently rewrite the
 public observatory.
 
+Successful normalized readings are also copied into the private,
+content-addressed archive at `/app/data/observations` when
+`PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED=1`. Repeated identical observations
+deduplicate by SHA-256 while changed readings remain available for longitudinal
+analysis.
+
+**Inside View is not part of the passive schedule.** It asks third-party probes
+to make live network observations, so it has two explicit gates. Only an
+operator who deliberately sets both values below will add it to beat:
+
+```dotenv
+PALIMPSEST_ACTIVE_PROBES_ENABLED=1
+PALIMPSEST_LIVE=1
+```
+
+Leave both at `0` for the default passive public-source node.
+
+### 5b. Enable the local operator API
+
+The optional read-only control plane reports process liveness, dependency
+readiness, collector freshness, and Prometheus-format metrics. It is hard-bound
+to localhost in Compose:
+
+```bash
+ops/docker/prod-compose --profile collectors --profile api up -d --build
+curl --fail http://127.0.0.1:8000/healthz
+curl --fail http://127.0.0.1:8000/readyz
+curl --fail http://127.0.0.1:8000/api/v1/node/status
+curl --fail http://127.0.0.1:8000/metrics
+```
+
+Do not change the bind to `0.0.0.0` merely for convenience. Use SSH port
+forwarding (`ssh -L 8000:127.0.0.1:8000 deploy@HOST`) for remote operator access.
+`PALIMPSEST_ALERT_WEBHOOK_URL` is blank by default. If configured, the status
+task sends a bounded, sanitized summary when health enters a non-healthy state—not
+raw observations and not a heartbeat on every run.
+
 ---
 
 ## 6. (Optional) Enable the CensorWatch velocity leg
@@ -243,7 +285,7 @@ Only when you have a proxy exit configured (Step 4 decision = proxy):
 2. Rebuild with the browser and bring up the velocity worker:
 
 ```bash
-WITH_BROWSER=true docker compose -f ops/docker/docker-compose.prod.yml \
+WITH_BROWSER=true ops/docker/prod-compose \
   --profile velocity up -d --build
 ```
 
@@ -337,8 +379,10 @@ warning at the top of this section.
 
 ## 8. Persistence, backups, and publishing results
 
-Three things carry state: the `pgdata` volume, the `readings/` tree, and the
-`data/` tree.
+Four things carry state: the `pgdata` volume, the Redis AOF volume, the
+`readings/` tree, and the `data/` tree. PostgreSQL and the artifact trees are the
+evidence source of truth; Redis persistence prevents avoidable loss of queued
+coordination work across a host restart.
 
 - **readings/** is the auditable artifact. On the canonical repository it is published
   by the GitHub Actions refresh workflows and nothing else — leave it alone here. On a
@@ -355,16 +399,34 @@ Three things carry state: the `pgdata` volume, the `readings/` tree, and the
   Use a deploy key or a fine-grained PAT scoped to *your* repo for the push. Confirm the
   target before enabling the cron: `git remote -v`.
 
-- **Postgres** — nightly dump kept 14 days:
+- **Validated node backup** — install the repository-managed nightly timer:
 
   ```bash
-  # /etc/cron.d/palimpsest-pgdump  (as deploy)
-  0 3 * * *  cd /home/deploy/palimpsest && \
-    docker compose -f ops/docker/docker-compose.prod.yml exec -T postgres \
-    pg_dump -U palimpsest palimpsest | gzip > /home/deploy/backups/pg-$(date +\%F).sql.gz ; \
-    find /home/deploy/backups -name 'pg-*.sql.gz' -mtime +14 -delete
+  sudo install -d -o deploy -g deploy -m 0700 /home/deploy/backups/palimpsest
+  sudo install -d -o root -g root -m 0755 /etc/palimpsest
+  sudo install -m 0600 ops/backup/backup.env.example /etc/palimpsest/backup.env
+  sudo install -m 0644 ops/systemd/palimpsest-backup.service /etc/systemd/system/
+  sudo install -m 0644 ops/systemd/palimpsest-backup.timer /etc/systemd/system/
+  # Existing /home/palimpsest nodes: install the included override first.
+  sudo install -d -o palimpsest -g palimpsest -m 0700 \
+    /home/palimpsest/backups/node
+  sudo install -m 0600 ops/backup/backup.palimpsest-layout.example.env \
+    /etc/palimpsest/backup.env
+  sudo install -d -m 0755 /etc/systemd/system/palimpsest-backup.service.d
+  sudo install -m 0644 ops/systemd/palimpsest-backup.override.example.conf \
+    /etc/systemd/system/palimpsest-backup.service.d/override.conf
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now palimpsest-backup.timer
+  sudo systemctl start palimpsest-backup.service
   ```
-  `mkdir -p ~/backups` first.
+
+  Each timestamped snapshot contains a PostgreSQL custom archive validated by
+  `pg_restore --list`, the `readings/` + `data/` trees validated by tar, and
+  SHA-256 checksums. It is published by atomic rename only after all checks
+  pass, retains 14 days by default, and supports either a pre-mounted off-host
+  directory or an executable uploader hook. Installation, off-host settings,
+  checksum verification, and a non-destructive restore drill are in
+  [`ops/backup/README.md`](backup/README.md).
 
 - **Hetzner snapshots / backups** — enable the server's automatic backup option
   (~20% surcharge) for whole-box rollback. Cheap insurance for a single node.
@@ -374,13 +436,13 @@ Three things carry state: the `pgdata` volume, the `readings/` tree, and the
 ## 9. Day-2 operations
 
 ```bash
-C="docker compose -f ops/docker/docker-compose.prod.yml"
+C="ops/docker/prod-compose"
 
 $C ps                    # status
 $C logs -f worker        # follow a service
 $C restart beat worker   # restart the scheduler + index worker
 $C --profile collectors restart beat worker worker-collectors
-$C pull && $C --profile collectors up -d --build   # deploy new code after git pull
+$C --profile collectors --profile api up -d --build   # deploy after git pull
 $C down                  # stop everything (volumes persist)
 
 # Emergency stop all fetching without tearing anything down:
@@ -398,12 +460,8 @@ changed services; Postgres/Redis data survive on their volumes.
 
 These are safe to launch without, but track them:
 
-1. **No Alembic migrations.** Bootstrap uses `init_db()` (create-all). Before the
-   schema changes in anger, add Alembic so upgrades do not require a manual
-   rebuild. Noted in `api/database.py`.
-2. **The `api` profile points at `api.main:app`, which does not exist yet** — only
-   `censorwatch/routes.py` (an APIRouter) is present. Do not enable `--profile api`
-   until you add `api/main.py` mounting a FastAPI app. The backend does not need
-   it to run; the collectors + beat are the product.
-3. **Secrets live in a `.env` on the box.** Fine for one node. If this grows to
+1. **No Alembic migrations.** The Compose schema gate automatically runs
+   `init_db()` (create-all), which covers additive tables. Add Alembic before
+   making destructive or in-place column changes. Noted in `api/database.py`.
+2. **Secrets live in a `.env` on the box.** Fine for one node. If this grows to
    several, move to Hetzner's secret handling or SOPS-encrypted env in git.

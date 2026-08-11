@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Palimpsest validated backup every night
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+RandomizedDelaySec=30m
+AccuracySec=1m
+Persistent=true
+Unit=palimpsest-backup.service
+
+[Install]
+WantedBy=timers.target

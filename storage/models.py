@@ -1,9 +1,11 @@
 """SQLAlchemy models for the Palimpsest censorship observatory.
 
-This is the censorship-only schema. Two tables:
+This is the censorship-only schema. Core tables:
   1. articles               — raw collected items (CDT deletion records land here
                               with category="ddti_deletion")
   2. ddti_index_snapshots   — time-series of DDTI selectivity/novelty runs
+  3. collection_logs        — terminal outcome of every scheduled acquisition
+  4. observation_artifacts  — immutable normalized observations retained by the node
 
 The CensorWatch velocity leg defines its own isolated tables on the same
 ``Base`` (see ``censorwatch/models.py``): censored_posts, post_deletions,
@@ -13,7 +15,8 @@ deletion_velocity_snapshots.
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Float, Index, Integer, String, Text,
+    BigInteger, Boolean, Column, DateTime, Float, Index, Integer, String, Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -63,6 +66,34 @@ class CollectionLog(Base):
         Index("idx_log_source", "source"),
         Index("idx_log_status", "status"),
         Index("idx_log_run_at", "run_at"),
+    )
+
+
+class ObservationArtifact(Base):
+    """Private immutable copy of one successful normalized observation.
+
+    The public ``*-latest.json`` files remain publication pointers.  This table
+    is the node's inventory of content-addressed gzip artifacts under ``data/``;
+    it lets operators prove what was retained without walking the filesystem.
+    """
+
+    __tablename__ = "observation_artifacts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source = Column(String(64), nullable=False)
+    sha256 = Column(String(64), nullable=False)
+    archive_path = Column(Text, nullable=False)
+    generated_at = Column(Text, nullable=True)
+    original_bytes = Column(BigInteger, nullable=False)
+    compressed_bytes = Column(BigInteger, nullable=False)
+    record_count = Column(Integer, default=0)
+    archived_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("source", "sha256", name="uq_artifact_source_sha256"),
+        Index("idx_artifact_source_archived", "source", "archived_at"),
     )
 
 

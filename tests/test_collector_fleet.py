@@ -19,10 +19,14 @@ from core.collector_fleet import (  # noqa: E402
     COLLECTOR_QUEUE,
     CDT_ROOT_FEED,
     SNAPSHOT_OUTPUTS,
+    _invoke_snapshot,
+    _observation,
+    active_probes_enabled,
     build_collector_schedule,
     collection_profile,
     collectors_enabled,
     ddti_head_config,
+    expected_collector_specs,
     run_ddti_head,
     run_snapshot_job,
 )
@@ -63,7 +67,11 @@ def test_profile_is_validated_instead_of_silently_falling_back(monkeypatch):
 def test_vigorous_schedule_routes_every_job_to_the_isolated_queue():
     schedule = build_collector_schedule("vigorous")
 
-    assert set(SNAPSHOT_OUTPUTS) <= {
+    expected = {
+        spec["source"] for spec in expected_collector_specs("vigorous")
+        if spec["output_path"] is not None
+    }
+    assert expected <= {
         name.removeprefix("collect-snapshot-")
         for name in schedule
         if name.startswith("collect-snapshot-")
@@ -72,6 +80,49 @@ def test_vigorous_schedule_routes_every_job_to_the_isolated_queue():
     for entry in schedule.values():
         assert entry["options"]["queue"] == COLLECTOR_QUEUE
         assert entry["options"]["expires"] > 0
+
+
+def test_six_more_passive_methods_are_in_the_always_on_fleet(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
+    monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
+    schedule = build_collector_schedule("vigorous")
+    names = {
+        name.removeprefix("collect-snapshot-")
+        for name in schedule if name.startswith("collect-snapshot-")
+    }
+
+    assert {
+        "apple-censorship", "censored-planet", "data-darkness",
+        "cny-fix-gap", "blocklist", "believability",
+    } <= names
+    assert "inside-view" not in names
+
+
+def test_active_probe_leg_needs_both_explicit_gates(monkeypatch):
+    monkeypatch.setenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", "1")
+    monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
+    assert active_probes_enabled() is False
+    assert "collect-snapshot-inside-view" not in build_collector_schedule("vigorous")
+
+    monkeypatch.setenv("PALIMPSEST_LIVE", "true")
+    assert active_probes_enabled() is True
+    assert "collect-snapshot-inside-view" in build_collector_schedule("vigorous")
+
+
+def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
+    specs = expected_collector_specs("vigorous")
+
+    assert len(specs) == 21  # feed head + index processor + 19 passive snapshots
+    assert all(spec["cadence_seconds"] > 0 for spec in specs)
+    assert all(spec["grace_seconds"] > 0 for spec in specs)
+    assert all(
+        spec["cadence_seconds"] + spec["grace_seconds"]
+        > spec["cadence_seconds"]
+        for spec in specs
+    )
+    belief = next(spec for spec in specs if spec["source"] == "believability")
+    assert belief["cadence_seconds"] == 31 * 24 * 3600
 
 
 def test_vigorous_profile_really_samples_fast_sources_more_often():
@@ -105,6 +156,48 @@ def test_snapshot_success_requires_the_observation_token_to_advance(tmp_path):
     assert result["status"] == "success"
     assert result["records_collected"] == 42
     assert result["generated_at"] == "2026-08-11T10:00:00Z"
+
+
+@pytest.mark.parametrize("source,document,expected", [
+    ("apple-censorship", {
+        "generated_at": "t", "country": {"total_tested": 108818},
+    }, 108818),
+    ("censored-planet", {
+        "generated_at": "t", "n_events": 0, "series_points": 70,
+    }, 70),
+    ("data-darkness", {
+        "generated_at": "t", "n_series_reporting": 7,
+    }, 7),
+    ("cny-fix-gap", {
+        "generated_at": "t", "history_days": 400,
+    }, 1),
+    ("blocklist", {"generated_at": "t", "n_additions": 503}, 503),
+    ("believability", {
+        "generated_at": "t", "n_components_present": 3,
+    }, 3),
+])
+def test_record_count_is_source_specific(tmp_path, source, document, expected):
+    path = tmp_path / "reading.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert _observation(path, source) == ("t", expected)
+
+
+def test_successful_snapshot_can_be_retained_as_an_immutable_artifact(
+    tmp_path, monkeypatch,
+):
+    monkeypatch.setenv("PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED", "1")
+    monkeypatch.delenv("PALIMPSEST_OBSERVATION_DIR", raising=False)
+
+    def invoke(name, root):
+        _write_observation(root, name, "2026-08-11T11:00:00Z", count=9)
+
+    result = run_snapshot_job(
+        "ooni-gfw", root=tmp_path, invoke=invoke, kill_switch=_Live()
+    )
+
+    assert result["status"] == "success"
+    assert result["artifact"]["sha256"]
+    assert (tmp_path / result["artifact"]["archive_path"]).is_file()
 
 
 def test_normal_return_without_a_new_observation_is_an_abstention(tmp_path):
@@ -152,6 +245,18 @@ def test_runner_failure_is_structured_and_does_not_fabricate_a_reading(tmp_path)
 def test_task_argument_cannot_select_an_arbitrary_module(tmp_path):
     with pytest.raises(KeyError, match="unknown snapshot job"):
         run_snapshot_job("os.system", root=tmp_path, kill_switch=_Live())
+
+
+def test_blocklist_acquires_before_it_analyses(monkeypatch, tmp_path):
+    events = []
+    import scripts.blocklist_pull as publish
+    import scripts.fetch_citizenlab_blocklists as acquire
+
+    monkeypatch.setattr(acquire, "main", lambda: events.append("acquire"))
+    monkeypatch.setattr(publish, "main", lambda: events.append("publish"))
+
+    _invoke_snapshot("blocklist", tmp_path)
+    assert events == ["acquire", "publish"]
 
 
 def test_ddti_head_passes_the_bounded_config_to_the_collector():

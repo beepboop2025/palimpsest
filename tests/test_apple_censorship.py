@@ -146,3 +146,22 @@ def test_returns_none_when_both_years_fail():
         assert ac.fetch_overview(today=datetime.date(2026, 6, 1)) is None
     finally:
         ac._fetch_year = orig
+
+
+def test_rejects_an_oversized_overview_before_parsing(monkeypatch):
+    from collectors import apple_censorship as ac
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _limit):
+            return b"x" * (ac.MAX_RESPONSE_BYTES + 1)
+
+    rows = ac._fetch_year(
+        2026, 250, 30.0, lambda _request, timeout: Response()
+    )
+    assert rows is None

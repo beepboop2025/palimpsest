@@ -8,12 +8,29 @@
 #
 # Optional pieces are behind compose profiles so the base `up` stays lean:
 #   --profile velocity  adds the CensorWatch (Playwright) worker
-#   --profile api       adds the FastAPI service + published port
+#   --profile api       adds the FastAPI service on a localhost-only port
 #
 # Usage:
 #   docker compose -f ops/docker/docker-compose.prod.yml up -d --build
 #   docker compose -f ops/docker/docker-compose.prod.yml --profile collectors up -d --build
 #   docker compose -f ops/docker/docker-compose.prod.yml --profile velocity up -d --build
+#   docker compose -f ops/docker/docker-compose.prod.yml --profile api up -d --build
+
+# Keep the project name stable across interactive deploys and systemd jobs. An
+# explicit `-p`/COMPOSE_PROJECT_NAME still overrides this when an operator needs
+# an isolated recovery stack.
+name: ${COMPOSE_PROJECT_NAME:-palimpsest}
+
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: ${PALIMPSEST_LOG_MAX_SIZE:-10m}
+    max-file: ${PALIMPSEST_LOG_MAX_FILES:-5}
+
+x-runtime-depends: &runtime-depends
+  postgres: {condition: service_healthy}
+  redis:    {condition: service_healthy}
+  migrate:  {condition: service_completed_successfully}
 
 x-app: &app
   build:
@@ -25,12 +42,37 @@ x-app: &app
       WITH_BROWSER: ${WITH_BROWSER:-false}
   image: palimpsest/app:local
   restart: unless-stopped
-  env_file: [.env]
-  # Bind the repo's readings/ so the committed time series survives container
-  # rebuilds, exactly as the GFI sandbox does. This is the one writable path.
+  stop_grace_period: 45s
+  # PALIMPSEST_ENV_FILE is useful for config validation/recovery stacks; normal
+  # production deploys deliberately resolve the chmod-600 sibling `.env`.
+  env_file:
+    - ${PALIMPSEST_ENV_FILE:-.env}
+  # Non-secret node defaults are explicit here so an existing deployment gets
+  # retention/status behavior on upgrade without rewriting its secret .env.
+  # Values in Compose interpolation (shell or project .env) can still override.
+  environment:
+    PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED: ${PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED:-1}
+    PALIMPSEST_OBSERVATION_DIR: ${PALIMPSEST_OBSERVATION_DIR:-/app/data/observations}
+    PALIMPSEST_OBSERVATION_MAX_BYTES: ${PALIMPSEST_OBSERVATION_MAX_BYTES:-16777216}
+    PALIMPSEST_STATUS_PATH: ${PALIMPSEST_STATUS_PATH:-/app/data/node-status.json}
+    PALIMPSEST_ALERT_WEBHOOK_URL: ${PALIMPSEST_ALERT_WEBHOOK_URL:-}
+    PALIMPSEST_ACTIVE_PROBES_ENABLED: ${PALIMPSEST_ACTIVE_PROBES_ENABLED:-0}
+    PALIMPSEST_LIVE: ${PALIMPSEST_LIVE:-0}
+  # Bind the repo's readings/ and private data/ so durable state survives image
+  # rebuilds. The application root stays read-only.
   volumes:
     - ../../readings:/app/readings:rw
     - ../../data:/app/data:rw
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  mem_limit: 1024m
+  memswap_limit: 1024m
+  pids_limit: 256
+  cpus: 1.0
+  logging: *bounded-logging
   depends_on:
     postgres: {condition: service_healthy}
     redis:    {condition: service_healthy}
@@ -39,36 +81,93 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    stop_grace_period: 60s
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-palimpsest}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-palimpsest}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    pids_limit: 256
+    cpus: 1.0
+    logging: *bounded-logging
     # No ports: — reachable only on the private compose network.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-palimpsest}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-palimpsest} -d ${POSTGRES_DB:-palimpsest}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    stop_grace_period: 30s
+    # AOF gives the broker a bounded-loss recovery path after host failure.
+    # noeviction makes pressure visible instead of silently discarding queued
+    # work; PostgreSQL/artifact archives remain the evidence source of truth.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --aof-use-rdb-preamble
+      - "yes"
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-384mb}
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redisdata:/data
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    cpus: 0.5
+    logging: *bounded-logging
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+
+  # Additive schema gate. This repository does not have Alembic yet, so run
+  # SQLAlchemy's idempotent create-all exactly once and require a clean exit
+  # before any process can write collection results.
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["python", "-c", "from api.database import init_db; init_db()"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis:    {condition: service_healthy}
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    cpus: 0.25
 
   worker:
     <<: *app
+    depends_on: *runtime-depends
     command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "celery", "-n", "default@%h"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"default@$$HOSTNAME\" --timeout 5 | grep -q pong"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
 
   beat:
     <<: *app
+    depends_on: *runtime-depends
     command: ["celery", "-A", "core.scheduler", "beat", "--pidfile=", "-s", "/app/readings/state/celerybeat-schedule"]
+    mem_limit: 384m
+    memswap_limit: 384m
+    pids_limit: 128
+    cpus: 0.25
 
   # --- opt-in public-source collection fleet -----------------------------
   # Outbound-only, keyless sources.  A dedicated queue means a slow archive
@@ -77,23 +176,36 @@ services:
   worker-collectors:
     <<: *app
     profiles: ["collectors"]
+    depends_on: *runtime-depends
     command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "collectors", "--prefetch-multiplier=1", "-n", "collectors@%h"]
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
-    tmpfs:
-      - /tmp:size=128m,mode=1777
     mem_limit: 1536m
     memswap_limit: 1536m
     pids_limit: 256
     cpus: 1.5
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"collectors@$$HOSTNAME\" --timeout 5 | grep -q pong"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
 
   # --- optional: CensorWatch velocity leg (Playwright) --------------------
   # Requires WITH_BROWSER=true at build time and CENSORWATCH_ENABLED=1 in .env.
   worker-velocity:
     <<: *app
     profiles: ["velocity"]
+    depends_on: *runtime-depends
     command: ["celery", "-A", "core.scheduler", "worker", "-c", "1", "-Q", "censorwatch", "-n", "velocity@%h"]
+    mem_limit: 2048m
+    memswap_limit: 2048m
+    pids_limit: 384
+    cpus: 2.0
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"velocity@$$HOSTNAME\" --timeout 5 | grep -q pong"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # --- optional: FastAPI service ------------------------------------------
   # Only enable if you decide to serve the API from this box rather than keeping
@@ -101,9 +213,24 @@ services:
   api:
     <<: *app
     profiles: ["api"]
+    depends_on: *runtime-depends
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    volumes:
+      - ../../readings:/app/readings:ro
+      - ../../data:/app/data:ro
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    cpus: 0.5
     ports:
       - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 volumes:
   pgdata:
+  redisdata:

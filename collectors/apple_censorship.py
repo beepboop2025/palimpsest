@@ -49,6 +49,7 @@ TARGET_CODE = "CN"
 # carries China but almost nothing else, we are looking at a truncated response
 # rather than at the world.
 MIN_COUNTRIES = 20
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 
 
 def _num(row: dict, *names, default=None):
@@ -68,7 +69,14 @@ def _fetch_year(year: int, page_size: int, timeout: float, opener) -> list | Non
     _open = opener or urllib.request.urlopen
     try:
         with _open(req, timeout=timeout) as resp:
-            doc = json.loads(resp.read().decode("utf-8"))
+            raw = resp.read(MAX_RESPONSE_BYTES + 1)
+            if len(raw) > MAX_RESPONSE_BYTES:
+                log.warning(
+                    "applecensorship overview %s exceeded %s bytes",
+                    year, MAX_RESPONSE_BYTES,
+                )
+                return None
+            doc = json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as e:
         log.warning("applecensorship overview %s failed: %s", year, e.code)
         return None

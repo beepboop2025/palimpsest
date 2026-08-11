@@ -36,8 +36,13 @@ app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    task_track_started=True,
+    worker_send_task_events=True,
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=200,
+    result_expires=24 * 3600,
+    broker_transport_options={"visibility_timeout": 3600},
 )
 
 # Register task modules. CensorWatch tasks are inert unless CENSORWATCH_ENABLED.
@@ -50,6 +55,18 @@ def _base_schedule() -> dict:
         "ddti-generate-index": {
             "task": "core.tasks.generate_ddti_index",
             "schedule": crontab(minute="*/30"),
+            "options": {"queue": "celery", "expires": 25 * 60},
+        },
+        "heartbeat-default": {
+            "task": "core.tasks.queue_heartbeat",
+            "schedule": crontab(minute="*"),
+            "args": ["default"],
+            "options": {"queue": "celery", "expires": 50},
+        },
+        "refresh-node-status": {
+            "task": "core.tasks.refresh_node_status",
+            "schedule": crontab(minute="*/5"),
+            "options": {"queue": "celery", "expires": 4 * 60},
         },
     }
 

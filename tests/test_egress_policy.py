@@ -160,6 +160,12 @@ _ALLOWED = {
     "core/base_collector.py":
         "httpx.AsyncClient backing the async collector base (retries, circuit breaker); "
         "safe_fetch is synchronous stdlib, so an async hardened client must exist first.",
+    "core/tasks.py":
+        "Optional transition-only POST to the operator-configured alert webhook. It is "
+        "disabled when the environment value is blank, carries only bounded health counts, "
+        "requires public-DNS HTTPS without URL credentials, refuses redirects, uses a "
+        "ten-second timeout, and suppresses URL-bearing errors; safe_fetch is GET-only today, "
+        "so closing the remaining DNS-pin gap needs a request-body path first.",
     "censorwatch/fetcher.py":
         "httpx.AsyncClient with proxy, per-host pacing, UA rotation and conditional-GET "
         "revalidation, plus an injectable transport for tests; same blocker — no async "
