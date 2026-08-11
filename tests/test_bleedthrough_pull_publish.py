@@ -360,6 +360,34 @@ def test_public_event_keeps_coarse_scope_and_semantics_without_target_identity(p
         assert address not in public_bytes
 
 
+def test_duplicate_legacy_events_do_not_fake_a_semantic_change(publish):
+    run, tmp_path = publish
+    run(POOL_A)
+    baseline_dir = tmp_path / "baselines"
+    baselines = {
+        path.relative_to(baseline_dir): path.read_bytes()
+        for path in baseline_dir.rglob("*.json")
+    }
+    moved = run(POOL_B)
+    history_before = _history(tmp_path)
+
+    legacy = dict(moved)
+    legacy["events"] = [*moved["events"], *moved["events"]]
+    (tmp_path / "bleedthrough-latest.json").write_text(
+        json.dumps(legacy), encoding="utf-8"
+    )
+    # Recreate the same coarse rotation event so the only difference between
+    # prior and current public semantics is the legacy duplicate row count.
+    for relative, payload in baselines.items():
+        (baseline_dir / relative).write_bytes(payload)
+
+    heartbeat = run(POOL_B)
+
+    assert heartbeat["events"] == moved["events"]
+    assert heartbeat["last_changed_at"] == moved["last_changed_at"]
+    assert _history(tmp_path) == history_before
+
+
 def test_public_artifacts_discard_hostile_event_and_operator_metadata(
     publish, monkeypatch
 ):

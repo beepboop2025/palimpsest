@@ -72,11 +72,14 @@ sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
 sudo install -d -o 10001 -g 10001 -m 0700 \
   /var/lib/palimpsest-analysis/runs \
   /var/lib/palimpsest-analysis/private
-# UID 10001 only reads the two acquisition trees. Default ACLs preserve access
-# when their host services atomically replace files in future rounds.
-sudo setfacl -R -m u:10001:rX \
-  /var/lib/palimpsest/readings /var/lib/palimpsest/newswire
-sudo find /var/lib/palimpsest/readings /var/lib/palimpsest/newswire -type d \
+# UID 10001 is also the collector identity. Preserve its write/default-write
+# access to readings; systemd presents that source read-only to this unit.
+sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo find /var/lib/palimpsest/readings -type d \
+  -exec setfacl -m d:u:10001:rwx {} +
+# The separate RSS newswire tree is analysis input only for this identity.
+sudo setfacl -R -m u:10001:rX /var/lib/palimpsest/newswire
+sudo find /var/lib/palimpsest/newswire -type d \
   -exec setfacl -m d:u:10001:rX {} +
 
 # First install: these units may not exist yet. The installer itself verifies

@@ -465,16 +465,21 @@ image with Docker networking disabled, and writes candidate questions only to
 `/var/lib/palimpsest-analysis/private`. It never edits the public investigation
 configuration or publishes to the website.
 
-Prepare its fixed storage roots and read-only source ACLs:
+Prepare its fixed storage roots and source ACLs. The shared UID 10001 is also
+the collector identity, so it must retain write/default-write access to
+`readings`; the analysis unit makes that tree read-only inside its own systemd
+sandbox. RSS `newswire` is a separate source tree and needs read access only:
 
 ```bash
 sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
 sudo install -d -o 10001 -g 10001 -m 0700 \
   /var/lib/palimpsest-analysis/runs \
   /var/lib/palimpsest-analysis/private
-sudo setfacl -R -m u:10001:rX \
-  /var/lib/palimpsest/readings /var/lib/palimpsest/newswire
-sudo find /var/lib/palimpsest/readings /var/lib/palimpsest/newswire -type d \
+sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo find /var/lib/palimpsest/readings -type d \
+  -exec setfacl -m d:u:10001:rwx {} +
+sudo setfacl -R -m u:10001:rX /var/lib/palimpsest/newswire
+sudo find /var/lib/palimpsest/newswire -type d \
   -exec setfacl -m d:u:10001:rX {} +
 ```
 

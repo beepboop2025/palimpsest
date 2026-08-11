@@ -147,6 +147,7 @@ _PUBLIC_EVENT_KINDS = frozenset(
         "regional_firewall_candidate",
     }
 )
+_PUBLIC_EVENT_FIELDS = ("kind", "vantage", "detail", "severity")
 _PUBLIC_VANTAGE_KINDS = {
     "single fixed-ip vps outside china": "single fixed-IP VPS outside China",
     "single vps outside china": "single VPS outside China",
@@ -251,6 +252,26 @@ def _public_event(event) -> dict | None:
         "detail": detail,
         "severity": event.severity(),
     }
+
+
+def _deduplicate_public_events(value) -> list[dict] | None:
+    """Canonicalize both legacy and current public event arrays.
+
+    Older v2 rounds could contain one identical coarse row per private target.
+    Treat that representation-only difference as unchanged while rejecting a
+    malformed prior array by returning ``None``.
+    """
+    if not isinstance(value, list):
+        return None
+    rows: set[tuple[str, str, str, str]] = set()
+    for event in value:
+        if not isinstance(event, dict) or set(event) != set(_PUBLIC_EVENT_FIELDS):
+            return None
+        row = tuple(event[field] for field in _PUBLIC_EVENT_FIELDS)
+        if not all(isinstance(item, str) for item in row):
+            return None
+        rows.add(row)
+    return [dict(zip(_PUBLIC_EVENT_FIELDS, row, strict=True)) for row in sorted(rows)]
 
 
 def _fsync_directory(path: Path) -> None:
@@ -610,20 +631,8 @@ def main() -> None:
     # Publishing one identical row per target would leak panel shape and inflate
     # apparent event volume, so the public boundary keeps one deterministic row
     # per kind/scope/detail/severity tuple.
-    public_events = [
-        dict(zip(("kind", "vantage", "detail", "severity"), key, strict=True))
-        for key in sorted(
-            {
-                (
-                    event["kind"],
-                    event["vantage"],
-                    event["detail"],
-                    event["severity"],
-                )
-                for event in projected_events
-            }
-        )
-    ]
+    public_events = _deduplicate_public_events(projected_events)
+    assert public_events is not None
 
     now = datetime.now(timezone.utc)
     out = {
@@ -693,7 +702,6 @@ def main() -> None:
         "distinct_pools",
         "max_process_count",
         "pool_sampling_suspected",
-        "events",
     )
     provenance_keys = (
         "vantage_count",
@@ -706,6 +714,7 @@ def main() -> None:
     # the published file even when every value is identical.
     changed = (
         any(prev.get(key) != out.get(key) for key in sig_keys)
+        or _deduplicate_public_events(prev.get("events")) != public_events
         or any(
             (prev.get("provenance") or {}).get(key) != out["provenance"].get(key)
             for key in provenance_keys

@@ -12,6 +12,7 @@ INSTALLER = ROOT / "ops/investigative-analysis/install-host-bundle.sh"
 VERIFIER = ROOT / "ops/investigative-analysis/verify-host-bundle.sh"
 SERVICE = ROOT / "ops/systemd/palimpsest-investigative-analysis.service"
 README = ROOT / "ops/investigative-analysis/README.md"
+DEPLOY_GUIDE = ROOT / "ops/DEPLOY-HETZNER.md"
 
 
 def _temporary_wrapper_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
@@ -25,6 +26,9 @@ def _temporary_wrapper_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         "services: {}\n", encoding="utf-8"
     )
     (docker_dir / ".env").write_text("NODE_TEST=1\n", encoding="utf-8")
+    (repository / ".gitignore").write_text(
+        "/ops/docker/.env\n", encoding="utf-8"
+    )
     fake_docker = fake_bin / "docker"
     fake_docker.write_text(
         "#!/usr/bin/env bash\n"
@@ -82,6 +86,16 @@ def test_prod_compose_exports_the_clean_checked_out_revision(tmp_path: Path) -> 
     assert f"revision={expected}" in completed.stdout
     assert "docker_host=unix:///var/run/docker.sock" in completed.stdout
     assert "--env-file" in completed.stdout
+
+
+def test_production_environment_file_is_exactly_ignored() -> None:
+    completed = subprocess.run(
+        ["git", "check-ignore", "-q", "ops/docker/.env"],
+        cwd=ROOT,
+        check=False,
+    )
+
+    assert completed.returncode == 0
 
 
 def test_prod_compose_rejects_untracked_files_and_spoofed_revision(
@@ -196,6 +210,7 @@ def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
 
 def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> None:
     documentation = README.read_text(encoding="utf-8")
+    deploy_guide = DEPLOY_GUIDE.read_text(encoding="utf-8")
 
     assert "Only 48 complete run snapshots" in documentation
     assert "512 MiB" in documentation
@@ -206,6 +221,10 @@ def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> N
     assert "PALIMPSEST_ANALYSIS_IMAGE" in documentation
     assert "Environment variables that appear to override" in documentation
     assert "copied by rsync/SCP" in documentation
+    for instructions in (documentation, deploy_guide):
+        assert "u:10001:rwX /var/lib/palimpsest/readings" in instructions
+        assert "d:u:10001:rwx" in instructions
+        assert "u:10001:rX /var/lib/palimpsest/readings" not in instructions
 
 
 def test_app_image_carries_the_compose_supplied_revision_label() -> None:
