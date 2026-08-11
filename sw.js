@@ -3,13 +3,15 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v9";
+const CACHE = "palimpsest-v10";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/newswire-latest.json",
   "/readings/china-economic-pulse-latest.json",
+  "/readings/investigations-latest.json",
 ]);
+const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
 const SHELL = [
   "/",
@@ -89,8 +91,15 @@ self.addEventListener("fetch", (e) => {
   }
   // These are mutable heads over append-only/version-aware evidence. Serving an
   // older head as current would conceal a failed pull, a revision or an explicit
-  // coverage gap, so both documents use the same network-only boundary as the roll-up.
+  // coverage gap, so every document uses the same network-only boundary as the roll-up.
   if (LIVE_EVIDENCE_READINGS.has(url.pathname)) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // A case.json is the mutable head for one research lead. Its sibling
+  // revisions/*.json records are content-addressed historical receipts and may
+  // use the normal network-first/offline-fallback path below.
+  if (LIVE_INVESTIGATION_CASE.test(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

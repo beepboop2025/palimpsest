@@ -115,6 +115,22 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
     assert "coverage gates" in pulse["description"]
 
 
+def test_investigations_catalog_exposes_review_gates_and_public_contract():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(item for item in source["datasets"] if item["id"] == "investigations")
+
+    assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
+        "cross-layer", "publication", "deterministic-review-gated"
+    )
+    assert entry["latest"] == "readings/investigations-latest.json"
+    assert entry["landing_page"] == "news/investigations/"
+    assert entry["method"] == "docs/INVESTIGATIONS.md"
+    assert entry["count_fields"] == ["n_cases"]
+    description = entry["description"].lower()
+    assert "counterevidence" in description
+    assert "does not automate allegations" in description
+
+
 def test_public_catalog_never_points_into_private_runtime_directories():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     for item in source["datasets"]:

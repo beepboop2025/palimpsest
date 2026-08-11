@@ -356,6 +356,22 @@ _ECONOMIC_TITLE_TERMS = (
     "通縮", "失业", "失業", "就业", "就業", "房地产", "房地產", "人民币",
     "人民幣", "汇率", "匯率", "利率", "社会融资", "社會融資", "零售",
 )
+_HKSAR_ECONOMIC_RELEASE_TERMS = (
+    "balance of payments",
+    "business receipts",
+    "business situation",
+    "consumer price",
+    "effective exchange rate index",
+    "exchange fund bills tender results",
+    "external merchandise trade",
+    "gross domestic product",
+    "industrial production",
+    "monetary statistics",
+    "producer price",
+    "residential mortgage",
+    "retail sales",
+    "unemployment and underemployment",
+)
 
 
 @dataclass(frozen=True)
@@ -791,10 +807,18 @@ def _is_material_economic_item(
 ) -> bool:
     """Require more than an ambiguous bank/export substring for an economic join."""
 
+    title_haystack = f" {title} ".casefold()
+    if source.id == "hksar-releases":
+        # The mixed government feed uses "Economic and Trade" in office names,
+        # visits, speeches, and ceremonies. Only reviewed statistical/release title
+        # families may activate an economic instrument link from this source.
+        return any(
+            _keyword_present(title_haystack, term)
+            for term in _HKSAR_ECONOMIC_RELEASE_TERMS
+        )
     if source.default_desk == "economy":
         # The one reviewed economy-only channel is an editorially curated desk.
         return True
-    title_haystack = f" {title} ".casefold()
     if any(_keyword_present(title_haystack, term) for term in _ECONOMIC_TITLE_TERMS):
         return True
     return len(matches.get("economy", set())) >= 2
@@ -1098,13 +1122,14 @@ def _lead_decision(
         item["role"] in {"primary", "measurement"} for item in eligible
     )
     linked = any(
-        item["declared_scan_ids"] or item["declared_economic_ids"]
+        item["role"] in {"primary", "measurement", "research"}
+        and (item["declared_scan_ids"] or item["declared_economic_ids"])
         for item in eligible
     )
     if corroborated:
         return True, "Current independent evidence groups include a primary or measurement source."
     if linked:
-        return True, "A current item has a material declared topical link to a named Palimpsest instrument."
+        return True, "A current primary, measurement, or research item has a material declared topical link to a named Palimpsest instrument."
     if not eligible:
         return False, "All contributing source receipts are stale; the attributed dossier is retained but cannot lead."
     return False, "Current single-source metadata is retained but not promoted as a lead."

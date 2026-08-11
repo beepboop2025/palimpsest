@@ -95,6 +95,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert mod.EXCLUDED_LATEST_FILES == {
         "china-economic-pulse-latest.json",
         "eval-registry-latest.json",
+        "investigations-latest.json",
         "newswire-latest.json",
         "newsroom-latest.json",
         "research-corpus-latest.json",
@@ -482,12 +483,13 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     assert "cancel-in-progress: false" in text
     economic_pulse = text.index("python -m scripts.build_economic_pulse")
     build = text.index("python -m scripts.build_osint_china")
+    investigations = text.index("python -m scripts.build_investigations")
     newsroom = text.index("python -m scripts.build_newsroom")
     catalog = text.index("python -m scripts.build_data_catalog")
     tests = text.index("tests/test_osint_china.py")
     surface = text.index("python scripts/verify_public_surface.py")
     commit = text.index("git commit")
-    assert economic_pulse < build < newsroom < catalog < tests < surface < commit
+    assert economic_pulse < build < investigations < newsroom < catalog < tests < surface < commit
     assert "readings/osint-china-latest.json" in text
     assert "python -m scripts.newswire_pull" not in text
 
@@ -495,15 +497,20 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
 def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
     text = WORKFLOW.read_text(encoding="utf-8")
     assert text.count("python -m scripts.build_newsroom") == 3
+    assert text.count("python -m scripts.build_investigations") == 3
     assert text.count("python -m scripts.build_economic_pulse") == 3
+    assert text.count("tests/test_investigations.py") == 3
+    assert text.count("tests/test_investigations_renderer.py") == 3
     assert text.count("tests/test_structured_newsroom.py") == 3
     assert text.count("readings/newsroom-latest.json") == 3
+    assert text.count("readings/investigations-latest.json") == 3
     assert text.count("readings/china-economic-pulse-latest.json") == 3
     assert sum(line.strip().rstrip("\\").strip() == "news/"
                for line in text.splitlines()) == 3
 
     build_blocks = re.findall(
         r"python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_newsroom\n"
         r"\s*python -m scripts\.build_data_catalog",
         text,

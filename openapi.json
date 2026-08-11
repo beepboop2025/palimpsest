@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.1.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, China economic pulse and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.2.0",
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, China economic pulse, review-gated investigations desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -28,6 +28,9 @@
       },
       "ChinaEconomicPulse": {
         "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
+      },
+      "Investigations": {
+        "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
       },
       "NewsroomDenominator": {
         "type": "object",
@@ -195,6 +198,10 @@
         "description": "Published revision-safe China economic state dossier",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaEconomicPulse"}}}
       },
+      "Investigations": {
+      "description": "Review-gated research leads and reviewed investigations with evidence receipts, counterevidence and falsifiers",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Investigations"}}}
+      },
       "NewsroomFeed": {
         "description": "Published structured newsroom edition",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
@@ -226,6 +233,11 @@
       "operationId": "getChinaEconomicPulse",
       "summary": "Read the revision-safe economic pulse, coverage gates, divergences and abstentions",
       "responses": {"200": {"$ref": "#/components/responses/ChinaEconomicPulse"}}
+    }},
+    "/readings/investigations-latest.json": {"get": {
+      "operationId": "getInvestigations",
+      "summary": "Read review-gated research leads with evidence receipts, counterevidence and falsification conditions",
+      "responses": {"200": {"$ref": "#/components/responses/Investigations"}}
     }},
     "/datapackage.json": {"get": {
       "operationId": "getEvidenceDataPackage",

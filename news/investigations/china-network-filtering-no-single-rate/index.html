@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>China&#x27;s Network Filtering Has No Honest Single Rate · Palimpsest Investigations</title>
+<meta name="description" content="A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.">
+<meta name="author" content="Palimpsest Observatory">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/news/investigations/china-network-filtering-no-single-rate/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="alternate" type="application/feed+json" title="Palimpsest Wire JSON Feed" href="/news/feed.json">
+<link rel="alternate" type="application/rss+xml" title="Palimpsest Wire RSS" href="/news/feed.xml">
+<meta name="theme-color" content="#0b131c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest Wire">
+<meta property="og:title" content="China&#x27;s Network Filtering Has No Honest Single Rate · Palimpsest Investigations">
+<meta property="og:description" content="A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.">
+<meta property="og:url" content="https://palimpsest.info/news/investigations/china-network-filtering-no-single-rate/">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="China&#x27;s Network Filtering Has No Honest Single Rate · Palimpsest Investigations">
+<meta name="twitter:description" content="A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.">
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta property="article:modified_time" content="2026-08-11T14:06:53Z">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Report","@id":"https://palimpsest.info/news/investigations/china-network-filtering-no-single-rate/","url":"https://palimpsest.info/news/investigations/china-network-filtering-no-single-rate/","name":"China's Network Filtering Has No Honest Single Rate","description":"A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.","dateModified":"2026-08-11T14:06:53Z","inLanguage":"en","isAccessibleForFree":true,"publisher":{"@type":"NewsMediaOrganization","@id":"https://palimpsest.info/#organization","name":"Palimpsest Observatory","url":"https://palimpsest.info/","logo":{"@type":"ImageObject","url":"https://palimpsest.info/brand/palimpsest-icon-512.png","width":512,"height":512}},"about":"Across three preregistered comparable rounds, do independent China network-measurement groups converge within twenty percentage points, or does measured interference remain selective and vantage-dependent?","citation":["https://palimpsest.info/readings/ooni-gfw-latest.json","https://palimpsest.info/readings/osint-china-latest.json","https://palimpsest.info/readings/in-path-interference-latest.json","https://palimpsest.info/readings/censored-planet-latest.json","https://palimpsest.info/readings/inside-view-latest.json","https://palimpsest.info/readings/ioda-outages-latest.json","https://palimpsest.info/readings/vantage-fusion-latest.json"],"creativeWorkStatus":"Research lead — evidence gathering"}</script>
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/newsroom.css">
+</head>
+<body class="ps newsroom-page newsroom-page--investigation-case">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/" aria-current="page">News</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-3">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main" class="nw-shell">
+  <article class="nw-case-file" data-publication-state="open">
+    <header class="nw-case-file__header">
+      <p class="nw-case-status" data-publication-state="open"><span class="nw-dot" aria-hidden="true"></span>Research lead · OPEN INVESTIGATION</p>
+      <h1 lang="en">China&#x27;s Network Filtering Has No Honest Single Rate</h1>
+      <p class="nw-case-file__question" lang="en"><strong>Testable question:</strong> Across three preregistered comparable rounds, do independent China network-measurement groups converge within twenty percentage points, or does measured interference remain selective and vantage-dependent?</p>
+      <p>A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.</p>
+      <p><strong>Current status:</strong> The research lead remains open while its public collection and falsification targets are incomplete.</p>
+    </header>
+    <p class="nw-investigation-notice"><strong>RESEARCH LEAD · NOT A PUBLISHED INVESTIGATION.</strong> Draft claims remain under test and must not be read as findings.</p>
+    <div class="nw-case-file__meta">
+      <div><dl><dt>Opened</dt><dd><time datetime="2026-08-11T00:00:00Z">11 Aug 2026 · 00:00 UTC</time></dd></dl></div>
+      <div><dl><dt>Updated</dt><dd><time datetime="2026-08-11T14:06:53Z">11 Aug 2026 · 14:06 UTC</time></dd></dl></div>
+      <div><dl><dt>Published</dt><dd>Not published</dd></dl></div>
+      <div><dl><dt>Version receipt</dt><dd><code>investigationv-05e54743b10e38ac3db77ccd</code><br><a href="revisions/investigationv-05e54743b10e38ac3db77ccd.json">Immutable revision JSON</a></dd></dl></div>
+    </div>
+    <section class="nw-case-section" aria-labelledby="case-findings-title">
+      <header><p class="nw-section__label">Claims and challenges</p><h2 id="case-findings-title">What is asserted—and what could overturn it</h2><p>Claim wording is reproduced from the structured record. Confidence and review state are not probability scores.</p></header>
+      <div class="nw-case-panel"><h3>Hypotheses under test</h3><ul class="nw-case-record-list"><li><strong lang="en">Comparable independent instruments converge closely enough to support one bounded national interference estimate.</strong><span>open · <code>common-national-rate</code></span><p><strong>Linked falsification tests:</strong> three-round-convergence</p></li><li><strong lang="en">Instrument scope and vantage continue to produce materially different rates even when collection windows are aligned.</strong><span>open · <code>selective-vantage-dependent</code></span><p><strong>Linked falsification tests:</strong> three-round-convergence, three-round-clean-panel</p></li></ul></div>
+      <ol class="nw-finding-list"><li class="nw-finding" data-confidence="corroborated">
+  <p class="nw-finding__label">Claim under test · analytical finding · corroborated · draft</p>
+  <h3 lang="en">The current structured round is consistent with selective and vantage-dependent interference, because independent instruments report materially different scoped measurements.</h3>
+  <div class="nw-case-columns"><div class="nw-case-panel"><h4>Linked evidence receipts</h4><ul><li><code>ooni-anomaly-rate</code> · OONI China anomaly index · support</li><li><code>censored-planet-rate</code> · Censored Planet remote interference rate · support</li><li><code>inside-view-panel</code> · Inside-China fixed-panel blocked share · support</li></ul></div><div class="nw-case-panel nw-case-panel--counter"><h4>Linked counterevidence</h4><ul><li><code>no-country-scale-outage</code> · IODA reports no current country-scale outage instrument firing, which argues against describing the scoped filtering measurements as a broad shutdown. · narrows_claim</li></ul></div></div>
+  <div class="nw-finding__boundary"><strong>Claim limits.</strong><ul><li><strong>The instruments sample different protocols, targets, probes, and completed-test populations.</strong> Their percentages may be compared as scoped signals, but not averaged into a national prevalence rate.</li><li><strong>The present lead has not completed three preregistered comparable rounds.</strong> It cannot yet call the observed divergence persistent.</li></ul></div>
+</li><li class="nw-finding" data-confidence="insufficient">
+  <p class="nw-finding__label">Claim under test · methodological limitation · insufficient · draft</p>
+  <h3 lang="en">These percentages cannot honestly be collapsed into a prevalence rate for China&#x27;s population, households, or the whole internet.</h3>
+  <div class="nw-case-columns"><div class="nw-case-panel"><h4>Linked evidence receipts</h4><ul><li><code>ooni-anomaly-rate</code> · OONI China anomaly index · support</li><li><code>ooni-measurement-count</code> · OONI accepted-measurement denominator · context</li><li><code>in-path-rate</code> · OONI-derived completed-test middlebox index · context</li><li><code>censored-planet-rate</code> · Censored Planet remote interference rate · support</li><li><code>inside-view-panel</code> · Inside-China fixed-panel blocked share · support</li><li><code>inside-view-panel-size</code> · Inside-China fixed-panel size · context</li><li><code>vantage-fusion-rate</code> · Palimpsest derived vantage-fusion index · context</li></ul></div><div class="nw-case-panel nw-case-panel--counter"><h4>Linked counterevidence</h4><ul><li>No counterevidence record is linked.</li></ul></div></div>
+  <div class="nw-finding__boundary"><strong>Claim limits.</strong><ul><li><strong>The instruments sample different protocols, targets, probes, and completed-test populations.</strong> Their percentages may be compared as scoped signals, but not averaged into a national prevalence rate.</li><li><strong>Vantage fusion reuses upstream measurements.</strong> It is context, not another independent vote.</li></ul></div>
+</li><li class="nw-finding" data-confidence="insufficient">
+  <p class="nw-finding__label">Claim under test · artifact observation · insufficient · draft</p>
+  <h3 lang="en">The current IODA record reports zero country-scale outage instruments firing; that narrows, but does not erase, the selective-interference evidence.</h3>
+  <div class="nw-case-columns"><div class="nw-case-panel"><h4>Linked evidence receipts</h4><ul><li><code>ioda-instruments-firing</code> · IODA country-scale outage instruments firing · counter</li></ul></div><div class="nw-case-panel nw-case-panel--counter"><h4>Linked counterevidence</h4><ul><li>No counterevidence record is linked.</li></ul></div></div>
+  <div class="nw-finding__boundary"><strong>Claim limits.</strong><ul><li><strong>IODA is designed for country-scale connectivity events.</strong> It is counterevidence to a shutdown claim, not a clean bill of health for selective filtering.</li></ul></div>
+</li></ol>
+      <div class="nw-case-columns"><div class="nw-case-panel nw-case-panel--counter"><h3>Counterevidence and competing records</h3><ul class="nw-case-record-list"><li><strong lang="en">IODA reports no current country-scale outage instrument firing, which argues against describing the scoped filtering measurements as a broad shutdown.</strong><span>reviewed · narrows_claim · evidence ioda-instruments-firing</span></li></ul></div><div class="nw-case-panel nw-case-panel--target"><h3>Falsification tests</h3><ul class="nw-case-record-list"><li><strong lang="en">A temporally overlapping multi-instrument IODA country event would falsify the current narrow statement that the round is not a broad outage.</strong><span>Status: untested</span><p><strong>Evidence needed:</strong> Aligned IODA, OONI, Censored Planet, and inside-view collection clocks.</p></li><li><strong lang="en">Three preregistered comparable rounds in which independent normalized estimates converge within twenty percentage points would weaken the vantage-dependent hypothesis.</strong><span>Status: untested</span><p><strong>Evidence needed:</strong> Three aligned rounds with frozen panels, denominator definitions, and source-group labels.</p></li><li><strong lang="en">Three rounds in which at least three independent source groups report no interference across the frozen test panel would falsify the current selective-interference finding for that panel.</strong><span>Status: untested</span><p><strong>Evidence needed:</strong> Three independent aggregate groups and a versioned fixed panel.</p></li></ul></div></div>
+    </section>
+    <section class="nw-case-section" aria-labelledby="case-evidence-title">
+      <header><p class="nw-section__label">Evidence ledger</p><h2 id="case-evidence-title">Inspect every receipt and interpretation limit</h2></header>
+      <p class="nw-table-cue" id="investigation-evidence-cue">Scroll horizontally to inspect every evidence field.</p>
+<div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="case-evidence-title" aria-describedby="investigation-evidence-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this case file</caption><thead><tr><th scope="col">Relation / class</th><th scope="col">Receipt / upstream group</th><th scope="col">Recorded value</th><th scope="col">Interpretation limit</th><th scope="col">Provenance / integrity</th></tr></thead><tbody><tr>
+  <td><span class="nw-evidence-relation" data-relation="support">support</span><small>research</small></td>
+  <td><strong lang="en">OONI China anomaly index</strong><small><code>ooni-anomaly-rate</code> · ooni-open-measurements</small></td>
+  <td><strong>57.7</strong><small>Selector <code>/signals/@id=ooni-gfw/metric/value</code></small></td>
+  <td>The value is a share of accepted OONI measurements in its test mix, not a share of people, households, websites, or the internet.</td>
+  <td><a href="https://palimpsest.info/readings/ooni-gfw-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T13:47:49Z">11 Aug 2026 · 13:47 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="context">context</span><small>research</small></td>
+  <td><strong lang="en">OONI accepted-measurement denominator</strong><small><code>ooni-measurement-count</code> · ooni-open-measurements</small></td>
+  <td><strong>244022</strong><small>Selector <code>/signals/@id=ooni-gfw/metric/denominator/value</code></small></td>
+  <td>Measurement count is not a probability sample of China&#x27;s population or network endpoints.</td>
+  <td><a href="https://palimpsest.info/readings/ooni-gfw-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T13:47:49Z">11 Aug 2026 · 13:47 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="context">context</span><small>research</small></td>
+  <td><strong lang="en">OONI-derived completed-test middlebox index</strong><small><code>in-path-rate</code> · ooni-open-measurements</small></td>
+  <td><strong>1.4</strong><small>Selector <code>/signals/@id=in-path-interference/metric/value</code></small></td>
+  <td>This shares OONI provenance with the anomaly index and therefore is not independent corroboration; its denominator is completed tests only.</td>
+  <td><a href="https://palimpsest.info/readings/in-path-interference-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T13:50:40Z">11 Aug 2026 · 13:50 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="support">support</span><small>research</small></td>
+  <td><strong lang="en">Censored Planet remote interference rate</strong><small><code>censored-planet-rate</code> · censored-planet-remote</small></td>
+  <td><strong>4.43</strong><small>Selector <code>/signals/@id=censored-planet/metric/value</code></small></td>
+  <td>The remote side-channel method and denominator differ from OONI and cannot be compared as if both sampled the same population.</td>
+  <td><a href="https://palimpsest.info/readings/censored-planet-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T06:30:44Z">11 Aug 2026 · 06:30 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="support">support</span><small>research</small></td>
+  <td><strong lang="en">Inside-China fixed-panel blocked share</strong><small><code>inside-view-panel</code> · globalping-inside-view</small></td>
+  <td><strong>1.0</strong><small>Selector <code>/signals/@id=inside-view/metric/value</code></small></td>
+  <td>This is a deliberately selected panel and cannot estimate prevalence outside that panel.</td>
+  <td><a href="https://palimpsest.info/readings/inside-view-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T13:11:49Z">11 Aug 2026 · 13:11 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="context">context</span><small>research</small></td>
+  <td><strong lang="en">Inside-China fixed-panel size</strong><small><code>inside-view-panel-size</code> · globalping-inside-view</small></td>
+  <td><strong>11</strong><small>Selector <code>/signals/@id=inside-view/metric/denominator/value</code></small></td>
+  <td>The panel size is small and deliberately scoped; it is not a national sample.</td>
+  <td><a href="https://palimpsest.info/readings/inside-view-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T13:11:49Z">11 Aug 2026 · 13:11 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="counter">counter</span><small>research</small></td>
+  <td><strong lang="en">IODA country-scale outage instruments firing</strong><small><code>ioda-instruments-firing</code> · ioda-country-outages</small></td>
+  <td><strong>0</strong><small>Selector <code>/signals/@id=ioda-outages/metric/value</code></small></td>
+  <td>Absence of a broad routing or reachability outage does not imply absence of selective DNS, HTTP, or application filtering.</td>
+  <td><a href="https://palimpsest.info/readings/ioda-outages-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T13:48:51Z">11 Aug 2026 · 13:48 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr><tr>
+  <td><span class="nw-evidence-relation" data-relation="context">context</span><small>derived</small></td>
+  <td><strong lang="en">Palimpsest derived vantage-fusion index</strong><small><code>vantage-fusion-rate</code> · palimpsest-derived-fusion</small></td>
+  <td><strong>28.4</strong><small>Selector <code>/signals/@id=vantage-fusion/metric/value</code></small></td>
+  <td>A weighted synthesis is not a new independent vantage and is not a population-prevalence estimate.</td>
+  <td><a href="https://palimpsest.info/readings/vantage-fusion-latest.json">Source record</a><small><a href="https://palimpsest.info/readings/osint-china-latest.json">Artifact</a> · <time datetime="2026-08-11T14:06:53Z">11 Aug 2026 · 14:06 UTC</time> · sha 2a1e7704b29e · current</small></td>
+</tr></tbody></table></div>
+    </section>
+    <section class="nw-case-section" aria-labelledby="publication-gate-title">
+      <header><p class="nw-section__label">Editorial threshold</p><h2 id="publication-gate-title">Publication gate</h2><p>A blocked gate keeps this work in the research-lead register regardless of how striking an individual measurement appears.</p></header>
+      <p class="nw-table-cue" id="publication-gate-cue">Scroll horizontally to inspect every publication check.</p>
+<div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="publication-gate-title" aria-describedby="publication-gate-cue"><table class="nw-evidence-table"><caption>Structured publication-gate checks</caption><thead><tr><th scope="col">Check</th><th scope="col">Minimum</th><th scope="col">Observed</th><th scope="col">Result</th><th scope="col">Detail</th></tr></thead><tbody><tr><td><strong>Analytical claims present</strong><small><code>analytical-claims</code></small></td><td>1</td><td>1</td><td>Passed</td><td>Observed 1; requires at least 1.</td></tr><tr><td><strong>Independent groups per analytical claim</strong><small><code>independent-groups</code></small></td><td>2</td><td>3</td><td>Passed</td><td>Observed 3; requires at least 2.</td></tr><tr><td><strong>Analytical claims with counterevidence</strong><small><code>analytical-counterevidence</code></small></td><td>1</td><td>1</td><td>Passed</td><td>Observed 1; requires at least 1.</td></tr><tr><td><strong>Analytical claims with explicit limitations</strong><small><code>analytical-limitations</code></small></td><td>1</td><td>1</td><td>Passed</td><td>Observed 1; requires at least 1.</td></tr><tr><td><strong>Analytical claims linked to hypotheses</strong><small><code>analytical-hypotheses</code></small></td><td>1</td><td>1</td><td>Passed</td><td>Observed 1; requires at least 1.</td></tr><tr><td><strong>Counterevidence records reviewed</strong><small><code>counterevidence-review</code></small></td><td>1</td><td>1</td><td>Passed</td><td>Observed 1; requires at least 1.</td></tr><tr><td><strong>Evidence receipts current</strong><small><code>current-evidence</code></small></td><td>8</td><td>8</td><td>Passed</td><td>Observed 8; requires at least 8.</td></tr><tr><td><strong>Evidence receipts integrity-verified</strong><small><code>verified-integrity</code></small></td><td>8</td><td>8</td><td>Passed</td><td>Observed 8; requires at least 8.</td></tr><tr><td><strong>Right-to-reply disposition complete</strong><small><code>right-to-reply</code></small></td><td>1</td><td>1</td><td>Passed</td><td>Observed 1; requires at least 1.</td></tr><tr><td><strong>Every linked falsification condition assessed with the claim surviving</strong><small><code>falsification-assessed</code></small></td><td>2</td><td>0</td><td>Not passed</td><td>Observed 0; requires at least 2.</td></tr><tr><td><strong>Survived falsification conditions per analytical claim</strong><small><code>falsification-per-claim</code></small></td><td>1</td><td>0</td><td>Not passed</td><td>Observed 0; requires at least 1.</td></tr><tr><td><strong>Claims editorially reviewed</strong><small><code>claims-reviewed</code></small></td><td>3</td><td>0</td><td>Not passed</td><td>Observed 0; requires at least 3.</td></tr></tbody></table></div>
+<p class="nw-method-note"><strong>Gate blocked.</strong> Publishable: false. Failed checks: falsification-assessed, falsification-per-claim, claims-reviewed.</p>
+    </section>
+    <section class="nw-case-section" aria-labelledby="limitations-title">
+      <header><p class="nw-section__label">Epistemic boundary</p><h2 id="limitations-title">Limitations and consequences</h2></header>
+      <ul class="nw-case-record-list"><li><strong>The instruments sample different protocols, targets, probes, and completed-test populations.</strong><span>Their percentages may be compared as scoped signals, but not averaged into a national prevalence rate.</span></li><li><strong>The present lead has not completed three preregistered comparable rounds.</strong><span>It cannot yet call the observed divergence persistent.</span></li><li><strong>Vantage fusion reuses upstream measurements.</strong><span>It is context, not another independent vote.</span></li><li><strong>IODA is designed for country-scale connectivity events.</strong><span>It is counterevidence to a shutdown claim, not a clean bill of health for selective filtering.</span></li></ul>
+    </section>
+    <section class="nw-case-section" aria-labelledby="collection-targets-title">
+      <header><p class="nw-section__label">Open collection</p><h2 id="collection-targets-title">Evidence still needed</h2><p>Targets name aggregate public evidence to collect. They never identify people to target.</p></header>
+      <div class="nw-case-columns"><div class="nw-case-panel nw-case-panel--target"><p class="nw-finding__label">collecting · aggregate_only</p><h3>bleedthrough-longitudinal</h3><p>Does a controlled external vantage observe stable or changing DNS-injector response processes across repeated rounds?</p><p><strong>Blocker:</strong> No validated longitudinal artifact has crossed the publication boundary; one round would not establish persistence.</p><p><a href="https://palimpsest.info/readings/bleedthrough-latest.json">Collected evidence</a></p></div><div class="nw-case-panel nw-case-panel--target"><p class="nw-finding__label">planned · aggregate_only</p><h3>aligned-network-rounds</h3><p>Do independent normalized measurements converge when their collection windows are aligned?</p><p><strong>Blocker:</strong> Three frozen, comparable rounds are required.</p><p><a href="https://palimpsest.info/readings/osint-china-latest.json">Collected evidence</a></p></div></div>
+    </section>
+    <section class="nw-case-section" aria-labelledby="methodology-title">
+      <header><p class="nw-section__label">Reproducibility</p><h2 id="methodology-title">Methodology steps</h2></header>
+      <ol class="nw-case-record-list"><li><strong>freeze-denominators</strong><span>Record each instrument&#x27;s target population, completed-test rule, panel, time window, and independence group before comparing values.</span><small>Reproducible: true</small></li><li><strong>separate-vantages</strong><span>Count shared OONI-derived products once and keep remote, inside-China, and country-outage vantages separate.</span><small>Reproducible: true</small></li><li><strong>test-counterevidence</strong><span>Check country-scale outage telemetry before describing selective failures as broad connectivity loss.</span><small>Reproducible: true</small></li></ol>
+    </section>
+    <section class="nw-case-section" aria-labelledby="editorial-state-title">
+      <header><p class="nw-section__label">Accountability</p><h2 id="editorial-state-title">Correction, reply and safety state</h2></header>
+      <div class="nw-case-state-grid">
+        <div><dl><dt>Correction</dt><dd>none<br>No correction has been issued for this open research lead.<br>No correction timestamp<br><a href="https://palimpsest.info/methodology/">Correction policy</a></dd></dl></div>
+        <div><dl><dt>Right to reply</dt><dd>not_applicable<br>This open methods investigation makes no allegation about a person or institution.<br>0 institutions recorded</dd></dl></div>
+        <div><dl><dt>Safety</dt><dd>aggregate_only<br>Person-level data: false</dd></dl></div>
+        <div><dl><dt>Current structured record</dt><dd><a href="case.json">case.json</a><br><code>investigation-cd196dfff93a0065d419</code></dd></dl></div>
+      </div>
+      <div class="nw-case-columns"><div class="nw-case-panel"><h3>Right-to-reply boundary</h3><p>No response is not evidence that a finding is true.</p></div><div class="nw-case-panel"><h3>Correction boundary</h3><p>Corrections append an immutable revision and preserve the previous public version.</p></div></div>
+      <div class="nw-case-panel"><h3>Institutional reply register</h3><ul><li>No institution is recorded for reply.</li></ul></div>
+      <p class="nw-investigation-notice"><strong>Safety boundary.</strong> Public, aggregate evidence only; private contact details, volunteer identifiers and person-level records are excluded.</p>
+      <div class="nw-case-columns"><div class="nw-case-panel nw-case-panel--safety"><h3>Prohibited interpretations</h3><ul><li>Do not describe the OONI anomaly index as a percentage of China&#x27;s people, households, websites, or the internet.</li><li>Do not infer an actor, party, intent, motive, or causal mechanism from these aggregate measurements.</li><li>Do not describe one current round as persistent or nationally representative.</li></ul></div><div class="nw-case-panel"><h3>Allegations and motives</h3><ul><li>No allegation is made.</li><li>No motive is inferred.</li></ul></div></div>
+    </section>
+  </article>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/investigations/">← Investigations register</a> · <a href="case.json">Current case JSON</a> · <a href="/readings/investigations-latest.json">Structured desk</a> · <a href="/docs/INVESTIGATIONS.md">Method</a></div></footer>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

@@ -67,7 +67,9 @@ CONTRACT = {
                                "n_items"),
     "china-economic-pulse": _d("generated_at", ["source", "method", "scope"],
                                "n_metrics"),
-    # registered before its first round lands — see PENDING below
+    "investigations":       _d("generated_at", ["source", "method", "scope"],
+                               "n_cases"),
+    # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
     "data-darkness":        _d("generated_at", ["source", "method_note"],
@@ -173,12 +175,7 @@ def test_every_published_reading_is_registered():
 # before its first reading lands. Keeping these here means the first live round cannot break
 # the build, and — more usefully — means the three questions were answered while the code was
 # being written rather than retrofitted once a number was already on the board.
-PENDING = {
-    # BLEEDTHROUGH measures the GFW injector fleet from outside China. It is deliberately
-    # unpublished until a multi-vantage round exists; see docs/BLEEDTHROUGH.md and the worked
-    # case in docs/INTEGRITY.md.
-    "bleedthrough",
-}
+PENDING = set()
 
 # External public products whose contract is agreed here but whose presence is deliberately
 # deployment-dependent. Unlike PENDING, these do not "graduate": Nemesis remains optional so a
@@ -193,7 +190,9 @@ OPTIONAL_EXTERNAL = {
 # deployment-specific imports. The exception can be removed once the first row is part of
 # every supported checkout, but the contract is enforced immediately in the publishing run.
 SCHEDULED_PUBLICATIONS = {
+    "bleedthrough",
     "china-economic-pulse",
+    "investigations",
     "newswire",
     "newsroom",
     "research-corpus",
@@ -251,6 +250,27 @@ def test_newsroom_contract_keeps_provenance_and_story_denominator_explicit():
     assert "newsroom" in SCHEDULED_PUBLICATIONS
 
 
+def test_investigations_contract_keeps_cases_and_review_boundary_explicit():
+    assert CONTRACT["investigations"] == {
+        "timestamp": "generated_at",
+        "provenance": ["source", "method", "scope"],
+        "denominator": "n_cases",
+        "reason": None,
+    }
+    assert "investigations" in SCHEDULED_PUBLICATIONS
+
+
+def test_bleedthrough_graduated_to_a_scheduled_fixed_origin_import():
+    assert CONTRACT["bleedthrough"] == {
+        "timestamp": "generated_at",
+        "provenance": ["method", "scope", "provenance"],
+        "denominator": "vantages_probed",
+        "reason": None,
+    }
+    assert "bleedthrough" not in PENDING
+    assert "bleedthrough" in SCHEDULED_PUBLICATIONS
+
+
 def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     sitemap = open(os.path.join(ROOT, "sitemap.xml"), encoding="utf-8").read()
     robots = open(os.path.join(ROOT, "robots.txt"), encoding="utf-8").read()
@@ -260,12 +280,15 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "https://palimpsest.info/news/" in sitemap
     assert "https://palimpsest.info/news/" in llms
     assert "https://palimpsest.info/readings/newsroom-latest.json" in llms
+    assert "https://palimpsest.info/news/investigations/" in sitemap
+    assert "https://palimpsest.info/news/investigations/" in llms
+    assert "https://palimpsest.info/readings/investigations-latest.json" in llms
     assert robots.splitlines().count("Sitemap: https://palimpsest.info/sitemap.xml") == 1
     assert robots.splitlines().count(
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v9"' in worker
+    assert 'const CACHE = "palimpsest-v10"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
@@ -283,6 +306,15 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     syndication_branch = syndication_branch[:syndication_branch.index("return;")]
     assert 'fetch(req, { cache: "no-store" })' in syndication_branch
     assert "caches.match" not in syndication_branch
+
+    assert '"/readings/investigations-latest.json"' in worker
+    evidence_branch = worker[
+        worker.index("if (LIVE_EVIDENCE_READINGS.has(url.pathname))"):
+    ]
+    evidence_branch = evidence_branch[:evidence_branch.index("return;")]
+    assert 'fetch(req, { cache: "no-store" })' in evidence_branch
+    assert "caches.match" not in evidence_branch
+    assert "if (LIVE_INVESTIGATION_CASE.test(url.pathname))" in worker
 
 
 def test_openapi_publishes_a_concrete_newsroom_feed_contract():
@@ -327,6 +359,34 @@ def test_openapi_publishes_a_concrete_newsroom_feed_contract():
         "NewsroomSection", "NewsroomCoverageCounts", "NewsroomCoverage",
     ):
         assert schemas[name]["additionalProperties"] is False
+
+
+def test_openapi_publishes_the_external_investigations_contract():
+    spec = _load(os.path.join(ROOT, "openapi.json"))
+    protocol = _load(
+        os.path.join(ROOT, "protocol", "investigations-v1.schema.json")
+    )
+
+    assert spec["components"]["schemas"]["Investigations"] == {
+        "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
+    }
+    response = spec["components"]["responses"]["Investigations"]
+    assert response["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/Investigations"
+    }
+    operation = spec["paths"]["/readings/investigations-latest.json"]["get"]
+    assert operation["operationId"] == "getInvestigations"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/Investigations"
+    }
+    assert protocol["$id"] == (
+        "https://palimpsest.info/protocol/investigations-v1.schema.json"
+    )
+    assert protocol["additionalProperties"] is False
+    assert set(protocol["required"]) == {
+        "schema_version", "desk_id", "generated_at", "source", "method", "scope",
+        "publication_policy", "input_integrity", "n_cases", "cases",
+    }
 
 
 @pytest.mark.parametrize("path", _readings(), ids=_name)

@@ -639,6 +639,23 @@
       "license": {"name": "MIT for Palimpsest synthesis; mixed upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "investigations",
+      "name": "Palimpsest Investigations Desk",
+      "description": "Review-gated research leads assembled from hash-bound public evidence, explicit counterevidence and falsification conditions. Cases remain research leads until every human publication gate passes; the system does not automate allegations, motives or causal attribution.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic-review-gated",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["CN", "GLOBAL"],
+      "sources": ["Palimpsest OSINT China roll-up", "Palimpsest China Economic Pulse", "Hash-bound public source receipts"],
+      "latest": "readings/investigations-latest.json",
+      "landing_page": "news/investigations/",
+      "method": "docs/INVESTIGATIONS.md",
+      "count_fields": ["n_cases"],
+      "license": {"name": "MIT for Palimpsest structure and analysis; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "generative-firewall",
       "name": "Generative Firewall Index",
       "description": "Frozen bilingual prompt suites measure refusal and state-narrative substitution in state-aligned models against separately interpreted controls.",

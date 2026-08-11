@@ -17,10 +17,11 @@ Palimpsest reads from surfaces that may be adversarial. A hostile server cannot 
 This module NEVER executes a byte it fetches; it returns text for a parser to treat as
 untrusted data. Standard-library only. See SECURITY-HARDENING.md for the full threat model.
 
-STATUS: WIRED AT TWO NARROW PUBLICATION BOUNDARIES. The optional Nemesis snapshot importer
-uses this path with redirects disabled before accepting a configured external HTTPS document;
+STATUS: WIRED AT NARROW PUBLICATION BOUNDARIES. The optional Nemesis snapshot importer uses
+this path with redirects disabled before accepting a configured external HTTPS document; the
+fixed-origin BLEEDTHROUGH importer does the same for the prober's coarse public aggregate; and
 the closed RSS/Atom evidence wire uses the byte interface for every reviewed feed. Other live
-observatory collectors still use their declared legacy clients. This module protects those two
+observatory collectors still use their declared legacy clients. This module protects those
 named imports while remaining the migration target for the collector inventory.
 
 The inventory of what still has to move includes every un-hardened egress call site, each with the

@@ -63,7 +63,7 @@ def test_public_economic_pulse_links_its_concrete_schema_and_abstention_state():
     assert pulse["input_integrity"]
 
 
-def test_openapi_uses_the_public_protocol_schemas_for_both_mutable_heads():
+def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
     spec = _json("openapi.json")
     schemas = spec["components"]["schemas"]
     responses = spec["components"]["responses"]
@@ -74,12 +74,18 @@ def test_openapi_uses_the_public_protocol_schemas_for_both_mutable_heads():
     assert schemas["ChinaEconomicPulse"] == {
         "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
     }
+    assert schemas["Investigations"] == {
+        "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
+    }
     expected = {
         "/readings/newswire-latest.json": (
             "getEvidenceNewswire", "EvidenceNewswire"
         ),
         "/readings/china-economic-pulse-latest.json": (
             "getChinaEconomicPulse", "ChinaEconomicPulse"
+        ),
+        "/readings/investigations-latest.json": (
+            "getInvestigations", "Investigations"
         ),
     }
     for path, (operation_id, response_name) in expected.items():
@@ -103,6 +109,7 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
     for url in (
         "https://palimpsest.info/news/wire/",
         "https://palimpsest.info/news/economy/",
+        "https://palimpsest.info/news/investigations/",
     ):
         assert url in sitemap
         assert url in news_sitemap
@@ -112,9 +119,11 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
         "https://palimpsest.info/news/feed.xml",
         "https://palimpsest.info/readings/newswire-latest.json",
         "https://palimpsest.info/readings/china-economic-pulse-latest.json",
+        "https://palimpsest.info/readings/investigations-latest.json",
         "https://palimpsest.info/config/news_sources.json",
         "https://palimpsest.info/protocol/newswire-v1.schema.json",
         "https://palimpsest.info/protocol/economic-pulse-v1.schema.json",
+        "https://palimpsest.info/protocol/investigations-v1.schema.json",
     ):
         assert url in llms
     assert robots.splitlines().count(
@@ -131,13 +140,38 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
         assert f"https://palimpsest.info/{relative}/" in news_sitemap
 
 
-def test_mutable_wire_and_pulse_heads_are_network_only_and_never_fall_back():
+def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    assert 'const CACHE = "palimpsest-v9"' in worker
+    assert 'const CACHE = "palimpsest-v10"' in worker
     assert '"/readings/newswire-latest.json"' in worker
     assert '"/readings/china-economic-pulse-latest.json"' in worker
+    assert '"/readings/investigations-latest.json"' in worker
 
     marker = "if (LIVE_EVIDENCE_READINGS.has(url.pathname))"
+    branch = worker[worker.index(marker):]
+    branch = branch[:branch.index("return;")]
+    assert 'fetch(req, { cache: "no-store" })' in branch
+    assert "caches.match" not in branch
+
+
+def test_mutable_investigation_cases_are_network_only_but_revisions_are_not():
+    worker = (ROOT / "sw.js").read_text(encoding="utf-8")
+    declaration = re.search(
+        r"const LIVE_INVESTIGATION_CASE = /(.+)/;", worker
+    )
+    assert declaration is not None
+    path_pattern = declaration.group(1).replace(r"\/", "/")
+    matcher = re.compile(path_pattern)
+
+    assert matcher.fullmatch(
+        "/news/investigations/chinas-network-filtering/case.json"
+    )
+    assert not matcher.fullmatch(
+        "/news/investigations/chinas-network-filtering/revisions/"
+        "investigationv-0123456789abcdef01234567.json"
+    )
+
+    marker = "if (LIVE_INVESTIGATION_CASE.test(url.pathname))"
     branch = worker[worker.index(marker):]
     branch = branch[:branch.index("return;")]
     assert 'fetch(req, { cache: "no-store" })' in branch
@@ -155,6 +189,7 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         r"python -m scripts\.newswire_pull\n"
         r"\s*python -m scripts\.build_economic_pulse\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_newsroom\n"
         r"\s*python -m scripts\.build_data_catalog\n"
         r"\s*python scripts/seal_readings\.py",
@@ -167,6 +202,7 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         "readings/newswire-versions.jsonl",
         "readings/china-economic-pulse-latest.json",
         "readings/osint-china-latest.json",
+        "readings/investigations-latest.json",
         "readings/newsroom-latest.json",
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
@@ -186,6 +222,8 @@ def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner()
         "tests/test_public_surface_scrub.py",
         "tests/test_evidence_wire_publication.py",
         "tests/test_ai_discovery.py",
+        "tests/test_investigations.py",
+        "tests/test_investigations_renderer.py",
         "python scripts/verify_public_surface.py",
     ):
         assert workflow.count(command) == 3, command
@@ -205,12 +243,17 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     workflow = OSINT_WORKFLOW.read_text(encoding="utf-8")
     assert "python -m scripts.newswire_pull" not in workflow
     assert workflow.count("python -m scripts.build_economic_pulse") == 3
+    assert workflow.count("python -m scripts.build_investigations") == 3
     assert _staged_occurrences(
         workflow, "readings/china-economic-pulse-latest.json"
+    ) == 3
+    assert _staged_occurrences(
+        workflow, "readings/investigations-latest.json"
     ) == 3
     for block in re.findall(
         r"python -m scripts\.build_economic_pulse\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_newsroom",
         workflow,
     ):
@@ -218,6 +261,7 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     assert len(re.findall(
         r"python -m scripts\.build_economic_pulse\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_newsroom",
         workflow,
     )) == 3

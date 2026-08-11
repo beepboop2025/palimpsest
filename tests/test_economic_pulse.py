@@ -528,7 +528,12 @@ def test_wrong_southbound_currency_fails_closed(tmp_path):
         build_economic_pulse(
             readings_dir=tmp_path,
             registry_path=REGISTRY,
-            as_of=datetime(2026, 8, 11, tzinfo=UTC),
+            # Keep the malformed fixture visible even as the checked-in daily
+            # reading advances. A fixed midnight clock can place a same-day
+            # release in the future and accidentally skip the adapter under test.
+            as_of=datetime.fromisoformat(
+                wrong["generated_at"].replace("Z", "+00:00")
+            ),
         )
 
 

@@ -391,6 +391,17 @@ def test_curated_economy_desk_and_specific_official_releases_remain_material():
     assert "economy" in release["topics"]
     assert release["declared_economic_ids"]
 
+    office_opening = parse_feed(
+        hksar,
+        _rss(
+            hksar,
+            title="SCED opens Hong Kong Economic and Trade Office in Kuala Lumpur",
+        ),
+        now=NOW,
+    ).items[0]
+    assert office_opening["desk"] == "politics"
+    assert office_opening["declared_economic_ids"] == []
+
 
 def test_global_and_generic_primary_items_post_without_spurious_surface_links():
     ooni = _source("ooni")
@@ -587,11 +598,27 @@ def test_single_unlinked_media_item_is_retained_but_not_promoted_as_a_lead():
     assert "not promoted" in event["lead_reason"]
 
 
+def test_single_media_economic_link_is_visible_but_cannot_create_a_lead():
+    source = _source("scmp-china-economy")
+    document = collect_newswire(
+        _registry(source),
+        lambda _u, **_k: _rss(
+            source, title="China inflation report with yuan market detail"
+        ),
+        now=NOW,
+    )
+    event = document["events"][0]
+
+    assert event["declared_links"]["economic_signal_ids"]
+    assert event["lead"] is False
+    assert "not promoted" in event["lead_reason"]
+
+
 def test_declared_scan_or_economic_link_is_visible_but_never_called_corroboration():
     source = _source("hksar-releases")
     document = collect_newswire(
         _registry(source),
-        lambda _u, **_k: _rss(source, title="Government publishes an economic and trade policy update"),
+        lambda _u, **_k: _rss(source, title="Effective Exchange Rate Index"),
         now=NOW,
     )
     event = document["events"][0]
@@ -653,12 +680,12 @@ def test_feed_entry_order_does_not_change_item_or_event_ids_and_versions():
 
 
 def test_public_event_order_is_reverse_chronological_not_lead_first():
-    economy = _source("scmp-china-economy")
+    economy = _source("hksar-releases")
     politics = _source("rfa-mandarin")
     mapping = {
         economy.feed_url: _rss(
             economy,
-            title="China inflation report with yuan market detail",
+            title="Effective Exchange Rate Index",
             published="Tue, 11 Aug 2026 09:00:00 +0000",
         ),
         politics.feed_url: _rss(

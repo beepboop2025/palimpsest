@@ -1,0 +1,577 @@
+{
+  "config_version": "palimpsest-investigations-config.v1",
+  "desk_id": "palimpsest-investigations",
+  "publication_policy": {
+    "minimum_independent_groups_per_analytical_claim": 2,
+    "minimum_analytical_claims": 1,
+    "minimum_assessed_falsification_conditions": 1,
+    "require_counterevidence_review": true,
+    "require_current_evidence": true,
+    "require_verified_integrity": true,
+    "require_right_to_reply": true,
+    "require_reviewed_claims": true,
+    "automatic_publication": false
+  },
+  "artifacts": [
+    {
+      "artifact_id": "economic-pulse",
+      "filename": "china-economic-pulse-latest.json",
+      "artifact_url": "https://palimpsest.info/readings/china-economic-pulse-latest.json",
+      "schema_version": "palimpsest-economic-pulse.v1",
+      "timestamp_selector": "/generated_at",
+      "max_age_hours": 24
+    },
+    {
+      "artifact_id": "newswire",
+      "filename": "newswire-latest.json",
+      "artifact_url": "https://palimpsest.info/readings/newswire-latest.json",
+      "schema_version": "palimpsest-newswire.v1",
+      "timestamp_selector": "/generated_at",
+      "max_age_hours": 6
+    },
+    {
+      "artifact_id": "osint-china",
+      "filename": "osint-china-latest.json",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "schema_version": "osint-china.v1",
+      "timestamp_selector": "/generated_at",
+      "max_age_hours": 14
+    }
+  ],
+  "cases": [
+    {
+      "slug": "china-network-filtering-no-single-rate",
+      "title": "China's Network Filtering Has No Honest Single Rate",
+      "dek": "A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.",
+      "testable_question": "Across three preregistered comparable rounds, do independent China network-measurement groups converge within twenty percentage points, or does measured interference remain selective and vantage-dependent?",
+      "status_intent": "evidence_gathering",
+      "opened_at": "2026-08-11T00:00:00Z",
+      "editorial_updated_at": "2026-08-11T00:00:00Z",
+      "published_at": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "common-national-rate",
+          "statement": "Comparable independent instruments converge closely enough to support one bounded national interference estimate.",
+          "status": "open",
+          "falsification_condition_ids": ["three-round-convergence"]
+        },
+        {
+          "hypothesis_id": "selective-vantage-dependent",
+          "statement": "Instrument scope and vantage continue to produce materially different rates even when collection windows are aligned.",
+          "status": "open",
+          "falsification_condition_ids": ["three-round-convergence", "three-round-clean-panel"]
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "current-round-diverges",
+          "type": "analytical_finding",
+          "statement": "The current structured round is consistent with selective and vantage-dependent interference, because independent instruments report materially different scoped measurements.",
+          "evidence_ids": ["ooni-anomaly-rate", "censored-planet-rate", "inside-view-panel"],
+          "counterevidence_ids": ["no-country-scale-outage"],
+          "limitation_ids": ["incompatible-denominators", "single-round"],
+          "hypothesis_ids": ["selective-vantage-dependent"],
+          "publication_state": "draft"
+        },
+        {
+          "claim_id": "no-honest-single-rate",
+          "type": "methodological_limitation",
+          "statement": "These percentages cannot honestly be collapsed into a prevalence rate for China's population, households, or the whole internet.",
+          "evidence_ids": ["ooni-anomaly-rate", "ooni-measurement-count", "in-path-rate", "censored-planet-rate", "inside-view-panel", "inside-view-panel-size", "vantage-fusion-rate"],
+          "counterevidence_ids": [],
+          "limitation_ids": ["incompatible-denominators", "derived-fusion"],
+          "hypothesis_ids": ["common-national-rate", "selective-vantage-dependent"],
+          "publication_state": "draft"
+        },
+        {
+          "claim_id": "not-a-broad-outage",
+          "type": "artifact_observation",
+          "statement": "The current IODA record reports zero country-scale outage instruments firing; that narrows, but does not erase, the selective-interference evidence.",
+          "evidence_ids": ["ioda-instruments-firing"],
+          "counterevidence_ids": [],
+          "limitation_ids": ["outage-scope"],
+          "hypothesis_ids": ["selective-vantage-dependent"],
+          "publication_state": "draft"
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ooni-anomaly-rate",
+          "label": "OONI China anomaly index",
+          "role": "support",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=ooni-gfw/metric/value",
+          "source_url_selector": "/signals/@id=ooni-gfw/raw_url",
+          "source_timestamp_selector": "/signals/@id=ooni-gfw/source_timestamp",
+          "independence_group": "ooni-open-measurements",
+          "source_class": "research",
+          "interpretation_limit": "The value is a share of accepted OONI measurements in its test mix, not a share of people, households, websites, or the internet."
+        },
+        {
+          "evidence_id": "ooni-measurement-count",
+          "label": "OONI accepted-measurement denominator",
+          "role": "context",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=ooni-gfw/metric/denominator/value",
+          "source_url_selector": "/signals/@id=ooni-gfw/raw_url",
+          "source_timestamp_selector": "/signals/@id=ooni-gfw/source_timestamp",
+          "independence_group": "ooni-open-measurements",
+          "source_class": "research",
+          "interpretation_limit": "Measurement count is not a probability sample of China's population or network endpoints."
+        },
+        {
+          "evidence_id": "in-path-rate",
+          "label": "OONI-derived completed-test middlebox index",
+          "role": "context",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=in-path-interference/metric/value",
+          "source_url_selector": "/signals/@id=in-path-interference/raw_url",
+          "source_timestamp_selector": "/signals/@id=in-path-interference/source_timestamp",
+          "independence_group": "ooni-open-measurements",
+          "source_class": "research",
+          "interpretation_limit": "This shares OONI provenance with the anomaly index and therefore is not independent corroboration; its denominator is completed tests only."
+        },
+        {
+          "evidence_id": "censored-planet-rate",
+          "label": "Censored Planet remote interference rate",
+          "role": "support",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=censored-planet/metric/value",
+          "source_url_selector": "/signals/@id=censored-planet/raw_url",
+          "source_timestamp_selector": "/signals/@id=censored-planet/source_timestamp",
+          "independence_group": "censored-planet-remote",
+          "source_class": "research",
+          "interpretation_limit": "The remote side-channel method and denominator differ from OONI and cannot be compared as if both sampled the same population."
+        },
+        {
+          "evidence_id": "inside-view-panel",
+          "label": "Inside-China fixed-panel blocked share",
+          "role": "support",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=inside-view/metric/value",
+          "source_url_selector": "/signals/@id=inside-view/raw_url",
+          "source_timestamp_selector": "/signals/@id=inside-view/source_timestamp",
+          "independence_group": "globalping-inside-view",
+          "source_class": "research",
+          "interpretation_limit": "This is a deliberately selected panel and cannot estimate prevalence outside that panel."
+        },
+        {
+          "evidence_id": "inside-view-panel-size",
+          "label": "Inside-China fixed-panel size",
+          "role": "context",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=inside-view/metric/denominator/value",
+          "source_url_selector": "/signals/@id=inside-view/raw_url",
+          "source_timestamp_selector": "/signals/@id=inside-view/source_timestamp",
+          "independence_group": "globalping-inside-view",
+          "source_class": "research",
+          "interpretation_limit": "The panel size is small and deliberately scoped; it is not a national sample."
+        },
+        {
+          "evidence_id": "ioda-instruments-firing",
+          "label": "IODA country-scale outage instruments firing",
+          "role": "counter",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=ioda-outages/metric/value",
+          "source_url_selector": "/signals/@id=ioda-outages/raw_url",
+          "source_timestamp_selector": "/signals/@id=ioda-outages/source_timestamp",
+          "independence_group": "ioda-country-outages",
+          "source_class": "research",
+          "interpretation_limit": "Absence of a broad routing or reachability outage does not imply absence of selective DNS, HTTP, or application filtering."
+        },
+        {
+          "evidence_id": "vantage-fusion-rate",
+          "label": "Palimpsest derived vantage-fusion index",
+          "role": "context",
+          "artifact_id": "osint-china",
+          "selector": "/signals/@id=vantage-fusion/metric/value",
+          "source_url_selector": "/signals/@id=vantage-fusion/raw_url",
+          "source_timestamp_selector": "/signals/@id=vantage-fusion/source_timestamp",
+          "independence_group": "palimpsest-derived-fusion",
+          "source_class": "derived",
+          "interpretation_limit": "A weighted synthesis is not a new independent vantage and is not a population-prevalence estimate."
+        }
+      ],
+      "counterevidence": [
+        {
+          "counterevidence_id": "no-country-scale-outage",
+          "statement": "IODA reports no current country-scale outage instrument firing, which argues against describing the scoped filtering measurements as a broad shutdown.",
+          "evidence_ids": ["ioda-instruments-firing"],
+          "review_status": "reviewed",
+          "disposition": "narrows_claim"
+        }
+      ],
+      "limitations": [
+        {
+          "limitation_id": "incompatible-denominators",
+          "statement": "The instruments sample different protocols, targets, probes, and completed-test populations.",
+          "consequence": "Their percentages may be compared as scoped signals, but not averaged into a national prevalence rate."
+        },
+        {
+          "limitation_id": "single-round",
+          "statement": "The present lead has not completed three preregistered comparable rounds.",
+          "consequence": "It cannot yet call the observed divergence persistent."
+        },
+        {
+          "limitation_id": "derived-fusion",
+          "statement": "Vantage fusion reuses upstream measurements.",
+          "consequence": "It is context, not another independent vote."
+        },
+        {
+          "limitation_id": "outage-scope",
+          "statement": "IODA is designed for country-scale connectivity events.",
+          "consequence": "It is counterevidence to a shutdown claim, not a clean bill of health for selective filtering."
+        }
+      ],
+      "falsification_conditions": [
+        {
+          "condition_id": "country-scale-ioda-event",
+          "statement": "A temporally overlapping multi-instrument IODA country event would falsify the current narrow statement that the round is not a broad outage.",
+          "status": "untested",
+          "evidence_needed": "Aligned IODA, OONI, Censored Planet, and inside-view collection clocks."
+        },
+        {
+          "condition_id": "three-round-convergence",
+          "statement": "Three preregistered comparable rounds in which independent normalized estimates converge within twenty percentage points would weaken the vantage-dependent hypothesis.",
+          "status": "untested",
+          "evidence_needed": "Three aligned rounds with frozen panels, denominator definitions, and source-group labels."
+        },
+        {
+          "condition_id": "three-round-clean-panel",
+          "statement": "Three rounds in which at least three independent source groups report no interference across the frozen test panel would falsify the current selective-interference finding for that panel.",
+          "status": "untested",
+          "evidence_needed": "Three independent aggregate groups and a versioned fixed panel."
+        }
+      ],
+      "methodology": [
+        {
+          "step_id": "freeze-denominators",
+          "description": "Record each instrument's target population, completed-test rule, panel, time window, and independence group before comparing values.",
+          "reproducible": true
+        },
+        {
+          "step_id": "separate-vantages",
+          "description": "Count shared OONI-derived products once and keep remote, inside-China, and country-outage vantages separate.",
+          "reproducible": true
+        },
+        {
+          "step_id": "test-counterevidence",
+          "description": "Check country-scale outage telemetry before describing selective failures as broad connectivity loss.",
+          "reproducible": true
+        }
+      ],
+      "collection_targets": [
+        {
+          "source_id": "bleedthrough-longitudinal",
+          "question_answered": "Does a controlled external vantage observe stable or changing DNS-injector response processes across repeated rounds?",
+          "status": "collecting",
+          "evidence_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "blocker": "No validated longitudinal artifact has crossed the publication boundary; one round would not establish persistence.",
+          "data_level": "aggregate_only"
+        },
+        {
+          "source_id": "aligned-network-rounds",
+          "question_answered": "Do independent normalized measurements converge when their collection windows are aligned?",
+          "status": "planned",
+          "evidence_url": "https://palimpsest.info/readings/osint-china-latest.json",
+          "blocker": "Three frozen, comparable rounds are required.",
+          "data_level": "aggregate_only"
+        }
+      ],
+      "correction": {
+        "status": "none",
+        "last_corrected_at": null,
+        "note": "No correction has been issued for this open research lead.",
+        "policy_url": "https://palimpsest.info/methodology/"
+      },
+      "right_to_reply": {
+        "status": "not_applicable",
+        "applicability_reason": "This open methods investigation makes no allegation about a person or institution.",
+        "parties": []
+      },
+      "safety": {
+        "data_level": "aggregate_only",
+        "person_level_data": false,
+        "allegations": [],
+        "inferred_motives": [],
+        "prohibited_interpretations": [
+          "Do not describe the OONI anomaly index as a percentage of China's people, households, websites, or the internet.",
+          "Do not infer an actor, party, intent, motive, or causal mechanism from these aggregate measurements.",
+          "Do not describe one current round as persistent or nationally representative."
+        ]
+      }
+    },
+    {
+      "slug": "china-economy-evidence-gap",
+      "title": "What the Current China Economy Evidence Still Cannot Establish",
+      "dek": "A data-integrity research lead that records where the public evidence is broad, where it is missing, and why Palimpsest still abstains from a state-of-economy direction.",
+      "testable_question": "Do current public official, market, and physical series provide enough independent cross-domain and revision history to support a broad direction for China's economy?",
+      "status_intent": "evidence_gathering",
+      "opened_at": "2026-08-11T00:00:00Z",
+      "editorial_updated_at": "2026-08-11T00:00:00Z",
+      "published_at": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "broad-direction-ready",
+          "statement": "Current public evidence satisfies every predeclared coverage and baseline gate needed for a broad economic direction.",
+          "status": "open",
+          "falsification_condition_ids": ["coverage-gates-pass"]
+        },
+        {
+          "hypothesis_id": "coverage-remains-insufficient",
+          "statement": "Missing property, labor, demand, and longitudinal comparison coverage prevents a defensible broad direction.",
+          "status": "open",
+          "falsification_condition_ids": ["coverage-gates-pass", "independent-divergence-baseline"]
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "pulse-explicitly-abstains",
+          "type": "artifact_observation",
+          "statement": "The current economic pulse is warming up and publishes no direction or composite.",
+          "evidence_ids": ["economic-state-status", "economic-state-direction"],
+          "counterevidence_ids": ["existing-source-breadth"],
+          "limitation_ids": ["not-true-gdp"],
+          "hypothesis_ids": ["broad-direction-ready", "coverage-remains-insufficient"],
+          "publication_state": "draft"
+        },
+        {
+          "claim_id": "coverage-gates-incomplete",
+          "type": "analytical_finding",
+          "statement": "Current structured evidence can map the gaps but remains insufficient to support a broad state-of-economy direction.",
+          "evidence_ids": ["substantive-desks-observed", "baseline-months-observed"],
+          "counterevidence_ids": ["existing-source-breadth"],
+          "limitation_ids": ["derived-boundary", "missing-domains"],
+          "hypothesis_ids": ["coverage-remains-insufficient"],
+          "publication_state": "draft"
+        },
+        {
+          "claim_id": "news-volume-is-context",
+          "type": "methodological_limitation",
+          "statement": "Newswire volume and a degraded aggregate economy layer are reporting context, not measurements of output, employment, consumption, or causal truth.",
+          "evidence_ids": ["newswire-event-count", "osint-economy-layer-status"],
+          "counterevidence_ids": [],
+          "limitation_ids": ["news-is-not-output"],
+          "hypothesis_ids": ["coverage-remains-insufficient"],
+          "publication_state": "draft"
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "economic-state-status",
+          "label": "Economic pulse status",
+          "role": "support",
+          "artifact_id": "economic-pulse",
+          "selector": "/economic_state/status",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-economic-pulse",
+          "source_class": "derived",
+          "interpretation_limit": "Warming up is a coverage state, not an economic direction."
+        },
+        {
+          "evidence_id": "economic-state-direction",
+          "label": "Economic pulse direction",
+          "role": "support",
+          "artifact_id": "economic-pulse",
+          "selector": "/economic_state/direction",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-economic-pulse",
+          "source_class": "derived",
+          "interpretation_limit": "Null is explicit abstention; it is neither stability nor contraction."
+        },
+        {
+          "evidence_id": "substantive-desks-observed",
+          "label": "Substantive economic desks with a current metric",
+          "role": "support",
+          "artifact_id": "economic-pulse",
+          "selector": "/readiness/gates/@gate_id=substantive-desks/observed",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-economic-pulse",
+          "source_class": "derived",
+          "interpretation_limit": "Desk count describes coverage, not economic performance."
+        },
+        {
+          "evidence_id": "baseline-months-observed",
+          "label": "Prior monthly observations in divergence baseline",
+          "role": "support",
+          "artifact_id": "economic-pulse",
+          "selector": "/readiness/gates/@gate_id=baseline-months/observed",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-economic-pulse",
+          "source_class": "derived",
+          "interpretation_limit": "Absence of baseline history blocks a divergence finding; it does not imply agreement."
+        },
+        {
+          "evidence_id": "independent-groups-observed",
+          "label": "Observed economic independence groups",
+          "role": "counter",
+          "artifact_id": "economic-pulse",
+          "selector": "/readiness/gates/@gate_id=independent-groups/observed",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-economic-pulse",
+          "source_class": "derived",
+          "interpretation_limit": "Group count records breadth but does not make unlike concepts commensurable."
+        },
+        {
+          "evidence_id": "source-classes-observed",
+          "label": "Observed economic source classes",
+          "role": "counter",
+          "artifact_id": "economic-pulse",
+          "selector": "/readiness/gates/@gate_id=source-classes/observed",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-economic-pulse",
+          "source_class": "derived",
+          "interpretation_limit": "Source-class breadth is necessary but not sufficient for a validated composite."
+        },
+        {
+          "evidence_id": "osint-economy-layer-status",
+          "label": "OSINT economy-layer health",
+          "role": "context",
+          "artifact_id": "osint-china",
+          "selector": "/layers/@id=economy/status",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-osint-rollup",
+          "source_class": "derived",
+          "interpretation_limit": "Layer health describes collector/reporting state, not the state of the economy."
+        },
+        {
+          "evidence_id": "newswire-event-count",
+          "label": "Current newswire dossier count",
+          "role": "context",
+          "artifact_id": "newswire",
+          "selector": "/n_events",
+          "source_url_selector": null,
+          "source_timestamp_selector": "/generated_at",
+          "independence_group": "palimpsest-newswire-rollup",
+          "source_class": "derived",
+          "interpretation_limit": "Event count measures accepted metadata volume, not event importance or economic direction."
+        }
+      ],
+      "counterevidence": [
+        {
+          "counterevidence_id": "existing-source-breadth",
+          "statement": "The pulse has already reached its independent-group and source-class breadth gates, so the record is not empty; the remaining claim is narrower, about missing domains and history.",
+          "evidence_ids": ["independent-groups-observed", "source-classes-observed"],
+          "review_status": "reviewed",
+          "disposition": "narrows_claim"
+        }
+      ],
+      "limitations": [
+        {
+          "limitation_id": "not-true-gdp",
+          "statement": "No metric or composite in this lead estimates true GDP.",
+          "consequence": "The lead must report measured series and gaps without a hidden national-output estimate."
+        },
+        {
+          "limitation_id": "derived-boundary",
+          "statement": "The current claim cites Palimpsest's structured roll-ups rather than two claim-level primary independence groups.",
+          "consequence": "Its confidence remains insufficient and the publication gate stays blocked."
+        },
+        {
+          "limitation_id": "missing-domains",
+          "statement": "Current comparable property, labor, and household-demand coverage has not crossed the publication boundary.",
+          "consequence": "Not collected cannot be interpreted as zero or economic weakness."
+        },
+        {
+          "limitation_id": "news-is-not-output",
+          "statement": "News volume reflects publishing and source selection as well as events.",
+          "consequence": "It cannot substitute for a measured economic series."
+        }
+      ],
+      "falsification_conditions": [
+        {
+          "condition_id": "coverage-gates-pass",
+          "statement": "The coverage-insufficient hypothesis is weakened when every predeclared substantive-desk, source-independence, source-class, and baseline-history gate passes with current data.",
+          "status": "untested",
+          "evidence_needed": "Current property, labor, demand, trade-logistics, activity, credit, and market series with published units and revision clocks."
+        },
+        {
+          "condition_id": "independent-divergence-baseline",
+          "statement": "A preregistered longitudinal comparison with enough history and independent source groups can replace the present abstention with a bounded divergence finding.",
+          "status": "untested",
+          "evidence_needed": "At least eight prior monthly observations and independently sourced comparison series."
+        }
+      ],
+      "methodology": [
+        {
+          "step_id": "freeze-readiness-gates",
+          "description": "Use the economic pulse's predeclared readiness gates instead of choosing thresholds after seeing the values.",
+          "reproducible": true
+        },
+        {
+          "step_id": "preserve-source-groups",
+          "description": "Keep official, market, physical, news, and derived sources separate and never count one roll-up as a new independent source.",
+          "reproducible": true
+        },
+        {
+          "step_id": "publish-negative-space",
+          "description": "Record not-collected and zero-history states explicitly without converting either into a zero value or motive claim.",
+          "reproducible": true
+        }
+      ],
+      "collection_targets": [
+        {
+          "source_id": "nbs-70-city-housing",
+          "question_answered": "Are comparable city-level new and resale housing price indices broadening or weakening across city tiers?",
+          "status": "adapter_ready",
+          "evidence_url": "https://www.stats.gov.cn/sj/zxfbhjd/202602/t20260213_1962617.html",
+          "blocker": "The source-specific adapter and revision-history capture have not crossed the publication boundary.",
+          "data_level": "aggregate_only"
+        },
+        {
+          "source_id": "nbs-labor-force",
+          "question_answered": "Does the published aggregate labor-force series corroborate or diverge from activity and demand indicators?",
+          "status": "planned",
+          "evidence_url": "https://www.stats.gov.cn/zs/tjws/tjzb/202301/t20230101_1903672.html",
+          "blocker": "A versioned aggregate-only collector with methodology-break handling is still required.",
+          "data_level": "aggregate_only"
+        },
+        {
+          "source_id": "mot-transport",
+          "question_answered": "Do freight, port, passenger, and transport-investment aggregates corroborate the current narrow physical-activity evidence?",
+          "status": "adapter_ready",
+          "evidence_url": "https://xxgk.mot.gov.cn/jigou/zhghs/202606/t20260629_4208435.html",
+          "blocker": "Cumulative and monthly periods must be separated and revision vintages retained.",
+          "data_level": "aggregate_only"
+        },
+        {
+          "source_id": "spb-parcels",
+          "question_answered": "Do parcel volume and revenue aggregates provide a distinct logistics and household-demand check?",
+          "status": "adapter_ready",
+          "evidence_url": "https://gs.spb.gov.cn/gssyzglj/c100062/c100149/202602/7eb1f16ae95344de900a86f36baa9e73.shtml",
+          "blocker": "National and provincial series need unit, geography, and revision normalization.",
+          "data_level": "aggregate_only"
+        }
+      ],
+      "correction": {
+        "status": "none",
+        "last_corrected_at": null,
+        "note": "No correction has been issued for this open research lead.",
+        "policy_url": "https://palimpsest.info/methodology/"
+      },
+      "right_to_reply": {
+        "status": "not_applicable",
+        "applicability_reason": "This open data-coverage investigation makes no allegation about a person or institution.",
+        "parties": []
+      },
+      "safety": {
+        "data_level": "aggregate_only",
+        "person_level_data": false,
+        "allegations": [],
+        "inferred_motives": [],
+        "prohibited_interpretations": [
+          "Do not describe any metric as true GDP or a complete state-of-economy estimate.",
+          "Do not treat not collected as zero, contraction, withholding, or fabrication.",
+          "Do not infer an actor, party, intent, motive, or causal mechanism from release timing or missing coverage."
+        ]
+      }
+    }
+  ]
+}

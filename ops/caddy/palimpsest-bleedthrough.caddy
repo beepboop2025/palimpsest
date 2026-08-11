@@ -1,0 +1,18 @@
+# Import this file at Caddyfile top level, then place
+# `import palimpsest_bleedthrough` inside the api.seiche.info site block.
+# Only the two sanitized publication artifacts are reachable. Private target,
+# prefix, lock, and baseline state live elsewhere and have no edge route.
+(palimpsest_bleedthrough) {
+    @palimpsest_bleedthrough path \
+        /palimpsest/bleedthrough/bleedthrough-latest.json \
+        /palimpsest/bleedthrough/bleedthrough-history.jsonl
+    handle @palimpsest_bleedthrough {
+        header Access-Control-Allow-Origin "https://palimpsest.info"
+        header Cache-Control "no-store, no-transform"
+        header Content-Disposition "inline"
+        header X-Content-Type-Options "nosniff"
+        uri strip_prefix /palimpsest/bleedthrough
+        root * /var/lib/palimpsest/readings
+        file_server
+    }
+}

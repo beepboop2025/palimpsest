@@ -169,6 +169,21 @@ history, and pseudo-real-time validation gates all pass. The public output shows
 which gates failed. It never substitutes a confidence-sounding narrative for
 missing data.
 
+## Investigations desk
+
+The investigations desk is a review gate above the wire and measurement layers.
+Automation may open a **Research Lead**, bind claims to exact artifact hashes,
+enumerate counterevidence and publish tests that could falsify the working
+hypothesis. It may not promote its own work into a completed investigation.
+
+Each public case keeps supporting and contradicting receipts adjacent to the
+claim under test, counts independence by upstream group rather than URL, and
+lists unresolved aggregate-data collection targets. Person-level records,
+automated allegations, inferred motives and causal claims without a declared
+design are outside the public contract. A case receives `NewsArticle` metadata
+only after the structured gate and human review are complete; open work remains
+a `Report` with an unmistakable not-published notice.
+
 ## Interface: the evidence braid
 
 The signature UI is a dossier rail connecting reports, official releases, and
@@ -210,6 +225,7 @@ Public output is metadata-only and bounded:
 ```text
 readings/newswire-latest.json
 readings/china-economic-pulse-latest.json
+readings/investigations-latest.json
 news/wire/index.html
 news/wire/page/<page>/index.html
 news/wire/<event-id>/index.html
@@ -217,6 +233,10 @@ news/wire/<event-id>/story.json
 news/wire/<event-id>/revisions/<revision-id>.json
 news/archive/YYYY/MM/index.json
 news/economy/index.html
+news/investigations/index.html
+news/investigations/<case-slug>/index.html
+news/investigations/<case-slug>/case.json
+news/investigations/<case-slug>/revisions/<version-id>.json
 news/feed.json
 news/feed.xml
 ```

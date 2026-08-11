@@ -168,11 +168,11 @@ Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedth
 - **Demo generator** `scripts/bleedthrough_demo.py` — runs the real `run_round` over canned
   inputs to publish a clearly-badged illustrative reading, replaced by the first live round.
 
-### Scheduling — NOT from CI (important correction)
+### Measurement scheduling and publication relay
 
-Unlike the passive signals, this one *actively probes*, so it does **not** run from GitHub
-Actions (shared CI IPs get burned and there is no rotation there). The runner is built to
-execute from a **deployment-controlled, rotating prober outside China**, and is triple-gated:
+Unlike the passive signals, the *measurement* does **not** run from GitHub Actions (shared CI
+IPs get burned and there is no rotation there). The runner executes from the explicitly
+authorized, deployment-controlled Hetzner vantage outside China and is triple-gated:
 `BLEEDTHROUGH_LIVE` must be set, the kill switch must be released, and the target file must be
 a curated list (it refuses the shipped placeholder). If nothing injects in a round it abstains
 rather than publish a hollow board.
@@ -190,6 +190,10 @@ BLEEDTHROUGH_LIVE=1 BLEEDTHROUGH_ALLOW_BOX=1 bash ops/bleedthrough_prober.sh
 ```
 
 Either way the published reading records only a **coarse** vantage kind, never the host name.
+Per-target apparatus events follow the same boundary: the private baseline remains keyed by
+the exact curated target, while public latest/history retain only validated province/ASN scope
+and allow-listed event semantics. Target IPs are not hashed into public identifiers because
+the IPv4 space is enumerable; an unkeyed digest would be pseudonymisation, not protection.
 
 
 That runs three stages end to end:
@@ -203,13 +207,17 @@ That runs three stages end to end:
 3. **`scripts.bleedthrough_pull`** — probes the censored domain and writes the real reading.
 
 There is **no remaining human-input blocker** — the prefix list is auto-sourced from BGP. The
-only thing you supply is the prober host itself. Publish a round by committing
-`readings/bleedthrough-latest.json` (+ history); the site card renders it and the DEMO/pending
-states disappear.
+node exposes only the sanitized latest/history artifacts at two exact HTTPS paths. The hourly
+OSINT publication job runs `scripts.import_bleedthrough_snapshot` before its roll-up: that
+stdlib-only boundary pins the latest URL, disables redirects, caps the body at 256 KiB,
+validates closed schema/clock/provenance/privacy invariants, and atomically advances the
+last-good reading. Its local history is derived from the validated semantic-change tuple, so
+the website never has to accept a potentially inconsistent two-file remote snapshot.
 
 Province granularity is currently ASN-level (Beijing/Shanghai/Guangdong via province-specific
 ASNs; national backbones tagged `CN`). True per-province resolution for regional-firewall
 detection (e.g. Henan) needs IP-geolocation of the sampled prefixes — a documented next step.
 
-Until the first real round is published, the site card shows an honest **"awaiting first live
-round"** panel — no synthetic data on the live site.
+Until the first real round lands, the site card shows an honest **"awaiting first live round"**
+panel. Once it lands, BLEEDTHROUGH is a scheduled first-party publication, not a permanently
+pending experiment and never synthetic data on the live site.

@@ -32,6 +32,12 @@ bleedthrough_prober.sh (authorization -> durable flock -> coarse provenance)
   curated targets, the longitudinal baseline, and the non-overlap lock.
 - `/var/lib/palimpsest/readings` contains sanitized publication artifacts. A
   no-injection round abstains and leaves the prior reading byte-for-byte intact.
+- Caddy exposes only `bleedthrough-latest.json` and
+  `bleedthrough-history.jsonl` at the exact read-only paths under
+  `https://api.seiche.info/palimpsest/bleedthrough/`. GitHub's strict importer
+  pulls only the atomic latest file and derives its public semantic history
+  locally, avoiding a two-object read race. The node never receives a
+  repository write credential.
 - `PALIMPSEST_KILLFILE=/var/lib/palimpsest/readings/state/STOP` is checked before
   active work and before each query. Creating it stops an in-flight round at its
   next probe boundary.
@@ -55,11 +61,20 @@ service performs the authorized active measurement.
 sudo install -d -o root -g root -m 0755 /etc/palimpsest
 sudo install -d -o palimpsest -g palimpsest -m 0750 \
   /var/lib/palimpsest/bleedthrough \
-  /var/lib/palimpsest/readings \
   /var/lib/palimpsest/readings/state
+# The edge needs directory traversal but its exact-path Caddy matcher exposes
+# only the two sanitized files. The collector remains the directory owner.
+sudo install -d -o palimpsest -g caddy -m 0750 \
+  /var/lib/palimpsest/readings
 sudo install -o root -g palimpsest -m 0640 \
   /home/palimpsest/palimpsest/ops/bleedthrough/bleedthrough.env.example \
   /etc/palimpsest/bleedthrough.env
+# Write the exact reviewed revision deployed to the exported checkout. The
+# producer rejects malformed receipts and the importer rejects a missing one.
+git -C /path/to/reviewed/checkout rev-parse HEAD \
+  | sudo tee /etc/palimpsest/deployed-commit >/dev/null
+sudo chown root:root /etc/palimpsest/deployed-commit
+sudo chmod 0644 /etc/palimpsest/deployed-commit
 sudo install -o root -g root -m 0644 \
   /home/palimpsest/palimpsest/ops/systemd/palimpsest-bleedthrough.service \
   /etc/systemd/system/palimpsest-bleedthrough.service
@@ -74,6 +89,18 @@ sudo systemctl enable --now palimpsest-bleedthrough.timer
 sudo systemctl start palimpsest-bleedthrough.service
 ```
 
+Install `ops/caddy/palimpsest-bleedthrough.caddy` as a top-level Caddy import,
+then add `import palimpsest_bleedthrough` inside the `api.seiche.info` site.
+Validate before the atomic reload:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+curl --fail --silent --show-error \
+  https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json \
+  | python3 -m json.tool >/dev/null
+```
+
 Inspect the first round and schedule without exposing the environment file:
 
 ```bash
@@ -84,10 +111,10 @@ sudo -u palimpsest python3 -m json.tool \
   /var/lib/palimpsest/readings/bleedthrough-latest.json >/dev/null
 ```
 
-The service only materializes sanitized artifacts. The website's existing
-publication/sealing path remains a separate trust boundary and should ingest
-the completed `bleedthrough-latest.json`, never the private prefix, target, or
-baseline files.
+The service only materializes sanitized artifacts. The website's
+publication/sealing path remains a separate trust boundary: it imports the
+exact HTTPS latest artifact through a bounded, fail-closed parser and never receives
+the private prefix, target, lock, or baseline files.
 
 ## Immediate stop and recovery
 

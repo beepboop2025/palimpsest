@@ -26,6 +26,7 @@ from typing import Any, Mapping, Sequence
 from xml.sax.saxutils import escape as xml_escape
 
 from core import economic_pulse as economic_pulse_model
+from core import investigations as investigations_model
 from core import newsroom
 from core import newswire as newswire_model
 from scripts import site_nav
@@ -36,6 +37,7 @@ NEWS = ROOT / "news"
 READING = ROOT / "readings" / "newsroom-latest.json"
 NEWSWIRE_READING = ROOT / "readings" / "newswire-latest.json"
 ECONOMIC_READING = ROOT / "readings" / "china-economic-pulse-latest.json"
+INVESTIGATIONS_READING = ROOT / "readings" / "investigations-latest.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
 DESCRIPTION = (
@@ -160,7 +162,12 @@ def _load_extension_documents(
     *,
     newswire_path: Path = NEWSWIRE_READING,
     economic_path: Path = ECONOMIC_READING,
-) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    investigations_path: Path = INVESTIGATIONS_READING,
+) -> tuple[
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+]:
     """Load optional publication planes through their strict runtime validators.
 
     The instrument newsroom remains independently buildable for recovery and
@@ -168,7 +175,7 @@ def _load_extension_documents(
     silently falling back would make a broken intake look like an empty news day.
     """
 
-    wire = pulse = None
+    wire = pulse = investigations = None
     if newswire_path.exists():
         wire = newswire_model.strict_json_loads(
             newswire_path.read_bytes(), label=str(newswire_path)
@@ -179,7 +186,15 @@ def _load_extension_documents(
             economic_path.read_bytes(), label=str(economic_path)
         )
         economic_pulse_model.validate_economic_pulse(pulse)
-    return wire, pulse
+    if investigations_path.exists():
+        investigations = newswire_model.strict_json_loads(
+            investigations_path.read_bytes(), label=str(investigations_path)
+        )
+        investigations_model.validate_investigations(
+            investigations,
+            readings_dir=ROOT / "readings",
+        )
+    return wire, pulse, investigations
 
 
 def _revision_id(value: Mapping[str, Any], prefix: str = "revision") -> str:
@@ -676,6 +691,198 @@ def _economic_panel(pulse: Mapping[str, Any] | None) -> str:
 </section>"""
 
 
+def _case_public_url(case: Mapping[str, Any]) -> str:
+    """Return the absolute form of a validator-owned investigation route."""
+
+    path = str(case["url"])
+    if not path.startswith("/news/investigations/"):
+        raise newsroom.NewsroomError(f"invalid investigation URL: {path!r}")
+    return SITE + path
+
+
+def _investigation_href(value: object) -> str:
+    """Allow only explicit web URLs and root-relative public artifacts."""
+
+    href = str(value)
+    if href.startswith("https://"):
+        return href
+    if href.startswith("/") and not href.startswith("//"):
+        return href
+    return "#"
+
+
+def _case_publication_state(case: Mapping[str, Any]) -> str:
+    status = case["status"]
+    if status == "published":
+        return "published"
+    if status == "abstained":
+        return "abstained"
+    return "open"
+
+
+def _case_status_label(case: Mapping[str, Any]) -> tuple[str, str]:
+    """Keep an open automated lead visually distinct from reviewed reporting."""
+
+    status = case["status"]
+    if status == "published":
+        if case["correction"]["status"] == "corrected":
+            return "Investigation", "CORRECTED"
+        if case["published_at"] != case["updated_at"]:
+            return "Investigation", "UPDATED"
+        return "Investigation", "PUBLISHED"
+    return {
+        "evidence_gathering": ("Research lead", "OPEN INVESTIGATION"),
+        "review_ready": ("Research lead", "REVIEW READY"),
+        "abstained": ("Research lead", "ABSTAINED"),
+    }[status]
+
+
+def _case_language(case: Mapping[str, Any]) -> str:
+    return _text_language(case["title"])
+
+
+def _investigation_citations(case: Mapping[str, Any]) -> list[str]:
+    citations = []
+    for evidence in case["evidence"]:
+        for candidate in (evidence["source_url"], evidence["artifact_url"]):
+            href = _investigation_href(candidate)
+            if href != "#" and href not in citations:
+                citations.append(href)
+    return citations
+
+
+def _investigations_index_json_ld(
+    investigations: Mapping[str, Any],
+) -> dict[str, Any]:
+    url = f"{SITE}/news/investigations/"
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            _organization(),
+            {
+                "@type": "CollectionPage",
+                "@id": url,
+                "url": url,
+                "name": "Palimpsest Investigations",
+                "description": investigations["scope"],
+                "dateModified": investigations["generated_at"],
+                "publisher": {"@id": f"{SITE}/#organization"},
+                "mainEntity": {
+                    "@type": "ItemList",
+                    "numberOfItems": investigations["n_cases"],
+                    "itemListElement": [
+                        {
+                            "@type": "ListItem",
+                            "position": position,
+                            "url": _case_public_url(case),
+                            "name": case["title"],
+                        }
+                        for position, case in enumerate(investigations["cases"], 1)
+                    ],
+                },
+            },
+        ],
+    }
+
+
+def _investigation_case_json_ld(case: Mapping[str, Any]) -> dict[str, Any]:
+    public_url = _case_public_url(case)
+    common = {
+        "@id": public_url,
+        "url": public_url,
+        "name": case["title"],
+        "description": case["dek"],
+        "dateModified": case["updated_at"],
+        "inLanguage": _case_language(case),
+        "isAccessibleForFree": True,
+        "publisher": _organization(),
+        "about": case["testable_question"],
+        "citation": _investigation_citations(case),
+    }
+    if case["status"] == "published":
+        return {
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            **common,
+            "headline": case["title"],
+            "datePublished": case["published_at"],
+            "articleSection": "Investigations",
+            "mainEntityOfPage": {"@type": "WebPage", "@id": public_url},
+            "author": _organization(),
+            "image": [OG_IMAGE],
+        }
+    return {
+        "@context": "https://schema.org",
+        "@type": "Report",
+        **common,
+        "creativeWorkStatus": f"Research lead — {case['status'].replace('_', ' ')}",
+    }
+
+
+def _investigation_card(case: Mapping[str, Any]) -> str:
+    kind, status = _case_status_label(case)
+    state = _case_publication_state(case)
+    language = _case_language(case)
+    question_language = _text_language(case["testable_question"])
+    n_groups = len({evidence["independence_group"] for evidence in case["evidence"]})
+    return f"""<article class="nw-investigation-card" data-publication-state="{_h(state)}">
+  <p class="nw-investigation-card__status"><span class="nw-dot" aria-hidden="true"></span>{_h(kind)} · {_h(status)}</p>
+  <h3 lang="{_h(language)}"><a href="{_h(case['url'])}">{_h(case['title'])}</a></h3>
+  <p class="nw-investigation-card__question" lang="{_h(question_language)}"><strong>Question under test:</strong> {_h(case['testable_question'])}</p>
+  <p>{_h(case['status_reason'])}</p>
+  <p class="nw-investigation-card__meta">{len(case['claims'])} claim record{'s' if len(case['claims']) != 1 else ''} · {len(case['evidence'])} evidence receipt{'s' if len(case['evidence']) != 1 else ''} · {n_groups} upstream group{'s' if n_groups != 1 else ''}<br>Updated <time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></p>
+</article>"""
+
+
+def _investigation_register(
+    *,
+    title: str,
+    label: str,
+    description: str,
+    cases: Sequence[Mapping[str, Any]],
+    section_id: str,
+) -> str:
+    cards = "".join(_investigation_card(case) for case in cases)
+    if not cards:
+        cards = (
+            '<div class="nw-empty-register"><strong>No case currently carries '
+            f"this status.</strong><p>{_h(description)}</p></div>"
+        )
+    return f"""<section class="nw-investigation-register" aria-labelledby="{_h(section_id)}">
+  <header><div><p class="nw-section__label">{_h(label)}</p><h2 id="{_h(section_id)}">{_h(title)}</h2></div><p>{_h(description)}</p></header>
+  <div class="nw-investigation-grid">{cards}</div>
+</section>"""
+
+
+def _investigations_feature(
+    investigations: Mapping[str, Any] | None,
+) -> str:
+    if investigations is None:
+        return ""
+    cases = investigations["cases"]
+    published = [case for case in cases if case["status"] == "published"]
+    open_cases = [
+        case for case in cases
+        if case["status"] in {"evidence_gathering", "review_ready"}
+    ]
+    abstained = [case for case in cases if case["status"] == "abstained"]
+    featured = next(iter(published), cases[0] if cases else None)
+    featured_case = ""
+    if featured is not None:
+        kind, status = _case_status_label(featured)
+        featured_case = f"""<p class="nw-case-status" data-publication-state="{_h(_case_publication_state(featured))}">{_h(kind)} · {_h(status)}</p>
+    <h3 lang="{_h(_case_language(featured))}">{_h(featured['title'])}</h3>
+    <p><strong>Question under test:</strong> {_h(featured['testable_question'])}</p>"""
+    return f"""<section class="nw-investigations-feature" id="investigations" aria-labelledby="investigations-feature-title" data-file-code="INV / {investigations['n_cases']:03d}">
+  <div class="nw-investigations-feature__rail"><p class="nw-section__label">Investigations desk</p><strong>{investigations['n_cases']}</strong><span>{len(published)} published · {len(open_cases)} open · {len(abstained)} abstained</span></div>
+  <div><h2 id="investigations-feature-title">The evidence threshold is part of the story</h2>
+    <p>An investigation is a reviewed evidence synthesis, not a truth score. Open automated work remains a research lead and cannot borrow the authority of a published investigation.</p>
+    {featured_case}
+    <div class="nw-actions"><a class="nw-actions__primary" href="/news/investigations/">Open the investigations register</a><a href="/readings/investigations-latest.json">Structured desk</a><a href="/docs/INVESTIGATIONS.md">Publication method</a></div>
+  </div>
+</section>"""
+
+
 def _accountability_tape(wire: Mapping[str, Any]) -> str:
     coverage = wire["coverage"]
     counts = coverage["counts"]
@@ -709,6 +916,7 @@ def render_evidence_index(
     feed: Mapping[str, Any],
     wire: Mapping[str, Any],
     pulse: Mapping[str, Any] | None,
+    investigations: Mapping[str, Any] | None = None,
 ) -> str:
     events = wire["events"]
     if not events:
@@ -717,13 +925,21 @@ def render_evidence_index(
     event_navigation, event_blocks = _event_sections(wire, lead_event_id=lead["event_id"])
     coverage = wire["coverage"]
     instrument_coverage = feed["coverage"]
+    investigations_nav = (
+        '<li><a href="#investigations">Investigations</a></li>'
+        if investigations is not None else ""
+    )
+    investigations_count = (
+        f" · {investigations['n_cases']} investigation case files"
+        if investigations is not None else ""
+    )
     body = f"""<body class="ps newsroom-page newsroom-page--evidence-wire">
 {site_nav.render('/news/')}
 <main id="main" class="nw-shell">
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Wire</span></p>
-      <p class="nw-edition"><strong>Evidence edition</strong>{_h(_human_time(wire['generated_at']))}<br>{wire['n_events']} event dossiers · {feed['n_stories']} instruments</p>
+      <p class="nw-edition"><strong>Evidence edition</strong>{_h(_human_time(wire['generated_at']))}<br>{wire['n_events']} event dossiers · {feed['n_stories']} instruments{investigations_count}</p>
     </div>
     <p class="nw-masthead__dek">China intelligence that keeps reported facts, measured facts, corroboration, revisions and unknowns structurally separate.</p>
   </header>
@@ -734,15 +950,16 @@ def render_evidence_index(
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
     <span><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> live instruments</span>
   </div>
-  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
+  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
   {_event_lead(lead, wire)}
   {_economic_panel(pulse)}
+  {_investigations_feature(investigations)}
   {event_blocks}
   <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Measurement layer</p><h2>Current Palimpsest instruments</h2><p>These are mutable latest-state briefs. Event dossiers above preserve the news and revision timeline.</p></div>
   {_instrument_sections(feed)}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/investigations/">Investigations register</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -754,6 +971,296 @@ def render_evidence_index(
         page_type="website",
         modified_at=max(feed["generated_at"], wire["generated_at"]),
         json_ld=_wire_index_json_ld(feed, wire),
+    ) + "\n" + body
+
+
+def render_investigations_index(investigations: Mapping[str, Any]) -> str:
+    cases = investigations["cases"]
+    published = [case for case in cases if case["status"] == "published"]
+    open_cases = [
+        case for case in cases
+        if case["status"] in {"evidence_gathering", "review_ready"}
+    ]
+    abstained = [case for case in cases if case["status"] == "abstained"]
+    body = f"""<body class="ps newsroom-page newsroom-page--investigations">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <header class="nw-investigations-head">
+    <p class="nw-section__label">Public case register</p>
+    <h1>Investigations and research leads</h1>
+    <p class="nw-investigations-head__dek">Reviewed reporting, open evidence gathering and editorial abstention remain separate public states. Every case shows the question, receipts, counterevidence, falsifiers and unresolved collection targets.</p>
+  </header>
+  <div class="nw-meta-line"><span>Aggregate public evidence · no person-level records</span><span>Updated <time datetime="{_h(investigations['generated_at'])}">{_h(_human_time(investigations['generated_at']))}</time></span><a href="/readings/investigations-latest.json">Structured desk</a><a href="/docs/INVESTIGATIONS.md">Publication method</a></div>
+  <div class="nw-status-strip" role="status" aria-label="Investigation publication states">
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{len(published)}</strong> published</span>
+    <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{len(open_cases)}</strong> open research leads</span>
+    <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{len(abstained)}</strong> abstained</span>
+    <span><strong>{investigations['n_cases']}</strong> total case files</span>
+  </div>
+  <nav aria-label="Investigation registers"><ul class="nw-section-nav"><li><a href="#published-investigations">Published</a></li><li><a href="#open-research">Open research</a></li><li><a href="#editorial-abstentions">Abstentions</a></li></ul></nav>
+  <p class="nw-investigation-notice"><strong>Publication boundary.</strong> An investigation is a reviewed evidence synthesis, not a truth score. Each finding shows supporting evidence, disconfirming evidence, a falsification test and limits. Automated work is labelled <strong>RESEARCH LEAD</strong>, never presented as a completed investigation.</p>
+  {_investigation_register(title='Published investigations', label='Reviewed publication', description='Only cases that passed the structured publication gate and editorial review appear here.', cases=published, section_id='published-investigations')}
+  {_investigation_register(title='Open research leads', label='Evidence gathering', description='Questions and draft claims remain under test. These cases are not published findings.', cases=open_cases, section_id='open-research')}
+  {_investigation_register(title='Editorial abstentions', label='Threshold not met', description='The desk records why available evidence cannot support publication and what would be needed to revisit the question.', cases=abstained, section_id='editorial-abstentions')}
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/readings/investigations-latest.json">Structured investigations desk</a> · <a href="/docs/INVESTIGATIONS.md">Method and safety boundary</a></div></footer>
+{site_nav.FOOT}
+</body>
+</html>
+"""
+    return _head(
+        title="Palimpsest Investigations · public evidence case files",
+        description=(
+            "Reviewed investigations and open research leads with claims, "
+            "counterevidence, falsification tests, limitations and revision receipts."
+        ),
+        canonical=f"{SITE}/news/investigations/",
+        page_type="website",
+        modified_at=investigations["generated_at"],
+        json_ld=_investigations_index_json_ld(investigations),
+    ) + "\n" + body
+
+
+def _investigation_value(evidence: Mapping[str, Any]) -> str:
+    if evidence["value_type"] == "null":
+        return "No scalar value asserted"
+    value = evidence["value"]
+    if evidence["value_type"] == "boolean":
+        return "true" if value else "false"
+    if evidence["value_type"] in {"integer", "number"}:
+        return json.dumps(value, ensure_ascii=False, allow_nan=False)
+    return str(value)
+
+
+def _investigation_evidence_table(case: Mapping[str, Any]) -> str:
+    rows = []
+    for evidence in case["evidence"]:
+        source_link = (
+            f'<a href="{_h(_investigation_href(evidence["source_url"]))}">Source record</a>'
+            if evidence["source_url"]
+            else "No source URL recorded"
+        )
+        rows.append(f"""<tr>
+  <td><span class="nw-evidence-relation" data-relation="{_h(evidence['role'])}">{_h(evidence['role'])}</span><small>{_h(evidence['source_class'])}</small></td>
+  <td><strong lang="{_h(_text_language(evidence['label']))}">{_h(evidence['label'])}</strong><small><code>{_h(evidence['evidence_id'])}</code> · {_h(evidence['independence_group'])}</small></td>
+  <td><strong>{_h(_investigation_value(evidence))}</strong><small>Selector <code>{_h(evidence['selector'])}</code></small></td>
+  <td>{_h(evidence['interpretation_limit'])}</td>
+  <td>{source_link}<small><a href="{_h(_investigation_href(evidence['artifact_url']))}">Artifact</a> · <time datetime="{_h(evidence['source_timestamp'])}">{_h(_human_time(evidence['source_timestamp']))}</time> · sha {_h(evidence['artifact_sha256'][:12])} · {_h(evidence['freshness'])}</small></td>
+</tr>""")
+    if not rows:
+        return '<div class="nw-empty-register"><strong>No evidence receipt is recorded.</strong></div>'
+    return f"""<p class="nw-table-cue" id="investigation-evidence-cue">Scroll horizontally to inspect every evidence field.</p>
+<div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="case-evidence-title" aria-describedby="investigation-evidence-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this case file</caption><thead><tr><th scope="col">Relation / class</th><th scope="col">Receipt / upstream group</th><th scope="col">Recorded value</th><th scope="col">Interpretation limit</th><th scope="col">Provenance / integrity</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>"""
+
+
+def _investigation_claims(case: Mapping[str, Any]) -> str:
+    evidence_by_id = {
+        evidence["evidence_id"]: evidence for evidence in case["evidence"]
+    }
+    counter_by_id = {
+        item["counterevidence_id"]: item for item in case["counterevidence"]
+    }
+    limitation_by_id = {
+        item["limitation_id"]: item for item in case["limitations"]
+    }
+    rows = []
+    for claim in case["claims"]:
+        linked_evidence = "".join(
+            f"<li><code>{_h(evidence_id)}</code> · {_h(evidence_by_id[evidence_id]['label'])} · {_h(evidence_by_id[evidence_id]['role'])}</li>"
+            for evidence_id in claim["evidence_ids"]
+        ) or "<li>No evidence receipt is linked.</li>"
+        linked_counter = "".join(
+            f"<li><code>{_h(counter_id)}</code> · {_h(counter_by_id[counter_id]['statement'])} · {_h(counter_by_id[counter_id]['disposition'])}</li>"
+            for counter_id in claim["counterevidence_ids"]
+        ) or "<li>No counterevidence record is linked.</li>"
+        linked_limits = "".join(
+            f"<li><strong>{_h(limitation_by_id[limit_id]['statement'])}</strong> {_h(limitation_by_id[limit_id]['consequence'])}</li>"
+            for limit_id in claim["limitation_ids"]
+        ) or "<li>No claim-specific limitation is linked.</li>"
+        noun = "Finding" if case["status"] == "published" else "Claim under test"
+        rows.append(f"""<li class="nw-finding" data-confidence="{_h(claim['confidence'])}">
+  <p class="nw-finding__label">{_h(noun)} · {_h(claim['type'].replace('_', ' '))} · {_h(claim['confidence'])} · {_h(claim['publication_state'])}</p>
+  <h3 lang="{_h(_text_language(claim['statement']))}">{_h(claim['statement'])}</h3>
+  <div class="nw-case-columns"><div class="nw-case-panel"><h4>Linked evidence receipts</h4><ul>{linked_evidence}</ul></div><div class="nw-case-panel nw-case-panel--counter"><h4>Linked counterevidence</h4><ul>{linked_counter}</ul></div></div>
+  <div class="nw-finding__boundary"><strong>Claim limits.</strong><ul>{linked_limits}</ul></div>
+</li>""")
+    return "".join(rows) or (
+        '<li class="nw-empty-register"><strong>No claim has been recorded. '
+        "The case therefore makes no finding.</strong></li>"
+    )
+
+
+def _hypotheses_panel(case: Mapping[str, Any]) -> str:
+    rows = "".join(
+        f"""<li><strong lang="{_h(_text_language(item['statement']))}">{_h(item['statement'])}</strong><span>{_h(item['status'])} · <code>{_h(item['hypothesis_id'])}</code></span><p><strong>Linked falsification tests:</strong> {_h(', '.join(item['falsification_condition_ids']) or 'none linked')}</p></li>"""
+        for item in case["hypotheses"]
+    ) or "<li>No hypothesis is recorded. The case therefore cannot advance beyond evidence gathering.</li>"
+    return f"""<div class="nw-case-panel"><h3>Hypotheses under test</h3><ul class="nw-case-record-list">{rows}</ul></div>"""
+
+
+def _counterevidence_panel(case: Mapping[str, Any]) -> str:
+    rows = "".join(
+        f"""<li><strong lang="{_h(_text_language(item['statement']))}">{_h(item['statement'])}</strong><span>{_h(item['review_status'])} · {_h(item['disposition'])} · evidence {_h(', '.join(item['evidence_ids']) or 'none linked')}</span></li>"""
+        for item in case["counterevidence"]
+    ) or "<li>No counterevidence record is currently available.</li>"
+    return f"""<div class="nw-case-panel nw-case-panel--counter"><h3>Counterevidence and competing records</h3><ul class="nw-case-record-list">{rows}</ul></div>"""
+
+
+def _falsification_panel(case: Mapping[str, Any]) -> str:
+    rows = "".join(
+        f"""<li><strong lang="{_h(_text_language(item['statement']))}">{_h(item['statement'])}</strong><span>Status: {_h(item['status'])}</span><p><strong>Evidence needed:</strong> {_h(item['evidence_needed'])}</p></li>"""
+        for item in case["falsification_conditions"]
+    ) or "<li>No falsification condition is recorded; the publication gate must remain blocked.</li>"
+    return f"""<div class="nw-case-panel nw-case-panel--target"><h3>Falsification tests</h3><ul class="nw-case-record-list">{rows}</ul></div>"""
+
+
+def _publication_gate(case: Mapping[str, Any]) -> str:
+    gate = case["publication_gate"]
+    rows = "".join(
+        f"""<tr><td><strong>{_h(check['label'])}</strong><small><code>{_h(check['check_id'])}</code></small></td><td>{_h(check['minimum'])}</td><td>{_h(check['observed'])}</td><td>{'Passed' if check['passed'] else 'Not passed'}</td><td>{_h(check['detail'])}</td></tr>"""
+        for check in gate["checks"]
+    )
+    return f"""<p class="nw-table-cue" id="publication-gate-cue">Scroll horizontally to inspect every publication check.</p>
+<div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="publication-gate-title" aria-describedby="publication-gate-cue"><table class="nw-evidence-table"><caption>Structured publication-gate checks</caption><thead><tr><th scope="col">Check</th><th scope="col">Minimum</th><th scope="col">Observed</th><th scope="col">Result</th><th scope="col">Detail</th></tr></thead><tbody>{rows}</tbody></table></div>
+<p class="nw-method-note"><strong>Gate {_h(gate['status'])}.</strong> Publishable: {_h(str(gate['publishable']).lower())}. Failed checks: {_h(', '.join(gate['failed_check_ids']) or 'none')}.</p>"""
+
+
+def _collection_targets(case: Mapping[str, Any]) -> str:
+    rows = []
+    for target in case["collection_targets"]:
+        evidence_link = (
+            f'<a href="{_h(_investigation_href(target["evidence_url"]))}">Collected evidence</a>'
+            if target["evidence_url"]
+            else "No evidence URL recorded"
+        )
+        blocker = target["blocker"] or "No blocker recorded"
+        rows.append(f"""<div class="nw-case-panel nw-case-panel--target"><p class="nw-finding__label">{_h(target['status'])} · {_h(target['data_level'])}</p><h3>{_h(target['source_id'])}</h3><p>{_h(target['question_answered'])}</p><p><strong>Blocker:</strong> {_h(blocker)}</p><p>{evidence_link}</p></div>""")
+    return "".join(rows) or (
+        '<div class="nw-empty-register"><strong>No collection target is recorded.</strong></div>'
+    )
+
+
+def _methodology_steps(case: Mapping[str, Any]) -> str:
+    return "".join(
+        f"""<li><strong>{_h(step['step_id'])}</strong><span>{_h(step['description'])}</span><small>Reproducible: {_h(str(step['reproducible']).lower())}</small></li>"""
+        for step in case["methodology"]
+    ) or "<li>No methodology step is recorded.</li>"
+
+
+def _safety_lists(case: Mapping[str, Any]) -> str:
+    safety = case["safety"]
+    prohibited = "".join(
+        f"<li>{_h(value)}</li>" for value in safety["prohibited_interpretations"]
+    ) or "<li>No prohibited interpretation is recorded.</li>"
+    allegations = "".join(
+        f"<li>{_h(value)}</li>" for value in safety["allegations"]
+    ) or "<li>No allegation is made.</li>"
+    motives = "".join(
+        f"<li>{_h(value)}</li>" for value in safety["inferred_motives"]
+    ) or "<li>No motive is inferred.</li>"
+    return f"""<div class="nw-case-columns"><div class="nw-case-panel nw-case-panel--safety"><h3>Prohibited interpretations</h3><ul>{prohibited}</ul></div><div class="nw-case-panel"><h3>Allegations and motives</h3><ul>{allegations}{motives}</ul></div></div>"""
+
+
+def render_investigation_case(case: Mapping[str, Any]) -> str:
+    kind, status = _case_status_label(case)
+    state = _case_publication_state(case)
+    published = case["published_at"]
+    published_display = _human_time(published) if published else "Not published"
+    correction = case["correction"]
+    reply = case["right_to_reply"]
+    safety = case["safety"]
+    correction_time = (
+        _human_time(correction["last_corrected_at"])
+        if correction["last_corrected_at"] else "No correction timestamp"
+    )
+    reply_parties = "".join(
+        f"<li><strong>{_h(party['display_name'])}</strong> · {_h(party['party_type'])} · {_h(party['disposition'])}</li>"
+        for party in reply["parties"]
+    ) or "<li>No institution is recorded for reply.</li>"
+    limits = "".join(
+        f"<li><strong>{_h(item['statement'])}</strong><span>{_h(item['consequence'])}</span></li>"
+        for item in case["limitations"]
+    ) or "<li>No case-level limitation is recorded.</li>"
+    open_notice = ""
+    if case["status"] != "published":
+        open_notice = (
+            '<p class="nw-investigation-notice"><strong>RESEARCH LEAD · NOT A '
+            "PUBLISHED INVESTIGATION.</strong> Draft claims remain under test and "
+            "must not be read as findings.</p>"
+        )
+    body = f"""<body class="ps newsroom-page newsroom-page--investigation-case">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <article class="nw-case-file" data-publication-state="{_h(state)}">
+    <header class="nw-case-file__header">
+      <p class="nw-case-status" data-publication-state="{_h(state)}"><span class="nw-dot" aria-hidden="true"></span>{_h(kind)} · {_h(status)}</p>
+      <h1 lang="{_h(_case_language(case))}">{_h(case['title'])}</h1>
+      <p class="nw-case-file__question" lang="{_h(_text_language(case['testable_question']))}"><strong>Testable question:</strong> {_h(case['testable_question'])}</p>
+      <p>{_h(case['dek'])}</p>
+      <p><strong>Current status:</strong> {_h(case['status_reason'])}</p>
+    </header>
+    {open_notice}
+    <div class="nw-case-file__meta">
+      <div><dl><dt>Opened</dt><dd><time datetime="{_h(case['opened_at'])}">{_h(_human_time(case['opened_at']))}</time></dd></dl></div>
+      <div><dl><dt>Updated</dt><dd><time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></dd></dl></div>
+      <div><dl><dt>Published</dt><dd>{_h(published_display)}</dd></dl></div>
+      <div><dl><dt>Version receipt</dt><dd><code>{_h(case['version_id'])}</code><br><a href="revisions/{_h(case['version_id'])}.json">Immutable revision JSON</a></dd></dl></div>
+    </div>
+    <section class="nw-case-section" aria-labelledby="case-findings-title">
+      <header><p class="nw-section__label">Claims and challenges</p><h2 id="case-findings-title">What is asserted—and what could overturn it</h2><p>Claim wording is reproduced from the structured record. Confidence and review state are not probability scores.</p></header>
+      {_hypotheses_panel(case)}
+      <ol class="nw-finding-list">{_investigation_claims(case)}</ol>
+      <div class="nw-case-columns">{_counterevidence_panel(case)}{_falsification_panel(case)}</div>
+    </section>
+    <section class="nw-case-section" aria-labelledby="case-evidence-title">
+      <header><p class="nw-section__label">Evidence ledger</p><h2 id="case-evidence-title">Inspect every receipt and interpretation limit</h2></header>
+      {_investigation_evidence_table(case)}
+    </section>
+    <section class="nw-case-section" aria-labelledby="publication-gate-title">
+      <header><p class="nw-section__label">Editorial threshold</p><h2 id="publication-gate-title">Publication gate</h2><p>A blocked gate keeps this work in the research-lead register regardless of how striking an individual measurement appears.</p></header>
+      {_publication_gate(case)}
+    </section>
+    <section class="nw-case-section" aria-labelledby="limitations-title">
+      <header><p class="nw-section__label">Epistemic boundary</p><h2 id="limitations-title">Limitations and consequences</h2></header>
+      <ul class="nw-case-record-list">{limits}</ul>
+    </section>
+    <section class="nw-case-section" aria-labelledby="collection-targets-title">
+      <header><p class="nw-section__label">Open collection</p><h2 id="collection-targets-title">Evidence still needed</h2><p>Targets name aggregate public evidence to collect. They never identify people to target.</p></header>
+      <div class="nw-case-columns">{_collection_targets(case)}</div>
+    </section>
+    <section class="nw-case-section" aria-labelledby="methodology-title">
+      <header><p class="nw-section__label">Reproducibility</p><h2 id="methodology-title">Methodology steps</h2></header>
+      <ol class="nw-case-record-list">{_methodology_steps(case)}</ol>
+    </section>
+    <section class="nw-case-section" aria-labelledby="editorial-state-title">
+      <header><p class="nw-section__label">Accountability</p><h2 id="editorial-state-title">Correction, reply and safety state</h2></header>
+      <div class="nw-case-state-grid">
+        <div><dl><dt>Correction</dt><dd>{_h(correction['status'])}<br>{_h(correction['note'])}<br>{_h(correction_time)}<br><a href="{_h(_investigation_href(correction['policy_url']))}">Correction policy</a></dd></dl></div>
+        <div><dl><dt>Right to reply</dt><dd>{_h(reply['status'])}<br>{_h(reply['applicability_reason'])}<br>{len(reply['parties'])} institution{'s' if len(reply['parties']) != 1 else ''} recorded</dd></dl></div>
+        <div><dl><dt>Safety</dt><dd>{_h(safety['data_level'])}<br>Person-level data: {_h(str(safety['person_level_data']).lower())}</dd></dl></div>
+        <div><dl><dt>Current structured record</dt><dd><a href="case.json">case.json</a><br><code>{_h(case['case_id'])}</code></dd></dl></div>
+      </div>
+      <div class="nw-case-columns"><div class="nw-case-panel"><h3>Right-to-reply boundary</h3><p>No response is not evidence that a finding is true.</p></div><div class="nw-case-panel"><h3>Correction boundary</h3><p>Corrections append an immutable revision and preserve the previous public version.</p></div></div>
+      <div class="nw-case-panel"><h3>Institutional reply register</h3><ul>{reply_parties}</ul></div>
+      <p class="nw-investigation-notice"><strong>Safety boundary.</strong> Public, aggregate evidence only; private contact details, volunteer identifiers and person-level records are excluded.</p>
+      {_safety_lists(case)}
+    </section>
+  </article>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/investigations/">← Investigations register</a> · <a href="case.json">Current case JSON</a> · <a href="/readings/investigations-latest.json">Structured desk</a> · <a href="/docs/INVESTIGATIONS.md">Method</a></div></footer>
+{site_nav.FOOT}
+</body>
+</html>
+"""
+    is_published = case["status"] == "published"
+    return _head(
+        title=f"{case['title']} · Palimpsest Investigations",
+        description=case["dek"],
+        canonical=_case_public_url(case),
+        page_type="article" if is_published else "website",
+        published_at=case["published_at"] if is_published else None,
+        modified_at=case["updated_at"],
+        json_ld=_investigation_case_json_ld(case),
     ) + "\n" + body
 
 
@@ -1277,7 +1784,9 @@ def build_rss(
 
 
 def build_sitemap(
-    feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
+    feed: Mapping[str, Any],
+    wire: Mapping[str, Any] | None = None,
+    investigations: Mapping[str, Any] | None = None,
 ) -> bytes:
     urls = [
         f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>"""
@@ -1298,6 +1807,17 @@ def build_sitemap(
         urls.append(
             f"  <url><loc>{SITE}/news/economy/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>daily</changefreq></url>"
         )
+    if investigations is not None:
+        urls.append(
+            f"  <url><loc>{SITE}/news/investigations/</loc><lastmod>{xml_escape(investigations['generated_at'])}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>"
+        )
+        for case in investigations["cases"]:
+            news_markup = ""
+            if case["status"] == "published":
+                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Investigations</news:name><news:language>{xml_escape(_case_language(case))}</news:language></news:publication><news:publication_date>{xml_escape(case['published_at'])}</news:publication_date><news:title>{xml_escape(case['title'])}</news:title></news:news>"""
+            urls.append(
+                f"  <url><loc>{xml_escape(_case_public_url(case))}</loc><lastmod>{xml_escape(case['updated_at'])}</lastmod>{news_markup}</url>"
+            )
     for story in feed["stories"]:
         news_markup = ""
         if story["status"] == "live":
@@ -1318,6 +1838,7 @@ def build_outputs(
     *,
     wire: Mapping[str, Any] | None = None,
     pulse: Mapping[str, Any] | None = None,
+    investigations: Mapping[str, Any] | None = None,
 ) -> dict[Path, bytes]:
     """Return every public output without touching the filesystem."""
 
@@ -1325,17 +1846,20 @@ def build_outputs(
         newswire_model.validate_newswire_document(wire)
     if pulse is not None:
         economic_pulse_model.validate_economic_pulse(pulse)
+    if investigations is not None:
+        investigations_model.validate_investigations(investigations)
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
     outputs: dict[Path, bytes] = {
         Path("readings/newsroom-latest.json"): _pretty_json(feed),
         Path("news/index.html"): (
-            render_evidence_index(feed, wire, pulse) if wire is not None
+            render_evidence_index(feed, wire, pulse, investigations)
+            if wire is not None
             else render_index(feed)
         ).encode("utf-8"),
         Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
         Path("news/feed.xml"): build_rss(feed, wire),
-        Path("news/sitemap.xml"): build_sitemap(feed, wire),
+        Path("news/sitemap.xml"): build_sitemap(feed, wire, investigations),
     }
     if wire is not None:
         outputs[Path("news/instruments/feed.json")] = _pretty_json(build_json_feed(feed))
@@ -1376,6 +1900,19 @@ def build_outputs(
             })
     if pulse is not None:
         outputs[Path("news/economy/index.html")] = render_economic_page(pulse).encode("utf-8")
+    if investigations is not None:
+        outputs[Path("news/investigations/index.html")] = (
+            render_investigations_index(investigations).encode("utf-8")
+        )
+        for case in investigations["cases"]:
+            base = Path("news/investigations") / case["slug"]
+            outputs[base / "index.html"] = render_investigation_case(case).encode(
+                "utf-8"
+            )
+            outputs[base / "case.json"] = _pretty_json(case)
+            outputs[base / "revisions" / f"{case['version_id']}.json"] = (
+                _pretty_json(case)
+            )
     for story in feed["stories"]:
         base = Path("news") / story["slug"]
         outputs[base / "index.html"] = render_story(
@@ -1387,13 +1924,18 @@ def build_outputs(
         if wire is not None:
             revision = _revision_id(story, "storyv")
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
-    if wire is not None:
+    if wire is not None or investigations is not None:
         manifest_path = Path("news/generated-manifest.json")
         all_paths = sorted([str(path) for path in outputs] + [str(manifest_path)])
         immutable = [path for path in all_paths if "/revisions/" in path]
+        generated_times = [feed["generated_at"]]
+        if wire is not None:
+            generated_times.append(wire["generated_at"])
+        if investigations is not None:
+            generated_times.append(investigations["generated_at"])
         outputs[manifest_path] = _pretty_json({
             "schema_version": "palimpsest-news-manifest.v1",
-            "generated_at": max(feed["generated_at"], wire["generated_at"]),
+            "generated_at": max(generated_times),
             "n_paths": len(all_paths),
             "paths": all_paths,
             "immutable_revision_paths": immutable,
@@ -1454,8 +1996,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="report generated-file drift without writing")
     args = parser.parse_args(argv)
     feed = newsroom.build_news_feed()
-    wire, pulse = _load_extension_documents()
-    outputs = build_outputs(feed, wire=wire, pulse=pulse)
+    wire, pulse, investigations = _load_extension_documents()
+    outputs = build_outputs(
+        feed,
+        wire=wire,
+        pulse=pulse,
+        investigations=investigations,
+    )
     if args.check:
         drift = check(outputs)
         for item in drift:
