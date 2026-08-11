@@ -220,8 +220,11 @@ def _direction(lag: int, a_name: str, b_name: str) -> str:
     return f"{a_name} and {b_name} move the same day"
 
 
-def build_reading(readings_dir: str | Path) -> dict:
+def build_reading(
+    readings_dir: str | Path, *, now: datetime | None = None
+) -> dict:
     readings_dir = Path(readings_dir)
+    now = now or datetime.now(timezone.utc)
 
     layer_of = {s: L for L, members in LAYERS.items() for s in members}
     daily = {}
@@ -299,7 +302,7 @@ def build_reading(readings_dir: str | Path) -> dict:
                     f"relationship is established")
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": now.isoformat(),
         "headline": headline,
         "n_pairs_tested": len(pairs),
         "n_confirmed": len(confirmed),

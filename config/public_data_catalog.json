@@ -83,6 +83,24 @@
       "license": {"name": "MIT for Palimpsest output; provider terms apply", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "bleedthrough",
+      "name": "BLEEDTHROUGH DNS-injector telemetry",
+      "description": "Bounded external-vantage measurements of coarse DNS-injector response-process changes across declared Chinese network groups. Only the privacy-minimized v2 relay is public; target IPs, prefix samples, baselines, and probe-level observations remain private. A response transition is a measurement lead, not attribution of an actor or intent.",
+      "layer": "network",
+      "stage": "observation",
+      "collection_mode": "active-controlled-external-vantage",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": ["CN", "DE"],
+      "sources": ["Palimpsest Hetzner measurement node", "RIPEstat public BGP data"],
+      "latest": "readings/bleedthrough-latest.json",
+      "history": "readings/bleedthrough-history.jsonl",
+      "landing_page": "readings/bleedthrough.html",
+      "method": "docs/BLEEDTHROUGH.md",
+      "count_fields": ["vantages_probed", "vantages_injecting", "distinct_pools", "events"],
+      "license": {"name": "MIT for sanitized Palimpsest method and aggregates; upstream RIPE terms apply", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "cloudflare-radar-tcp",
       "name": "Cloudflare passive TCP telemetry",
       "description": "Country-level reset and timeout stage distributions from Cloudflare's passive network sample; useful for corroboration, never treated as causal proof of censorship.",

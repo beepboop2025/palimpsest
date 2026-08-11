@@ -137,7 +137,6 @@ def run_prequential(values: list[float]) -> dict:
 
     residuals: list[float] = []          # |one-step change| seen so far
     alpha = 1.0 - NOMINAL                # ACI-adapted miscoverage target
-    alpha_fixed = 1.0 - NOMINAL          # the non-adaptive baseline
 
     hits = misses = 0
     wis_model: list[float] = []
@@ -153,7 +152,6 @@ def run_prequential(values: list[float]) -> dict:
             # quantile outside [0,1] or collapse the band to nothing)
             a = min(max(alpha, 0.01), 0.99)
             q_ad = _quantile(pool, 1.0 - a)
-            q_fx = _quantile(pool, NOMINAL)
 
             lo, hi = point - q_ad, point + q_ad
             covered = lo <= y <= hi
@@ -212,8 +210,11 @@ def run_prequential(values: list[float]) -> dict:
     }
 
 
-def build_reading(readings_dir: str | Path) -> dict:
+def build_reading(
+    readings_dir: str | Path, *, now: datetime | None = None
+) -> dict:
     readings_dir = Path(readings_dir)
+    now = now or datetime.now(timezone.utc)
     signals, excluded = {}, {}
 
     for name, (filename, extract, _meaning) in SIGNALS.items():
@@ -245,7 +246,7 @@ def build_reading(readings_dir: str | Path) -> dict:
         )
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": now.isoformat(),
         "headline": headline,
         "n_signals_scored": len(scored),
         "n_forecasts": n_forecasts,

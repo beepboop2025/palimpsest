@@ -5,6 +5,7 @@ only its past, then scored against what actually arrived, with the misses named.
 Pure recomputation from committed histories — no network — so anyone can rerun
 this over the same files and reproduce every number, including the bad ones.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,9 +25,8 @@ HIST = os.path.join(READINGS, "forecast-ledger-history.jsonl")
 METHOD_VERSION = 1
 
 
-
-def main() -> None:
-    reading = build_reading(READINGS)
+def main(*, now=None, append_unchanged: bool = True) -> None:
+    reading = build_reading(READINGS, now=now)
 
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(reading, fh, indent=2, ensure_ascii=False)
@@ -43,13 +43,31 @@ def main() -> None:
         "nominal_coverage": reading["nominal_coverage"],
         "n_beating_baseline": reading["n_beating_baseline"],
         "per_signal": {
-            k: {"coverage": v["empirical_coverage"], "wis": v["wis"],
-                "beats_baseline": v["beats_baseline"], "n": v["n_forecasts"]}
+            k: {
+                "coverage": v["empirical_coverage"],
+                "wis": v["wis"],
+                "beats_baseline": v["beats_baseline"],
+                "n": v["n_forecasts"],
+            }
             for k, v in reading["signals"].items()
         },
     }
-    with open(HIST, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    should_append = True
+    if not append_unchanged and os.path.exists(HIST):
+        try:
+            with open(HIST, encoding="utf-8") as fh:
+                rows = [json.loads(line) for line in fh if line.strip()]
+            if rows:
+                previous = dict(rows[-1])
+                previous.pop("generated_at", None)
+                current = dict(entry)
+                current.pop("generated_at", None)
+                should_append = previous != current
+        except (OSError, json.JSONDecodeError):
+            should_append = True
+    if should_append:
+        with open(HIST, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     print(reading["headline"])
 

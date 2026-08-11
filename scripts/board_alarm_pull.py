@@ -10,6 +10,7 @@ network, so every number here is reproducible offline by rerunning this script
 over the same files. History appends on CHANGE of the board's headline state,
 not as a heartbeat, matching the other event-flag logs in this directory.
 """
+
 from __future__ import annotations
 
 import json
@@ -35,7 +36,6 @@ HIST = os.path.join(READINGS, "board-alarm-history.jsonl")
 METHOD_VERSION = 2
 
 
-
 def _state(reading: dict) -> dict:
     """The fields whose change is worth a history line."""
     return {
@@ -45,8 +45,8 @@ def _state(reading: dict) -> dict:
     }
 
 
-def main() -> None:
-    reading = build_reading(READINGS)
+def main(*, now=None) -> None:
+    reading = build_reading(READINGS, now=now)
 
     previous = None
     if os.path.exists(OUT):
@@ -61,9 +61,12 @@ def main() -> None:
         fh.write("\n")
 
     if previous is None or _state(previous) != _state(reading):
-        entry = {"generated_at": reading["generated_at"],
-        "method_version": METHOD_VERSION,
-                 "board_e_value": reading["board_e_value"], **_state(reading)}
+        entry = {
+            "generated_at": reading["generated_at"],
+            "method_version": METHOD_VERSION,
+            "board_e_value": reading["board_e_value"],
+            **_state(reading),
+        }
         with open(HIST, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
         print(f"board state change logged: {_state(reading)}")

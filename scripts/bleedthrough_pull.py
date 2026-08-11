@@ -603,8 +603,26 @@ def main() -> None:
         )
         if transports[key]["ran"]
     ]
-    public_events = [
+    projected_events = [
         public for event in events if (public := _public_event(event)) is not None
+    ]
+    # Multiple private targets can observe the same coarse apparatus transition.
+    # Publishing one identical row per target would leak panel shape and inflate
+    # apparent event volume, so the public boundary keeps one deterministic row
+    # per kind/scope/detail/severity tuple.
+    public_events = [
+        dict(zip(("kind", "vantage", "detail", "severity"), key, strict=True))
+        for key in sorted(
+            {
+                (
+                    event["kind"],
+                    event["vantage"],
+                    event["detail"],
+                    event["severity"],
+                )
+                for event in projected_events
+            }
+        )
     ]
 
     now = datetime.now(timezone.utc)

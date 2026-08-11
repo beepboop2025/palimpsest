@@ -305,6 +305,27 @@ def test_late_collection_does_not_leak_into_an_earlier_replay(tmp_path):
     assert next(row for row in pulse["inputs"] if row["input_id"] == "china-econ-ledger")["status"] == "future_excluded"
 
 
+def test_freshness_uses_the_serialized_second_precision_clock(tmp_path):
+    observation = _observation(
+        value=1.5,
+        revision=0,
+        released="2026-08-11T07:51:44.346661+00:00",
+        collected="2026-08-11T07:51:44.346661+00:00",
+    )
+    _write_ledger(tmp_path / "china-econ-observations.jsonl", [observation])
+
+    pulse = build_economic_pulse(
+        readings_dir=tmp_path,
+        registry_path=REGISTRY,
+        as_of=datetime.fromisoformat("2026-08-11T18:35:41.054570+00:00"),
+    )
+    metric = _desk(pulse, "money-credit-fx")["metrics"][0]
+
+    assert pulse["as_of"] == "2026-08-11T18:35:41Z"
+    assert metric["collected_at"] == "2026-08-11T07:51:44Z"
+    assert metric["freshness"]["age_hours"] == 10.732
+
+
 def test_reviewed_non_cfets_series_routes_to_its_explicit_desk_and_revises(tmp_path):
     common = {
         "series_id": "cn.mot.rail_freight_ytd_yoy",

@@ -1,0 +1,57 @@
+[Unit]
+Description=Build private Palimpsest investigative leads from a frozen evidence snapshot
+Documentation=file:///usr/local/libexec/palimpsest-analysis/current/README.md
+Requires=docker.service
+After=docker.service palimpsest-evidence-wire.service
+ConditionFileIsExecutable=/usr/bin/docker
+ConditionPathExists=/etc/palimpsest/deployed-commit
+ConditionPathExists=/usr/local/libexec/palimpsest-analysis/current/REVISION
+ConditionPathIsDirectory=/var/lib/palimpsest/readings
+ConditionPathIsDirectory=/var/lib/palimpsest/newswire
+
+[Service]
+Type=oneshot
+User=10001
+Group=10001
+SupplementaryGroups=docker
+WorkingDirectory=/var/lib/palimpsest-analysis
+EnvironmentFile=-/etc/palimpsest/investigative-analysis.env
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-analysis/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-analysis/current/REVISION /etc/palimpsest/deployed-commit
+ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-analysis/current/investigative_analysis_runner.py
+TimeoutStartSec=35m
+UMask=0027
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TasksMax=96
+MemoryMax=1536M
+
+# The host process only snapshots local evidence and asks Docker to run a
+# network-less container. It cannot read the mutable checkout or write live
+# readings/RSS; only the private analysis run and candidate directories mutate.
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-analysis /etc/palimpsest/deployed-commit /var/lib/palimpsest/readings /var/lib/palimpsest/newswire
+ReadWritePaths=/var/lib/palimpsest-analysis/runs /var/lib/palimpsest-analysis/private
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX

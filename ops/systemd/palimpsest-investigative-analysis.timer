@@ -1,0 +1,14 @@
+[Unit]
+Description=Re-evaluate private Palimpsest investigative leads every thirty minutes
+
+[Timer]
+OnCalendar=*:15,45
+RandomizedDelaySec=2m
+FixedRandomDelay=true
+AccuracySec=30s
+Persistent=true
+Unit=palimpsest-investigative-analysis.service
+
+[Install]
+WantedBy=timers.target
+

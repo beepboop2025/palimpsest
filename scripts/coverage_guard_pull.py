@@ -9,6 +9,7 @@ this observatory would say something false.
 Pure recomputation from committed histories — no network, fully reproducible
 offline. History appends on CHANGE of the per-signal verdict set.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,13 +29,12 @@ HIST = os.path.join(READINGS, "coverage-guard-history.jsonl")
 METHOD_VERSION = 1
 
 
-
 def _verdicts(reading: dict) -> dict:
     return {k: v.get("verdict") for k, v in reading.get("signals", {}).items()}
 
 
-def main() -> None:
-    reading = build_reading(READINGS)
+def main(*, now=None) -> None:
+    reading = build_reading(READINGS, now=now)
 
     previous = None
     if os.path.exists(OUT):
@@ -49,10 +49,12 @@ def main() -> None:
         fh.write("\n")
 
     if previous is None or _verdicts(previous) != _verdicts(reading):
-        entry = {"generated_at": reading["generated_at"],
-        "method_version": METHOD_VERSION,
-                 "verdicts": _verdicts(reading),
-                 "confounded": reading["confounded"]}
+        entry = {
+            "generated_at": reading["generated_at"],
+            "method_version": METHOD_VERSION,
+            "verdicts": _verdicts(reading),
+            "confounded": reading["confounded"],
+        }
         with open(HIST, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
         print(f"verdict change logged: {entry['verdicts']}")

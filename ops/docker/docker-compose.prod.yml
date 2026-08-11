@@ -46,6 +46,9 @@ x-app: &app
       # Flip to "true" only if you enable the velocity leg (see the velocity
       # worker below). The lean default keeps the image ~400MB smaller.
       WITH_BROWSER: ${WITH_BROWSER:-false}
+      # The private analysis runner refuses to claim a Git revision unless the
+      # exact value is baked into the OCI image it executes.
+      PALIMPSEST_REVISION: ${PALIMPSEST_IMAGE_REVISION:-unversioned}
   image: palimpsest/app:local
   restart: unless-stopped
   stop_grace_period: 45s

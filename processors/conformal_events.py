@@ -44,7 +44,6 @@ DESIGN (matches the rest of Palimpsest):
 from __future__ import annotations
 
 import json
-import math
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -458,12 +457,14 @@ def _load_series_dated(readings_dir: Path, filename: str, extract) -> list[tuple
     return out
 
 
-def build_reading(readings_dir: str | Path) -> dict:
+def build_reading(
+    readings_dir: str | Path, *, now: datetime | None = None
+) -> dict:
     """One reading across every registered signal — the observatory's
     calibrated 'is anything happening?' answer."""
     readings_dir = Path(readings_dir)
     signals = {}
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)
     for name, (filename, extract, meaning) in SIGNALS.items():
         dated = _load_series_dated(readings_dir, filename, extract)
         series = [v for v, _ in dated]
@@ -524,7 +525,7 @@ def build_reading(readings_dir: str | Path) -> dict:
     n_open = len(signals) - len(closed)
     reporting = n_open - len(stale) - len(dark)
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": now.isoformat(),
         "method": (
             "conformal e-detector per signal: one-sided conservative p-value "
             f"(rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over "

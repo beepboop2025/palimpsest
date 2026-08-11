@@ -511,7 +511,16 @@ def _metric(
         _fail(f"metric {metric_id} has invalid status {status!r}")
     if revision_status not in REVISION_STATUSES:
         _fail(f"metric {metric_id} has invalid revision status {revision_status!r}")
-    age_hours = max(0.0, (as_of - collected_at).total_seconds() / 3600.0)
+    # Freshness must be computed from the same second-precision timestamps
+    # serialized below; sub-second clocks can otherwise round to a different
+    # millihour when the document validates itself.
+    serialized_collected_at = collected_at.astimezone(timezone.utc).replace(
+        microsecond=0
+    )
+    serialized_as_of = as_of.astimezone(timezone.utc).replace(microsecond=0)
+    age_hours = max(
+        0.0, (serialized_as_of - serialized_collected_at).total_seconds() / 3600.0
+    )
     freshness_status = "current" if age_hours <= freshness_budget_hours else "stale"
     return {
         "metric_id": metric_id,

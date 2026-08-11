@@ -3,6 +3,7 @@
 These tests are offline.  They verify the unit's least-privilege boundary, exercise
 the shell with fake curl/flock/python executables, and fault-inject atomic writers.
 """
+
 from __future__ import annotations
 
 import os
@@ -22,6 +23,7 @@ SERVICE = ROOT / "ops/systemd/palimpsest-bleedthrough.service"
 TIMER = ROOT / "ops/systemd/palimpsest-bleedthrough.timer"
 ENV_EXAMPLE = ROOT / "ops/bleedthrough/bleedthrough.env.example"
 PROBER = ROOT / "ops/bleedthrough_prober.sh"
+RUNBOOK = ROOT / "ops/bleedthrough/README.md"
 
 
 def test_systemd_service_is_fixed_user_least_privilege_and_state_separated():
@@ -38,8 +40,7 @@ def test_systemd_service_is_fixed_user_least_privilege_and_state_separated():
     assert "ProtectHome=read-only" in unit
     assert "ReadOnlyPaths=/home/palimpsest/palimpsest" in unit
     assert (
-        "ReadWritePaths=/var/lib/palimpsest/bleedthrough "
-        "/var/lib/palimpsest/readings"
+        "ReadWritePaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings"
     ) in unit
     assert "NoNewPrivileges=true" in unit
     assert "CapabilityBoundingSet=\n" in unit
@@ -74,6 +75,14 @@ def test_environment_records_fixed_box_consent_kill_switch_and_durable_paths():
         assert f"{variable}=/var/lib/palimpsest/" in env
 
 
+def test_install_preserves_access_for_the_distinct_container_identity():
+    runbook = RUNBOOK.read_text(encoding="utf-8")
+
+    assert "setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings" in runbook
+    assert "-exec setfacl -m d:u:10001:rwx {} +" in runbook
+    assert "world-write" in runbook
+
+
 def _executable(path: Path, body: str) -> None:
     path.write_text(body, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
@@ -91,8 +100,8 @@ def test_prober_routes_all_mutable_paths_outside_checkout(tmp_path):
         fake_bin / "python3",
         "#!/bin/sh\n"
         "printf '%s|%s|%s|%s|%s\\n' \"$BLEEDTHROUGH_PREFIXES\" "
-        "\"$BLEEDTHROUGH_TARGETS\" \"$BLEEDTHROUGH_OUT\" "
-        "\"$BLEEDTHROUGH_HIST\" \"$BLEEDTHROUGH_STORE\" >> \"$CALL_LOG\"\n",
+        '"$BLEEDTHROUGH_TARGETS" "$BLEEDTHROUGH_OUT" '
+        '"$BLEEDTHROUGH_HIST" "$BLEEDTHROUGH_STORE" >> "$CALL_LOG"\n',
     )
     env = {
         **os.environ,
@@ -105,8 +114,13 @@ def test_prober_routes_all_mutable_paths_outside_checkout(tmp_path):
     }
 
     result = subprocess.run(
-        ["bash", str(PROBER)], env=env, cwd=ROOT, text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+        ["bash", str(PROBER)],
+        env=env,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
     )
 
     assert result.returncode == 0, result.stdout
@@ -132,8 +146,13 @@ def test_known_hetzner_box_still_requires_separate_allow_flag(tmp_path):
     }
 
     result = subprocess.run(
-        ["bash", str(PROBER)], env=env, cwd=ROOT, text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+        ["bash", str(PROBER)],
+        env=env,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
     )
 
     assert result.returncode == 2
@@ -141,7 +160,9 @@ def test_known_hetzner_box_still_requires_separate_allow_flag(tmp_path):
 
 
 @pytest.mark.parametrize("module", [fetch_prefixes, curate])
-def test_private_atomic_json_replace_failure_preserves_last_good(module, tmp_path, monkeypatch):
+def test_private_atomic_json_replace_failure_preserves_last_good(
+    module, tmp_path, monkeypatch
+):
     destination = tmp_path / "state.json"
     destination.write_text('{"last":"good"}\n', encoding="utf-8")
 

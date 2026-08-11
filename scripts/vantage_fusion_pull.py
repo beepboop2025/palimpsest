@@ -7,6 +7,7 @@ can reproduce the fused number offline. The reading is rewritten every cycle and
 carries last_changed_at; history appends only when the fused index or confidence
 tier changes materially, not every cycle.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,6 @@ HIST = os.path.join(READINGS, "vantage-fusion-history.jsonl")
 METHOD_VERSION = 1
 
 
-
 def _load(name: str) -> dict:
     path = os.path.join(READINGS, name)
     if not os.path.exists(path):
@@ -38,16 +38,19 @@ def _load(name: str) -> dict:
         return {}
 
 
-def main() -> None:
-    reading = fuse({
+def main(*, now=None) -> dict:
+    inputs = {
         "ooni": _load("ooni-gfw-latest.json"),
         "censored_planet": _load("censored-planet-latest.json"),
         "net4people": _load("net4people-latest.json"),
-    })
+    }
+    # Preserve the original call contract for test doubles and downstream
+    # wrappers; only the frozen cascade supplies an explicit decision clock.
+    reading = fuse(inputs) if now is None else fuse(inputs, now=now)
     reading["method_version"] = METHOD_VERSION
     if not reading.get("ok"):
         print("fusion abstained:", reading.get("reason"))
-        return
+        return reading
 
     previous = _load("vantage-fusion-latest.json")
 
@@ -70,26 +73,33 @@ def main() -> None:
     # last moved. Nothing about the abstain paths changes: a round that never
     # got a fused number still returns above without writing anything.
     reading["last_changed_at"] = (
-        reading["generated_at"] if (moved or not previous)
-        else (previous.get("last_changed_at") or previous.get("generated_at")))
+        reading["generated_at"]
+        if (moved or not previous)
+        else (previous.get("last_changed_at") or previous.get("generated_at"))
+    )
 
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(reading, fh, indent=2, ensure_ascii=False)
         fh.write("\n")
 
     if moved:
-        entry = {"generated_at": reading["generated_at"],
-                 "fused_index": reading["fused_index"],
-                 "confidence": reading["confidence"],
-                 "agreement": reading["agreement"],
-                 "vantages": reading["vantages"]}
+        entry = {
+            "generated_at": reading["generated_at"],
+            "fused_index": reading["fused_index"],
+            "confidence": reading["confidence"],
+            "agreement": reading["agreement"],
+            "vantages": reading["vantages"],
+        }
         with open(HIST, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
         print("logged:", entry["fused_index"], entry["confidence"])
     else:
-        print(f"no material change since {reading['last_changed_at']} — "
-              f"republished with this round's observation time, history untouched")
+        print(
+            f"no material change since {reading['last_changed_at']} — "
+            f"republished with this round's observation time, history untouched"
+        )
     print(reading["verdict"])
+    return reading
 
 
 if __name__ == "__main__":

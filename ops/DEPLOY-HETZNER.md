@@ -14,6 +14,8 @@ Files this runbook uses (all committed):
 - `ops/docker/docker-compose.prod.yml` — the stack
 - `ops/docker/.env.example` — env template (copy to `.env` on the box)
 - `ops/docker/Dockerfile` + `ops/docker/docker-compose.yml` — the existing GFI sandbox
+- `ops/investigative-analysis/` + `ops/systemd/palimpsest-investigative-analysis.*`
+  — private, review-gated analytical cascade and its atomic installer
 - `ops/backup/` + `ops/systemd/palimpsest-backup.*` — validated backup job and timer
 - `docs/HETZNER-NODE-ARCHITECTURE.md` — data flow, health semantics, and tradeoffs
 
@@ -160,6 +162,23 @@ chmod 600 ops/docker/.env
 nano ops/docker/.env         # set POSTGRES_PASSWORD, DATABASE_URL, OPENROUTER_API_KEY
 ```
 
+The canonical node keeps this as a real Git checkout at the stable path
+`/home/palimpsest/palimpsest`. A directory populated by `rsync`, SCP, or an
+archive without its `.git` metadata is not a supported production release: the
+Compose wrapper and analytical bundle installer must independently prove the
+checked-out commit and clean status. Keep the chmod-0600 `ops/docker/.env`
+ignored and local; keep all mutable readings/data on the explicit `/var/lib`
+binds below.
+
+For a one-time migration from a legacy rsynced tree, create a fresh sibling
+HTTPS clone, check out the exact pushed `main` commit, copy only the ignored
+`ops/docker/.env`, and prove `git status --porcelain=v1 --untracked-files=all`
+is empty. Stop the host timers that use the stable path, rename the legacy tree
+to a timestamped backup, rename the clean clone to
+`/home/palimpsest/palimpsest`, and then follow the ordered deployment in Step 9.
+Do not delete the backup until the new stack and one analytical run verify; the
+external state paths mean this code-tree swap does not move collected data.
+
 The application image runs as unprivileged UID/GID `10001`. Keep its mutable
 state outside the git checkout so collection never makes `git pull` dirty or
 mixes private node history with public workflow output. Seed the initial public
@@ -170,6 +189,19 @@ sudo install -d -o 10001 -g 10001 -m 0755 \
   /var/lib/palimpsest/readings/state /var/lib/palimpsest/data
 sudo rsync -a --chown=10001:10001 readings/ /var/lib/palimpsest/readings/
 ```
+
+If the host BLEEDTHROUGH service also owns this tree as UID 1001, keep that
+ownership and grant the container identity a named/default ACL after any
+`install -d -m` command (which can otherwise narrow the ACL mask):
+
+```bash
+sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo find /var/lib/palimpsest/readings -type d \
+  -exec setfacl -m d:u:10001:rwx {} +
+```
+
+Verify from `worker-collectors`, `worker-warehouse`, and `beat` that the directory
+is readable/traversable and `readings/state` is writable before enabling timers.
 
 The production `.env.example` already points
 `PALIMPSEST_READINGS_HOST_PATH` and `PALIMPSEST_DATA_HOST_PATH` at those
@@ -425,6 +457,61 @@ forwarding (`ssh -L 8000:127.0.0.1:8000 deploy@HOST`) for remote operator access
 task sends a bounded, sanitized summary when health enters a non-healthy state—not
 raw observations and not a heartbeat on every run.
 
+### 5d. Enable private investigative lead analysis
+
+This twice-hourly lane performs no new network collection. It freezes the latest
+readings and RSS evidence, runs the analytical cascade in the exact production
+image with Docker networking disabled, and writes candidate questions only to
+`/var/lib/palimpsest-analysis/private`. It never edits the public investigation
+configuration or publishes to the website.
+
+Prepare its fixed storage roots and read-only source ACLs:
+
+```bash
+sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
+sudo install -d -o 10001 -g 10001 -m 0700 \
+  /var/lib/palimpsest-analysis/runs \
+  /var/lib/palimpsest-analysis/private
+sudo setfacl -R -m u:10001:rX \
+  /var/lib/palimpsest/readings /var/lib/palimpsest/newswire
+sudo find /var/lib/palimpsest/readings /var/lib/palimpsest/newswire -type d \
+  -exec setfacl -m d:u:10001:rX {} +
+```
+
+The application image must already have been built from the clean checked-out
+commit. Install and certify that exact deploy, then start one immediate check:
+
+```bash
+sudo systemctl stop palimpsest-investigative-analysis.timer 2>/dev/null || true
+sudo systemctl stop palimpsest-investigative-analysis.service 2>/dev/null || true
+sudo bash ops/investigative-analysis/install-host-bundle.sh
+sudo systemctl enable --now palimpsest-investigative-analysis.timer
+sudo systemctl start palimpsest-investigative-analysis.service
+journalctl -u palimpsest-investigative-analysis.service -n 80 --no-pager
+```
+
+The installer fails closed on Git errors, modified or untracked files, a
+mismatched/malformed OCI image revision, an active analysis unit, or a bundle
+integrity mismatch. It installs a root-owned bundle below
+`/usr/local/libexec/palimpsest-analysis/<commit>/`; systemd compares that
+bundle's `REVISION` with `/etc/palimpsest/deployed-commit` before every run.
+It also checks the bundle's SHA-256 manifest. The receipt is atomically replaced
+only after the bundle, image, and unit have all passed verification.
+
+The analysis snapshot is bounded to 256 files and 512 MiB, requires 10 GiB free,
+and retains 48 complete snapshots (about one day at twice-hourly cadence). These
+limits bound the high-frequency re-evaluation; source history remains in the
+separate acquisition stores.
+The append-only candidate-version ledger fails closed at 256 MiB; alert and
+perform an editorial retention review at 192 MiB (75%) rather than allowing an
+automatic truncation to erase its audit history.
+
+The service needs Docker's Unix socket through `SupplementaryGroups=docker`.
+Docker-group access is root-equivalent, so the unit's UID, read-only paths, and
+capability restrictions are defense in depth rather than containment from the
+daemon. Only the root-owned bundle is executed; the mutable Git checkout is not
+visible to the service.
+
 ---
 
 ## 6. (Optional) Enable the CensorWatch velocity leg
@@ -594,7 +681,6 @@ $C logs -f worker        # follow a service
 $C restart beat worker   # restart the scheduler + index worker
 $C --profile collectors restart beat worker worker-collectors
 $C --profile warehouse restart beat worker-warehouse
-$C up -d --build            # deploy every COMPOSE_PROFILES service after git pull
 $C down                  # stop everything (volumes persist)
 
 # Emergency stop all fetching without tearing anything down:
@@ -605,9 +691,32 @@ $C exec worker rm /app/readings/state/STOP
 
 Set `COMPOSE_PROFILES` in `.env` to the installed optional topology (for
 example `collectors,warehouse,api`, adding `velocity` only when intentionally
-enabled). Update flow is then `git pull` followed by `ops/docker/prod-compose
-up -d --build`; no profiled worker is accidentally left on an old image.
-Postgres/Redis volumes and the external `/var/lib/palimpsest` state survive.
+enabled). Deploy with this ordered sequence so the image, root-owned analytical
+bundle, and atomic commit receipt cannot describe different revisions:
+
+```bash
+cd /home/palimpsest/palimpsest
+test -e .git
+sudo systemctl stop palimpsest-investigative-analysis.timer
+# A running oneshot is allowed to finish; never replace its bundle underneath it.
+while systemctl is-active --quiet palimpsest-investigative-analysis.service; do
+  sleep 2
+done
+git fetch --prune origin
+git pull --ff-only
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+ops/docker/prod-compose up -d --build
+sudo bash ops/investigative-analysis/install-host-bundle.sh
+sudo systemctl enable --now palimpsest-investigative-analysis.timer
+sudo systemctl start palimpsest-investigative-analysis.service
+```
+
+Both the Compose wrapper and installer fail closed on Git-status errors and a
+dirty checkout. The installer writes `/etc/palimpsest/deployed-commit` only as
+its final commit point. If it fails, keep the timer stopped and investigate;
+do not hand-edit the receipt. No profiled worker is accidentally left on an old
+image. PostgreSQL/Redis volumes and the external `/var/lib/palimpsest` state
+survive.
 
 ---
 

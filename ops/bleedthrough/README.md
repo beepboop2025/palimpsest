@@ -66,6 +66,12 @@ sudo install -d -o palimpsest -g palimpsest -m 0750 \
 # only the two sanitized files. The collector remains the directory owner.
 sudo install -d -o palimpsest -g caddy -m 0750 \
   /var/lib/palimpsest/readings
+# The Docker acquisition fleet runs as the distinct, unprivileged identity
+# 10001:10001. Preserve the BLEEDTHROUGH owner and Caddy group, while granting
+# that exact runtime identity access to existing and newly created readings.
+sudo setfacl -R -m u:10001:rwX /var/lib/palimpsest/readings
+sudo find /var/lib/palimpsest/readings -type d \
+  -exec setfacl -m d:u:10001:rwx {} +
 sudo install -o root -g palimpsest -m 0640 \
   /home/palimpsest/palimpsest/ops/bleedthrough/bleedthrough.env.example \
   /etc/palimpsest/bleedthrough.env
@@ -88,6 +94,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now palimpsest-bleedthrough.timer
 sudo systemctl start palimpsest-bleedthrough.service
 ```
+
+Do not replace this named ACL with world-write permissions. `KillSwitch` is
+fail-closed: if UID 10001 cannot traverse `readings/state` to check `STOP`, every
+container collector correctly records `halted` even though its process remains
+healthy.
 
 Install `ops/caddy/palimpsest-bleedthrough.caddy` as a top-level Caddy import,
 then add `import palimpsest_bleedthrough` inside the `api.seiche.info` site.

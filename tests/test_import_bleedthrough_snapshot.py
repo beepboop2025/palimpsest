@@ -351,6 +351,23 @@ def test_coarse_event_and_allowlisted_semantics_are_accepted(tmp_path):
     assert imported["events"] == document["events"]
 
 
+def test_repeated_target_events_collapse_at_the_public_boundary(tmp_path):
+    document = _snapshot()
+    event = {
+        "kind": "pool_rotation",
+        "vantage": "CN-HA/AS4837",
+        "detail": "forged-IP pool rotated",
+        "severity": "low",
+    }
+    document["events"] = [dict(event) for _ in range(210)]
+
+    imported, _output, history_path = _import(tmp_path, document)
+
+    assert imported["events"] == [event]
+    history = [json.loads(line) for line in history_path.read_text().splitlines()]
+    assert history[-1]["n_events"] == 1
+
+
 def test_sampled_pools_cannot_publish_a_regional_claim(tmp_path):
     document = _snapshot()
     document["events"] = [

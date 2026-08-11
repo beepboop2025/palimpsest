@@ -4,6 +4,7 @@ Does one layer of the censorship apparatus move before another? Every incumbent
 observatory sits inside a single layer, so the question has no owner despite all
 the inputs being free. Pure recomputation from committed histories, no network.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,15 +24,19 @@ HIST = os.path.join(READINGS, "cross-layer-history.jsonl")
 METHOD_VERSION = 1
 
 
-
 def _state(reading: dict) -> dict:
-    return {"n_pairs_tested": reading.get("n_pairs_tested"),
-            "confirmed": sorted("+".join(p["pair"]) for p in reading.get("pairs", [])
-                                if p.get("survives_multiplicity"))}
+    return {
+        "n_pairs_tested": reading.get("n_pairs_tested"),
+        "confirmed": sorted(
+            "+".join(p["pair"])
+            for p in reading.get("pairs", [])
+            if p.get("survives_multiplicity")
+        ),
+    }
 
 
-def main() -> None:
-    reading = build_reading(READINGS)
+def main(*, now=None) -> None:
+    reading = build_reading(READINGS, now=now)
     reading["method_version"] = METHOD_VERSION
 
     previous = None

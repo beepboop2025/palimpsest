@@ -73,7 +73,6 @@ from processors.conformal_events import (
     CLOSED_SIGNALS,
     MAX_AGE_HOURS,
     SIGNALS,
-    WATCH_A,
     _load_series_dated,
     analyze_series,
     merge_e,
@@ -216,12 +215,17 @@ def _readings_to_days(signal: str, readings: float) -> float | None:
     return round(readings / rate, 1) if rate else None
 
 
-def build_reading(readings_dir: str | Path, *, alpha: float = FDR_ALPHA) -> dict:
+def build_reading(
+    readings_dir: str | Path,
+    *,
+    alpha: float = FDR_ALPHA,
+    now: datetime | None = None,
+) -> dict:
     """The board-level answer, with multiplicity paid for."""
     readings_dir = Path(readings_dir)
     per_signal, evalues = {}, {}
     recent_alarms: set[str] = set()
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)
 
     for name, (filename, extract, meaning) in SIGNALS.items():
         dated = _load_series_dated(readings_dir, filename, extract)
@@ -311,7 +315,7 @@ def build_reading(readings_dir: str | Path, *, alpha: float = FDR_ALPHA) -> dict
     recently_fired = sorted(recent_alarms)
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": now.isoformat(),
         "board_e_value": round(board_e, 3) if board_e is not None else None,
         "board_guarantee": (
             "the board e-value is the arithmetic mean of the per-signal e-processes "

@@ -226,7 +226,7 @@ def fuse(readings: dict, *, now: datetime | None = None) -> dict:
 
     return {
         "ok": True,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": now.isoformat(),
         "fused_index": round(fused, 1),
         "interval": interval,
         "interval_width_pp": interval_width,

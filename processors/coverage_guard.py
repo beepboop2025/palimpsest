@@ -245,8 +245,11 @@ def _load_pairs(readings_dir: Path, filename: str, m_ex, d_ex):
     return metric, denom
 
 
-def build_reading(readings_dir: str | Path) -> dict:
+def build_reading(
+    readings_dir: str | Path, *, now: datetime | None = None
+) -> dict:
     readings_dir = Path(readings_dir)
+    now = now or datetime.now(timezone.utc)
     signals, confounded = {}, []
     for name, (filename, m_ex, d_ex, what) in GUARDED.items():
         metric, denom = _load_pairs(readings_dir, filename, m_ex, d_ex)
@@ -257,7 +260,7 @@ def build_reading(readings_dir: str | Path) -> dict:
             confounded.append(name)
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": now.isoformat(),
         "signals": signals,
         "confounded": sorted(confounded),
         "headline": (

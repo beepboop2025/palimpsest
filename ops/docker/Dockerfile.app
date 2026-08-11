@@ -12,6 +12,9 @@
 
 FROM python:3.12-slim AS base
 
+ARG PALIMPSEST_REVISION=unversioned
+LABEL org.opencontainers.image.revision=$PALIMPSEST_REVISION
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \

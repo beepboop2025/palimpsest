@@ -20,7 +20,12 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     assert len(ids) == len(set(ids))
     assert built["summary"]["datasets"] == len(ids)
     assert set(built["summary"]["layers"]) >= {
-        "network", "content", "platform", "state", "model", "cross-layer"
+        "network",
+        "content",
+        "platform",
+        "state",
+        "model",
+        "cross-layer",
     }
     assert jsonld["@type"] == "DataCatalog"
     assert len(jsonld["dataset"]) == len(ids)
@@ -80,7 +85,9 @@ def test_newsroom_catalog_describes_a_deterministic_hourly_publication():
     entry = next(item for item in source["datasets"] if item["id"] == "newsroom")
 
     assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
-        "cross-layer", "publication", "deterministic"
+        "cross-layer",
+        "publication",
+        "deterministic",
     )
     assert entry["cadence"] == "PT1H"
     assert entry["status"] == "live"
@@ -97,7 +104,9 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
 
     wire = by_id["newswire"]
     assert (wire["stage"], wire["collection_mode"], wire["cadence"]) == (
-        "observation", "passive-metadata", "PT1H"
+        "observation",
+        "passive-metadata",
+        "PT1H",
     )
     assert wire["latest"] == "readings/newswire-latest.json"
     assert wire["history"] == "readings/newswire-versions.jsonl"
@@ -107,7 +116,9 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
 
     pulse = by_id["china-economic-pulse"]
     assert (pulse["layer"], pulse["stage"], pulse["collection_mode"]) == (
-        "economy", "synthesis", "deterministic-revision-safe"
+        "economy",
+        "synthesis",
+        "deterministic-revision-safe",
     )
     assert pulse["latest"] == "readings/china-economic-pulse-latest.json"
     assert pulse["landing_page"] == "news/economy/"
@@ -115,12 +126,34 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
     assert "coverage gates" in pulse["description"]
 
 
+def test_bleedthrough_catalog_exposes_only_the_sanitized_relay() -> None:
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(item for item in source["datasets"] if item["id"] == "bleedthrough")
+
+    assert entry["collection_mode"] == "active-controlled-external-vantage"
+    assert entry["latest"] == "readings/bleedthrough-latest.json"
+    assert entry["history"] == "readings/bleedthrough-history.jsonl"
+    assert entry["method"] == "docs/BLEEDTHROUGH.md"
+    assert entry["count_fields"] == [
+        "vantages_probed",
+        "vantages_injecting",
+        "distinct_pools",
+        "events",
+    ]
+    description = entry["description"].lower()
+    assert "privacy-minimized" in description
+    assert "remain private" in description
+    assert "attribution" in description
+
+
 def test_investigations_catalog_exposes_review_gates_and_public_contract():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     entry = next(item for item in source["datasets"] if item["id"] == "investigations")
 
     assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
-        "cross-layer", "publication", "deterministic-review-gated"
+        "cross-layer",
+        "publication",
+        "deterministic-review-gated",
     )
     assert entry["latest"] == "readings/investigations-latest.json"
     assert entry["landing_page"] == "news/investigations/"
@@ -157,7 +190,9 @@ def test_duration_parser_matches_catalog_subset():
 
 def test_count_extraction_is_explicit_and_does_not_walk_evidence_payloads():
     doc = {"country": {"total_tested": 108818}, "events": [1, 2, 3], "secret": 99}
-    assert catalog._bounded_count(catalog._value_at(doc, "country.total_tested")) == 108818
+    assert (
+        catalog._bounded_count(catalog._value_at(doc, "country.total_tested")) == 108818
+    )
     assert catalog._bounded_count(catalog._value_at(doc, "events")) == 3
     assert catalog._value_at(doc, "missing.value") is None
 
@@ -179,10 +214,13 @@ def test_checked_in_catalog_views_do_not_drift_from_source_and_readings():
     built, jsonld, package = catalog.build_catalog(now=built_at)
 
     assert committed == built
-    assert json.loads(
-        (ROOT / "readings" / "catalog.jsonld").read_text(encoding="utf-8")
-    ) == jsonld
-    assert json.loads((ROOT / "datapackage.json").read_text(encoding="utf-8")) == package
+    assert (
+        json.loads((ROOT / "readings" / "catalog.jsonld").read_text(encoding="utf-8"))
+        == jsonld
+    )
+    assert (
+        json.loads((ROOT / "datapackage.json").read_text(encoding="utf-8")) == package
+    )
 
 
 def test_jsonld_advertises_only_downloads_that_exist():
@@ -218,5 +256,10 @@ def test_hourly_rollup_rebuilds_and_commits_catalog_views():
         "datapackage.json",
     }
     for output in committed_lines:
-        assert sum(line.strip().rstrip("\\").strip() == output
-                   for line in workflow.splitlines()) == 3
+        assert (
+            sum(
+                line.strip().rstrip("\\").strip() == output
+                for line in workflow.splitlines()
+            )
+            == 3
+        )

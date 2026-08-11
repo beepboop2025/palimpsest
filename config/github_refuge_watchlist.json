@@ -2,7 +2,7 @@
   "_meta": {
     "purpose": "Human-curated watchlist of GitHub 'refuge' repos (mirrors of censored material) plus GitHub's own transparency repos, for collectors/github_refuge.py. Evidence-bound, like zh_censorship_gazetteer.json.",
     "note": "PUBLIC events / public sources ONLY. We watch the PRESSURE metadata (takedown notices, status changes, fork/star bursts), never the censored content itself and never personal data about a maintainer. Human-authored; never delegated to a model.",
-    "safety": "INERT BY DEFAULT. `active_watchlist` is intentionally EMPTY so the collector makes zero network calls out of the box. A deployer copies entries from `documented_repos` into `active_watchlist` to activate, and injects a read-only fetch + governance (kill switch + rate ceiling under 60 req/hr/IP).",
+    "safety": "FIXED PUBLIC BASELINE. `documented_repos` and the two transparency repositories are always watched; `active_watchlist` only adds reviewed entries. The runner uses public pressure metadata, a kill switch, and a token-bucket ceiling below GitHub's unauthenticated allowance. Empty `active_watchlist` therefore means no operator additions, not zero requests.",
     "schema": "full_name, terms(evidence bindings -> DDTI terms), evidence(event+date+source), pressure_history",
     "transparency_repos": [
       {"full_name": "github/dmca", "role": "primary DMCA takedown feed (Markdown, by date)"},

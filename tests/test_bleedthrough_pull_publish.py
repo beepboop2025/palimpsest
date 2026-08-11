@@ -345,6 +345,7 @@ def test_public_event_keeps_coarse_scope_and_semantics_without_target_identity(p
 
     rotations = [event for event in moved["events"] if event["kind"] == "pool_rotation"]
     assert rotations
+    assert len(rotations) == 1, "private targets must not duplicate one public event"
     assert {event["vantage"] for event in rotations} == {"CN-HA/AS4134"}
     assert {event["detail"] for event in rotations} == {"forged-IP pool rotated"}
     assert {event["severity"] for event in rotations} == {"low"}

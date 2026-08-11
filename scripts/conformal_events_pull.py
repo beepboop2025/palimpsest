@@ -7,6 +7,7 @@ Pure recomputation: reads only the signal history JSONLs already in the repo
 over the same files. History appends only on STATE CHANGE — the history file
 is a log of transitions (calm->watch->alarm->...), not a heartbeat.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,13 +31,12 @@ HIST = os.path.join(READINGS, "event-flags-history.jsonl")
 METHOD_VERSION = 2
 
 
-
 def _states(reading: dict) -> dict:
     return {k: v.get("state") for k, v in reading.get("signals", {}).items()}
 
 
-def main() -> None:
-    reading = build_reading(READINGS)
+def main(*, now=None) -> None:
+    reading = build_reading(READINGS, now=now)
 
     previous = None
     if os.path.exists(OUT):
@@ -53,7 +53,7 @@ def main() -> None:
     if previous is None or _states(previous) != _states(reading):
         entry = {
             "generated_at": reading["generated_at"],
-        "method_version": METHOD_VERSION,
+            "method_version": METHOD_VERSION,
             "states": _states(reading),
             "active": reading["active"],
         }

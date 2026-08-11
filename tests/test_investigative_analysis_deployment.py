@@ -1,0 +1,217 @@
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+WRAPPER = ROOT / "ops/docker/prod-compose"
+INSTALLER = ROOT / "ops/investigative-analysis/install-host-bundle.sh"
+VERIFIER = ROOT / "ops/investigative-analysis/verify-host-bundle.sh"
+SERVICE = ROOT / "ops/systemd/palimpsest-investigative-analysis.service"
+README = ROOT / "ops/investigative-analysis/README.md"
+
+
+def _temporary_wrapper_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+    repository = tmp_path / "repository"
+    docker_dir = repository / "ops/docker"
+    fake_bin = tmp_path / "bin"
+    docker_dir.mkdir(parents=True)
+    fake_bin.mkdir()
+    shutil.copy2(WRAPPER, docker_dir / "prod-compose")
+    (docker_dir / "docker-compose.prod.yml").write_text(
+        "services: {}\n", encoding="utf-8"
+    )
+    (docker_dir / ".env").write_text("NODE_TEST=1\n", encoding="utf-8")
+    fake_docker = fake_bin / "docker"
+    fake_docker.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf 'revision=%s\\n' \"$PALIMPSEST_IMAGE_REVISION\"\n"
+        "printf 'docker_host=%s\\n' \"$DOCKER_HOST\"\n"
+        "printf '%s\\n' \"$@\"\n",
+        encoding="utf-8",
+    )
+    fake_docker.chmod(0o755)
+
+    subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "tests@palimpsest.info"],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Palimpsest tests"],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(["git", "add", "."], cwd=repository, check=True)
+    subprocess.run(["git", "commit", "-qm", "fixture"], cwd=repository, check=True)
+    environment = os.environ.copy()
+    environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+    return repository, environment
+
+
+def _run_wrapper(
+    repository: Path, environment: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", "ops/docker/prod-compose", "config"],
+        cwd=repository,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def test_prod_compose_exports_the_clean_checked_out_revision(tmp_path: Path) -> None:
+    repository, environment = _temporary_wrapper_repo(tmp_path)
+    expected = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repository,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+
+    completed = _run_wrapper(repository, environment)
+
+    assert completed.returncode == 0, completed.stderr
+    assert f"revision={expected}" in completed.stdout
+    assert "docker_host=unix:///var/run/docker.sock" in completed.stdout
+    assert "--env-file" in completed.stdout
+
+
+def test_prod_compose_rejects_untracked_files_and_spoofed_revision(
+    tmp_path: Path,
+) -> None:
+    repository, environment = _temporary_wrapper_repo(tmp_path)
+    nested = repository / "untracked/nested/payload.py"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("print('not certified')\n", encoding="utf-8")
+
+    dirty = _run_wrapper(repository, environment)
+
+    assert dirty.returncode != 0
+    assert "modified or untracked checkout" in dirty.stderr
+
+    nested.unlink()
+    nested.parent.rmdir()
+    nested.parent.parent.rmdir()
+    environment["PALIMPSEST_IMAGE_REVISION"] = "f" * 40
+    spoofed = _run_wrapper(repository, environment)
+
+    assert spoofed.returncode != 0
+    assert "does not match checked-out HEAD" in spoofed.stderr
+
+
+def test_prod_compose_treats_git_status_failure_as_an_error(tmp_path: Path) -> None:
+    repository, environment = _temporary_wrapper_repo(tmp_path)
+    fake_git = tmp_path / "bin/git"
+    real_git = shutil.which("git")
+    assert real_git is not None
+    fake_git.write_text(
+        "#!/usr/bin/env bash\n"
+        'for value in "$@"; do\n'
+        '  if [[ "$value" == status ]]; then exit 77; fi\n'
+        "done\n"
+        f'exec {real_git!r} "$@"\n',
+        encoding="utf-8",
+    )
+    fake_git.chmod(0o755)
+
+    completed = _run_wrapper(repository, environment)
+
+    assert completed.returncode != 0
+    assert "cannot verify that the Git checkout is clean" in completed.stderr
+
+
+def test_prod_compose_ignores_caller_git_repository_redirection(
+    tmp_path: Path,
+) -> None:
+    repository, environment = _temporary_wrapper_repo(tmp_path)
+    decoy = tmp_path / "clean-decoy"
+    subprocess.run(["git", "clone", "-q", str(repository), str(decoy)], check=True)
+    (repository / "untracked-source.py").write_text(
+        "print('must be detected')\n", encoding="utf-8"
+    )
+    environment["GIT_DIR"] = str(decoy / ".git")
+    environment["GIT_WORK_TREE"] = str(decoy)
+
+    completed = _run_wrapper(repository, environment)
+
+    assert completed.returncode != 0
+    assert "modified or untracked checkout" in completed.stderr
+
+
+def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> None:
+    source = INSTALLER.read_text(encoding="utf-8")
+    subprocess.run(["bash", "-n", str(INSTALLER)], check=True)
+    subprocess.run(["sh", "-n", str(VERIFIER)], check=True)
+
+    assert "status --porcelain=v1 --untracked-files=all" in source
+    assert "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE" in source
+    assert 'DOCKER_HOST="unix:///var/run/docker.sock"' in source
+    assert "org.opencontainers.image.revision" in source
+    assert 'bundle_root="/usr/local/libexec/palimpsest-analysis"' in source
+    assert "core/investigative_candidates.py" in source
+    assert 'show "$revision:$repository_path"' in source
+    assert 'safe.directory=$repo_root' in source
+    assert "MANIFEST.sha256" in source
+    assert "verify-host-bundle.sh" in source
+    assert source.count("status --porcelain=v1 --untracked-files=all") == 2
+    assert source.index('mv -Tf "$link_tmp" "$bundle_root/current"') < source.index(
+        'mv -Tf "$receipt_tmp" "$receipt_path"'
+    )
+    assert source.index("systemctl daemon-reload") < source.index(
+        'mv -Tf "$receipt_tmp" "$receipt_path"'
+    )
+
+
+def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
+    unit = SERVICE.read_text(encoding="utf-8")
+
+    assert "WorkingDirectory=/var/lib/palimpsest-analysis" in unit
+    assert (
+        "ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-analysis/current/"
+        "verify-host-bundle.sh" in unit
+    )
+    assert (
+        "ExecStart=/usr/bin/python3 "
+        "/usr/local/libexec/palimpsest-analysis/current/"
+        "investigative_analysis_runner.py" in unit
+    )
+    assert (
+        "ExecStartPre=/usr/bin/cmp -s "
+        "/usr/local/libexec/palimpsest-analysis/current/REVISION "
+        "/etc/palimpsest/deployed-commit" in unit
+    )
+    assert "/home/palimpsest/palimpsest" not in unit
+    assert "ProtectHome=true" in unit
+    assert "TimeoutStartSec=35m" in unit
+    assert "SupplementaryGroups=docker" in unit
+
+
+def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> None:
+    documentation = README.read_text(encoding="utf-8")
+
+    assert "Only 48 complete run snapshots" in documentation
+    assert "512 MiB" in documentation
+    assert "10 GiB" in documentation
+    assert "256 MiB hard ceiling" in documentation
+    assert "192 MiB (75%)" in documentation
+    assert "Docker group is root-equivalent" in documentation
+    assert "PALIMPSEST_ANALYSIS_IMAGE" in documentation
+    assert "Environment variables that appear to override" in documentation
+    assert "copied by rsync/SCP" in documentation
+
+
+def test_app_image_carries_the_compose_supplied_revision_label() -> None:
+    dockerfile = (ROOT / "ops/docker/Dockerfile.app").read_text(encoding="utf-8")
+    compose = (ROOT / "ops/docker/docker-compose.prod.yml").read_text(encoding="utf-8")
+
+    assert "ARG PALIMPSEST_REVISION=unversioned" in dockerfile
+    assert "LABEL org.opencontainers.image.revision=$PALIMPSEST_REVISION" in dockerfile
+    assert "PALIMPSEST_REVISION: ${PALIMPSEST_IMAGE_REVISION:-unversioned}" in compose

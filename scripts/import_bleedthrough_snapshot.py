@@ -288,7 +288,7 @@ def _bounded_shape(value: Any, *, depth: int = 0) -> None:
                 )
             _bounded_shape(child, depth=depth + 1)
     elif isinstance(value, list):
-        if len(value) > 100:
+        if len(value) > 256:
             raise BleedthroughImportError("BLEEDTHROUGH array has too many entries")
         for child in value:
             _bounded_shape(child, depth=depth + 1)
@@ -624,9 +624,30 @@ def validate_document(
     _exact_text(provenance["caveat"], "provenance.caveat", CAVEAT)
 
     raw_events = root["events"]
-    if not isinstance(raw_events, list) or len(raw_events) > 100:
+    if not isinstance(raw_events, list) or len(raw_events) > 256:
         raise BleedthroughImportError("BLEEDTHROUGH events must be a bounded array")
-    events = [_event(value, index) for index, value in enumerate(raw_events)]
+    projected_events = [_event(value, index) for index, value in enumerate(raw_events)]
+    # Independently collapse old producer rounds that repeated the same coarse
+    # event for many private targets. The imported public record must not reveal
+    # target-panel multiplicity or present duplicates as distinct incidents.
+    events = [
+        dict(zip(("kind", "vantage", "detail", "severity"), key, strict=True))
+        for key in sorted(
+            {
+                (
+                    event["kind"],
+                    event["vantage"],
+                    event["detail"],
+                    event["severity"],
+                )
+                for event in projected_events
+            }
+        )
+    ]
+    if len(events) > 100:
+        raise BleedthroughImportError(
+            "BLEEDTHROUGH has too many distinct public events"
+        )
     pool_sampling_suspected = _boolean(
         root["pool_sampling_suspected"], "pool_sampling_suspected"
     )
