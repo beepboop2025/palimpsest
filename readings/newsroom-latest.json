@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-11T17:49:55Z",
+  "generated_at": "2026-08-11T18:39:59Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "bafb0a411fdfab09aab7954112795d9e669e7718",
+  "source_commit": "dbb8892ff6ab8bcb28f368af486837a5415876b2",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1022,8 +1022,8 @@
       "type": "measurement",
       "priority": "background",
       "status": "missing",
-      "published_at": "2026-08-11T17:49:55Z",
-      "modified_at": "2026-08-11T17:49:55Z",
+      "published_at": "2026-08-11T18:39:59Z",
+      "modified_at": "2026-08-11T18:39:59Z",
       "claim_fingerprint": "sha256:8012167f2c6e3b40a7012e162eae9b51b897cd546b5b59cdc07575f8c2127333",
       "metric": {
         "label": null,
@@ -1432,19 +1432,19 @@
       "slug": "cny-fix-gap",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
       "signal_id": "cny-fix-gap",
-      "headline": "The official yuan fix gap is -0.6489% against the independent reference",
+      "headline": "The official yuan fix gap is -0.658% against the independent reference",
       "dek": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
       "section": "economy",
       "order": 2,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-10T17:50:33Z",
-      "modified_at": "2026-08-10T17:50:33Z",
-      "claim_fingerprint": "sha256:66939e1a244fea0e59957705d89f7808c6c8edfdff85fdde0913a6eeae05cabd",
+      "published_at": "2026-08-11T17:55:27Z",
+      "modified_at": "2026-08-11T17:55:27Z",
+      "claim_fingerprint": "sha256:26ee2fd08ee9f0123e361d221813cf5c7778c35b152eaed928f83a20fbb54824",
       "metric": {
         "label": "fix gap",
-        "value": -0.6489,
+        "value": -0.658,
         "unit": "percent",
         "denominator": {
           "label": null,
@@ -1454,17 +1454,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current official-fix minus independent-reference gap is -0.6489%."
+          "statement": "The current official-fix minus independent-reference gap is -0.658%."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
         "input": {
           "filename": "cny-fix-gap-latest.json",
-          "sha256": "00c4e36d0c004ce2f20c48aabc8364030098bf2ef5cd8048538bd1ec37d6d57c",
-          "bytes": 1429
+          "sha256": "0a196036d3e7532cc3d6de08ab4d3feaab0fb226fe54a6c7b8c9d43445fcd3d3",
+          "bytes": 1426
         },
-        "source_timestamp": "2026-08-10T17:50:33Z"
+        "source_timestamp": "2026-08-11T17:55:27Z"
       },
       "method": {
         "summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
