@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:data-darkness",
+  "slug": "official-data-darkness",
+  "url": "https://palimpsest.info/news/official-data-darkness/",
+  "signal_id": "data-darkness",
+  "headline": "The official-data darkness index is 0.5438 across 7 watched series",
+  "dek": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
+  "section": "economy",
+  "order": 4,
+  "type": "analysis",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-11T10:58:08Z",
+  "modified_at": "2026-08-11T10:58:08Z",
+  "claim_fingerprint": "sha256:044b845659f20e3aa8e1ef6e0025ba27fb608ab0b1a5e3ec9a8756d4acab690b",
+  "metric": {
+    "label": "darkness index",
+    "value": 0.5438,
+    "unit": "index",
+    "denominator": {
+      "label": "series watched",
+      "value": 7
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current publication-cadence darkness index is 0.5438 across 7 watched official series."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/data-darkness-latest.json",
+    "input": {
+      "filename": "data-darkness-latest.json",
+      "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+      "bytes": 3885
+    },
+    "source_timestamp": "2026-08-11T10:58:08Z"
+  },
+  "method": {
+    "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
+    "version": 1
+  },
+  "limitations": [
+    "Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation."
+  ],
+  "related_signal_ids": [
+    "china-econ",
+    "cny-fix-gap",
+    "believability"
+  ]
+}

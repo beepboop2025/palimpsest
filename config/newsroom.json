@@ -1,0 +1,622 @@
+{
+  "schema_version": "palimpsest-newsroom-config.v1",
+  "feed": {
+    "id": "palimpsest-china-newsroom",
+    "title": "Palimpsest China Newsroom",
+    "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
+    "url": "https://palimpsest.info/news/"
+  },
+  "sections": [
+    {
+      "id": "command",
+      "title": "The Board",
+      "dek": "What the observatory can support now, and which safeguards qualify the read.",
+      "order": 1
+    },
+    {
+      "id": "attention",
+      "title": "Attention and Narrative",
+      "dek": "Deletion directives, public attention and the measurable boundaries of silence.",
+      "order": 2
+    },
+    {
+      "id": "network",
+      "title": "Network and Circumvention",
+      "dek": "Independent views of interference, reachability, outages and demand for alternate routes.",
+      "order": 3
+    },
+    {
+      "id": "erasure",
+      "title": "Erasure and Distribution",
+      "dek": "Evidence of removal, mutation and uneven access across archives, repositories and storefronts.",
+      "order": 4
+    },
+    {
+      "id": "economy",
+      "title": "Economic Undertext",
+      "dek": "Official prints, independent cross-checks and the visibility of state economic data.",
+      "order": 5
+    },
+    {
+      "id": "models",
+      "title": "Generative Firewall",
+      "dek": "Controlled measurements of how models answer, refuse and repeat party-line framing.",
+      "order": 6
+    },
+    {
+      "id": "integrity",
+      "title": "Integrity and Witnessing",
+      "dek": "Cryptographic and external witnesses that make the public record independently checkable.",
+      "order": 7
+    },
+    {
+      "id": "nemesis",
+      "title": "Intelligence Bridge",
+      "dek": "Optional, sanitized aggregate leads from the private runtime, never treated as required coverage.",
+      "order": 8
+    }
+  ],
+  "signals": [
+    {
+      "id": "board-alarm",
+      "name": "Board alarm",
+      "slug": "board-alarm",
+      "section": "command",
+      "order": 1,
+      "type": "analysis",
+      "priority": "lead",
+      "claim_type": "observation",
+      "headline_template": "{board_story_headline}",
+      "dek_template": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
+      "claim_template": "{board_headline} The board-wide e-value is {value}; the predeclared board alarm threshold is 20.",
+      "limitations": [
+        "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement."
+      ],
+      "related_signal_ids": ["event-flags", "coverage-guard", "vantage-fusion"]
+    },
+    {
+      "id": "event-flags",
+      "name": "Event flags",
+      "slug": "event-flags",
+      "section": "command",
+      "order": 2,
+      "type": "methodology",
+      "priority": "high",
+      "claim_type": "observation",
+      "headline_template": "{value} of {denominator} configured signals are reporting to the event board",
+      "dek_template": "The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
+      "claim_template": "{value} signals are reporting out of {denominator} configured signals in the current event-flags reading.",
+      "limitations": [
+        "Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity."
+      ],
+      "related_signal_ids": ["board-alarm", "forecast-ledger", "coverage-guard"]
+    },
+    {
+      "id": "coverage-guard",
+      "name": "Coverage guard",
+      "slug": "coverage-guard",
+      "section": "command",
+      "order": 3,
+      "type": "methodology",
+      "priority": "high",
+      "claim_type": "method",
+      "headline_template": "Coverage changes confound {value} current signal",
+      "dek_template": "The guard withholds a censorship interpretation when movement can be explained by a changing measurement base.",
+      "claim_template": "The current coverage audit marks {value} signal as confounded by its measurement coverage.",
+      "limitations": [
+        "A coverage-confounded signal is inconclusive about substantive change, not evidence that no change occurred."
+      ],
+      "related_signal_ids": ["board-alarm", "event-flags", "ddti"]
+    },
+    {
+      "id": "forecast-ledger",
+      "name": "Forecast ledger",
+      "slug": "forecast-ledger",
+      "section": "command",
+      "order": 4,
+      "type": "methodology",
+      "priority": "standard",
+      "claim_type": "method",
+      "headline_template": "Forecast bands covered {value_percent}% of {denominator} scored readings",
+      "dek_template": "Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
+      "claim_template": "Empirical forecast coverage is {value_percent}% across {denominator} scored forecasts.",
+      "limitations": [
+        "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band."
+      ],
+      "related_signal_ids": ["event-flags", "cross-layer"]
+    },
+    {
+      "id": "cross-layer",
+      "name": "Cross-layer lead and lag",
+      "slug": "cross-layer-lead-lag",
+      "section": "command",
+      "order": 5,
+      "type": "methodology",
+      "priority": "background",
+      "claim_type": "method",
+      "headline_template": "{value} cross-layer relationships are confirmed across {denominator} eligible tests",
+      "dek_template": "Pairs enter testing only after enough overlapping history exists; an empty test set is a warm-up state, not a null result.",
+      "claim_template": "{value} cross-layer pairs are confirmed among {denominator} pairs with enough shared history to test.",
+      "limitations": [
+        "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another."
+      ],
+      "related_signal_ids": ["forecast-ledger", "board-alarm"]
+    },
+    {
+      "id": "ddti",
+      "name": "Deletion-directive term index",
+      "slug": "deletion-directive-term-index",
+      "section": "attention",
+      "order": 1,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "The directive index now tracks {value} censorship terms",
+      "dek_template": "The index ranks provenance-bound terms found in documented directives and reports of scrubbed material.",
+      "claim_template": "The current deletion-directive index ranks {value} terms with documented censorship provenance.",
+      "limitations": [
+        "The index reflects documented and collected directives; it is not a census of every censored term."
+      ],
+      "related_signal_ids": ["gdelt", "weibo-hotsearch", "silence-index", "coverage-guard"]
+    },
+    {
+      "id": "gdelt",
+      "name": "Global coverage cross-signal",
+      "slug": "global-coverage-cross-signal",
+      "section": "attention",
+      "order": 2,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "finding",
+      "headline_template": "Global coverage is measurable for {value} of {denominator} compared terms",
+      "dek_template": "The cross-signal supplies an outside-China attention baseline without treating a missing result as proof of silence.",
+      "claim_template": "GDELT returned usable global coverage for {value} of {denominator} compared terms.",
+      "limitations": [
+        "GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage."
+      ],
+      "related_signal_ids": ["ddti", "silence-index", "weibo-hotsearch"]
+    },
+    {
+      "id": "weibo-hotsearch",
+      "name": "Weibo hot-search join",
+      "slug": "weibo-hot-search-join",
+      "section": "attention",
+      "order": 3,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "The latest Weibo archive contains {value} hot-search board entries",
+      "dek_template": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
+      "claim_template": "The current archive window contains {value} Weibo hot-search board entries available for joining.",
+      "limitations": [
+        "The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention."
+      ],
+      "related_signal_ids": ["ddti", "gdelt", "silence-index"]
+    },
+    {
+      "id": "silence-index",
+      "name": "Silence index",
+      "slug": "silence-index",
+      "section": "attention",
+      "order": 4,
+      "type": "analysis",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "{value} of {denominator} considered topics meet the blackout rule",
+      "dek_template": "The index looks for topics loud abroad and absent from the permitted domestic proxy, while publishing every abstention.",
+      "claim_template": "{value} blackout topics meet the predeclared rule among {denominator} topics considered in this round.",
+      "limitations": [
+        "Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain."
+      ],
+      "related_signal_ids": ["ddti", "gdelt", "weibo-hotsearch"]
+    },
+    {
+      "id": "blocklist",
+      "name": "Platform blocklist archaeology",
+      "slug": "platform-blocklist-archaeology",
+      "section": "attention",
+      "order": 5,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "finding",
+      "headline_template": "Attributable blocklist versions added {value} keywords",
+      "dek_template": "Version-to-version diffs preserve provenance and decoding gaps instead of flattening client blocklists into one count.",
+      "claim_template": "The compared attributable client blocklists contain {value} keyword additions.",
+      "limitations": [
+        "Available client versions and successful decoding bound the observed additions; the result is not a platform-wide census."
+      ],
+      "related_signal_ids": ["ddti", "net4people"]
+    },
+    {
+      "id": "net4people",
+      "name": "Community blocking log",
+      "slug": "community-blocking-log",
+      "section": "attention",
+      "order": 6,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "finding",
+      "headline_template": "The community log records {value} recent blocking or circumvention events",
+      "dek_template": "Public issue reports add qualitative context to instrumented network measurements without being counted as probes.",
+      "claim_template": "The configured recent window contains {value} qualifying events in the public community log.",
+      "limitations": [
+        "Community reports are self-selected qualitative observations and do not estimate population prevalence."
+      ],
+      "related_signal_ids": ["ooni-gfw", "circumvention-demand", "vantage-fusion"]
+    },
+    {
+      "id": "ooni-gfw",
+      "name": "OONI Great Firewall index",
+      "slug": "ooni-great-firewall-index",
+      "section": "network",
+      "order": 1,
+      "type": "measurement",
+      "priority": "lead",
+      "claim_type": "finding",
+      "headline_template": "OONI's China anomaly index is {value}% across {denominator} measurements",
+      "dek_template": "The index aggregates volunteer-probe observations across network test families inside China.",
+      "claim_template": "The current OONI aggregate reports a {value}% anomaly index across {denominator} China measurements.",
+      "limitations": [
+        "Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship."
+      ],
+      "related_signal_ids": ["in-path-interference", "censored-planet", "inside-view", "vantage-fusion"]
+    },
+    {
+      "id": "in-path-interference",
+      "name": "In-path interference",
+      "slug": "in-path-interference",
+      "section": "network",
+      "order": 2,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "Middlebox signatures register at {value}% in the current OONI window",
+      "dek_template": "The decomposition separates interference signatures from transport failure and tests that could not execute.",
+      "claim_template": "The current measurement-weighted middlebox index is {value}%.",
+      "limitations": [
+        "The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories."
+      ],
+      "related_signal_ids": ["ooni-gfw", "inside-view", "vantage-fusion"]
+    },
+    {
+      "id": "censored-planet",
+      "name": "Censored Planet",
+      "slug": "censored-planet-china-interference",
+      "section": "network",
+      "order": 3,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "Independent remote scans put China's interference rate at {value}%",
+      "dek_template": "Censored Planet supplies an outside-in method that is independent of OONI's in-country volunteer probes.",
+      "claim_template": "Censored Planet's current remote side-channel measurement reports a {value}% China interference rate.",
+      "limitations": [
+        "The remote-scan denominator and method differ from OONI's anomaly index, so their percentages are not interchangeable."
+      ],
+      "related_signal_ids": ["ooni-gfw", "inside-view", "vantage-fusion"]
+    },
+    {
+      "id": "inside-view",
+      "name": "Inside-China view",
+      "slug": "inside-china-view",
+      "section": "network",
+      "order": 4,
+      "type": "measurement",
+      "priority": "lead",
+      "claim_type": "finding",
+      "headline_template": "{value_percent}% of the {denominator}-domain mainland panel is blocked",
+      "dek_template": "Volunteer probes inside China are compared with a same-round external control before an answer is classified.",
+      "claim_template": "The current controlled panel reports {value_percent}% blocked responses across {denominator} tested domains.",
+      "limitations": [
+        "The volunteer panel is small and availability varies by region; it does not represent every mainland network."
+      ],
+      "related_signal_ids": ["ooni-gfw", "in-path-interference", "censored-planet", "vantage-fusion"]
+    },
+    {
+      "id": "ioda-outages",
+      "name": "IODA outage monitor",
+      "slug": "ioda-china-outage-monitor",
+      "section": "network",
+      "order": 5,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "observation",
+      "headline_template": "{value} independent IODA instruments are firing for China",
+      "dek_template": "BGP, active-probing and darknet instruments provide a country-scale outage check distinct from content blocking.",
+      "claim_template": "The current IODA country reading has {value} outage instruments firing.",
+      "limitations": [
+        "No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable."
+      ],
+      "related_signal_ids": ["ooni-gfw", "vantage-fusion"]
+    },
+    {
+      "id": "circumvention-demand",
+      "name": "Circumvention demand",
+      "slug": "circumvention-demand",
+      "section": "network",
+      "order": 6,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "finding",
+      "headline_template": "Tor Metrics estimates {value} bridge users connecting from China",
+      "dek_template": "Bridge and transport estimates show demand for alternate routes without identifying individual users.",
+      "claim_template": "Tor Metrics estimates {value} bridge users for China in the current reading.",
+      "limitations": [
+        "Bridge-user values are privacy-preserving estimates and should not be read as exact people or devices."
+      ],
+      "related_signal_ids": ["net4people", "ooni-gfw", "vantage-fusion"]
+    },
+    {
+      "id": "vantage-fusion",
+      "name": "Network vantage fusion",
+      "slug": "network-vantage-fusion",
+      "section": "network",
+      "order": 7,
+      "type": "analysis",
+      "priority": "lead",
+      "claim_type": "finding",
+      "headline_template": "Reporting network vantages combine to a {value}% interference index",
+      "dek_template": "The fusion names excluded and divergent inputs instead of silently averaging away disagreement.",
+      "claim_template": "The current coverage-weighted fusion of reporting vantages is {value}%.",
+      "limitations": [
+        "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic."
+      ],
+      "related_signal_ids": ["ooni-gfw", "censored-planet", "inside-view", "net4people"]
+    },
+    {
+      "id": "bleedthrough",
+      "name": "Bleedthrough injector tomography",
+      "slug": "bleedthrough-injector-tomography",
+      "section": "network",
+      "order": 8,
+      "type": "measurement",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "Controlled external probes publish a current injector-tomography round",
+      "dek_template": "The optional, rate-limited measurement runs only from a declared controlled deployment.",
+      "claim_template": "A current controlled DNS-probe round is available for injector-tomography analysis.",
+      "limitations": [
+        "This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading."
+      ],
+      "related_signal_ids": ["in-path-interference", "vantage-fusion"]
+    },
+    {
+      "id": "erasure-observatory",
+      "name": "Erasure observatory",
+      "slug": "erasure-observatory",
+      "section": "erasure",
+      "order": 1,
+      "type": "analysis",
+      "priority": "lead",
+      "claim_type": "finding",
+      "headline_template": "The composite erasure index stands at {value}",
+      "dek_template": "The roll-up keeps archive, redaction, repository and distribution evidence separate beneath one directional index.",
+      "claim_template": "The current cross-layer erasure index is {value}.",
+      "limitations": [
+        "The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items."
+      ],
+      "related_signal_ids": ["wayback", "baike-redaction", "github-refuge", "app-storefront", "apple-censorship"]
+    },
+    {
+      "id": "wayback",
+      "name": "Wayback reconstruction",
+      "slug": "wayback-reconstruction",
+      "section": "erasure",
+      "order": 2,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "Archive witnesses reconstruct {value} deletions across {denominator} watched URLs",
+      "dek_template": "A deletion or silent mutation is reported only when outside-the-wall captures provide a checkable witness.",
+      "claim_template": "Wayback evidence reconstructs {value} deletions among {denominator} watched URLs in the current reading.",
+      "limitations": [
+        "Archive coverage is incomplete; an unwitnessed URL cannot support a deletion or mutation claim."
+      ],
+      "related_signal_ids": ["erasure-observatory", "baike-redaction", "anchors"]
+    },
+    {
+      "id": "baike-redaction",
+      "name": "Baike redaction",
+      "slug": "baike-redaction",
+      "section": "erasure",
+      "order": 3,
+      "type": "measurement",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "The Baike comparison has a current eligible reading",
+      "dek_template": "Baidu Baike entries are compared with an open-record control only when collection and pair eligibility are explicit.",
+      "claim_template": "The Baike comparison has a current source and eligible comparable pairs for this round.",
+      "limitations": [
+        "Without authorized live revision history, lexical comparisons cannot identify when or by whom text changed."
+      ],
+      "related_signal_ids": ["wayback", "erasure-observatory"]
+    },
+    {
+      "id": "github-refuge",
+      "name": "GitHub refuge watch",
+      "slug": "github-refuge-watch",
+      "section": "erasure",
+      "order": 4,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "finding",
+      "headline_template": "Public metadata records {value} pressure event across {denominator} watched repositories",
+      "dek_template": "The watch preserves public repository-level pressure signals without collecting contributor identities.",
+      "claim_template": "The current public-metadata watch records {value} pressure event among {denominator} configured repositories.",
+      "limitations": [
+        "Repository metadata can show public pressure or disappearance but cannot establish the actor or motive behind a change."
+      ],
+      "related_signal_ids": ["erasure-observatory", "wayback", "anchors"]
+    },
+    {
+      "id": "app-storefront",
+      "name": "App Storefront panel",
+      "slug": "app-storefront-panel",
+      "section": "erasure",
+      "order": 5,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "{value_percent}% of the {denominator}-app panel is unavailable in China's storefront",
+      "dek_template": "The fixed panel compares China and US storefront results in the same round, with transient lookup failures separated.",
+      "claim_template": "The current panel finds {value_percent}% of {denominator} tracked apps unavailable in the China storefront.",
+      "limitations": [
+        "A fixed app panel is transparent but not representative of the entire App Store catalogue."
+      ],
+      "related_signal_ids": ["apple-censorship", "erasure-observatory"]
+    },
+    {
+      "id": "apple-censorship",
+      "name": "AppleCensorship corpus",
+      "slug": "apple-censorship-corpus",
+      "section": "erasure",
+      "order": 6,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "{value}% of {denominator} tested apps are unavailable in mainland China",
+      "dek_template": "The corpus-scale storefront comparison complements the smaller fixed panel with a much broader catalogue.",
+      "claim_template": "The current AppleCensorship corpus reports {value}% unavailable among {denominator} tested apps for mainland China.",
+      "limitations": [
+        "Storefront unavailability can have policy, licensing, commercial or technical causes; the percentage alone does not identify cause."
+      ],
+      "related_signal_ids": ["app-storefront", "erasure-observatory"]
+    },
+    {
+      "id": "china-econ",
+      "name": "China money-market benchmarks",
+      "slug": "china-money-market-benchmarks",
+      "section": "economy",
+      "order": 1,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "observation",
+      "headline_template": "{value} official money-market benchmark families are reporting",
+      "dek_template": "The feed carries published CFETS levels as economic context without inferring a policy signal from one print.",
+      "claim_template": "The current CFETS reading contains {value} reporting benchmark families.",
+      "limitations": [
+        "Official benchmark levels are state-published inputs; interpreting policy requires relationships and history, not one level."
+      ],
+      "related_signal_ids": ["cny-fix-gap", "stock-connect", "data-darkness", "believability"]
+    },
+    {
+      "id": "cny-fix-gap",
+      "name": "CNY fix gap",
+      "slug": "cny-fix-gap",
+      "section": "economy",
+      "order": 2,
+      "type": "measurement",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "The official yuan fix gap is {value}% against the independent reference",
+      "dek_template": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
+      "claim_template": "The current official-fix minus independent-reference gap is {value}%.",
+      "limitations": [
+        "The comparison is onshore and same-day but not simultaneous; it is economic context, not direct evidence of censorship."
+      ],
+      "related_signal_ids": ["china-econ", "stock-connect", "data-darkness"]
+    },
+    {
+      "id": "stock-connect",
+      "name": "Stock Connect",
+      "slug": "stock-connect",
+      "section": "economy",
+      "order": 3,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "observation",
+      "headline_template": "Southbound Stock Connect net flow is {value} billion yuan",
+      "dek_template": "The newsroom reports HKEX's official daily print and leaves discontinued northbound net-flow fields unestimated.",
+      "claim_template": "HKEX reports current southbound Stock Connect net flow of {value} billion yuan.",
+      "limitations": [
+        "HKEX no longer publishes the northbound buy-sell split, so no northbound net flow is inferred."
+      ],
+      "related_signal_ids": ["china-econ", "cny-fix-gap"]
+    },
+    {
+      "id": "data-darkness",
+      "name": "Official-data darkness",
+      "slug": "official-data-darkness",
+      "section": "economy",
+      "order": 4,
+      "type": "analysis",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "The official-data darkness index is {value} across {denominator} watched series",
+      "dek_template": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
+      "claim_template": "The current publication-cadence darkness index is {value} across {denominator} watched official series.",
+      "limitations": [
+        "Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation."
+      ],
+      "related_signal_ids": ["china-econ", "cny-fix-gap", "believability"]
+    },
+    {
+      "id": "believability",
+      "name": "Believability read",
+      "slug": "believability-read",
+      "section": "economy",
+      "order": 5,
+      "type": "analysis",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "The state-data divergence check has enough evidence to report",
+      "dek_template": "A fixed physical-activity composite is compared with official industrial growth only after component and history gates pass.",
+      "claim_template": "The believability comparison has all required components and enough history for a current divergence reading.",
+      "limitations": [
+        "A divergence outside the historical band shows a relationship moved; it does not by itself establish fabrication."
+      ],
+      "related_signal_ids": ["china-econ", "data-darkness"]
+    },
+    {
+      "id": "generative-firewall",
+      "name": "Generative Firewall Index",
+      "slug": "generative-firewall-index",
+      "section": "models",
+      "order": 1,
+      "type": "measurement",
+      "priority": "lead",
+      "claim_type": "finding",
+      "headline_template": "The Generative Firewall Index reads {value} across {denominator} evaluated cells",
+      "dek_template": "A controlled prompt bank measures answer, refusal and party-line behaviour by model and concept.",
+      "claim_template": "The current controlled evaluation reports a Generative Firewall Index of {value} across {denominator} cells.",
+      "limitations": [
+        "The index describes a fixed prompt-and-model evaluation grid; it does not generalize to every prompt, language or deployment route."
+      ],
+      "related_signal_ids": ["board-alarm", "forecast-ledger"]
+    },
+    {
+      "id": "anchors",
+      "name": "Integrity anchors",
+      "slug": "integrity-anchors",
+      "section": "integrity",
+      "order": 1,
+      "type": "integrity",
+      "priority": "high",
+      "claim_type": "integrity",
+      "headline_template": "Palimpsest's public ledgers have a current integrity-anchor reading",
+      "dek_template": "Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
+      "claim_template": "A current aggregate integrity-anchor record is published for the Palimpsest ledgers.",
+      "limitations": [
+        "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
+      ],
+      "related_signal_ids": ["wayback", "github-refuge", "erasure-observatory"]
+    },
+    {
+      "id": "nemesis",
+      "name": "Private runtime bridge",
+      "slug": "private-runtime-bridge",
+      "section": "nemesis",
+      "order": 1,
+      "type": "intelligence",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "The sanitized intelligence bridge ranks {value} aggregate topics",
+      "dek_template": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
+      "claim_template": "The current sanitized optional export contains {value} ranked aggregate topics.",
+      "limitations": [
+        "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
+      ],
+      "related_signal_ids": ["ddti", "china-econ", "board-alarm"]
+    }
+  ]
+}

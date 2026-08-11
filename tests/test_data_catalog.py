@@ -75,6 +75,22 @@ def test_research_corpus_catalog_matches_allowlist_and_publication_boundary():
     assert "keyword lists" in description and "notice bodies" in description
 
 
+def test_newsroom_catalog_describes_a_deterministic_hourly_publication():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(item for item in source["datasets"] if item["id"] == "newsroom")
+
+    assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
+        "cross-layer", "publication", "deterministic"
+    )
+    assert entry["cadence"] == "PT1H"
+    assert entry["status"] == "live"
+    assert entry["latest"] == "readings/newsroom-latest.json"
+    assert entry["landing_page"] == "news/"
+    assert entry["method"] == "docs/NEWSROOM.md"
+    assert entry["count_fields"] == ["n_stories"]
+    assert "causal inference" in entry["description"]
+
+
 def test_public_catalog_never_points_into_private_runtime_directories():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     for item in source["datasets"]:

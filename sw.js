@@ -3,8 +3,10 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v7";
+const CACHE = "palimpsest-v8";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
+const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
+const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
 const SHELL = [
   "/",
   "/osint-china.html",
@@ -78,6 +80,20 @@ self.addEventListener("fetch", (e) => {
   // into an apparent success, so it is network-only. The page retains and visibly ages
   // its last verified in-memory document when this request fails.
   if (url.pathname === LIVE_ROLLUP) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // The newsroom is derived from the roll-up in the same publication run. Falling
+  // back to an older edition would hide a failed build and detach a story from the
+  // evidence currently served at its source URL, so this JSON feed also fails closed.
+  if (url.pathname === LIVE_NEWSROOM) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // Syndication clients must see the same edition boundary as API clients. An
+  // installed PWA may cache article pages for offline reading, but it must never
+  // present an old JSON Feed or RSS document as the current edition.
+  if (LIVE_NEWSROOM_SYNDICATION.has(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

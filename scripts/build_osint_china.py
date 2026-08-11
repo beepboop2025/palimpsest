@@ -263,11 +263,13 @@ SIGNALS: tuple[SignalSpec, ...] = (
 )
 
 
-# Explicit scope decisions used by the inventory ratchet test.  These feeds remain public,
-# but they are not China OSINT signals: the research corpus is a mixed-scope source inventory,
-# while the other two are generic model-evaluation surfaces not scoped specifically to China.
+# Explicit scope decisions used by the inventory ratchet test. These feeds remain public,
+# but they are not independent China OSINT inputs: the newsroom is a derived publication of
+# this roll-up (including it would create a recursive input), the research corpus is a
+# mixed-scope inventory, and the remaining two are generic model-evaluation surfaces.
 EXCLUDED_LATEST_FILES = frozenset({
     "eval-registry-latest.json",
+    "newsroom-latest.json",
     "research-corpus-latest.json",
     "refusal-drift-latest.json",
 })

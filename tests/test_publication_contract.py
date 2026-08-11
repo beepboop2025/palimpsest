@@ -62,6 +62,7 @@ CONTRACT = {
     "eval-registry":        _d("generated_at", ["registry", "verify_cmd"], "runs"),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
+    "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     # registered before its first round lands — see PENDING below
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -188,6 +189,7 @@ OPTIONAL_EXTERNAL = {
 # deployment-specific imports. The exception can be removed once the first row is part of
 # every supported checkout, but the contract is enforced immediately in the publishing run.
 SCHEDULED_PUBLICATIONS = {
+    "newsroom",
     "research-corpus",
 }
 
@@ -231,6 +233,94 @@ def test_scheduled_publications_are_registered_and_have_distinct_semantics():
         "production scheduled publications must not be marked as unfinished")
     assert not (SCHEDULED_PUBLICATIONS & OPTIONAL_EXTERNAL), (
         "first-party scheduled publications must not be marked as optional imports")
+
+
+def test_newsroom_contract_keeps_provenance_and_story_denominator_explicit():
+    assert CONTRACT["newsroom"] == {
+        "timestamp": "generated_at",
+        "provenance": ["source", "method", "scope"],
+        "denominator": "n_stories",
+        "reason": None,
+    }
+    assert "newsroom" in SCHEDULED_PUBLICATIONS
+
+
+def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
+    sitemap = open(os.path.join(ROOT, "sitemap.xml"), encoding="utf-8").read()
+    robots = open(os.path.join(ROOT, "robots.txt"), encoding="utf-8").read()
+    llms = open(os.path.join(ROOT, "llms.txt"), encoding="utf-8").read()
+    worker = open(os.path.join(ROOT, "sw.js"), encoding="utf-8").read()
+
+    assert "https://palimpsest.info/news/" in sitemap
+    assert "https://palimpsest.info/news/" in llms
+    assert "https://palimpsest.info/readings/newsroom-latest.json" in llms
+    assert robots.splitlines().count("Sitemap: https://palimpsest.info/sitemap.xml") == 1
+    assert robots.splitlines().count(
+        "Sitemap: https://palimpsest.info/news/sitemap.xml"
+    ) == 1
+
+    assert 'const CACHE = "palimpsest-v8"' in worker
+    assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
+    assert (
+        'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
+        '"/news/feed.xml"])'
+    ) in worker
+    assert "if (url.pathname === LIVE_NEWSROOM)" in worker
+    newsroom_branch = worker[worker.index("if (url.pathname === LIVE_NEWSROOM)"):]
+    newsroom_branch = newsroom_branch[:newsroom_branch.index("return;")]
+    assert 'fetch(req, { cache: "no-store" })' in newsroom_branch
+    assert "caches.match" not in newsroom_branch
+
+    syndication_branch = worker[
+        worker.index("if (LIVE_NEWSROOM_SYNDICATION.has(url.pathname))"):
+    ]
+    syndication_branch = syndication_branch[:syndication_branch.index("return;")]
+    assert 'fetch(req, { cache: "no-store" })' in syndication_branch
+    assert "caches.match" not in syndication_branch
+
+
+def test_openapi_publishes_a_concrete_newsroom_feed_contract():
+    spec = _load(os.path.join(ROOT, "openapi.json"))
+    protocol = _load(os.path.join(ROOT, "protocol", "news-feed-v1.schema.json"))
+    operation = spec["paths"]["/readings/newsroom-latest.json"]["get"]
+    assert operation["operationId"] == "getNewsroomFeed"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/NewsroomFeed"
+    }
+
+    schemas = spec["components"]["schemas"]
+    feed = schemas["NewsroomFeed"]
+    assert feed["additionalProperties"] is False
+    assert feed["properties"]["schema_version"]["const"] == "palimpsest-news.v1"
+    assert set(feed["required"]) == {
+        "schema_version", "feed_id", "title", "headline", "url", "generated_at",
+        "n_stories", "source", "source_commit", "method", "scope", "coverage",
+        "sections", "stories",
+    }
+    assert feed["properties"]["stories"]["items"] == {
+        "$ref": "#/components/schemas/NewsroomStory"
+    }
+    assert set(feed["required"]) == set(protocol["required"])
+    assert set(feed["properties"]) == set(protocol["properties"])
+
+    story = schemas["NewsroomStory"]
+    assert story["additionalProperties"] is False
+    assert set(story["properties"]["status"]["enum"]) == {
+        "live", "degraded", "stale", "missing", "corrupt"
+    }
+    assert story["properties"]["claims"]["items"] == {
+        "$ref": "#/components/schemas/NewsroomClaim"
+    }
+    assert set(story["required"]) == set(protocol["$defs"]["story"]["required"])
+    assert set(story["properties"]) == set(
+        protocol["$defs"]["story"]["properties"]
+    )
+    for name in (
+        "NewsroomDenominator", "NewsroomMetric", "NewsroomClaim",
+        "NewsroomEvidenceInput", "NewsroomEvidence", "NewsroomMethod",
+        "NewsroomSection", "NewsroomCoverageCounts", "NewsroomCoverage",
+    ):
+        assert schemas[name]["additionalProperties"] is False
 
 
 @pytest.mark.parametrize("path", _readings(), ids=_name)

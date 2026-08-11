@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:stock-connect",
+  "slug": "stock-connect",
+  "url": "https://palimpsest.info/news/stock-connect/",
+  "signal_id": "stock-connect",
+  "headline": "Southbound Stock Connect net flow is 2.022 billion yuan",
+  "dek": "The newsroom reports HKEX's official daily print and leaves discontinued northbound net-flow fields unestimated.",
+  "section": "economy",
+  "order": 3,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-10T14:34:15Z",
+  "modified_at": "2026-08-10T14:34:15Z",
+  "claim_fingerprint": "sha256:78d615c7a88a18a80bd32c2d28048a49f89e457a51cf4abd9f75ded3418d7f29",
+  "metric": {
+    "label": "southbound net flow",
+    "value": 2.022,
+    "unit": "CNY billions",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "observation",
+      "statement": "HKEX reports current southbound Stock Connect net flow of 2.022 billion yuan."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/stock-connect-latest.json",
+    "input": {
+      "filename": "stock-connect-latest.json",
+      "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+      "bytes": 734
+    },
+    "source_timestamp": "2026-08-10T14:34:15Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "HKEX no longer publishes the northbound buy-sell split, so no northbound net flow is inferred."
+  ],
+  "related_signal_ids": [
+    "china-econ",
+    "cny-fix-gap"
+  ]
+}

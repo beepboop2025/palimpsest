@@ -587,6 +587,23 @@
       "license": {"name": "Mixed upstream licenses; composite method MIT", "url": "https://palimpsest.info/for-researchers.html"}
     },
     {
+      "id": "newsroom",
+      "name": "Palimpsest Newsroom",
+      "description": "Deterministic, evidence-linked news dispatches projected from the normalized OSINT China roll-up without model-written claims or causal inference.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["CN", "GLOBAL"],
+      "sources": ["Palimpsest OSINT China roll-up"],
+      "latest": "readings/newsroom-latest.json",
+      "landing_page": "news/",
+      "method": "docs/NEWSROOM.md",
+      "count_fields": ["n_stories"],
+      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "generative-firewall",
       "name": "Generative Firewall Index",
       "description": "Frozen bilingual prompt suites measure refusal and state-narrative substitution in state-aligned models against separately interpreted controls.",

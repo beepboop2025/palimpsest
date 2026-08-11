@@ -22,6 +22,154 @@
         "description": "The Evidence Atlas catalog with provenance, rights, cadence, freshness and distribution metadata.",
         "required": ["schema", "generated_at", "summary", "datasets"],
         "additionalProperties": true
+      },
+      "NewsroomDenominator": {
+        "type": "object",
+        "required": ["label", "value"],
+        "properties": {
+          "label": {"type": ["string", "null"], "maxLength": 1000},
+          "value": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomMetric": {
+        "type": "object",
+        "required": ["label", "value", "unit", "denominator"],
+        "properties": {
+          "label": {"type": ["string", "null"], "maxLength": 1000},
+          "value": {"type": ["number", "null"], "minimum": -9007199254740991, "maximum": 9007199254740991},
+          "unit": {"type": ["string", "null"], "maxLength": 1000},
+          "denominator": {"$ref": "#/components/schemas/NewsroomDenominator"}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomClaim": {
+        "type": "object",
+        "required": ["type", "statement"],
+        "properties": {
+          "type": {"type": "string", "enum": ["finding", "observation", "method", "integrity", "availability"]},
+          "statement": {"type": "string", "minLength": 1, "maxLength": 1000}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomEvidenceInput": {
+        "type": "object",
+        "required": ["filename", "sha256", "bytes"],
+        "properties": {
+          "filename": {"type": "string", "minLength": 6, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9.-]{0,126}\\.json$"},
+          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "bytes": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomEvidence": {
+        "type": "object",
+        "required": ["url", "input", "source_timestamp"],
+        "properties": {
+          "url": {"type": "string", "format": "uri", "pattern": "^https://palimpsest\\.info/readings/[a-z0-9][a-z0-9.-]{0,126}\\.json$"},
+          "input": {"$ref": "#/components/schemas/NewsroomEvidenceInput"},
+          "source_timestamp": {"type": ["string", "null"], "format": "date-time"}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomMethod": {
+        "type": "object",
+        "required": ["summary", "version"],
+        "properties": {
+          "summary": {"type": "string", "minLength": 1},
+          "version": {
+            "oneOf": [
+              {"type": "integer", "minimum": 1},
+              {"type": "string", "minLength": 1},
+              {"type": "null"}
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "NewsroomSection": {
+        "type": "object",
+        "required": ["id", "title", "dek", "order"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"},
+          "title": {"type": "string", "minLength": 1},
+          "dek": {"type": "string", "minLength": 1},
+          "order": {"type": "integer", "minimum": 1, "maximum": 512}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomCoverageCounts": {
+        "type": "object",
+        "required": ["live", "degraded", "stale", "missing", "corrupt"],
+        "properties": {
+          "live": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "degraded": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "stale": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "missing": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "corrupt": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomCoverage": {
+        "type": "object",
+        "required": ["total", "reporting", "live", "status", "counts"],
+        "properties": {
+          "total": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "reporting": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "live": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "status": {"type": "string", "enum": ["healthy", "degraded"]},
+          "counts": {"$ref": "#/components/schemas/NewsroomCoverageCounts"}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomStory": {
+        "type": "object",
+        "required": ["id", "slug", "url", "signal_id", "headline", "dek", "section", "order", "type", "priority", "status", "published_at", "modified_at", "claim_fingerprint", "metric", "claims", "evidence", "method", "limitations", "related_signal_ids"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^palimpsest-news:[a-z][a-z0-9-]{0,63}$"},
+          "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "url": {"type": "string", "format": "uri", "pattern": "^https://palimpsest\\.info/news/[a-z0-9]+(?:-[a-z0-9]+)*/$"},
+          "signal_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"},
+          "headline": {"type": "string", "minLength": 1},
+          "dek": {"type": "string", "minLength": 1},
+          "section": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"},
+          "order": {"type": "integer", "minimum": 1, "maximum": 512},
+          "type": {"type": "string", "enum": ["analysis", "measurement", "methodology", "integrity", "intelligence"]},
+          "priority": {"type": "string", "enum": ["lead", "high", "standard", "background"]},
+          "status": {"type": "string", "enum": ["live", "degraded", "stale", "missing", "corrupt"]},
+          "published_at": {"type": "string", "format": "date-time"},
+          "modified_at": {"type": "string", "format": "date-time"},
+          "claim_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "metric": {"$ref": "#/components/schemas/NewsroomMetric"},
+          "claims": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"$ref": "#/components/schemas/NewsroomClaim"}},
+          "evidence": {"$ref": "#/components/schemas/NewsroomEvidence"},
+          "method": {"$ref": "#/components/schemas/NewsroomMethod"},
+          "limitations": {"type": "array", "minItems": 1, "maxItems": 9, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+          "related_signal_ids": {"type": "array", "maxItems": 12, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$"}}
+        },
+        "additionalProperties": false
+      },
+      "NewsroomFeed": {
+        "type": "object",
+        "description": "Strict deterministic newsroom edition projected from the normalized OSINT China board. Every story carries an evidence URL, input digest, method and limitations.",
+        "required": ["schema_version", "feed_id", "title", "headline", "url", "generated_at", "n_stories", "source", "source_commit", "method", "scope", "coverage", "sections", "stories"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "palimpsest-news.v1"},
+          "feed_id": {"type": "string", "const": "palimpsest-china-newsroom"},
+          "title": {"type": "string", "minLength": 1},
+          "headline": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "url": {"type": "string", "const": "https://palimpsest.info/news/"},
+          "generated_at": {"type": "string", "format": "date-time"},
+          "n_stories": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "source": {"type": "string", "const": "https://palimpsest.info/readings/osint-china-latest.json"},
+          "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+          "method": {"type": "string", "minLength": 1},
+          "scope": {"type": "string", "minLength": 1},
+          "coverage": {"$ref": "#/components/schemas/NewsroomCoverage"},
+          "sections": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/components/schemas/NewsroomSection"}},
+          "stories": {"type": "array", "minItems": 1, "maxItems": 512, "uniqueItems": true, "items": {"$ref": "#/components/schemas/NewsroomStory"}}
+        },
+        "additionalProperties": false
       }
     },
     "responses": {
@@ -32,6 +180,10 @@
       "DataCatalog": {
         "description": "Published machine-readable dataset catalog",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DataCatalog"}}}
+      },
+      "NewsroomFeed": {
+        "description": "Published structured newsroom edition",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
       }
     }
   },
@@ -45,6 +197,11 @@
       "operationId": "getEvidenceAtlasJsonLd",
       "summary": "Discover available datasets as schema.org/DCAT JSON-LD",
       "responses": {"200": {"description": "JSON-LD data catalog", "content": {"application/ld+json": {"schema": {"type": "object", "additionalProperties": true}}}}}
+    }},
+    "/readings/newsroom-latest.json": {"get": {
+      "operationId": "getNewsroomFeed",
+      "summary": "Read the latest deterministic, evidence-linked newsroom edition",
+      "responses": {"200": {"$ref": "#/components/responses/NewsroomFeed"}}
     }},
     "/datapackage.json": {"get": {
       "operationId": "getEvidenceDataPackage",

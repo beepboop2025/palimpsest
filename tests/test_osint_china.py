@@ -94,6 +94,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert {spec.filename for spec in mod.SIGNALS} >= {"latest.json", "anchors-latest.json"}
     assert mod.EXCLUDED_LATEST_FILES == {
         "eval-registry-latest.json",
+        "newsroom-latest.json",
         "research-corpus-latest.json",
         "refusal-drift-latest.json",
     }
@@ -478,11 +479,30 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     assert "group: osint-china-refresh" in text
     assert "cancel-in-progress: false" in text
     build = text.index("python -m scripts.build_osint_china")
+    newsroom = text.index("python -m scripts.build_newsroom")
+    catalog = text.index("python -m scripts.build_data_catalog")
     tests = text.index("tests/test_osint_china.py")
     surface = text.index("python scripts/verify_public_surface.py")
     commit = text.index("git commit")
-    assert build < tests < surface < commit
+    assert build < newsroom < catalog < tests < surface < commit
     assert "readings/osint-china-latest.json" in text
+
+
+def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert text.count("python -m scripts.build_newsroom") == 3
+    assert text.count("tests/test_structured_newsroom.py") == 3
+    assert text.count("readings/newsroom-latest.json") == 3
+    assert sum(line.strip().rstrip("\\").strip() == "news/"
+               for line in text.splitlines()) == 3
+
+    build_blocks = re.findall(
+        r"python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_newsroom\n"
+        r"\s*python -m scripts\.build_data_catalog",
+        text,
+    )
+    assert len(build_blocks) == 3
 
 
 def test_workflow_installs_a_complete_hash_pinned_test_runner_without_credentials():

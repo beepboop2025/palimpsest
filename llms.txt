@@ -61,6 +61,21 @@ Signals above update on declared cadences from hours to daily, weekly and monthl
 public GitHub Actions on the open repository. A missing or stale feed remains explicit
 rather than becoming a synthetic value.
 
+## Evidence newsroom
+
+The [Palimpsest Newsroom](https://palimpsest.info/news/) turns the normalized OSINT China
+board into hourly, structured news dispatches. It is a deterministic editorial projection,
+not model-written copy: it does not collect another version of the evidence, infer causes,
+or turn missing and stale inputs into calm. Every quantitative claim keeps its denominator
+when one exists, and every story links the source timestamp, public source URL, input
+SHA-256, method and limitations needed to verify it.
+
+Agents can consume the complete strict feed at
+[newsroom-latest.json](https://palimpsest.info/readings/newsroom-latest.json), the
+[JSON Feed 1.1 edition](https://palimpsest.info/news/feed.json), or the
+[RSS 2.0 edition](https://palimpsest.info/news/feed.xml). Stable story pages and per-story
+JSON records are listed in the [news sitemap](https://palimpsest.info/news/sitemap.xml).
+
 ## The Verifiable Eval Registry
 
 A public, tamper-evident record of AI model evaluations, and the part of Palimpsest
@@ -129,6 +144,7 @@ leads are excluded from the public surface.
 
 ## Key pages
 
+- [Newsroom](https://palimpsest.info/news/): hourly, deterministic news dispatches with structured claims, explicit denominators, limitations and links to the exact public evidence
 - [OSINT China](https://palimpsest.info/osint-china.html): the continuous public roll-up across every China-facing signal, including per-source freshness, coverage failures and the complete machine-readable bundle
 - [Evidence Atlas](https://palimpsest.info/data.html): searchable inventory of every public dataset, its measurement layer, collection mode, freshness, geographic scope, rights, limitations, latest file and history; also published as [catalog JSON](https://palimpsest.info/readings/catalog.json), [DCAT/schema.org JSON-LD](https://palimpsest.info/readings/catalog.jsonld), and a [Frictionless Data Package](https://palimpsest.info/datapackage.json)
 - [Observatory](https://palimpsest.info/dashboards/ddti_observatory.html): live fear index, topic network, provenance-on-pull

@@ -222,6 +222,26 @@
   .hero__note { font-family: var(--tk-font-mono); font-size: 11px; line-height: 1.6;
                 color: var(--tk-text-4); margin: 18px 0 0; max-width: 62ch; }
 
+  /* ---- the wire: the latest edition comes before the product map ---- */
+  .wire-door { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(220px,.6fr);
+               gap: 16px 30px; align-items: end; margin: 28px 0 0; padding: 22px 24px;
+               color: inherit; text-decoration: none; background: #edf2f1;
+               border: 1px solid #aab8ba; box-shadow: 9px 10px 0 rgba(25,87,210,.16);
+               transition: transform var(--ps-t-fast) var(--ps-ease),
+                           box-shadow var(--ps-t-fast) var(--ps-ease); }
+  .wire-door:hover { transform: translateY(-2px); box-shadow: 12px 13px 0 rgba(25,87,210,.21); }
+  .wire-door__eyebrow { display: block; margin-bottom: 7px; color: #1957d2;
+                        font-family: var(--tk-font-mono); font-size: 10px; font-weight: 700;
+                        letter-spacing: .14em; text-transform: uppercase; }
+  .wire-door__title { display: block; color: #0b131c; font-size: clamp(23px,3.6vw,38px);
+                      font-weight: 800; line-height: 1.05; letter-spacing: -.025em; }
+  .wire-door__body { display: block; color: #42515d; font-size: 13px; line-height: 1.55; }
+  .wire-door__go { display: block; margin-top: 12px; color: #103d9f;
+                   font-family: var(--tk-font-mono); font-size: 10.5px; font-weight: 700;
+                   letter-spacing: .07em; text-transform: uppercase; }
+  @media (max-width: 680px) { .wire-door { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .wire-door:hover { transform: none; } }
+
   /* ---- the four public surfaces ---- */
   .doors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
            gap: 14px; margin: 30px 0 0; }
@@ -322,9 +342,10 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-0">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout ps-flyout--wide" id="ps-fly-0">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
         <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -348,8 +369,8 @@
       </div>
     </div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-1">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
         <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -363,8 +384,8 @@
       </div>
     </div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-2">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-3">
         <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -395,16 +416,26 @@
     <img class="hero__logo" src="/brand/palimpsest-icon.svg" alt="Palimpsest logo" width="56" height="56">
     <p class="ps-kicker">Open source · public good · MIT</p>
     <h1 class="ps-h1">Palimpsest</h1>
-    <p class="ps-lede">Four public surfaces, one evidence discipline. An observatory measures what the
-    Chinese censorship apparatus removes. A registry seals AI evaluations the moment they publish. A
-    reviewed ScamShield bridge shares public typologies without exporting Telegram messages or exact
-    indicators. The whole instrument remains a free public good, funded by people who think it should
-    exist rather than by anyone who buys it. It watches the censor, never the censored.</p>
+    <p class="ps-lede">Start with what changed, then inspect the receipts. Palimpsest turns its live
+    censorship, network, state-telemetry and model readings into structured news; every headline keeps
+    its denominator, freshness, limitation and exact source hash. The observatory, verifiable AI eval
+    registry and reviewed intelligence bridges remain underneath as evidence infrastructure. It watches
+    the censor, never the censored.</p>
     <div class="btn-row">
-      <a class="ps-btn" href="/developers.html">Connect the API + MCP</a>
-      <a class="ps-btn ps-btn--ghost" href="/for-researchers.html">Browse data and methods</a>
-      <a class="ps-btn ps-btn--ghost" href="/integrations/scamshield/intelligence-pack-v1.json">Open ScamShield pack</a>
+      <a class="ps-btn" href="/news/">Read the latest edition</a>
+      <a class="ps-btn ps-btn--ghost" href="/data.html">Browse structured data</a>
+      <a class="ps-btn ps-btn--ghost" href="/developers.html">Connect the API + MCP</a>
     </div>
+
+    <a class="wire-door ps-reveal" href="/news/">
+      <span>
+        <span class="wire-door__eyebrow">Palimpsest Wire · latest verified edition</span>
+        <span class="wire-door__title">The evidence desk now reads like a publication.</span>
+      </span>
+      <span class="wire-door__body">Thirty-three normalized instruments become dated, citable
+      dispatches with per-story JSON, RSS, NewsArticle metadata and visible coverage gaps.
+      <span class="wire-door__go">Open the newsroom →</span></span>
+    </a>
 
     <div class="doors ps-stagger">
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """The site's navigation, defined once.
 
-Palimpsest is three things to three audiences, and the navigation has to say so
-on every page rather than burying two of them:
+Palimpsest is a publication plus three evidence surfaces, and the navigation
+has to say so on every page rather than making readers reverse-engineer it:
 
-  1. a China censorship observatory      (researchers, journalists, OSINT)
-  2. a verifiable AI evaluation registry (labs, eval and safety researchers)
-  3. a funded public good                (grantmakers and individual donors)
+  1. an evidence-linked newsroom          (readers, journalists, researchers)
+  2. a China censorship observatory       (researchers, journalists, OSINT)
+  3. a verifiable AI evaluation registry  (labs, eval and safety researchers)
+  4. a funded public good                 (grantmakers and individual donors)
 
 Before this module there were five different hand-maintained navs across twelve
 pages and four pages with no nav at all, because every page carried its own copy.
@@ -32,6 +33,7 @@ END = "<!--/PS_NAV-->"
 # It is a hand-maintained editorial claim, not a timestamp — clear it when it
 # stops being true rather than letting it rot into furniture.
 NAV = [
+    {"label": "News", "href": "/news/"},
     {
         "label": "Censorship",
         "lede": "What the apparatus removed, measured at the network, content and model layers.",

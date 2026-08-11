@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:github-refuge",
+  "slug": "github-refuge-watch",
+  "url": "https://palimpsest.info/news/github-refuge-watch/",
+  "signal_id": "github-refuge",
+  "headline": "Public metadata records 1 pressure event across 7 watched repositories",
+  "dek": "The watch preserves public repository-level pressure signals without collecting contributor identities.",
+  "section": "erasure",
+  "order": 4,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-11T02:38:03Z",
+  "modified_at": "2026-08-11T02:38:03Z",
+  "claim_fingerprint": "sha256:37d96190b31fb48e06be8d5cf1f000aada165a2a2529f16d8c84de1939181b24",
+  "metric": {
+    "label": "pressure events",
+    "value": 1,
+    "unit": "count",
+    "denominator": {
+      "label": "repositories watched",
+      "value": 7
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current public-metadata watch records 1 pressure event among 7 configured repositories."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/github-refuge-latest.json",
+    "input": {
+      "filename": "github-refuge-latest.json",
+      "sha256": "6ab3ce52ab37c20b9bf46dbb1b72a91eb4e6ca753e8cb7282f76cb13eda5f864",
+      "bytes": 3742
+    },
+    "source_timestamp": "2026-08-11T02:38:03Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "Repository metadata can show public pressure or disappearance but cannot establish the actor or motive behind a change."
+  ],
+  "related_signal_ids": [
+    "erasure-observatory",
+    "wayback",
+    "anchors"
+  ]
+}

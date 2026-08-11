@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:silence-index",
+  "slug": "silence-index",
+  "url": "https://palimpsest.info/news/silence-index/",
+  "signal_id": "silence-index",
+  "headline": "0 of 25 considered topics meet the blackout rule",
+  "dek": "The index looks for topics loud abroad and absent from the permitted domestic proxy, while publishing every abstention.",
+  "section": "attention",
+  "order": 4,
+  "type": "analysis",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-11T07:45:50Z",
+  "modified_at": "2026-08-11T07:45:50Z",
+  "claim_fingerprint": "sha256:db8ea3175b55f16e75cb8cd5cee3264f56078e38b2b6c5c9a79156779c59988c",
+  "metric": {
+    "label": "blackout topics",
+    "value": 0,
+    "unit": "count",
+    "denominator": {
+      "label": "topics considered",
+      "value": 25
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "0 blackout topics meet the predeclared rule among 25 topics considered in this round."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/silence-index-latest.json",
+    "input": {
+      "filename": "silence-index-latest.json",
+      "sha256": "da0b856263c1f6015049159d1fd7bedb1c39f47ccf5b62f31e1785f46ced72bc",
+      "bytes": 6633
+    },
+    "source_timestamp": "2026-08-11T07:45:50Z"
+  },
+  "method": {
+    "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
+    "version": 1
+  },
+  "limitations": [
+    "Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain."
+  ],
+  "related_signal_ids": [
+    "ddti",
+    "gdelt",
+    "weibo-hotsearch"
+  ]
+}
