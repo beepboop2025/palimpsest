@@ -1,0 +1,81 @@
+{
+  "distinct_pools": 6,
+  "distinct_pools_basis": "union of forged IPs per region, not per-target samples",
+  "events": [
+    {
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
+      "vantage": "CN-BJ/AS4808"
+    },
+    {
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
+      "vantage": "CN-GD/AS17623"
+    },
+    {
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
+      "vantage": "CN-SH/AS4812"
+    },
+    {
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
+      "vantage": "CN/AS4134"
+    },
+    {
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
+      "vantage": "CN/AS4837"
+    },
+    {
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
+      "vantage": "CN/AS9808"
+    }
+  ],
+  "generated_at": "2026-08-11T18:35:41.054570Z",
+  "last_changed_at": "2026-08-11T18:35:41.054570Z",
+  "max_process_count": 2,
+  "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
+  "method_version": 2,
+  "pool_sampling_suspected": true,
+  "probe_domain": "torproject.org",
+  "process_count_semantics": "floor",
+  "provenance": {
+    "authorization": {
+      "fixed_box_opt_in": true,
+      "live_opt_in": true
+    },
+    "burst": 24,
+    "caveat": "single-vantage round: observed censorship varies with network path, so cross-region comparisons from one prober are not identifiable (cf. arXiv:2406.19304).",
+    "code_version": "7c344e98f5d9b5e84be269d65ee9c6267a002701",
+    "flow_id_policy": "ephemeral source port per query (paths not pinned)",
+    "queries_attempted": 5184,
+    "rate_per_sec": 5.0,
+    "transports": {
+      "direct": {
+        "ran": true,
+        "targets": 216
+      },
+      "open_resolver": {
+        "ran": false,
+        "targets": null
+      }
+    },
+    "vantage_count": 1,
+    "vantage_country": "DE",
+    "vantage_kind": "single fixed-IP VPS outside China",
+    "wait_s": 1.2
+  },
+  "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
+  "signal": "bleedthrough",
+  "title": "GFW injector fleet",
+  "vantages_injecting": 210,
+  "vantages_probed": 216
+}
