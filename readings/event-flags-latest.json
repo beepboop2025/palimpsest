@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-08-11T14:05:06.471456+00:00",
+  "generated_at": "2026-08-11T19:45:32.542766+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 36.9281,
-      "n": 135,
+      "stat": 27.4444,
+      "n": 136,
       "n_alarms_in_history": 1,
       "age_hours": 0.3,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 4.1812,
-      "n": 252,
+      "stat": 4.0646,
+      "n": 254,
       "n_alarms_in_history": 4,
-      "age_hours": 3.9,
+      "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
-      "state": "calm",
-      "stat": 71.2049,
-      "n": 252,
+      "state": "watch",
+      "stat": 239.5626,
+      "n": 254,
       "n_alarms_in_history": 1,
-      "age_hours": 3.9,
+      "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -32,15 +32,15 @@
       "stat": 41.8312,
       "n": 24,
       "n_alarms_in_history": 0,
-      "age_hours": 7.6,
+      "age_hours": 13.2,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 4.0278,
-      "n": 143,
+      "stat": 9.7256,
+      "n": 144,
       "n_alarms_in_history": 0,
-      "age_hours": 6.1,
+      "age_hours": 5.6,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 1.8927,
       "n": 71,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 5.7,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -72,23 +72,23 @@
       "stat": 4.3825,
       "n": 397,
       "n_alarms_in_history": 6,
-      "age_hours": 86.1,
+      "age_hours": 91.8,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 92,
+      "n": 93,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 0.1,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 93,
+      "n": 94,
       "n_alarms_in_history": 0,
-      "age_hours": 0.3,
+      "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
@@ -96,7 +96,7 @@
       "stat": 5.0028,
       "n": 11,
       "n_alarms_in_history": 0,
-      "age_hours": 14.1,
+      "age_hours": 19.8,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -111,47 +111,47 @@
       "models": {
         "anthropic/claude-3-haiku": {
           "state": "quiet",
-          "evalue": 0.0002,
+          "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 30,
+          "pairs_seen": 31,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 410
+          "monitored_comparisons": 451
         },
         "meta-llama/llama-3.3-70b-instruct": {
           "state": "quiet",
-          "evalue": 0.0008,
+          "evalue": 0.0011,
           "p0": 0.008849,
-          "pairs_seen": 30,
+          "pairs_seen": 31,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.008849,
-          "monitored_comparisons": 410
+          "monitored_comparisons": 451
         },
         "mistralai/mistral-nemo": {
           "state": "quiet",
-          "evalue": 0.0005,
+          "evalue": 0.0003,
           "p0": 0.114619,
-          "pairs_seen": 30,
+          "pairs_seen": 31,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.114619,
-          "monitored_comparisons": 390
+          "monitored_comparisons": 431
         },
         "openai/gpt-4o-mini": {
           "state": "quiet",
-          "evalue": 0.0002,
+          "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 30,
+          "pairs_seen": 31,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 410
+          "monitored_comparisons": 451
         }
       },
-      "n_rows": 120,
+      "n_rows": 124,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 0.9,
+      "age_hours": 6.0,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
@@ -161,7 +161,9 @@
       "guarantee": "panel e-value is the arithmetic mean of per-model anytime-valid mixture e-processes (valid under arbitrary dependence). Compound lifetime false-flag bound with 4 monitored models: WATCH at most 15%, ALARM at most 11% — each model's calibration can undershoot with probability 0.025, plus Ville's inequality when none does"
     }
   },
-  "active": [],
+  "active": [
+    "ddti_novelty"
+  ],
   "stale": [],
   "no_data": [
     "bleedthrough_capacity",
@@ -174,5 +176,5 @@
   "n_reporting": 11,
   "n_signals": 15,
   "n_open": 14,
-  "headline": "no signal elevated, but only 11 of 14 signals are reporting"
+  "headline": "elevated: ddti_novelty"
 }
