@@ -469,14 +469,17 @@ def build_node_status(
         storage_available=execution_storage_available,
     )
 
-    healthy = pipeline_counts.get("healthy", 0)
+    pipeline_states = {
+        str(item.get("state", "unknown")) for item in pipeline_sources.values()
+    }
+    operational_states = {"healthy", "abstained"}
     if not collectors_enabled:
         pipeline_state = "disabled"
     elif not pipeline_storage_available:
         pipeline_state = "unavailable"
-    elif not pipeline_sources or healthy == 0:
+    elif not pipeline_sources or pipeline_states == {"no-data"}:
         pipeline_state = "no-data"
-    elif healthy == len(pipeline_sources):
+    elif pipeline_states <= operational_states:
         pipeline_state = "healthy"
     else:
         pipeline_state = "degraded"

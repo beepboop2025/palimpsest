@@ -90,6 +90,42 @@ def test_status_distinguishes_abstention_missing_and_not_applicable(tmp_path):
     assert status["evidence"]["sources"]["feed-head"]["state"] == "not-applicable"
 
 
+def test_recent_abstention_is_operationally_healthy_but_remains_visible(tmp_path):
+    now = datetime(2026, 8, 11, 12, tzinfo=UTC)
+    evidence = tmp_path / "current.json"
+    evidence.write_text(json.dumps({"generated_at": now.isoformat()}))
+
+    status = build_node_status(
+        (_spec("monthly-source", evidence.name),),
+        {"monthly-source": _log(when=now, status="abstained")},
+        root=tmp_path,
+        now=now,
+        queue_heartbeats={
+            queue: {"timestamp": now.isoformat()}
+            for queue in ("default", "collectors")
+        },
+    )
+
+    assert status["pipeline"]["status"] == "healthy"
+    assert status["pipeline"]["sources"]["monthly-source"]["state"] == "abstained"
+    assert status["evidence"]["status"] == "fresh"
+    assert status["status"] == "healthy"
+
+
+def test_failed_only_pipeline_is_degraded_not_no_data(tmp_path):
+    now = datetime(2026, 8, 11, 12, tzinfo=UTC)
+
+    status = build_node_status(
+        (_spec("failed-source", None),),
+        {"failed-source": _log(when=now, status="failed")},
+        root=tmp_path,
+        now=now,
+    )
+
+    assert status["pipeline"]["status"] == "degraded"
+    assert status["pipeline"]["sources"]["failed-source"]["state"] == "failed"
+
+
 def test_future_or_invalid_evidence_is_not_reported_fresh(tmp_path):
     now = datetime(2026, 8, 11, 12, tzinfo=UTC)
     future = tmp_path / "future.json"
