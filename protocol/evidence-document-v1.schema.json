@@ -1,0 +1,687 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/evidence-document-v1.schema.json",
+  "title": "Palimpsest EvidenceDocument v1 manifest",
+  "description": "Private immutable evidence manifest; related definitions cover rights ledgers and deterministic training cuts.",
+  "$comment": "Runtime invariants not expressible here: publication_time <= knowledge_time <= collected_at <= acceptance.accepted_at; event_time is independent and may be scheduled in the future; capture request, receipt, manifest, decision, ledger-head, and cut hashes bind canonical bytes; production cut construction and validation require an out-of-band signed or otherwise anchored complete rights-ledger head; supersession references form a same-subject acyclic graph; URL parsing additionally rejects default/empty/noncanonical ports, credentials, fragments, dot segments, scoped IPv6, noncanonical percent escapes, and non-lowercase authorities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_version",
+    "canonicalization",
+    "source",
+    "media_type",
+    "language",
+    "event_time",
+    "publication_time",
+    "knowledge_time",
+    "collected_at",
+    "collection",
+    "retention_class",
+    "rights",
+    "content",
+    "acceptance"
+  ],
+  "properties": {
+    "spec_version": {"const": "palimpsest-evidence-document/v1"},
+    "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+    "source": {"$ref": "#/$defs/source"},
+    "media_type": {"$ref": "#/$defs/mediaType"},
+    "language": {"$ref": "#/$defs/language"},
+    "event_time": {"$ref": "#/$defs/nullableTimestamp"},
+    "publication_time": {"$ref": "#/$defs/nullableTimestamp"},
+    "knowledge_time": {"$ref": "#/$defs/timestamp"},
+    "collected_at": {"$ref": "#/$defs/timestamp"},
+    "collection": {"$ref": "#/$defs/collection"},
+    "retention_class": {"$ref": "#/$defs/retentionClass"},
+    "rights": {"$ref": "#/$defs/rights"},
+    "content": {"$ref": "#/$defs/content"},
+    "acceptance": {"$ref": "#/$defs/acceptanceBinding"}
+  },
+  "examples": [
+    {
+      "spec_version": "palimpsest-evidence-document/v1",
+      "canonicalization": "palimpsest-json-sorted-utf8-v1",
+      "source": {
+        "id": "example-wire",
+        "canonical_url": "https://example.org/evidence/42"
+      },
+      "media_type": "text/plain",
+      "language": "en",
+      "event_time": "2026-08-12T08:00:00Z",
+      "publication_time": "2026-08-12T08:05:00Z",
+      "knowledge_time": "2026-08-12T08:05:00Z",
+      "collected_at": "2026-08-12T08:06:00Z",
+      "collection": {
+        "run_id": "wire-20260812T080600Z",
+        "parent_feed_sha256": null
+      },
+      "retention_class": "standard",
+      "rights": {
+        "training_use": "full_text",
+        "license_or_terms_ref": "https://example.org/terms"
+      },
+      "content": {
+        "sha256": "149f5ad142681d048ee51858289212e57dcfacfe083e26099476dbcdd839d266",
+        "byte_size": 18
+      },
+      "acceptance": {
+        "accepted_at": "2026-08-12T08:06:00Z",
+        "capture_request_sha256": "a5987a44d8c2a763954de5053c75e18d275dae07d484b3dc4240d5e9733b6b56",
+        "receipt_sha256": "713b6578d527a97a1157c1fa40f4dfe570147d06fc6b4ed2a90cc59a9ab25d51"
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "safeIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,127}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "nullableTimestamp": {
+      "oneOf": [
+        {"$ref": "#/$defs/timestamp"},
+        {"type": "null"}
+      ]
+    },
+    "canonicalURL": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^https?://(?:[a-z0-9.-]+|\\[[0-9a-f:.]+\\])(?::[0-9]{1,5})?(?:/[^\\s?#]*)?(?:\\?[^\\s?#]+)?$",
+      "$comment": "Runtime also validates DNS/unscoped IPv6 syntax, rejects scheme-default or leading-zero ports and dot segments after percent-decoding, and requires uppercase two-digit percent escapes."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "canonical_url"],
+      "properties": {
+        "id": {"$ref": "#/$defs/safeIdentifier"},
+        "canonical_url": {"$ref": "#/$defs/canonicalURL"}
+      }
+    },
+    "mediaType": {
+      "type": "string",
+      "maxLength": 127,
+      "pattern": "^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$"
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^(und|[a-z]{2,8}(-[a-z0-9]{1,8})*)$"
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "parent_feed_sha256"],
+      "properties": {
+        "run_id": {"$ref": "#/$defs/safeIdentifier"},
+        "parent_feed_sha256": {
+          "oneOf": [
+            {"$ref": "#/$defs/sha256"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "retentionClass": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["training_use", "license_or_terms_ref"],
+      "properties": {
+        "training_use": {
+          "enum": ["prohibited", "metadata_only", "derived_only", "full_text"]
+        },
+        "license_or_terms_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "byte_size"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byte_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        }
+      }
+    },
+    "acceptanceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted_at", "capture_request_sha256", "receipt_sha256"],
+      "properties": {
+        "accepted_at": {"$ref": "#/$defs/timestamp"},
+        "capture_request_sha256": {"$ref": "#/$defs/sha256"},
+        "receipt_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "$comment": "Runtime recomputes the capture request from manifest metadata/content, verifies both hashes, loads the content-addressed receipt, and enforces collected_at <= accepted_at."
+    },
+    "captureRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "canonicalization", "metadata", "content"],
+      "properties": {
+        "spec_version": {"const": "palimpsest-evidence-capture-request/v1"},
+        "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+        "metadata": {"$ref": "#/$defs/ingestMetadata"},
+        "content": {"$ref": "#/$defs/content"}
+      }
+    },
+    "acceptanceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "canonicalization",
+        "capture_request_sha256",
+        "accepted_at",
+        "capture_request"
+      ],
+      "properties": {
+        "spec_version": {"const": "palimpsest-evidence-acceptance-receipt/v1"},
+        "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+        "capture_request_sha256": {"$ref": "#/$defs/sha256"},
+        "accepted_at": {"$ref": "#/$defs/timestamp"},
+        "capture_request": {"$ref": "#/$defs/captureRequest"}
+      },
+      "$comment": "Runtime binds capture_request_sha256 to canonical capture_request bytes, enforces collected_at <= accepted_at, and binds the receipt filename to the canonical receipt SHA-256.",
+      "examples": [
+        {
+          "spec_version": "palimpsest-evidence-acceptance-receipt/v1",
+          "canonicalization": "palimpsest-json-sorted-utf8-v1",
+          "capture_request_sha256": "a5987a44d8c2a763954de5053c75e18d275dae07d484b3dc4240d5e9733b6b56",
+          "accepted_at": "2026-08-12T08:06:00Z",
+          "capture_request": {
+            "spec_version": "palimpsest-evidence-capture-request/v1",
+            "canonicalization": "palimpsest-json-sorted-utf8-v1",
+            "metadata": {
+              "source": {
+                "id": "example-wire",
+                "canonical_url": "https://example.org/evidence/42"
+              },
+              "media_type": "text/plain",
+              "language": "en",
+              "event_time": "2026-08-12T08:00:00Z",
+              "publication_time": "2026-08-12T08:05:00Z",
+              "knowledge_time": "2026-08-12T08:05:00Z",
+              "collected_at": "2026-08-12T08:06:00Z",
+              "collection": {
+                "run_id": "wire-20260812T080600Z",
+                "parent_feed_sha256": null
+              },
+              "retention_class": "standard",
+              "rights": {
+                "training_use": "full_text",
+                "license_or_terms_ref": "https://example.org/terms"
+              }
+            },
+            "content": {
+              "sha256": "149f5ad142681d048ee51858289212e57dcfacfe083e26099476dbcdd839d266",
+              "byte_size": 18
+            }
+          }
+        }
+      ]
+    },
+    "ingestMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "media_type",
+        "language",
+        "event_time",
+        "publication_time",
+        "knowledge_time",
+        "collected_at",
+        "collection",
+        "retention_class",
+        "rights"
+      ],
+      "properties": {
+        "source": {"$ref": "#/$defs/source"},
+        "media_type": {"$ref": "#/$defs/mediaType"},
+        "language": {"$ref": "#/$defs/language"},
+        "event_time": {"$ref": "#/$defs/nullableTimestamp"},
+        "publication_time": {"$ref": "#/$defs/nullableTimestamp"},
+        "knowledge_time": {"$ref": "#/$defs/timestamp"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "collection": {"$ref": "#/$defs/collection"},
+        "retention_class": {"$ref": "#/$defs/retentionClass"},
+        "rights": {"$ref": "#/$defs/rights"}
+      },
+      "examples": [
+        {
+          "source": {
+            "id": "example-wire",
+            "canonical_url": "https://example.org/evidence/42"
+          },
+          "media_type": "text/plain",
+          "language": "en",
+          "event_time": "2026-08-12T08:00:00Z",
+          "publication_time": "2026-08-12T08:05:00Z",
+          "knowledge_time": "2026-08-12T08:05:00Z",
+          "collected_at": "2026-08-12T08:06:00Z",
+          "collection": {
+            "run_id": "wire-20260812T080600Z",
+            "parent_feed_sha256": null
+          },
+          "retention_class": "standard",
+          "rights": {
+            "training_use": "full_text",
+            "license_or_terms_ref": "https://example.org/terms"
+          }
+        }
+      ]
+    },
+    "rightsSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "content_sha256"],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/safeIdentifier"},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "rightsDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "canonicalization",
+        "subject",
+        "decision_type",
+        "training_use",
+        "effective_at",
+        "knowledge_time",
+        "license_or_terms_ref",
+        "reason",
+        "supersedes"
+      ],
+      "properties": {
+        "spec_version": {"const": "palimpsest-evidence-rights-decision/v1"},
+        "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+        "subject": {"$ref": "#/$defs/rightsSubject"},
+        "decision_type": {"enum": ["policy_set", "revocation"]},
+        "training_use": {
+          "enum": ["prohibited", "metadata_only", "derived_only", "full_text"]
+        },
+        "effective_at": {"$ref": "#/$defs/timestamp"},
+        "knowledge_time": {"$ref": "#/$defs/timestamp"},
+        "license_or_terms_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "supersedes": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"decision_type": {"const": "revocation"}}},
+          "then": {"properties": {"training_use": {"const": "prohibited"}}}
+        }
+      ],
+      "examples": [
+        {
+          "spec_version": "palimpsest-evidence-rights-decision/v1",
+          "canonicalization": "palimpsest-json-sorted-utf8-v1",
+          "subject": {
+            "source_id": "example-wire",
+            "content_sha256": "149f5ad142681d048ee51858289212e57dcfacfe083e26099476dbcdd839d266"
+          },
+          "decision_type": "policy_set",
+          "training_use": "full_text",
+          "effective_at": "2026-08-12T08:05:00Z",
+          "knowledge_time": "2026-08-12T08:05:00Z",
+          "license_or_terms_ref": "https://example.org/terms",
+          "reason": "Terms permit this exact source version for full-text training.",
+          "supersedes": []
+        }
+      ]
+    },
+    "rightsDecisionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_sha256", "decision"],
+      "properties": {
+        "decision_sha256": {"$ref": "#/$defs/sha256"},
+        "decision": {"$ref": "#/$defs/rightsDecision"}
+      },
+      "$comment": "Runtime recomputes decision_sha256 over canonical decision bytes."
+    },
+    "rightsLedger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "canonicalization", "decisions"],
+      "properties": {
+        "spec_version": {"const": "palimpsest-evidence-rights-ledger/v1"},
+        "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+        "decisions": {
+          "type": "array",
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/rightsDecisionEntry"}
+        }
+      },
+      "examples": [
+        {
+          "spec_version": "palimpsest-evidence-rights-ledger/v1",
+          "canonicalization": "palimpsest-json-sorted-utf8-v1",
+          "decisions": []
+        }
+      ]
+    },
+    "trainingPolicy": {
+      "const": {
+        "id": "palimpsest-full-text-utf8/v1",
+        "purpose": "text_training",
+        "rights_actions": {
+          "prohibited": "exclude",
+          "metadata_only": "exclude",
+          "derived_only": "exclude",
+          "full_text": "include"
+        },
+        "unknown_or_missing_rights": "exclude",
+        "temporal_cutoff": {
+          "manifest_clocks": [
+            "knowledge_time",
+            "collected_at",
+            "acceptance.accepted_at"
+          ],
+          "comparison": "each_lte_as_of",
+          "trusted_store_clock": "acceptance.accepted_at",
+          "source_metadata_clocks": ["knowledge_time", "collected_at"]
+        },
+        "rights_decisions": {
+          "subject_key": ["source.id", "content.sha256"],
+          "admission_clocks": ["knowledge_time", "effective_at"],
+          "comparison": "each_lte_as_of",
+          "terminal_rule": "unsuperseded_active_decision",
+          "superseded_decisions": "discard",
+          "multiple_terminals": "error",
+          "manifest_rights": "provenance_only",
+          "missing_terminal_decision": "exclude"
+        },
+        "media_types": {
+          "exact": [
+            "application/javascript",
+            "application/json",
+            "application/x-ndjson",
+            "application/xml"
+          ],
+          "type_prefixes": ["text/"],
+          "structured_syntax_suffixes": ["+json", "+xml"],
+          "parameters": "forbidden_at_ingest",
+          "content_encoding": "utf-8"
+        },
+        "deduplication": {
+          "key": ["source.id", "content.sha256"],
+          "output": "one_record_per_key",
+          "provenance": "all_admitted_manifests_sorted_by_sha256",
+          "manifest_rights": "preserve_without_authorizing"
+        }
+      }
+    },
+    "trainingProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_sha256",
+        "canonical_url",
+        "media_type",
+        "language",
+        "event_time",
+        "publication_time",
+        "knowledge_time",
+        "collected_at",
+        "acceptance",
+        "collection",
+        "retention_class",
+        "declared_rights"
+      ],
+      "properties": {
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "canonical_url": {"$ref": "#/$defs/canonicalURL"},
+        "media_type": {"$ref": "#/$defs/mediaType"},
+        "language": {"$ref": "#/$defs/language"},
+        "event_time": {"$ref": "#/$defs/nullableTimestamp"},
+        "publication_time": {"$ref": "#/$defs/nullableTimestamp"},
+        "knowledge_time": {"$ref": "#/$defs/timestamp"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "acceptance": {"$ref": "#/$defs/acceptanceBinding"},
+        "collection": {"$ref": "#/$defs/collection"},
+        "retention_class": {"$ref": "#/$defs/retentionClass"},
+        "declared_rights": {"$ref": "#/$defs/rights"}
+      }
+    },
+    "effectiveRights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["training_use", "license_or_terms_ref", "basis"],
+      "properties": {
+        "training_use": {"const": "full_text"},
+        "license_or_terms_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "basis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "decision_sha256s", "manifest_sha256s"],
+          "properties": {
+            "type": {"const": "rights_decision"},
+            "decision_sha256s": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": {"$ref": "#/$defs/sha256"}
+            },
+            "manifest_sha256s": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    },
+    "trainingRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "manifest_sha256s",
+        "media_types",
+        "languages",
+        "provenance",
+        "effective_rights",
+        "content"
+      ],
+      "properties": {
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "canonical_urls"],
+          "properties": {
+            "id": {"$ref": "#/$defs/safeIdentifier"},
+            "canonical_urls": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/canonicalURL"}
+            }
+          }
+        },
+        "manifest_sha256s": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sha256"}
+        },
+        "media_types": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/mediaType"}
+        },
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/language"}
+        },
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/trainingProvenance"}
+        },
+        "effective_rights": {"$ref": "#/$defs/effectiveRights"},
+        "content": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sha256", "byte_size", "encoding", "text", "base64"],
+          "properties": {
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "byte_size": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8388608
+            },
+            "encoding": {"const": "utf-8"},
+            "text": {"type": "string"},
+            "base64": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+            }
+          }
+        }
+      }
+    },
+    "trainingCut": {
+      "description": "The cut identity is SHA-256 of this complete canonical object. rights_ledger contains every decision known by as_of, including known future-effective decisions, and excludes future-knowledge decisions. Direct TrainingCut construction is private. Public construction and validation require the complete supplied ledger plus its out-of-band trusted hash and recompute this visible projection; that evolving complete head is deliberately not embedded in historical cut bytes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_version",
+        "canonicalization",
+        "as_of",
+        "policy",
+        "rights_ledger",
+        "records"
+      ],
+      "properties": {
+        "spec_version": {"const": "palimpsest-evidence-training-cut/v1"},
+        "canonicalization": {"const": "palimpsest-json-sorted-utf8-v1"},
+        "as_of": {"$ref": "#/$defs/timestamp"},
+        "policy": {"$ref": "#/$defs/trainingPolicy"},
+        "rights_ledger": {"$ref": "#/$defs/rightsLedger"},
+        "records": {
+          "type": "array",
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/trainingRecord"}
+        }
+      },
+      "examples": [
+        {
+          "spec_version": "palimpsest-evidence-training-cut/v1",
+          "canonicalization": "palimpsest-json-sorted-utf8-v1",
+          "as_of": "2026-08-12T08:00:00Z",
+          "policy": {
+            "id": "palimpsest-full-text-utf8/v1",
+            "purpose": "text_training",
+            "rights_actions": {
+              "prohibited": "exclude",
+              "metadata_only": "exclude",
+              "derived_only": "exclude",
+              "full_text": "include"
+            },
+            "unknown_or_missing_rights": "exclude",
+            "temporal_cutoff": {
+              "manifest_clocks": [
+                "knowledge_time",
+                "collected_at",
+                "acceptance.accepted_at"
+              ],
+              "comparison": "each_lte_as_of",
+              "trusted_store_clock": "acceptance.accepted_at",
+              "source_metadata_clocks": ["knowledge_time", "collected_at"]
+            },
+            "rights_decisions": {
+              "subject_key": ["source.id", "content.sha256"],
+              "admission_clocks": ["knowledge_time", "effective_at"],
+              "comparison": "each_lte_as_of",
+              "terminal_rule": "unsuperseded_active_decision",
+              "superseded_decisions": "discard",
+              "multiple_terminals": "error",
+              "manifest_rights": "provenance_only",
+              "missing_terminal_decision": "exclude"
+            },
+            "media_types": {
+              "exact": [
+                "application/javascript",
+                "application/json",
+                "application/x-ndjson",
+                "application/xml"
+              ],
+              "type_prefixes": ["text/"],
+              "structured_syntax_suffixes": ["+json", "+xml"],
+              "parameters": "forbidden_at_ingest",
+              "content_encoding": "utf-8"
+            },
+            "deduplication": {
+              "key": ["source.id", "content.sha256"],
+              "output": "one_record_per_key",
+              "provenance": "all_admitted_manifests_sorted_by_sha256",
+              "manifest_rights": "preserve_without_authorizing"
+            }
+          },
+          "rights_ledger": {
+            "spec_version": "palimpsest-evidence-rights-ledger/v1",
+            "canonicalization": "palimpsest-json-sorted-utf8-v1",
+            "decisions": []
+          },
+          "records": []
+        }
+      ]
+    }
+  }
+}
