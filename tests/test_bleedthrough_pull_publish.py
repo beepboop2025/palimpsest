@@ -53,6 +53,9 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "VANTAGE_COUNTRY", relay.VANTAGE_COUNTRY)
     receipt = tmp_path / "deployed-commit"
     receipt.write_text("a" * 40 + "\n", encoding="utf-8")
+    # Production is an exported, read-only tree without `.git`; model that
+    # topology explicitly so CI checkout style cannot override the receipt.
+    monkeypatch.setattr(pull, "ROOT", str(tmp_path / "export-without-git"))
     monkeypatch.setattr(pull, "DEPLOYED_COMMIT_FILE", str(receipt))
 
     targets = tmp_path / "targets.json"
