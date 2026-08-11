@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -95,15 +96,18 @@ def test_nonlive_story_does_not_render_a_retained_metric_as_current():
 
 def test_json_feed_rss_and_sitemap_are_parseable_and_complete():
     feed = _feed()
-    json_feed = build_newsroom.build_json_feed(feed)
+    feed_without_receipt_size = copy.deepcopy(feed)
+    story_without_size = feed_without_receipt_size["stories"][0]
+    story_without_size["evidence"]["input"]["bytes"] = None
+    json_feed = build_newsroom.build_json_feed(feed_without_receipt_size)
     assert json_feed["version"] == "https://jsonfeed.org/version/1.1"
     assert len(json_feed["items"]) == feed["n_stories"]
     assert len({item["id"] for item in json_feed["items"]}) == feed["n_stories"]
-    missing_story = next(story for story in feed["stories"] if story["status"] == "missing")
-    missing_item = next(
-        item for item in json_feed["items"] if item["url"] == missing_story["url"]
+    item_without_size = next(
+        item for item in json_feed["items"]
+        if item["url"] == story_without_size["url"]
     )
-    assert "size_in_bytes" not in missing_item["attachments"][0]
+    assert "size_in_bytes" not in item_without_size["attachments"][0]
 
     rss = ET.fromstring(build_newsroom.build_rss(feed))
     assert rss.tag == "rss"

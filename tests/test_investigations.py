@@ -337,15 +337,29 @@ def test_one_passed_condition_cannot_cover_an_unresolved_linked_condition(tmp_pa
 
 
 def test_editorial_clock_advances_updated_at_and_content_version(tmp_path):
-    baseline = _build()
+    current = _build()
+    evidence_clock = datetime.fromisoformat(
+        current["generated_at"].replace("Z", "+00:00")
+    )
+    decision_clock = evidence_clock + timedelta(hours=1)
+    editorial_clock = evidence_clock + timedelta(minutes=30)
+    baseline = _build(as_of=decision_clock)
     before = _case(baseline, "china-network-filtering-no-single-rate")
     config_path = _mutated_config(
         tmp_path,
         lambda config: config["cases"][0].update(
-            {"editorial_updated_at": "2026-08-11T15:18:18Z"}
+            {
+                "editorial_updated_at": editorial_clock.strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                )
+            }
         ),
     )
-    changed = build_investigations(readings_dir=READINGS, config_path=config_path)
+    changed = build_investigations(
+        readings_dir=READINGS,
+        config_path=config_path,
+        as_of=decision_clock,
+    )
     after = _case(changed, "china-network-filtering-no-single-rate")
 
     assert after["updated_at"] > before["updated_at"]

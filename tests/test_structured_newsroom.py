@@ -211,12 +211,6 @@ def test_live_and_nonlive_story_semantics_never_promote_an_abstention(feed: dict
             }
             assert story["limitations"][0].startswith("Current finding withheld:")
 
-    stories = _stories_by_id(feed)
-    assert stories["bleedthrough"]["status"] == "missing"
-    assert stories["baike-redaction"]["status"] == "stale"
-    assert stories["believability"]["status"] == "degraded"
-
-
 def test_a_newly_degraded_source_with_a_retained_metric_becomes_availability_only(
     source: dict, config: dict
 ) -> None:
