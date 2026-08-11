@@ -16,8 +16,10 @@ from __future__ import annotations
 import json
 import os
 import random
+import tempfile
 import time
 import urllib.request
+from pathlib import Path
 
 from collectors.bleedthrough import build_prefix_config
 
@@ -27,6 +29,46 @@ OUT = os.getenv("BLEEDTHROUGH_PREFIXES", os.path.join(ROOT, "config", "bleedthro
 RIPESTAT = "https://stat.ripe.net/data/announced-prefixes/data.json?resource="
 UA = "palimpsest.info observatory (Bleedthrough prefix build; contact desk@palimpsest.info)"
 THROTTLE = float(os.getenv("BLEEDTHROUGH_FETCH_THROTTLE", "1.0"))
+
+
+def _fsync_directory(path: Path) -> None:
+    """Persist the rename where the host filesystem supports directory fsync."""
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError:
+        return
+    try:
+        try:
+            os.fsync(descriptor)
+        except OSError:
+            # Some filesystems (and macOS test volumes) do not fsync directories.
+            pass
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write_json(path: str, value: dict) -> None:
+    """Publish one complete private prefix snapshot or leave the old one intact."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    payload = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent,
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+            os.fchmod(handle.fileno(), 0o600)
+        os.replace(temporary, destination)
+        _fsync_directory(destination.parent)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
 
 
 def _ripestat_fetch(asn: str) -> dict:
@@ -69,8 +111,7 @@ def main() -> None:
         print("BLEEDTHROUGH fetch: no prefixes resolved for any ASN — not writing an empty list")
         return
 
-    with open(OUT, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(OUT, out)
 
     total = sum(len(p["prefixes"]) for p in out["provinces"])
     print(f"=== BLEEDTHROUGH prefixes → {OUT} ===")

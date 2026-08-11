@@ -76,6 +76,28 @@ Agents can consume the complete strict feed at
 [RSS 2.0 edition](https://palimpsest.info/news/feed.xml). Stable story pages and per-story
 JSON records are listed in the [news sitemap](https://palimpsest.info/news/sitemap.xml).
 
+The newsroom now has two evidence-first desks that keep reporting separate from
+measurement. The [Evidence Wire](https://palimpsest.info/news/wire/) normalizes every
+accepted item in a declared seven-day, closed-allowlist window into a versioned event
+dossier. Each dossier exposes what a source reported, which independent source groups
+support it, which Palimpsest scans are relevant, what cannot be tested, and whether the
+event changed since its prior version. The wire stores only bounded metadata and links;
+it does not republish article bodies or label a single source as truth.
+
+The [China Economic Pulse](https://palimpsest.info/news/economy/) joins official releases,
+market prints and physical telemetry without flattening them into a fictional "true GDP."
+It publishes bitemporal as-of state, source independence, release delays, comparisons,
+revision receipts and explicit readiness gates; when the evidence base is too thin, the
+state claim says so instead of filling the gap with a model estimate.
+
+Machine-readable contracts:
+
+- [Evidence Wire latest](https://palimpsest.info/readings/newswire-latest.json)
+- [China Economic Pulse latest](https://palimpsest.info/readings/china-economic-pulse-latest.json)
+- [Bounded news source registry](https://palimpsest.info/config/news_sources.json)
+- [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
+- [Economic Pulse JSON Schema](https://palimpsest.info/protocol/economic-pulse-v1.schema.json)
+
 ## The Verifiable Eval Registry
 
 A public, tamper-evident record of AI model evaluations, and the part of Palimpsest
@@ -145,6 +167,8 @@ leads are excluded from the public surface.
 ## Key pages
 
 - [Newsroom](https://palimpsest.info/news/): hourly, deterministic news dispatches with structured claims, explicit denominators, limitations and links to the exact public evidence
+- [Evidence Wire](https://palimpsest.info/news/wire/): versioned RSS/Atom event dossiers with per-source coverage receipts, source independence and scan-linked corroboration
+- [China Economic Pulse](https://palimpsest.info/news/economy/): revision-safe official, market and physical-telemetry state with coverage gates and honest abstention
 - [OSINT China](https://palimpsest.info/osint-china.html): the continuous public roll-up across every China-facing signal, including per-source freshness, coverage failures and the complete machine-readable bundle
 - [Evidence Atlas](https://palimpsest.info/data.html): searchable inventory of every public dataset, its measurement layer, collection mode, freshness, geographic scope, rights, limitations, latest file and history; also published as [catalog JSON](https://palimpsest.info/readings/catalog.json), [DCAT/schema.org JSON-LD](https://palimpsest.info/readings/catalog.jsonld), and a [Frictionless Data Package](https://palimpsest.info/datapackage.json)
 - [Observatory](https://palimpsest.info/dashboards/ddti_observatory.html): live fear index, topic network, provenance-on-pull

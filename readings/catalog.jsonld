@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-11T14:00:31.678420Z",
+  "dateModified": "2026-08-11T15:15:19.496215Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -232,7 +232,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T02:48:39.340173Z",
+      "dateModified": "2026-08-11T14:03:38.690183Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -288,7 +288,7 @@
         "CN"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T07:58:13.867222Z",
+      "dateModified": "2026-08-11T14:06:53.994964Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -316,7 +316,7 @@
         "CN"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-11T13:41:37Z",
+      "dateModified": "2026-08-11T14:03:02Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -374,7 +374,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T02:38:03.432101Z",
+      "dateModified": "2026-08-11T14:03:04.996843Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -602,7 +602,7 @@
         "CN"
       ],
       "temporalResolution": "PT3H",
-      "dateModified": "2026-08-11T07:51:44Z",
+      "dateModified": "2026-08-11T14:04:16Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -718,7 +718,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T07:45:50Z",
+      "dateModified": "2026-08-11T13:54:22Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -747,7 +747,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T07:54:58.953125Z",
+      "dateModified": "2026-08-11T14:05:06.471456Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -776,7 +776,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T07:58:34.416599Z",
+      "dateModified": "2026-08-11T14:07:49.215208Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -805,7 +805,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T07:58:34.489985Z",
+      "dateModified": "2026-08-11T14:07:49.276850Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -834,7 +834,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-11T07:58:34.690134Z",
+      "dateModified": "2026-08-11T14:07:49.467175Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -863,7 +863,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-11T07:58:34.579131Z",
+      "dateModified": "2026-08-11T14:07:49.362793Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -920,7 +920,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-11T13:52:05Z",
+      "dateModified": "2026-08-11T14:48:40Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -928,6 +928,58 @@
           "name": "Palimpsest Newsroom — latest",
           "encodingFormat": "application/json",
           "contentUrl": "https://palimpsest.info/readings/newsroom-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "newswire",
+      "name": "Palimpsest Evidence Wire",
+      "description": "Metadata-only RSS and Atom intake from a closed allowlist, normalized into versioned event dossiers with source-by-source coverage receipts, independence groups, declared scan links and explicit limitations. It republishes neither article bodies nor inferred causes.",
+      "url": "https://palimpsest.info/news/wire/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": "2026-08-11T15:10:17Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Palimpsest Evidence Wire — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/newswire-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Palimpsest Evidence Wire — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/newswire-versions.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "china-economic-pulse",
+      "name": "China Economic Pulse",
+      "description": "Revision-safe synthesis of official economic releases, market prints and physical telemetry. It preserves as-of clocks, source independence, release gaps and revisions, and abstains from a composite state claim until declared coverage gates pass; it is not an estimate of true GDP.",
+      "url": "https://palimpsest.info/news/economy/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "HK"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": "2026-08-11T14:04:16Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "China Economic Pulse — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/china-economic-pulse-latest.json"
         }
       ]
     },

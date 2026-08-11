@@ -1,0 +1,59 @@
+[Unit]
+Description=Measure GFW DNS-injector telemetry from the Palimpsest Hetzner vantage
+Documentation=file:///home/palimpsest/palimpsest/ops/bleedthrough/README.md
+Wants=network-online.target
+After=network-online.target
+ConditionFileIsExecutable=/home/palimpsest/palimpsest/ops/bleedthrough_prober.sh
+ConditionPathExists=/etc/palimpsest/bleedthrough.env
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+WorkingDirectory=/home/palimpsest/palimpsest
+EnvironmentFile=/etc/palimpsest/bleedthrough.env
+ExecStart=/home/palimpsest/palimpsest/ops/bleedthrough_prober.sh
+
+# 216 targets × 24 probes × a 1.2s receive window is already ~104 minutes before
+# BGP refresh, curation, and network variance. The durable flock separately prevents
+# a manual start from overlapping the timer while the three-hour envelope is active.
+TimeoutStartSec=3h
+UMask=0027
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TasksMax=32
+MemoryMax=512M
+
+# Code and host configuration are read-only. Only private BLEEDTHROUGH state and
+# sanitized reading artifacts are writable by this service.
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/home/palimpsest/palimpsest
+ReadWritePaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings
+NoExecPaths=/var/lib/palimpsest/bleedthrough /var/lib/palimpsest/readings
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+
+# AF_INET/AF_INET6 carry RIPE HTTPS and stateless DNS. AF_UNIX is retained for
+# libc/systemd-resolved name resolution and local process plumbing.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

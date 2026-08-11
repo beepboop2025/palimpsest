@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Palimpsest BLEEDTHROUGH every six hours with a stable random offset
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00 UTC
+RandomizedDelaySec=45m
+FixedRandomDelay=true
+AccuracySec=1m
+Persistent=true
+Unit=palimpsest-bleedthrough.service
+
+[Install]
+WantedBy=timers.target

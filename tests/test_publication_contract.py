@@ -63,6 +63,10 @@ CONTRACT = {
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
+    "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
+                               "n_items"),
+    "china-economic-pulse": _d("generated_at", ["source", "method", "scope"],
+                               "n_metrics"),
     # registered before its first round lands — see PENDING below
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -189,6 +193,8 @@ OPTIONAL_EXTERNAL = {
 # deployment-specific imports. The exception can be removed once the first row is part of
 # every supported checkout, but the contract is enforced immediately in the publishing run.
 SCHEDULED_PUBLICATIONS = {
+    "china-economic-pulse",
+    "newswire",
     "newsroom",
     "research-corpus",
 }
@@ -259,7 +265,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v8"' in worker
+    assert 'const CACHE = "palimpsest-v9"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '

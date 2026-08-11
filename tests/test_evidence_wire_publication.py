@@ -1,0 +1,223 @@
+"""Publication-boundary tests for the evidence wire and China economic pulse.
+
+The collectors and renderers have their own unit tests. These assertions ratchet the
+cross-file contract a reader actually depends on: public schemas, discovery URLs,
+network-only mutable heads, and identical race-safe workflow build graphs.
+"""
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
+OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+
+
+def _json(path: str) -> dict:
+    return json.loads((ROOT / path).read_text(encoding="utf-8"))
+
+
+def _staged_occurrences(workflow: str, artifact: str) -> int:
+    return sum(
+        line.strip().rstrip("\\").strip() == artifact
+        for line in workflow.splitlines()
+    )
+
+
+def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
+    registry = _json("config/news_sources.json")
+    schema = _json("protocol/newswire-v1.schema.json")
+    latest = _json("readings/newswire-latest.json")
+
+    assert registry["schema_version"] == "palimpsest-news-sources.v1"
+    assert schema["$id"] == "https://palimpsest.info/protocol/newswire-v1.schema.json"
+    assert schema["additionalProperties"] is False
+    source_contract = schema["$defs"]["coverage"]["properties"]["sources"]
+    assert source_contract["minItems"] == source_contract["maxItems"] == len(
+        registry["sources"]
+    )
+    assert latest["schema_version"] == "palimpsest-newswire.v1"
+    assert latest["source_registry"] == "https://palimpsest.info/config/news_sources.json"
+    assert latest["coverage"]["registry_sources"] == len(registry["sources"])
+    assert latest["n_items"] == len(latest["items"])
+    assert latest["n_events"] == len(latest["events"])
+    assert (ROOT / "readings" / "newswire-versions.jsonl").is_file()
+
+
+def test_public_economic_pulse_links_its_concrete_schema_and_abstention_state():
+    schema = _json("protocol/economic-pulse-v1.schema.json")
+    pulse = _json("readings/china-economic-pulse-latest.json")
+
+    assert schema["$id"] == (
+        "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
+    )
+    assert schema["additionalProperties"] is False
+    assert pulse["schema_version"] == "palimpsest-economic-pulse.v1"
+    assert pulse["pulse_id"] == "palimpsest-china-economic-pulse"
+    assert pulse["n_metrics"] >= 0
+    assert pulse["economic_state"]["status"] in {"warming_up", "coverage_ready"}
+    assert pulse["readiness"]["gates"]
+    assert pulse["input_integrity"]
+
+
+def test_openapi_uses_the_public_protocol_schemas_for_both_mutable_heads():
+    spec = _json("openapi.json")
+    schemas = spec["components"]["schemas"]
+    responses = spec["components"]["responses"]
+
+    assert schemas["EvidenceNewswire"] == {
+        "$ref": "https://palimpsest.info/protocol/newswire-v1.schema.json"
+    }
+    assert schemas["ChinaEconomicPulse"] == {
+        "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
+    }
+    expected = {
+        "/readings/newswire-latest.json": (
+            "getEvidenceNewswire", "EvidenceNewswire"
+        ),
+        "/readings/china-economic-pulse-latest.json": (
+            "getChinaEconomicPulse", "ChinaEconomicPulse"
+        ),
+    }
+    for path, (operation_id, response_name) in expected.items():
+        operation = spec["paths"][path]["get"]
+        assert operation["operationId"] == operation_id
+        assert operation["responses"]["200"] == {
+            "$ref": f"#/components/responses/{response_name}"
+        }
+        assert responses[response_name]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{response_name}"
+        }
+        assert (ROOT / path.lstrip("/")).is_file()
+
+
+def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
+    sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    news_sitemap = (ROOT / "news" / "sitemap.xml").read_text(encoding="utf-8")
+    robots = (ROOT / "robots.txt").read_text(encoding="utf-8")
+    llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+
+    for url in (
+        "https://palimpsest.info/news/wire/",
+        "https://palimpsest.info/news/economy/",
+    ):
+        assert url in sitemap
+        assert url in news_sitemap
+        assert url in llms
+    for url in (
+        "https://palimpsest.info/news/feed.json",
+        "https://palimpsest.info/news/feed.xml",
+        "https://palimpsest.info/readings/newswire-latest.json",
+        "https://palimpsest.info/readings/china-economic-pulse-latest.json",
+        "https://palimpsest.info/config/news_sources.json",
+        "https://palimpsest.info/protocol/newswire-v1.schema.json",
+        "https://palimpsest.info/protocol/economic-pulse-v1.schema.json",
+    ):
+        assert url in llms
+    assert robots.splitlines().count(
+        "Sitemap: https://palimpsest.info/news/sitemap.xml"
+    ) == 1
+    assert (ROOT / "news" / "wire" / "index.html").is_file()
+    assert (ROOT / "news" / "economy" / "index.html").is_file()
+
+    # Pagination is data-dependent. Discover generated pages from disk and require
+    # each one in the generated sitemap instead of freezing today's page count.
+    page_root = ROOT / "news" / "wire" / "page"
+    for page in page_root.glob("*/index.html") if page_root.exists() else ():
+        relative = page.parent.relative_to(ROOT).as_posix()
+        assert f"https://palimpsest.info/{relative}/" in news_sitemap
+
+
+def test_mutable_wire_and_pulse_heads_are_network_only_and_never_fall_back():
+    worker = (ROOT / "sw.js").read_text(encoding="utf-8")
+    assert 'const CACHE = "palimpsest-v9"' in worker
+    assert '"/readings/newswire-latest.json"' in worker
+    assert '"/readings/china-economic-pulse-latest.json"' in worker
+
+    marker = "if (LIVE_EVIDENCE_READINGS.has(url.pathname))"
+    branch = worker[worker.index(marker):]
+    branch = branch[:branch.index("return;")]
+    assert 'fetch(req, { cache: "no-store" })' in branch
+    assert "caches.match" not in branch
+
+
+def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
+    workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
+    assert 'cron: "17,47 * * * *"' in workflow
+    assert "workflow_dispatch" in workflow
+    assert "group: newswire-refresh" in workflow
+    assert "cancel-in-progress: false" in workflow
+
+    build_graph = re.findall(
+        r"python -m scripts\.newswire_pull\n"
+        r"\s*python -m scripts\.build_economic_pulse\n"
+        r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_newsroom\n"
+        r"\s*python -m scripts\.build_data_catalog\n"
+        r"\s*python scripts/seal_readings\.py",
+        workflow,
+    )
+    assert len(build_graph) == 3
+
+    staged = (
+        "readings/newswire-latest.json",
+        "readings/newswire-versions.jsonl",
+        "readings/china-economic-pulse-latest.json",
+        "readings/osint-china-latest.json",
+        "readings/newsroom-latest.json",
+        "readings/readings-ledger.jsonl",
+        "readings/catalog.json",
+        "readings/catalog.jsonld",
+        "datapackage.json",
+        "news/",
+    )
+    for artifact in staged:
+        assert _staged_occurrences(workflow, artifact) == 3, artifact
+
+
+def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner():
+    workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
+    for command in (
+        "tests/test_egress_policy.py",
+        "tests/test_safe_fetch.py",
+        "tests/test_public_surface_scrub.py",
+        "tests/test_evidence_wire_publication.py",
+        "tests/test_ai_discovery.py",
+        "python scripts/verify_public_surface.py",
+    ):
+        assert workflow.count(command) == 3, command
+
+    install = workflow[
+        workflow.index("- name: Install the pinned offline test runner"):
+        workflow.index("- name: Synchronize inputs before collection")
+    ]
+    assert "python -m pip install --quiet --require-hashes" in install
+    assert "-r .github/osint-china-ci-requirements.txt" in install
+    assert "env:" not in install
+    assert "${{" not in install
+    assert "persist-credentials: false" in workflow
+
+
+def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
+    workflow = OSINT_WORKFLOW.read_text(encoding="utf-8")
+    assert "python -m scripts.newswire_pull" not in workflow
+    assert workflow.count("python -m scripts.build_economic_pulse") == 3
+    assert _staged_occurrences(
+        workflow, "readings/china-economic-pulse-latest.json"
+    ) == 3
+    for block in re.findall(
+        r"python -m scripts\.build_economic_pulse\n"
+        r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_newsroom",
+        workflow,
+    ):
+        assert "newswire_pull" not in block
+    assert len(re.findall(
+        r"python -m scripts\.build_economic_pulse\n"
+        r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+        r"\s*python -m scripts\.build_newsroom",
+        workflow,
+    )) == 3

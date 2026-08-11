@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:cny-fix-gap",
+  "slug": "cny-fix-gap",
+  "url": "https://palimpsest.info/news/cny-fix-gap/",
+  "signal_id": "cny-fix-gap",
+  "headline": "The official yuan fix gap is -0.6489% against the independent reference",
+  "dek": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
+  "section": "economy",
+  "order": 2,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-10T17:50:33Z",
+  "modified_at": "2026-08-10T17:50:33Z",
+  "claim_fingerprint": "sha256:66939e1a244fea0e59957705d89f7808c6c8edfdff85fdde0913a6eeae05cabd",
+  "metric": {
+    "label": "fix gap",
+    "value": -0.6489,
+    "unit": "percent",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current official-fix minus independent-reference gap is -0.6489%."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
+    "input": {
+      "filename": "cny-fix-gap-latest.json",
+      "sha256": "00c4e36d0c004ce2f20c48aabc8364030098bf2ef5cd8048538bd1ec37d6d57c",
+      "bytes": 1429
+    },
+    "source_timestamp": "2026-08-10T17:50:33Z"
+  },
+  "method": {
+    "summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
+    "version": 1
+  },
+  "limitations": [
+    "The comparison is onshore and same-day but not simultaneous; it is economic context, not direct evidence of censorship."
+  ],
+  "related_signal_ids": [
+    "china-econ",
+    "stock-connect",
+    "data-darkness"
+  ]
+}

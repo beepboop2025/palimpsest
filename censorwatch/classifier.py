@@ -82,6 +82,32 @@ _STATUS_TO_STATE = {
 # A 200 with a near-empty body is an interstitial/skeleton, not real content.
 _MIN_BODY_CHARS = 64
 
+# Eastmoney's current validation shell is an HTTP-200 response, so status and
+# ordinary anti-bot keywords cannot distinguish it from a post.  Keep this
+# predicate deliberately narrow: all three independently observed properties
+# must hold.  In particular ``em_capt.js`` is *not* a signal; healthy Guba pages
+# load that script as part of the normal login widget.
+_EASTMONEY_SHELL_MAX_BYTES = 10 * 1024
+
+
+def is_eastmoney_validation_shell(text: str | bytes | None) -> bool:
+    """Return True only for the audited Eastmoney HTTP-200 validation shell.
+
+    The signature is the conjunction of: response smaller than 10 KiB,
+    ``validate.js`` present, and ``validate.css`` present.  This helper is shared
+    by classification, archival, and the repair utility so historical and live
+    decisions cannot drift.
+    """
+    if text is None:
+        return False
+    raw = text if isinstance(text, bytes) else text.encode("utf-8", errors="replace")
+    low = raw.lower()
+    return (
+        len(raw) < _EASTMONEY_SHELL_MAX_BYTES
+        and b"validate.js" in low
+        and b"validate.css" in low
+    )
+
 
 def classify_state(
     status: int | None,
@@ -104,6 +130,8 @@ def classify_state(
     # 2) Interstitials FIRST (they return 200 and would otherwise read as alive).
     if final_url and any(h in final_url.lower() for h in _WALL_URL_HINTS):
         return LivenessState.UNKNOWN, f"wall_redirect:{final_url[:80]}"
+    if status == 200 and is_eastmoney_validation_shell(text):
+        return LivenessState.UNKNOWN, "eastmoney_validation_shell"
     # Scan VISIBLE TEXT, not raw bytes. Eastmoney's list pages load their login widget from
     # `//cfgpassport2.eastmoney.com/captcha/scripts/em_capt.js`, so the raw body of every
     # healthy guba page contains the substring "captcha" inside a script src. Scanning bytes
@@ -129,12 +157,15 @@ def classify_state(
 
     # 4) Per-source deletion-notice markers (definitive GONE).
     for m in extra_markers:
-        if m and m in text:
+        if m and m in visible:
             return LivenessState.GONE, f"source_marker:{m}"
 
     # 5) Delegate to the shared CN marker table + HTTP rules.
     if _cn_classify is not None:
-        verdict = _cn_classify(status, text)
+        # Only human-visible text is evidence of a notice.  Script URLs,
+        # serialized application state, and comments routinely contain words
+        # such as ``captcha`` or deletion-message templates on healthy pages.
+        verdict = _cn_classify(status, visible)
         state = _STATUS_TO_STATE.get(verdict["status"], LivenessState.UNKNOWN)
         return state, f'cn:{verdict["status"]}(L={verdict.get("censorship_likelihood")})'
 
@@ -156,8 +187,9 @@ def classify(
     state, reason = classify_state(
         fetch.status, fetch.text, fetch.final_url, extra_markers
     )
-    # A transport-level error never yields GONE, even if a stale body is attached.
-    if fetch.error and state == LivenessState.GONE and not fetch.transport_ok:
+    # A transport-level error never yields an observation of content state,
+    # even if a client attached a stale/partial body and HTTP status.
+    if fetch.error and not fetch.transport_ok:
         state, reason = LivenessState.UNKNOWN, f"transport_error:{fetch.error[:60]}"
     return Observation(
         state=state,

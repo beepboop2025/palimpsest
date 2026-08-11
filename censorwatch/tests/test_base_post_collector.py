@@ -16,6 +16,8 @@ exercised in the docker-compose integration run, not here.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -91,9 +93,70 @@ def test_observe_maps_states():
     assert live == LivenessState.LIVE
 
 
+def test_archive_retry_claim_is_bounded_and_rotates_failures(monkeypatch):
+    now = datetime.now(timezone.utc)
+    candidates = [
+        SimpleNamespace(
+            id=i,
+            post_id=f"p{i}",
+            url=f"https://example.com/{i}",
+            first_seen_at=now - timedelta(minutes=i),
+            extra_data=({} if i < 3 else {"archive_retry_at": "2026-08-10T00:00:00+00:00"}),
+        )
+        for i in range(1, 7)
+    ]
+
+    class FakeQuery:
+        def __init__(self):
+            self.limit_value = None
+        def filter(self, *args):
+            return self
+        def order_by(self, *args):
+            self.order = args
+            return self
+        def limit(self, value):
+            self.limit_value = value
+            return self
+        def all(self):
+            # The real database supplies oldest-attempt-first ordering; emulate
+            # the first fair page and verify the production hard limit.
+            return candidates[:self.limit_value]
+
+    query = FakeQuery()
+
+    class FakeDB:
+        committed = False
+        rolled_back = False
+        closed = False
+        def query(self, model): return query
+        def commit(self): self.committed = True
+        def rollback(self): self.rolled_back = True
+        def close(self): self.closed = True
+
+    db = FakeDB()
+    monkeypatch.setattr("api.database.SessionLocal", lambda: db)
+    source = _Source({"archive_retry_batch": 2})
+    claimed = source._claim_archive_retry_rows(exclude_ids={"new-post"})
+
+    assert [row["post_id"] for row in claimed] == ["p1", "p2"]
+    assert query.limit_value == 2
+    assert db.committed and db.closed and not db.rolled_back
+    for candidate in candidates[:2]:
+        assert candidate.extra_data["archive_retry_count"] == 1
+        assert candidate.extra_data["archive_retry_at"]
+
+
+def test_archive_retry_batch_has_hard_bounds():
+    assert _Source({"archive_retry_batch": 0}).archive_retry_batch == 1
+    assert _Source({"archive_retry_batch": 10_000}).archive_retry_batch == 100
+    assert _Source({"archive_retry_batch": "bad"}).archive_retry_batch == 20
+
+
 def _run_all():
-    test_rows_from_df_fills_and_keys(); print("  PASS rows_from_df")
-    test_observe_maps_states(); print("  PASS observe_maps_states")
+    test_rows_from_df_fills_and_keys()
+    print("  PASS rows_from_df")
+    test_observe_maps_states()
+    print("  PASS observe_maps_states")
     print("\n2/2 base_post_collector checks passed")
 
 

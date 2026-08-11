@@ -51,6 +51,9 @@ jobs:
 
       - name: Build the deterministic roll-up
         run: |
+          # Recompute only from committed aggregate readings. RSS collection belongs to
+          # newswire-refresh, so an unavailable publisher cannot block this scan plane.
+          python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_newsroom
           python -m scripts.build_data_catalog
@@ -65,7 +68,10 @@ jobs:
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
+            tests/test_economic_pulse.py \
             tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
@@ -81,6 +87,7 @@ jobs:
         id: candidate
         run: |
           git add \
+            readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/newsroom-latest.json \
             readings/readings-ledger.jsonl \
@@ -130,6 +137,7 @@ jobs:
       - name: Rebuild and reseal after a pre-publication ledger change
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
+          python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_newsroom
           python -m scripts.build_data_catalog
@@ -143,7 +151,10 @@ jobs:
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
+            tests/test_economic_pulse.py \
             tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
@@ -160,6 +171,7 @@ jobs:
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
           git add \
+            readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/newsroom-latest.json \
             readings/readings-ledger.jsonl \
@@ -210,6 +222,7 @@ jobs:
       - name: Rebuild and reseal after a push race
         if: steps.push_attempt.outcome == 'failure'
         run: |
+          python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_newsroom
           python -m scripts.build_data_catalog
@@ -223,7 +236,10 @@ jobs:
             tests/test_egress_policy.py \
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
+            tests/test_economic_pulse.py \
             tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
             tests/test_safe_fetch.py \
             tests/test_seal_readings.py \
@@ -240,6 +256,7 @@ jobs:
         if: steps.push_attempt.outcome == 'failure'
         run: |
           git add \
+            readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/newsroom-latest.json \
             readings/readings-ledger.jsonl \

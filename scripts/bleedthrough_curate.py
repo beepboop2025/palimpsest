@@ -23,6 +23,8 @@ from __future__ import annotations
 import json
 import os
 import random
+import tempfile
+from pathlib import Path
 
 from collectors.bleedthrough import _dns_exchange, build_target_file
 from core.governance import KillSwitch, RateCeiling
@@ -32,6 +34,44 @@ PREFIXES = os.getenv("BLEEDTHROUGH_PREFIXES", os.path.join(ROOT, "config", "blee
 OUT = os.getenv("BLEEDTHROUGH_TARGETS", os.path.join(ROOT, "config", "bleedthrough_targets.json"))
 RATE_PER_SEC = float(os.getenv("BLEEDTHROUGH_RATE", "5"))
 WAIT = float(os.getenv("BLEEDTHROUGH_WAIT", "1.2"))
+
+
+def _fsync_directory(path: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError:
+        return
+    try:
+        try:
+            os.fsync(descriptor)
+        except OSError:
+            pass
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write_json(path: str, value: dict) -> None:
+    """Commit the curated target set without exposing a partial JSON document."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    payload = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent,
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+            os.fchmod(handle.fileno(), 0o600)
+        os.replace(temporary, destination)
+        _fsync_directory(destination.parent)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
 
 
 def _truthy(v: str) -> bool:
@@ -84,8 +124,7 @@ def main() -> None:
                 "Widen the prefixes or raise sample_per_prefix; not writing an empty list.")
         return
 
-    with open(OUT, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(OUT, out)
 
     by_prov = {}
     for t in out["targets"]:

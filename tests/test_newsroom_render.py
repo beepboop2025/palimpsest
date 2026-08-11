@@ -45,6 +45,18 @@ def test_index_is_server_rendered_semantic_and_evidence_first():
     assert "innerHTML" not in page
 
 
+def test_legacy_instrument_lead_selection_does_not_require_event_fields():
+    feed = _feed()
+    expected = next(
+        story
+        for story in feed["stories"]
+        if story["priority"] == "lead" and story["status"] == "live"
+    )
+
+    assert all("lead" not in story and "event_id" not in story for story in feed["stories"])
+    assert build_newsroom._select_lead(feed["stories"]) is expected
+
+
 def test_story_pages_publish_newsarticle_metadata_and_exact_evidence():
     feed = _feed()
     by_id = {story["signal_id"]: story for story in feed["stories"]}

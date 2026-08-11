@@ -216,7 +216,7 @@ SIGNALS: tuple[SignalSpec, ...] = (
        "fix gap", ("gap_pct",), "percent"),
     _s("stock-connect", "Stock Connect", "economy", "stock-connect-latest.json", 24, 98,
        "Publishes HKEX's official daily Stock Connect print without estimating discontinued fields.",
-       "southbound net flow", ("reading", "southbound_net_b"), "CNY billions"),
+       "southbound net flow", ("reading", "southbound_net_b"), "HKD billions"),
     _s("data-darkness", "Official-data darkness", "economy", "data-darkness-latest.json", 24, 50,
        "Checks official Chinese economic series against their own publication rhythms.",
        "darkness index", ("darkness_index",), "index", "series watched", ("n_series_watched",)),
@@ -264,11 +264,14 @@ SIGNALS: tuple[SignalSpec, ...] = (
 
 
 # Explicit scope decisions used by the inventory ratchet test. These feeds remain public,
-# but they are not independent China OSINT inputs: the newsroom is a derived publication of
-# this roll-up (including it would create a recursive input), the research corpus is a
-# mixed-scope inventory, and the remaining two are generic model-evaluation surfaces.
+# but they are not independent China OSINT inputs: the newsroom, evidence wire and economic
+# pulse are parallel/derived publication planes (including them would recurse or double
+# count); the research corpus is mixed-scope; and the remaining files are generic model
+# evaluation surfaces.
 EXCLUDED_LATEST_FILES = frozenset({
+    "china-economic-pulse-latest.json",
     "eval-registry-latest.json",
+    "newswire-latest.json",
     "newsroom-latest.json",
     "research-corpus-latest.json",
     "refusal-drift-latest.json",

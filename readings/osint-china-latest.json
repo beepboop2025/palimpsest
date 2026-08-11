@@ -5,7 +5,7 @@
       "kind": "upstream",
       "severity": "warning",
       "source_id": "board-alarm",
-      "summary": "Upstream board reports: single layer elevated: content",
+      "summary": "Upstream board reports: single layer elevated: network",
       "title": "Board synthesis"
     },
     {
@@ -13,7 +13,7 @@
       "kind": "method",
       "severity": "warning",
       "source_id": "coverage-guard",
-      "summary": "Coverage guard marks these upstream signals as confounded: ddti_novelty",
+      "summary": "Coverage guard marks these upstream signals as confounded: data_darkness, ddti_novelty",
       "title": "Coverage qualifier"
     },
     {
@@ -39,17 +39,25 @@
       "source_id": "believability",
       "summary": "upstream status is not_ready",
       "title": "Believability read: degraded"
+    },
+    {
+      "id": "health-nemesis",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "nemesis",
+      "summary": "freshness deadline has passed",
+      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-11T13:52:05Z",
-  "headline": "Upstream board reports: single layer elevated: content. 32 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 1 stale, 1 missing.",
+  "generated_at": "2026-08-11T14:48:40Z",
+  "headline": "Upstream board reports: single layer elevated: network. 32 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 2 stale, 1 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 30,
+      "live": 29,
       "missing": 1,
-      "stale": 1
+      "stale": 2
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -58,7 +66,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "23d076b881a0e5a58c9a051fb6983abe2f7c1850",
+  "input_commit": "e870bfced7a2b48a1bca6c21011f0ca485f48329",
   "layers": [
     {
       "id": "command",
@@ -171,20 +179,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 30,
+  "n_signals_live": 29,
   "n_signals_reporting": 32,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -192,9 +200,9 @@
   "signals": [
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:58:34Z",
+      "freshness_deadline": "2026-08-12T04:07:49Z",
       "health": {
-        "age_hours": 5.892,
+        "age_hours": 0.681,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -204,9 +212,9 @@
       },
       "id": "board-alarm",
       "input": {
-        "bytes": 10290,
+        "bytes": 10309,
         "filename": "board-alarm-latest.json",
-        "sha256": "e180940b001b107bd7323336e8ab5cf97967317b472e2a0f91959f6c9b2b2073"
+        "sha256": "2fef143b25d8b0e5d3285ffb6c84b700030f424ac88730efa5b16d3739c22c1f"
       },
       "layer": "command",
       "live": true,
@@ -216,11 +224,11 @@
         "denominator": null,
         "label": "board e-value",
         "unit": "e-value",
-        "value": 9.54
+        "value": 15.587
       },
       "optional": false,
       "payload": {
-        "board_e_value": 9.54,
+        "board_e_value": 15.587,
         "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
         "caveats": [
           "layer co-movement is evidence of CO-MOVEMENT, not of a common cause: two layers can rise together under one directive or under one holiday; this reading reports the coincidence and does not name a cause",
@@ -230,58 +238,60 @@
           "refusal_drift is the closed v1 refusal series: its history remains published and verifiable, but a series that can never append again is the record of an era, not a monitor"
         ],
         "elevated_layers": [
-          "content"
+          "network"
         ],
         "fdr_selection": {
           "alpha": 0.1,
-          "k": 0,
+          "k": 3,
           "n_tested": 11,
-          "selected": [],
-          "threshold": null
+          "selected": [
+            "censored_planet",
+            "ddti_novelty",
+            "ooni_gfw"
+          ],
+          "threshold": 36.67
         },
-        "generated_at": "2026-08-11T07:58:34.416599+00:00",
-        "headline": "single layer elevated: content",
+        "generated_at": "2026-08-11T14:07:49.215208+00:00",
+        "headline": "single layer elevated: network",
         "layer_coincidence": 1,
         "layers": {
           "content": {
             "corroborated": true,
-            "e": 7.223,
+            "e": 14.552,
             "n_signals": 6,
-            "recent_alarms": [
-              "ddti_threat"
-            ],
+            "recent_alarms": [],
             "signals": {
-              "data_darkness": 2.568,
-              "ddti_novelty": 31.007,
-              "ddti_threat": 3.621,
-              "gdelt_containment": 3.068,
-              "github_refuge": 2.072,
+              "data_darkness": 5.003,
+              "ddti_novelty": 71.205,
+              "ddti_threat": 4.181,
+              "gdelt_containment": 4.028,
+              "github_refuge": 1.893,
               "weibo_suppression": 1.0
             },
-            "state": "elevated"
+            "state": "calm"
           },
           "model": {
             "corroborated": false,
-            "e": 0.001,
+            "e": 0.0,
             "n_signals": 1,
             "recent_alarms": [],
             "signals": {
-              "refusal_churn": 0.001
+              "refusal_churn": 0.0
             },
             "state": "calm"
           },
           "network": {
             "corroborated": true,
-            "e": 15.402,
+            "e": 21.035,
             "n_signals": 4,
             "recent_alarms": [],
             "signals": {
               "censored_planet": 41.831,
               "ioda_outages": 1.0,
-              "ooni_gfw": 14.394,
+              "ooni_gfw": 36.928,
               "tor_bridge_cn": 4.383
             },
-            "state": "calm"
+            "state": "elevated"
           }
         },
         "method": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
@@ -301,9 +311,7 @@
           "tor_bridge_cn": 500.0,
           "weibo_suppression": 125.0
         },
-        "recently_fired": [
-          "ddti_threat"
-        ],
+        "recently_fired": [],
         "signals": {
           "bleedthrough_capacity": {
             "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity",
@@ -329,42 +337,42 @@
           "data_darkness": {
             "direction": "up",
             "driver_side": "up",
-            "e": 2.5683,
+            "e": 5.0028,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
-            "n": 10,
+            "n": 11,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
-            "robust_z": 2.02,
+            "robust_z": 2.32,
             "state": "calm"
           },
           "ddti_novelty": {
             "direction": "down",
             "driver_side": "down",
-            "e": 31.0069,
+            "e": 71.2049,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 251,
+            "n": 252,
             "n_alarms_in_history": 1,
-            "readings_since_alarm": 79,
+            "readings_since_alarm": 80,
             "robust_z": -9.44,
             "state": "calm"
           },
           "ddti_threat": {
             "direction": "down",
             "driver_side": "up",
-            "e": 3.6211,
+            "e": 4.1812,
             "meaning": "peak censor attention on one term",
-            "n": 251,
+            "n": 252,
             "n_alarms_in_history": 4,
-            "readings_since_alarm": 12,
-            "robust_z": -0.09,
+            "readings_since_alarm": 13,
+            "robust_z": -0.15,
             "state": "calm"
           },
           "gdelt_containment": {
             "direction": "up",
             "driver_side": "up",
-            "e": 3.0676,
+            "e": 4.0278,
             "meaning": "terms loud abroad while censored at home",
-            "n": 142,
+            "n": 143,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": 0.67,
@@ -373,9 +381,9 @@
           "github_refuge": {
             "direction": "flat",
             "driver_side": "down",
-            "e": 2.0719,
+            "e": 1.8927,
             "meaning": "takedown/pressure events on refuge repositories",
-            "n": 70,
+            "n": 71,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": 0.0,
@@ -386,7 +394,7 @@
             "driver_side": "up",
             "e": 1.0,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 91,
+            "n": 93,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": null,
@@ -395,18 +403,18 @@
           "ooni_gfw": {
             "direction": "down",
             "driver_side": "down",
-            "e": 14.3943,
+            "e": 36.9281,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 133,
+            "n": 135,
             "n_alarms_in_history": 1,
-            "readings_since_alarm": 82,
-            "robust_z": -1.35,
+            "readings_since_alarm": 84,
+            "robust_z": -1.43,
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 5.5,
+            "age_hours": 0.9,
             "bound_hours": 30.0,
-            "e": 0.0006,
+            "e": 0.0004,
             "guarantee": "panel e-value is the arithmetic mean of per-model anytime-valid mixture e-processes (valid under arbitrary dependence). Compound lifetime false-flag bound with 4 monitored models: WATCH at most 15%, ALARM at most 11% — each model's calibration can undershoot with probability 0.025, plus Ville's inequality when none does",
             "instrument": {
               "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19",
@@ -415,44 +423,44 @@
             "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
             "models": {
               "anthropic/claude-3-haiku": {
-                "evalue": 0.0003,
-                "monitored_comparisons": 369,
+                "evalue": 0.0002,
+                "monitored_comparisons": 410,
                 "p0": 0.004663,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.004663
               },
               "meta-llama/llama-3.3-70b-instruct": {
-                "evalue": 0.0012,
-                "monitored_comparisons": 369,
+                "evalue": 0.0008,
+                "monitored_comparisons": 410,
                 "p0": 0.008849,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.008849
               },
               "mistralai/mistral-nemo": {
-                "evalue": 0.0008,
-                "monitored_comparisons": 349,
+                "evalue": 0.0005,
+                "monitored_comparisons": 390,
                 "p0": 0.114619,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.114619
               },
               "openai/gpt-4o-mini": {
-                "evalue": 0.0003,
-                "monitored_comparisons": 369,
+                "evalue": 0.0002,
+                "monitored_comparisons": 410,
                 "p0": 0.004663,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.004663
               }
             },
             "n_models": 4,
-            "n_rows": 116,
+            "n_rows": 120,
             "state": "quiet",
             "thresholds": {
               "alarm": 100.0,
@@ -486,7 +494,7 @@
             "driver_side": "up",
             "e": 1.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 90,
+            "n": 92,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": null,
@@ -497,16 +505,16 @@
       "raw_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "scope": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-11T07:58:34Z",
+      "source_timestamp": "2026-08-11T14:07:49Z",
       "status": "live",
-      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: single layer elevated: content. Latest payload reports board e-value at 9.54 e-value.",
+      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: single layer elevated: network. Latest payload reports board e-value at 15.587 e-value.",
       "title": "Board alarm"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:54:58Z",
+      "freshness_deadline": "2026-08-12T04:05:06Z",
       "health": {
-        "age_hours": 5.952,
+        "age_hours": 0.726,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -518,7 +526,7 @@
       "input": {
         "bytes": 6527,
         "filename": "event-flags-latest.json",
-        "sha256": "235eceb105195036076f4148396c6df6f7f010486b3e94f8eadae88da0317918"
+        "sha256": "099d9b91e6eda4aae87f37b946bb425c4a21f38950bbbc1b2e1a5787456aec5c"
       },
       "layer": "command",
       "live": true,
@@ -539,7 +547,7 @@
         "closed": [
           "refusal_drift"
         ],
-        "generated_at": "2026-08-11T07:54:58.953125+00:00",
+        "generated_at": "2026-08-11T14:05:06.471456+00:00",
         "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
         "headline": "no signal elevated, but only 11 of 14 signals are reporting",
         "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
@@ -563,7 +571,7 @@
             "state": "no_data"
           },
           "censored_planet": {
-            "age_hours": 1.4,
+            "age_hours": 7.6,
             "meaning": "remote-vantage interference rate",
             "n": 24,
             "n_alarms_in_history": 0,
@@ -571,65 +579,65 @@
             "state": "calm"
           },
           "data_darkness": {
-            "age_hours": 31.9,
+            "age_hours": 14.1,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
-            "n": 10,
+            "n": 11,
             "n_alarms_in_history": 0,
-            "stat": 2.5683,
+            "stat": 5.0028,
             "state": "calm"
           },
           "ddti_novelty": {
-            "age_hours": 0.3,
+            "age_hours": 3.9,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 251,
+            "n": 252,
             "n_alarms_in_history": 1,
-            "stat": 31.0069,
+            "stat": 71.2049,
             "state": "calm"
           },
           "ddti_threat": {
-            "age_hours": 0.3,
+            "age_hours": 3.9,
             "meaning": "peak censor attention on one term",
-            "n": 251,
+            "n": 252,
             "n_alarms_in_history": 4,
-            "stat": 3.6211,
+            "stat": 4.1812,
             "state": "calm"
           },
           "gdelt_containment": {
-            "age_hours": 5.0,
+            "age_hours": 6.1,
             "meaning": "terms loud abroad while censored at home",
-            "n": 142,
+            "n": 143,
             "n_alarms_in_history": 0,
-            "stat": 3.0676,
+            "stat": 4.0278,
             "state": "calm"
           },
           "github_refuge": {
-            "age_hours": 5.3,
+            "age_hours": 0.0,
             "meaning": "takedown/pressure events on refuge repositories",
-            "n": 70,
+            "n": 71,
             "n_alarms_in_history": 0,
-            "stat": 2.0719,
+            "stat": 1.8927,
             "state": "calm"
           },
           "ioda_outages": {
-            "age_hours": 0.2,
+            "age_hours": 0.3,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 91,
+            "n": 93,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
           },
           "ooni_gfw": {
-            "age_hours": 0.2,
+            "age_hours": 0.3,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 133,
+            "n": 135,
             "n_alarms_in_history": 1,
-            "stat": 14.3943,
+            "stat": 36.9281,
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 5.4,
+            "age_hours": 0.9,
             "bound_hours": 30.0,
-            "e": 0.0006,
+            "e": 0.0004,
             "guarantee": "panel e-value is the arithmetic mean of per-model anytime-valid mixture e-processes (valid under arbitrary dependence). Compound lifetime false-flag bound with 4 monitored models: WATCH at most 15%, ALARM at most 11% — each model's calibration can undershoot with probability 0.025, plus Ville's inequality when none does",
             "instrument": {
               "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19",
@@ -638,44 +646,44 @@
             "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
             "models": {
               "anthropic/claude-3-haiku": {
-                "evalue": 0.0003,
-                "monitored_comparisons": 369,
+                "evalue": 0.0002,
+                "monitored_comparisons": 410,
                 "p0": 0.004663,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.004663
               },
               "meta-llama/llama-3.3-70b-instruct": {
-                "evalue": 0.0012,
-                "monitored_comparisons": 369,
+                "evalue": 0.0008,
+                "monitored_comparisons": 410,
                 "p0": 0.008849,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.008849
               },
               "mistralai/mistral-nemo": {
-                "evalue": 0.0008,
-                "monitored_comparisons": 349,
+                "evalue": 0.0005,
+                "monitored_comparisons": 390,
                 "p0": 0.114619,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.114619
               },
               "openai/gpt-4o-mini": {
-                "evalue": 0.0003,
-                "monitored_comparisons": 369,
+                "evalue": 0.0002,
+                "monitored_comparisons": 410,
                 "p0": 0.004663,
                 "pairs_needed": null,
-                "pairs_seen": 29,
+                "pairs_seen": 30,
                 "state": "quiet",
                 "undetectable_at_or_below": 0.004663
               }
             },
             "n_models": 4,
-            "n_rows": 116,
+            "n_rows": 120,
             "state": "quiet",
             "thresholds": {
               "alarm": 100.0,
@@ -694,7 +702,7 @@
             "state": "no_data"
           },
           "tor_bridge_cn": {
-            "age_hours": 79.9,
+            "age_hours": 86.1,
             "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
             "n": 397,
             "n_alarms_in_history": 6,
@@ -702,9 +710,9 @@
             "state": "calm"
           },
           "weibo_suppression": {
-            "age_hours": 0.1,
+            "age_hours": 0.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 90,
+            "n": 92,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
@@ -715,16 +723,16 @@
       "raw_url": "https://palimpsest.info/readings/event-flags-latest.json",
       "scope": "Per-signal conformal event states, including non-reporting and stale series.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-11T07:54:58Z",
+      "source_timestamp": "2026-08-11T14:05:06Z",
       "status": "live",
       "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: no signal elevated, but only 11 of 14 signals are reporting. Latest payload reports signals reporting at 11 count across 15 signals configured.",
       "title": "Event flags"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:58:34Z",
+      "freshness_deadline": "2026-08-12T04:07:49Z",
       "health": {
-        "age_hours": 5.892,
+        "age_hours": 0.681,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -734,9 +742,9 @@
       },
       "id": "coverage-guard",
       "input": {
-        "bytes": 4671,
+        "bytes": 4849,
         "filename": "coverage-guard-latest.json",
-        "sha256": "415354199dac0a5c34c5cd04b89ac71162d46941099547fc592136dc00851abe"
+        "sha256": "9ec9601d584ddaf1f341c3aad98e2745a4d5e9a96baf9e27ae7d9bbdff02d9ee"
       },
       "layer": "command",
       "live": true,
@@ -746,7 +754,7 @@
         "denominator": null,
         "label": "confounded signals",
         "unit": "count",
-        "value": 1
+        "value": 2
       },
       "optional": false,
       "payload": {
@@ -756,10 +764,11 @@
           "signals whose sample size is not recorded in their history cannot be guarded at all and are absent here rather than assumed clean"
         ],
         "confounded": [
+          "data_darkness",
           "ddti_novelty"
         ],
-        "generated_at": "2026-08-11T07:58:34.489985+00:00",
-        "headline": "coverage-confounded, do not read as censorship change: ddti_novelty",
+        "generated_at": "2026-08-11T14:07:49.276850+00:00",
+        "headline": "coverage-confounded, do not read as censorship change: data_darkness, ddti_novelty",
         "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
         "signals": {
           "data_darkness": {
@@ -768,15 +777,16 @@
             "denominator_now": 7.0,
             "denominator_robust_z": null,
             "fit": {
-              "correlation": 0.23,
-              "intercept": 0.2093,
-              "slope": 0.026715
+              "correlation": 0.34,
+              "intercept": 0.085,
+              "slope": 0.047442
             },
-            "metric_now": 0.5207,
-            "metric_robust_z": 2.02,
-            "n_pairs": 10,
-            "note": "the measurement base does not track this metric historically (r=0.23), so coverage does not explain the move",
-            "verdict": "CONFIRMED"
+            "metric_now": 0.5438,
+            "metric_robust_z": 2.32,
+            "n_pairs": 11,
+            "note": "the measurement base moved 0.0% at the same time and tracks this metric historically (r=0.34); conditioning on it shrinks the departure from z=2.3 to z=1.4. This reading is NOT evidence of a censorship change.",
+            "residual_robust_z": 1.41,
+            "verdict": "COVERAGE_CONFOUNDED"
           },
           "ddti_novelty": {
             "denominator_change_pct": 11.8,
@@ -785,14 +795,14 @@
             "denominator_robust_z": 2.7,
             "fit": {
               "correlation": -0.756,
-              "intercept": 62.1289,
-              "slope": -0.209521
+              "intercept": 62.313,
+              "slope": -0.210751
             },
             "metric_now": 15.0,
             "metric_robust_z": -9.44,
-            "n_pairs": 251,
-            "note": "the measurement base moved 11.8% at the same time and tracks this metric historically (r=-0.76); conditioning on it shrinks the departure from z=-9.4 to z=-2.6. This reading is NOT evidence of a censorship change.",
-            "residual_robust_z": -2.6,
+            "n_pairs": 252,
+            "note": "the measurement base moved 11.8% at the same time and tracks this metric historically (r=-0.76); conditioning on it shrinks the departure from z=-9.4 to z=-2.5. This reading is NOT evidence of a censorship change.",
+            "residual_robust_z": -2.52,
             "verdict": "COVERAGE_CONFOUNDED"
           },
           "ddti_threat": {
@@ -800,9 +810,9 @@
             "denominator_is": "distinct terms extracted from the CDT deletion stream",
             "denominator_now": 190.0,
             "denominator_robust_z": 2.7,
-            "metric_now": 1.6356,
-            "metric_robust_z": -0.09,
-            "n_pairs": 251,
+            "metric_now": 1.5763,
+            "metric_robust_z": -0.15,
+            "n_pairs": 252,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -813,7 +823,7 @@
             "denominator_robust_z": null,
             "metric_now": 7.0,
             "metric_robust_z": 0.67,
-            "n_pairs": 142,
+            "n_pairs": 143,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -824,18 +834,18 @@
             "denominator_robust_z": null,
             "metric_now": 1.0,
             "metric_robust_z": 0.0,
-            "n_pairs": 70,
+            "n_pairs": 71,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
           "ooni_gfw": {
-            "denominator_change_pct": -10.3,
+            "denominator_change_pct": -9.8,
             "denominator_is": "OONI probe measurements in the rolling window",
-            "denominator_now": 242714.0,
-            "denominator_robust_z": -0.94,
-            "metric_now": 57.8,
-            "metric_robust_z": -1.35,
-            "n_pairs": 133,
+            "denominator_now": 244022.0,
+            "denominator_robust_z": -0.86,
+            "metric_now": 57.7,
+            "metric_robust_z": -1.43,
+            "n_pairs": 135,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -852,7 +862,7 @@
             "denominator_robust_z": null,
             "metric_now": 0.0,
             "metric_robust_z": null,
-            "n_pairs": 90,
+            "n_pairs": 92,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           }
@@ -861,16 +871,16 @@
       "raw_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
       "scope": "Checks whether apparent movement is confounded by changing measurement coverage.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-11T07:58:34Z",
+      "source_timestamp": "2026-08-11T14:07:49Z",
       "status": "live",
-      "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: coverage-confounded, do not read as censorship change: ddti_novelty. Latest payload reports confounded signals at 1 count.",
+      "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: coverage-confounded, do not read as censorship change: data_darkness, ddti_novelty. Latest payload reports confounded signals at 2 count.",
       "title": "Coverage guard"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:58:34Z",
+      "freshness_deadline": "2026-08-12T04:07:49Z",
       "health": {
-        "age_hours": 5.892,
+        "age_hours": 0.681,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -880,9 +890,9 @@
       },
       "id": "forecast-ledger",
       "input": {
-        "bytes": 13090,
+        "bytes": 13091,
         "filename": "forecast-ledger-latest.json",
-        "sha256": "88c4c34c258993b639d24f9a547fe619ac183bd777b53b5dc29ef04f6e82ed12"
+        "sha256": "c75fd978ec2038f4cd31047fcde82e00bd0fb68592717779416e0ebccb5f2a86"
       },
       "layer": "command",
       "live": true,
@@ -891,7 +901,7 @@
       "metric": {
         "denominator": {
           "label": "forecasts",
-          "value": 1261
+          "value": 1267
         },
         "label": "empirical coverage",
         "unit": "ratio",
@@ -908,16 +918,16 @@
         "excluded": {
           "bleedthrough_capacity": "needs 20 readings, has 0",
           "bleedthrough_pools": "needs 20 readings, has 0",
-          "data_darkness": "needs 20 readings, has 10",
+          "data_darkness": "needs 20 readings, has 11",
           "ioda_outages": "history logs state transitions, not a regular series",
           "silence_blackouts": "needs 20 readings, has 0",
           "weibo_suppression": "history logs state transitions, not a regular series"
         },
-        "generated_at": "2026-08-11T07:58:34.579131+00:00",
-        "headline": "8 signals scored over 1261 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8",
+        "generated_at": "2026-08-11T14:07:49.362793+00:00",
+        "headline": "8 signals scored over 1267 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8",
         "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
         "n_beating_baseline": 4,
-        "n_forecasts": 1261,
+        "n_forecasts": 1267,
         "n_signals_scored": 8,
         "nominal_coverage": 0.8,
         "not_yet_scoreable": "term-level escalation calls from processors/forecaster.py are not scored here: resolving them needs the full ranked term list preserved at each reading, and readings/ddti-history.jsonl currently stores only the top term. Scoring them requires that list to start being written; it cannot be reconstructed.",
@@ -951,13 +961,13 @@
             "beats_baseline": true,
             "coverage_gap_pp": 16.7,
             "empirical_coverage": 0.967,
-            "n_forecasts": 240,
+            "n_forecasts": 241,
             "n_misses": 8,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.002,
-            "wis": 0.1001,
-            "wis_baseline_fixed_quantile": 0.1003,
+            "wis": 0.0997,
+            "wis_baseline_fixed_quantile": 0.0999,
             "worst_misses": [
               {
                 "actual": 21.0,
@@ -1013,15 +1023,15 @@
           },
           "ddti_threat": {
             "beats_baseline": true,
-            "coverage_gap_pp": 3.7,
+            "coverage_gap_pp": 3.8,
             "empirical_coverage": 0.838,
-            "n_forecasts": 240,
+            "n_forecasts": 241,
             "n_misses": 39,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.012,
-            "wis": 0.1354,
-            "wis_baseline_fixed_quantile": 0.137,
+            "wis": 0.135,
+            "wis_baseline_fixed_quantile": 0.1366,
             "worst_misses": [
               {
                 "actual": 3.369,
@@ -1077,15 +1087,15 @@
           },
           "gdelt_containment": {
             "beats_baseline": false,
-            "coverage_gap_pp": 0.9,
-            "empirical_coverage": 0.809,
-            "n_forecasts": 131,
+            "coverage_gap_pp": 1.1,
+            "empirical_coverage": 0.811,
+            "n_forecasts": 132,
             "n_misses": 25,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": -0.01,
-            "wis": 1.2469,
-            "wis_baseline_fixed_quantile": 1.2341,
+            "wis": 1.2411,
+            "wis_baseline_fixed_quantile": 1.2289,
             "worst_misses": [
               {
                 "actual": 2.0,
@@ -1141,15 +1151,15 @@
           },
           "github_refuge": {
             "beats_baseline": false,
-            "coverage_gap_pp": 4.7,
-            "empirical_coverage": 0.847,
-            "n_forecasts": 59,
+            "coverage_gap_pp": 5.0,
+            "empirical_coverage": 0.85,
+            "n_forecasts": 60,
             "n_misses": 9,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": -0.079,
-            "wis": 0.6263,
-            "wis_baseline_fixed_quantile": 0.5805,
+            "skill_vs_baseline": -0.072,
+            "wis": 0.6174,
+            "wis_baseline_fixed_quantile": 0.5758,
             "worst_misses": [
               {
                 "actual": 0.0,
@@ -1205,15 +1215,15 @@
           },
           "ooni_gfw": {
             "beats_baseline": true,
-            "coverage_gap_pp": -0.5,
-            "empirical_coverage": 0.795,
-            "n_forecasts": 122,
+            "coverage_gap_pp": -0.2,
+            "empirical_coverage": 0.798,
+            "n_forecasts": 124,
             "n_misses": 25,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.019,
-            "wis": 0.53,
-            "wis_baseline_fixed_quantile": 0.5401,
+            "wis": 0.5229,
+            "wis_baseline_fixed_quantile": 0.5329,
             "worst_misses": [
               {
                 "actual": 58.4,
@@ -1400,16 +1410,16 @@
       "raw_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
       "scope": "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-11T07:58:34Z",
+      "source_timestamp": "2026-08-11T14:07:49Z",
       "status": "live",
-      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1261 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8. Latest payload reports empirical coverage at 0.841 ratio across 1261 forecasts.",
+      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1267 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8. Latest payload reports empirical coverage at 0.841 ratio across 1267 forecasts.",
       "title": "Forecast ledger"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:58:34Z",
+      "freshness_deadline": "2026-08-12T04:07:49Z",
       "health": {
-        "age_hours": 5.892,
+        "age_hours": 0.681,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1421,7 +1431,7 @@
       "input": {
         "bytes": 7991,
         "filename": "cross-layer-latest.json",
-        "sha256": "c3ef606f7ae7a614e84368932854f145f7f8275f54c80c3681161cac329bfce7"
+        "sha256": "b097657a2813da0800fd1912156bc5bf10d56ba805867af7dea8b7cb8579049b"
       },
       "layer": "command",
       "live": true,
@@ -1444,7 +1454,7 @@
           "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
           "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
         ],
-        "generated_at": "2026-08-11T07:58:34.690134+00:00",
+        "generated_at": "2026-08-11T14:07:49.467175+00:00",
         "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
         "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
         "method_version": 1,
@@ -1666,7 +1676,7 @@
       "raw_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "scope": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-11T07:58:34Z",
+      "source_timestamp": "2026-08-11T14:07:49Z",
       "status": "live",
       "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. Upstream reading: no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned. Latest payload reports confirmed pairs at 0 count across 0 pairs tested.",
       "title": "Cross-layer lead/lag"
@@ -1675,7 +1685,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-11T17:11:40Z",
       "health": {
-        "age_hours": 3.674,
+        "age_hours": 4.617,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2408,7 +2418,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-11T21:58:41Z",
       "health": {
-        "age_hours": 5.89,
+        "age_hours": 6.833,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2702,9 +2712,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-12T03:41:37Z",
+      "freshness_deadline": "2026-08-12T04:03:02Z",
       "health": {
-        "age_hours": 0.174,
+        "age_hours": 0.761,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2716,7 +2726,7 @@
       "input": {
         "bytes": 7207,
         "filename": "weibo-hotsearch-latest.json",
-        "sha256": "881d0188a7e6575f5e3566a58f8f6c90833ea592f7d5a8775ff28328e54aafcc"
+        "sha256": "78d99a810359b72eaf8b136076d768c7e31b4c870f674f9b1b20cf496a9c5de4"
       },
       "layer": "attention",
       "live": true,
@@ -2920,7 +2930,7 @@
             "term": "大白"
           }
         ],
-        "generated_at": "2026-08-11T13:41:37Z",
+        "generated_at": "2026-08-11T14:03:02Z",
         "join": [],
         "method_note": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
         "method_version": 2,
@@ -3041,16 +3051,16 @@
       "raw_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
       "scope": "Joins deletion-stream terms to archived Weibo hot-search board captures.",
       "source": "Sina Weibo hot-search board via the MIT-licensed archive github.com/justjavac/weibo-trending-hot-search (hourly captures, per-day union; keyless raw fetch)",
-      "source_timestamp": "2026-08-11T13:41:37Z",
+      "source_timestamp": "2026-08-11T14:03:02Z",
       "status": "live",
       "summary": "Joins deletion-stream terms to archived Weibo hot-search board captures. Latest payload reports board entries at 2520 count.",
       "title": "Weibo hot-search join"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:45:50Z",
+      "freshness_deadline": "2026-08-12T03:54:22Z",
       "health": {
-        "age_hours": 6.104,
+        "age_hours": 0.905,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3060,9 +3070,9 @@
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6633,
+        "bytes": 6628,
         "filename": "silence-index-latest.json",
-        "sha256": "da0b856263c1f6015049159d1fd7bedb1c39f47ccf5b62f31e1785f46ced72bc"
+        "sha256": "245f18369fb51a50b5f0b7d9e90fd1c2ddf4061cc9620051b8eaad5d22e2d9d8"
       },
       "layer": "attention",
       "live": true,
@@ -3080,7 +3090,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-11T07:45:50Z",
+        "generated_at": "2026-08-11T13:54:22Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -3097,47 +3107,37 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0781,
+            "global_norm": 0.6792,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "trials"
+            "topic": "social media"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0625,
+            "global_norm": 1.0,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "information technology"
+            "topic": "media"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0125,
+            "global_norm": 0.0027,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "Gansu"
+            "topic": "unpaid wages"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0299,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "state media"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0068,
+            "global_norm": 0.0069,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -3147,11 +3147,11 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0008,
+            "global_norm": 0.0013,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "defending rights"
+            "topic": "Lanzhou"
           },
           {
             "abstained": true,
@@ -3171,7 +3171,17 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "Lanzhou"
+            "topic": "Gansu"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "defending rights"
           },
           {
             "abstained": true,
@@ -3191,7 +3201,7 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "social media"
+            "topic": "trials"
           },
           {
             "abstained": true,
@@ -3201,7 +3211,7 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "unpaid wages"
+            "topic": "state media"
           },
           {
             "abstained": true,
@@ -3231,7 +3241,7 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "literacy"
+            "topic": "information technology"
           },
           {
             "abstained": true,
@@ -3241,7 +3251,7 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "media"
+            "topic": "literacy"
           },
           {
             "abstained": true,
@@ -3348,7 +3358,7 @@
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-11T07:45:50Z",
+      "source_timestamp": "2026-08-11T13:54:22Z",
       "status": "live",
       "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously. Latest payload reports blackout topics at 0 count across 25 topics considered.",
       "title": "Silence index"
@@ -3357,7 +3367,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 31.994,
+        "age_hours": 32.937,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3666,9 +3676,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-12T04:48:39Z",
+      "freshness_deadline": "2026-08-12T16:03:38Z",
       "health": {
-        "age_hours": 11.057,
+        "age_hours": 0.75,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3678,9 +3688,9 @@
       },
       "id": "net4people",
       "input": {
-        "bytes": 7157,
+        "bytes": 7155,
         "filename": "net4people-latest.json",
-        "sha256": "fa7c4f7e06f6336fec03a8e937f07ce9af6c81c4458380a30082151d0863e1eb"
+        "sha256": "405381bed22286af6b0c42f6e322e78fccb5719545169cd961c69a8ecb47ea02"
       },
       "layer": "attention",
       "live": true,
@@ -3690,7 +3700,7 @@
         "denominator": null,
         "label": "recent events",
         "unit": "count",
-        "value": 7
+        "value": 6
       },
       "optional": false,
       "payload": {
@@ -3917,32 +3927,32 @@
             "url": "https://github.com/net4people/bbs/issues/618"
           }
         ],
-        "generated_at": "2026-08-11T02:48:39.340173+00:00",
-        "last_changed_at": "2026-08-10T14:02:42.193716+00:00",
+        "generated_at": "2026-08-11T14:03:38.690183+00:00",
+        "last_changed_at": "2026-08-11T14:03:38.690183+00:00",
         "method": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
         "method_version": 1,
         "n_blocking": 1,
         "n_circumvention": 1,
-        "n_recent": 7,
+        "n_recent": 6,
         "recent_days": 30,
         "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
         "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
-        "velocity": 0.67,
-        "velocity_reading": "0.67x normal — typical"
+        "velocity": 0.58,
+        "velocity_reading": "0.58x normal — quiet"
       },
       "raw_url": "https://palimpsest.info/readings/net4people-latest.json",
       "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
       "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
-      "source_timestamp": "2026-08-11T02:48:39Z",
+      "source_timestamp": "2026-08-11T14:03:38Z",
       "status": "live",
-      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 7 count.",
+      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 6 count.",
       "title": "Community blocking log"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:47:49Z",
       "health": {
-        "age_hours": 0.071,
+        "age_hours": 1.014,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4221,7 +4231,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:50:40Z",
       "health": {
-        "age_hours": 0.023,
+        "age_hours": 0.966,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4388,7 +4398,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-13T08:30:44Z",
       "health": {
-        "age_hours": 7.356,
+        "age_hours": 8.299,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4564,7 +4574,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:11:49Z",
       "health": {
-        "age_hours": 0.671,
+        "age_hours": 1.614,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6989,7 +6999,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:48:51Z",
       "health": {
-        "age_hours": 0.054,
+        "age_hours": 0.997,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7039,7 +7049,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-13T08:04:33Z",
       "health": {
-        "age_hours": 7.792,
+        "age_hours": 8.735,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7110,9 +7120,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:58:13Z",
+      "freshness_deadline": "2026-08-12T04:06:53Z",
       "health": {
-        "age_hours": 5.898,
+        "age_hours": 0.696,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7124,7 +7134,7 @@
       "input": {
         "bytes": 2093,
         "filename": "vantage-fusion-latest.json",
-        "sha256": "f35558aa373c1a79fdcaddb21b2af2e33e276b360f3ebdfb1c09baac069bdd7c"
+        "sha256": "e19d577e1b2aec2df454464cb82777b14637131d594afca446817cacf24d7d6c"
       },
       "layer": "network",
       "live": true,
@@ -7138,7 +7148,7 @@
       },
       "optional": false,
       "payload": {
-        "agreement": 0.111,
+        "agreement": 0.112,
         "caveats": [
           "when single_rate_quotable is false the fused_index is NOT a defensible estimate — it is the weighted midpoint of methods that disagree, kept only for continuity of the series; quote the interval instead",
           "censorship is VANTAGE-DEPENDENT (arXiv:2406.19304): independent methods can legitimately disagree because of routing, partial deployment, or probe location — divergence is reported, never smoothed away",
@@ -7147,22 +7157,22 @@
           "coverage weights (Censored Planet 0.55, OONI 0.45) are a disclosed choice reflecting vantage count, renormalized over whichever vantages report"
         ],
         "confidence": "CONTESTED",
-        "divergence_pp": 53.4,
+        "divergence_pp": 53.3,
         "excluded_vantages": {},
         "fused_index": 28.4,
-        "generated_at": "2026-08-11T07:58:13.867222+00:00",
+        "generated_at": "2026-08-11T14:06:53.994964+00:00",
         "interval": [
           4.4,
-          57.8
+          57.7
         ],
-        "interval_width_pp": 53.4,
+        "interval_width_pp": 53.3,
         "last_changed_at": "2026-08-08T19:17:09.485371+00:00",
         "method": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
         "method_version": 1,
         "net4people": {
-          "blocking_share": 0.143,
+          "blocking_share": 0.167,
           "n_blocking": 1,
-          "n_recent": 7,
+          "n_recent": 6,
           "present": true
         },
         "ok": true,
@@ -7170,7 +7180,7 @@
         "single_rate_quotable": false,
         "vantages": {
           "censored_planet": 4.4,
-          "ooni": 57.8
+          "ooni": 57.7
         },
         "verdict": "NO SINGLE RATE IS DEFENSIBLE: OONI reads 58 and Censored Planet 4, 53pp apart. The honest answer is the range 4–58, not its midpoint — censorship is vantage-dependent and these two methods are measuring different things about the same wall.",
         "weights_used": {
@@ -7181,7 +7191,7 @@
       "raw_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
       "scope": "Fuses only reporting network vantages and names excluded or divergent inputs.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-11T07:58:13Z",
+      "source_timestamp": "2026-08-11T14:06:53Z",
       "status": "live",
       "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 28.4 percent.",
       "title": "Network vantage fusion"
@@ -7223,7 +7233,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:26:44Z",
       "health": {
-        "age_hours": 0.422,
+        "age_hours": 1.365,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7348,7 +7358,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-12T15:49:07Z",
       "health": {
-        "age_hours": 0.049,
+        "age_hours": 0.992,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7923,7 +7933,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 281.347,
+        "age_hours": 282.29,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -8075,9 +8085,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-12T04:38:03Z",
+      "freshness_deadline": "2026-08-12T16:03:04Z",
       "health": {
-        "age_hours": 11.234,
+        "age_hours": 0.76,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8087,9 +8097,9 @@
       },
       "id": "github-refuge",
       "input": {
-        "bytes": 3742,
+        "bytes": 3752,
         "filename": "github-refuge-latest.json",
-        "sha256": "6ab3ce52ab37c20b9bf46dbb1b72a91eb4e6ca753e8cb7282f76cb13eda5f864"
+        "sha256": "6eb8832bf2c6ca8228013517766e1ba47c57190d4b2a6b7941a09e035c9d7d71"
       },
       "layer": "erasure",
       "live": true,
@@ -8107,7 +8117,7 @@
       "optional": false,
       "payload": {
         "first_run": false,
-        "generated_at": "2026-08-11T02:38:03.432101+00:00",
+        "generated_at": "2026-08-11T14:03:04.996843+00:00",
         "method_version": 1,
         "n_present": 7,
         "n_pressure_events": 1,
@@ -8161,14 +8171,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.869",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.642",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "Terminus2049/Terminus2049.github.io",
             "kind": "preservation",
             "pressure_likelihood": 0.0,
             "severity": "medium",
-            "star_novelty": 0.8687,
+            "star_novelty": 0.6424,
             "status": "present",
             "topic_terms": [
               "Terminus2049",
@@ -8196,14 +8206,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.0",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.216",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "net4people/bbs",
             "kind": "quiet",
             "pressure_likelihood": 0.0,
             "severity": "low",
-            "star_novelty": 0.0,
+            "star_novelty": 0.2164,
             "status": "present",
             "topic_terms": [
               "gfw",
@@ -8213,14 +8223,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.0",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.469",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "github/dmca",
             "kind": "quiet",
             "pressure_likelihood": 0.0,
             "severity": "low",
-            "star_novelty": 0.0,
+            "star_novelty": 0.4686,
             "status": "present",
             "topic_terms": [
               "transparency",
@@ -8247,7 +8257,7 @@
       "raw_url": "https://palimpsest.info/readings/github-refuge-latest.json",
       "scope": "pressure on censored-material refuge repos: takedowns, legal blocks, visibility drops, preservation bursts",
       "source": "GitHub REST API (public pressure metadata only)",
-      "source_timestamp": "2026-08-11T02:38:03Z",
+      "source_timestamp": "2026-08-11T14:03:04Z",
       "status": "live",
       "summary": "Watches public pressure metadata for repositories preserving censored material. Latest payload reports pressure events at 1 count across 7 repositories watched.",
       "title": "GitHub refuge watch"
@@ -8256,7 +8266,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:42:35Z",
       "health": {
-        "age_hours": 0.158,
+        "age_hours": 1.101,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8432,7 +8442,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-13T08:29:14Z",
       "health": {
-        "age_hours": 7.381,
+        "age_hours": 8.324,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8534,9 +8544,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-11T21:51:44Z",
+      "freshness_deadline": "2026-08-12T04:04:16Z",
       "health": {
-        "age_hours": 6.006,
+        "age_hours": 0.74,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8548,7 +8558,7 @@
       "input": {
         "bytes": 737,
         "filename": "china-econ-latest.json",
-        "sha256": "ded4c9195d348534db1cba4f233224162d1579b52ee0ae0b991c134975a4d40a"
+        "sha256": "dad2c39a9674769fc4f4d49893a9f9c8b6ea3656b03be2ba5d1d93f4d5f64fe8"
       },
       "layer": "economy",
       "live": true,
@@ -8585,7 +8595,7 @@
           "repo_fixing",
           "shibor"
         ],
-        "generated_at": "2026-08-11T07:51:44Z",
+        "generated_at": "2026-08-11T14:04:16Z",
         "history_days": 41,
         "method_version": 2,
         "note": "official state-published numbers; the policy read is FDR007 vs the 7-day OMO rate and the daily parity fix, not any single level",
@@ -8594,7 +8604,7 @@
       "raw_url": "https://palimpsest.info/readings/china-econ-latest.json",
       "scope": "Carries keyless official CFETS money-market and central-parity benchmark levels.",
       "source": "CFETS chinamoney English portal (official published benchmarks, keyless)",
-      "source_timestamp": "2026-08-11T07:51:44Z",
+      "source_timestamp": "2026-08-11T14:04:16Z",
       "status": "live",
       "summary": "Carries keyless official CFETS money-market and central-parity benchmark levels. Upstream reading: official state-published numbers; the policy read is FDR007 vs the 7-day OMO rate and the daily parity fix, not any single level. Latest payload reports benchmark families reporting at 3 count.",
       "title": "China money-market benchmarks"
@@ -8603,7 +8613,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-12T19:50:33Z",
       "health": {
-        "age_hours": 20.026,
+        "age_hours": 20.969,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8655,7 +8665,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T16:34:15Z",
       "health": {
-        "age_hours": 23.297,
+        "age_hours": 24.24,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8676,7 +8686,7 @@
       "metric": {
         "denominator": null,
         "label": "southbound net flow",
-        "unit": "CNY billions",
+        "unit": "HKD billions",
         "value": 2.022
       },
       "optional": false,
@@ -8706,14 +8716,14 @@
       "source": "HKEX Stock Connect daily statistics (keyless official prints)",
       "source_timestamp": "2026-08-10T14:34:15Z",
       "status": "live",
-      "summary": "Publishes HKEX's official daily Stock Connect print without estimating discontinued fields. Upstream reading: HKEX discontinued the northbound buy/sell split in August 2024; northbound is turnover-only since. The narrowing is part of the record — northbound NET flow is never estimated here. Latest payload reports southbound net flow at 2.022 CNY billions.",
+      "summary": "Publishes HKEX's official daily Stock Connect print without estimating discontinued fields. Upstream reading: HKEX discontinued the northbound buy/sell split in August 2024; northbound is turnover-only since. The narrowing is part of the record — northbound NET flow is never estimated here. Latest payload reports southbound net flow at 2.022 HKD billions.",
       "title": "Stock Connect"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-13T12:58:08Z",
       "health": {
-        "age_hours": 2.899,
+        "age_hours": 3.842,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8869,7 +8879,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 148.693,
+        "age_hours": 149.636,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8937,7 +8947,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-13T10:01:37Z",
       "health": {
-        "age_hours": 5.841,
+        "age_hours": 6.784,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14322,7 +14332,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T03:26:47Z",
       "health": {
-        "age_hours": 0.422,
+        "age_hours": 1.365,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14368,12 +14378,12 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-11T14:29:16Z",
       "health": {
-        "age_hours": 0.38,
+        "age_hours": 1.323,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": "ok"
       },
       "id": "nemesis",
@@ -14383,7 +14393,7 @@
         "sha256": "7dbc0c9806134181cf71ee8fb596020c243d402633b6a9b058da48f3f3a7e1cf"
       },
       "layer": "nemesis",
-      "live": true,
+      "live": false,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -19189,8 +19199,8 @@
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
       "source_timestamp": "2026-08-11T13:29:16Z",
-      "status": "live",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 177 count.",
+      "status": "stale",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-11T13:29:16Z passed its freshness deadline 2026-08-11T14:29:16Z, so it is not labelled live. Latest payload reports topics ranked at 177 count.",
       "title": "Private runtime bridge"
     }
   ],

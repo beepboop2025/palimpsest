@@ -17,11 +17,11 @@ Palimpsest reads from surfaces that may be adversarial. A hostile server cannot 
 This module NEVER executes a byte it fetches; it returns text for a parser to treat as
 untrusted data. Standard-library only. See SECURITY-HARDENING.md for the full threat model.
 
-STATUS: WIRED AT ONE NARROW PUBLICATION BOUNDARY. The optional Nemesis snapshot importer
-uses this path with redirects disabled before accepting a configured external HTTPS document.
-No live observatory collector or server uses it yet: their outbound reads still go through a
-plain `urllib.request.urlopen` or an `httpx` client. This module protects that one named import
-while remaining the migration target for the collector inventory.
+STATUS: WIRED AT TWO NARROW PUBLICATION BOUNDARIES. The optional Nemesis snapshot importer
+uses this path with redirects disabled before accepting a configured external HTTPS document;
+the closed RSS/Atom evidence wire uses the byte interface for every reviewed feed. Other live
+observatory collectors still use their declared legacy clients. This module protects those two
+named imports while remaining the migration target for the collector inventory.
 
 The inventory of what still has to move includes every un-hardened egress call site, each with the
 honest reason it has not moved yet (async-only paths, POST bodies this GET-only fetch cannot

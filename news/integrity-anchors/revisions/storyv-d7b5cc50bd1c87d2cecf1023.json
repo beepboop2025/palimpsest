@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:anchors",
+  "slug": "integrity-anchors",
+  "url": "https://palimpsest.info/news/integrity-anchors/",
+  "signal_id": "anchors",
+  "headline": "Palimpsest's public ledgers have a current integrity-anchor reading",
+  "dek": "Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
+  "section": "integrity",
+  "order": 1,
+  "type": "integrity",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-11T13:26:47Z",
+  "modified_at": "2026-08-11T13:26:47Z",
+  "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "integrity",
+      "statement": "A current aggregate integrity-anchor record is published for the Palimpsest ledgers."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/anchors-latest.json",
+    "input": {
+      "filename": "anchors-latest.json",
+      "sha256": "fe78602e261556a5fd93bc2f351ad63555ea2ef2690c9c9efdbf8b16ec47d462",
+      "bytes": 590
+    },
+    "source_timestamp": "2026-08-11T13:26:47Z"
+  },
+  "method": {
+    "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
+    "version": null
+  },
+  "limitations": [
+    "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
+  ],
+  "related_signal_ids": [
+    "wayback",
+    "github-refuge",
+    "erasure-observatory"
+  ]
+}

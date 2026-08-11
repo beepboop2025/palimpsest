@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.0.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.1.0",
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, China economic pulse and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -22,6 +22,12 @@
         "description": "The Evidence Atlas catalog with provenance, rights, cadence, freshness and distribution metadata.",
         "required": ["schema", "generated_at", "summary", "datasets"],
         "additionalProperties": true
+      },
+      "EvidenceNewswire": {
+        "$ref": "https://palimpsest.info/protocol/newswire-v1.schema.json"
+      },
+      "ChinaEconomicPulse": {
+        "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
       },
       "NewsroomDenominator": {
         "type": "object",
@@ -181,6 +187,14 @@
         "description": "Published machine-readable dataset catalog",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DataCatalog"}}}
       },
+      "EvidenceNewswire": {
+        "description": "Published metadata-only evidence wire with source coverage receipts",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvidenceNewswire"}}}
+      },
+      "ChinaEconomicPulse": {
+        "description": "Published revision-safe China economic state dossier",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaEconomicPulse"}}}
+      },
       "NewsroomFeed": {
         "description": "Published structured newsroom edition",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
@@ -202,6 +216,16 @@
       "operationId": "getNewsroomFeed",
       "summary": "Read the latest deterministic, evidence-linked newsroom edition",
       "responses": {"200": {"$ref": "#/components/responses/NewsroomFeed"}}
+    }},
+    "/readings/newswire-latest.json": {"get": {
+      "operationId": "getEvidenceNewswire",
+      "summary": "Read normalized RSS and Atom event dossiers with explicit source coverage and evidence independence",
+      "responses": {"200": {"$ref": "#/components/responses/EvidenceNewswire"}}
+    }},
+    "/readings/china-economic-pulse-latest.json": {"get": {
+      "operationId": "getChinaEconomicPulse",
+      "summary": "Read the revision-safe economic pulse, coverage gates, divergences and abstentions",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaEconomicPulse"}}
     }},
     "/datapackage.json": {"get": {
       "operationId": "getEvidenceDataPackage",

@@ -46,6 +46,12 @@ class BasePostCollector(BaseCollector, PostSource):
     def __init__(self, config: dict):
         super().__init__(config)
         self._fetcher = None  # lazy: only built when we actually fetch
+        try:
+            configured_retry_batch = int(config.get("archive_retry_batch", 20))
+        except (TypeError, ValueError):
+            configured_retry_batch = 20
+        # Hard cap protects the collector cycle even if configuration is wrong.
+        self.archive_retry_batch = min(100, max(1, configured_retry_batch))
 
     # ── fetcher lifecycle ────────────────────────────────────────
     def _get_fetcher(self):
@@ -126,26 +132,94 @@ class BasePostCollector(BaseCollector, PostSource):
         new_rows = [r for r in rows if r["post_id"] in new_ids]
         for r in new_rows:
             await self._archive_new(r)
-        logger.info("[censorwatch:%s] upsert: %d rows, %d new (archived)",
-                    self.name, len(rows), len(new_rows))
+
+        # A transient first-capture failure used to strand a row forever:
+        # ON CONFLICT made it non-new on every later run, so `_archive_new` was
+        # never called again.  Claim a bounded, persistent fair batch of older
+        # NULL-archive rows after handling all genuinely new rows.
+        retry_rows = self._claim_archive_retry_rows(exclude_ids=new_ids)
+        for retry_row in retry_rows:
+            await self._archive_new(retry_row)
+
+        logger.info("[censorwatch:%s] upsert: %d rows, %d new, %d archive retries",
+                    self.name, len(rows), len(new_rows), len(retry_rows))
         return len(rows)
 
-    async def _archive_new(self, row: dict) -> None:
+    def _claim_archive_retry_rows(self, *, exclude_ids: set[str]) -> list[dict]:
+        """Claim a bounded, oldest-attempt-first batch of retryable archives.
+
+        Claim time is persisted in the row's JSON metadata *before* network I/O.
+        Failed rows therefore move behind never-attempted/older rows instead of
+        monopolising the first N slots forever.  ``id`` is the deterministic
+        tie-breaker, and the SQL LIMIT prevents an unbounded table scan result.
+        """
+        from api.database import SessionLocal
+        from censorwatch.models import CensoredPost
+
+        db = SessionLocal()
+        try:
+            retry_at = CensoredPost.extra_data["archive_retry_at"].astext
+            query = (
+                db.query(CensoredPost)
+                .filter(CensoredPost.source == self.name)
+                .filter(CensoredPost.archive_path.is_(None))
+                .filter(CensoredPost.url.isnot(None))
+                .filter(CensoredPost.url != "")
+            )
+            if exclude_ids:
+                query = query.filter(CensoredPost.post_id.notin_(sorted(exclude_ids)))
+            candidates = (
+                query
+                .order_by(
+                    retry_at.asc().nullsfirst(),
+                    CensoredPost.first_seen_at.asc(),
+                    CensoredPost.id.asc(),
+                )
+                .limit(self.archive_retry_batch)
+                .all()
+            )
+            claimed_at = datetime.now(timezone.utc).isoformat()
+            rows: list[dict] = []
+            for candidate in candidates:
+                metadata = dict(candidate.extra_data or {})
+                metadata["archive_retry_at"] = claimed_at
+                metadata["archive_retry_count"] = int(
+                    metadata.get("archive_retry_count", 0) or 0
+                ) + 1
+                candidate.extra_data = metadata
+                rows.append({
+                    "post_id": str(candidate.post_id),
+                    "url": candidate.url,
+                })
+            db.commit()
+            return rows
+        except Exception as exc:
+            db.rollback()
+            logger.warning("[censorwatch:%s] archive retry claim failed: %s",
+                           self.name, exc)
+            return []
+        finally:
+            db.close()
+
+    async def _archive_new(self, row: dict) -> str | None:
         """Archive a first-seen post (snapshot its page + images before it vanishes)
         and record the archive path back onto the row. Best-effort: an archive
         failure must not fail the capture run."""
         if not row.get("url"):
-            return
+            return None
         try:
             from censorwatch.archiver import archive_post
             path = await archive_post(
-                row["url"], self.name, row["post_id"], fetcher=self._get_fetcher()
+                row["url"], self.name, row["post_id"], fetcher=self._get_fetcher(),
+                deletion_markers=self.deletion_markers,
             )
             if path:
                 self._set_archive_path(row["post_id"], path)
+            return path
         except Exception as e:
             logger.warning("[censorwatch:%s] archive failed for %s: %s",
                            self.name, row.get("post_id"), e)
+            return None
 
     def _set_archive_path(self, post_id: str, path: str) -> None:
         """Persist archive_path on the just-inserted CensoredPost row."""

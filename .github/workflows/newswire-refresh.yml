@@ -1,0 +1,278 @@
+name: Refresh evidence wire
+
+# Pull a closed RSS/Atom registry, then rebuild every deterministic publication that
+# depends on it. The two scheduled starts keep the wire current without overlapping
+# the :58 OSINT aging run in the normal case. A push race still rebuilds, reseals and
+# rechecks the exact rebased tree before publication.
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: newswire-refresh
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install the pinned offline test runner
+        run: >-
+          python -m pip install --quiet --require-hashes
+          -r .github/osint-china-ci-requirements.txt
+
+      - name: Synchronize inputs before collection
+        run: |
+          git config user.name "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git fetch origin main
+          git rebase origin/main
+
+      - name: Pull, correlate and render the evidence wire
+        run: |
+          python -m scripts.newswire_pull
+          python -m scripts.build_economic_pulse
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
+          python -m scripts.build_newsroom
+          python -m scripts.build_data_catalog
+          python scripts/seal_readings.py
+
+      - name: Verify collection, security and publication contracts
+        run: |
+          python -m pytest -q \
+            tests/test_newswire.py \
+            tests/test_newswire_service.py \
+            tests/test_economic_pulse.py \
+            tests/test_egress_policy.py \
+            tests/test_no_dangerous_sinks.py \
+            tests/test_safe_fetch.py \
+            tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
+            tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_renderer.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
+            tests/test_data_catalog.py \
+            tests/test_seal_readings.py \
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py \
+            tests/test_site_shell.py
+          node --check assets/shell.js
+
+      - name: Read the complete public surface before publication
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Create the candidate refresh commit
+        id: candidate
+        run: |
+          git add \
+            readings/newswire-latest.json \
+            readings/newswire-versions.jsonl \
+            readings/china-economic-pulse-latest.json \
+            readings/osint-china-latest.json \
+            readings/newsroom-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json \
+            news/
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "no change"
+          else
+            git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip ci]"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebase candidate onto the latest public ledger
+        if: steps.candidate.outputs.changed == 'true'
+        id: prepublish_sync
+        run: |
+          previous_base=$(git rev-parse HEAD^)
+          git fetch origin main
+          if git rebase origin/main; then
+            current_base=$(git rev-parse HEAD^)
+            if [ "$previous_base" = "$current_base" ]; then
+              echo "rebuild=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "rebuild=true" >> "$GITHUB_OUTPUT"
+            fi
+            echo "recreate=false" >> "$GITHUB_OUTPUT"
+          else
+            git rebase --abort || true
+            git switch --detach origin/main
+            echo "rebuild=true" >> "$GITHUB_OUTPUT"
+            echo "recreate=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebuild and reseal after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        run: |
+          python -m scripts.newswire_pull
+          python -m scripts.build_economic_pulse
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
+          python -m scripts.build_newsroom
+          python -m scripts.build_data_catalog
+          python scripts/seal_readings.py
+
+      - name: Retest after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        run: |
+          python -m pytest -q \
+            tests/test_newswire.py \
+            tests/test_newswire_service.py \
+            tests/test_economic_pulse.py \
+            tests/test_egress_policy.py \
+            tests/test_no_dangerous_sinks.py \
+            tests/test_safe_fetch.py \
+            tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
+            tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_renderer.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
+            tests/test_data_catalog.py \
+            tests/test_seal_readings.py \
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py \
+            tests/test_site_shell.py
+          node --check assets/shell.js
+
+      - name: Rescrub after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Replace the candidate with revalidated bytes
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        run: |
+          git add \
+            readings/newswire-latest.json \
+            readings/newswire-versions.jsonl \
+            readings/china-economic-pulse-latest.json \
+            readings/osint-china-latest.json \
+            readings/newsroom-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json \
+            news/
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+            if git diff --cached --quiet origin/main; then
+              echo "no change after synchronization"
+            else
+              git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip ci]"
+            fi
+          else
+            git commit --amend --no-edit
+          fi
+
+      - name: Attempt the verified push
+        if: steps.candidate.outputs.changed == 'true'
+        id: push_attempt
+        continue-on-error: true
+        env:
+          GITHUB_PUSH_TOKEN: ${{ github.token }}
+        run: |
+          basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
+            push origin HEAD:main
+
+      - name: Synchronize after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          git fetch origin main
+          if ! git rebase origin/main; then
+            git rebase --abort || true
+            git switch --detach origin/main
+          fi
+
+      - name: Rebuild and reseal after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          python -m scripts.newswire_pull
+          python -m scripts.build_economic_pulse
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
+          python -m scripts.build_newsroom
+          python -m scripts.build_data_catalog
+          python scripts/seal_readings.py
+
+      - name: Retest after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          python -m pytest -q \
+            tests/test_newswire.py \
+            tests/test_newswire_service.py \
+            tests/test_economic_pulse.py \
+            tests/test_egress_policy.py \
+            tests/test_no_dangerous_sinks.py \
+            tests/test_safe_fetch.py \
+            tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
+            tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_renderer.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
+            tests/test_data_catalog.py \
+            tests/test_seal_readings.py \
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py \
+            tests/test_site_shell.py
+          node --check assets/shell.js
+
+      - name: Rescrub after a push race
+        if: steps.push_attempt.outcome == 'failure'
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Commit the race-safe rebuilt bytes
+        if: steps.push_attempt.outcome == 'failure'
+        run: |
+          git add \
+            readings/newswire-latest.json \
+            readings/newswire-versions.jsonl \
+            readings/china-economic-pulse-latest.json \
+            readings/osint-china-latest.json \
+            readings/newsroom-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json \
+            news/
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+            if git diff --cached --quiet; then
+              echo "no change after push race"
+            else
+              git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip ci]"
+            fi
+          else
+            git commit --amend --no-edit
+          fi
+
+      - name: Push the race-safe rebuilt commit
+        if: steps.push_attempt.outcome == 'failure'
+        env:
+          GITHUB_PUSH_TOKEN: ${{ github.token }}
+        run: |
+          basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
+            push origin HEAD:main

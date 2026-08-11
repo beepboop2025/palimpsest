@@ -13,12 +13,54 @@
 #   BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
 #   # on the Hetzner box (accepts the exposure above):
 #   BLEEDTHROUGH_LIVE=1 BLEEDTHROUGH_ALLOW_BOX=1 bash ops/bleedthrough_prober.sh
-#   # cron (every 6h, offset):   17 */6 * * *  cd /opt/palimpsest && BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh >> /var/log/bleedthrough.log 2>&1
+# The supported Hetzner schedule is ops/systemd/palimpsest-bleedthrough.timer.
 set -eu
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 export PYTHONPATH="$REPO"
+
+# Keep every mutable artifact outside the deployed source tree. A developer who cannot write
+# /var/lib can point PALIMPSEST_STATE_ROOT at a temporary directory explicitly.
+STATE_ROOT="${PALIMPSEST_STATE_ROOT:-/var/lib/palimpsest}"
+STATE_DIR="${BLEEDTHROUGH_STATE_DIR:-$STATE_ROOT/bleedthrough}"
+READINGS_DIR="${BLEEDTHROUGH_READINGS:-$STATE_ROOT/readings}"
+
+export BLEEDTHROUGH_ASNS="${BLEEDTHROUGH_ASNS:-$REPO/config/bleedthrough_asns.json}"
+export BLEEDTHROUGH_PREFIXES="${BLEEDTHROUGH_PREFIXES:-$STATE_DIR/prefixes.json}"
+export BLEEDTHROUGH_TARGETS="${BLEEDTHROUGH_TARGETS:-$STATE_DIR/targets.json}"
+export BLEEDTHROUGH_STORE="${BLEEDTHROUGH_STORE:-$STATE_DIR/baselines}"
+export BLEEDTHROUGH_READINGS="$READINGS_DIR"
+export BLEEDTHROUGH_OUT="${BLEEDTHROUGH_OUT:-$READINGS_DIR/bleedthrough-latest.json}"
+export BLEEDTHROUGH_HIST="${BLEEDTHROUGH_HIST:-$READINGS_DIR/bleedthrough-history.jsonl}"
+LOCKFILE="${BLEEDTHROUGH_LOCKFILE:-$STATE_DIR/round.lock}"
+PYTHON="${BLEEDTHROUGH_PYTHON:-python3}"
+
+# ── require deliberate opt-in before even the public-IP provenance check ─────────────────
+if [ "${BLEEDTHROUGH_LIVE:-}" != "1" ]; then
+  echo "Set BLEEDTHROUGH_LIVE=1 to run (this actively probes China from this host)." >&2
+  exit 1
+fi
+
+# An environment typo must fail closed, not silently put runtime products back in git.
+require_external_path() {
+  candidate="$1"
+  case "$candidate" in
+    /*) ;;
+    *) echo "REFUSING: mutable BLEEDTHROUGH paths must be absolute: $candidate" >&2; exit 1 ;;
+  esac
+  case "$candidate" in
+    "$REPO"|"$REPO"/*)
+      echo "REFUSING: mutable BLEEDTHROUGH path is inside the deployed source: $candidate" >&2
+      exit 1
+      ;;
+  esac
+}
+for path in "$STATE_DIR" "$READINGS_DIR" "$BLEEDTHROUGH_PREFIXES" \
+            "$BLEEDTHROUGH_TARGETS" "$BLEEDTHROUGH_STORE" "$BLEEDTHROUGH_OUT" \
+            "$BLEEDTHROUGH_HIST" "$LOCKFILE"; do
+  require_external_path "$path"
+done
 
 # ── the Hetzner box: refused by default, overridable on purpose ───────────────────────────
 # The box is not a disposable prober. Its IP is the one published in the api.seiche.info A
@@ -43,30 +85,27 @@ fi
 # precisely the linkage the refusal above exists to prevent. The host identity stays in this
 # operator log; only the coarse kind (and optionally a country) reaches the reading.
 export BLEEDTHROUGH_VANTAGE_KIND="${BLEEDTHROUGH_VANTAGE_KIND:-single fixed-IP VPS outside China}"
-[ -n "${BLEEDTHROUGH_VANTAGE_COUNTRY:-}" ] && export BLEEDTHROUGH_VANTAGE_COUNTRY
-
-# ── require deliberate opt-in ────────────────────────────────────────────────────────────
-if [ "${BLEEDTHROUGH_LIVE:-}" != "1" ]; then
-  echo "Set BLEEDTHROUGH_LIVE=1 to run (this actively probes China from this host)." >&2
-  exit 1
-fi
+export BLEEDTHROUGH_VANTAGE_COUNTRY="${BLEEDTHROUGH_VANTAGE_COUNTRY:-DE}"
 
 # ── one round at a time ──────────────────────────────────────────────────────────────────
 # Matters more on a host that also serves live traffic: a slow round must never let the next
 # cron tick stack a second set of probes on top of it.
-if command -v flock >/dev/null 2>&1; then
-  exec 9>"${TMPDIR:-/tmp}/bleedthrough.lock"
-  flock -n 9 || { echo "another BLEEDTHROUGH round is already running; exiting."; exit 0; }
-fi
+mkdir -p "$STATE_DIR" "$READINGS_DIR" "$(dirname -- "$LOCKFILE")"
+command -v flock >/dev/null 2>&1 || {
+  echo "REFUSING: flock is required to guarantee non-overlapping rounds." >&2
+  exit 1
+}
+exec 9>"$LOCKFILE"
+flock -n 9 || { echo "another BLEEDTHROUGH round is already running; exiting."; exit 0; }
 
 echo "== [1/3] fetch real prefixes from public BGP (RIPE; no China contact) =="
-python3 -m scripts.bleedthrough_fetch_prefixes
+"$PYTHON" -m scripts.bleedthrough_fetch_prefixes
 
 echo "== [2/3] curate dark IPs + live open resolvers (benign control queries) =="
-python3 -m scripts.bleedthrough_curate
+"$PYTHON" -m scripts.bleedthrough_curate
 
 echo "== [3/3] probe the censored domain + publish the reading =="
-python3 -m scripts.bleedthrough_pull
+"$PYTHON" -m scripts.bleedthrough_pull
 
-echo "== done. reading: readings/bleedthrough-latest.json =="
-echo "   publish it to the site by committing readings/bleedthrough-latest.json (+ history)."
+echo "== done. last-good reading: $BLEEDTHROUGH_OUT =="
+echo "   state: $STATE_DIR (private); sanitized publication: $READINGS_DIR"

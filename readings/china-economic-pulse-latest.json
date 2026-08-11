@@ -1,0 +1,2198 @@
+{
+  "as_of": "2026-08-11T14:04:16Z",
+  "comparisons": [
+    {
+      "baseline_observations": 0,
+      "claim": "No divergence claim: the rolling baseline has fewer than eight prior months.",
+      "comparison_id": "headline-vs-physical-credit",
+      "minimum_baseline_observations": 8,
+      "period": "2026-06",
+      "status": "warming_up",
+      "unit": "percentage points",
+      "value": null
+    }
+  ],
+  "coverage": {
+    "adapter_ready_sources": [
+      {
+        "cadence": "monthly",
+        "domains": [
+          "activity",
+          "agriculture",
+          "commodities",
+          "logistics",
+          "trade"
+        ],
+        "evidence_url": "https://english.customs.gov.cn/Statics/fc662cee-21c3-474e-a7fb-4768bb1e295a.html",
+        "independence_group": "gacc_trade_statistics",
+        "name": "GACC customs statistics",
+        "source_id": "gacc_trade"
+      },
+      {
+        "cadence": "daily",
+        "domains": [
+          "activity",
+          "commodities",
+          "logistics",
+          "trade"
+        ],
+        "evidence_url": "https://www.imf.org/en/news/seminars/conferences/2023/11/15/launch-of-the-portwatch-platform",
+        "independence_group": "imf_portwatch_ais",
+        "name": "IMF PortWatch port calls and shipment estimates",
+        "source_id": "imf_portwatch"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "activity",
+          "investment",
+          "logistics",
+          "trade"
+        ],
+        "evidence_url": "https://xxgk.mot.gov.cn/jigou/zhghs/202606/t20260629_4208435.html",
+        "independence_group": "mot_transport_statistics",
+        "name": "Ministry of Transport freight, port, passenger and investment tables",
+        "source_id": "mot_transport"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "firm_health",
+          "inflation",
+          "property"
+        ],
+        "evidence_url": "https://www.stats.gov.cn/sj/zxfbhjd/202602/t20260213_1962617.html",
+        "independence_group": "nbs_housing_prices",
+        "name": "NBS 70-city residential price indices",
+        "source_id": "nbs_70_city_housing"
+      },
+      {
+        "cadence": "quarterly",
+        "domains": [
+          "activity",
+          "firm_health",
+          "investment",
+          "labor",
+          "trade"
+        ],
+        "evidence_url": "https://www.stats.gov.cn/zs/tjws/tjfx/202301/t20230101_1903945.html",
+        "independence_group": "nbs_enterprise_survey",
+        "name": "NBS enterprise-climate survey aggregates",
+        "source_id": "nbs_enterprise_climate"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "activity",
+          "commodities",
+          "consumer_digital"
+        ],
+        "evidence_url": "https://www.nea.gov.cn/20260519/fdecbf091d654d53a9db438cdc356a5c/c.html",
+        "independence_group": "nea_energy_statistics",
+        "name": "NEA sector electricity consumption",
+        "source_id": "nea_electricity"
+      },
+      {
+        "cadence": "quarterly",
+        "domains": [
+          "activity",
+          "credit",
+          "firm_health",
+          "inflation",
+          "investment",
+          "labor"
+        ],
+        "evidence_url": "https://www.stats.gov.cn/fw/bmdcxmsp/bmzd/202501/t20250126_1958478.html",
+        "independence_group": "pboc_enterprise_survey",
+        "name": "PBOC 5,000-enterprise survey aggregates",
+        "source_id": "pboc_5000_enterprise"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "credit",
+          "firm_health",
+          "investment"
+        ],
+        "evidence_url": "https://www.pbc.gov.cn/diaochatongjisi/attachDir/2025/11/2025111416274070278.pdf",
+        "independence_group": "pboc_credit_statistics",
+        "name": "PBOC money, loans and total social financing",
+        "source_id": "pboc_credit_tsf"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "credit",
+          "investment",
+          "trade"
+        ],
+        "evidence_url": "https://www.safe.gov.cn/safe/tjsj1/",
+        "independence_group": "safe_external_statistics",
+        "name": "SAFE external accounts and FX settlement statistics",
+        "source_id": "safe_external_accounts"
+      },
+      {
+        "cadence": "daily",
+        "domains": [
+          "activity",
+          "commodities",
+          "logistics"
+        ],
+        "evidence_url": "https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S5P_NRTI_L3_NO2",
+        "independence_group": "sentinel5p_atmosphere",
+        "name": "Sentinel-5P TROPOMI NO2",
+        "source_id": "sentinel5p_no2"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "activity",
+          "consumer_digital",
+          "logistics"
+        ],
+        "evidence_url": "https://gs.spb.gov.cn/gssyzglj/c100062/c100149/202602/7eb1f16ae95344de900a86f36baa9e73.shtml",
+        "independence_group": "spb_postal_statistics",
+        "name": "State Post Bureau express volume and revenue",
+        "source_id": "spb_parcels"
+      },
+      {
+        "cadence": "monthly",
+        "domains": [
+          "activity",
+          "commodities",
+          "investment",
+          "logistics",
+          "property"
+        ],
+        "evidence_url": "https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_ANNUAL_V22",
+        "independence_group": "viirs_radiance",
+        "name": "VIIRS night-light composites",
+        "source_id": "viirs_nightlights"
+      }
+    ],
+    "live_independent_group_ids": [
+      "cfets_benchmarks",
+      "external_fx_reference",
+      "hkex_market_flows"
+    ],
+    "live_source_ids": [
+      "cfets_benchmarks",
+      "external_cny_reference",
+      "hkex_stock_connect"
+    ],
+    "matrix": [
+      {
+        "adapter_ready_groups": [
+          "gacc_trade_statistics",
+          "imf_portwatch_ais",
+          "mot_transport_statistics",
+          "nbs_enterprise_survey",
+          "nea_energy_statistics",
+          "pboc_enterprise_survey",
+          "sentinel5p_atmosphere",
+          "spb_postal_statistics",
+          "viirs_radiance"
+        ],
+        "domain": "activity",
+        "observed_groups": [
+          "nbs_official_statistics",
+          "nra_rail_statistics"
+        ],
+        "registered_live_groups": [],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "gacc_trade_statistics"
+        ],
+        "domain": "agriculture",
+        "observed_groups": [],
+        "registered_live_groups": [],
+        "status": "adapter_ready"
+      },
+      {
+        "adapter_ready_groups": [
+          "gacc_trade_statistics",
+          "imf_portwatch_ais",
+          "nea_energy_statistics",
+          "sentinel5p_atmosphere",
+          "viirs_radiance"
+        ],
+        "domain": "commodities",
+        "observed_groups": [
+          "nbs_official_statistics"
+        ],
+        "registered_live_groups": [],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "nea_energy_statistics",
+          "spb_postal_statistics"
+        ],
+        "domain": "consumer_digital",
+        "observed_groups": [],
+        "registered_live_groups": [],
+        "status": "adapter_ready"
+      },
+      {
+        "adapter_ready_groups": [
+          "pboc_credit_statistics",
+          "pboc_enterprise_survey",
+          "safe_external_statistics"
+        ],
+        "domain": "credit",
+        "observed_groups": [
+          "cfets_benchmarks",
+          "hkex_market_flows",
+          "pboc_credit_statistics",
+          "pboc_open_market_operations",
+          "safe_external_statistics"
+        ],
+        "registered_live_groups": [
+          "cfets_benchmarks",
+          "hkex_market_flows"
+        ],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "nbs_enterprise_survey",
+          "nbs_housing_prices",
+          "pboc_credit_statistics",
+          "pboc_enterprise_survey"
+        ],
+        "domain": "firm_health",
+        "observed_groups": [
+          "nbs_official_statistics"
+        ],
+        "registered_live_groups": [],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "nbs_housing_prices",
+          "pboc_enterprise_survey"
+        ],
+        "domain": "inflation",
+        "observed_groups": [
+          "cfets_benchmarks",
+          "external_fx_reference"
+        ],
+        "registered_live_groups": [
+          "cfets_benchmarks",
+          "external_fx_reference"
+        ],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "mot_transport_statistics",
+          "nbs_enterprise_survey",
+          "pboc_credit_statistics",
+          "pboc_enterprise_survey",
+          "safe_external_statistics",
+          "viirs_radiance"
+        ],
+        "domain": "investment",
+        "observed_groups": [
+          "hkex_market_flows",
+          "pboc_credit_statistics",
+          "safe_external_statistics"
+        ],
+        "registered_live_groups": [
+          "hkex_market_flows"
+        ],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "nbs_enterprise_survey",
+          "pboc_enterprise_survey"
+        ],
+        "domain": "labor",
+        "observed_groups": [],
+        "registered_live_groups": [],
+        "status": "adapter_ready"
+      },
+      {
+        "adapter_ready_groups": [
+          "gacc_trade_statistics",
+          "imf_portwatch_ais",
+          "mot_transport_statistics",
+          "sentinel5p_atmosphere",
+          "spb_postal_statistics",
+          "viirs_radiance"
+        ],
+        "domain": "logistics",
+        "observed_groups": [
+          "nra_rail_statistics"
+        ],
+        "registered_live_groups": [],
+        "status": "observed"
+      },
+      {
+        "adapter_ready_groups": [
+          "nbs_housing_prices",
+          "viirs_radiance"
+        ],
+        "domain": "property",
+        "observed_groups": [],
+        "registered_live_groups": [],
+        "status": "adapter_ready"
+      },
+      {
+        "adapter_ready_groups": [
+          "gacc_trade_statistics",
+          "imf_portwatch_ais",
+          "mot_transport_statistics",
+          "nbs_enterprise_survey",
+          "safe_external_statistics"
+        ],
+        "domain": "trade",
+        "observed_groups": [
+          "external_fx_reference",
+          "nra_rail_statistics",
+          "safe_external_statistics"
+        ],
+        "registered_live_groups": [
+          "external_fx_reference"
+        ],
+        "status": "observed"
+      }
+    ],
+    "missing_source_ids": [
+      "gacc_trade",
+      "imf_portwatch",
+      "mot_transport",
+      "nbs_70_city_housing",
+      "nbs_enterprise_climate",
+      "nea_electricity",
+      "pboc_5000_enterprise",
+      "pboc_credit_tsf",
+      "safe_external_accounts",
+      "sentinel5p_no2",
+      "spb_parcels",
+      "viirs_nightlights"
+    ],
+    "observed_independent_group_ids": [
+      "cfets_benchmarks",
+      "external_fx_reference",
+      "hkex_market_flows",
+      "nbs_official_statistics",
+      "nra_rail_statistics",
+      "pboc_credit_statistics",
+      "pboc_open_market_operations",
+      "safe_external_statistics"
+    ],
+    "observed_source_ids": [
+      "cfets_benchmarks",
+      "external_cny_reference",
+      "hkex_stock_connect",
+      "nbs-energy-release",
+      "nbs-industrial-release",
+      "nra-rail-release",
+      "pboc-money-banking-release",
+      "pboc-monthly-financial-release",
+      "pboc-omo-release",
+      "safe-settlement-release"
+    ],
+    "registered_independent_group_ids": [
+      "baidu_mobility",
+      "baidu_search",
+      "cbb_private_panel",
+      "cfets_benchmarks",
+      "cfps_household_panel",
+      "chfs_household_panel",
+      "creis_property_panel",
+      "external_fx_reference",
+      "gacc_trade_statistics",
+      "hkex_market_flows",
+      "imf_portwatch_ais",
+      "kantar_consumer_panel",
+      "landchina_transactions",
+      "listed_company_disclosures",
+      "mot_transport_statistics",
+      "nbs_enterprise_survey",
+      "nbs_housing_prices",
+      "nbs_labor_force_survey",
+      "nbs_local_statistics",
+      "nbs_official_statistics",
+      "nea_energy_statistics",
+      "pboc_credit_registry",
+      "pboc_credit_statistics",
+      "pboc_enterprise_survey",
+      "safe_external_statistics",
+      "samr_company_registry",
+      "sentinel5p_atmosphere",
+      "spb_postal_statistics",
+      "tax_invoice_aggregate",
+      "unionpay_transactions",
+      "viirs_radiance",
+      "wind_licensed_aggregation",
+      "zhaopin_jobs_panel"
+    ],
+    "registered_independent_groups": 33,
+    "registered_sources": 33
+  },
+  "desks": [
+    {
+      "id": "activity",
+      "independent_group_ids": [
+        "nbs_official_statistics"
+      ],
+      "limitations": [
+        "Current activity coverage is a narrow state-release comparison, not a representative private-firm panel or a GDP substitute."
+      ],
+      "metrics": [
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percentage-point difference for the same month.",
+            "concept": "Headline-composite level gap",
+            "concept_id": "headline-physical-gap"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "palimpsest_derived",
+          "label": "Headline minus physical/credit composite gap",
+          "limitation": "Until at least eight prior months establish its own baseline, the gap supports no drift or fabrication claim.",
+          "metric_id": "cn-activity-headline-composite-gap",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "palimpsest-lkq-composite",
+          "status": "derived",
+          "unit": "percentage points",
+          "value": 1.92
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year for industrial production.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "nbs_official_statistics",
+          "label": "Headline industrial production growth",
+          "limitation": "Industrial production is not GDP and excludes much of the service economy.",
+          "metric_id": "cn-activity-industrial-production-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "nbs-industrial-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": 5.3
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Fixed 40/40/20 loans, electricity-production, and rail-freight weights.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "palimpsest_derived",
+          "label": "Li Keqiang-style physical/credit composite",
+          "limitation": "Electricity production substitutes for the historical consumption concept; the composite is a diagnostic relationship, not true GDP.",
+          "metric_id": "cn-activity-lkq-composite",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "palimpsest-lkq-composite",
+          "status": "derived",
+          "unit": "percent",
+          "value": 3.38
+        }
+      ],
+      "n_metrics": 3,
+      "source_classes": [
+        "official",
+        "physical"
+      ],
+      "status": "observed",
+      "title": "Activity"
+    },
+    {
+      "id": "money-credit-fx",
+      "independent_group_ids": [
+        "cfets_benchmarks",
+        "external_fx_reference"
+      ],
+      "limitations": [
+        "Daily rates and exchange references describe funding and policy pricing; they do not measure the whole real economy."
+      ],
+      "metrics": [
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "76b39da40bbb670c3dee6052632e9dd83c2402424a1ab9f5844f558577298de6",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/FrrHis?lang=EN&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "FDR001 depository-institution repo fixing",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-fdr001",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.36
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "76b39da40bbb670c3dee6052632e9dd83c2402424a1ab9f5844f558577298de6",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/FrrHis?lang=EN&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "FDR007 depository-institution repo fixing",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-fdr007",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.39
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "76b39da40bbb670c3dee6052632e9dd83c2402424a1ab9f5844f558577298de6",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/FrrHis?lang=EN&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "FDR014 depository-institution repo fixing",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-fdr014",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.39
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "76b39da40bbb670c3dee6052632e9dd83c2402424a1ab9f5844f558577298de6",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/FrrHis?lang=EN&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "FR001 repo fixing",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-fr001",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.39
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "76b39da40bbb670c3dee6052632e9dd83c2402424a1ab9f5844f558577298de6",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/FrrHis?lang=EN&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "FR007 repo fixing",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-fr007",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.42
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "76b39da40bbb670c3dee6052632e9dd83c2402424a1ab9f5844f558577298de6",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/FrrHis?lang=EN&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "FR014 repo fixing",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-fr014",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.43
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "One-month SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-1m",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.4167
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "One-week SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-1w",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.394
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "One-year SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-1y",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.48
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Two-week SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-2w",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.399
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Three-month SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-3m",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.43
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Six-month SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-6m",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.45
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Nine-month SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-9m",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.47
+        },
+        {
+          "collected_at": "2026-08-11T07:51:44Z",
+          "comparability": {
+            "basis": "Published percent rate; tenor and secured/unsecured family remain distinct.",
+            "concept": "Annualized money-market benchmark rate",
+            "concept_id": "money-market-rate-percent"
+          },
+          "evidence": {
+            "sha256": "cc14cc3bb248745be64975584af176dbb5fff750c52ed7ea908b6ae0f31d6a73",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-07-14&endDate=2026-08-11"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 6.209,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Overnight SHIBOR",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-shibor-on",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T07:51:44Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "%",
+          "value": 1.358
+        },
+        {
+          "collected_at": "2026-08-11T02:50:11Z",
+          "comparability": {
+            "basis": "Official daily central parity; compare only with another CNY-per-USD quote.",
+            "concept": "Chinese yuan per US dollar",
+            "concept_id": "usd-cny-rate"
+          },
+          "evidence": {
+            "sha256": "0cb4f459d183e8b2ffaf015ff6553abda8a1daa442dd5d60c09df6e91f832ae7",
+            "url": "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-ccpr/CcprHisNew?startDate=2026-07-14&endDate=2026-08-11&currency=USD/CNY"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 11.235,
+            "budget_hours": 96.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Official USD/CNY central parity",
+          "limitation": "The CFETS response supplies a data date but no release timestamp; the ledger conservatively records first observation as the release upper bound.",
+          "metric_id": "cn-cfets-usdcny-parity",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": "2026-08-11T02:50:11Z",
+          "revision": {
+            "delta": null,
+            "number": 0,
+            "previous_value": null,
+            "status": "original"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "CNY per USD",
+          "value": 6.79
+        },
+        {
+          "collected_at": "2026-08-10T17:50:33Z",
+          "comparability": {
+            "basis": "Percent gap; positive means the market reference prices the yuan weaker than the fix.",
+            "concept": "Official-reference FX divergence",
+            "concept_id": "usd-cny-reference-gap"
+          },
+          "evidence": {
+            "sha256": "00c4e36d0c004ce2f20c48aabc8364030098bf2ef5cd8048538bd1ec37d6d57c",
+            "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 20.229,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "external_fx_reference",
+          "label": "Official fix minus external reference gap",
+          "limitation": "The official fix and external reference are same-day but not simultaneous; the comparison is onshore and does not supply a license-clean CNH leg.",
+          "metric_id": "cn-fx-official-reference-gap-percent",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "external_cny_reference",
+          "status": "derived",
+          "unit": "percent",
+          "value": -0.6489
+        },
+        {
+          "collected_at": "2026-08-10T17:50:33Z",
+          "comparability": {
+            "basis": "CNY per USD; higher means a weaker yuan.",
+            "concept": "Chinese yuan per US dollar",
+            "concept_id": "usd-cny-rate"
+          },
+          "evidence": {
+            "sha256": "00c4e36d0c004ce2f20c48aabc8364030098bf2ef5cd8048538bd1ec37d6d57c",
+            "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 20.229,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "cfets_benchmarks",
+          "label": "Official USD/CNY central parity",
+          "limitation": "The official fix and external reference are same-day but not simultaneous; the comparison is onshore and does not supply a license-clean CNH leg.",
+          "metric_id": "cn-fx-usdcny-parity",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "cfets_benchmarks",
+          "status": "observed",
+          "unit": "CNY per USD",
+          "value": 6.7884
+        },
+        {
+          "collected_at": "2026-08-10T17:50:33Z",
+          "comparability": {
+            "basis": "CNY per USD; higher means a weaker yuan.",
+            "concept": "Chinese yuan per US dollar",
+            "concept_id": "usd-cny-rate"
+          },
+          "evidence": {
+            "sha256": "00c4e36d0c004ce2f20c48aabc8364030098bf2ef5cd8048538bd1ec37d6d57c",
+            "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 20.229,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "external_fx_reference",
+          "label": "ECB-derived USD/CNY reference",
+          "limitation": "The official fix and external reference are same-day but not simultaneous; the comparison is onshore and does not supply a license-clean CNH leg.",
+          "metric_id": "cn-fx-usdcny-spot-ecb",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "external_cny_reference",
+          "status": "observed",
+          "unit": "CNY per USD",
+          "value": 6.744353
+        }
+      ],
+      "n_metrics": 18,
+      "source_classes": [
+        "official"
+      ],
+      "status": "observed",
+      "title": "Money, credit & FX"
+    },
+    {
+      "id": "markets-capital",
+      "independent_group_ids": [
+        "hkex_market_flows"
+      ],
+      "limitations": [
+        "Stock Connect is one cross-border market channel. Northbound buy/sell direction is no longer published and is never estimated."
+      ],
+      "metrics": [
+        {
+          "collected_at": "2026-08-10T14:34:15Z",
+          "comparability": {
+            "basis": "CNY billion, turnover only; direction is not available after August 2024.",
+            "concept": "Hong Kong-to-mainland Stock Connect turnover",
+            "concept_id": "stock-connect-northbound-turnover"
+          },
+          "evidence": {
+            "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+            "url": "https://palimpsest.info/readings/stock-connect-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 23.5,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "hkex_market_flows",
+          "label": "Northbound SSE turnover",
+          "limitation": "HKEX no longer publishes the northbound buy/sell split, so net flow is not inferred.",
+          "metric_id": "cn-hkex-nb-sse-turnover-b",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "market",
+          "source_id": "hkex_stock_connect",
+          "status": "observed",
+          "unit": "CNY billion",
+          "value": 148.463
+        },
+        {
+          "collected_at": "2026-08-10T14:34:15Z",
+          "comparability": {
+            "basis": "CNY billion, turnover only; direction is not available after August 2024.",
+            "concept": "Hong Kong-to-mainland Stock Connect turnover",
+            "concept_id": "stock-connect-northbound-turnover"
+          },
+          "evidence": {
+            "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+            "url": "https://palimpsest.info/readings/stock-connect-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 23.5,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "hkex_market_flows",
+          "label": "Northbound SZSE turnover",
+          "limitation": "HKEX no longer publishes the northbound buy/sell split, so net flow is not inferred.",
+          "metric_id": "cn-hkex-nb-szse-turnover-b",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "market",
+          "source_id": "hkex_stock_connect",
+          "status": "observed",
+          "unit": "CNY billion",
+          "value": 173.566
+        },
+        {
+          "collected_at": "2026-08-10T14:34:15Z",
+          "comparability": {
+            "basis": "CNY billion, turnover only; direction is not available after August 2024.",
+            "concept": "Hong Kong-to-mainland Stock Connect turnover",
+            "concept_id": "stock-connect-northbound-turnover"
+          },
+          "evidence": {
+            "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+            "url": "https://palimpsest.info/readings/stock-connect-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 23.5,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "hkex_market_flows",
+          "label": "Northbound total turnover",
+          "limitation": "HKEX no longer publishes the northbound buy/sell split, so net flow is not inferred.",
+          "metric_id": "cn-hkex-nb-turnover-b",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "market",
+          "source_id": "hkex_stock_connect",
+          "status": "observed",
+          "unit": "CNY billion",
+          "value": 322.029
+        },
+        {
+          "collected_at": "2026-08-10T14:34:15Z",
+          "comparability": {
+            "basis": "HKD billion; buy and sell legs may be differenced only within southbound.",
+            "concept": "Mainland-to-Hong Kong Stock Connect turnover/flow",
+            "concept_id": "stock-connect-southbound-flow"
+          },
+          "evidence": {
+            "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+            "url": "https://palimpsest.info/readings/stock-connect-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 23.5,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "hkex_market_flows",
+          "label": "Southbound buy turnover",
+          "limitation": "A market flow is not a direct measure of domestic output or investor nationality.",
+          "metric_id": "cn-hkex-sb-buy-b",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "market",
+          "source_id": "hkex_stock_connect",
+          "status": "observed",
+          "unit": "HKD billion",
+          "value": 55.022
+        },
+        {
+          "collected_at": "2026-08-10T14:34:15Z",
+          "comparability": {
+            "basis": "HKD billion; buy and sell legs may be differenced only within southbound.",
+            "concept": "Mainland-to-Hong Kong Stock Connect turnover/flow",
+            "concept_id": "stock-connect-southbound-flow"
+          },
+          "evidence": {
+            "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+            "url": "https://palimpsest.info/readings/stock-connect-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 23.5,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "hkex_market_flows",
+          "label": "Southbound sell turnover",
+          "limitation": "A market flow is not a direct measure of domestic output or investor nationality.",
+          "metric_id": "cn-hkex-sb-sell-b",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "market",
+          "source_id": "hkex_stock_connect",
+          "status": "observed",
+          "unit": "HKD billion",
+          "value": 53.0
+        },
+        {
+          "collected_at": "2026-08-10T14:34:15Z",
+          "comparability": {
+            "basis": "HKD billion; buy and sell legs may be differenced only within southbound.",
+            "concept": "Mainland-to-Hong Kong Stock Connect turnover/flow",
+            "concept_id": "stock-connect-southbound-flow"
+          },
+          "evidence": {
+            "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+            "url": "https://palimpsest.info/readings/stock-connect-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 23.5,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "hkex_market_flows",
+          "label": "Southbound net flow",
+          "limitation": "A market flow is not a direct measure of domestic output or investor nationality.",
+          "metric_id": "cn-hkex-southbound-net-b",
+          "period_end": "2026-08-10",
+          "period_start": "2026-08-10",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "market",
+          "source_id": "hkex_stock_connect",
+          "status": "observed",
+          "unit": "HKD billion",
+          "value": 2.022
+        }
+      ],
+      "n_metrics": 6,
+      "source_classes": [
+        "market"
+      ],
+      "status": "observed",
+      "title": "Markets & capital"
+    },
+    {
+      "id": "trade-logistics-physical",
+      "independent_group_ids": [
+        "nbs_official_statistics",
+        "nra_rail_statistics",
+        "pboc_credit_statistics"
+      ],
+      "limitations": [
+        "Physical telemetry is currently sparse and mostly monthly; weather, sector mix, and administrative definitions can move it independently of output."
+      ],
+      "metrics": [
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year; indicator definitions differ and are not interchangeable.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "nbs_official_statistics",
+          "label": "Raw coal production growth",
+          "limitation": "This is an aggregate official release. It can diverge because of sector mix, base effects, and definitions; it is not a standalone output estimate.",
+          "metric_id": "cn-activity-coal-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "nbs-energy-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": -9.7
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year; indicator definitions differ and are not interchangeable.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "nbs_official_statistics",
+          "label": "Electricity production growth",
+          "limitation": "This is an aggregate official release. It can diverge because of sector mix, base effects, and definitions; it is not a standalone output estimate.",
+          "metric_id": "cn-activity-electricity-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "nbs-energy-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": 2.0
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year; indicator definitions differ and are not interchangeable.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "pboc_credit_statistics",
+          "label": "Outstanding RMB loan growth",
+          "limitation": "This is an aggregate official release. It can diverge because of sector mix, base effects, and definitions; it is not a standalone output estimate.",
+          "metric_id": "cn-activity-loans-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "pboc-monthly-financial-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": 5.2
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year for rail freight volume in the reported calendar month only.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "nra_rail_statistics",
+          "label": "Monthly rail freight growth",
+          "limitation": "This is an aggregate official release. It can diverge because of sector mix, base effects, and definitions; it is not a standalone output estimate.",
+          "metric_id": "cn-activity-rail-freight-month-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "nra-rail-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": 0.0
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year for cumulative rail freight volume from January 1 through the reported month-end.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "nra_rail_statistics",
+          "label": "Rail freight growth",
+          "limitation": "This is an aggregate official release. It can diverge because of sector mix, base effects, and definitions; it is not a standalone output estimate.",
+          "metric_id": "cn-activity-rail-freight-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-01-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "nra-rail-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": 2.5
+        },
+        {
+          "collected_at": "2026-08-05T09:10:30Z",
+          "comparability": {
+            "basis": "Percent year-on-year; indicator definitions differ and are not interchangeable.",
+            "concept": "Year-on-year growth rate",
+            "concept_id": "year-on-year-growth-percent"
+          },
+          "evidence": {
+            "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+            "url": "https://palimpsest.info/readings/believability-latest.json"
+          },
+          "frequency": "M",
+          "freshness": {
+            "age_hours": 148.896,
+            "budget_hours": 1200.0,
+            "status": "current"
+          },
+          "independence_group": "nbs_official_statistics",
+          "label": "Crude steel production growth",
+          "limitation": "This is an aggregate official release. It can diverge because of sector mix, base effects, and definitions; it is not a standalone output estimate.",
+          "metric_id": "cn-activity-steel-yoy",
+          "period_end": "2026-06-30",
+          "period_start": "2026-06-01",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "physical",
+          "source_id": "nbs-industrial-release",
+          "status": "observed",
+          "unit": "percent",
+          "value": 0.4
+        }
+      ],
+      "n_metrics": 6,
+      "source_classes": [
+        "official",
+        "physical"
+      ],
+      "status": "observed",
+      "title": "Trade, logistics & physical telemetry"
+    },
+    {
+      "id": "property-labor-demand",
+      "independent_group_ids": [],
+      "limitations": [
+        "No current comparable property, labor, and household-demand series has yet crossed the publication boundary; absence is not recorded as zero."
+      ],
+      "metrics": [],
+      "n_metrics": 0,
+      "source_classes": [],
+      "status": "not_collected",
+      "title": "Property, labor & demand"
+    },
+    {
+      "id": "data-integrity",
+      "independent_group_ids": [],
+      "limitations": [
+        "Release delay is evidence of publication timing, not evidence of intent, fabrication, or the direction of the economy."
+      ],
+      "metrics": [
+        {
+          "collected_at": "2026-08-11T10:58:08Z",
+          "comparability": {
+            "basis": "Mean days-since divided by each reporting surface's nominal interval.",
+            "concept": "Mean cadence-relative release staleness",
+            "concept_id": "publication-darkness-ratio"
+          },
+          "evidence": {
+            "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+            "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 3.102,
+            "budget_hours": 50.0,
+            "status": "current"
+          },
+          "independence_group": "palimpsest_derived",
+          "label": "Official publication darkness index",
+          "limitation": "A high ratio establishes late publication surfaces, not intent or data falsity.",
+          "metric_id": "cn-data-publication-darkness-index",
+          "period_end": "2026-08-11",
+          "period_start": "2026-08-11",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "palimpsest-data-darkness",
+          "status": "derived",
+          "unit": "ratio",
+          "value": 0.5438
+        }
+      ],
+      "n_metrics": 1,
+      "source_classes": [
+        "official"
+      ],
+      "status": "observed",
+      "title": "Data integrity"
+    }
+  ],
+  "economic_state": {
+    "claim": "Palimpsest abstains from a broad state-of-economy direction: current public coverage is uneven and no validated composite model has crossed the gate.",
+    "composite": null,
+    "direction": null,
+    "prohibited_interpretations": [
+      "No metric is an estimate of true GDP.",
+      "Temporal order is not a causal or leading-indicator claim.",
+      "Not collected is not zero and source silence is not economic contraction."
+    ],
+    "status": "warming_up"
+  },
+  "generated_at": "2026-08-11T14:04:16Z",
+  "input_integrity": [
+    {
+      "check_id": "cfets-wide-ledger-alignment",
+      "detail": "All 15 same-period wide metrics match the bitemporal ledger.",
+      "status": "pass"
+    },
+    {
+      "check_id": "stock-connect-currency",
+      "detail": "Southbound flow is HKD; northbound turnover is CNY; no cross-currency sum is formed.",
+      "status": "pass"
+    }
+  ],
+  "inputs": [
+    {
+      "bytes": 1917,
+      "filename": "believability-latest.json",
+      "generated_at": "2026-08-05T09:10:30Z",
+      "input_id": "believability",
+      "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+      "status": "used",
+      "used": true
+    },
+    {
+      "bytes": 342544,
+      "filename": "china-econ-observations.jsonl",
+      "generated_at": "2026-08-11T07:51:44Z",
+      "input_id": "china-econ-ledger",
+      "sha256": "cb80fe334e365cbf698020c76d2537af7dda3332b03de68f44acc9f4781a0afd",
+      "status": "used",
+      "used": true
+    },
+    {
+      "bytes": 737,
+      "filename": "china-econ-latest.json",
+      "generated_at": "2026-08-11T14:04:16Z",
+      "input_id": "china-econ-wide",
+      "sha256": "dad2c39a9674769fc4f4d49893a9f9c8b6ea3656b03be2ba5d1d93f4d5f64fe8",
+      "status": "used",
+      "used": true
+    },
+    {
+      "bytes": 1429,
+      "filename": "cny-fix-gap-latest.json",
+      "generated_at": "2026-08-10T17:50:33Z",
+      "input_id": "cny-fix-gap",
+      "sha256": "00c4e36d0c004ce2f20c48aabc8364030098bf2ef5cd8048538bd1ec37d6d57c",
+      "status": "used",
+      "used": true
+    },
+    {
+      "bytes": 3885,
+      "filename": "data-darkness-latest.json",
+      "generated_at": "2026-08-11T10:58:08Z",
+      "input_id": "data-darkness",
+      "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+      "status": "used",
+      "used": true
+    },
+    {
+      "bytes": 734,
+      "filename": "stock-connect-latest.json",
+      "generated_at": "2026-08-10T14:34:15Z",
+      "input_id": "stock-connect",
+      "sha256": "531d42bb02deaa8258a16df6506ce4bc1e4ccd3a8af332d4c5bb8c187e2dd172",
+      "status": "used",
+      "used": true
+    }
+  ],
+  "method": "Deterministic no-network join using release and collection clocks, latest-as-of revision selection, source-independence groups, explicit units, and abstention gates.",
+  "n_metrics": 41,
+  "pulse_id": "palimpsest-china-economic-pulse",
+  "readiness": {
+    "abstention_reason": "Coverage and revision history do not yet support a broad state-of-economy composite.",
+    "failed_gate_ids": [
+      "substantive-desks",
+      "baseline-months"
+    ],
+    "gates": [
+      {
+        "gate_id": "substantive-desks",
+        "label": "Substantive desks with at least one current metric",
+        "minimum": 5,
+        "observed": 4,
+        "passed": false
+      },
+      {
+        "gate_id": "independent-groups",
+        "label": "Independent observed source groups",
+        "minimum": 8,
+        "observed": 8,
+        "passed": true
+      },
+      {
+        "gate_id": "source-classes",
+        "label": "Observed official, market, physical, or news classes",
+        "minimum": 3,
+        "observed": 3,
+        "passed": true
+      },
+      {
+        "gate_id": "baseline-months",
+        "label": "Prior monthly observations in the divergence baseline",
+        "minimum": 8,
+        "observed": 0,
+        "passed": false
+      }
+    ],
+    "status": "warming_up"
+  },
+  "release_calendar": {
+    "entries": [
+      {
+        "basis": "business",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "business days against a nominal 1 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": null,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "D",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "cfets_benchmarks",
+        "label": "Cfets Benchmarks release age",
+        "latest_period": null,
+        "latest_publication_date": "2026-08-11",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-cfets-benchmarks",
+        "nominal_interval_days": 1,
+        "period_end": "2026-08-11",
+        "period_start": "2026-08-11",
+        "periods_behind": null,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "cfets_benchmarks",
+        "status": "observed",
+        "unit": "days",
+        "value": 0.0,
+        "watch_id": "cfets_benchmarks"
+      },
+      {
+        "basis": "calendar",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "calendar days against a nominal 31 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": 0,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "M",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "nbs_official_statistics",
+        "label": "Nbs Energy release age",
+        "latest_period": "2026-06",
+        "latest_publication_date": "2026-07-15",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-nbs-energy",
+        "nominal_interval_days": 31,
+        "period_end": "2026-06-30",
+        "period_start": "2026-06-01",
+        "periods_behind": 0,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "nbs-energy-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 27.0,
+        "watch_id": "nbs_energy"
+      },
+      {
+        "basis": "calendar",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "calendar days against a nominal 31 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": 0,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "M",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "nbs_official_statistics",
+        "label": "Nbs Industrial release age",
+        "latest_period": "2026-06",
+        "latest_publication_date": "2026-07-15",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-nbs-industrial",
+        "nominal_interval_days": 31,
+        "period_end": "2026-06-30",
+        "period_start": "2026-06-01",
+        "periods_behind": 0,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "nbs-industrial-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 27.0,
+        "watch_id": "nbs_industrial"
+      },
+      {
+        "basis": "calendar",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "calendar days against a nominal 31 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": null,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "M",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "nra_rail_statistics",
+        "label": "Nra Rail release age",
+        "latest_period": "2026-06",
+        "latest_publication_date": "2026-07-14",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-nra-rail",
+        "nominal_interval_days": 31,
+        "period_end": "2026-06-30",
+        "period_start": "2026-06-01",
+        "periods_behind": null,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "nra-rail-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 28.0,
+        "watch_id": "nra_rail"
+      },
+      {
+        "basis": "calendar",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "calendar days against a nominal 31 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": null,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "M",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "pboc_credit_statistics",
+        "label": "Pboc Mb Stats release age",
+        "latest_period": "2026-06",
+        "latest_publication_date": "2026-07-31",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-pboc-mb-stats",
+        "nominal_interval_days": 31,
+        "period_end": "2026-06-30",
+        "period_start": "2026-06-01",
+        "periods_behind": null,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "pboc-money-banking-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 11.0,
+        "watch_id": "pboc_mb_stats"
+      },
+      {
+        "basis": "business",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "business days against a nominal 1 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": null,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "D",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "pboc_open_market_operations",
+        "label": "Pboc Omo release age",
+        "latest_period": null,
+        "latest_publication_date": "2026-08-11",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-pboc-omo",
+        "nominal_interval_days": 1,
+        "period_end": "2026-08-11",
+        "period_start": "2026-08-11",
+        "periods_behind": null,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "pboc-omo-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 0.0,
+        "watch_id": "pboc_omo"
+      },
+      {
+        "basis": "calendar",
+        "collected_at": "2026-08-11T10:58:08Z",
+        "comparability": {
+          "basis": "calendar days against a nominal 31 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": null,
+        "evidence": {
+          "sha256": "fbf4c2863be96541b690ebde07c32ab77f50477104806c1d3dcea09bec80ec32",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "D",
+        "freshness": {
+          "age_hours": 3.102,
+          "budget_hours": 50.0,
+          "status": "current"
+        },
+        "independence_group": "safe_external_statistics",
+        "label": "Safe Settlement release age",
+        "latest_period": null,
+        "latest_publication_date": "2026-07-17",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-safe-settlement",
+        "nominal_interval_days": 31,
+        "period_end": "2026-07-17",
+        "period_start": "2026-07-17",
+        "periods_behind": null,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "safe-settlement-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 25.0,
+        "watch_id": "safe_settlement"
+      }
+    ],
+    "limitation": "Publication dates have day precision; absent intraday release times remain null. Unreachable surfaces are excluded rather than labelled late.",
+    "reporting": 7,
+    "unreachable": [],
+    "watched": 7
+  },
+  "revisions": [],
+  "schema_version": "palimpsest-economic-pulse.v1",
+  "scope": "China economic state of evidence across activity; money, credit and FX; markets and capital; trade, logistics and physical telemetry; property, labor and demand; and official-data integrity. No true-GDP, causal, or leading-indicator claim.",
+  "source": "Palimpsest public aggregate economic readings and bitemporal observation ledger"
+}

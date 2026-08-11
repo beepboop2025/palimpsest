@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh the Palimpsest evidence wire every thirty minutes
+
+[Timer]
+OnCalendar=*:0/30
+RandomizedDelaySec=5m
+FixedRandomDelay=true
+AccuracySec=1m
+Persistent=true
+Unit=palimpsest-evidence-wire.service
+
+[Install]
+WantedBy=timers.target

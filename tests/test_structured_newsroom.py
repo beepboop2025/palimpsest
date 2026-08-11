@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -94,13 +95,11 @@ def test_claim_fingerprint_excludes_feed_generated_at_only_churn(
 ) -> None:
     first = newsroom.transform_osint_feed(source, config)
     later_source = copy.deepcopy(source)
-    newest_input = max(
-        datetime.fromisoformat(signal["source_timestamp"].replace("Z", "+00:00"))
-        for signal in source["signals"]
-        if signal["source_timestamp"] is not None
+    edition_time = datetime.fromisoformat(
+        source["generated_at"].replace("Z", "+00:00")
     )
     later_source["generated_at"] = (
-        newest_input.astimezone(timezone.utc) + timedelta(seconds=1)
+        edition_time.astimezone(timezone.utc) + timedelta(seconds=1)
     ).isoformat(timespec="seconds").replace("+00:00", "Z")
     later = newsroom.transform_osint_feed(later_source, config)
 
@@ -264,10 +263,24 @@ def test_feed_keeps_the_normalized_board_headline_and_strict_coverage_summary(
     source: dict, feed: dict
 ) -> None:
     assert feed["headline"] == source["headline"]
-    assert _stories_by_id(feed)["board-alarm"]["headline"] == (
-        "Content layer elevated in the latest board synthesis"
+    board_story = _stories_by_id(feed)["board-alarm"]
+    single = re.match(
+        r"^Upstream board reports: single layer elevated: ([a-z][a-z0-9_-]{0,63})\.",
+        source["headline"],
     )
-    assert source["headline"] in _stories_by_id(feed)["board-alarm"]["claims"][0]["statement"]
+    if single:
+        layer = single.group(1).replace("_", " ").replace("-", " ").capitalize()
+        assert board_story["headline"] == (
+            f"{layer} layer elevated in the latest board synthesis"
+        )
+    else:
+        assert board_story["headline"] in {
+            "Multiple layers elevated together in the latest board synthesis",
+            "Signal-level elevations detected in the latest board synthesis",
+            "No signal clears the board's historical-elevation threshold",
+            "No current board-level analytic headline is available",
+        }
+    assert source["headline"] in board_story["claims"][0]["statement"]
     assert all(len(story["headline"]) <= 160 for story in feed["stories"])
     assert feed["coverage"] == {
         "total": source["n_signals_total"],

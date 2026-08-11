@@ -15,22 +15,27 @@ from __future__ import annotations
 
 import argparse
 import email.utils
+import hashlib
 import html
 import json
 import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from xml.sax.saxutils import escape as xml_escape
 
+from core import economic_pulse as economic_pulse_model
 from core import newsroom
+from core import newswire as newswire_model
 from scripts import site_nav
 
 
 ROOT = Path(__file__).resolve().parent.parent
 NEWS = ROOT / "news"
 READING = ROOT / "readings" / "newsroom-latest.json"
+NEWSWIRE_READING = ROOT / "readings" / "newswire-latest.json"
+ECONOMIC_READING = ROOT / "readings" / "china-economic-pulse-latest.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
 DESCRIPTION = (
@@ -39,9 +44,99 @@ DESCRIPTION = (
 )
 OG_IMAGE = f"{SITE}/brand/palimpsest-og2.png"
 
+EVENT_DESKS = {
+    "economy": "Economy",
+    "politics": "Politics & law",
+    "rights": "Rights",
+    "security": "Security",
+    "censorship": "Censorship",
+    "connectivity": "Connectivity & networks",
+    "technology": "Technology",
+}
+
+EVIDENCE_LABELS = {
+    "measurement-corroborated": "Measurement + independent source groups",
+    "primary-corroborated": "Primary record + independent source groups",
+    "multi-source": "Multiple independent source groups",
+    "single-measurement-source": "Single measurement source",
+    "single-primary-source": "Single primary source",
+    "single-source": "Single attributed source",
+}
+
+HOME_EVENTS_PER_DESK = 5
+WIRE_PAGE_SIZE = 60
+
+_SOURCE_LANGUAGES = {
+    "bbc-chinese": "zh-Hant",
+    "rfa-mandarin": "zh-Hans",
+    "voa-chinese": "zh-Hans",
+}
+
+_LEAD_STRENGTH_RANK = {
+    "measurement-corroborated": 5,
+    "primary-corroborated": 4,
+    "multi-source": 3,
+    "single-measurement-source": 2,
+    "single-primary-source": 1,
+    "single-source": 0,
+}
+_DATA_RELEASE_TERMS = (
+    "tender results",
+    "survey on business",
+    "exchange rate index",
+    "consumer price",
+    "producer price",
+    "factory-gate prices",
+    "gross domestic product",
+    "gdp",
+    "inflation",
+    "unemployment",
+    "retail sales",
+    "industrial production",
+    "trade balance",
+    "money supply",
+)
+
 
 def _h(value: object) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _contains_han(value: object) -> bool:
+    """Return whether text contains a Han ideograph used by the Chinese feeds."""
+
+    return any(
+        "\u3400" <= character <= "\u4dbf"
+        or "\u4e00" <= character <= "\u9fff"
+        or "\uf900" <= character <= "\ufaff"
+        for character in str(value)
+    )
+
+
+def _text_language(value: object, *, source_id: str | None = None) -> str:
+    """Infer rendered text language without treating a source as the text itself.
+
+    A Chinese-language desk can publish an English translation, so the Han-script
+    check is the gate. The source identity then supplies the script variant that
+    cannot be inferred reliably from a short headline alone.
+    """
+
+    if not _contains_han(value):
+        return "en"
+    return _SOURCE_LANGUAGES.get(source_id or "", "zh")
+
+
+def _event_language(event: Mapping[str, Any]) -> str:
+    """Infer the headline language, preferring the receipt that supplied it."""
+
+    headline = str(event["headline"])
+    refs = event.get("evidence_refs", [])
+    matching_ref = next(
+        (ref for ref in refs if str(ref.get("title", "")).strip() == headline.strip()),
+        refs[0] if refs else None,
+    )
+    source_id = str(matching_ref["source_id"]) if matching_ref else None
+    return _text_language(headline, source_id=source_id)
 
 
 def _json_script(value: object) -> str:
@@ -59,6 +154,46 @@ def _json_script(value: object) -> str:
 
 def _pretty_json(value: object) -> bytes:
     return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
+
+
+def _load_extension_documents(
+    *,
+    newswire_path: Path = NEWSWIRE_READING,
+    economic_path: Path = ECONOMIC_READING,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Load optional publication planes through their strict runtime validators.
+
+    The instrument newsroom remains independently buildable for recovery and
+    focused tests. Once an extension file exists, however, corruption is fatal:
+    silently falling back would make a broken intake look like an empty news day.
+    """
+
+    wire = pulse = None
+    if newswire_path.exists():
+        wire = newswire_model.strict_json_loads(
+            newswire_path.read_bytes(), label=str(newswire_path)
+        )
+        newswire_model.validate_newswire_document(wire)
+    if economic_path.exists():
+        pulse = newswire_model.strict_json_loads(
+            economic_path.read_bytes(), label=str(economic_path)
+        )
+        economic_pulse_model.validate_economic_pulse(pulse)
+    return wire, pulse
+
+
+def _revision_id(value: Mapping[str, Any], prefix: str = "revision") -> str:
+    payload = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    return f"{prefix}-{hashlib.sha256(payload).hexdigest()[:24]}"
+
+
+def _site_path(url: str) -> str:
+    prefix = SITE + "/"
+    if not url.startswith(prefix):
+        raise newsroom.NewsroomError(f"public story URL is outside {SITE}: {url!r}")
+    return "/" + url.removeprefix(SITE).lstrip("/")
 
 
 def _parse_time(value: str) -> datetime:
@@ -302,13 +437,324 @@ def _lead(story: Mapping[str, Any], section_title: str) -> str:
 </section>"""
 
 
-def _select_lead(stories: list[Mapping[str, Any]]) -> Mapping[str, Any]:
-    lead = next((story for story in stories if story["priority"] == "lead" and story["status"] == "live"), None)
+def _select_instrument_lead(
+    stories: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any]:
+    lead = next(
+        (
+            story
+            for story in stories
+            if story["priority"] == "lead" and story["status"] == "live"
+        ),
+        None,
+    )
     if lead is None:
         lead = next((story for story in stories if story["status"] == "live"), None)
     if lead is None:
         lead = stories[0]
     return lead
+
+
+def _wire_index_json_ld(
+    feed: Mapping[str, Any], wire: Mapping[str, Any]
+) -> dict[str, Any]:
+    entries = [
+        {"url": event["url"], "name": event["headline"]}
+        for event in wire["events"]
+    ] + [
+        {"url": story["url"], "name": story["headline"]}
+        for story in feed["stories"]
+    ]
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            _organization(),
+            {
+                "@type": "CollectionPage",
+                "@id": feed["url"],
+                "url": feed["url"],
+                "name": "Palimpsest Wire",
+                "description": wire["scope"],
+                "dateModified": max(feed["generated_at"], wire["generated_at"]),
+                "publisher": {"@id": f"{SITE}/#organization"},
+                "mainEntity": {
+                    "@type": "ItemList",
+                    "numberOfItems": len(entries),
+                    "itemListElement": [
+                        {
+                            "@type": "ListItem",
+                            "position": index,
+                            "url": item["url"],
+                            "name": item["name"],
+                        }
+                        for index, item in enumerate(entries, 1)
+                    ],
+                },
+            },
+        ],
+    }
+
+
+def _wire_items(wire: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    return {item["item_id"]: item for item in wire["items"]}
+
+
+def _event_braid(
+    event: Mapping[str, Any], wire: Mapping[str, Any], *, compact: bool = False
+) -> str:
+    items = _wire_items(wire)
+    refs = event["evidence_refs"][:3] if compact else event["evidence_refs"]
+    rows = []
+    for ref in refs:
+        item = items[ref["item_id"]]
+        digest = item["feed_sha256"][:12]
+        title_language = _text_language(ref["title"], source_id=ref["source_id"])
+        rows.append(f"""<li class="nw-braid__node" data-role="{_h(ref['role'])}">
+  <p class="nw-braid__role">{_h(ref['role'])} · {_h(ref['independence_group'])}</p>
+  <p class="nw-braid__source"><a href="{_h(ref['url'])}">{_h(ref['source_name'])}</a></p>
+  <p class="nw-braid__title" lang="{_h(title_language)}">{_h(ref['title'])}</p>
+  <p class="nw-braid__time"><time datetime="{_h(ref['published_at'])}">{_h(_human_time(ref['published_at']))}</time> · feed sha {_h(digest)}</p>
+</li>""")
+    scan_ids = event["declared_links"]["scan_signal_ids"]
+    economic_ids = event["declared_links"]["economic_signal_ids"]
+    if scan_ids or economic_ids:
+        linked = [f"scan:{value}" for value in scan_ids] + [
+            f"economic:{value}" for value in economic_ids
+        ]
+        rows.append(f"""<li class="nw-braid__node nw-braid__node--link" data-role="topic-link">
+  <p class="nw-braid__role">Declared topic surfaces · not a causal match</p>
+  <p class="nw-braid__title">{_h(' · '.join(linked))}</p>
+  <p class="nw-braid__time">A timed measurement join has not been asserted by this dossier.</p>
+</li>""")
+    return '<ol class="nw-braid" aria-label="Evidence braid">' + "".join(rows) + "</ol>"
+
+
+def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
+    groups = len(event["evidence_groups"])
+    coverage = wire["coverage"]
+    coverage_class = "" if coverage["status"] == "healthy" else " nw-receipt__state--warning"
+    language = _event_language(event)
+    dek_language = _text_language(
+        event["dek"], source_id=event["evidence_refs"][0]["source_id"]
+    )
+    return f"""<section class="nw-wire-lead" id="lead-dossier" aria-labelledby="lead-headline">
+  <div class="nw-wire-lead__copy">
+    <p class="nw-kicker">{_h(EVENT_DESKS[event['desk']])} · {_h(EVIDENCE_LABELS[event['evidence_strength']])}</p>
+    <h1 id="lead-headline" lang="{_h(language)}">{_h(event['headline'])}</h1>
+    <p class="nw-lead__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
+    <p class="nw-lead__qualifier"><strong>Evidence boundary:</strong> {_h(event['lead_reason'])} {_h(event['limitations'][1])}</p>
+    <div class="nw-actions">
+      <a class="nw-actions__primary" href="{_h(_site_path(event['url']))}">Open the evidence dossier</a>
+      <a href="/readings/newswire-latest.json">Structured wire</a>
+      <a href="/news/economy/">Economic state</a>
+    </div>
+  </div>
+  <aside class="nw-wire-lead__rail">
+    <div class="nw-receipt" aria-label="Dossier receipt">
+      <p class="nw-receipt__label">Dossier receipt</p>
+      <dl>
+        <dt>Strength</dt><dd>{_h(EVIDENCE_LABELS[event['evidence_strength']])}</dd>
+        <dt>Groups</dt><dd>{groups} independent evidence group{'s' if groups != 1 else ''}</dd>
+        <dt>Published</dt><dd>{_h(_human_time(event['published_at']))}</dd>
+        <dt>Version</dt><dd><code>{_h(event['version_id'])}</code></dd>
+        <dt>Intake</dt><dd><span class="nw-receipt__state{coverage_class}"><span class="nw-dot" aria-hidden="true"></span>{_h(coverage['status'])}</span></dd>
+      </dl>
+    </div>
+  </aside>
+  <div class="nw-wire-lead__braid">{_event_braid(event, wire, compact=True)}</div>
+</section>"""
+
+
+def _event_card(event: Mapping[str, Any]) -> str:
+    group_count = len(event["evidence_groups"])
+    state = "lead" if event["lead"] else "attributed"
+    language = _event_language(event)
+    dek_language = _text_language(
+        event["dek"], source_id=event["evidence_refs"][0]["source_id"]
+    )
+    return f"""<article class="nw-event-card" data-strength="{_h(event['evidence_strength'])}" data-lead="{_h(str(event['lead']).lower())}">
+  <p class="nw-card__kicker">{_h(EVIDENCE_LABELS[event['evidence_strength']])}</p>
+  <h3 lang="{_h(language)}"><a class="nw-card__link" href="{_h(_site_path(event['url']))}">{_h(event['headline'])}</a></h3>
+  <p class="nw-card__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
+  <div class="nw-event-card__facts">
+    <span>{len(event['evidence_refs'])} source receipt{'s' if len(event['evidence_refs']) != 1 else ''}</span>
+    <span>{group_count} independent group{'s' if group_count != 1 else ''}</span>
+    <span>{_h(state)}</span>
+  </div>
+  <p class="nw-card__meta"><time datetime="{_h(event['updated_at'])}">{_h(_human_time(event['updated_at']))}</time><span class="nw-card__hash">{_h(event['version_id'])}</span></p>
+</article>"""
+
+
+def _select_event_lead(events: Sequence[Mapping[str, Any]]) -> Mapping[str, Any]:
+    """Choose a deterministic evidence-first lead from eligible current events.
+
+    ``lead`` is the intake eligibility gate. This second ordering favours source
+    structure, then an explicit release title, then recency; it does not invent a
+    subjective truth or importance score.
+    """
+
+    eligible = [event for event in events if event["lead"]] or list(events)
+
+    def key(event: Mapping[str, Any]) -> tuple[int, int, int, str, str]:
+        headline = event["headline"].casefold()
+        explicit_release = int(any(term in headline for term in _DATA_RELEASE_TERMS))
+        return (
+            _LEAD_STRENGTH_RANK[event["evidence_strength"]],
+            explicit_release,
+            len(event["evidence_groups"]),
+            event["updated_at"],
+            event["event_id"],
+        )
+
+    return max(eligible, key=key)
+
+
+def _select_lead(entries: Sequence[Mapping[str, Any]]) -> Mapping[str, Any]:
+    """Dispatch lead selection without conflating two publication contracts."""
+
+    if entries and "event_id" in entries[0]:
+        return _select_event_lead(entries)
+    return _select_instrument_lead(entries)
+
+
+def _event_sections(
+    wire: Mapping[str, Any], *, lead_event_id: str
+) -> tuple[str, str]:
+    navigation = []
+    blocks = []
+    for order, (desk_id, title) in enumerate(EVENT_DESKS.items(), 1):
+        events = [
+            event for event in wire["events"]
+            if event["desk"] == desk_id and event["event_id"] != lead_event_id
+        ]
+        if not events:
+            continue
+        navigation.append(f'<li><a href="#wire-{_h(desk_id)}">{_h(title)}</a></li>')
+        visible_events = events[:HOME_EVENTS_PER_DESK]
+        cards = "".join(_event_card(event) for event in visible_events)
+        archive_link = ""
+        if len(events) > len(visible_events):
+            archive_link = (
+                '<p class="nw-section__more"><a href="/news/wire/">'
+                f'View all {len(events)} { _h(title).lower() } dossiers →</a></p>'
+            )
+        blocks.append(f"""<section class="nw-section nw-section--events" id="wire-{_h(desk_id)}">
+  <div class="nw-section__head">
+    <div><p class="nw-section__label">{order:02d} / Evidence desk</p><h2>{_h(title)}</h2></div>
+    <p class="nw-section__dek">Every accepted item is accounted for. Single-source items remain attributed; corroboration counts independent evidence groups, not mirrors.</p>
+  </div>
+  <div class="nw-event-grid">{cards}</div>{archive_link}
+</section>""")
+    return "".join(navigation), "".join(blocks)
+
+
+def _economic_panel(pulse: Mapping[str, Any] | None) -> str:
+    if pulse is None:
+        return """<section class="nw-econ" id="economy"><div><p class="nw-kicker nw-kicker--warning">Economic state unavailable</p><h2>No validated economic pulse was published</h2></div><p>The instrument newsroom remains available, but no state-of-economy synthesis is shown without its structured evidence contract.</p></section>"""
+    gates = "".join(
+        f"""<li data-passed="{_h(str(gate['passed']).lower())}"><span>{_h(gate['label'])}</span><strong>{gate['observed']} / {gate['minimum']}</strong></li>"""
+        for gate in pulse["readiness"]["gates"]
+    )
+    desks = "".join(
+        f"""<div class="nw-econ__desk"><span>{_h(desk['title'])}</span><strong>{desk['n_metrics']}</strong><small>{len(desk['independent_group_ids'])} groups · {_h(desk['status'])}</small></div>"""
+        for desk in pulse["desks"]
+    )
+    coverage = pulse["coverage"]
+    return f"""<section class="nw-econ" id="economy" aria-labelledby="economy-title">
+  <div class="nw-econ__statement">
+    <p class="nw-kicker nw-kicker--economic">China economic state · {_h(pulse['economic_state']['status'])}</p>
+    <h2 id="economy-title">The evidence is broadening. The composite still abstains.</h2>
+    <p>{_h(pulse['economic_state']['claim'])}</p>
+    <a class="nw-text-link" href="/news/economy/">Open all metrics, releases and revision receipts →</a>
+  </div>
+  <div class="nw-econ__readiness">
+    <p class="nw-receipt__label">Composite readiness gates</p>
+    <ul>{gates}</ul>
+    <p>{len(coverage['observed_independent_group_ids'])} observed independent groups · {coverage['registered_sources']} registered sources · {_h(pulse['readiness']['abstention_reason'])}</p>
+  </div>
+  <div class="nw-econ__desks">{desks}</div>
+</section>"""
+
+
+def _accountability_tape(wire: Mapping[str, Any]) -> str:
+    coverage = wire["coverage"]
+    counts = coverage["counts"]
+    source_rows = "".join(
+        f"""<li data-status="{_h(source['status'])}"><strong>{_h(source['source_name'])}</strong><span>{_h(source['status'])}</span><small>{source['accepted_items']} accepted · {source['rejected_items']} rejected</small></li>"""
+        for source in coverage["sources"]
+    )
+    return f"""<aside class="nw-tape" aria-labelledby="tape-title">
+  <div class="nw-tape__head"><div><p class="nw-kicker">Accountability tape</p><h2 id="tape-title">Every feed answered for</h2></div>
+  <p>{coverage['accepted_items']} accepted items · {coverage['rejected_items']} rejected or out-of-window · {counts['fetch_error']} fetch failures · {counts['parse_error']} malformed feeds · {counts['stale']} stale feeds.</p></div>
+  <ul>{source_rows}</ul>
+</aside>"""
+
+
+def _instrument_sections(feed: Mapping[str, Any]) -> str:
+    blocks = []
+    for section in feed["sections"]:
+        stories = [story for story in feed["stories"] if story["section"] == section["id"]]
+        cards = "".join(_story_card(story, section["title"]) for story in stories)
+        blocks.append(f"""<section class="nw-section nw-section--instruments" id="instrument-{_h(section['id'])}">
+  <div class="nw-section__head">
+    <div><p class="nw-section__label">Instrument desk</p><h2>{_h(section['title'])}</h2></div>
+    <p class="nw-section__dek">{_h(section['dek'])}</p>
+  </div>
+  <div class="nw-grid">{cards}</div>
+</section>""")
+    return "".join(blocks)
+
+
+def render_evidence_index(
+    feed: Mapping[str, Any],
+    wire: Mapping[str, Any],
+    pulse: Mapping[str, Any] | None,
+) -> str:
+    events = wire["events"]
+    if not events:
+        return render_index(feed)
+    lead = _select_lead(events)
+    event_navigation, event_blocks = _event_sections(wire, lead_event_id=lead["event_id"])
+    coverage = wire["coverage"]
+    instrument_coverage = feed["coverage"]
+    body = f"""<body class="ps newsroom-page newsroom-page--evidence-wire">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <header class="nw-masthead">
+    <div class="nw-masthead__top">
+      <p class="nw-wordmark">Palimpsest <span>Wire</span></p>
+      <p class="nw-edition"><strong>Evidence edition</strong>{_h(_human_time(wire['generated_at']))}<br>{wire['n_events']} event dossiers · {feed['n_stories']} instruments</p>
+    </div>
+    <p class="nw-masthead__dek">China intelligence that keeps reported facts, measured facts, corroboration, revisions and unknowns structurally separate.</p>
+  </header>
+  <div class="nw-meta-line"><span>China · economy · politics · censorship · networks</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/feed.xml">RSS</a><a href="/news/feed.json">JSON Feed</a><a href="/readings/newswire-latest.json">Structured wire</a></div>
+  <div class="nw-status-strip" role="status" aria-label="Edition coverage">
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{wire['n_events']}</strong> dossiers</span>
+    <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage['successful_sources']}/{coverage['registry_sources']}</strong> feeds answered</span>
+    <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
+    <span><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> live instruments</span>
+  </div>
+  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
+  {_event_lead(lead, wire)}
+  {_economic_panel(pulse)}
+  {event_blocks}
+  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Measurement layer</p><h2>Current Palimpsest instruments</h2><p>These are mutable latest-state briefs. Event dossiers above preserve the news and revision timeline.</p></div>
+  {_instrument_sections(feed)}
+  {_accountability_tape(wire)}
+</main>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+{site_nav.FOOT}
+</body>
+</html>
+"""
+    return _head(
+        title="Palimpsest Wire · hard-facts China intelligence",
+        description="Evidence dossiers across China's economy, politics, censorship, networks and technology, with source independence, measurements, revisions and unknowns visible.",
+        canonical=feed["url"],
+        page_type="website",
+        modified_at=max(feed["generated_at"], wire["generated_at"]),
+        json_ld=_wire_index_json_ld(feed, wire),
+    ) + "\n" + body
 
 
 def render_index(feed: Mapping[str, Any]) -> str:
@@ -417,8 +863,7 @@ def render_story(
     </header>
     <div class="nw-article__layout">
       <div class="nw-article__body">
-        {metric}
-        <h2>What the record says</h2>
+{metric}        <h2>What the record says</h2>
         {claim_items}
         <p>This report is scoped to <strong>{_h(story['signal_id'])}</strong>. It does not merge unlike instruments or infer a cause from co-movement.</p>
         <h2>How it was measured</h2>
@@ -451,54 +896,365 @@ def render_story(
     ) + "\n" + body
 
 
-def build_json_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
-    sections = {section["id"]: section["title"] for section in feed["sections"]}
+def _event_json_ld(event: Mapping[str, Any]) -> dict[str, Any]:
     return {
-        "version": "https://jsonfeed.org/version/1.1",
-        "title": feed["title"],
-        "home_page_url": feed["url"],
-        "feed_url": f"{SITE}/news/feed.json",
-        "description": feed["scope"],
-        "language": "en",
-        "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
-        "items": [
-            {
-                "id": story["id"] + ":" + story["claim_fingerprint"],
-                "url": story["url"],
-                "external_url": story["evidence"]["url"],
-                "title": story["headline"],
-                "summary": story["dek"],
-                "content_text": "\n\n".join(
-                    [claim["statement"] for claim in story["claims"]]
-                    + ["Limitations: " + " ".join(story["limitations"])]
-                ),
-                "date_published": story["published_at"],
-                "date_modified": story["modified_at"],
-                "tags": [sections[story["section"]], story["signal_id"], story["status"]],
-                "attachments": [{
-                    "url": story["evidence"]["url"],
-                    "mime_type": "application/json",
-                    "title": story["evidence"]["input"]["filename"],
-                    **(
-                        {"size_in_bytes": story["evidence"]["input"]["bytes"]}
-                        if story["evidence"]["input"]["bytes"] is not None
-                        else {}
-                    ),
-                }],
-            }
-            for story in feed["stories"]
-        ],
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "@id": event["url"],
+        "mainEntityOfPage": {"@type": "WebPage", "@id": event["url"]},
+        "headline": event["headline"],
+        "description": event["dek"],
+        "datePublished": event["published_at"],
+        "dateModified": event["updated_at"],
+        "articleSection": EVENT_DESKS[event["desk"]],
+        "inLanguage": _event_language(event),
+        "isAccessibleForFree": True,
+        "author": _organization(),
+        "publisher": _organization(),
+        "image": [OG_IMAGE],
+        "citation": [ref["url"] for ref in event["evidence_refs"]],
+        "keywords": [*event["topics"], "China", "open source intelligence"],
     }
 
 
-def build_rss(feed: Mapping[str, Any]) -> bytes:
+def render_event(
+    event: Mapping[str, Any],
+    *,
+    wire: Mapping[str, Any],
+    feed: Mapping[str, Any],
+) -> str:
+    items = _wire_items(wire)
+    stories = {story["signal_id"]: story for story in feed["stories"]}
+    facts = "".join(
+        f"""<li><strong>{_h(fact['attribution'])}.</strong> <span lang="{_h(_text_language(fact['statement'], source_id=event['evidence_refs'][0]['source_id']))}">{_h(fact['statement'])}</span> <time datetime="{_h(fact['published_at'])}">{_h(_human_time(fact['published_at']))}</time></li>"""
+        for fact in event["reported_facts"]
+    )
+    evidence_rows = []
+    for ref in event["evidence_refs"]:
+        item = items[ref["item_id"]]
+        title_language = _text_language(ref["title"], source_id=ref["source_id"])
+        excerpt_language = _text_language(item["excerpt"], source_id=ref["source_id"])
+        evidence_rows.append(f"""<tr>
+  <td><span class="nw-role" data-role="{_h(ref['role'])}">{_h(ref['role'])}</span></td>
+  <td><a href="{_h(ref['url'])}">{_h(ref['source_name'])}</a><small>{_h(ref['independence_group'])}</small></td>
+  <td><span lang="{_h(title_language)}">{_h(ref['title'])}</span><small lang="{_h(excerpt_language)}">{_h(item['excerpt'] or 'No feed excerpt supplied.')}</small></td>
+  <td><time datetime="{_h(ref['published_at'])}">{_h(_human_time(ref['published_at']))}</time><small>feed sha {_h(item['feed_sha256'][:12])}</small></td>
+</tr>""")
+    limitations = "".join(f"<li>{_h(value)}</li>" for value in event["limitations"])
+    scan_links = "".join(
+        f"""<a href="{_h(_site_path(stories[signal_id]['url']))}"><strong>{_h(stories[signal_id]['headline'])}</strong><span>Current instrument · topical pointer only</span></a>"""
+        for signal_id in event["declared_links"]["scan_signal_ids"]
+        if signal_id in stories
+    )
+    economic_links = "".join(
+        f"""<a href="/news/economy/"><strong>{_h(signal_id)}</strong><span>Economic surface · topical pointer only</span></a>"""
+        for signal_id in event["declared_links"]["economic_signal_ids"]
+    )
+    declared_links = scan_links + economic_links or (
+        "<p>No Palimpsest measurement surface is declared for this event. "
+        "That absence is not evidence that no measurable change occurred.</p>"
+    )
+    mutation = event["mutation"]
+    previous = mutation["previous_version_id"] or "none — first retained version"
+    language = _event_language(event)
+    dek_language = _text_language(
+        event["dek"], source_id=event["evidence_refs"][0]["source_id"]
+    )
+    body = f"""<body class="ps newsroom-page newsroom-page--dossier">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <article class="nw-article nw-dossier">
+    <header class="nw-article__header">
+      <p class="nw-article__kicker">{_h(EVENT_DESKS[event['desk']])} · {_h(EVIDENCE_LABELS[event['evidence_strength']])}</p>
+      <h1 lang="{_h(language)}">{_h(event['headline'])}</h1>
+      <p class="nw-article__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
+      <p class="nw-article__meta"><span>By {PUBLISHER}</span><time datetime="{_h(event['published_at'])}">{_h(_human_time(event['published_at']))}</time><span>{_h(mutation['kind'])} dossier version</span></p>
+    </header>
+    <div class="nw-dossier__summary">
+      <div><p class="nw-receipt__label">Editorial disposition</p><p>{_h(event['lead_reason'])}</p></div>
+      <div><p class="nw-receipt__label">Evidence strength</p><strong>{_h(EVIDENCE_LABELS[event['evidence_strength']])}</strong><p>{len(event['evidence_groups'])} independent group{'s' if len(event['evidence_groups']) != 1 else ''}; this is source structure, not a truth probability.</p></div>
+      <div><p class="nw-receipt__label">Revision receipt</p><code>{_h(event['version_id'])}</code><p>Previous: <code>{_h(previous)}</code></p><a href="revisions/{_h(event['version_id'])}.json">Immutable revision JSON</a></div>
+    </div>
+    <section class="nw-dossier__section" aria-labelledby="reported-title">
+      <p class="nw-section__label">Reported facts</p><h2 id="reported-title">What the registered sources published</h2>
+      <ol class="nw-fact-list">{facts}</ol>
+    </section>
+    <section class="nw-dossier__section" aria-labelledby="braid-title">
+      <p class="nw-section__label">Evidence braid</p><h2 id="braid-title">Order, provenance and declared surfaces</h2>
+      {_event_braid(event, wire)}
+      <p class="nw-method-note">The braid reports source ordering. A declared topic surface is not a timed statistical match and cannot establish cause, coordination, censorship, or economic impact.</p>
+    </section>
+    <section class="nw-dossier__section" aria-labelledby="matrix-title">
+      <p class="nw-section__label">Evidence matrix</p><h2 id="matrix-title">Inspect every receipt</h2>
+      <p class="nw-table-cue" id="evidence-matrix-cue">Scroll horizontally to inspect every column.</p>
+      <div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="matrix-title" aria-describedby="evidence-matrix-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this dossier</caption><thead><tr><th scope="col">Role</th><th scope="col">Source / group</th><th scope="col">Feed record</th><th scope="col">Published / hash</th></tr></thead><tbody>{''.join(evidence_rows)}</tbody></table></div>
+    </section>
+    <section class="nw-dossier__section" aria-labelledby="surfaces-title">
+      <p class="nw-section__label">Measurement surfaces</p><h2 id="surfaces-title">Where Palimpsest can test the topic</h2>
+      <div class="nw-surface-links">{declared_links}</div>
+    </section>
+    <section class="nw-dossier__section" aria-labelledby="limits-title">
+      <p class="nw-section__label">Epistemic boundary</p><h2 id="limits-title">What this dossier cannot establish</h2>
+      <ul class="nw-limitations">{limitations}</ul>
+    </section>
+  </article>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Latest evidence wire</a> · <a href="/readings/newswire-latest.json">Structured wire</a> · <a href="story.json">Current dossier JSON</a></div></footer>
+{site_nav.FOOT}
+</body>
+</html>
+"""
+    return _head(
+        title=f"{event['headline']} · Palimpsest Wire",
+        description=event["dek"],
+        canonical=event["url"],
+        page_type="article",
+        published_at=event["published_at"],
+        modified_at=event["updated_at"],
+        json_ld=_event_json_ld(event),
+    ) + "\n" + body
+
+
+def render_wire_archive(
+    wire: Mapping[str, Any],
+    *,
+    events: Sequence[Mapping[str, Any]] | None = None,
+    page: int = 1,
+    n_pages: int = 1,
+) -> str:
+    page_events = list(events if events is not None else wire["events"])
+    cards = "".join(_event_card(event) for event in page_events)
+    page_suffix = f" · page {page} of {n_pages}" if n_pages > 1 else ""
+    previous_href = (
+        "/news/wire/" if page == 2
+        else f"/news/wire/page/{page - 1}/" if page > 2
+        else ""
+    )
+    next_href = f"/news/wire/page/{page + 1}/" if page < n_pages else ""
+    pagination_links = []
+    if previous_href:
+        pagination_links.append(f'<a rel="prev" href="{previous_href}">← Newer dossiers</a>')
+    pagination_links.append(f'<span>Page {page} of {n_pages}</span>')
+    if next_href:
+        pagination_links.append(f'<a rel="next" href="{next_href}">Older dossiers →</a>')
+    pagination = (
+        '<nav class="nw-pagination" aria-label="Dossier archive pages">'
+        + "".join(pagination_links)
+        + "</nav>"
+    )
+    canonical = (
+        f"{SITE}/news/wire/" if page == 1
+        else f"{SITE}/news/wire/page/{page}/"
+    )
+    body = f"""<body class="ps newsroom-page newsroom-page--archive">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <header class="nw-article__header nw-archive-head"><p class="nw-article__kicker">Receipt-complete event wire{_h(page_suffix)}</p><h1>China evidence dossiers</h1><p class="nw-article__dek">Every accepted current-window feed item is partitioned into exactly one dossier. Corroborated leads and single-source attributed records remain visibly different.</p></header>
+  {pagination}
+  <div class="nw-event-grid nw-event-grid--archive">{cards}</div>
+  {pagination}
+  {_accountability_tape(wire)}
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/readings/newswire-latest.json">Structured wire</a></div></footer>
+{site_nav.FOOT}
+</body></html>"""
+    return _head(
+        title=f"China evidence dossiers{page_suffix} · Palimpsest Wire",
+        description=wire["scope"],
+        canonical=canonical,
+        page_type="website",
+        modified_at=wire["generated_at"],
+        json_ld={
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "url": canonical,
+            "name": f"China evidence dossiers{page_suffix}",
+            "dateModified": wire["generated_at"],
+        },
+    ) + "\n" + body
+
+
+def _format_economic_value(metric: Mapping[str, Any]) -> str:
+    value = _number(metric["value"])
+    if metric["unit"] == "percent":
+        return f"{value}%"
+    if metric["unit"] == "ratio":
+        return f"{_number(metric['value'] * 100)}%"
+    return f"{value} {metric['unit']}"
+
+
+def render_economic_page(pulse: Mapping[str, Any]) -> str:
+    gate_rows = "".join(
+        f"""<li data-passed="{_h(str(gate['passed']).lower())}"><span>{_h(gate['label'])}</span><strong>{gate['observed']} / {gate['minimum']}</strong></li>"""
+        for gate in pulse["readiness"]["gates"]
+    )
+    desk_blocks = []
+    for desk in pulse["desks"]:
+        cards = []
+        for metric in desk["metrics"]:
+            revision = metric["revision"]
+            release = _human_time(metric["released_at"]) if metric["released_at"] else "source gives date/period only"
+            cards.append(f"""<article class="nw-metric-card" id="{_h(metric['metric_id'])}" data-freshness="{_h(metric['freshness']['status'])}">
+  <p class="nw-card__kicker">{_h(metric['source_class'])} · {_h(metric['freshness']['status'])}</p>
+  <h3>{_h(metric['label'])}</h3>
+  <p class="nw-metric-card__value">{_h(_format_economic_value(metric))}</p>
+  <dl><dt>Period</dt><dd>{_h(metric['period_start'])} → {_h(metric['period_end'])}</dd><dt>Released</dt><dd>{_h(release)}</dd><dt>Collected</dt><dd>{_h(_human_time(metric['collected_at']))}</dd><dt>Source group</dt><dd>{_h(metric['independence_group'])}</dd><dt>Comparability</dt><dd>{_h(metric['comparability']['basis'])}</dd><dt>Revision</dt><dd>{_h(revision['status'])}</dd></dl>
+  <p class="nw-metric-card__limit">{_h(metric['limitation'])}</p>
+  <a href="{_h(metric['evidence']['url'])}">Open evidence receipt</a>
+</article>""")
+        if not cards:
+            cards.append("<div class=\"nw-empty-desk\"><strong>No current metric</strong><p>Not collected is not zero. The source backlog remains visible in the coverage matrix.</p></div>")
+        desk_blocks.append(f"""<section class="nw-section nw-econ-desk" id="desk-{_h(desk['id'])}"><div class="nw-section__head"><div><p class="nw-section__label">Economic evidence desk</p><h2>{_h(desk['title'])}</h2></div><p class="nw-section__dek">{_h(desk['limitations'][0])}</p></div><div class="nw-metric-grid">{''.join(cards)}</div></section>""")
+    coverage_rows = "".join(
+        f"""<tr><td>{_h(row['domain'])}</td><td>{_h(row['status'])}</td><td>{_h(', '.join(row['observed_groups']) or 'none')}</td><td>{_h(', '.join(row['adapter_ready_groups']) or 'none')}</td></tr>"""
+        for row in pulse["coverage"]["matrix"]
+    )
+    body = f"""<body class="ps newsroom-page newsroom-page--economy">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <header class="nw-article__header nw-economy-head"><p class="nw-article__kicker">China economic evidence · {_h(pulse['economic_state']['status'])} · as known {_h(_human_time(pulse['as_of']))}</p><h1>The economic pulse abstains—and shows you exactly why.</h1><p class="nw-article__dek">{_h(pulse['economic_state']['claim'])}</p></header>
+  <section class="nw-econ-gates"><div><p class="nw-kicker nw-kicker--economic">Readiness, not rhetoric</p><h2>Composite gates</h2><p>{_h(pulse['readiness']['abstention_reason'])}</p></div><ul>{gate_rows}</ul></section>
+  {''.join(desk_blocks)}
+  <section class="nw-dossier__section" aria-labelledby="coverage-matrix-title"><p class="nw-section__label">Coverage matrix</p><h2 id="coverage-matrix-title">Observed, adapter-ready and absent</h2><p class="nw-table-cue" id="coverage-matrix-cue">Scroll horizontally to inspect every column.</p><div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="coverage-matrix-title" aria-describedby="coverage-matrix-cue"><table class="nw-evidence-table"><caption>Economic evidence collection coverage</caption><thead><tr><th scope="col">Domain</th><th scope="col">Status</th><th scope="col">Observed groups</th><th scope="col">Adapter-ready groups</th></tr></thead><tbody>{coverage_rows}</tbody></table></div></section>
+  <aside class="nw-coverage"><div><p class="nw-kicker nw-kicker--warning">Prohibited shortcuts</p><h2>What the pulse does not claim</h2></div><div class="nw-coverage__items">{''.join(f'<div class="nw-coverage__item"><p>{_h(value)}</p></div>' for value in pulse['economic_state']['prohibited_interpretations'])}</div></aside>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/readings/china-economic-pulse-latest.json">Structured economic pulse</a> · <a href="/data.html">Evidence Atlas</a></div></footer>
+{site_nav.FOOT}
+</body></html>"""
+    return _head(
+        title="China economic state · Palimpsest Wire",
+        description=pulse["scope"],
+        canonical=f"{SITE}/news/economy/",
+        page_type="website",
+        modified_at=pulse["generated_at"],
+        json_ld={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            "name": "Palimpsest China Economic Pulse",
+            "description": pulse["scope"],
+            "dateModified": pulse["generated_at"],
+            "url": f"{SITE}/readings/china-economic-pulse-latest.json",
+            "creator": _organization(),
+        },
+    ) + "\n" + body
+
+
+def build_json_feed(
+    feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    sections = {section["id"]: section["title"] for section in feed["sections"]}
+    event_items = []
+    if wire is not None:
+        event_items = [
+            {
+                "id": event["event_id"],
+                "url": event["url"],
+                "external_url": event["evidence_refs"][0]["url"],
+                "title": event["headline"],
+                "summary": event["dek"],
+                "content_text": "\n\n".join(
+                    [fact["statement"] for fact in event["reported_facts"]]
+                    + ["Evidence boundary: " + " ".join(event["limitations"])]
+                ),
+                "date_published": event["published_at"],
+                "date_modified": event["updated_at"],
+                "tags": [
+                    EVENT_DESKS[event["desk"]],
+                    event["evidence_strength"],
+                    *event["topics"],
+                ],
+                "attachments": [
+                    {
+                        "url": ref["url"],
+                        "mime_type": "text/html",
+                        "title": f"{ref['source_name']}: {ref['title']}",
+                    }
+                    for ref in event["evidence_refs"]
+                ],
+                "_palimpsest": {
+                    "kind": "event_dossier",
+                    "version_id": event["version_id"],
+                    "evidence_strength": event["evidence_strength"],
+                    "independent_groups": len(event["evidence_groups"]),
+                },
+            }
+            for event in wire["events"]
+        ]
+    instrument_items = [
+        {
+            "id": story["id"] if wire is not None else story["id"] + ":" + story["claim_fingerprint"],
+            "url": story["url"],
+            "external_url": story["evidence"]["url"],
+            "title": story["headline"],
+            "summary": story["dek"],
+            "content_text": "\n\n".join(
+                [claim["statement"] for claim in story["claims"]]
+                + ["Limitations: " + " ".join(story["limitations"])]
+            ),
+            "date_published": story["published_at"],
+            "date_modified": story["modified_at"],
+            "tags": [sections[story["section"]], story["signal_id"], story["status"]],
+            "attachments": [{
+                "url": story["evidence"]["url"],
+                "mime_type": "application/json",
+                "title": story["evidence"]["input"]["filename"],
+                **(
+                    {"size_in_bytes": story["evidence"]["input"]["bytes"]}
+                    if story["evidence"]["input"]["bytes"] is not None
+                    else {}
+                ),
+            }],
+            **(
+                {"_palimpsest": {
+                    "kind": "instrument_brief",
+                    "revision_id": _revision_id(story, "storyv"),
+                }}
+                if wire is not None else {}
+            ),
+        }
+        for story in feed["stories"]
+    ]
+    return {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Palimpsest Wire" if wire is not None else feed["title"],
+        "home_page_url": feed["url"],
+        "feed_url": f"{SITE}/news/feed.json",
+        "description": wire["scope"] if wire is not None else feed["scope"],
+        "language": "en",
+        "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
+        "items": event_items + instrument_items,
+    }
+
+
+def build_rss(
+    feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
+) -> bytes:
     items = []
+    if wire is not None:
+        for event in wire["events"]:
+            description = (
+                event["dek"]
+                + " Evidence boundary: "
+                + event["limitations"][1]
+                + " Sources: "
+                + ", ".join(ref["url"] for ref in event["evidence_refs"])
+            )
+            items.append(f"""  <item>
+    <title>{xml_escape(event['headline'])}</title>
+    <link>{xml_escape(event['url'])}</link>
+    <guid isPermaLink="false">{xml_escape(event['event_id'])}</guid>
+    <pubDate>{_rfc2822(event['published_at'])}</pubDate>
+    <description>{xml_escape(description)}</description>
+    <category>{xml_escape(event['desk'])}</category>
+    <source url="{xml_escape(event['evidence_refs'][0]['url'])}">{xml_escape(event['evidence_refs'][0]['source_name'])}</source>
+  </item>""")
     for story in feed["stories"]:
         description = story["dek"] + " Evidence: " + story["evidence"]["url"]
+        guid = story["id"] if wire is not None else story["id"] + ":" + story["claim_fingerprint"]
         items.append(f"""  <item>
     <title>{xml_escape(story['headline'])}</title>
     <link>{xml_escape(story['url'])}</link>
-    <guid isPermaLink="false">{xml_escape(story['id'] + ':' + story['claim_fingerprint'])}</guid>
+    <guid isPermaLink="false">{xml_escape(guid)}</guid>
     <pubDate>{_rfc2822(story['published_at'])}</pubDate>
     <description>{xml_escape(description)}</description>
     <category>{xml_escape(story['section'])}</category>
@@ -507,11 +1263,11 @@ def build_rss(feed: Mapping[str, Any]) -> bytes:
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>{xml_escape(feed['title'])}</title>
+  <title>{xml_escape('Palimpsest Wire' if wire is not None else feed['title'])}</title>
   <link>{xml_escape(feed['url'])}</link>
-  <description>{xml_escape(feed['scope'])}</description>
+  <description>{xml_escape(wire['scope'] if wire is not None else feed['scope'])}</description>
   <language>en</language>
-  <lastBuildDate>{_rfc2822(feed['generated_at'])}</lastBuildDate>
+  <lastBuildDate>{_rfc2822(max(feed['generated_at'], wire['generated_at']) if wire is not None else feed['generated_at'])}</lastBuildDate>
   <atom:link href="{SITE}/news/feed.xml" rel="self" type="application/rss+xml" />
 {chr(10).join(items)}
 </channel>
@@ -520,10 +1276,28 @@ def build_rss(feed: Mapping[str, Any]) -> bytes:
     return xml.encode("utf-8")
 
 
-def build_sitemap(feed: Mapping[str, Any]) -> bytes:
+def build_sitemap(
+    feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
+) -> bytes:
     urls = [
         f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>"""
     ]
+    if wire is not None:
+        archive_pages = max(1, (len(wire["events"]) + WIRE_PAGE_SIZE - 1) // WIRE_PAGE_SIZE)
+        urls.append(
+            f"  <url><loc>{SITE}/news/wire/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
+        )
+        urls.extend(
+            f"  <url><loc>{SITE}/news/wire/page/{page}/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
+            for page in range(2, archive_pages + 1)
+        )
+        urls.extend(
+            f"  <url><loc>{xml_escape(event['url'])}</loc><lastmod>{xml_escape(event['updated_at'])}</lastmod><news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(event['published_at'])}</news:publication_date><news:title>{xml_escape(event['headline'])}</news:title></news:news></url>"
+            for event in wire["events"]
+        )
+        urls.append(
+            f"  <url><loc>{SITE}/news/economy/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>daily</changefreq></url>"
+        )
     for story in feed["stories"]:
         news_markup = ""
         if story["status"] == "live":
@@ -539,18 +1313,69 @@ def build_sitemap(feed: Mapping[str, Any]) -> bytes:
     return xml.encode("utf-8")
 
 
-def build_outputs(feed: Mapping[str, Any]) -> dict[Path, bytes]:
+def build_outputs(
+    feed: Mapping[str, Any],
+    *,
+    wire: Mapping[str, Any] | None = None,
+    pulse: Mapping[str, Any] | None = None,
+) -> dict[Path, bytes]:
     """Return every public output without touching the filesystem."""
 
+    if wire is not None:
+        newswire_model.validate_newswire_document(wire)
+    if pulse is not None:
+        economic_pulse_model.validate_economic_pulse(pulse)
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
     outputs: dict[Path, bytes] = {
         Path("readings/newsroom-latest.json"): _pretty_json(feed),
-        Path("news/index.html"): render_index(feed).encode("utf-8"),
-        Path("news/feed.json"): _pretty_json(build_json_feed(feed)),
-        Path("news/feed.xml"): build_rss(feed),
-        Path("news/sitemap.xml"): build_sitemap(feed),
+        Path("news/index.html"): (
+            render_evidence_index(feed, wire, pulse) if wire is not None
+            else render_index(feed)
+        ).encode("utf-8"),
+        Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
+        Path("news/feed.xml"): build_rss(feed, wire),
+        Path("news/sitemap.xml"): build_sitemap(feed, wire),
     }
+    if wire is not None:
+        outputs[Path("news/instruments/feed.json")] = _pretty_json(build_json_feed(feed))
+        outputs[Path("news/instruments/feed.xml")] = build_rss(feed)
+        event_pages = [
+            wire["events"][offset:offset + WIRE_PAGE_SIZE]
+            for offset in range(0, len(wire["events"]), WIRE_PAGE_SIZE)
+        ] or [[]]
+        for page_number, page_events in enumerate(event_pages, 1):
+            archive_path = (
+                Path("news/wire/index.html") if page_number == 1
+                else Path("news/wire/page") / str(page_number) / "index.html"
+            )
+            outputs[archive_path] = render_wire_archive(
+                wire,
+                events=page_events,
+                page=page_number,
+                n_pages=len(event_pages),
+            ).encode("utf-8")
+        archive: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
+        for event in wire["events"]:
+            year, month = event["published_at"][:7].split("-")
+            archive.setdefault((year, month), []).append(event)
+            base = Path("news/wire") / event["event_id"]
+            outputs[base / "index.html"] = render_event(
+                event, wire=wire, feed=feed
+            ).encode("utf-8")
+            outputs[base / "story.json"] = _pretty_json(event)
+            outputs[base / "revisions" / f"{event['version_id']}.json"] = _pretty_json(event)
+        for (year, month), events in sorted(archive.items()):
+            outputs[Path("news/archive") / year / month / "index.json"] = _pretty_json({
+                "schema_version": "palimpsest-news-archive.v1",
+                "year": int(year),
+                "month": int(month),
+                "generated_at": wire["generated_at"],
+                "n_events": len(events),
+                "events": events,
+            })
+    if pulse is not None:
+        outputs[Path("news/economy/index.html")] = render_economic_page(pulse).encode("utf-8")
     for story in feed["stories"]:
         base = Path("news") / story["slug"]
         outputs[base / "index.html"] = render_story(
@@ -559,6 +1384,21 @@ def build_outputs(feed: Mapping[str, Any]) -> dict[Path, bytes]:
             by_id=stories,
         ).encode("utf-8")
         outputs[base / "story.json"] = _pretty_json(story)
+        if wire is not None:
+            revision = _revision_id(story, "storyv")
+            outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
+    if wire is not None:
+        manifest_path = Path("news/generated-manifest.json")
+        all_paths = sorted([str(path) for path in outputs] + [str(manifest_path)])
+        immutable = [path for path in all_paths if "/revisions/" in path]
+        outputs[manifest_path] = _pretty_json({
+            "schema_version": "palimpsest-news-manifest.v1",
+            "generated_at": max(feed["generated_at"], wire["generated_at"]),
+            "n_paths": len(all_paths),
+            "paths": all_paths,
+            "immutable_revision_paths": immutable,
+            "mutable_paths": [path for path in all_paths if path not in immutable],
+        })
     return outputs
 
 
@@ -614,7 +1454,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="report generated-file drift without writing")
     args = parser.parse_args(argv)
     feed = newsroom.build_news_feed()
-    outputs = build_outputs(feed)
+    wire, pulse = _load_extension_documents()
+    outputs = build_outputs(feed, wire=wire, pulse=pulse)
     if args.check:
         drift = check(outputs)
         for item in drift:
@@ -626,7 +1467,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     changed, unchanged = publish(outputs)
     print(
-        f"newsroom -> {READING.relative_to(ROOT)} · {feed['n_stories']} stories · "
+        f"newsroom -> {READING.relative_to(ROOT)} · {feed['n_stories']} instruments · "
+        f"{wire['n_events'] if wire else 0} events · "
         f"{changed} files updated · {unchanged} unchanged"
     )
     return 0

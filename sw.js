@@ -3,9 +3,13 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v8";
+const CACHE = "palimpsest-v9";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
+const LIVE_EVIDENCE_READINGS = new Set([
+  "/readings/newswire-latest.json",
+  "/readings/china-economic-pulse-latest.json",
+]);
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
 const SHELL = [
   "/",
@@ -80,6 +84,13 @@ self.addEventListener("fetch", (e) => {
   // into an apparent success, so it is network-only. The page retains and visibly ages
   // its last verified in-memory document when this request fails.
   if (url.pathname === LIVE_ROLLUP) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // These are mutable heads over append-only/version-aware evidence. Serving an
+  // older head as current would conceal a failed pull, a revision or an explicit
+  // coverage gap, so both documents use the same network-only boundary as the roll-up.
+  if (LIVE_EVIDENCE_READINGS.has(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

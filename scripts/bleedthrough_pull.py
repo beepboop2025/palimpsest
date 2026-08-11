@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 
 from collectors.bleedthrough import (
     JsonFleetStore,
@@ -39,9 +41,9 @@ from core.claim_support import looks_sampled
 from core.governance import KillSwitch, RateCeiling
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-READINGS = os.path.join(ROOT, "readings")
-OUT = os.path.join(READINGS, "bleedthrough-latest.json")
-HIST = os.path.join(READINGS, "bleedthrough-history.jsonl")
+READINGS = os.getenv("BLEEDTHROUGH_READINGS", os.path.join(ROOT, "readings"))
+OUT = os.getenv("BLEEDTHROUGH_OUT", os.path.join(READINGS, "bleedthrough-latest.json"))
+HIST = os.getenv("BLEEDTHROUGH_HIST", os.path.join(READINGS, "bleedthrough-history.jsonl"))
 
 # Bumped when the METHOD changes in a way a reader must see, even if the numbers
 # do not move. Write-if-changed compares readings, so without this a methodology
@@ -49,7 +51,10 @@ HIST = os.path.join(READINGS, "bleedthrough-history.jsonl")
 # the site keeps asserting a method it no longer uses.
 METHOD_VERSION = 1
 
-STORE_DIR = os.path.join(ROOT, "data", "bleedthrough_baselines")
+STORE_DIR = os.getenv(
+    "BLEEDTHROUGH_STORE",
+    os.path.join(ROOT, "data", "bleedthrough_baselines"),
+)
 
 TARGETS = os.getenv("BLEEDTHROUGH_TARGETS", os.path.join(ROOT, "config", "bleedthrough_targets.json"))
 RATE_PER_SEC = float(os.getenv("BLEEDTHROUGH_RATE", "5"))   # polite default; deployment tunes
@@ -69,6 +74,61 @@ VANTAGE_COUNT = 1
 
 def _truthy(v: str) -> bool:
     return (v or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _fsync_directory(path: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError:
+        return
+    try:
+        try:
+            os.fsync(descriptor)
+        except OSError:
+            pass
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write(path: str, payload: bytes, *, mode: int = 0o644) -> None:
+    """Durably replace one public artifact while preserving its last-good version."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent,
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+            os.fchmod(handle.fileno(), mode)
+        os.replace(temporary, destination)
+        _fsync_directory(destination.parent)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def _atomic_write_json(path: str, value: dict) -> None:
+    payload = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    _atomic_write(path, payload)
+
+
+def _atomic_append_jsonl(path: str, value: dict) -> None:
+    """Append through atomic replacement; a crash cannot leave a torn JSONL record."""
+    destination = Path(path)
+    try:
+        previous = destination.read_bytes()
+    except FileNotFoundError:
+        previous = b""
+    if previous and not previous.endswith(b"\n"):
+        raise ValueError(f"refusing to append to truncated history: {destination}")
+    row = (json.dumps(value, ensure_ascii=False) + "\n").encode("utf-8")
+    _atomic_write(path, previous + row)
 
 
 def _code_version() -> str | None:
@@ -210,6 +270,10 @@ def main() -> None:
             "queries_attempted": sum(fp.n_probes for fp in fingerprints),
             "transports": transports,
             "code_version": _code_version(),
+            "authorization": {
+                "live_opt_in": True,
+                "fixed_box_opt_in": _truthy(os.getenv("BLEEDTHROUGH_ALLOW_BOX")),
+            },
             "caveat": ("single-vantage round: observed censorship varies with network path, "
                        "so cross-region comparisons from one prober are not identifiable "
                        "(cf. arXiv:2406.19304)."),
@@ -247,27 +311,28 @@ def main() -> None:
         out["generated_at"] if (changed or not prev)
         else (prev.get("last_changed_at") or prev.get("generated_at")))
 
-    with open(OUT, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
-
     if changed or not prev:
-        with open(HIST, "a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "generated_at": out["generated_at"],
-                # denominator alongside the numerator, so a later baseline cannot compare
-                # rounds of different sizes as though they were the same measurement
-                "vantages_probed": out["vantages_probed"],
-                "vantages_injecting": out["vantages_injecting"],
-                "distinct_pools": out["distinct_pools"],
-                "max_process_count": out["max_process_count"],
-                "pool_sampling_suspected": out["pool_sampling_suspected"],
-                "vantage_count": VANTAGE_COUNT,
-                "burst": BURST,
-                "n_events": len(events),
-            }, ensure_ascii=False) + "\n")
+        _atomic_append_jsonl(HIST, {
+            "generated_at": out["generated_at"],
+            # denominator alongside the numerator, so a later baseline cannot compare
+            # rounds of different sizes as though they were the same measurement
+            "vantages_probed": out["vantages_probed"],
+            "vantages_injecting": out["vantages_injecting"],
+            "distinct_pools": out["distinct_pools"],
+            "max_process_count": out["max_process_count"],
+            "pool_sampling_suspected": out["pool_sampling_suspected"],
+            "vantage_count": VANTAGE_COUNT,
+            "burst": BURST,
+            "n_events": len(events),
+        })
     else:
         print(f"BLEEDTHROUGH: fleet unchanged since {out['last_changed_at']} — "
               f"republished with this round's observation time, history untouched")
+
+    # Publish latest only after any history mutation is durable.  If this replacement
+    # fails readers retain the previous complete document; the movement is still present
+    # in history and the next successful round repairs the latest pointer.
+    _atomic_write_json(OUT, out)
 
     print(f"=== BLEEDTHROUGH — {len(injecting)}/{len(fingerprints)} target IPs injecting "
           f"from {VANTAGE_COUNT} prober, {out['distinct_pools']} distinct pool(s), "

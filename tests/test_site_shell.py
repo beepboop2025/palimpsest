@@ -202,3 +202,33 @@ def test_generated_pages_use_the_shared_nav():
             continue  # not yet regenerated; the generator check above is the gate
         text = path.read_text(encoding="utf-8")
         assert "ps-nav" in text, f"{page} was generated without the shared nav"
+
+
+def test_skip_link_is_not_promoted_into_the_content_plane():
+    """The generic body-plane selector must not override the skip link position."""
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+
+    assert "body.ps > *:not(.ps-nav):not(.ps-skip)" in css
+    assert "body.ps > *:not(.ps-nav) { position: relative" not in css
+
+
+def test_mobile_menu_owns_focus_until_it_closes():
+    """Pin the focus-entry, Tab containment and focus-return modal contract."""
+    script = (ROOT / "assets/shell.js").read_text(encoding="utf-8")
+
+    assert "function setMobileMenu(openNow)" in script
+    assert "if (firstLink) firstLink.focus();" in script
+    assert 'if (e.key !== "Tab") return;' in script
+    assert "last.focus();" in script
+    assert "first.focus();" in script
+    assert "burger.focus();" in script
+
+
+def test_newsroom_focus_and_status_colours_clear_a_contrast_floor():
+    css = (ROOT / "assets/newsroom.css").read_text(encoding="utf-8")
+
+    assert "--nw-red: #b4233a" in css
+    assert "outline-color: #8fc2ff" in css
+    assert "color: #53636d" in css
+    assert ".nw-table-wrap:focus-visible" in css
+    assert ".nw-table-cue" in css

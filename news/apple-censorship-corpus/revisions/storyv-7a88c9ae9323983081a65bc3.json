@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:apple-censorship",
+  "slug": "apple-censorship-corpus",
+  "url": "https://palimpsest.info/news/apple-censorship-corpus/",
+  "signal_id": "apple-censorship",
+  "headline": "28.14% of 108,818 tested apps are unavailable in mainland China",
+  "dek": "The corpus-scale storefront comparison complements the smaller fixed panel with a much broader catalogue.",
+  "section": "erasure",
+  "order": 6,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-11T06:29:14Z",
+  "modified_at": "2026-08-11T06:29:14Z",
+  "claim_fingerprint": "sha256:2fa8c68dbf651d7ecbb4a04df06f4375e2b5e26ea2dacfa40436e1edf2d58169",
+  "metric": {
+    "label": "apps unavailable",
+    "value": 28.14,
+    "unit": "percent",
+    "denominator": {
+      "label": "apps tested",
+      "value": 108818
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current AppleCensorship corpus reports 28.14% unavailable among 108,818 tested apps for mainland China."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/apple-censorship-latest.json",
+    "input": {
+      "filename": "apple-censorship-latest.json",
+      "sha256": "77af4cd00c66d4b60111954561d6cd016f1a04ddadd61687a1d86e9a8373a96d",
+      "bytes": 1910
+    },
+    "source_timestamp": "2026-08-11T06:29:14Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "Storefront unavailability can have policy, licensing, commercial or technical causes; the percentage alone does not identify cause."
+  ],
+  "related_signal_ids": [
+    "app-storefront",
+    "erasure-observatory"
+  ]
+}

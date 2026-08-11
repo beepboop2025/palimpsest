@@ -1,0 +1,53 @@
+[Unit]
+Description=Collect the Palimpsest RSS/Atom evidence wire on the Hetzner node
+Documentation=file:///home/palimpsest/palimpsest/ops/newswire/README.md
+Wants=network-online.target
+After=network-online.target
+ConditionFileIsExecutable=/usr/bin/python3
+ConditionPathExists=/home/palimpsest/palimpsest/config/news_sources.json
+ConditionPathIsDirectory=/var/lib/palimpsest/newswire
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+WorkingDirectory=/home/palimpsest/palimpsest
+EnvironmentFile=-/etc/palimpsest/newswire.env
+ExecStart=/usr/bin/python3 -m scripts.newswire_pull --config /home/palimpsest/palimpsest/config/news_sources.json --output /var/lib/palimpsest/newswire/newswire-latest.json --ledger /var/lib/palimpsest/newswire/newswire-versions.jsonl --workers 6
+TimeoutStartSec=10m
+UMask=0027
+Nice=8
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TasksMax=48
+MemoryMax=768M
+
+# The reviewed registry and collector code are immutable. The node may only
+# mutate its bounded latest document and append-by-rewrite revision ledger.
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/home/palimpsest/palimpsest
+ReadWritePaths=/var/lib/palimpsest/newswire
+NoExecPaths=/var/lib/palimpsest/newswire
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

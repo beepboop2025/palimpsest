@@ -91,6 +91,30 @@ def test_newsroom_catalog_describes_a_deterministic_hourly_publication():
     assert "causal inference" in entry["description"]
 
 
+def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+
+    wire = by_id["newswire"]
+    assert (wire["stage"], wire["collection_mode"], wire["cadence"]) == (
+        "observation", "passive-metadata", "PT1H"
+    )
+    assert wire["latest"] == "readings/newswire-latest.json"
+    assert wire["history"] == "readings/newswire-versions.jsonl"
+    assert wire["landing_page"] == "news/wire/"
+    assert "article bodies" in wire["description"]
+    assert "causes" in wire["description"]
+
+    pulse = by_id["china-economic-pulse"]
+    assert (pulse["layer"], pulse["stage"], pulse["collection_mode"]) == (
+        "economy", "synthesis", "deterministic-revision-safe"
+    )
+    assert pulse["latest"] == "readings/china-economic-pulse-latest.json"
+    assert pulse["landing_page"] == "news/economy/"
+    assert "true GDP" in pulse["description"]
+    assert "coverage gates" in pulse["description"]
+
+
 def test_public_catalog_never_points_into_private_runtime_directories():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     for item in source["datasets"]:

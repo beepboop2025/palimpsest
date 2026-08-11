@@ -1,0 +1,444 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/newswire-v1.schema.json",
+  "title": "Palimpsest evidence newswire v1",
+  "description": "Metadata-only RSS/Atom event dossiers with explicit coverage, evidence independence, limitations, and mutation semantics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_registry",
+    "source_registry_sha256",
+    "window",
+    "scope",
+    "method",
+    "mutation_semantics",
+    "coverage",
+    "n_items",
+    "n_events",
+    "items",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-newswire.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "source_registry": {"const": "https://palimpsest.info/config/news_sources.json"},
+    "source_registry_sha256": {"$ref": "#/$defs/sha256"},
+    "window": {"$ref": "#/$defs/window"},
+    "scope": {"$ref": "#/$defs/longText"},
+    "method": {"$ref": "#/$defs/longText"},
+    "mutation_semantics": {"$ref": "#/$defs/longText"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "n_items": {"$ref": "#/$defs/count"},
+    "n_events": {"$ref": "#/$defs/count"},
+    "items": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/item"}
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/event"}
+    }
+  },
+  "$defs": {
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,79}$"
+    },
+    "itemId": {
+      "type": "string",
+      "pattern": "^item-[0-9a-f]{24}$"
+    },
+    "itemVersionId": {
+      "type": "string",
+      "pattern": "^itemv-[0-9a-f]{24}$"
+    },
+    "eventId": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{24}$"
+    },
+    "eventVersionId": {
+      "type": "string",
+      "pattern": "^eventv-[0-9a-f]{24}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "shortText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+    },
+    "optionalText": {
+      "type": "string",
+      "maxLength": 320,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+    },
+    "longText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "minLength": 9,
+      "maxLength": 2048,
+      "pattern": "^https://[^\\s]+$"
+    },
+    "role": {
+      "enum": ["primary", "measurement", "research", "documentation", "media"]
+    },
+    "desk": {
+      "enum": ["economy", "politics", "rights", "security", "censorship", "connectivity", "technology"]
+    },
+    "topic": {
+      "enum": [
+        "censorship",
+        "circumvention",
+        "connectivity",
+        "copyright",
+        "economy",
+        "government",
+        "measurement",
+        "policy",
+        "politics",
+        "privacy",
+        "rights",
+        "security",
+        "technology",
+        "transparency"
+      ]
+    },
+    "identifierArray": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "topicArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/topic"}
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "hours"],
+      "properties": {
+        "from": {"$ref": "#/$defs/timestamp"},
+        "to": {"$ref": "#/$defs/timestamp"},
+        "hours": {"type": "integer", "minimum": 1, "maximum": 744}
+      }
+    },
+    "coverageCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "empty", "fetch_error", "parse_error", "stale"],
+      "properties": {
+        "success": {"$ref": "#/$defs/count"},
+        "empty": {"$ref": "#/$defs/count"},
+        "fetch_error": {"$ref": "#/$defs/count"},
+        "parse_error": {"$ref": "#/$defs/count"},
+        "stale": {"$ref": "#/$defs/count"}
+      }
+    },
+    "sourceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_name",
+        "feed_url",
+        "status",
+        "items_seen",
+        "accepted_items",
+        "rejected_items",
+        "out_of_window_items",
+        "latest_published_at",
+        "document_sha256",
+        "reason"
+      ],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "source_name": {"$ref": "#/$defs/shortText"},
+        "feed_url": {"$ref": "#/$defs/httpsUrl"},
+        "status": {"enum": ["success", "empty", "fetch_error", "parse_error", "stale"]},
+        "items_seen": {"$ref": "#/$defs/count"},
+        "accepted_items": {"$ref": "#/$defs/count"},
+        "rejected_items": {"$ref": "#/$defs/count"},
+        "out_of_window_items": {"$ref": "#/$defs/count"},
+        "latest_published_at": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "document_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "reason": {"$ref": "#/$defs/shortText"}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "registry_sources",
+        "successful_sources",
+        "counts",
+        "accepted_items",
+        "rejected_items",
+        "sources"
+      ],
+      "properties": {
+        "status": {"enum": ["healthy", "degraded"]},
+        "registry_sources": {"$ref": "#/$defs/count"},
+        "successful_sources": {"$ref": "#/$defs/count"},
+        "counts": {"$ref": "#/$defs/coverageCounts"},
+        "accepted_items": {"$ref": "#/$defs/count"},
+        "rejected_items": {"$ref": "#/$defs/count"},
+        "sources": {
+          "type": "array",
+          "minItems": 23,
+          "maxItems": 23,
+          "items": {"$ref": "#/$defs/sourceReceipt"}
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "version_id",
+        "source_id",
+        "source_name",
+        "independence_group",
+        "role",
+        "rights_policy",
+        "title",
+        "url",
+        "excerpt",
+        "published_at",
+        "collected_at",
+        "desk",
+        "topics",
+        "feed_sha256",
+        "declared_scan_ids",
+        "declared_economic_ids"
+      ],
+      "properties": {
+        "item_id": {"$ref": "#/$defs/itemId"},
+        "version_id": {"$ref": "#/$defs/itemVersionId"},
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "source_name": {"$ref": "#/$defs/shortText"},
+        "independence_group": {"$ref": "#/$defs/identifier"},
+        "role": {"$ref": "#/$defs/role"},
+        "rights_policy": {"const": "metadata-link-only"},
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+        },
+        "url": {"$ref": "#/$defs/httpsUrl"},
+        "excerpt": {"$ref": "#/$defs/optionalText"},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "desk": {"$ref": "#/$defs/desk"},
+        "topics": {"$ref": "#/$defs/topicArray"},
+        "feed_sha256": {"$ref": "#/$defs/sha256"},
+        "declared_scan_ids": {"$ref": "#/$defs/identifierArray"},
+        "declared_economic_ids": {"$ref": "#/$defs/identifierArray"}
+      }
+    },
+    "reportedFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "attribution", "published_at", "evidence_item_id"],
+      "properties": {
+        "statement": {"$ref": "#/$defs/shortText"},
+        "attribution": {"$ref": "#/$defs/shortText"},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "evidence_item_id": {"$ref": "#/$defs/itemId"}
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "version_id",
+        "source_id",
+        "source_name",
+        "role",
+        "independence_group",
+        "title",
+        "url",
+        "published_at"
+      ],
+      "properties": {
+        "item_id": {"$ref": "#/$defs/itemId"},
+        "version_id": {"$ref": "#/$defs/itemVersionId"},
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "source_name": {"$ref": "#/$defs/shortText"},
+        "role": {"$ref": "#/$defs/role"},
+        "independence_group": {"$ref": "#/$defs/identifier"},
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+        },
+        "url": {"$ref": "#/$defs/httpsUrl"},
+        "published_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "evidenceGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group_id", "source_ids", "roles"],
+      "properties": {
+        "group_id": {"$ref": "#/$defs/identifier"},
+        "source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/role"}
+        }
+      }
+    },
+    "declaredLinks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation", "scan_signal_ids", "economic_signal_ids"],
+      "properties": {
+        "relation": {"const": "topic-surface-only"},
+        "scan_signal_ids": {"$ref": "#/$defs/identifierArray"},
+        "economic_signal_ids": {"$ref": "#/$defs/identifierArray"}
+      }
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "previous_version_id"],
+      "properties": {
+        "kind": {"enum": ["new", "updated", "unchanged"]},
+        "previous_version_id": {
+          "oneOf": [{"$ref": "#/$defs/eventVersionId"}, {"type": "null"}]
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "version_id",
+        "url",
+        "headline",
+        "dek",
+        "desk",
+        "topics",
+        "published_at",
+        "updated_at",
+        "lead",
+        "lead_reason",
+        "evidence_strength",
+        "reported_facts",
+        "evidence_refs",
+        "evidence_groups",
+        "declared_links",
+        "limitations",
+        "mutation"
+      ],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventId"},
+        "version_id": {"$ref": "#/$defs/eventVersionId"},
+        "url": {
+          "type": "string",
+          "pattern": "^https://palimpsest\\.info/news/wire/event-[0-9a-f]{24}/$"
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+        },
+        "dek": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 480,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+        },
+        "desk": {"$ref": "#/$defs/desk"},
+        "topics": {"$ref": "#/$defs/topicArray"},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "lead": {"type": "boolean"},
+        "lead_reason": {"$ref": "#/$defs/shortText"},
+        "evidence_strength": {
+          "enum": [
+            "measurement-corroborated",
+            "primary-corroborated",
+            "multi-source",
+            "single-measurement-source",
+            "single-primary-source",
+            "single-source"
+          ]
+        },
+        "reported_facts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {"$ref": "#/$defs/reportedFact"}
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": {"$ref": "#/$defs/evidenceRef"}
+        },
+        "evidence_groups": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {"$ref": "#/$defs/evidenceGroup"}
+        },
+        "declared_links": {"$ref": "#/$defs/declaredLinks"},
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/longText"}
+        },
+        "mutation": {"$ref": "#/$defs/mutation"}
+      }
+    }
+  }
+}

@@ -15,7 +15,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from censorwatch.classifier import classify, classify_state
+from censorwatch.classifier import (
+    classify,
+    classify_state,
+    is_eastmoney_validation_shell,
+)
 from censorwatch.interfaces import FetchResult, LivenessState
 
 FIX = Path(__file__).parent / "fixtures"
@@ -81,6 +85,59 @@ def test_per_source_marker():
     assert state == LivenessState.GONE and reason.startswith("source_marker")
 
 
+def _validation_shell(*, js: bool = True, css: bool = True, padding: int = 0) -> str:
+    return (
+        "<html><head>"
+        + ('<script src="/validate.js"></script>' if js else "")
+        + ('<link href="/validate.css" rel="stylesheet">' if css else "")
+        + "</head><body>验证"
+        + ("x" * padding)
+        + "</body></html>"
+    )
+
+
+def test_eastmoney_shell_requires_exact_three_part_signature():
+    shell = _validation_shell()
+    assert is_eastmoney_validation_shell(shell)
+    state, reason = classify_state(200, shell)
+    assert state == LivenessState.UNKNOWN
+    assert reason == "eastmoney_validation_shell"
+
+    # Any missing predicate, or a response at/over 10 KiB, is not this audited
+    # shell signature (other rules may still classify it defensively).
+    assert not is_eastmoney_validation_shell(_validation_shell(js=False))
+    assert not is_eastmoney_validation_shell(_validation_shell(css=False))
+    assert not is_eastmoney_validation_shell(_validation_shell(padding=11_000))
+
+
+def test_healthy_eastmoney_page_with_ordinary_em_capt_script_is_live():
+    healthy = """
+    <html><head>
+      <script src="//cfgpassport2.eastmoney.com/captcha/scripts/em_capt.js"></script>
+    </head><body><article>
+      贵州茅台股吧正文：今天成交活跃，基本面讨论继续。
+      这是真实可见的帖子内容，并非验证页或登录页。
+    </article></body></html>
+    """
+    state, reason = classify_state(200, healthy)
+    assert state == LivenessState.LIVE, reason
+
+
+def test_hidden_marker_template_is_not_a_deletion_notice():
+    healthy = """
+    <html><head><script>
+      window.templates = {deleted: "该帖子可能已被删除"};
+    </script></head><body><article>
+      真实可见的帖子正文仍然存在，这里有足够长的正常讨论内容。
+      经济数据和公司基本面讨论都在正常展示。
+    </article></body></html>
+    """
+    state, reason = classify_state(
+        200, healthy, extra_markers=("该帖子可能已被删除",)
+    )
+    assert state == LivenessState.LIVE, reason
+
+
 def test_classify_wrapper_stamps_observation():
     obs = classify(FetchResult(url="u", status=404, text=""))
     assert obs.state == LivenessState.GONE
@@ -88,6 +145,11 @@ def test_classify_wrapper_stamps_observation():
     # Transport error never yields GONE.
     obs2 = classify(FetchResult(url="u", status=None, text=None, error="timeout"))
     assert obs2.state == LivenessState.UNKNOWN
+    obs3 = classify(FetchResult(
+        url="u", status=200, text="看起来完整但传输层已报错" * 20,
+        error="partial response",
+    ))
+    assert obs3.state == LivenessState.UNKNOWN
 
 
 def _run_all():

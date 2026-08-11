@@ -157,7 +157,7 @@ body.ps::before {
 }
 
 /* Everything real sits above the field. */
-body.ps > *:not(.ps-nav) { position: relative; z-index: var(--ps-z-content); }
+body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z-content); }
 
 .ps-wrap { max-width: 1020px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 28px); }
 .ps-wrap--narrow { max-width: 880px; }
