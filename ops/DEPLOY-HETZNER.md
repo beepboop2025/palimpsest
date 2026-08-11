@@ -733,8 +733,14 @@ bundle, and atomic commit receipt cannot describe different revisions:
 cd /home/palimpsest/palimpsest
 test -e .git
 sudo systemctl stop palimpsest-investigative-analysis.timer
+sudo systemctl stop palimpsest-common-crawl-import.path 2>/dev/null || true
+sudo systemctl stop palimpsest-common-crawl-context.timer 2>/dev/null || true
 # A running oneshot is allowed to finish; never replace its bundle underneath it.
 while systemctl is-active --quiet palimpsest-investigative-analysis.service; do
+  sleep 2
+done
+while systemctl is-active --quiet palimpsest-common-crawl-import.service \
+  || systemctl is-active --quiet palimpsest-common-crawl-context.service; do
   sleep 2
 done
 git fetch --prune origin
@@ -742,16 +748,24 @@ git pull --ff-only
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 ops/docker/prod-compose up -d --build
 sudo bash ops/investigative-analysis/install-host-bundle.sh
+COMMON_CRAWL_WAREHOUSE_SOURCE=/mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
+sudo bash ops/common-crawl/install-host-bundle.sh \
+  --warehouse-source "$COMMON_CRAWL_WAREHOUSE_SOURCE"
 sudo systemctl enable --now palimpsest-investigative-analysis.timer
 sudo systemctl start palimpsest-investigative-analysis.service
+sudo systemctl enable --now palimpsest-common-crawl-import.path
+sudo systemctl enable --now palimpsest-common-crawl-context.timer
+sudo systemctl start palimpsest-common-crawl-import.service
 ```
 
-Both the Compose wrapper and installer fail closed on Git-status errors and a
-dirty checkout. The installer writes `/etc/palimpsest/deployed-commit` only as
-its final commit point. If it fails, keep the timer stopped and investigate;
-do not hand-edit the receipt. No profiled worker is accidentally left on an old
-image. PostgreSQL/Redis volumes and the external `/var/lib/palimpsest` state
-survive.
+The Compose wrapper and both bundle installers fail closed on Git-status errors
+and a dirty checkout. The investigative installer writes
+`/etc/palimpsest/deployed-commit` only as its final commit point. The Common
+Crawl installer then requires that receipt to match before it switches its own
+immutable bundle. If either fails, keep the affected timers stopped and
+investigate; do not hand-edit the receipt. No profiled worker is accidentally
+left on an old image. PostgreSQL/Redis volumes and the external
+`/var/lib/palimpsest` state survive.
 
 ---
 

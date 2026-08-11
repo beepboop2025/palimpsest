@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch the private Common Crawl URL Index import inbox
+RequiresMountsFor=/var/lib/palimpsest/common-crawl
+ConditionPathIsDirectory=/var/lib/palimpsest/common-crawl/inbox
+
+[Path]
+PathChanged=/var/lib/palimpsest/common-crawl/inbox
+Unit=palimpsest-common-crawl-import.service
+
+[Install]
+WantedBy=multi-user.target

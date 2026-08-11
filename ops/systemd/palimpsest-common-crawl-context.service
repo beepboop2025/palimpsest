@@ -1,0 +1,58 @@
+[Unit]
+Description=Build private Palimpsest archive and RSS context features
+Documentation=file:///usr/local/libexec/palimpsest-common-crawl/current/README.md
+After=palimpsest-evidence-wire.service palimpsest-common-crawl-import.service
+RequiresMountsFor=/var/lib/palimpsest/common-crawl
+ConditionFileIsExecutable=/usr/bin/python3
+ConditionPathExists=/etc/palimpsest/deployed-commit
+ConditionPathExists=/usr/local/libexec/palimpsest-common-crawl/current/REVISION
+ConditionPathExists=/usr/local/libexec/palimpsest-common-crawl/current/config/common_crawl_targets.json
+ConditionPathExists=/var/lib/palimpsest/common-crawl/common-crawl.sqlite3
+ConditionPathExists=/var/lib/palimpsest/newswire/newswire-latest.json
+ConditionPathExists=/var/lib/palimpsest/readings/osint-china-latest.json
+
+[Service]
+Type=oneshot
+User=10001
+Group=10001
+WorkingDirectory=/usr/local/libexec/palimpsest-common-crawl/current
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-common-crawl/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-common-crawl/current/REVISION /etc/palimpsest/deployed-commit
+ExecStart=/usr/bin/python3 -m scripts.common_crawl_lake --warehouse /var/lib/palimpsest/common-crawl refresh --newswire /var/lib/palimpsest/newswire/newswire-latest.json --osint /var/lib/palimpsest/readings/osint-china-latest.json
+TimeoutStartSec=2h
+UMask=0027
+Nice=12
+IOSchedulingClass=idle
+TasksMax=24
+MemoryMax=2G
+
+# Context generation is deterministic and local. It can read the two normalized
+# input documents and mutate only the private archive-derived outputs.
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-common-crawl /etc/palimpsest/deployed-commit /var/lib/palimpsest/newswire /var/lib/palimpsest/readings
+ReadWritePaths=/var/lib/palimpsest/common-crawl
+NoExecPaths=/var/lib/palimpsest/common-crawl
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any

@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh Palimpsest archive context after each evidence-wire window
+
+[Timer]
+OnCalendar=*:15,45
+RandomizedDelaySec=3m
+FixedRandomDelay=true
+AccuracySec=1m
+Persistent=true
+Unit=palimpsest-common-crawl-context.service
+
+[Install]
+WantedBy=timers.target

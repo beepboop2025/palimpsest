@@ -1,0 +1,56 @@
+[Unit]
+Description=Ingest reviewed Common Crawl URL Index exports into Palimpsest
+Documentation=file:///usr/local/libexec/palimpsest-common-crawl/current/README.md
+RequiresMountsFor=/var/lib/palimpsest/common-crawl
+ConditionFileIsExecutable=/usr/bin/python3
+ConditionPathExists=/etc/palimpsest/deployed-commit
+ConditionPathExists=/usr/local/libexec/palimpsest-common-crawl/current/REVISION
+ConditionPathExists=/usr/local/libexec/palimpsest-common-crawl/current/config/common_crawl_targets.json
+ConditionPathIsDirectory=/var/lib/palimpsest/common-crawl/inbox
+
+[Service]
+Type=oneshot
+User=10001
+Group=10001
+WorkingDirectory=/usr/local/libexec/palimpsest-common-crawl/current
+Environment=PALIMPSEST_KILLFILE=/var/lib/palimpsest/readings/state/STOP
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-common-crawl/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-common-crawl/current/REVISION /etc/palimpsest/deployed-commit
+ExecStart=/usr/bin/python3 -m scripts.common_crawl_lake --warehouse /var/lib/palimpsest/common-crawl import-inbox /var/lib/palimpsest/common-crawl/inbox
+TimeoutStartSec=6h
+UMask=0027
+Nice=12
+IOSchedulingClass=idle
+TasksMax=24
+MemoryMax=2G
+
+# Import is a local-only operation. The reviewed code is immutable and only the
+# private Common Crawl warehouse may be changed.
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-common-crawl /etc/palimpsest/deployed-commit -/var/lib/palimpsest/readings/state/STOP
+ReadWritePaths=/var/lib/palimpsest/common-crawl
+NoExecPaths=/var/lib/palimpsest/common-crawl
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any

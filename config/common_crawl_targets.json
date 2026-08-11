@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "source": {
+    "collection_catalog_url": "https://index.commoncrawl.org/collinfo.json",
+    "index_base_url": "https://index.commoncrawl.org/",
+    "data_base_url": "https://data.commoncrawl.org/",
+    "terms_url": "https://commoncrawl.org/terms-of-use"
+  },
+  "limits": {
+    "input_bytes": 549755813888,
+    "input_rows": 100000000,
+    "line_bytes": 65536,
+    "url_chars": 4096,
+    "warc_record_bytes": 8388608,
+    "feature_rows": 100000,
+    "news_events": 2048,
+    "network_timeout_seconds": 30,
+    "archive_requests_per_second": 0.1
+  },
+  "targets": [
+    {
+      "id": "state-council",
+      "host": "www.gov.cn",
+      "topics": ["government", "policy", "politics"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "nbs",
+      "host": "www.stats.gov.cn",
+      "topics": ["economy", "government", "measurement"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "pbc",
+      "host": "www.pbc.gov.cn",
+      "topics": ["economy", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "safe",
+      "host": "www.safe.gov.cn",
+      "topics": ["economy", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "ndrc",
+      "host": "www.ndrc.gov.cn",
+      "topics": ["economy", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "miit",
+      "host": "www.miit.gov.cn",
+      "topics": ["technology", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "cac",
+      "host": "www.cac.gov.cn",
+      "topics": ["censorship", "technology", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "csrc",
+      "host": "www.csrc.gov.cn",
+      "topics": ["economy", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "customs",
+      "host": "www.customs.gov.cn",
+      "topics": ["economy", "government", "measurement"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    },
+    {
+      "id": "mof",
+      "host": "www.mof.gov.cn",
+      "topics": ["economy", "government", "policy"],
+      "scope": "institution-level public record",
+      "training_use": "metadata_only",
+      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Bind the Palimpsest Common Crawl warehouse from bulk storage
+RequiresMountsFor=@WAREHOUSE_SOURCE@
+Before=palimpsest-common-crawl-import.path palimpsest-common-crawl-import.service palimpsest-common-crawl-context.service
+
+[Mount]
+What=@WAREHOUSE_SOURCE@
+Where=/var/lib/palimpsest/common-crawl
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target
