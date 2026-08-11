@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-08-11T02:54:56.016674+00:00",
-  "headline": "8 signals scored over 1253 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8",
+  "generated_at": "2026-08-11T07:58:34.579131+00:00",
+  "headline": "8 signals scored over 1261 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8",
   "n_signals_scored": 8,
-  "n_forecasts": 1253,
+  "n_forecasts": 1261,
   "pooled_empirical_coverage": 0.841,
   "nominal_coverage": 0.8,
   "n_beating_baseline": 4,
   "signals": {
     "ooni_gfw": {
       "scoreable": true,
-      "n_forecasts": 121,
+      "n_forecasts": 122,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.793,
-      "coverage_gap_pp": -0.7,
-      "wis": 0.5336,
-      "wis_baseline_fixed_quantile": 0.5437,
+      "empirical_coverage": 0.795,
+      "coverage_gap_pp": -0.5,
+      "wis": 0.53,
+      "wis_baseline_fixed_quantile": 0.5401,
       "beats_baseline": true,
       "skill_vs_baseline": 0.019,
       "n_misses": 25,
@@ -73,15 +73,15 @@
     },
     "ddti_threat": {
       "scoreable": true,
-      "n_forecasts": 238,
+      "n_forecasts": 240,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.84,
-      "coverage_gap_pp": 4.0,
-      "wis": 0.1308,
-      "wis_baseline_fixed_quantile": 0.1328,
+      "empirical_coverage": 0.838,
+      "coverage_gap_pp": 3.7,
+      "wis": 0.1354,
+      "wis_baseline_fixed_quantile": 0.137,
       "beats_baseline": true,
-      "skill_vs_baseline": 0.015,
-      "n_misses": 38,
+      "skill_vs_baseline": 0.012,
+      "n_misses": 39,
       "worst_misses": [
         {
           "t": 148,
@@ -137,15 +137,15 @@
     },
     "ddti_novelty": {
       "scoreable": true,
-      "n_forecasts": 238,
+      "n_forecasts": 240,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.971,
-      "coverage_gap_pp": 17.1,
-      "wis": 0.0842,
-      "wis_baseline_fixed_quantile": 0.0844,
+      "empirical_coverage": 0.967,
+      "coverage_gap_pp": 16.7,
+      "wis": 0.1001,
+      "wis_baseline_fixed_quantile": 0.1003,
       "beats_baseline": true,
       "skill_vs_baseline": 0.002,
-      "n_misses": 7,
+      "n_misses": 8,
       "worst_misses": [
         {
           "t": 168,
@@ -178,6 +178,16 @@
           "miss_by": 4.0
         },
         {
+          "t": 249,
+          "forecast": 19.0,
+          "lo": 19.0,
+          "hi": 19.0,
+          "actual": 15.0,
+          "covered": false,
+          "wis": 4.0,
+          "miss_by": 4.0
+        },
+        {
           "t": 32,
           "forecast": 29.0,
           "lo": 29.0,
@@ -186,29 +196,19 @@
           "covered": false,
           "wis": 1.0,
           "miss_by": 1.0
-        },
-        {
-          "t": 130,
-          "forecast": 30.0,
-          "lo": 30.0,
-          "hi": 30.0,
-          "actual": 29.0,
-          "covered": false,
-          "wis": 1.0,
-          "miss_by": 1.0
         }
       ]
     },
     "censored_planet": {
       "scoreable": true,
-      "n_forecasts": 12,
+      "n_forecasts": 13,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.917,
-      "coverage_gap_pp": 11.7,
-      "wis": 0.012,
-      "wis_baseline_fixed_quantile": 0.0122,
+      "empirical_coverage": 0.923,
+      "coverage_gap_pp": 12.3,
+      "wis": 0.0118,
+      "wis_baseline_fixed_quantile": 0.0119,
       "beats_baseline": true,
-      "skill_vs_baseline": 0.012,
+      "skill_vs_baseline": 0.007,
       "n_misses": 1,
       "worst_misses": [
         {
@@ -225,12 +225,12 @@
     },
     "gdelt_containment": {
       "scoreable": true,
-      "n_forecasts": 130,
+      "n_forecasts": 131,
       "nominal_coverage": 0.8,
-      "empirical_coverage": 0.808,
-      "coverage_gap_pp": 0.8,
-      "wis": 1.2512,
-      "wis_baseline_fixed_quantile": 1.2383,
+      "empirical_coverage": 0.809,
+      "coverage_gap_pp": 0.9,
+      "wis": 1.2469,
+      "wis_baseline_fixed_quantile": 1.2341,
       "beats_baseline": false,
       "skill_vs_baseline": -0.01,
       "n_misses": 25,
@@ -417,14 +417,14 @@
     },
     "tor_bridge_cn": {
       "scoreable": true,
-      "n_forecasts": 385,
+      "n_forecasts": 386,
       "nominal_coverage": 0.8,
       "empirical_coverage": 0.795,
       "coverage_gap_pp": -0.5,
-      "wis": 53.8688,
-      "wis_baseline_fixed_quantile": 53.0469,
+      "wis": 53.8066,
+      "wis_baseline_fixed_quantile": 52.9657,
       "beats_baseline": false,
-      "skill_vs_baseline": -0.015,
+      "skill_vs_baseline": -0.016,
       "n_misses": 79,
       "worst_misses": [
         {
