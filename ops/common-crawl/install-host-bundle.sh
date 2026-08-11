@@ -136,6 +136,8 @@ verify_git_blob() {
 
 install -d -o root -g root -m 0755 "$bundle_root"
 bundle_tmp="$(mktemp -d "$bundle_root/.bundle-$revision.XXXXXX")"
+chown root:root "$bundle_tmp"
+chmod 0755 "$bundle_tmp"
 unit_stage="$(mktemp -d /run/palimpsest-common-crawl-units.XXXXXX)"
 link_tmp="$bundle_root/.current.$$.tmp"
 
@@ -212,6 +214,8 @@ bundle_final="$bundle_root/$revision"
 if [[ -e "$bundle_final" ]]; then
   [[ -d "$bundle_final" && ! -L "$bundle_final" ]] \
     || die "existing revision bundle is unsafe"
+  [[ "$(stat -c '%u:%g:%a' "$bundle_final")" == "0:0:755" ]] \
+    || die "existing revision bundle ownership or mode is unsafe"
   cmp -s "$bundle_tmp/MANIFEST.sha256" "$bundle_final/MANIFEST.sha256" \
     || die "existing revision bundle has different contents"
   (cd "$bundle_final" && sha256sum --quiet --check MANIFEST.sha256) \

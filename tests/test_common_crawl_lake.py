@@ -652,6 +652,8 @@ def test_common_crawl_host_installer_is_revision_bound_and_volume_safe():
     assert '"$backing_target" != "/"' in source
     assert "systemd-escape --path --suffix=mount" in source
     assert "stat -c '%d:%i'" in source
+    assert 'chmod 0755 "$bundle_tmp"' in source
+    assert "existing revision bundle ownership or mode is unsafe" in source
     assert "sha256sum --quiet --check MANIFEST.sha256" in source
     assert "collectors/common_crawl_lake.py" in source
     assert "processors/archive_context.py" in source
