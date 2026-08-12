@@ -78,6 +78,24 @@ Palimpsest, ScamShield, NarcoScope and Seiche through typed, directional contrac
 context, not causation: typology matches do not establish predicate offences or source of funds;
 private models, raw messages, exact IOCs and operational leads never cross into the public commons.
 
+## Evidence newsroom and reporting gate
+
+The [Palimpsest Wire](https://palimpsest.info/news/) now separates fast evidence
+briefs from publication-ready reporting. Its closed primary-document archive preserves exact
+official-source vintages and separate publication/retrieval clocks; its corroboration ledger
+requires an explicit human decision before a second source group counts; and its frozen network
+rounds retain protocol, ASN/region, same-round controls and outage scope without manufacturing a
+national censorship percentage.
+
+The public [Reporting Standards](https://palimpsest.info/news/standards/) surface shows why every
+explainer or investigation is publishable or blocked. The deeper profiles require primary
+evidence, independent groups, history, counterevidence, relevant expert and affected voices, an
+explanatory visual, sentence-level citations, limitations and human editing. Investigations add a
+skeptical expert, independent fact-check, right-to-reply, visible updates, falsification and source
+safety. Passing a gate never publishes automatically. Protected interview notes are accepted only
+as externally encrypted bytes and never enter the public repository. Architecture and exact
+contracts: **[docs/REPORTING-NEWSROOM-V2.md](docs/REPORTING-NEWSROOM-V2.md)**.
+
 The optional private-runtime layer is an explicit deployment bridge. An operator sets the repository
 variable `NEMESIS_SNAPSHOT_URL` to one static public-snapshot HTTPS endpoint and supplies a separate
 `NEMESIS_SNAPSHOT_HMAC_KEY` secret. The hourly roll-up authenticates the exact response bytes against

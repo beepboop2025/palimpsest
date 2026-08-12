@@ -167,18 +167,38 @@ def safe_fetch_bytes(
             raise FetchError(f"no host in url: {current!r}")
         port = parts.port or (443 if parts.scheme == "https" else 80)
         pinned = _validate_public(host)          # SSRF + rebinding guard, EVERY hop
-        _family, ip = pinned[0]
-        conn = _connect(parts.scheme, host, ip, port, timeout, ctx)
+        path = parts.path or "/"
+        if parts.query:
+            path += "?" + parts.query
+        req_headers = {"User-Agent": _USER_AGENT, "Accept-Encoding": "gzip, deflate",
+                       "Connection": "close"}
+        if headers:
+            req_headers.update(headers)
+
+        # Every address was already validated above, so trying another pinned
+        # address after a transport failure preserves the SSRF/rebinding
+        # boundary. An HTTP response (including 4xx/5xx) is authoritative and
+        # is never retried against another address.
+        conn = None
+        resp = None
+        last_transport_error: OSError | http.client.HTTPException | None = None
+        for _family, ip in dict.fromkeys(pinned):
+            candidate = None
+            try:
+                candidate = _connect(parts.scheme, host, ip, port, timeout, ctx)
+                candidate.request("GET", path, headers=req_headers)
+                resp = candidate.getresponse()
+                conn = candidate
+                break
+            except (OSError, http.client.HTTPException) as exc:
+                last_transport_error = exc
+                if candidate is not None:
+                    candidate.close()
+        if conn is None or resp is None:
+            if last_transport_error is not None:
+                raise last_transport_error
+            raise FetchError(f"no usable pinned addresses for {host!r}")
         try:
-            path = parts.path or "/"
-            if parts.query:
-                path += "?" + parts.query
-            req_headers = {"User-Agent": _USER_AGENT, "Accept-Encoding": "gzip, deflate",
-                           "Connection": "close"}
-            if headers:
-                req_headers.update(headers)
-            conn.request("GET", path, headers=req_headers)
-            resp = conn.getresponse()
             if resp.status in (301, 302, 303, 307, 308):
                 location = resp.getheader("Location")
                 if not location:

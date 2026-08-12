@@ -959,7 +959,7 @@ def render_evidence_index(
   {_instrument_sections(feed)}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/investigations/">Investigations register</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -1003,7 +1003,7 @@ def render_investigations_index(investigations: Mapping[str, Any]) -> str:
   {_investigation_register(title='Open research leads', label='Evidence gathering', description='Questions and draft claims remain under test. These cases are not published findings.', cases=open_cases, section_id='open-research')}
   {_investigation_register(title='Editorial abstentions', label='Threshold not met', description='The desk records why available evidence cannot support publication and what would be needed to revisit the question.', cases=abstained, section_id='editorial-abstentions')}
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/readings/investigations-latest.json">Structured investigations desk</a> · <a href="/docs/INVESTIGATIONS.md">Method and safety boundary</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/readings/investigations-latest.json">Structured investigations desk</a> · <a href="/docs/INVESTIGATIONS.md">Method and safety boundary</a></div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -1789,7 +1789,8 @@ def build_sitemap(
     investigations: Mapping[str, Any] | None = None,
 ) -> bytes:
     urls = [
-        f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>"""
+        f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
+        f"""  <url><loc>{SITE}/news/standards/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
     ]
     if wire is not None:
         archive_pages = max(1, (len(wire["events"]) + WIRE_PAGE_SIZE - 1) // WIRE_PAGE_SIZE)

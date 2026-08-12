@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/primary-documents-v1.schema.json",
+  "title": "Palimpsest Primary Documents v1",
+  "description": "Metadata-only public receipts for exact primary-source bytes retained in a private EvidenceDocument store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "last_successful_at",
+    "source_registry",
+    "source_registry_sha256",
+    "scope",
+    "method",
+    "coverage",
+    "n_documents",
+    "n_vintages",
+    "n_new_vintages",
+    "documents"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-primary-documents.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "last_successful_at": {"$ref": "#/$defs/timestamp"},
+    "source_registry": {"const": "https://palimpsest.info/config/primary_document_sources.json"},
+    "source_registry_sha256": {"$ref": "#/$defs/sha256"},
+    "scope": {"$ref": "#/$defs/text"},
+    "method": {"$ref": "#/$defs/text"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "n_documents": {"$ref": "#/$defs/count"},
+    "n_vintages": {"$ref": "#/$defs/count"},
+    "n_new_vintages": {"$ref": "#/$defs/count"},
+    "documents": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/document"}
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "timestampOrNull": {
+      "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,79}$"
+    },
+    "objectId": {
+      "type": "string",
+      "pattern": "^(?:document|documentv)-[0-9a-f]{24}$"
+    },
+    "objectIdOrNull": {
+      "oneOf": [{"$ref": "#/$defs/objectId"}, {"type": "null"}]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sha256OrNull": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "positiveCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "httpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2048,
+      "pattern": "^https://[^#@]+$"
+    },
+    "stringSet": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 240}
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["training_use", "license_or_terms_ref"],
+      "properties": {
+        "training_use": {"const": "metadata_only"},
+        "license_or_terms_ref": {"$ref": "#/$defs/httpsUrl"}
+      }
+    },
+    "methodology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "version", "notes"],
+      "properties": {
+        "url": {"$ref": "#/$defs/httpsUrl"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 160},
+        "notes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 240}
+        }
+      }
+    },
+    "vintage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vintage_id",
+        "revision",
+        "publication_time",
+        "first_retrieved_at",
+        "accepted_at",
+        "collection_run_id",
+        "content_sha256",
+        "byte_size",
+        "manifest_sha256",
+        "supersedes_vintage_id"
+      ],
+      "properties": {
+        "vintage_id": {"type": "string", "pattern": "^documentv-[0-9a-f]{24}$"},
+        "revision": {"$ref": "#/$defs/count"},
+        "publication_time": {"$ref": "#/$defs/timestampOrNull"},
+        "first_retrieved_at": {"$ref": "#/$defs/timestamp"},
+        "accepted_at": {"$ref": "#/$defs/timestamp"},
+        "collection_run_id": {"$ref": "#/$defs/identifier"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "byte_size": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "supersedes_vintage_id": {"$ref": "#/$defs/objectIdOrNull"}
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "source_id",
+        "name",
+        "publisher",
+        "original_url",
+        "role",
+        "independence_group",
+        "capture_scope",
+        "observation_state",
+        "media_type",
+        "language",
+        "cadence",
+        "geographies",
+        "sectors",
+        "subjects",
+        "units",
+        "denominators",
+        "methodology",
+        "rights",
+        "interpretation_limit",
+        "last_checked_at",
+        "retrieval_count",
+        "current_vintage",
+        "vintages"
+      ],
+      "properties": {
+        "document_id": {"type": "string", "pattern": "^document-[0-9a-f]{24}$"},
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "publisher": {"type": "string", "minLength": 1, "maxLength": 200},
+        "original_url": {"$ref": "#/$defs/httpsUrl"},
+        "role": {"const": "primary"},
+        "independence_group": {"$ref": "#/$defs/identifier"},
+        "capture_scope": {
+          "enum": ["catalog_metadata", "release_document", "structured_observations"]
+        },
+        "observation_state": {"enum": ["not_parsed", "adapter_ready", "live"]},
+        "media_type": {"enum": ["text/html", "application/json", "application/pdf"]},
+        "language": {
+          "type": "string",
+          "pattern": "^(?:und|[a-z]{2,8}(?:-[a-z0-9]{1,8})*)$"
+        },
+        "cadence": {"enum": ["event", "daily", "monthly", "quarterly", "annual"]},
+        "geographies": {"$ref": "#/$defs/stringSet"},
+        "sectors": {"$ref": "#/$defs/stringSet"},
+        "subjects": {"$ref": "#/$defs/stringSet"},
+        "units": {"$ref": "#/$defs/stringSet"},
+        "denominators": {"$ref": "#/$defs/stringSet"},
+        "methodology": {"$ref": "#/$defs/methodology"},
+        "rights": {"$ref": "#/$defs/rights"},
+        "interpretation_limit": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "last_checked_at": {"$ref": "#/$defs/timestamp"},
+        "retrieval_count": {"$ref": "#/$defs/positiveCount"},
+        "current_vintage": {"$ref": "#/$defs/vintage"},
+        "vintages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2048,
+          "items": {"$ref": "#/$defs/vintage"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"observation_state": {"const": "live"}},
+            "required": ["observation_state"]
+          },
+          "then": {
+            "properties": {"capture_scope": {"const": "structured_observations"}}
+          }
+        }
+      ]
+    },
+    "coverageSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "status",
+        "attempted_at",
+        "document_available",
+        "retained_last_good",
+        "document_id",
+        "vintage_id",
+        "content_sha256",
+        "reason"
+      ],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "status": {
+          "enum": ["captured", "unchanged", "fetch_error", "invalid_document", "store_error"]
+        },
+        "attempted_at": {"$ref": "#/$defs/timestamp"},
+        "document_available": {"type": "boolean"},
+        "retained_last_good": {"type": "boolean"},
+        "document_id": {"$ref": "#/$defs/objectIdOrNull"},
+        "vintage_id": {"$ref": "#/$defs/objectIdOrNull"},
+        "content_sha256": {"$ref": "#/$defs/sha256OrNull"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "coverageCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captured", "unchanged", "fetch_error", "invalid_document", "store_error"],
+      "properties": {
+        "captured": {"$ref": "#/$defs/count"},
+        "unchanged": {"$ref": "#/$defs/count"},
+        "fetch_error": {"$ref": "#/$defs/count"},
+        "invalid_document": {"$ref": "#/$defs/count"},
+        "store_error": {"$ref": "#/$defs/count"}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "registered_sources",
+        "attempted_sources",
+        "successful_sources",
+        "counts",
+        "sources"
+      ],
+      "properties": {
+        "status": {"enum": ["healthy", "degraded"]},
+        "registered_sources": {"$ref": "#/$defs/count"},
+        "attempted_sources": {"$ref": "#/$defs/count"},
+        "successful_sources": {"$ref": "#/$defs/count"},
+        "counts": {"$ref": "#/$defs/coverageCounts"},
+        "sources": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/coverageSource"}
+        }
+      }
+    }
+  }
+}

@@ -265,17 +265,23 @@ SIGNALS: tuple[SignalSpec, ...] = (
 
 # Explicit scope decisions used by the inventory ratchet test. These feeds remain public,
 # but they are not independent China OSINT inputs: the newsroom, investigations desk,
-# evidence wire and economic pulse are parallel/derived publication planes (including them
-# would recurse or double count); the research corpus is mixed-scope; and the remaining
-# files are generic model evaluation surfaces.
+# evidence wire, primary archive, corroboration, network-round normalization and editorial
+# gates are parallel/derived publication planes (including them would recurse or double
+# count); the research corpus is mixed-scope; and the remaining files are generic model
+# evaluation surfaces.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-economic-pulse-latest.json",
+    "corroboration-latest.json",
+    "editorial-readiness-latest.json",
     "eval-registry-latest.json",
     "investigations-latest.json",
+    "network-rounds-latest.json",
     "newswire-latest.json",
     "newsroom-latest.json",
+    "primary-documents-latest.json",
     "research-corpus-latest.json",
     "refusal-drift-latest.json",
+    "source-workflow-latest.json",
 })
 
 

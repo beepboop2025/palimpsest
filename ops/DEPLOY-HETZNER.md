@@ -268,6 +268,8 @@ PALIMPSEST_COLLECTION_PROFILE=vigorous
 PALIMPSEST_KILLFILE=/app/readings/state/STOP
 PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED=1
 PALIMPSEST_OBSERVATION_DIR=/app/data/observations
+PALIMPSEST_EVIDENCE_DOCUMENT_STORE=/app/data/evidence-documents
+PALIMPSEST_SOURCE_WORKFLOW_STORE=/app/data/source-workflow
 PALIMPSEST_STATUS_PATH=/app/data/node-status.json
 PALIMPSEST_API_PORT=8000
 PALIMPSEST_ACTIVE_PROBES_ENABLED=0
@@ -313,6 +315,30 @@ content-addressed archive at `/app/data/observations` when
 `PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED=1`. Repeated identical observations
 deduplicate by SHA-256 while changed readings remain available for longitudinal
 analysis.
+
+The daily `primary-documents` job is different from the normalized-observation
+archive: it commits exact official release/catalog bytes and immutable manifests
+under `/app/data/evidence-documents`, then writes a metadata-only receipt index
+to `/app/readings/primary-documents-latest.json`. The source-workflow directory
+holds only reporter-supplied, already-encrypted notes and mode-0600 manifests.
+Neither private tree is served or pushed to GitHub.
+
+Bootstrap and verify the newsroom collectors after the profile starts:
+
+```bash
+C="ops/docker/prod-compose --profile collectors"
+$C exec worker-collectors python -m scripts.primary_documents_pull
+$C exec worker-collectors python -m scripts.primary_documents_pull --check
+$C exec worker-collectors python -m scripts.build_network_rounds --check
+$C exec worker-collectors python -m scripts.build_corroboration --check
+$C exec worker-collectors python -m scripts.build_editorial_readiness --check
+```
+
+Publisher failures are expected to remain explicit. Do not add `-k`, disable
+hostname verification, follow an unreviewed redirect, or copy source bytes into
+`readings/` to make the coverage count look healthier. Correct a registry URL
+through review and keep the previous digest; v1 permits that migration only for
+a source with no accepted document.
 
 **Inside View has exactly one checked-in scheduler owner.** The strict contract
 in [`config/active_probe_owner.json`](../config/active_probe_owner.json) names

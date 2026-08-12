@@ -164,6 +164,46 @@ def test_investigations_catalog_exposes_review_gates_and_public_contract():
     assert "does not automate allegations" in description
 
 
+def test_reporting_newsroom_catalog_keeps_five_capabilities_distinct():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+
+    assert by_id["primary-documents"]["collection_mode"] == (
+        "passive-primary-document"
+    )
+    assert by_id["primary-documents"]["stage"] == "archive"
+    assert "not a parsed observation" in by_id["primary-documents"]["description"]
+    assert by_id["corroboration"]["collection_mode"] == (
+        "deterministic-human-reviewed"
+    )
+    assert "never confirms" in by_id["corroboration"]["description"]
+    assert by_id["network-rounds"]["status"] == "warming"
+    assert "national censorship percentage" in by_id["network-rounds"]["description"]
+    assert by_id["source-workflow"]["status"] == "gated"
+    assert "note text stay" in by_id["source-workflow"]["description"]
+    assert by_id["editorial-readiness"]["stage"] == "publication"
+    assert "never publishes automatically" in by_id["editorial-readiness"]["description"]
+    assert {
+        by_id[name]["latest"]
+        for name in (
+            "primary-documents",
+            "corroboration",
+            "network-rounds",
+            "source-workflow",
+            "editorial-readiness",
+        )
+    } == {
+        f"readings/{name}-latest.json"
+        for name in (
+            "primary-documents",
+            "corroboration",
+            "network-rounds",
+            "source-workflow",
+            "editorial-readiness",
+        )
+    }
+
+
 def test_public_catalog_never_points_into_private_runtime_directories():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     for item in source["datasets"]:
