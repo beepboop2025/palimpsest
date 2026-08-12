@@ -1037,6 +1037,12 @@ def build_evidence_mesh(
     except NarcoScopeBridgeError as exc:
         raise EvidenceMeshError(f"invalid NarcoScope pin receipt: {exc}") from exc
     pin_receipt = pin_value
+    expected_narco = pin_receipt["current"]
+    narco_observed = _parse_timestamp(
+        expected_narco["admitted_at"], "narcoscope.pin.current.admitted_at"
+    )
+    if narco_observed > moment:
+        raise EvidenceMeshError("NarcoScope pin admission is after the build time")
 
     catalog_rows = {row["id"]: row for row in catalog["datasets"]}
     osint_rows = {row["id"]: row for row in osint["signals"]}
@@ -1209,7 +1215,6 @@ def build_evidence_mesh(
         ))
 
     pin = config["narcoscope_pin"]
-    expected_narco = pin_receipt["current"]
     try:
         validate_narcoscope_receipt(pin_receipt, artifact=narco_raw)
         narco_matches = True
@@ -1218,11 +1223,6 @@ def build_evidence_mesh(
         # binding mismatch therefore remains an explicit stale-pin state rather
         # than being laundered into current evidence.
         narco_matches = False
-    narco_observed = _parse_timestamp(
-        expected_narco["admitted_at"], "narcoscope.pin.current.admitted_at"
-    )
-    if narco_observed > moment:
-        raise EvidenceMeshError("NarcoScope pin admission is after the build time")
     narco_deadline = narco_observed + timedelta(days=pin["freshness_days"])
     narco_availability = "available" if narco_matches and moment <= narco_deadline else "stale"
     narco_freshness = _freshness(
