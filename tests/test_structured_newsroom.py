@@ -58,6 +58,14 @@ def test_all_current_signals_have_curated_templates_and_exactly_one_story(
     assert all(signal["limitations"] for signal in config["signals"])
 
 
+def test_ooni_story_names_the_arithmetic_denominator(feed: dict) -> None:
+    story = _stories_by_id(feed)["ooni-gfw"]
+
+    assert "completed measurements" in story["headline"]
+    assert "completed China measurements" in story["claims"][0]["statement"]
+    assert story["metric"]["denominator"]["label"] == "completed measurements"
+
+
 def test_transform_is_byte_deterministic_with_stable_ids_slugs_and_order(
     source: dict, config: dict
 ) -> None:
