@@ -83,7 +83,17 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert 'href="/osint-china.html#commons"' in home
     assert "structured evidence commons" in home.lower()
     assert "https://t.me/Scamshield_2_bot" in home
+    assert "https://narcoscope.com/" in home
+    assert "https://t.me/NarcoScopeEvidenceBot" in home
+    assert "https://t.me/palimpsest_watch_bot" in home
+    assert "https://t.me/EvidenceSignalDesk" in home
     assert '"Developers", "href": "/developers.html"' in nav
+
+    card = _json("product-card.json")
+    assert card["access"]["narcoscope_website"] == "https://narcoscope.com/"
+    assert card["access"]["narcoscope_bot"] == "https://t.me/NarcoScopeEvidenceBot"
+    assert card["access"]["palimpsest_bot"] == "https://t.me/palimpsest_watch_bot"
+    assert card["access"]["evidence_signal_channel"] == "https://t.me/EvidenceSignalDesk"
 
 
 def test_evidence_atlas_is_discoverable_by_humans_and_agents():
