@@ -1,9 +1,98 @@
 {
-  "generated_at": "2026-08-12T03:14:08.977652+00:00",
-  "headline": "no cross-layer pair can be tested yet: the test needs about 36d of overlapping daily history per pair and the layers have not been observed together that long. This panel lights up on its own as history accrues — it is not broken, it is not yet earned",
-  "n_pairs_tested": 0,
+  "generated_at": "2026-08-12T08:06:01.465155+00:00",
+  "headline": "4 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
+  "n_pairs_tested": 4,
   "n_confirmed": 0,
-  "pairs": [],
+  "pairs": [
+    {
+      "ok": true,
+      "overlap_days": 35,
+      "lag_days": -4,
+      "correlation": 0.519,
+      "p_value": 0.1429,
+      "n_shifts": 20,
+      "null_median_abs_r": 0.496,
+      "pair": [
+        "github_refuge",
+        "tor_bridge_cn"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-06",
+      "last_day": "2026-08-10",
+      "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
+      "holm_threshold": 0.0125,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 36,
+      "lag_days": 4,
+      "correlation": -0.393,
+      "p_value": 0.4091,
+      "n_shifts": 21,
+      "null_median_abs_r": 0.373,
+      "pair": [
+        "ddti_threat",
+        "tor_bridge_cn"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-05",
+      "last_day": "2026-08-10",
+      "reading": "ddti_threat moves 4d BEFORE tor_bridge_cn",
+      "holm_threshold": 0.01667,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 35,
+      "lag_days": 2,
+      "correlation": 0.379,
+      "p_value": 0.7143,
+      "n_shifts": 20,
+      "null_median_abs_r": 0.403,
+      "pair": [
+        "gdelt_containment",
+        "tor_bridge_cn"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-06",
+      "last_day": "2026-08-10",
+      "reading": "gdelt_containment moves 2d BEFORE tor_bridge_cn",
+      "holm_threshold": 0.025,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 36,
+      "lag_days": -1,
+      "correlation": 0.173,
+      "p_value": 1.0,
+      "n_shifts": 21,
+      "null_median_abs_r": 0.248,
+      "pair": [
+        "ddti_novelty",
+        "tor_bridge_cn"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-05",
+      "last_day": "2026-08-10",
+      "reading": "tor_bridge_cn moves 1d BEFORE ddti_novelty",
+      "holm_threshold": 0.05,
+      "survives_multiplicity": false
+    }
+  ],
   "skipped": [
     {
       "pair": [
@@ -72,13 +161,6 @@
     },
     {
       "pair": [
-        "ddti_novelty",
-        "tor_bridge_cn"
-      ],
-      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
-    },
-    {
-      "pair": [
         "ddti_threat",
         "ioda_outages"
       ],
@@ -100,13 +182,6 @@
     },
     {
       "pair": [
-        "ddti_threat",
-        "tor_bridge_cn"
-      ],
-      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
-    },
-    {
-      "pair": [
         "gdelt_containment",
         "ioda_outages"
       ],
@@ -117,7 +192,7 @@
         "gdelt_containment",
         "ooni_gfw"
       ],
-      "reason": "16 admissible shifts: smallest attainable p is 0.059, above alpha=0.05. Needs about 36d of overlapping daily history (has 31d)"
+      "reason": "17 admissible shifts: smallest attainable p is 0.056, above alpha=0.05. Needs about 36d of overlapping daily history (has 32d)"
     },
     {
       "pair": [
@@ -125,13 +200,6 @@
         "refusal_drift"
       ],
       "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
-    },
-    {
-      "pair": [
-        "gdelt_containment",
-        "tor_bridge_cn"
-      ],
-      "reason": "18 admissible shifts: smallest attainable p is 0.053, above alpha=0.05. Needs about 36d of overlapping daily history (has 33d)"
     },
     {
       "pair": [
@@ -153,13 +221,6 @@
         "refusal_drift"
       ],
       "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
-    },
-    {
-      "pair": [
-        "github_refuge",
-        "tor_bridge_cn"
-      ],
-      "reason": "18 admissible shifts: smallest attainable p is 0.053, above alpha=0.05. Needs about 36d of overlapping daily history (has 33d)"
     },
     {
       "pair": [
