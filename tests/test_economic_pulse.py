@@ -3,6 +3,7 @@
 All tests are offline.  The checked-in readings exercise the real adapters;
 small temporary ledgers exercise point-in-time behavior and hostile inputs.
 """
+
 from __future__ import annotations
 
 import copy
@@ -39,9 +40,9 @@ def _build(**kwargs):
 
 
 def _records(pulse):
-    return [
-        metric for desk in pulse["desks"] for metric in desk["metrics"]
-    ] + pulse["release_calendar"]["entries"]
+    return [metric for desk in pulse["desks"] for metric in desk["metrics"]] + pulse[
+        "release_calendar"
+    ]["entries"]
 
 
 def _desk(pulse, desk_id):
@@ -58,7 +59,9 @@ def test_real_pulse_is_structured_abstaining_and_evidence_rich():
         "direction": None,
         "composite": None,
         "claim": pulse["economic_state"]["claim"],
-        "prohibited_interpretations": pulse["economic_state"]["prohibited_interpretations"],
+        "prohibited_interpretations": pulse["economic_state"][
+            "prohibited_interpretations"
+        ],
     }
     assert "true GDP" in " ".join(pulse["economic_state"]["prohibited_interpretations"])
     assert pulse["readiness"]["status"] == "warming_up"
@@ -90,7 +93,9 @@ def test_pulse_is_deterministic_for_fixed_inputs_and_derived_clock():
 
 def test_published_schema_and_semantic_validator_cover_the_exact_top_level():
     schema = json.loads(
-        (ROOT / "protocol" / "economic-pulse-v1.schema.json").read_text(encoding="utf-8")
+        (ROOT / "protocol" / "economic-pulse-v1.schema.json").read_text(
+            encoding="utf-8"
+        )
     )
     pulse = _build()
 
@@ -98,7 +103,9 @@ def test_published_schema_and_semantic_validator_cover_the_exact_top_level():
     assert schema["properties"]["schema_version"]["const"] == pulse["schema_version"]
     assert set(schema["required"]) == set(pulse)
     assert schema["additionalProperties"] is False
-    assert schema["$defs"]["economicState"]["properties"]["direction"] == {"type": "null"}
+    assert schema["$defs"]["economicState"]["properties"]["direction"] == {
+        "type": "null"
+    }
     validate_economic_pulse(pulse)
 
 
@@ -123,13 +130,17 @@ def test_coverage_publishes_registered_live_observed_and_adapter_ready_separatel
         coverage["registered_independent_group_ids"]
     )
     assert coverage["live_source_ids"] == [
-        "cfets_benchmarks", "external_cny_reference", "hkex_stock_connect"
+        "cfets_benchmarks",
+        "external_cny_reference",
+        "hkex_stock_connect",
     ]
     assert len(coverage["live_independent_group_ids"]) == 3
     assert len(coverage["observed_independent_group_ids"]) >= 8
     assert coverage["adapter_ready_sources"]
     assert "nbs_70_city_housing" in coverage["missing_source_ids"]
-    property_row = next(row for row in coverage["matrix"] if row["domain"] == "property")
+    property_row = next(
+        row for row in coverage["matrix"] if row["domain"] == "property"
+    )
     assert property_row["observed_groups"] == []
     assert property_row["adapter_ready_groups"]
 
@@ -152,13 +163,19 @@ def test_stock_connect_currency_is_hkd_and_never_cross_currency_aggregated():
 
     assert southbound and {row["unit"] for row in southbound} == {"HKD billion"}
     assert northbound and {row["unit"] for row in northbound} == {"CNY billion"}
-    check = next(row for row in pulse["input_integrity"] if row["check_id"] == "stock-connect-currency")
+    check = next(
+        row
+        for row in pulse["input_integrity"]
+        if row["check_id"] == "stock-connect-currency"
+    )
     assert check["status"] == "pass"
 
     spec = next(signal for signal in osint.SIGNALS if signal.id == "stock-connect")
     assert spec.metric_unit == "HKD billions"
     config = json.loads((ROOT / "config" / "newsroom.json").read_text(encoding="utf-8"))
-    story = next(signal for signal in config["signals"] if signal["id"] == "stock-connect")
+    story = next(
+        signal for signal in config["signals"] if signal["id"] == "stock-connect"
+    )
     assert "Hong Kong dollars" in story["headline_template"]
     assert "Hong Kong dollars" in story["claim_template"]
     assert "yuan" not in story["headline_template"].lower()
@@ -166,12 +183,19 @@ def test_stock_connect_currency_is_hkd_and_never_cross_currency_aggregated():
 
 def test_cfets_wide_compatibility_view_matches_the_revision_ledger():
     pulse = _build()
+    wide = json.loads(
+        (ROOT / "readings" / "china-econ-latest.json").read_text(encoding="utf-8")
+    )
     check = next(
-        row for row in pulse["input_integrity"]
+        row
+        for row in pulse["input_integrity"]
         if row["check_id"] == "cfets-wide-ledger-alignment"
     )
     assert check["status"] == "pass"
-    assert "15" in check["detail"]
+    assert check["detail"] == (
+        f"All {len(wide['benchmarks'])} same-period wide metrics match "
+        "the bitemporal ledger."
+    )
 
 
 def test_rail_freight_cumulative_and_monthly_observation_periods_are_distinct():
@@ -183,21 +207,25 @@ def test_rail_freight_cumulative_and_monthly_observation_periods_are_distinct():
     month_end = calendar.monthrange(year, month)[1]
     physical = _desk(pulse, "trade-logistics-physical")["metrics"]
     cumulative = next(
-        row for row in physical
-        if row["metric_id"] == "cn-activity-rail-freight-yoy"
+        row for row in physical if row["metric_id"] == "cn-activity-rail-freight-yoy"
     )
     monthly = next(
-        row for row in physical
+        row
+        for row in physical
         if row["metric_id"] == "cn-activity-rail-freight-month-yoy"
     )
 
     assert (
-        cumulative["period_start"], cumulative["period_end"], cumulative["frequency"]
+        cumulative["period_start"],
+        cumulative["period_end"],
+        cumulative["frequency"],
     ) == (f"{year:04d}-01-01", f"{period}-{month_end:02d}", "M")
     assert "cumulative" in cumulative["comparability"]["basis"]
-    assert (
-        monthly["period_start"], monthly["period_end"], monthly["frequency"]
-    ) == (f"{period}-01", f"{period}-{month_end:02d}", "M")
+    assert (monthly["period_start"], monthly["period_end"], monthly["frequency"]) == (
+        f"{period}-01",
+        f"{period}-{month_end:02d}",
+        "M",
+    )
     assert "month only" in monthly["comparability"]["basis"]
 
 
@@ -210,9 +238,15 @@ def test_as_of_excludes_future_wide_inputs_and_future_observations():
     assert receipts["data-darkness"]["status"] == "future_excluded"
     assert receipts["china-econ-ledger"]["status"] == "used"
     for metric in _records(pulse):
-        assert datetime.fromisoformat(metric["collected_at"].replace("Z", "+00:00")) <= cutoff
+        assert (
+            datetime.fromisoformat(metric["collected_at"].replace("Z", "+00:00"))
+            <= cutoff
+        )
         if metric["released_at"]:
-            assert datetime.fromisoformat(metric["released_at"].replace("Z", "+00:00")) <= cutoff
+            assert (
+                datetime.fromisoformat(metric["released_at"].replace("Z", "+00:00"))
+                <= cutoff
+            )
 
 
 def _observation(
@@ -254,12 +288,8 @@ def _write_ledger(path, rows):
 
 
 def test_revision_selection_and_ledger_are_point_in_time(tmp_path):
-    initial = _observation(
-        value=1.5, revision=0, released="2026-01-03T00:00:00+00:00"
-    )
-    revised = _observation(
-        value=1.4, revision=1, released="2026-02-01T00:00:00+00:00"
-    )
+    initial = _observation(value=1.5, revision=0, released="2026-01-03T00:00:00+00:00")
+    revised = _observation(value=1.4, revision=1, released="2026-02-01T00:00:00+00:00")
     _write_ledger(tmp_path / "china-econ-observations.jsonl", [initial, revised])
 
     january = build_economic_pulse(
@@ -277,7 +307,10 @@ def test_revision_selection_and_ledger_are_point_in_time(tmp_path):
     feb_metric = _desk(february, "money-credit-fx")["metrics"][0]
     assert jan_metric["value"] == 1.5
     assert jan_metric["revision"] == {
-        "status": "original", "number": 0, "previous_value": None, "delta": None
+        "status": "original",
+        "number": 0,
+        "previous_value": None,
+        "delta": None,
     }
     assert january["revisions"] == []
     assert feb_metric["value"] == 1.4
@@ -302,7 +335,12 @@ def test_late_collection_does_not_leak_into_an_earlier_replay(tmp_path):
         as_of=datetime(2026, 2, 1, tzinfo=UTC),
     )
     assert _desk(pulse, "money-credit-fx")["metrics"] == []
-    assert next(row for row in pulse["inputs"] if row["input_id"] == "china-econ-ledger")["status"] == "future_excluded"
+    assert (
+        next(row for row in pulse["inputs"] if row["input_id"] == "china-econ-ledger")[
+            "status"
+        ]
+        == "future_excluded"
+    )
 
 
 def test_freshness_uses_the_serialized_second_precision_clock(tmp_path):
@@ -373,8 +411,7 @@ def test_reviewed_non_cfets_series_routes_to_its_explicit_desk_and_revises(tmp_p
     assert len(pulse["revisions"]) == 1
     assert pulse["revisions"][0]["series_id"] == common["series_id"]
     assert not any(
-        row["check_id"] == "ledger-series-routing"
-        for row in pulse["input_integrity"]
+        row["check_id"] == "ledger-series-routing" for row in pulse["input_integrity"]
     )
 
 
@@ -405,8 +442,7 @@ def test_future_non_cfets_series_is_excluded_from_metrics_and_revisions(tmp_path
     )
     assert receipt["status"] == "future_excluded"
     assert not any(
-        row["check_id"] == "ledger-series-routing"
-        for row in pulse["input_integrity"]
+        row["check_id"] == "ledger-series-routing" for row in pulse["input_integrity"]
     )
 
 
@@ -433,12 +469,15 @@ def test_unknown_visible_ledger_series_is_excluded_with_integrity_receipt(tmp_pa
     assert pulse["n_metrics"] == 0
     assert pulse["revisions"] == []
     receipt = next(
-        row for row in pulse["input_integrity"]
+        row
+        for row in pulse["input_integrity"]
         if row["check_id"] == "ledger-series-routing"
     )
     assert receipt["status"] == "warning"
     assert "cn.future.unreviewed_index" in receipt["detail"]
-    assert "No desk, label, or comparability semantics were inferred" in receipt["detail"]
+    assert (
+        "No desk, label, or comparability semantics were inferred" in receipt["detail"]
+    )
 
 
 def test_reviewed_ledger_series_with_wrong_unit_fails_closed(tmp_path):
@@ -496,7 +535,8 @@ def test_validator_rejects_duplicate_metrics_even_when_counts_are_adjusted():
 def test_validator_rejects_mixed_units_within_one_comparability_concept():
     pulse = _build()
     shibor = [
-        metric for metric in _desk(pulse, "money-credit-fx")["metrics"]
+        metric
+        for metric in _desk(pulse, "money-credit-fx")["metrics"]
         if metric["comparability"]["concept_id"] == "money-market-rate-percent"
     ]
     assert len(shibor) > 1
@@ -514,8 +554,7 @@ def test_validator_rejects_person_level_fields_anywhere():
 
 def test_duplicate_input_keys_and_nonfinite_constants_fail_closed(tmp_path):
     (tmp_path / "stock-connect-latest.json").write_text(
-        '{"generated_at":"2026-01-01T00:00:00Z",'
-        '"generated_at":"2026-01-02T00:00:00Z"}',
+        '{"generated_at":"2026-01-01T00:00:00Z","generated_at":"2026-01-02T00:00:00Z"}',
         encoding="utf-8",
     )
     with pytest.raises(EconomicPulseError, match="duplicate JSON key"):
@@ -545,25 +584,28 @@ def test_wrong_southbound_currency_fails_closed(tmp_path):
     (tmp_path / "stock-connect-latest.json").write_text(
         json.dumps(wrong), encoding="utf-8"
     )
-    with pytest.raises(EconomicPulseError, match="southbound flow must be declared in HKD"):
+    with pytest.raises(
+        EconomicPulseError, match="southbound flow must be declared in HKD"
+    ):
         build_economic_pulse(
             readings_dir=tmp_path,
             registry_path=REGISTRY,
             # Keep the malformed fixture visible even as the checked-in daily
             # reading advances. A fixed midnight clock can place a same-day
             # release in the future and accidentally skip the adapter under test.
-            as_of=datetime.fromisoformat(
-                wrong["generated_at"].replace("Z", "+00:00")
-            ),
+            as_of=datetime.fromisoformat(wrong["generated_at"].replace("Z", "+00:00")),
         )
 
 
 def test_cli_writes_atomically_checks_drift_and_uses_public_mode(tmp_path):
     output = tmp_path / "china-economic-pulse-latest.json"
     common = [
-        "--readings-dir", str(ROOT / "readings"),
-        "--registry", str(REGISTRY),
-        "--output", str(output),
+        "--readings-dir",
+        str(ROOT / "readings"),
+        "--registry",
+        str(REGISTRY),
+        "--output",
+        str(output),
     ]
     assert cli.main(common) == 0
     first = output.read_bytes()

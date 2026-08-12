@@ -17,6 +17,7 @@ Offline: the portal path is stubbed out entirely and only the writer runs. The
 clock is stubbed too, because the reading stamps whole seconds and two rounds in
 the same test second would otherwise be indistinguishable.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,7 +55,9 @@ def _collection(rows):
     family_values = {}
     for day, values in rows.items():
         for metric, value in values.items():
-            family_values.setdefault(_family(metric), {}).setdefault(day, {})[metric] = value
+            family_values.setdefault(_family(metric), {}).setdefault(day, {})[
+                metric
+            ] = value
     provenance = {
         family: FamilyCollection(
             values=values,
@@ -107,14 +110,14 @@ def _history(tmp_path):
     path = tmp_path / "china-econ-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def _observations(tmp_path):
     path = tmp_path / "china-econ-observations.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def test_collector_hashes_exact_response_bytes_and_keeps_request_url(monkeypatch):
@@ -135,7 +138,9 @@ def test_collector_hashes_exact_response_bytes_and_keeps_request_url(monkeypatch
         "urlopen",
         lambda request, timeout: Response(),
     )
-    response = china_collector._get("/ags/test?period=2026-08", "https://example.test", retries=0)
+    response = china_collector._get(
+        "/ags/test?period=2026-08", "https://example.test", retries=0
+    )
     assert response is not None
     assert response.raw_sha256 == hashlib.sha256(raw).hexdigest()
     assert response.evidence_url == (
@@ -152,7 +157,8 @@ def test_an_unchanged_round_still_refreshes_the_observation_time(publish):
     second = run({DAY: dict(BENCHMARKS)})
 
     assert second["generated_at"] > first["generated_at"], (
-        "an unchanged answer must still publish this round's observation time")
+        "an unchanged answer must still publish this round's observation time"
+    )
 
 
 def test_an_unchanged_round_appends_no_history(publish):
@@ -179,6 +185,25 @@ def test_asof_is_what_carries_movement(publish):
     assert held["asof"] == first["asof"]
     assert moved["asof"] == "2026-07-18"
     assert len(_history(tmp_path)) == 2
+
+
+def test_latest_family_labels_describe_only_the_asof_snapshot(publish):
+    """An older response in the request window cannot make a missing family
+    look present in the newest dated compatibility snapshot."""
+    run, _ = publish
+    reading = run(
+        {
+            DAY: dict(BENCHMARKS),
+            "2026-07-18": {
+                "shibor_on": 1.41,
+                "usdcny_parity": 7.12,
+            },
+        }
+    )
+
+    assert reading["asof"] == "2026-07-18"
+    assert reading["families_reporting"] == ["central_parity", "shibor"]
+    assert "fdr007" not in reading["benchmarks"]
 
 
 def test_a_revisit_completes_a_partial_day_without_shrinking_it(publish):
@@ -245,7 +270,8 @@ def test_an_abstaining_round_publishes_nothing_at_all(publish):
 
     after = _reading(tmp_path)
     assert after["generated_at"] == first["generated_at"], (
-        "an abstaining round must not restamp the reading as freshly observed")
+        "an abstaining round must not restamp the reading as freshly observed"
+    )
     assert len(_history(tmp_path)) == 1
 
 
@@ -281,9 +307,7 @@ def test_tampered_provenance_is_rejected(publish):
     ledger = tmp_path / "china-econ-observations.jsonl"
     rows = [json.loads(line) for line in ledger.read_text().splitlines()]
     rows[0]["raw_sha256"] = "f" * 64
-    ledger.write_text(
-        "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
-    )
+    ledger.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in rows))
     with pytest.raises(pull.LedgerIntegrityError, match="observation_id"):
         pull.validate_observation_ledger(str(ledger))
 

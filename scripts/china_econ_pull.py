@@ -6,6 +6,7 @@ validate -> publish. The compatibility history keeps one latest row per DATA
 date, while ``china-econ-observations.jsonl`` is the append-only bitemporal
 revision record. Together they outgrow the portal's ~1-month request window.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,8 @@ HIST = os.path.join(READINGS, "china-econ-history.jsonl")
 METHOD_VERSION = 2
 
 
-WINDOW_DAYS = 28   # inside the portal's per-request range limit
+WINDOW_DAYS = 28  # inside the portal's per-request range limit
+
 
 class LedgerIntegrityError(RuntimeError):
     """Raised when append-only observation history is not structurally intact."""
@@ -43,6 +45,11 @@ def _family(metric: str) -> str:
     if metric == "usdcny_parity":
         return "central_parity"
     raise ValueError(f"unknown CFETS metric {metric!r}")
+
+
+def _families(values: Mapping[str, float]) -> list[str]:
+    """Return the benchmark families represented in one dated snapshot."""
+    return sorted({_family(metric) for metric in values})
 
 
 def _observation_path() -> str:
@@ -120,8 +127,11 @@ def _append_vintages(
         seen_ids.add(row.observation_id)
         key = row.vintage_key
         old = latest.get(key)
-        if old is None or (row.released_at, row.collected_at, row.revision) > \
-                (old.released_at, old.collected_at, old.revision):
+        if old is None or (row.released_at, row.collected_at, row.revision) > (
+            old.released_at,
+            old.collected_at,
+            old.revision,
+        ):
             latest[key] = row
 
     pending = []
@@ -162,9 +172,12 @@ def _append_vintages(
             if old is not None and old.value == probe.value:
                 continue
             if old is not None:
-                probe = EconomicObservation.from_dict({
-                    **probe.to_dict(), "revision": old.revision + 1,
-                })
+                probe = EconomicObservation.from_dict(
+                    {
+                        **probe.to_dict(),
+                        "revision": old.revision + 1,
+                    }
+                )
             if probe.observation_id not in seen_ids:
                 pending.append(probe)
                 seen_ids.add(probe.observation_id)
@@ -218,27 +231,32 @@ def main() -> None:
     # Honesty guard: if no benchmark family answered at all (throttled or the
     # portal is down), abstain rather than publish a hollow reading.
     if not fresh:
-        print("chinamoney returned nothing for any benchmark family — "
-              "abstaining, not publishing")
+        print(
+            "chinamoney returned nothing for any benchmark family — "
+            "abstaining, not publishing"
+        )
         return
 
     new_observations = _append_vintages(fresh, now, collected.provenance)
 
     history = _load_history()
     new_dates = []
-    for date in sorted(fresh):
-        row = {"date": date, **fresh[date]}
-        prior = history.get(date)
+    for day_key in sorted(fresh):
+        row = {"date": day_key, **fresh[day_key]}
+        prior = history.get(day_key)
         # A revisit may complete a date a throttled run left partial — merge,
         # never shrink.
         if prior is None or any(prior.get(key) != value for key, value in row.items()):
-            history[date] = {**(prior or {}), **row}
-            new_dates.append(date)
+            history[day_key] = {**(prior or {}), **row}
+            new_dates.append(day_key)
 
     if new_dates:
         with open(HIST, "w", encoding="utf-8") as f:
-            for date in sorted(history):
-                f.write(json.dumps(history[date], ensure_ascii=False, sort_keys=True) + "\n")
+            for day_key in sorted(history):
+                f.write(
+                    json.dumps(history[day_key], ensure_ascii=False, sort_keys=True)
+                    + "\n"
+                )
 
     last_date = max(fresh)
     latest = {
@@ -247,19 +265,7 @@ def main() -> None:
         "source": "CFETS chinamoney English portal (official published benchmarks, keyless)",
         "asof": last_date,
         "benchmarks": fresh[last_date],
-        "families_reporting": sorted({
-            fam for row in fresh.values() for fam in (
-                ("shibor",) if any(k.startswith("shibor") for k in row) else ()
-            )
-        } | {
-            fam for row in fresh.values() for fam in (
-                ("repo_fixing",) if any(k.startswith(("fr0", "fdr")) for k in row) else ()
-            )
-        } | {
-            fam for row in fresh.values() for fam in (
-                ("central_parity",) if "usdcny_parity" in row else ()
-            )
-        }),
+        "families_reporting": _families(fresh[last_date]),
         "history_days": len(history),
         "note": (
             "official state-published numbers; the policy read is FDR007 vs the "
@@ -270,9 +276,11 @@ def main() -> None:
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(latest, f, ensure_ascii=False, indent=1, sort_keys=True)
 
-    print(f"china-econ: asof {last_date}, {len(new_dates)} new/completed/revised dates, "
-          f"{len(history)} days accrued, {new_observations} observation vintages, "
-          f"families {latest['families_reporting']}")
+    print(
+        f"china-econ: asof {last_date}, {len(new_dates)} new/completed/revised dates, "
+        f"{len(history)} days accrued, {new_observations} observation vintages, "
+        f"families {latest['families_reporting']}"
+    )
 
 
 def cli() -> None:
