@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import shutil
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -155,6 +156,36 @@ def test_snapshot_is_consistent_bounded_and_fully_verifiable(tmp_path):
     assert (snapshot / "inbox" / "CC-MAIN-2026-30.jsonl.gz").is_file()
     assert not (snapshot / "parquet").exists()
     assert backup.verify_snapshot(snapshot) == result
+
+
+def test_snapshot_consolidates_wal_without_writing_to_source(tmp_path):
+    warehouse = _warehouse(tmp_path)
+    database = warehouse / backup.DATABASE_NAME
+    connection = sqlite3.connect(database)
+    connection.execute("PRAGMA journal_mode = WAL")
+    connection.execute("PRAGMA wal_autocheckpoint = 0")
+    connection.execute("CREATE TABLE backup_wal_probe (value TEXT NOT NULL)")
+    connection.execute("INSERT INTO backup_wal_probe VALUES ('captured')")
+    connection.commit()
+    assert database.with_name(f"{database.name}-wal").stat().st_size > 0
+    names_before = sorted(path.name for path in warehouse.iterdir())
+
+    warehouse.chmod(0o500)
+    try:
+        snapshot, _ = _create(tmp_path, warehouse)
+        warehouse.chmod(0o700)
+        assert sorted(path.name for path in warehouse.iterdir()) == names_before
+    finally:
+        warehouse.chmod(0o700)
+        connection.close()
+
+    restored = sqlite3.connect(snapshot / backup.DATABASE_NAME)
+    try:
+        assert restored.execute("SELECT value FROM backup_wal_probe").fetchone() == (
+            "captured",
+        )
+    finally:
+        restored.close()
 
 
 def test_verifier_detects_payload_tampering(tmp_path):

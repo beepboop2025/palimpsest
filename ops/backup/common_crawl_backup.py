@@ -250,15 +250,56 @@ def _copy_tree(
 
 
 def _database_backup(source_path: Path, destination_path: Path) -> dict[str, int]:
-    source_uri = source_path.resolve(strict=True).as_uri() + "?mode=ro"
-    source = sqlite3.connect(source_uri, uri=True, timeout=30)
-    destination = sqlite3.connect(destination_path)
+    staged_source = destination_path.with_name(f".{destination_path.name}.source")
+    source_wal = source_path.with_name(f"{source_path.name}-wal")
+    staged_wal = staged_source.with_name(f"{staged_source.name}-wal")
+    staged_shm = staged_source.with_name(f"{staged_source.name}-shm")
+
+    def copy_component(source: Path, target: Path) -> None:
+        before = source.lstat()
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or stat.S_ISLNK(before.st_mode)
+            or before.st_nlink != 1
+        ):
+            raise BackupError(f"SQLite source component is unsafe: {source}")
+        shutil.copyfile(source, target, follow_symlinks=False)
+        target.chmod(0o600)
+        after = source.stat(follow_symlinks=False)
+        identity_before = (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        )
+        identity_after = (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        )
+        if target.stat().st_size != before.st_size or identity_before != identity_after:
+            raise BackupError(f"SQLite source changed while being copied: {source}")
+
+    source: sqlite3.Connection | None = None
+    destination: sqlite3.Connection | None = None
     try:
+        copy_component(source_path, staged_source)
+        if source_wal.exists():
+            copy_component(source_wal, staged_wal)
+        source = sqlite3.connect(staged_source, timeout=30)
+        destination = sqlite3.connect(destination_path)
         source.backup(destination)
         destination.commit()
     finally:
-        destination.close()
-        source.close()
+        if destination is not None:
+            destination.close()
+        if source is not None:
+            source.close()
+        for temporary in (staged_shm, staged_wal, staged_source):
+            temporary.unlink(missing_ok=True)
     destination_path.chmod(0o600)
     connection = sqlite3.connect(
         destination_path.resolve(strict=True).as_uri() + "?mode=ro", uri=True
