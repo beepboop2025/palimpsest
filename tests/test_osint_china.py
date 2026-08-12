@@ -94,10 +94,12 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert {spec.filename for spec in mod.SIGNALS} >= {"latest.json", "anchors-latest.json"}
     assert mod.EXCLUDED_LATEST_FILES == {
         "china-economic-pulse-latest.json",
-        "corroboration-latest.json",
-        "editorial-readiness-latest.json",
-        "eval-registry-latest.json",
-        "investigations-latest.json",
+            "corroboration-latest.json",
+            "editorial-readiness-latest.json",
+            "evidence-mesh-latest.json",
+            "eval-registry-latest.json",
+            "investigations-latest.json",
+            "machine-investigations-latest.json",
         "network-rounds-latest.json",
         "newswire-latest.json",
         "newsroom-latest.json",
@@ -494,6 +496,12 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     network_rounds = text.index("python -m scripts.build_network_rounds")
     corroboration = text.index("python -m scripts.build_corroboration")
     editorial = text.index("python -m scripts.build_editorial_readiness")
+    partner_pin = text.index("python -m scripts.sync_narcoscope --check")
+    remote_partner_pin = text.index(
+        "python -m scripts.sync_narcoscope --remote-check"
+    )
+    mesh = text.index("python -m core.evidence_mesh")
+    machine = text.index("python -m core.machine_investigations")
     newsroom = text.index("python -m scripts.build_newsroom")
     catalog = text.index("python -m scripts.build_data_catalog")
     tests = text.index("tests/test_osint_china.py")
@@ -506,6 +514,10 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
         < network_rounds
         < corroboration
         < editorial
+        < partner_pin
+        < remote_partner_pin
+        < mesh
+        < machine
         < newsroom
         < catalog
         < tests
@@ -518,14 +530,25 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
 
 def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
     text = WORKFLOW.read_text(encoding="utf-8")
-    assert text.count("python -m scripts.build_newsroom") == 3
+    assert text.count("python -m scripts.build_newsroom") == 6
     assert text.count("python -m scripts.build_investigations") == 3
     assert text.count("python -m scripts.build_economic_pulse") == 3
+    assert text.count("python -m scripts.sync_narcoscope --check") == 3
+    assert text.count("python -m scripts.sync_narcoscope --remote-check") == 3
+    assert text.count("python -m core.evidence_mesh") == 6
+    assert text.count("python -m core.machine_investigations") == 6
+    assert text.count("python -m scripts.build_newsroom --check") == 3
     assert text.count("tests/test_investigations.py") == 3
     assert text.count("tests/test_investigations_renderer.py") == 3
+    assert text.count("tests/test_narcoscope_bridge.py") == 3
+    assert text.count("tests/test_evidence_mesh.py") == 3
+    assert text.count("tests/test_machine_investigations.py") == 3
+    assert text.count("tests/test_machine_investigations_renderer.py") == 3
     assert text.count("tests/test_structured_newsroom.py") == 3
     assert text.count("readings/newsroom-latest.json") == 3
     assert text.count("readings/investigations-latest.json") == 3
+    assert text.count("readings/evidence-mesh-latest.json") == 3
+    assert text.count("readings/machine-investigations-latest.json") == 3
     assert text.count("readings/china-economic-pulse-latest.json") == 3
     assert sum(line.strip().rstrip("\\").strip() == "news/"
                for line in text.splitlines()) == 3
@@ -536,7 +559,14 @@ def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
         r"\s*python -m scripts\.build_network_rounds\n"
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
+        r"\s*python -m scripts\.sync_narcoscope --check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m core\.evidence_mesh\n"
+        r"\s*python -m core\.evidence_mesh --check\n"
+        r"\s*python -m core\.machine_investigations\n"
+        r"\s*python -m core\.machine_investigations --check\n"
         r"\s*python -m scripts\.build_newsroom\n"
+        r"\s*python -m scripts\.build_newsroom --check\n"
         r"\s*python -m scripts\.build_data_catalog",
         text,
     )

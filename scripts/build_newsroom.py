@@ -14,19 +14,27 @@ last known-good edition.
 from __future__ import annotations
 
 import argparse
+import copy
 import email.utils
 import hashlib
 import html
+import ipaddress
 import json
 import os
+import re
+import stat
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
+from xml.sax.saxutils import quoteattr as xml_quoteattr
 
 from core import economic_pulse as economic_pulse_model
+from core import evidence_mesh as evidence_mesh_model
 from core import investigations as investigations_model
+from core import machine_investigations as machine_investigations_model
 from core import newsroom
 from core import newswire as newswire_model
 from scripts import site_nav
@@ -38,6 +46,11 @@ READING = ROOT / "readings" / "newsroom-latest.json"
 NEWSWIRE_READING = ROOT / "readings" / "newswire-latest.json"
 ECONOMIC_READING = ROOT / "readings" / "china-economic-pulse-latest.json"
 INVESTIGATIONS_READING = ROOT / "readings" / "investigations-latest.json"
+MACHINE_INVESTIGATIONS_READING = (
+    ROOT / "readings" / "machine-investigations-latest.json"
+)
+EVIDENCE_MESH_READING = ROOT / "readings" / "evidence-mesh-latest.json"
+PUBLIC_DATA_CATALOG = ROOT / "config" / "public_data_catalog.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
 DESCRIPTION = (
@@ -67,6 +80,44 @@ EVIDENCE_LABELS = {
 
 HOME_EVENTS_PER_DESK = 5
 WIRE_PAGE_SIZE = 60
+
+_GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
+_ANALYSIS_ROOT = Path("news/analysis")
+_MACHINE_REVISION_FILENAME = re.compile(r"machinev-[0-9a-f]{24}\.json")
+_MACHINE_EVIDENCE_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.json")
+_ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+_MACHINE_EVIDENCE_CAPSULE_SCHEMA = "palimpsest-machine-evidence-capsule.v1"
+_MACHINE_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
+_MACHINE_PHONE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]*){9,}(?!\d)")
+_MACHINE_IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+_MACHINE_IPV6_TOKEN = re.compile(r"(?<![0-9A-Fa-f:])[0-9A-Fa-f:]{2,}(?![0-9A-Fa-f:])")
+_MACHINE_SOURCE_DOMAIN = re.compile(
+    r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?![A-Za-z0-9.-])"
+)
+_MACHINE_CAPSULE_FIELDS = {
+    "schema_version", "capsule_type", "content_address", "original_input",
+    "citations", "privacy",
+}
+_MACHINE_CAPSULE_CITATION_FIELDS = {
+    "evidence_id", "title", "role", "source_class", "source_id", "selector",
+    "source_timestamp", "independence_group", "upstream_groups", "value",
+    "denominator", "interpretation_limit", "freshness", "rights",
+    "attribution",
+}
+_MACHINE_PROVIDER_LINKS = {
+    "OONI": {
+        "source_url": "https://api.ooni.org/",
+        "terms_url": "https://github.com/ooni/license/blob/master/data/LICENSE.md",
+    },
+    "Globalping": {
+        "source_url": "https://api.globalping.io/",
+        "terms_url": "https://globalping.io/terms",
+    },
+    "Team Cymru": {
+        "source_url": "https://www.team-cymru.com/ip-asn-mapping",
+        "terms_url": "https://www.team-cymru.com/terms",
+    },
+}
 
 _SOURCE_LANGUAGES = {
     "bbc-chinese": "zh-Hant",
@@ -158,6 +209,590 @@ def _pretty_json(value: object) -> bytes:
     return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
 
 
+def _machine_exact_mapping(
+    value: object, fields: set[str], label: str
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise newsroom.NewsroomError(f"{label} has an invalid closed shape")
+    return value
+
+
+def _machine_safe_public_string(value: object, label: str) -> str:
+    """Return public capsule text, rejecting contact and network identifiers.
+
+    Evidence capsules are deliberately narrower than the validated machine-case
+    schema.  A cited aggregate may be public while adjacent raw answer records
+    contain IP addresses or contact-like values, so capsule text gets a final
+    fail-closed privacy check before publication.
+    """
+
+    if not isinstance(value, str) or not value:
+        raise newsroom.NewsroomError(f"{label} must be non-empty public text")
+    for match in _MACHINE_IPV4.finditer(value):
+        try:
+            ipaddress.ip_address(match.group(0))
+        except ValueError:
+            continue
+        raise newsroom.NewsroomError(f"{label} contains an IP address")
+    for match in _MACHINE_IPV6_TOKEN.finditer(value):
+        candidate = match.group(0)
+        if candidate.count(":") < 2:
+            continue
+        try:
+            ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        raise newsroom.NewsroomError(f"{label} contains an IP address")
+    if _MACHINE_EMAIL.search(value) or _MACHINE_PHONE.search(value):
+        raise newsroom.NewsroomError(f"{label} contains contact-like data")
+    return value
+
+
+def _machine_https_url(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise newsroom.NewsroomError(f"{label} is not an HTTPS URL")
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise newsroom.NewsroomError(f"{label} is not a safe HTTPS URL")
+    try:
+        ipaddress.ip_address(parsed.hostname)
+    except ValueError:
+        pass
+    else:
+        raise newsroom.NewsroomError(f"{label} uses an IP-address host")
+    return value
+
+
+def _machine_external_source_urls(source_statement: str | None) -> list[str]:
+    """Extract only provider hostnames explicitly named by the raw receipt."""
+
+    if not source_statement:
+        return []
+    urls: list[str] = []
+    for match in _MACHINE_SOURCE_DOMAIN.finditer(source_statement):
+        host = match.group(0).lower()
+        if host == "palimpsest.info":
+            continue
+        url = f"https://{host}/"
+        if url not in urls:
+            urls.append(url)
+    return urls
+
+
+def _load_machine_evidence_context() -> dict[str, Any]:
+    """Load rights and attribution metadata bound by the validated mesh."""
+
+    try:
+        mesh_raw = EVIDENCE_MESH_READING.read_bytes()
+        catalog_raw = PUBLIC_DATA_CATALOG.read_bytes()
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            "cannot load machine-evidence rights metadata"
+        ) from exc
+    mesh = newswire_model.strict_json_loads(mesh_raw, label=str(EVIDENCE_MESH_READING))
+    catalog_value = newswire_model.strict_json_loads(
+        catalog_raw, label=str(PUBLIC_DATA_CATALOG)
+    )
+    try:
+        evidence_mesh_model.validate_evidence_mesh(mesh)
+        catalog = evidence_mesh_model._validate_catalog(catalog_value)
+    except Exception as exc:
+        raise newsroom.NewsroomError(
+            f"invalid machine-evidence rights metadata: {exc}"
+        ) from exc
+
+    catalog_receipts = [
+        receipt
+        for receipt in mesh["inputs"]
+        if receipt["input_id"] == "palimpsest-catalog"
+    ]
+    if len(catalog_receipts) != 1:
+        raise newsroom.NewsroomError(
+            "evidence mesh does not contain one public-catalog receipt"
+        )
+    catalog_receipt = catalog_receipts[0]
+    if (
+        catalog_receipt["sha256"] != hashlib.sha256(catalog_raw).hexdigest()
+        or catalog_receipt["bytes"] != len(catalog_raw)
+        or catalog_receipt["locator"] != "config/public_data_catalog.json"
+    ):
+        raise newsroom.NewsroomError(
+            "evidence mesh is not bound to the current public catalog"
+        )
+
+    resources: dict[str, Mapping[str, Any]] = {}
+    for resource in mesh["resources"]:
+        source_id = resource["source_id"]
+        current = resources.get(source_id)
+        if current is None or (
+            current["namespace"] != "osint" and resource["namespace"] == "osint"
+        ):
+            resources[source_id] = resource
+    datasets = {dataset["id"]: dataset for dataset in catalog["datasets"]}
+    return {"resources": resources, "datasets": datasets}
+
+
+def _machine_attribution_metadata(
+    evidence: Mapping[str, Any],
+    raw_document: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    source_id = str(evidence["source_id"])
+    resource = context["resources"].get(source_id)
+    dataset = context["datasets"].get(source_id)
+    if not isinstance(resource, Mapping) or not isinstance(dataset, Mapping):
+        raise newsroom.NewsroomError(
+            f"machine evidence lacks mesh/catalog metadata: {source_id}"
+        )
+    if resource["source_id"] != source_id or dataset["id"] != source_id:
+        raise newsroom.NewsroomError(
+            f"machine evidence attribution mismatch: {source_id}"
+        )
+
+    source_value = raw_document.get("source")
+    source_statement = (
+        _machine_safe_public_string(source_value, f"{source_id}.source")
+        if isinstance(source_value, str) and source_value
+        else None
+    )
+    source_urls = _machine_external_source_urls(source_statement)
+    providers = []
+    for provider in dataset["sources"]:
+        name = _machine_safe_public_string(provider, f"{source_id}.provider")
+        registered = _MACHINE_PROVIDER_LINKS.get(name, {})
+        matched_url = next(
+            (
+                url
+                for url in source_urls
+                if name.lower().replace(" ", "")
+                in (urlsplit(url).hostname or "").replace("-", "")
+            ),
+            None,
+        )
+        source_url = matched_url or registered.get("source_url")
+        terms_url = registered.get("terms_url")
+        providers.append({
+            "name": name,
+            "source_url": (
+                _machine_https_url(source_url, f"{source_id}.{name}.source_url")
+                if source_url else None
+            ),
+            "terms_url": (
+                _machine_https_url(terms_url, f"{source_id}.{name}.terms_url")
+                if terms_url else None
+            ),
+        })
+
+    license_value = dataset["license"]
+    license_metadata = {
+        "name": _machine_safe_public_string(
+            license_value["name"], f"{source_id}.license.name"
+        ),
+        "url": _machine_https_url(
+            license_value["url"], f"{source_id}.license.url"
+        ),
+    }
+    rights = _machine_exact_mapping(
+        resource["rights"], {"redistribution", "reuse", "training"},
+        f"{source_id}.rights",
+    )
+    upstream_groups = [
+        _machine_safe_public_string(group, f"{source_id}.upstream_group")
+        for group in resource["upstream_groups"]
+    ]
+    return {
+        "rights": {
+            "redistribution": _machine_safe_public_string(
+                rights["redistribution"], f"{source_id}.redistribution"
+            ),
+            "reuse": _machine_safe_public_string(
+                rights["reuse"], f"{source_id}.reuse"
+            ),
+            "training": _machine_safe_public_string(
+                rights["training"], f"{source_id}.training"
+            ),
+        },
+        "attribution": {
+            "attribution_required": rights["redistribution"]
+            == "ATTRIBUTION_REQUIRED",
+            "providers": providers,
+            "upstream_groups": upstream_groups,
+            "public_source_url": _machine_https_url(
+                resource["public_url"], f"{source_id}.public_source_url"
+            ),
+            "upstream_source_urls": source_urls,
+            "source_statement": source_statement,
+            "license": license_metadata,
+        },
+    }
+
+
+def _machine_read_cited_input(evidence: Mapping[str, Any]) -> tuple[bytes, Mapping[str, Any]]:
+    artifact_id = evidence.get("artifact_id")
+    if (
+        not isinstance(artifact_id, str)
+        or Path(artifact_id).name != artifact_id
+        or not artifact_id.endswith(".json")
+    ):
+        raise newsroom.NewsroomError(
+            f"unsafe machine evidence artifact_id: {artifact_id!r}"
+        )
+    source_path = ROOT / "readings" / artifact_id
+    try:
+        raw = source_path.read_bytes()
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            f"cannot read cited machine evidence: {source_path}"
+        ) from exc
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != evidence.get("artifact_sha256"):
+        raise newsroom.NewsroomError(
+            f"machine evidence bytes do not match receipt: {artifact_id}"
+        )
+    document = newswire_model.strict_json_loads(raw, label=str(source_path))
+    if not isinstance(document, Mapping):
+        raise newsroom.NewsroomError(
+            f"machine evidence input is not a JSON object: {artifact_id}"
+        )
+    return raw, document
+
+
+def _machine_capsule_citation(
+    evidence: Mapping[str, Any],
+    raw_document: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    metadata = _machine_attribution_metadata(evidence, raw_document, context)
+    value = evidence["value"]
+    if isinstance(value, str):
+        value = _machine_safe_public_string(value, f"{evidence['evidence_id']}.value")
+    elif type(value) not in {int, float}:
+        raise newsroom.NewsroomError(
+            f"{evidence['evidence_id']}.value is not an aggregate scalar"
+        )
+    denominator = evidence["denominator"]
+    typed_denominator = None
+    if denominator is not None:
+        typed_denominator = {
+            "type": "aggregate-count",
+            "label": _machine_safe_public_string(
+                denominator["label"], f"{evidence['evidence_id']}.denominator.label"
+            ),
+            "value": denominator["value"],
+        }
+    return {
+        "evidence_id": _machine_safe_public_string(
+            evidence["evidence_id"], "evidence_id"
+        ),
+        "title": _machine_safe_public_string(
+            evidence["title"], f"{evidence['evidence_id']}.title"
+        ),
+        "role": _machine_safe_public_string(
+            evidence["role"], f"{evidence['evidence_id']}.role"
+        ),
+        "source_class": _machine_safe_public_string(
+            evidence["source_class"], f"{evidence['evidence_id']}.source_class"
+        ),
+        "source_id": _machine_safe_public_string(
+            evidence["source_id"], f"{evidence['evidence_id']}.source_id"
+        ),
+        "selector": _machine_safe_public_string(
+            evidence["selector"], f"{evidence['evidence_id']}.selector"
+        ),
+        "source_timestamp": _machine_safe_public_string(
+            evidence["source_timestamp"], f"{evidence['evidence_id']}.source_timestamp"
+        ),
+        "independence_group": _machine_safe_public_string(
+            evidence["independence_group"],
+            f"{evidence['evidence_id']}.independence_group",
+        ),
+        "upstream_groups": [
+            _machine_safe_public_string(
+                group, f"{evidence['evidence_id']}.upstream_group"
+            )
+            for group in evidence["upstream_groups"]
+        ],
+        "value": {
+            "type": _machine_safe_public_string(
+                evidence["value_type"], f"{evidence['evidence_id']}.value.type"
+            ),
+            "value": value,
+        },
+        "denominator": typed_denominator,
+        "interpretation_limit": _machine_safe_public_string(
+            evidence["interpretation_limit"],
+            f"{evidence['evidence_id']}.interpretation_limit",
+        ),
+        "freshness": _machine_safe_public_string(
+            evidence["freshness"], f"{evidence['evidence_id']}.freshness"
+        ),
+        **metadata,
+    }
+
+
+def _machine_evidence_capsule(
+    evidence_rows: Sequence[Mapping[str, Any]],
+    *,
+    raw: bytes,
+    raw_document: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not evidence_rows:
+        raise newsroom.NewsroomError("cannot publish an empty evidence capsule")
+    digest = hashlib.sha256(raw).hexdigest()
+    if any(row.get("artifact_sha256") != digest for row in evidence_rows):
+        raise newsroom.NewsroomError(
+            "machine evidence capsule mixes different original inputs"
+        )
+    artifact_ids = {row.get("artifact_id") for row in evidence_rows}
+    artifact_times = {row.get("artifact_generated_at") for row in evidence_rows}
+    integrities = {row.get("integrity") for row in evidence_rows}
+    if len(artifact_ids) != 1 or len(artifact_times) != 1 or len(integrities) != 1:
+        raise newsroom.NewsroomError(
+            "machine evidence capsule has inconsistent input receipts"
+        )
+    capsule = {
+        "schema_version": _MACHINE_EVIDENCE_CAPSULE_SCHEMA,
+        "capsule_type": "redacted-aggregate-evidence",
+        "content_address": {
+            "algorithm": "sha256",
+            "scope": "original-input-bytes",
+            "sha256": digest,
+        },
+        "original_input": {
+            "artifact_id": next(iter(artifact_ids)),
+            "generated_at": next(iter(artifact_times)),
+            "sha256": digest,
+            "integrity": next(iter(integrities)),
+        },
+        "citations": [
+            _machine_capsule_citation(row, raw_document, context)
+            for row in evidence_rows
+        ],
+        "privacy": {
+            "aggregate_only": True,
+            "raw_input_included": False,
+            "person_level_data_included": False,
+            "contact_data_included": False,
+            "ip_addresses_included": False,
+        },
+    }
+    _validate_machine_evidence_capsule(capsule, expected_digest=digest)
+    return capsule
+
+
+def _validate_machine_evidence_capsule(
+    value: object, *, expected_digest: str
+) -> Mapping[str, Any]:
+    capsule = _machine_exact_mapping(
+        value, _MACHINE_CAPSULE_FIELDS, "machine evidence capsule"
+    )
+    if (
+        capsule["schema_version"] != _MACHINE_EVIDENCE_CAPSULE_SCHEMA
+        or capsule["capsule_type"] != "redacted-aggregate-evidence"
+    ):
+        raise newsroom.NewsroomError("unknown machine evidence capsule schema")
+    address = _machine_exact_mapping(
+        capsule["content_address"], {"algorithm", "scope", "sha256"},
+        "machine evidence content address",
+    )
+    if address != {
+        "algorithm": "sha256",
+        "scope": "original-input-bytes",
+        "sha256": expected_digest,
+    }:
+        raise newsroom.NewsroomError(
+            "machine evidence capsule is not bound to its original input"
+        )
+    original = _machine_exact_mapping(
+        capsule["original_input"],
+        {"artifact_id", "generated_at", "sha256", "integrity"},
+        "machine evidence original input",
+    )
+    if original["sha256"] != expected_digest:
+        raise newsroom.NewsroomError(
+            "machine evidence original-input hash does not match its address"
+        )
+    artifact_id = original["artifact_id"]
+    if (
+        not isinstance(artifact_id, str)
+        or Path(artifact_id).name != artifact_id
+        or not artifact_id.endswith(".json")
+    ):
+        raise newsroom.NewsroomError("machine evidence capsule artifact ID is unsafe")
+    _machine_safe_public_string(original["generated_at"], "capsule.generated_at")
+    _machine_safe_public_string(original["integrity"], "capsule.integrity")
+
+    privacy = _machine_exact_mapping(
+        capsule["privacy"],
+        {
+            "aggregate_only", "raw_input_included", "person_level_data_included",
+            "contact_data_included", "ip_addresses_included",
+        },
+        "machine evidence privacy receipt",
+    )
+    if privacy != {
+        "aggregate_only": True,
+        "raw_input_included": False,
+        "person_level_data_included": False,
+        "contact_data_included": False,
+        "ip_addresses_included": False,
+    }:
+        raise newsroom.NewsroomError(
+            "machine evidence capsule violates the public privacy boundary"
+        )
+
+    citations = capsule["citations"]
+    if not isinstance(citations, list) or not citations or len(citations) > 32:
+        raise newsroom.NewsroomError(
+            "machine evidence capsule citations must be non-empty and bounded"
+        )
+    seen: set[str] = set()
+    for position, citation_value in enumerate(citations):
+        citation = _machine_exact_mapping(
+            citation_value, _MACHINE_CAPSULE_CITATION_FIELDS,
+            f"machine evidence citation {position}",
+        )
+        evidence_id = _machine_safe_public_string(
+            citation["evidence_id"], f"capsule.citations[{position}].evidence_id"
+        )
+        if evidence_id in seen:
+            raise newsroom.NewsroomError("machine evidence capsule repeats a citation")
+        seen.add(evidence_id)
+        for field in (
+            "title", "role", "source_class", "source_id", "selector",
+            "source_timestamp", "independence_group", "interpretation_limit",
+            "freshness",
+        ):
+            _machine_safe_public_string(
+                citation[field], f"capsule.citations[{position}].{field}"
+            )
+        for field in ("upstream_groups",):
+            if not isinstance(citation[field], list):
+                raise newsroom.NewsroomError(
+                    f"capsule.citations[{position}].{field} is not an array"
+                )
+            for item in citation[field]:
+                _machine_safe_public_string(
+                    item, f"capsule.citations[{position}].{field}[]"
+                )
+        typed_value = _machine_exact_mapping(
+            citation["value"], {"type", "value"},
+            f"capsule.citations[{position}].value",
+        )
+        _machine_safe_public_string(
+            typed_value["type"], f"capsule.citations[{position}].value.type"
+        )
+        if isinstance(typed_value["value"], str):
+            _machine_safe_public_string(
+                typed_value["value"], f"capsule.citations[{position}].value.value"
+            )
+        elif type(typed_value["value"]) not in {int, float}:
+            raise newsroom.NewsroomError("capsule value is not an aggregate scalar")
+        denominator = citation["denominator"]
+        if denominator is not None:
+            denominator = _machine_exact_mapping(
+                denominator, {"type", "label", "value"},
+                f"capsule.citations[{position}].denominator",
+            )
+            if denominator["type"] != "aggregate-count" or type(
+                denominator["value"]
+            ) not in {int, float}:
+                raise newsroom.NewsroomError("capsule denominator is not typed")
+            _machine_safe_public_string(
+                denominator["label"],
+                f"capsule.citations[{position}].denominator.label",
+            )
+        rights = _machine_exact_mapping(
+            citation["rights"], {"redistribution", "reuse", "training"},
+            f"capsule.citations[{position}].rights",
+        )
+        for field in rights:
+            _machine_safe_public_string(
+                rights[field], f"capsule.citations[{position}].rights.{field}"
+            )
+        attribution = _machine_exact_mapping(
+            citation["attribution"],
+            {
+                "attribution_required", "providers", "upstream_groups",
+                "public_source_url", "upstream_source_urls", "source_statement",
+                "license",
+            },
+            f"capsule.citations[{position}].attribution",
+        )
+        if type(attribution["attribution_required"]) is not bool:
+            raise newsroom.NewsroomError("capsule attribution flag is not boolean")
+        _machine_https_url(
+            attribution["public_source_url"],
+            f"capsule.citations[{position}].attribution.public_source_url",
+        )
+        for url in attribution["upstream_source_urls"]:
+            _machine_https_url(
+                url, f"capsule.citations[{position}].attribution.source_url"
+            )
+        if attribution["source_statement"] is not None:
+            _machine_safe_public_string(
+                attribution["source_statement"],
+                f"capsule.citations[{position}].attribution.source_statement",
+            )
+        for group in attribution["upstream_groups"]:
+            _machine_safe_public_string(
+                group,
+                f"capsule.citations[{position}].attribution.upstream_group",
+            )
+        for provider_value in attribution["providers"]:
+            provider = _machine_exact_mapping(
+                provider_value, {"name", "source_url", "terms_url"},
+                f"capsule.citations[{position}].attribution.provider",
+            )
+            _machine_safe_public_string(
+                provider["name"],
+                f"capsule.citations[{position}].attribution.provider.name",
+            )
+            if provider["source_url"] is not None:
+                _machine_https_url(
+                    provider["source_url"],
+                    f"capsule.citations[{position}].attribution.provider.source_url",
+                )
+            if provider["terms_url"] is not None:
+                _machine_https_url(
+                    provider["terms_url"],
+                    f"capsule.citations[{position}].attribution.provider.terms_url",
+                )
+        license_value = _machine_exact_mapping(
+            attribution["license"], {"name", "url"},
+            f"capsule.citations[{position}].attribution.license",
+        )
+        _machine_safe_public_string(
+            license_value["name"],
+            f"capsule.citations[{position}].attribution.license.name",
+        )
+        _machine_https_url(
+            license_value["url"],
+            f"capsule.citations[{position}].attribution.license.url",
+        )
+    return capsule
+
+
+def _machine_evidence_capsule_bytes(
+    raw: bytes, *, expected_digest: str
+) -> Mapping[str, Any] | None:
+    if len(raw) > 512 * 1024:
+        return None
+    try:
+        value = newswire_model.strict_json_loads(raw, label="machine evidence capsule")
+        return _validate_machine_evidence_capsule(
+            value, expected_digest=expected_digest
+        )
+    except (ValueError, TypeError, KeyError, newsroom.NewsroomError):
+        return None
+
+
 def _load_extension_documents(
     *,
     newswire_path: Path = NEWSWIRE_READING,
@@ -195,6 +830,21 @@ def _load_extension_documents(
             readings_dir=ROOT / "readings",
         )
     return wire, pulse, investigations
+
+
+def _load_machine_investigations(
+    path: Path = MACHINE_INVESTIGATIONS_READING,
+) -> dict[str, Any] | None:
+    """Load the optional machine-analysis desk and fail closed once present."""
+
+    if not path.exists():
+        return None
+    document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+    machine_investigations_model.validate_machine_investigations(
+        document,
+        readings_dir=ROOT / "readings",
+    )
+    return document
 
 
 def _revision_id(value: Mapping[str, Any], prefix: str = "revision") -> str:
@@ -883,6 +1533,32 @@ def _investigations_feature(
 </section>"""
 
 
+def _machine_analysis_feature(
+    analyses: Mapping[str, Any] | None,
+) -> str:
+    """Render the newsroom's machine-analysis lane without blurring authorship."""
+
+    if analyses is None:
+        return ""
+    cases = analyses["cases"]
+    published = [case for case in cases if case["report_type"] == "AnalysisReport"]
+    abstained = [case for case in cases if case["report_type"] == "AbstentionReport"]
+    featured = next(iter(published), cases[0] if cases else None)
+    feature = ""
+    if featured is not None:
+        feature = f"""<p class="nw-case-status" data-publication-state="{_h(featured['status'])}">Deterministic machine analysis · {_h(featured['report_type'])}</p>
+    <h3 lang="{_h(_text_language(featured['title']))}">{_h(featured['title'])}</h3>
+    <p>{_h(featured['dek'])}</p>"""
+    return f"""<section class="nw-analysis-feature" id="machine-analysis" aria-labelledby="machine-analysis-title" data-file-code="MACHINE / {analyses['n_cases']:03d}">
+  <div class="nw-analysis-feature__rail"><p class="nw-section__label">Analysis desk</p><strong>{analyses['n_cases']}</strong><span>{len(published)} analyses · {len(abstained)} abstentions</span></div>
+  <div><h2 id="machine-analysis-title">The machine can analyse. It cannot interview.</h2>
+    <p><strong>Deterministic machine analysis · no human interview.</strong> Every sentence is bound to named evidence receipts. Source-lineage de-duplication, countercases, limits, falsifiers and evaluation gates stay visible; a failed gate publishes an abstention, not synthetic certainty.</p>
+    {feature}
+    <div class="nw-actions"><a class="nw-actions__primary" href="/news/analysis/">Open the machine-analysis desk</a><a href="/readings/machine-investigations-latest.json">Structured reports</a><a href="/docs/MACHINE-INVESTIGATIONS.md">Deterministic method</a></div>
+  </div>
+</section>"""
+
+
 def _accountability_tape(wire: Mapping[str, Any]) -> str:
     coverage = wire["coverage"]
     counts = coverage["counts"]
@@ -917,6 +1593,7 @@ def render_evidence_index(
     wire: Mapping[str, Any],
     pulse: Mapping[str, Any] | None,
     investigations: Mapping[str, Any] | None = None,
+    machine_analyses: Mapping[str, Any] | None = None,
 ) -> str:
     events = wire["events"]
     if not events:
@@ -933,13 +1610,21 @@ def render_evidence_index(
         f" · {investigations['n_cases']} investigation case files"
         if investigations is not None else ""
     )
+    analysis_nav = (
+        '<li><a href="#machine-analysis">Machine analysis</a></li>'
+        if machine_analyses is not None else ""
+    )
+    analysis_count = (
+        f" · {machine_analyses['n_cases']} machine reports"
+        if machine_analyses is not None else ""
+    )
     body = f"""<body class="ps newsroom-page newsroom-page--evidence-wire">
 {site_nav.render('/news/')}
 <main id="main" class="nw-shell">
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Wire</span></p>
-      <p class="nw-edition"><strong>Evidence edition</strong>{_h(_human_time(wire['generated_at']))}<br>{wire['n_events']} event dossiers · {feed['n_stories']} instruments{investigations_count}</p>
+      <p class="nw-edition"><strong>Evidence edition</strong>{_h(_human_time(wire['generated_at']))}<br>{wire['n_events']} event dossiers · {feed['n_stories']} instruments{investigations_count}{analysis_count}</p>
     </div>
     <p class="nw-masthead__dek">China intelligence that keeps reported facts, measured facts, corroboration, revisions and unknowns structurally separate.</p>
   </header>
@@ -950,16 +1635,17 @@ def render_evidence_index(
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
     <span><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> live instruments</span>
   </div>
-  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
+  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
   {_event_lead(lead, wire)}
   {_economic_panel(pulse)}
+  {_machine_analysis_feature(machine_analyses)}
   {_investigations_feature(investigations)}
   {event_blocks}
   <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Measurement layer</p><h2>Current Palimpsest instruments</h2><p>These are mutable latest-state briefs. Event dossiers above preserve the news and revision timeline.</p></div>
   {_instrument_sections(feed)}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -1261,6 +1947,656 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
         published_at=case["published_at"] if is_published else None,
         modified_at=case["updated_at"],
         json_ld=_investigation_case_json_ld(case),
+    ) + "\n" + body
+
+
+def _machine_case_public_url(case: Mapping[str, Any]) -> str:
+    path = str(case["url"])
+    if path.startswith(f"{SITE}/news/analysis/"):
+        return path
+    if not path.startswith("/news/analysis/") or path.startswith("//"):
+        raise newsroom.NewsroomError(f"invalid machine-analysis URL: {path!r}")
+    return SITE + path
+
+
+def _machine_is_article(case: Mapping[str, Any]) -> bool:
+    """Only a successful analysis may receive article discovery metadata."""
+
+    return (
+        case["status"] == "published"
+        and case["report_type"] == "AnalysisReport"
+    )
+
+
+def _machine_evidence_id(evidence: Mapping[str, Any]) -> str:
+    for key in (
+        "evidence_id", "citation_id", "resource_id", "receipt_id", "id"
+    ):
+        value = evidence.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return "unlabelled-evidence"
+
+
+def _machine_fragment(prefix: str, value: object) -> str:
+    digest = hashlib.sha256(str(value).encode("utf-8")).hexdigest()[:16]
+    return f"{prefix}-{digest}"
+
+
+def _machine_case_attributions(
+    case: Mapping[str, Any],
+) -> dict[str, Mapping[str, Any]]:
+    context = _load_machine_evidence_context()
+    result: dict[str, Mapping[str, Any]] = {}
+    for evidence in case["evidence"]:
+        _raw, raw_document = _machine_read_cited_input(evidence)
+        evidence_id = _machine_evidence_id(evidence)
+        if evidence_id in result:
+            raise newsroom.NewsroomError(
+                f"duplicate machine evidence attribution: {evidence_id}"
+            )
+        result[evidence_id] = _machine_attribution_metadata(
+            evidence, raw_document, context
+        )
+    return result
+
+
+def _machine_evidence_urls(
+    case: Mapping[str, Any],
+    attributions: Mapping[str, Mapping[str, Any]] | None = None,
+) -> list[str]:
+    urls: list[str] = []
+    for evidence in case["evidence"]:
+        for key in ("source_url", "artifact_url", "public_url", "url"):
+            value = evidence.get(key)
+            if not value:
+                continue
+            href = _investigation_href(value)
+            if href != "#" and href not in urls:
+                urls.append(href)
+        if attributions is not None:
+            attribution = attributions[_machine_evidence_id(evidence)]["attribution"]
+            for value in (
+                attribution["public_source_url"],
+                *attribution["upstream_source_urls"],
+            ):
+                href = _investigation_href(value)
+                if href != "#" and href not in urls:
+                    urls.append(href)
+    return urls
+
+
+def _machine_index_json_ld(analyses: Mapping[str, Any]) -> dict[str, Any]:
+    url = f"{SITE}/news/analysis/"
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            _organization(),
+            {
+                "@type": "CollectionPage",
+                "@id": url,
+                "url": url,
+                "name": "Palimpsest Machine Analysis",
+                "description": analyses["scope"],
+                "dateModified": analyses["generated_at"],
+                "publisher": {"@id": f"{SITE}/#organization"},
+                "mainEntity": {
+                    "@type": "ItemList",
+                    "numberOfItems": analyses["n_cases"],
+                    "itemListElement": [
+                        {
+                            "@type": "ListItem",
+                            "position": position,
+                            "url": _machine_case_public_url(case),
+                            "name": case["title"],
+                        }
+                        for position, case in enumerate(analyses["cases"], 1)
+                    ],
+                },
+            },
+        ],
+    }
+
+
+def _machine_case_json_ld(
+    case: Mapping[str, Any],
+    attributions: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    public_url = _machine_case_public_url(case)
+    common: dict[str, Any] = {
+        "@id": public_url,
+        "url": public_url,
+        "name": case["title"],
+        "description": case["dek"],
+        "dateModified": case["updated_at"],
+        "inLanguage": _text_language(case["title"]),
+        "isAccessibleForFree": True,
+        "publisher": _organization(),
+        "citation": _machine_evidence_urls(case, attributions),
+        "genre": "Deterministic machine analysis",
+        "usageInfo": "No human interview; public aggregate evidence only.",
+    }
+    if _machine_is_article(case):
+        return {
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            **common,
+            "additionalType": f"{SITE}/protocol/machine-investigations-v1.schema.json#AnalysisReport",
+            "headline": case["title"],
+            "datePublished": case["published_at"],
+            "articleSection": "Machine analysis",
+            "mainEntityOfPage": {"@type": "WebPage", "@id": public_url},
+            "author": {
+                "@type": "Organization",
+                "name": "Palimpsest Machine Analysis Desk",
+                "url": f"{SITE}/news/analysis/",
+            },
+            "image": [OG_IMAGE],
+        }
+    return {
+        "@context": "https://schema.org",
+        "@type": "Report",
+        **common,
+        "additionalType": f"{SITE}/protocol/machine-investigations-v1.schema.json#AbstentionReport",
+        "creativeWorkStatus": "Abstained — evidence gate not met",
+    }
+
+
+def _machine_case_card(case: Mapping[str, Any]) -> str:
+    is_article = _machine_is_article(case)
+    state = "published" if is_article else "abstained"
+    label = "ANALYSIS REPORT" if is_article else "ABSTENTION REPORT"
+    return f"""<article class="nw-investigation-card nw-analysis-card" data-publication-state="{state}">
+  <p class="nw-investigation-card__status"><span class="nw-dot" aria-hidden="true"></span>Deterministic machine analysis · {label}</p>
+  <h3 lang="{_h(_text_language(case['title']))}"><a href="{_h(case['url'])}">{_h(case['title'])}</a></h3>
+  <p>{_h(case['dek'])}</p>
+  <p><strong>Gate result:</strong> {_h(case['status_reason'])}</p>
+  <p class="nw-investigation-card__meta">{len(case['claim_blocks'])} cited block{'s' if len(case['claim_blocks']) != 1 else ''} · {len(case['evidence'])} evidence receipt{'s' if len(case['evidence']) != 1 else ''}<br>Updated <time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></p>
+</article>"""
+
+
+def render_machine_analysis_index(analyses: Mapping[str, Any]) -> str:
+    published = [case for case in analyses["cases"] if _machine_is_article(case)]
+    abstained = [case for case in analyses["cases"] if not _machine_is_article(case)]
+    reports = "".join(_machine_case_card(case) for case in published) or (
+        '<div class="nw-empty-register"><strong>No analysis report passed its '
+        "gate in this edition.</strong></div>"
+    )
+    abstentions = "".join(_machine_case_card(case) for case in abstained) or (
+        '<div class="nw-empty-register"><strong>No abstention report in this '
+        "edition.</strong></div>"
+    )
+    body = f"""<body class="ps newsroom-page newsroom-page--analysis">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <header class="nw-investigations-head nw-analysis-head">
+    <p class="nw-section__label">Deterministic analysis register</p>
+    <h1>Machine analysis, with every boundary attached</h1>
+    <p class="nw-investigations-head__dek">Evidence-linked analysis generated by a deterministic program from checked-in aggregate records. This desk conducts no human interviews and cannot fill reporting gaps with inference.</p>
+  </header>
+  <p class="nw-analysis-disclosure" role="note"><strong>DETERMINISTIC MACHINE ANALYSIS · NO HUMAN INTERVIEW.</strong> An AnalysisReport is a reproducible synthesis, not human-reported journalism. An AbstentionReport is a public record that the evidence gate did not pass; it is never marked as a NewsArticle.</p>
+  <div class="nw-meta-line"><span>Public aggregate evidence · no person-level records</span><span>Updated <time datetime="{_h(analyses['generated_at'])}">{_h(_human_time(analyses['generated_at']))}</time></span><a href="/readings/machine-investigations-latest.json">Structured desk</a><a href="/readings/evidence-mesh-latest.json">Evidence mesh</a></div>
+  <div class="nw-status-strip" role="status" aria-label="Machine analysis publication states">
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{len(published)}</strong> analysis reports</span>
+    <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{len(abstained)}</strong> abstention reports</span>
+    <span><strong>{analyses['n_cases']}</strong> deterministic case files</span>
+  </div>
+  <nav aria-label="Analysis registers"><ul class="nw-section-nav"><li><a href="#analysis-reports">Analysis reports</a></li><li><a href="#abstention-reports">Abstentions</a></li><li><a href="/news/investigations/">Human-reviewed investigations</a></li></ul></nav>
+  <section class="nw-investigation-register" aria-labelledby="analysis-reports"><header><div><p class="nw-section__label">Gate passed</p><h2 id="analysis-reports">Analysis reports</h2></div><p>Published only when the configured evidence, citation, lineage, safety and evaluation checks pass.</p></header><div class="nw-investigation-grid">{reports}</div></section>
+  <section class="nw-investigation-register" aria-labelledby="abstention-reports"><header><div><p class="nw-section__label">Gate did not pass</p><h2 id="abstention-reports">Abstention reports</h2></div><p>The missing requirement and a route to falsification remain visible instead of becoming model-written certainty.</p></header><div class="nw-investigation-grid">{abstentions}</div></section>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/news/investigations/">Human-reviewed investigations</a> · <a href="/readings/machine-investigations-latest.json">Structured machine desk</a> · <a href="/docs/MACHINE-INVESTIGATIONS.md">Method</a></div></footer>
+{site_nav.FOOT}
+</body>
+</html>
+"""
+    return _head(
+        title="Palimpsest Machine Analysis · deterministic evidence reports",
+        description=(
+            "Deterministic machine analyses and abstentions with sentence-level "
+            "citations, countercases, limits, falsifiers and evaluation receipts."
+        ),
+        canonical=f"{SITE}/news/analysis/",
+        page_type="website",
+        modified_at=analyses["generated_at"],
+        json_ld=_machine_index_json_ld(analyses),
+    ) + "\n" + body
+
+
+def _machine_record_title(record: Mapping[str, Any], fallback: str) -> str:
+    for key in (
+        "title", "statement", "hypothesis", "label", "name", "text",
+        "step", "description", "finding", "observation", "test", "condition",
+        "countercase", "limitation",
+    ):
+        value = record.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return fallback
+
+
+def _machine_display_value(value: object) -> str:
+    if value is None:
+        return "not recorded"
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, (str, int, float)):
+        return str(value)
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, allow_nan=False)
+
+
+def _machine_human_time(value: object) -> str:
+    try:
+        return _human_time(str(value))
+    except (ValueError, newsroom.NewsroomError):
+        return str(value)
+
+
+def _machine_citation_links(ids: Sequence[object]) -> str:
+    links = []
+    for citation_id in ids:
+        if isinstance(citation_id, Mapping):
+            label = _machine_evidence_id(citation_id)
+        else:
+            label = str(citation_id)
+        links.append(
+            f'<a href="#{_machine_fragment("evidence", label)}">{_h(label)}</a>'
+        )
+    return ", ".join(links) if links else "No evidence receipt cited"
+
+
+def _machine_claim_blocks(case: Mapping[str, Any]) -> str:
+    blocks = []
+    for position, block in enumerate(case["claim_blocks"], 1):
+        sentences = block.get("sentences", [])
+        rendered_sentences = []
+        for sentence_position, sentence in enumerate(sentences, 1):
+            if isinstance(sentence, Mapping):
+                text = next(
+                    (
+                        sentence[key]
+                        for key in ("text", "sentence", "claim")
+                        if isinstance(sentence.get(key), str)
+                    ),
+                    "",
+                )
+                citation_ids = sentence.get(
+                    "citation_ids",
+                    sentence.get("evidence_ids", sentence.get("citations", [])),
+                )
+            else:
+                text = str(sentence)
+                citation_ids = []
+            rendered_sentences.append(
+                f"""<li><p>{_h(text)}</p><p class="nw-analysis-citations"><strong>Sentence {sentence_position} citations:</strong> {_machine_citation_links(citation_ids)}</p></li>"""
+            )
+        paragraph = block.get("paragraph", "")
+        block_ids = block.get(
+            "citation_ids", block.get("evidence_ids", block.get("citations", []))
+        )
+        groups = block.get(
+            "independence_group_ids",
+            block.get(
+                "dependency_group_ids",
+                block.get("independence_groups", block.get("source_groups", [])),
+            ),
+        )
+        blocks.append(f"""<article class="nw-analysis-claim-block">
+  <p class="nw-finding__label">Claim block {position} · <code>{_h(block.get('block_id', position))}</code></p>
+  <h3>{_h(paragraph)}</h3>
+  <ol class="nw-analysis-sentences">{''.join(rendered_sentences)}</ol>
+  <p class="nw-analysis-block-receipt"><strong>Block evidence union:</strong> {_machine_citation_links(block_ids)}<br><strong>Independent lineage groups:</strong> {_h(', '.join(map(str, groups)) if groups else 'none recorded')}</p>
+</article>""")
+    return "".join(blocks)
+
+
+def _machine_attribution_html(metadata: Mapping[str, Any]) -> str:
+    rights = metadata["rights"]
+    attribution = metadata["attribution"]
+    providers = []
+    for provider in attribution["providers"]:
+        if provider["source_url"]:
+            providers.append(
+                f'<a href="{_h(provider["source_url"])}">{_h(provider["name"])}</a>'
+            )
+        else:
+            providers.append(_h(provider["name"]))
+        if provider["terms_url"]:
+            providers[-1] += (
+                f' (<a href="{_h(provider["terms_url"])}">provider terms</a>)'
+            )
+    source_links = [
+        f'<a href="{_h(attribution["public_source_url"])}">Local public source receipt</a>'
+    ]
+    source_links.extend(
+        f'<a href="{_h(url)}">Upstream source</a>'
+        for url in attribution["upstream_source_urls"]
+    )
+    requirement = (
+        "Attribution required for redistribution."
+        if attribution["attribution_required"]
+        else "No additional attribution flag in the mesh."
+    )
+    source_statement = (
+        f'<span>Source statement: {_h(attribution["source_statement"])}</span>'
+        if attribution["source_statement"]
+        else ""
+    )
+    return (
+        '<div class="nw-analysis-attribution">'
+        f'<strong>{_h(requirement)}</strong>'
+        f'<span>Redistribution: <code>{_h(rights["redistribution"])}</code> · '
+        f'Reuse: <code>{_h(rights["reuse"])}</code> · '
+        f'Training: <code>{_h(rights["training"])}</code></span>'
+        f'<span>Provider(s): {", ".join(providers)}</span>'
+        f'<span>Upstream lineage: {_h(", ".join(attribution["upstream_groups"]))}</span>'
+        f'<span>License / provider terms: <a href="{_h(attribution["license"]["url"])}">'
+        f'{_h(attribution["license"]["name"])}</a></span>'
+        f'<span>{" · ".join(source_links)}</span>{source_statement}'
+        "</div>"
+    )
+
+
+def _machine_evidence_table(
+    case: Mapping[str, Any],
+    attributions: Mapping[str, Mapping[str, Any]],
+) -> str:
+    rows = []
+    for evidence in case["evidence"]:
+        evidence_id = _machine_evidence_id(evidence)
+        label = _machine_record_title(evidence, evidence_id)
+        source_class = evidence.get(
+            "source_class", evidence.get("evidence_class", "aggregate record")
+        )
+        group = evidence.get(
+            "independence_group",
+            evidence.get(
+                "independence_group_id",
+                evidence.get(
+                    "dependency_group_id",
+                    evidence.get("lineage_group_id", "not recorded"),
+                ),
+            ),
+        )
+        timestamp = next(
+            (
+                evidence[key]
+                for key in ("observed_at", "as_of", "source_timestamp", "published_at")
+                if evidence.get(key)
+            ),
+            None,
+        )
+        if timestamp is None and isinstance(evidence.get("clocks"), Mapping):
+            timestamp = next(
+                (
+                    evidence["clocks"][key]
+                    for key in ("event_time", "knowledge_time", "publication_time")
+                    if evidence["clocks"].get(key)
+                ),
+                None,
+            )
+        if timestamp is None and isinstance(evidence.get("freshness"), Mapping):
+            timestamp = evidence["freshness"].get("observed_at")
+        role = evidence.get(
+            "role", evidence.get("relation", evidence.get("allowed_role", "supports"))
+        )
+        value = evidence.get("value", evidence.get("summary", evidence.get("claim", "Receipt metadata only")))
+        value_type = evidence.get("value_type", evidence.get("unit"))
+        denominator = evidence.get("denominator")
+        value_detail = _machine_display_value(value)
+        if value_type:
+            value_detail += f" {_machine_display_value(value_type)}"
+        if denominator is not None:
+            if isinstance(denominator, Mapping):
+                denominator_text = (
+                    f"{_machine_display_value(denominator.get('value'))} "
+                    f"{_machine_display_value(denominator.get('label'))}"
+                )
+            else:
+                denominator_text = _machine_display_value(denominator)
+            value_detail += f"; denominator: {denominator_text}"
+        limit = evidence.get(
+            "interpretation_limit",
+            evidence.get(
+                "limitation",
+                evidence.get(
+                    "limitations",
+                    evidence.get("caveat", "See source receipt and case limitations."),
+                ),
+            ),
+        )
+        artifact_url = _investigation_href(evidence.get("artifact_url"))
+        capsule_link = (
+            f'<a href="{_h(artifact_url)}">Open redacted evidence capsule '
+            "(addressed by original input hash)</a>"
+            if artifact_url != "#"
+            else "No public evidence capsule recorded"
+        )
+        attribution_html = _machine_attribution_html(attributions[evidence_id])
+        artifact = evidence.get("artifact_id", evidence.get("input_id", "artifact not recorded"))
+        artifact_sha = evidence.get("artifact_sha256", evidence.get("sha256"))
+        receipt = _h(str(artifact))
+        if artifact_sha:
+            receipt += f" · sha256 <code>{_h(str(artifact_sha))}</code>"
+        rows.append(f"""<tr id="{_machine_fragment('evidence', evidence_id)}">
+  <td><span class="nw-evidence-relation" data-relation="{_h(role)}">{_h(role)}</span><small>{_h(source_class)}</small></td>
+  <td><strong>{_h(label)}</strong><small><code>{_h(evidence_id)}</code> · {_h(group)}</small><small>{receipt}</small></td>
+  <td>{_h(value_detail)}</td>
+  <td>{_h(_machine_human_time(timestamp) if timestamp else 'not dated')}</td>
+  <td>{_h(_machine_display_value(limit))}<small>{capsule_link}</small>{attribution_html}</td>
+</tr>""")
+    return f"""<div class="nw-table-wrap" role="region" tabindex="0" aria-label="Machine-analysis evidence receipts"><table class="nw-evidence-table">
+<caption>Evidence receipts cited sentence by sentence in this report</caption>
+<thead><tr><th scope="col">Relation</th><th scope="col">Evidence / lineage</th><th scope="col">Value or summary</th><th scope="col">Observed</th><th scope="col">Interpretation limit</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table></div>"""
+
+
+def _machine_evidence_timeline(case: Mapping[str, Any]) -> str:
+    points = []
+    dated_evidence = []
+    for source_position, evidence in enumerate(case["evidence"]):
+        timestamp = next(
+            (
+                str(evidence[key])
+                for key in ("observed_at", "as_of", "source_timestamp", "published_at")
+                if evidence.get(key)
+            ),
+            None,
+        )
+        if timestamp is None and isinstance(evidence.get("clocks"), Mapping):
+            timestamp = next(
+                (
+                    str(evidence["clocks"][key])
+                    for key in ("event_time", "knowledge_time", "publication_time")
+                    if evidence["clocks"].get(key)
+                ),
+                None,
+            )
+        if timestamp is None and isinstance(evidence.get("freshness"), Mapping):
+            observed = evidence["freshness"].get("observed_at")
+            timestamp = str(observed) if observed else None
+        dated_evidence.append((timestamp or "9999", source_position, evidence))
+    for position, (timestamp_sort, _source_position, evidence) in enumerate(
+        sorted(dated_evidence, key=lambda item: (item[0], item[1])), 1
+    ):
+        evidence_id = _machine_evidence_id(evidence)
+        timestamp = None if timestamp_sort == "9999" else timestamp_sort
+        when = (
+            f'<time datetime="{_h(timestamp)}">{_h(_machine_human_time(timestamp))}</time>'
+            if timestamp else f"Evidence order {position}"
+        )
+        group = evidence.get(
+            "independence_group",
+            evidence.get(
+                "independence_group_id",
+                evidence.get(
+                    "dependency_group_id",
+                    evidence.get("lineage_group_id", "lineage not recorded"),
+                ),
+            ),
+        )
+        points.append(f"""<li><span class="nw-analysis-timeline__marker" aria-hidden="true">{position}</span><div><p>{when}</p><strong>{_h(_machine_record_title(evidence, evidence_id))}</strong><span>{_h(evidence.get('role', evidence.get('relation', evidence.get('allowed_role', 'evidence'))))} · {_h(group)}</span><a href="#{_machine_fragment('evidence', evidence_id)}">Inspect receipt</a></div></li>""")
+    return f"""<figure class="nw-analysis-timeline" aria-labelledby="analysis-timeline-title">
+  <figcaption id="analysis-timeline-title"><strong>Evidence chronology and source lineage</strong><span>Ordering exposes which observations predate the report and which receipts share a lineage. It is descriptive, not a causal sequence.</span></figcaption>
+  <ol>{''.join(points)}</ol>
+</figure>"""
+
+
+def _machine_record_cards(value: object, *, empty: str) -> str:
+    if isinstance(value, Mapping):
+        records = [
+            ({"name": key, **item} if isinstance(item, Mapping)
+             else {"name": key, "value": item})
+            for key, item in value.items()
+        ]
+    else:
+        records = value if isinstance(value, list) else [value]
+    cards = []
+    for position, item in enumerate(records, 1):
+        if isinstance(item, Mapping):
+            title = _machine_record_title(item, f"Record {position}")
+            details = []
+            citation_ids: Sequence[object] = []
+            for key, field_value in item.items():
+                if key in {
+                    "title", "statement", "hypothesis", "label", "name", "text",
+                    "step", "description", "finding", "observation", "test",
+                    "condition", "countercase", "limitation",
+                }:
+                    continue
+                if key in {"citation_ids", "evidence_ids"} and isinstance(field_value, list):
+                    citation_ids = field_value
+                    continue
+                details.append(
+                    f"<dt>{_h(key.replace('_', ' '))}</dt><dd>{_h(_machine_display_value(field_value))}</dd>"
+                )
+            citations = (
+                f'<p class="nw-analysis-citations"><strong>Evidence:</strong> {_machine_citation_links(citation_ids)}</p>'
+                if citation_ids else ""
+            )
+            cards.append(
+                f"<li><strong>{_h(title)}</strong><dl>{''.join(details)}</dl>{citations}</li>"
+            )
+        else:
+            cards.append(f"<li><strong>{_h(_machine_display_value(item))}</strong></li>")
+    return "".join(cards) if cards else f"<li>{_h(empty)}</li>"
+
+
+def _machine_correction_history(case: Mapping[str, Any]) -> str:
+    correction = case["corrections"]
+    history = correction.get("history", [])
+    rows = []
+    for position, revision in enumerate(history, 1):
+        if not isinstance(revision, Mapping):
+            rows.append(f"<li>{_h(_machine_display_value(revision))}</li>")
+            continue
+        revision_id = revision.get("revision_id", f"revision-{position}")
+        published_at = revision.get("published_at")
+        rows.append(f"""<li>
+  <strong>{_h(revision.get('summary', revision.get('change_type', 'Revision')))}</strong>
+  <dl><dt>Revision</dt><dd><code>{_h(revision_id)}</code></dd><dt>Change type</dt><dd>{_h(revision.get('change_type', 'not recorded'))}</dd><dt>Published</dt><dd>{_h(_machine_human_time(published_at) if published_at else 'not dated')}</dd></dl>
+</li>""")
+    if not rows:
+        rows.append("<li>No revision history recorded.</li>")
+    corrected = correction.get("last_corrected_at")
+    corrected_text = _machine_human_time(corrected) if corrected else "No material correction recorded"
+    return f"""<div class="nw-analysis-receipt"><dl>
+  <dt>Correction status</dt><dd>{_h(correction.get('status', 'not recorded'))}</dd>
+  <dt>Last corrected</dt><dd>{_h(corrected_text)}</dd>
+  <dt>Policy</dt><dd>{_h(correction.get('policy', 'No correction policy recorded.'))}</dd>
+</dl></div><ol class="nw-case-record-list">{''.join(rows)}</ol>"""
+
+
+def _machine_evaluation_receipt(case: Mapping[str, Any]) -> str:
+    receipt = case["evaluation_receipt"]
+    checks = receipt.get("checks", receipt.get("gates", []))
+    if isinstance(checks, Mapping):
+        checks = [
+            ({"check_id": check_id, **value} if isinstance(value, Mapping)
+             else {"check_id": check_id, "status": value})
+            for check_id, value in checks.items()
+        ]
+    summary_rows = []
+    for key, value in receipt.items():
+        if key in {"checks", "gates"}:
+            continue
+        summary_rows.append(
+            f"<dt>{_h(key.replace('_', ' '))}</dt><dd>{_h(_machine_display_value(value))}</dd>"
+        )
+    check_rows = []
+    for position, check in enumerate(checks, 1):
+        if isinstance(check, Mapping):
+            check_id = check.get(
+                "check_id", check.get("gate_id", check.get("id", f"check-{position}"))
+            )
+            label = check.get("label", check.get("name", check_id))
+            result = check.get("passed", check.get("status", "not recorded"))
+            detail = check.get("detail", check.get("reason", check.get("message", "")))
+            observed = check.get("observed")
+            required = check.get("required", check.get("minimum"))
+            threshold = (
+                f"{_machine_display_value(observed)} / {_machine_display_value(required)}"
+                if observed is not None or required is not None else "not recorded"
+            )
+        else:
+            check_id, label, result, threshold, detail = (
+                f"check-{position}", f"Check {position}", check, "not recorded", ""
+            )
+        check_rows.append(
+            f"<tr><td><strong>{_h(label)}</strong><small><code>{_h(check_id)}</code></small></td><td>{_h(_machine_display_value(result))}</td><td>{_h(threshold)}</td><td>{_h(detail)}</td></tr>"
+        )
+    checks_table = ""
+    if check_rows:
+        checks_table = f"""<div class="nw-table-wrap" role="region" tabindex="0" aria-label="Machine-analysis evaluation checks"><table class="nw-evidence-table"><caption>Deterministic evaluation and publication-gate checks</caption><thead><tr><th scope="col">Gate</th><th scope="col">Result</th><th scope="col">Observed / required</th><th scope="col">Receipt detail</th></tr></thead><tbody>{''.join(check_rows)}</tbody></table></div>"""
+    return f'<div class="nw-analysis-receipt"><dl>{"".join(summary_rows)}</dl>{checks_table}</div>'
+
+
+def render_machine_analysis_case(case: Mapping[str, Any]) -> str:
+    is_article = _machine_is_article(case)
+    state = "published" if is_article else "abstained"
+    report_label = "ANALYSIS REPORT" if is_article else "ABSTENTION REPORT"
+    published_display = _human_time(case["published_at"]) if case["published_at"] else "Not published"
+    attributions = _machine_case_attributions(case)
+    body = f"""<body class="ps newsroom-page newsroom-page--analysis-case">
+{site_nav.render('/news/')}
+<main id="main" class="nw-shell">
+  <article class="nw-case-file nw-analysis-file" data-publication-state="{state}" data-report-type="{_h(case['report_type'])}">
+    <header class="nw-case-file__header">
+      <p class="nw-case-status" data-publication-state="{state}"><span class="nw-dot" aria-hidden="true"></span>Deterministic machine analysis · {report_label}</p>
+      <h1 lang="{_h(_text_language(case['title']))}">{_h(case['title'])}</h1>
+      <p class="nw-case-file__question">{_h(case['dek'])}</p>
+      <p><strong>Current gate result:</strong> {_h(case['status_reason'])}</p>
+    </header>
+    <p class="nw-analysis-disclosure" role="note"><strong>DETERMINISTIC MACHINE ANALYSIS · NO HUMAN INTERVIEW.</strong> This report uses checked-in aggregate evidence only. It cannot add testimony, observe private conduct or treat missing reporting as confirmation.</p>
+    <div class="nw-case-file__meta">
+      <div><dl><dt>Report type</dt><dd>{_h(case['report_type'])}<br>{_h(case['profile'])}</dd></dl></div>
+      <div><dl><dt>Updated</dt><dd><time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></dd></dl></div>
+      <div><dl><dt>Published</dt><dd>{_h(published_display)}</dd></dl></div>
+      <div><dl><dt>Revision receipt</dt><dd><code>{_h(case['revision_id'])}</code><br><a href="revisions/{_h(case['revision_id'])}.json">Immutable revision JSON</a></dd></dl></div>
+    </div>
+    <section class="nw-case-section" aria-labelledby="analysis-claims-title"><header><p class="nw-section__label">Sentence-level provenance</p><h2 id="analysis-claims-title">Analysis with citations attached</h2><p>The paragraph is the published unit; the ledger beneath it shows the exact evidence IDs attached to each sentence and the de-duplicated lineage union for the block.</p></header><div class="nw-finding-list">{_machine_claim_blocks(case)}</div></section>
+    <section class="nw-case-section" aria-labelledby="analysis-timeline-section"><header><p class="nw-section__label">Explanatory view</p><h2 id="analysis-timeline-section">When the evidence arrived—and which sources travel together</h2></header>{_machine_evidence_timeline(case)}</section>
+    <section class="nw-case-section" aria-labelledby="analysis-evidence-title"><header><p class="nw-section__label">Evidence ledger</p><h2 id="analysis-evidence-title">Receipts, values, rights and interpretation limits</h2><p>Each public archive is a redacted aggregate capsule bound to the original input hash. Raw readings, IP-valued answers, contact data and person-level records are not copied into the archive.</p></header>{_machine_evidence_table(case, attributions)}</section>
+    <section class="nw-case-section" aria-labelledby="analysis-challenges-title"><header><p class="nw-section__label">Adversarial reading</p><h2 id="analysis-challenges-title">Countercases, limitations and falsifiers</h2><p>These records are part of the report, not caveats hidden after the conclusion.</p></header><div class="nw-analysis-record-grid"><div class="nw-case-panel nw-case-panel--counter"><h3>Countercases</h3><ul class="nw-case-record-list">{_machine_record_cards(case['countercases'], empty='No countercase recorded.')}</ul></div><div class="nw-case-panel"><h3>Limitations</h3><ul class="nw-case-record-list">{_machine_record_cards(case['limitations'], empty='No limitation recorded.')}</ul></div><div class="nw-case-panel nw-case-panel--target"><h3>Falsifiers</h3><ul class="nw-case-record-list">{_machine_record_cards(case['falsifiers'], empty='No falsifier recorded.')}</ul></div><div class="nw-case-panel"><h3>Hypotheses tested</h3><ul class="nw-case-record-list">{_machine_record_cards(case['hypotheses'], empty='No hypothesis recorded.')}</ul></div></div></section>
+    <section class="nw-case-section" aria-labelledby="analysis-gate-title"><header><p class="nw-section__label">Evaluation receipt</p><h2 id="analysis-gate-title">Why this became {_h(case['report_type'])}</h2><p>The report type is the result of declared deterministic checks. Passing a gate does not imply human reporting occurred.</p></header>{_machine_evaluation_receipt(case)}</section>
+    <section class="nw-case-section" aria-labelledby="analysis-method-title"><header><p class="nw-section__label">Reproducibility</p><h2 id="analysis-method-title">Methodology</h2></header><ol class="nw-case-record-list">{_machine_record_cards(case['methodology'], empty='No methodology step recorded.')}</ol></section>
+    <section class="nw-case-section" aria-labelledby="analysis-revisions-title"><header><p class="nw-section__label">Correction and revision history</p><h2 id="analysis-revisions-title">Current head and preserved revisions</h2><p>The mutable report JSON points at the current case; this revision stays addressable even after a correction.</p></header>{_machine_correction_history(case)}<div class="nw-case-state-grid"><div><dl><dt>Current report</dt><dd><a href="report.json">report.json</a></dd></dl></div><div><dl><dt>Current revision</dt><dd><a href="revisions/{_h(case['revision_id'])}.json"><code>{_h(case['revision_id'])}</code></a></dd></dl></div><div><dl><dt>Source case</dt><dd><code>{_h(case['source_case_id'])}</code></dd></dl></div><div><dl><dt>Source revision</dt><dd><code>{_h(case['source_revision_id'])}</code></dd></dl></div></div></section>
+    <section class="nw-case-section" aria-labelledby="analysis-safety-title"><header><p class="nw-section__label">Safety boundary</p><h2 id="analysis-safety-title">What the machine was not allowed to use</h2></header><ul class="nw-case-record-list">{_machine_record_cards(case['safety'], empty='No safety record.')}</ul></section>
+  </article>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/analysis/">← Machine-analysis desk</a> · <a href="report.json">Current report JSON</a> · <a href="/readings/machine-investigations-latest.json">Structured desk</a> · <a href="/readings/evidence-mesh-latest.json">Evidence mesh</a></div></footer>
+{site_nav.FOOT}
+</body>
+</html>
+"""
+    return _head(
+        title=f"{case['title']} · Palimpsest Machine Analysis",
+        description=case["dek"],
+        canonical=_machine_case_public_url(case),
+        page_type="article" if is_article else "website",
+        published_at=case["published_at"] if is_article else None,
+        modified_at=case["updated_at"],
+        json_ld=_machine_case_json_ld(case, attributions),
     ) + "\n" + body
 
 
@@ -1753,7 +3089,7 @@ def build_rss(
     <pubDate>{_rfc2822(event['published_at'])}</pubDate>
     <description>{xml_escape(description)}</description>
     <category>{xml_escape(event['desk'])}</category>
-    <source url="{xml_escape(event['evidence_refs'][0]['url'])}">{xml_escape(event['evidence_refs'][0]['source_name'])}</source>
+    <source url={xml_quoteattr(event['evidence_refs'][0]['url'])}>{xml_escape(event['evidence_refs'][0]['source_name'])}</source>
   </item>""")
     for story in feed["stories"]:
         description = story["dek"] + " Evidence: " + story["evidence"]["url"]
@@ -1765,7 +3101,7 @@ def build_rss(
     <pubDate>{_rfc2822(story['published_at'])}</pubDate>
     <description>{xml_escape(description)}</description>
     <category>{xml_escape(story['section'])}</category>
-    <source url="{xml_escape(story['evidence']['url'])}">{xml_escape(story['signal_id'])}</source>
+    <source url={xml_quoteattr(story['evidence']['url'])}>{xml_escape(story['signal_id'])}</source>
   </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -1787,7 +3123,18 @@ def build_sitemap(
     feed: Mapping[str, Any],
     wire: Mapping[str, Any] | None = None,
     investigations: Mapping[str, Any] | None = None,
+    machine_analyses: Mapping[str, Any] | None = None,
 ) -> bytes:
+    generated_values = [feed["generated_at"]]
+    for document in (wire, investigations, machine_analyses):
+        if document is not None:
+            generated_values.append(document["generated_at"])
+    reference_time = max(_parse_time(value) for value in generated_values)
+
+    def news_eligible(published_at: str) -> bool:
+        age = reference_time - _parse_time(published_at)
+        return timedelta(0) <= age <= timedelta(days=2)
+
     urls = [
         f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
         f"""  <url><loc>{SITE}/news/standards/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
@@ -1801,10 +3148,13 @@ def build_sitemap(
             f"  <url><loc>{SITE}/news/wire/page/{page}/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
             for page in range(2, archive_pages + 1)
         )
-        urls.extend(
-            f"  <url><loc>{xml_escape(event['url'])}</loc><lastmod>{xml_escape(event['updated_at'])}</lastmod><news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(event['published_at'])}</news:publication_date><news:title>{xml_escape(event['headline'])}</news:title></news:news></url>"
-            for event in wire["events"]
-        )
+        for event in wire["events"]:
+            news_markup = ""
+            if news_eligible(event["published_at"]):
+                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(event['published_at'])}</news:publication_date><news:title>{xml_escape(event['headline'])}</news:title></news:news>"""
+            urls.append(
+                f"  <url><loc>{xml_escape(event['url'])}</loc><lastmod>{xml_escape(event['updated_at'])}</lastmod>{news_markup}</url>"
+            )
         urls.append(
             f"  <url><loc>{SITE}/news/economy/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>daily</changefreq></url>"
         )
@@ -1814,14 +3164,25 @@ def build_sitemap(
         )
         for case in investigations["cases"]:
             news_markup = ""
-            if case["status"] == "published":
+            if case["status"] == "published" and news_eligible(case["published_at"]):
                 news_markup = f"""<news:news><news:publication><news:name>Palimpsest Investigations</news:name><news:language>{xml_escape(_case_language(case))}</news:language></news:publication><news:publication_date>{xml_escape(case['published_at'])}</news:publication_date><news:title>{xml_escape(case['title'])}</news:title></news:news>"""
             urls.append(
                 f"  <url><loc>{xml_escape(_case_public_url(case))}</loc><lastmod>{xml_escape(case['updated_at'])}</lastmod>{news_markup}</url>"
             )
+    if machine_analyses is not None:
+        urls.append(
+            f"  <url><loc>{SITE}/news/analysis/</loc><lastmod>{xml_escape(machine_analyses['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.9</priority></url>"
+        )
+        for case in machine_analyses["cases"]:
+            news_markup = ""
+            if _machine_is_article(case) and news_eligible(case["published_at"]):
+                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Machine Analysis</news:name><news:language>{xml_escape(_text_language(case['title']))}</news:language></news:publication><news:publication_date>{xml_escape(case['published_at'])}</news:publication_date><news:title>{xml_escape(case['title'])}</news:title></news:news>"""
+            urls.append(
+                f"  <url><loc>{xml_escape(_machine_case_public_url(case))}</loc><lastmod>{xml_escape(case['updated_at'])}</lastmod>{news_markup}</url>"
+            )
     for story in feed["stories"]:
         news_markup = ""
-        if story["status"] == "live":
+        if story["status"] == "live" and news_eligible(story["published_at"]):
             news_markup = f"""<news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(story['published_at'])}</news:publication_date><news:title>{xml_escape(story['headline'])}</news:title></news:news>"""
         urls.append(
             f"  <url><loc>{xml_escape(story['url'])}</loc><lastmod>{xml_escape(story['modified_at'])}</lastmod>{news_markup}</url>"
@@ -1840,6 +3201,7 @@ def build_outputs(
     wire: Mapping[str, Any] | None = None,
     pulse: Mapping[str, Any] | None = None,
     investigations: Mapping[str, Any] | None = None,
+    machine_analyses: Mapping[str, Any] | None = None,
 ) -> dict[Path, bytes]:
     """Return every public output without touching the filesystem."""
 
@@ -1849,18 +3211,24 @@ def build_outputs(
         economic_pulse_model.validate_economic_pulse(pulse)
     if investigations is not None:
         investigations_model.validate_investigations(investigations)
+    if machine_analyses is not None:
+        machine_investigations_model.validate_machine_investigations(machine_analyses)
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
     outputs: dict[Path, bytes] = {
         Path("readings/newsroom-latest.json"): _pretty_json(feed),
         Path("news/index.html"): (
-            render_evidence_index(feed, wire, pulse, investigations)
+            render_evidence_index(
+                feed, wire, pulse, investigations, machine_analyses
+            )
             if wire is not None
             else render_index(feed)
         ).encode("utf-8"),
         Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
         Path("news/feed.xml"): build_rss(feed, wire),
-        Path("news/sitemap.xml"): build_sitemap(feed, wire, investigations),
+        Path("news/sitemap.xml"): build_sitemap(
+            feed, wire, investigations, machine_analyses
+        ),
     }
     if wire is not None:
         outputs[Path("news/instruments/feed.json")] = _pretty_json(build_json_feed(feed))
@@ -1914,6 +3282,72 @@ def build_outputs(
             outputs[base / "revisions" / f"{case['version_id']}.json"] = (
                 _pretty_json(case)
             )
+    if machine_analyses is not None:
+        outputs[Path("news/analysis/index.html")] = (
+            render_machine_analysis_index(machine_analyses).encode("utf-8")
+        )
+        evidence_context = _load_machine_evidence_context()
+        archived_evidence: dict[str, dict[str, Any]] = {}
+        for case in machine_analyses["cases"]:
+            base = Path("news/analysis") / case["slug"]
+            case_raw = _pretty_json(case)
+            outputs[base / "index.html"] = render_machine_analysis_case(case).encode(
+                "utf-8"
+            )
+            outputs[base / "report.json"] = case_raw
+            for event in case["corrections"]["history"]:
+                revision_id = event["revision_id"]
+                revision_path = base / "revisions" / f"{revision_id}.json"
+                if revision_id == case["revision_id"]:
+                    revision_raw = case_raw
+                else:
+                    source_path = ROOT / revision_path
+                    try:
+                        revision_raw = source_path.read_bytes()
+                    except OSError as exc:
+                        raise newsroom.NewsroomError(
+                            f"missing immutable machine-analysis revision: {revision_path}"
+                        ) from exc
+                    if _generated_machine_case(
+                        revision_raw,
+                        slug=case["slug"],
+                        revision_filename=revision_path.name,
+                    ) is None:
+                        raise newsroom.NewsroomError(
+                            f"invalid immutable machine-analysis revision: {revision_path}"
+                        )
+                outputs[revision_path] = revision_raw
+            for evidence in case["evidence"]:
+                raw, raw_document = _machine_read_cited_input(evidence)
+                digest = hashlib.sha256(raw).hexdigest()
+                expected_url = (
+                    f"{SITE}/news/analysis/evidence/sha256-{digest}.json"
+                )
+                if evidence["artifact_url"] != expected_url:
+                    raise newsroom.NewsroomError(
+                        "machine evidence does not use its content-addressed URL: "
+                        f"{evidence['artifact_id']}"
+                    )
+                prior = archived_evidence.setdefault(
+                    digest,
+                    {"raw": raw, "raw_document": raw_document, "evidence": []},
+                )
+                if prior["raw"] != raw or prior["raw_document"] != raw_document:
+                    raise newsroom.NewsroomError(
+                        f"machine evidence digest collision: {digest}"
+                    )
+                if evidence not in prior["evidence"]:
+                    prior["evidence"].append(evidence)
+        for digest, archived in archived_evidence.items():
+            capsule = _machine_evidence_capsule(
+                archived["evidence"],
+                raw=archived["raw"],
+                raw_document=archived["raw_document"],
+                context=evidence_context,
+            )
+            outputs[
+                Path("news/analysis/evidence") / f"sha256-{digest}.json"
+            ] = _pretty_json(capsule)
     for story in feed["stories"]:
         base = Path("news") / story["slug"]
         outputs[base / "index.html"] = render_story(
@@ -1925,15 +3359,20 @@ def build_outputs(
         if wire is not None:
             revision = _revision_id(story, "storyv")
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
-    if wire is not None or investigations is not None:
+    if wire is not None or investigations is not None or machine_analyses is not None:
         manifest_path = Path("news/generated-manifest.json")
         all_paths = sorted([str(path) for path in outputs] + [str(manifest_path)])
-        immutable = [path for path in all_paths if "/revisions/" in path]
+        immutable = [
+            path for path in all_paths
+            if "/revisions/" in path or path.startswith("news/analysis/evidence/sha256-")
+        ]
         generated_times = [feed["generated_at"]]
         if wire is not None:
             generated_times.append(wire["generated_at"])
         if investigations is not None:
             generated_times.append(investigations["generated_at"])
+        if machine_analyses is not None:
+            generated_times.append(machine_analyses["generated_at"])
         outputs[manifest_path] = _pretty_json({
             "schema_version": "palimpsest-news-manifest.v1",
             "generated_at": max(generated_times),
@@ -1962,9 +3401,368 @@ def _atomic_write(path: Path, payload: bytes) -> None:
             pass
 
 
+def _is_managed_analysis_path(relative: Path) -> bool:
+    """Return whether a path belongs to the renderer's reserved analysis shape.
+
+    The manifest is an inventory, not authority to delete arbitrary repository
+    files. Restricting its entries to the exact generated layout keeps manual
+    assets (notes, illustrations, source exports, and so on) outside cleanup.
+    Hash-named files below ``revisions`` and content-addressed evidence files are
+    reserved generated artifacts even if an interrupted or older publisher
+    omitted them from the manifest.
+    """
+
+    parts = relative.parts
+    if relative.is_absolute() or ".." in parts:
+        return False
+    if parts == ("news", "analysis", "index.html"):
+        return True
+    if (
+        len(parts) == 4
+        and parts[:3] == ("news", "analysis", "evidence")
+        and _MACHINE_EVIDENCE_FILENAME.fullmatch(parts[3]) is not None
+    ):
+        return True
+    if len(parts) == 4 and parts[:2] == ("news", "analysis"):
+        return (
+            _ANALYSIS_CASE_SLUG.fullmatch(parts[2]) is not None
+            and parts[3] in {"index.html", "report.json"}
+        )
+    return (
+        len(parts) == 5
+        and parts[:2] == ("news", "analysis")
+        and _ANALYSIS_CASE_SLUG.fullmatch(parts[2]) is not None
+        and parts[3] == "revisions"
+        and _MACHINE_REVISION_FILENAME.fullmatch(parts[4]) is not None
+    )
+
+
+def _directory_open_flags() -> int:
+    return (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+
+
+def _read_scanned_file(directory_fd: int, entry: os.DirEntry[str]) -> bytes | None:
+    """Read one bounded regular file without following a replaced symlink."""
+
+    if entry.is_symlink() or not entry.is_file(follow_symlinks=False):
+        return None
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(entry.name, flags, dir_fd=directory_fd)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise newsroom.NewsroomError(f"cannot safely read {entry.name}: {exc}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            return None
+        if metadata.st_size > machine_investigations_model.MAX_OUTPUT_BYTES:
+            return None
+        chunks: list[bytes] = []
+        remaining = metadata.st_size + 1
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 64 * 1024))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        return raw if len(raw) == metadata.st_size else None
+    finally:
+        os.close(descriptor)
+
+
+def _generated_machine_case(
+    raw: bytes, *, slug: str, revision_filename: str
+) -> Mapping[str, Any] | None:
+    """Prove bytes have the renderer's exact machine-case JSON identity."""
+
+    try:
+        value = newswire_model.strict_json_loads(raw, label=revision_filename)
+        if not isinstance(value, dict):
+            return None
+        if set(value) != machine_investigations_model._CASE_FIELDS:
+            return None
+        revision_id = value.get("revision_id")
+        if (
+            value.get("slug") != slug
+            or revision_filename != f"{revision_id}.json"
+            or _MACHINE_REVISION_FILENAME.fullmatch(revision_filename) is None
+            or _machine_case_public_url(value) != f"{SITE}/news/analysis/{slug}/"
+            or _pretty_json(value) != raw
+        ):
+            return None
+        corrections = value.get("corrections")
+        history = corrections.get("history") if isinstance(corrections, dict) else None
+        if (
+            not isinstance(history, list)
+            or not history
+            or not isinstance(history[-1], dict)
+            or history[-1].get("revision_id") != revision_id
+        ):
+            return None
+
+        # Cleanup-only migration proofs: the first development identity bound
+        # clocks but excluded history; the next excluded clocks and history.
+        # Current publication binds the complete correction chain.  All three
+        # remain content-derived, so old generated files can be safely removed,
+        # but build_outputs emits only the current validator-owned identity.
+        legacy_seed = copy.deepcopy(value)
+        legacy_seed["revision_id"] = None
+        legacy_seed["corrections"] = dict(corrections, history=[])
+        legacy_revision = "machinev-" + hashlib.sha256(
+            machine_investigations_model.canonical_json_bytes(legacy_seed)
+        ).hexdigest()[:24]
+        history_independent_seed = copy.deepcopy(legacy_seed)
+        history_independent_seed["published_at"] = None
+        history_independent_seed["updated_at"] = None
+        history_independent_seed["evaluation_receipt"]["evaluated_at"] = None
+        history_independent_revision = "machinev-" + hashlib.sha256(
+            machine_investigations_model.canonical_json_bytes(
+                history_independent_seed
+            )
+        ).hexdigest()[:24]
+        current_revision = machine_investigations_model._case_revision_id(value)
+        if revision_id not in {
+            legacy_revision, history_independent_revision, current_revision
+        }:
+            return None
+    except (KeyError, TypeError, ValueError, newsroom.NewsroomError):
+        return None
+    return value
+
+
+def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
+    """Map managed paths to whether their bytes prove renderer ownership.
+
+    Every reserved-looking file is visible to ``--check``. Publication deletes
+    only entries whose content proves it was generated; an ambiguous collision
+    blocks the publication and remains untouched.
+    """
+
+    flags = _directory_open_flags()
+    try:
+        analysis_fd = os.open(root / _ANALYSIS_ROOT, flags)
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            f"cannot safely inspect {_ANALYSIS_ROOT}: {exc}"
+        ) from exc
+
+    discovered: dict[Path, bool] = {}
+    try:
+        with os.scandir(analysis_fd) as analysis_entries:
+            root_entries = {entry.name: entry for entry in analysis_entries}
+        root_index = root_entries.get("index.html")
+        if root_index is not None:
+            # There is no per-case JSON receipt from which the desk index can be
+            # reproduced in isolation. Detect it, but fail closed rather than
+            # authorizing deletion from HTML markers or a stale manifest.
+            discovered[_ANALYSIS_ROOT / "index.html"] = False
+        try:
+            evidence_fd = os.open("evidence", flags, dir_fd=analysis_fd)
+        except FileNotFoundError:
+            evidence_fd = None
+        except OSError as exc:
+            raise newsroom.NewsroomError(
+                f"cannot safely inspect {_ANALYSIS_ROOT / 'evidence'}: {exc}"
+            ) from exc
+        if evidence_fd is not None:
+            try:
+                with os.scandir(evidence_fd) as evidence_files:
+                    for evidence in evidence_files:
+                        if _MACHINE_EVIDENCE_FILENAME.fullmatch(evidence.name) is None:
+                            continue
+                        relative = _ANALYSIS_ROOT / "evidence" / evidence.name
+                        raw = _read_scanned_file(evidence_fd, evidence)
+                        digest = evidence.name.removeprefix("sha256-").removesuffix(
+                            ".json"
+                        )
+                        # Current archives are closed redacted capsules whose
+                        # filename addresses the original input bytes.  Accept
+                        # legacy exact-input archives only as proven generated
+                        # files so this migration can safely remove stale raw
+                        # copies; build_outputs never emits that legacy form.
+                        discovered[relative] = raw is not None and (
+                            _machine_evidence_capsule_bytes(
+                                raw, expected_digest=digest
+                            )
+                            is not None
+                            or hashlib.sha256(raw).hexdigest() == digest
+                        )
+            finally:
+                os.close(evidence_fd)
+        with os.scandir(analysis_fd) as cases:
+            for case in cases:
+                if case.name == "evidence" or not case.is_dir(follow_symlinks=False):
+                    continue
+                try:
+                    case_fd = os.open(case.name, flags, dir_fd=analysis_fd)
+                except FileNotFoundError:
+                    continue
+                except OSError as exc:
+                    raise newsroom.NewsroomError(
+                        f"cannot safely inspect {_ANALYSIS_ROOT / case.name}: {exc}"
+                    ) from exc
+                try:
+                    with os.scandir(case_fd) as case_files:
+                        case_entries = {entry.name: entry for entry in case_files}
+                    base = _ANALYSIS_ROOT / case.name
+                    index_entry = case_entries.get("index.html")
+                    report_entry = case_entries.get("report.json")
+                    index_raw = (
+                        _read_scanned_file(case_fd, index_entry)
+                        if index_entry is not None else None
+                    )
+                    report_raw = (
+                        _read_scanned_file(case_fd, report_entry)
+                        if report_entry is not None else None
+                    )
+                    if index_entry is not None:
+                        discovered[base / "index.html"] = False
+                    if report_entry is not None:
+                        discovered[base / "report.json"] = False
+
+                    revision_records: dict[bytes, Mapping[str, Any]] = {}
+                    try:
+                        revisions_fd = os.open("revisions", flags, dir_fd=case_fd)
+                    except FileNotFoundError:
+                        revisions_fd = None
+                    except OSError as exc:
+                        raise newsroom.NewsroomError(
+                            "cannot safely inspect "
+                            f"{_ANALYSIS_ROOT / case.name / 'revisions'}: {exc}"
+                        ) from exc
+                    if revisions_fd is not None:
+                        try:
+                            with os.scandir(revisions_fd) as revisions:
+                                for revision in revisions:
+                                    if _MACHINE_REVISION_FILENAME.fullmatch(
+                                        revision.name
+                                    ) is None:
+                                        continue
+                                    relative = base / "revisions" / revision.name
+                                    raw = _read_scanned_file(revisions_fd, revision)
+                                    record = (
+                                        _generated_machine_case(
+                                            raw,
+                                            slug=case.name,
+                                            revision_filename=revision.name,
+                                        )
+                                        if raw is not None else None
+                                    )
+                                    discovered[relative] = record is not None
+                                    if record is not None and raw is not None:
+                                        revision_records[raw] = record
+                        finally:
+                            os.close(revisions_fd)
+
+                    record = revision_records.get(report_raw) if report_raw else None
+                    if record is not None and index_raw is not None:
+                        try:
+                            expected_index = render_machine_analysis_case(record).encode(
+                                "utf-8"
+                            )
+                        except (KeyError, TypeError, ValueError, newsroom.NewsroomError):
+                            expected_index = None
+                        if expected_index == index_raw:
+                            discovered[base / "index.html"] = True
+                            discovered[base / "report.json"] = True
+                finally:
+                    os.close(case_fd)
+    finally:
+        os.close(analysis_fd)
+    return discovered
+
+
+def _extra_managed_analysis_paths(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> dict[Path, bool]:
+    expected = {Path(relative) for relative in outputs}
+    if _GENERATED_MANIFEST_PATH not in expected:
+        return {}
+    return {
+        relative: proven
+        for relative, proven in _managed_analysis_inventory(root=root).items()
+        if relative not in expected
+    }
+
+
+def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
+    """Unlink one generated file without following any parent symlink."""
+
+    if not _is_managed_analysis_path(relative):
+        raise newsroom.NewsroomError(
+            f"refusing to remove non-generated analysis path: {relative}"
+        )
+    flags = _directory_open_flags()
+    try:
+        directory_fd = os.open(root, flags)
+    except OSError as exc:
+        raise newsroom.NewsroomError(f"cannot safely open publication root: {exc}") from exc
+    try:
+        for component in relative.parts[:-1]:
+            try:
+                child_fd = os.open(component, flags, dir_fd=directory_fd)
+            except FileNotFoundError:
+                return False
+            except OSError as exc:
+                raise newsroom.NewsroomError(
+                    f"refusing unsafe analysis cleanup for {relative}: {exc}"
+                ) from exc
+            os.close(directory_fd)
+            directory_fd = child_fd
+        try:
+            entry = os.stat(
+                relative.name,
+                dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            return False
+        if not (stat.S_ISREG(entry.st_mode) or stat.S_ISLNK(entry.st_mode)):
+            raise newsroom.NewsroomError(
+                f"refusing to remove non-file analysis path: {relative}"
+            )
+        os.unlink(relative.name, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+        return True
+    finally:
+        os.close(directory_fd)
+
+
 def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, int]:
     changed = unchanged = 0
-    for relative, payload in sorted(outputs.items(), key=lambda item: str(item[0])):
+    stale_analysis = _extra_managed_analysis_paths(outputs, root=root)
+    unverified = sorted(
+        (relative for relative, proven in stale_analysis.items() if not proven),
+        key=str,
+    )
+    if unverified:
+        paths = ", ".join(str(relative) for relative in unverified)
+        raise newsroom.NewsroomError(
+            "refusing to remove unverified files in the managed analysis layout: "
+            f"{paths}"
+        )
+    ordered = sorted(
+        ((Path(relative), payload) for relative, payload in outputs.items()),
+        key=lambda item: (
+            item[0] == _GENERATED_MANIFEST_PATH,
+            str(item[0]),
+        ),
+    )
+    manifest_item: tuple[Path, bytes] | None = None
+    for relative, payload in ordered:
+        if relative == _GENERATED_MANIFEST_PATH:
+            manifest_item = (relative, payload)
+            continue
         destination = root / relative
         try:
             current = destination.read_bytes()
@@ -1975,6 +3773,23 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
             continue
         _atomic_write(destination, payload)
         changed += 1
+    for relative in sorted(
+        stale_analysis, key=lambda path: (len(path.parts), str(path)), reverse=True
+    ):
+        if _safe_unlink_managed_analysis(relative, root=root):
+            changed += 1
+    if manifest_item is not None:
+        relative, payload = manifest_item
+        destination = root / relative
+        try:
+            current = destination.read_bytes()
+        except FileNotFoundError:
+            current = None
+        if current == payload:
+            unchanged += 1
+        else:
+            _atomic_write(destination, payload)
+            changed += 1
     return changed, unchanged
 
 
@@ -1989,6 +3804,8 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
             continue
         if current != payload:
             drift.append(f"stale {relative}")
+    for relative in sorted(_extra_managed_analysis_paths(outputs, root=root), key=str):
+        drift.append(f"extra {relative}")
     return drift
 
 
@@ -1998,11 +3815,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     feed = newsroom.build_news_feed()
     wire, pulse, investigations = _load_extension_documents()
+    machine_analyses = _load_machine_investigations()
     outputs = build_outputs(
         feed,
         wire=wire,
         pulse=pulse,
         investigations=investigations,
+        machine_analyses=machine_analyses,
     )
     if args.check:
         drift = check(outputs)
@@ -2017,6 +3836,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"newsroom -> {READING.relative_to(ROOT)} · {feed['n_stories']} instruments · "
         f"{wire['n_events'] if wire else 0} events · "
+        f"{machine_analyses['n_cases'] if machine_analyses else 0} machine reports · "
         f"{changed} files updated · {unchanged} unchanged"
     )
     return 0

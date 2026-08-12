@@ -69,6 +69,9 @@ CONTRACT = {
                                "n_metrics"),
     "investigations":       _d("generated_at", ["source", "method", "scope"],
                                "n_cases"),
+    "machine-investigations": _d(
+        "generated_at", ["source", "method", "scope"], "n_cases"
+    ),
     "primary-documents":    _d("generated_at", ["source_registry", "method", "scope"],
                                "n_documents"),
     "corroboration":        _d("generated_at", ["source_inputs", "method", "scope"],
@@ -76,6 +79,11 @@ CONTRACT = {
     "network-rounds":       _d("generated_at", ["panel", "method", "scope"],
                                "n_rounds"),
     "source-workflow":      _d("generated_at", ["method", "scope"], "n_records"),
+    "evidence-mesh": _d(
+        "generated_at", ["source", "method", "scope"],
+        reason="an inventory roll-up rather than a sampled measurement: every resource "
+               "is enumerated in resources, while summary publishes the complete resource "
+               "count and availability-state counts over that same declared inventory."),
     # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -204,7 +212,9 @@ OPTIONAL_EXTERNAL = {
 SCHEDULED_PUBLICATIONS = {
     "bleedthrough",
     "china-economic-pulse",
+    "evidence-mesh",
     "investigations",
+    "machine-investigations",
     "newswire",
     "newsroom",
     "primary-documents",
@@ -277,6 +287,17 @@ def test_investigations_contract_keeps_cases_and_review_boundary_explicit():
     assert "investigations" in SCHEDULED_PUBLICATIONS
 
 
+def test_machine_analysis_contract_keeps_cases_and_provenance_explicit():
+    assert CONTRACT["machine-investigations"] == {
+        "timestamp": "generated_at",
+        "provenance": ["source", "method", "scope"],
+        "denominator": "n_cases",
+        "reason": None,
+    }
+    assert "machine-investigations" in SCHEDULED_PUBLICATIONS
+    assert "evidence-mesh" in SCHEDULED_PUBLICATIONS
+
+
 def test_bleedthrough_graduated_to_a_scheduled_fixed_origin_import():
     assert CONTRACT["bleedthrough"] == {
         "timestamp": "generated_at",
@@ -315,6 +336,10 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "https://palimpsest.info/news/investigations/" in sitemap
     assert "https://palimpsest.info/news/investigations/" in llms
     assert "https://palimpsest.info/readings/investigations-latest.json" in llms
+    assert "https://palimpsest.info/news/analysis/" in sitemap
+    assert "https://palimpsest.info/news/analysis/" in llms
+    assert "https://palimpsest.info/readings/evidence-mesh-latest.json" in llms
+    assert "https://palimpsest.info/readings/machine-investigations-latest.json" in llms
     assert "https://palimpsest.info/news/standards/" in sitemap
     assert "https://palimpsest.info/news/standards/" in llms
     assert robots.splitlines().count("Sitemap: https://palimpsest.info/sitemap.xml") == 1
@@ -322,7 +347,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v11"' in worker
+    assert 'const CACHE = "palimpsest-v12"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
@@ -342,6 +367,8 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "caches.match" not in syndication_branch
 
     assert '"/readings/investigations-latest.json"' in worker
+    assert '"/readings/evidence-mesh-latest.json"' in worker
+    assert '"/readings/machine-investigations-latest.json"' in worker
     for name in (
         "primary-documents",
         "corroboration",
@@ -357,6 +384,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert 'fetch(req, { cache: "no-store" })' in evidence_branch
     assert "caches.match" not in evidence_branch
     assert "if (LIVE_INVESTIGATION_CASE.test(url.pathname))" in worker
+    assert "if (LIVE_MACHINE_ANALYSIS_REPORT.test(url.pathname))" in worker
 
 
 def test_openapi_publishes_a_concrete_newsroom_feed_contract():
@@ -429,6 +457,34 @@ def test_openapi_publishes_the_external_investigations_contract():
         "schema_version", "desk_id", "generated_at", "source", "method", "scope",
         "publication_policy", "input_integrity", "n_cases", "cases",
     }
+
+
+def test_openapi_discovers_the_evidence_mesh_and_machine_analysis_contracts():
+    spec = _load(os.path.join(ROOT, "openapi.json"))
+    expected = {
+        "EvidenceMesh": (
+            "evidence-mesh-v1.schema.json",
+            "/readings/evidence-mesh-latest.json",
+            "getEvidenceMesh",
+        ),
+        "MachineInvestigations": (
+            "machine-investigations-v1.schema.json",
+            "/readings/machine-investigations-latest.json",
+            "getMachineInvestigations",
+        ),
+    }
+    for name, (schema_name, path, operation_id) in expected.items():
+        assert spec["components"]["schemas"][name] == {
+            "$ref": f"https://palimpsest.info/protocol/{schema_name}"
+        }
+        assert spec["components"]["responses"][name]["content"][
+            "application/json"
+        ]["schema"] == {"$ref": f"#/components/schemas/{name}"}
+        operation = spec["paths"][path]["get"]
+        assert operation["operationId"] == operation_id
+        assert operation["responses"]["200"] == {
+            "$ref": f"#/components/responses/{name}"
+        }
 
 
 @pytest.mark.parametrize("path", _readings(), ids=_name)

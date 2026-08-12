@@ -3,13 +3,15 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v11";
+const CACHE = "palimpsest-v12";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/newswire-latest.json",
   "/readings/china-economic-pulse-latest.json",
   "/readings/investigations-latest.json",
+  "/readings/evidence-mesh-latest.json",
+  "/readings/machine-investigations-latest.json",
   "/readings/primary-documents-latest.json",
   "/readings/corroboration-latest.json",
   "/readings/network-rounds-latest.json",
@@ -17,6 +19,7 @@ const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/editorial-readiness-latest.json",
 ]);
 const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
+const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
 const SHELL = [
   "/",
@@ -105,6 +108,13 @@ self.addEventListener("fetch", (e) => {
   // revisions/*.json records are content-addressed historical receipts and may
   // use the normal network-first/offline-fallback path below.
   if (LIVE_INVESTIGATION_CASE.test(url.pathname)) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // report.json is likewise a mutable machine-analysis head. Its immutable
+  // revisions remain cacheable, but a correction or a new abstention must not
+  // be hidden behind an older offline response.
+  if (LIVE_MACHINE_ANALYSIS_REPORT.test(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

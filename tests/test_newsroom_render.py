@@ -124,6 +124,22 @@ def test_json_feed_rss_and_sitemap_are_parseable_and_complete():
     )
 
 
+def test_rss_quote_escapes_source_url_attributes():
+    feed = _feed()
+    feed["stories"][0]["evidence"]["url"] = (
+        'https://palimpsest.info/readings/example"onload="alert(1).json'
+    )
+
+    raw = build_newsroom.build_rss(feed)
+    rss = ET.fromstring(raw)
+    source = rss.find("./channel/item/source")
+
+    assert source is not None
+    assert source.attrib["url"].endswith('example"onload="alert(1).json')
+    assert set(source.attrib) == {"url"}
+    assert b" onload=" not in raw
+
+
 def test_publication_is_idempotent_and_check_detects_drift(tmp_path):
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)

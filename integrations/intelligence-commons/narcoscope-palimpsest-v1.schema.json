@@ -75,31 +75,56 @@
         "retailDrugPrices": {
           "allOf": [
             { "$ref": "#/$defs/dataset" },
-            { "properties": { "datasetId": { "const": "retail_drug_prices" } } }
+            { "type": "object", "properties": { "datasetId": { "const": "retail_drug_prices" } } }
           ]
         },
         "drugSeizures": {
           "allOf": [
             { "$ref": "#/$defs/dataset" },
-            { "properties": { "datasetId": { "const": "drug_seizures" } } }
+            { "type": "object", "properties": { "datasetId": { "const": "drug_seizures" } } }
           ]
         },
         "precursorCorridorIncidents": {
           "allOf": [
             { "$ref": "#/$defs/dataset" },
-            { "properties": { "datasetId": { "const": "precursor_corridor_incidents" } } }
+            {
+              "type": "object",
+              "properties": {
+                "datasetId": { "const": "precursor_corridor_incidents" },
+                "provenance": {
+                  "type": "object",
+                  "required": ["documentSha256", "retrievedAt"],
+                  "properties": {
+                    "url": {
+                      "const": "https://www.incb.org/incb/uploads/documents/Publications/AnnualReports/AR2025/Precursors_Report/E_INCB_2025_4_eng.pdf"
+                    },
+                    "documentSha256": {
+                      "const": "8397f2799116fe33ce6851ec2c7e03a042886fb9c048f72cdb259724de5ddd6e"
+                    },
+                    "retrievedAt": { "const": "2026-08-12T13:50:25Z" }
+                  }
+                },
+                "data": { "$ref": "#/$defs/precursorCorridorData" }
+              }
+            }
           ]
         },
         "ofacDesignations": {
           "allOf": [
             { "$ref": "#/$defs/dataset" },
-            { "properties": { "datasetId": { "const": "ofac_designations" } } }
+            {
+              "type": "object",
+              "properties": {
+                "datasetId": { "const": "ofac_designations" },
+                "data": { "$ref": "#/$defs/ofacDesignationData" }
+              }
+            }
           ]
         },
         "wildlifeConfiscations": {
           "allOf": [
             { "$ref": "#/$defs/dataset" },
-            { "properties": { "datasetId": { "const": "wildlife_confiscations" } } }
+            { "type": "object", "properties": { "datasetId": { "const": "wildlife_confiscations" } } }
           ]
         }
       }
@@ -183,6 +208,8 @@
             "url": { "type": "string", "format": "uri" },
             "sourceEdition": { "type": "string", "minLength": 1 },
             "localDataDate": { "type": ["string", "null"], "format": "date" },
+            "documentSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "retrievedAt": { "type": "string", "format": "date-time" },
             "input": {
               "type": "object",
               "additionalProperties": false,
@@ -202,6 +229,323 @@
           "minItems": 1,
           "items": { "type": "string", "minLength": 1 }
         }
+      }
+    },
+    "sourceLocator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pdfPage", "printedPage", "paragraph"],
+      "properties": {
+        "pdfPage": { "type": "integer", "minimum": 1 },
+        "printedPage": { "type": "integer", "minimum": 1 },
+        "paragraph": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "precursorCorridorData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "includedQuantitativeRecordCount",
+        "includedContextRecordCount",
+        "quantityAggregation",
+        "corridors",
+        "contextRecords"
+      ],
+      "properties": {
+        "includedQuantitativeRecordCount": { "type": "integer", "minimum": 0 },
+        "includedContextRecordCount": { "type": "integer", "minimum": 0 },
+        "quantityAggregation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "exactRecordCount",
+            "nonExactRecordCount",
+            "eligibleRecordCount",
+            "excludedRecordCount",
+            "aggregationGroup",
+            "summedQuantityKg"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "computed_exact_only",
+                "not_computed_non_exact_inputs",
+                "not_computed_ineligible_exact_inputs",
+                "not_computed_mixed_aggregation_groups",
+                "not_computed_no_records"
+              ]
+            },
+            "exactRecordCount": { "type": "integer", "minimum": 0 },
+            "nonExactRecordCount": { "type": "integer", "minimum": 0 },
+            "eligibleRecordCount": { "type": "integer", "minimum": 0 },
+            "excludedRecordCount": { "type": "integer", "minimum": 0 },
+            "aggregationGroup": {
+              "oneOf": [
+                {
+                  "enum": [
+                    "mdma_precursor_substance_mass",
+                    "meth_pre_precursor_substance_mass",
+                    "pseudoephedrine_preparation_gross_mass",
+                    "potassium_permanganate_substance_mass",
+                    "pseudoephedrine_preparation_mass"
+                  ]
+                },
+                { "type": "null" }
+              ]
+            },
+            "summedQuantityKg": { "type": ["number", "null"], "minimum": 0 }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "status": { "const": "computed_exact_only" } },
+                "required": ["status"]
+              },
+              "then": {
+                "properties": {
+                  "eligibleRecordCount": { "type": "integer", "minimum": 1 },
+                  "aggregationGroup": {
+                    "enum": [
+                      "mdma_precursor_substance_mass",
+                      "meth_pre_precursor_substance_mass",
+                      "pseudoephedrine_preparation_gross_mass",
+                      "potassium_permanganate_substance_mass",
+                      "pseudoephedrine_preparation_mass"
+                    ]
+                  },
+                  "summedQuantityKg": { "type": "number" }
+                }
+              },
+              "else": {
+                "properties": {
+                  "aggregationGroup": { "const": null },
+                  "summedQuantityKg": { "const": null }
+                }
+              }
+            }
+          ]
+        },
+        "corridors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "originAttribution",
+              "reportedOrigin",
+              "transit",
+              "destination",
+              "seizureLocation",
+              "year",
+              "precursor",
+              "quantityKg",
+              "quantityRelation",
+              "quantityBasis",
+              "recordKind",
+              "aggregationEligibility",
+              "aggregationGroup",
+              "incidentCount",
+              "sourceLocator"
+            ],
+            "properties": {
+              "originAttribution": { "enum": ["china_only", "joint_origin_includes_china"] },
+              "reportedOrigin": { "type": "string", "minLength": 1 },
+              "transit": { "type": ["string", "null"], "minLength": 1 },
+              "destination": { "type": "string", "minLength": 1 },
+              "seizureLocation": { "type": ["string", "null"], "minLength": 1 },
+              "year": { "type": "integer", "minimum": 1900 },
+              "precursor": { "type": "string", "minLength": 1 },
+              "quantityKg": { "type": "number", "minimum": 0 },
+              "quantityRelation": {
+                "enum": ["exact", "approx", "less_than", "greater_than"]
+              },
+              "quantityBasis": { "type": "string", "minLength": 1 },
+              "recordKind": {
+                "enum": [
+                  "single_incident",
+                  "multi_incident_aggregate",
+                  "annual_aggregate",
+                  "derived_subtotal"
+                ]
+              },
+              "aggregationEligibility": {
+                "enum": [
+                  "eligible",
+                  "ineligible_non_exact",
+                  "ineligible_derived",
+                  "ineligible_incompatible_basis"
+                ]
+              },
+              "aggregationGroup": {
+                "oneOf": [
+                  {
+                    "enum": [
+                      "mdma_precursor_substance_mass",
+                      "meth_pre_precursor_substance_mass",
+                      "pseudoephedrine_preparation_gross_mass",
+                      "potassium_permanganate_substance_mass",
+                      "pseudoephedrine_preparation_mass"
+                    ]
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "incidentCount": { "type": ["integer", "null"], "minimum": 1 },
+              "sourceLocator": { "$ref": "#/$defs/sourceLocator" }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "aggregationEligibility": { "const": "eligible" } },
+                  "required": ["aggregationEligibility"]
+                },
+                "then": {
+                  "properties": {
+                    "quantityRelation": { "const": "exact" },
+                    "recordKind": { "not": { "const": "derived_subtotal" } },
+                    "aggregationGroup": { "type": "string" }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": { "quantityRelation": { "const": "exact" } },
+                  "required": ["quantityRelation"]
+                },
+                "then": {
+                  "properties": {
+                    "aggregationEligibility": { "not": { "const": "ineligible_non_exact" } }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "aggregationEligibility": { "const": "ineligible_non_exact" }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": { "recordKind": { "const": "derived_subtotal" } },
+                  "required": ["recordKind"]
+                },
+                "then": {
+                  "properties": {
+                    "aggregationEligibility": { "const": "ineligible_derived" },
+                    "aggregationGroup": { "const": null }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": { "aggregationEligibility": { "const": "ineligible_derived" } },
+                  "required": ["aggregationEligibility"]
+                },
+                "then": {
+                  "properties": {
+                    "recordKind": { "const": "derived_subtotal" },
+                    "aggregationGroup": { "const": null }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": { "aggregationEligibility": { "const": "ineligible_incompatible_basis" } },
+                  "required": ["aggregationEligibility"]
+                },
+                "then": {
+                  "properties": { "aggregationGroup": { "const": null } }
+                }
+              }
+            ]
+          }
+        },
+        "contextRecords": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contextId",
+              "precursor",
+              "origins",
+              "destinations",
+              "year",
+              "recordKind",
+              "allocationStatus",
+              "operationReportedSeizureCount",
+              "countScope",
+              "summary",
+              "sourceLocator"
+            ],
+            "properties": {
+              "contextId": { "type": "string", "minLength": 1 },
+              "precursor": { "type": "string", "minLength": 1 },
+              "origins": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "destinations": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "year": { "type": "integer", "minimum": 1900 },
+              "recordKind": { "const": "qualitative_context" },
+              "allocationStatus": { "const": "not_reported_by_origin_destination_pair" },
+              "operationReportedSeizureCount": { "type": "integer", "minimum": 1 },
+              "countScope": { "const": "four_reporting_countries_operation_total" },
+              "summary": { "type": "string", "minLength": 1 },
+              "sourceLocator": { "$ref": "#/$defs/sourceLocator" }
+            }
+          }
+        }
+      }
+    },
+    "ofacDesignationData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "narcoticsSpecificProgramRecordCount",
+        "tcoOnlyRecordCount",
+        "byEntityType",
+        "byProgram",
+        "multiCountryRecordCount"
+      ],
+      "properties": {
+        "recordCount": { "type": "integer", "minimum": 0 },
+        "narcoticsSpecificProgramRecordCount": { "type": "integer", "minimum": 0 },
+        "tcoOnlyRecordCount": { "type": "integer", "minimum": 0 },
+        "byEntityType": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entityType", "count"],
+            "properties": {
+              "entityType": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "byProgram": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["program", "label", "count"],
+            "properties": {
+              "program": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "multiCountryRecordCount": { "type": "integer", "minimum": 0 }
       }
     }
   }

@@ -164,6 +164,35 @@ def test_investigations_catalog_exposes_review_gates_and_public_contract():
     assert "does not automate allegations" in description
 
 
+def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+
+    mesh = by_id["evidence-mesh"]
+    assert (mesh["stage"], mesh["collection_mode"], mesh["cadence"]) == (
+        "provenance",
+        "deterministic-pinned-inputs",
+        "PT1H",
+    )
+    assert mesh["latest"] == "readings/evidence-mesh-latest.json"
+    assert "partner artifacts" in mesh["description"]
+    assert "automatically admitted" in mesh["description"]
+
+    machine = by_id["machine-investigations"]
+    assert (machine["stage"], machine["collection_mode"], machine["cadence"]) == (
+        "publication",
+        "deterministic-machine-analysis-gated",
+        "PT1H",
+    )
+    assert machine["latest"] == "readings/machine-investigations-latest.json"
+    assert machine["landing_page"] == "news/analysis/"
+    assert machine["count_fields"] == ["n_cases"]
+    description = machine["description"].lower()
+    assert "sentence-level citations" in description
+    assert "no human interviews" in description
+    assert "abstentionreport" in description
+
+
 def test_reporting_newsroom_catalog_keeps_five_capabilities_distinct():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}
