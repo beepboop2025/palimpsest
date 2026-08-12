@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T19:31:34.259416+00:00",
+  "generated_at": "2026-08-12T03:03:06.128768+00:00",
   "method_version": 1,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "window_days": 90,
@@ -9,20 +9,20 @@
     "state": "OK",
     "why": "5 of 7 tests have enough completed measurements to support a rate"
   },
-  "middlebox_index": 1.4,
+  "middlebox_index": 1.38,
   "middlebox_reading": "1.4% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
-  "transport_index": 33.58,
-  "transport_reading": "33.6% anomalous — transports partly degraded",
+  "transport_index": 33.69,
+  "transport_reading": "33.7% anomalous — transports partly degraded",
   "execution_blackouts": [
     {
       "test": "dnscheck",
       "label": "DNS-integrity test completion",
-      "measurement_count": 68792
+      "measurement_count": 67883
     },
     {
       "test": "echcheck",
       "label": "Encrypted Client Hello test completion",
-      "measurement_count": 247
+      "measurement_count": 246
     }
   ],
   "execution_reading": "2 measurement method(s) never completed a single run in China this window: dnscheck, echcheck",
@@ -33,10 +33,10 @@
       "label": "HTTP headers rewritten in transit",
       "available": true,
       "why": null,
-      "measurement_count": 4853,
-      "completed_count": 4853,
+      "measurement_count": 4795,
+      "completed_count": 4795,
       "failure_count": 0,
-      "anomaly_count": 78,
+      "anomaly_count": 77,
       "anomaly_rate": 0.0161,
       "execution_failure_rate": 0.0,
       "never_completes": false
@@ -47,11 +47,11 @@
       "label": "malformed request lines normalised in transit",
       "available": true,
       "why": null,
-      "measurement_count": 4934,
-      "completed_count": 4934,
+      "measurement_count": 4876,
+      "completed_count": 4876,
       "failure_count": 0,
-      "anomaly_count": 59,
-      "anomaly_rate": 0.012,
+      "anomaly_count": 56,
+      "anomaly_rate": 0.0115,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -61,11 +61,11 @@
       "label": "STUN servers unreachable (real-time voice / WebRTC)",
       "available": true,
       "why": null,
-      "measurement_count": 37648,
-      "completed_count": 37648,
+      "measurement_count": 37162,
+      "completed_count": 37162,
       "failure_count": 0,
-      "anomaly_count": 12322,
-      "anomaly_rate": 0.3273,
+      "anomaly_count": 12205,
+      "anomaly_rate": 0.3284,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -75,12 +75,12 @@
       "label": "stock Tor bootstrap",
       "available": true,
       "why": null,
-      "measurement_count": 3782,
-      "completed_count": 474,
-      "failure_count": 3308,
-      "anomaly_count": 442,
-      "anomaly_rate": 0.9325,
-      "execution_failure_rate": 0.8747,
+      "measurement_count": 3732,
+      "completed_count": 465,
+      "failure_count": 3267,
+      "anomaly_count": 433,
+      "anomaly_rate": 0.9312,
+      "execution_failure_rate": 0.8754,
       "never_completes": false
     },
     {
@@ -89,11 +89,11 @@
       "label": "Tor via Snowflake",
       "available": true,
       "why": null,
-      "measurement_count": 104,
-      "completed_count": 104,
+      "measurement_count": 103,
+      "completed_count": 103,
       "failure_count": 0,
       "anomaly_count": 74,
-      "anomaly_rate": 0.7115,
+      "anomaly_rate": 0.7184,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -103,9 +103,9 @@
       "label": "DNS-integrity test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 68792,
+      "measurement_count": 67883,
       "completed_count": 0,
-      "failure_count": 68792,
+      "failure_count": 67883,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
@@ -117,14 +117,14 @@
       "label": "Encrypted Client Hello test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 247,
+      "measurement_count": 246,
       "completed_count": 0,
-      "failure_count": 247,
+      "failure_count": 246,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
       "never_completes": true
     }
   ],
-  "last_changed_at": "2026-08-11T19:31:34.259416+00:00"
+  "last_changed_at": "2026-08-12T03:03:06.128768+00:00"
 }
