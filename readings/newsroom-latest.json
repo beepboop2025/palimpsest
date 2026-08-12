@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: content. 33 of 33 configured sources report; 30 are live. Health qualifiers: 2 degraded, 1 stale.",
+  "headline": "Upstream board reports: single layer elevated: content. 33 of 33 configured sources report; 29 are live. Health qualifiers: 2 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-12T06:05:15Z",
+  "generated_at": "2026-08-12T06:58:10Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "06888c549e496f6df7e30d2f368df45f8f8d53c1",
+  "source_commit": "3eadff82dba7641240bdf5e88af472fcbd65dab5",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 30,
+    "live": 29,
     "status": "degraded",
     "counts": {
-      "live": 30,
+      "live": 29,
       "degraded": 2,
-      "stale": 1,
+      "stale": 2,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-12T03:14:08Z",
       "modified_at": "2026-08-12T03:14:08Z",
-      "claim_fingerprint": "sha256:cf7154ec0355a67c69e235f21a4b8cf5c2268cb4257a586406af2ef40045d16a",
+      "claim_fingerprint": "sha256:805d42798bcef13624ca3e0c9d49824c166e0eb3c2e72a3a4b3ae6a59c4ee7ae",
       "metric": {
         "label": "board e-value",
         "value": 59.142,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: content. 33 of 33 configured sources report; 30 are live. Health qualifiers: 2 degraded, 1 stale. The board-wide e-value is 59.142; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: content. 33 of 33 configured sources report; 29 are live. Health qualifiers: 2 degraded, 2 stale. The board-wide e-value is 59.142; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -761,8 +761,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-11T06:30:44Z",
-      "modified_at": "2026-08-11T06:30:44Z",
+      "published_at": "2026-08-12T06:56:11Z",
+      "modified_at": "2026-08-12T06:56:11Z",
       "claim_fingerprint": "sha256:ecc818f66d4129faa8322c379801a6da0bf71e1c1bf6bef65f10196d874cc0b1",
       "metric": {
         "label": "CN interference rate",
@@ -783,10 +783,10 @@
         "url": "https://palimpsest.info/readings/censored-planet-latest.json",
         "input": {
           "filename": "censored-planet-latest.json",
-          "sha256": "edea5192845e5760e1261179c9beebf02489eb94db5ef9859a1cc3d88e87f65c",
+          "sha256": "6240c5d21fde1a075927e2892e01cccaafdac8a185a927a01db760800a397335",
           "bytes": 3377
         },
-        "source_timestamp": "2026-08-11T06:30:44Z"
+        "source_timestamp": "2026-08-12T06:56:11Z"
       },
       "method": {
         "summary": "ingests Censored Planet's public aggregated data; probes nothing (vantage-insensitive)",
@@ -910,19 +910,19 @@
       "slug": "circumvention-demand",
       "url": "https://palimpsest.info/news/circumvention-demand/",
       "signal_id": "circumvention-demand",
-      "headline": "Tor Metrics estimates 2,328 bridge users connecting from China",
+      "headline": "Tor Metrics estimates 2,503 bridge users connecting from China",
       "dek": "Bridge and transport estimates show demand for alternate routes without identifying individual users.",
       "section": "network",
       "order": 6,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-11T06:04:33Z",
-      "modified_at": "2026-08-11T06:04:33Z",
-      "claim_fingerprint": "sha256:e7787750002ab8ad70b296f69c8f9452183a7692314a4106aeda7c74e5e62450",
+      "published_at": "2026-08-12T06:42:35Z",
+      "modified_at": "2026-08-12T06:42:35Z",
+      "claim_fingerprint": "sha256:04402fe9d055abe6f0ee26ca8bbc0f68184a24f13fb5fb9d2d2f729557ed4160",
       "metric": {
         "label": "bridge users",
-        "value": 2328,
+        "value": 2503,
         "unit": "estimated users",
         "denominator": {
           "label": null,
@@ -932,17 +932,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "Tor Metrics estimates 2,328 bridge users for China in the current reading."
+          "statement": "Tor Metrics estimates 2,503 bridge users for China in the current reading."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/circumvention-demand-latest.json",
         "input": {
           "filename": "circumvention-demand-latest.json",
-          "sha256": "c6b52a9107c0f6d08e8d78d2c71060028bd35ae9348fcf0980a834c934551971",
-          "bytes": 1075
+          "sha256": "43b28814c97d3e961c63960dde5e08bfff7bc69c6d11b83dd2c2e3eec3d62df6",
+          "bytes": 1076
         },
-        "source_timestamp": "2026-08-11T06:04:33Z"
+        "source_timestamp": "2026-08-12T06:42:35Z"
       },
       "method": {
         "summary": "Bridge users = demand for unlisted entry points (the demand-to-circumvent series). Relay users = direct reachability, structurally near-floor behind the GFW. A transport halving while another surges (transport_shifts) is the public fingerprint of a new GFW classifier deployment. Estimates are Tor's, from sampled directory requests; transport rows keep Tor's low/high bounds. No probe traffic is generated by this collector.",
@@ -1327,39 +1327,39 @@
       "slug": "apple-censorship-corpus",
       "url": "https://palimpsest.info/news/apple-censorship-corpus/",
       "signal_id": "apple-censorship",
-      "headline": "28.14% of 108,818 tested apps are unavailable in mainland China",
+      "headline": "28.14% of 108,950 tested apps are unavailable in mainland China",
       "dek": "The corpus-scale storefront comparison complements the smaller fixed panel with a much broader catalogue.",
       "section": "erasure",
       "order": 6,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-11T06:29:14Z",
-      "modified_at": "2026-08-11T06:29:14Z",
-      "claim_fingerprint": "sha256:2fa8c68dbf651d7ecbb4a04df06f4375e2b5e26ea2dacfa40436e1edf2d58169",
+      "published_at": "2026-08-12T06:54:45Z",
+      "modified_at": "2026-08-12T06:54:45Z",
+      "claim_fingerprint": "sha256:bdd1dbd7223d07e3da6193eb4d96ab78a25fe614ca38053a798260b307c1b97f",
       "metric": {
         "label": "apps unavailable",
         "value": 28.14,
         "unit": "percent",
         "denominator": {
           "label": "apps tested",
-          "value": 108818
+          "value": 108950
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current AppleCensorship corpus reports 28.14% unavailable among 108,818 tested apps for mainland China."
+          "statement": "The current AppleCensorship corpus reports 28.14% unavailable among 108,950 tested apps for mainland China."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/apple-censorship-latest.json",
         "input": {
           "filename": "apple-censorship-latest.json",
-          "sha256": "77af4cd00c66d4b60111954561d6cd016f1a04ddadd61687a1d86e9a8373a96d",
-          "bytes": 1910
+          "sha256": "516c79eadb0689aa3a3618e6efae0c6375e04ef75afcee9e80a325a09f990283",
+          "bytes": 1909
         },
-        "source_timestamp": "2026-08-11T06:29:14Z"
+        "source_timestamp": "2026-08-12T06:54:45Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1742,20 +1742,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "The sanitized intelligence bridge ranks 177 aggregate topics",
-      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
+      "headline": "Private runtime bridge: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-12T05:29:16Z",
       "modified_at": "2026-08-12T05:29:16Z",
-      "claim_fingerprint": "sha256:6341aaf3cb70d040e70af55749ada356610b5d2771c411b01a28a6da966f2f07",
+      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "metric": {
-        "label": "topics ranked",
-        "value": 177,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1763,8 +1763,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current sanitized optional export contains 177 ranked aggregate topics."
+          "type": "availability",
+          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
         }
       ],
       "evidence": {
@@ -1781,6 +1781,7 @@
         "version": "nemesis-public-v2"
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
