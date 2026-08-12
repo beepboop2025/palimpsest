@@ -318,37 +318,38 @@ class AnalysisBroker:
         except ContainerContractError as exc:
             raise BrokerError(str(exc)) from exc
         command[0] = str(self.docker_path)
-        cidfile = stage / "container.cid"
-        try:
-            with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-                process = subprocess.Popen(
-                    command,
-                    stdin=subprocess.DEVNULL,
-                    stdout=stdout,
-                    stderr=stderr,
-                    close_fds=True,
-                    env=_DOCKER_ENV,
-                )
-                timed_out = False
-                try:
-                    returncode = process.wait(timeout=CONTAINER_TIMEOUT_SECONDS)
-                except subprocess.TimeoutExpired:
-                    timed_out = True
-                    self._remove_container(allow_absent=False)
-                    try:
-                        returncode = process.wait(timeout=60)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        returncode = process.wait(timeout=30)
-                stdout_tail = _tail(stdout)
-                stderr_tail = _tail(stderr)
-        finally:
-            # Docker creates this control receipt as root. Keep its complete
-            # lifecycle on the broker side of the UID 10001 trust boundary.
+        with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout,
+                stderr=stderr,
+                close_fds=True,
+                env=_DOCKER_ENV,
+            )
+            timed_out = False
             try:
-                cidfile.unlink()
-            except FileNotFoundError:
-                pass
+                returncode = process.wait(timeout=CONTAINER_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                self._remove_container(allow_absent=False)
+                try:
+                    returncode = process.wait(timeout=60)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    returncode = process.wait(timeout=30)
+            stdout_tail = _tail(stdout)
+            stderr_tail = _tail(stderr)
+        if returncode == 0 and not timed_out:
+            # Docker creates this receipt as root.  The caller runs as UID 10001
+            # inside a sticky staging directory, so only the broker can discard
+            # it without weakening the directory's replacement protection.
+            try:
+                (stage / "container.cid").unlink()
+            except FileNotFoundError as exc:
+                raise BrokerError(
+                    "successful analysis container left no CID receipt"
+                ) from exc
         return {
             "ok": True,
             "returncode": returncode,

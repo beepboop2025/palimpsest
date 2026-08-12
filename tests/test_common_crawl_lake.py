@@ -824,6 +824,7 @@ def test_common_crawl_host_installer_is_revision_bound_and_volume_safe():
     assert "palimpsest-bleedthrough.service" in source
     assert "network_lane.py:network_lane.py:0555" in source
     assert "ops/bleedthrough_prober.sh:ops/bleedthrough_prober.sh:0555" in source
+    assert "config/bleedthrough_asns.json:config/bleedthrough_asns.json:0444" in source
     assert "scripts/bleedthrough_pull.py" in source
     assert "collectors/bleedthrough.py" in source
     assert "verify-host-bundle.sh:verify-host-bundle.sh:0555" in source

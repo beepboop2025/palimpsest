@@ -129,9 +129,8 @@ def test_run_operation_builds_only_the_fixed_networkless_command(
     class FakeProcess:
         def __init__(self, command, **kwargs):
             captured.append(command)
-            Path(command[command.index("--cidfile") + 1]).write_text(
-                "c" * 64 + "\n", encoding="ascii"
-            )
+            cidfile = Path(command[command.index("--cidfile") + 1])
+            cidfile.write_text("c" * 64 + "\n", encoding="ascii")
             kwargs["stdout"].write(b"ok\n")
             self.returncode = 0
 
@@ -159,6 +158,38 @@ def test_run_operation_builds_only_the_fixed_networkless_command(
     assert f"{stage / 'private'}:/app/private:rw" in command
     assert "sh" not in command and "bash" not in command
     assert not (stage / "container.cid").exists()
+
+
+def test_failed_run_preserves_cid_receipt_for_brokered_stage_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instance = _broker(tmp_path)
+    stage = tmp_path / "runs" / ".staging-0123456789abcdef"
+    for name in ("inputs", "readings", "private"):
+        (stage / name).mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(instance, "_identity", lambda: (COMMIT, IMAGE_ID))
+    monkeypatch.setattr(instance, "_require_stage_inventory", lambda _stage: None)
+
+    class FailedProcess:
+        def __init__(self, command, **_kwargs):
+            cidfile = Path(command[command.index("--cidfile") + 1])
+            cidfile.write_text("d" * 64 + "\n", encoding="ascii")
+            self.returncode = 9
+
+        def wait(self, timeout):
+            assert timeout == broker_module.CONTAINER_TIMEOUT_SECONDS
+            return self.returncode
+
+    monkeypatch.setattr(subprocess, "Popen", FailedProcess)
+
+    result = instance._run_container(
+        stage=stage,
+        input_commit=COMMIT,
+        decision_clock="2026-08-11T18:00:00Z",
+    )
+
+    assert result["returncode"] == 9
+    assert (stage / "container.cid").read_text(encoding="ascii") == "d" * 64 + "\n"
 
 
 def test_timeout_removes_only_the_fixed_container(
@@ -206,4 +237,4 @@ def test_timeout_removes_only_the_fixed_container(
     assert result["timed_out"] is True
     assert result["returncode"] == 137
     assert removed == [False]
-    assert not (stage / "container.cid").exists()
+    assert (stage / "container.cid").read_text(encoding="ascii") == "c" * 64 + "\n"

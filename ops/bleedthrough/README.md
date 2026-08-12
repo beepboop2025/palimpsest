@@ -115,6 +115,10 @@ network-lane ACL. It does not start a Common Crawl mirror. A busy lock, mirror
 quiet window, or unreconciled orphan returns 75; systemd treats that as a cleanly
 skipped BLEED round and the next six-hour activation retries.
 
+The ASN inventory is immutable method input inside the revision-verified
+network-lane bundle. Do not add `BLEEDTHROUGH_ASNS` to the host environment;
+the prober deliberately ignores legacy values that point at a mutable checkout.
+
 Do not replace this named ACL with world-write permissions. `KillSwitch` is
 fail-closed: if UID 10001 cannot traverse `readings/state` to check `STOP`, every
 container collector correctly records `halted` even though its process remains

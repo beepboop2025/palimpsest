@@ -26,7 +26,10 @@ STATE_ROOT="${PALIMPSEST_STATE_ROOT:-/var/lib/palimpsest}"
 STATE_DIR="${BLEEDTHROUGH_STATE_DIR:-$STATE_ROOT/bleedthrough}"
 READINGS_DIR="${BLEEDTHROUGH_READINGS:-$STATE_ROOT/readings}"
 
-export BLEEDTHROUGH_ASNS="${BLEEDTHROUGH_ASNS:-$REPO/config/bleedthrough_asns.json}"
+# This map is immutable method input shipped in the verified network-lane
+# bundle. Do not permit a legacy EnvironmentFile value to redirect the service
+# to a mutable checkout that its ProtectHome sandbox cannot read.
+export BLEEDTHROUGH_ASNS="$REPO/config/bleedthrough_asns.json"
 export BLEEDTHROUGH_PREFIXES="${BLEEDTHROUGH_PREFIXES:-$STATE_DIR/prefixes.json}"
 export BLEEDTHROUGH_TARGETS="${BLEEDTHROUGH_TARGETS:-$STATE_DIR/targets.json}"
 export BLEEDTHROUGH_STORE="${BLEEDTHROUGH_STORE:-$STATE_DIR/baselines}"

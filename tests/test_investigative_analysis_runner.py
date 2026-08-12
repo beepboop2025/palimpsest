@@ -368,6 +368,15 @@ def test_production_path_uses_broker_for_every_privileged_lifecycle_step(
 
     monkeypatch.setattr(runner, "_call_broker", broker)
 
+    real_unlink = Path.unlink
+
+    def reject_analysis_uid_cid_cleanup(path: Path, *args, **kwargs) -> None:
+        if path.name == "container.cid":
+            raise PermissionError("UID 10001 cannot unlink the broker-owned CID receipt")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", reject_analysis_uid_cid_cleanup)
+
     first = runner.run_once(
         readings_dir=readings,
         newswire_dir=wire,

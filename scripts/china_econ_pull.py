@@ -15,7 +15,13 @@ import os
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 
-from collectors.china_econ import ChinaEconCollection, FamilyCollection, collect
+from collectors.china_econ import (
+    FRR_KEYS,
+    SHIBOR_TENORS,
+    ChinaEconCollection,
+    FamilyCollection,
+    collect,
+)
 from core.econ_observation import EconomicObservation
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +33,13 @@ HIST = os.path.join(READINGS, "china-econ-history.jsonl")
 # the reading unconditionally, so it cannot hide a method change behind an
 # unchanged number. Carried as provenance: a reader diffing two history rows
 # needs to know whether the method moved underneath them.
-METHOD_VERSION = 2
+METHOD_VERSION = 3
+
+REQUIRED_BENCHMARK_KEYS = frozenset(
+    [f"shibor_{tenor.lower()}" for tenor in SHIBOR_TENORS]
+    + [key.lower() for key in FRR_KEYS]
+    + ["usdcny_parity"]
+)
 
 
 WINDOW_DAYS = 28  # inside the portal's per-request range limit
@@ -241,14 +253,14 @@ def main() -> None:
 
     history = _load_history()
     new_dates = []
-    for day_key in sorted(fresh):
-        row = {"date": day_key, **fresh[day_key]}
-        prior = history.get(day_key)
+    for period in sorted(fresh):
+        row = {"date": period, **fresh[period]}
+        prior = history.get(period)
         # A revisit may complete a date a throttled run left partial — merge,
         # never shrink.
         if prior is None or any(prior.get(key) != value for key, value in row.items()):
-            history[day_key] = {**(prior or {}), **row}
-            new_dates.append(day_key)
+            history[period] = {**(prior or {}), **row}
+            new_dates.append(period)
 
     if new_dates:
         with open(HIST, "w", encoding="utf-8") as f:
@@ -258,7 +270,22 @@ def main() -> None:
                     + "\n"
                 )
 
-    last_date = max(fresh)
+    complete_dates = sorted(
+        period
+        for period, values in fresh.items()
+        if set(values) == REQUIRED_BENCHMARK_KEYS
+    )
+    if not complete_dates:
+        print(
+            "chinamoney returned no complete 15-metric benchmark date — "
+            "retaining partial history and the last complete public reading"
+        )
+        return
+
+    # Each endpoint covers the same trailing window but may publish today's
+    # family at a different time.  Publish the newest date observed complete in
+    # this round, never the newest date seen by only one or two families.
+    last_date = complete_dates[-1]
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "method_version": METHOD_VERSION,

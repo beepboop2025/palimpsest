@@ -87,6 +87,7 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "OUT", str(tmp_path / "china-econ-latest.json"))
     monkeypatch.setattr(pull, "HIST", str(tmp_path / "china-econ-history.jsonl"))
     monkeypatch.setattr(pull, "datetime", _Clock())
+    monkeypatch.setattr(pull, "REQUIRED_BENCHMARK_KEYS", frozenset(BENCHMARKS))
 
     def run(rows):
         # The whole input the writer needs is a date -> benchmarks mapping, so
@@ -187,25 +188,6 @@ def test_asof_is_what_carries_movement(publish):
     assert len(_history(tmp_path)) == 2
 
 
-def test_latest_family_labels_describe_only_the_asof_snapshot(publish):
-    """An older response in the request window cannot make a missing family
-    look present in the newest dated compatibility snapshot."""
-    run, _ = publish
-    reading = run(
-        {
-            DAY: dict(BENCHMARKS),
-            "2026-07-18": {
-                "shibor_on": 1.41,
-                "usdcny_parity": 7.12,
-            },
-        }
-    )
-
-    assert reading["asof"] == "2026-07-18"
-    assert reading["families_reporting"] == ["central_parity", "shibor"]
-    assert "fdr007" not in reading["benchmarks"]
-
-
 def test_a_revisit_completes_a_partial_day_without_shrinking_it(publish):
     """A throttled round can leave a day half-recorded. The next round has to
     fill the gap and append the completed row, never overwrite it with less."""
@@ -217,6 +199,30 @@ def test_a_revisit_completes_a_partial_day_without_shrinking_it(publish):
     assert len(rows) == 1
     assert rows[0]["fdr007"] == 1.55
     assert rows[0]["shibor_on"] == 1.42
+
+
+def test_a_newer_partial_date_never_replaces_the_complete_public_snapshot(publish):
+    """Families publish at different times, so max(date) is not completeness."""
+    run, tmp_path = publish
+    first = run({DAY: dict(BENCHMARKS)})
+    newer = "2026-07-18"
+
+    after = run(
+        {
+            DAY: dict(BENCHMARKS),
+            newer: {"shibor_on": 1.43, "usdcny_parity": 7.12},
+        }
+    )
+
+    assert after["generated_at"] > first["generated_at"]
+    assert after["asof"] == DAY
+    assert after["benchmarks"] == BENCHMARKS
+    assert _history(tmp_path)[-1] == {
+        "date": newer,
+        "shibor_on": 1.43,
+        "usdcny_parity": 7.12,
+    }
+    assert any(row["period_end"] == newer for row in _observations(tmp_path))
 
 
 def test_long_form_vintages_are_bitemporal_and_revision_preserving(publish):
@@ -252,7 +258,7 @@ def test_a_revised_parity_updates_the_compatibility_consumer(publish):
 def test_backfilled_days_are_not_pretended_known_on_their_data_date(publish):
     run, tmp_path = publish
     old_day = "2025-12-31"
-    reading = run({old_day: {"shibor_on": 1.42}})
+    reading = run({old_day: dict(BENCHMARKS)})
     row = _observations(tmp_path)[0]
 
     assert row["period_start"] == old_day

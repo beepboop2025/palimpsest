@@ -127,7 +127,9 @@ The broker's capability bounding set contains only `CAP_CHOWN`. It uses that
 capability inside its sole writable path to grant UID/GID 10001 access to a
 new staging tree, then seal every completed member back to root ownership before
 atomic promotion. Its ambient capability set is empty. The analysis service has
-an empty bounding set and never receives this capability.
+an empty bounding set and never receives this capability. The broker also removes
+Docker's root-owned CID receipt after a successful `--rm` run; the unprivileged
+runner never deletes that receipt from the sticky staging directory.
 
 ## Verify
 

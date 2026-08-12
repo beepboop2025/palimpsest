@@ -88,6 +88,7 @@ def test_environment_records_fixed_box_consent_kill_switch_and_durable_paths():
     assert "BLEEDTHROUGH_ALLOW_BOX=1" in env
     assert "BLEEDTHROUGH_VANTAGE_COUNTRY=DE" in env
     assert "PALIMPSEST_KILLFILE=/var/lib/palimpsest/readings/state/STOP" in env
+    assert "BLEEDTHROUGH_ASNS" not in env
     for variable in (
         "BLEEDTHROUGH_PREFIXES",
         "BLEEDTHROUGH_TARGETS",
@@ -160,6 +161,44 @@ def test_prober_routes_all_mutable_paths_outside_checkout(tmp_path):
         assert all(path.is_relative_to(state) for path in paths)
         assert all(not path.is_relative_to(ROOT) for path in paths)
     assert (state / "bleedthrough/round.lock").exists()
+
+
+def test_prober_pins_asn_inventory_to_verified_bundle(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    calls = tmp_path / "asns.log"
+    state = tmp_path / "state"
+
+    _executable(fake_bin / "curl", "#!/bin/sh\necho 203.0.113.7\n")
+    _executable(fake_bin / "flock", "#!/bin/sh\nexit 0\n")
+    _executable(
+        fake_bin / "python3",
+        "#!/bin/sh\nprintf '%s\\n' \"$BLEEDTHROUGH_ASNS\" >> \"$CALL_LOG\"\n",
+    )
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ.get('PATH', '')}",
+        "CALL_LOG": str(calls),
+        "PALIMPSEST_STATE_ROOT": str(state),
+        "BLEEDTHROUGH_PYTHON": str(fake_bin / "python3"),
+        "BLEEDTHROUGH_LIVE": "1",
+        "BLEEDTHROUGH_ALLOW_BOX": "1",
+        "BLEEDTHROUGH_ASNS": "/home/palimpsest/palimpsest/config/bleedthrough_asns.json",
+    }
+
+    result = subprocess.run(
+        ["bash", str(PROBER)],
+        env=env,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout
+    expected = ROOT / "config/bleedthrough_asns.json"
+    assert calls.read_text(encoding="utf-8").splitlines() == [str(expected)] * 3
 
 
 def test_known_hetzner_box_still_requires_separate_allow_flag(tmp_path):

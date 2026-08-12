@@ -1206,10 +1206,11 @@ def _run_once_locked(
                 f"isolated analysis container failed with status {returncode}: "
                 f"{(stderr_tail or stdout_tail)[-1000:]}"
             )
-        # Docker --rm guarantees a completed container no longer owns the name.
-        # The root broker owns and removes its CID receipt; the direct test path
-        # must dispose of the receipt itself.
         if not brokered:
+            # In direct/test mode this process launches Docker and owns its CID
+            # receipt.  In production the root broker already removed its own
+            # receipt before returning success; UID 10001 must not attempt to
+            # unlink that root-owned file from the sticky staging directory.
             try:
                 cidfile.unlink()
             except FileNotFoundError:

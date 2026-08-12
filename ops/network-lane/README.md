@@ -126,8 +126,11 @@ the tmpfiles and systemd units, validates all units together, applies and checks
 the ACL, and atomically switches `current`. Before every heavy run, systemd also
 checks the bundle manifest and compares its `REVISION` with the deployed-commit
 receipt; the invocation receipt records that revision and the bundled prober
-hash. BLEED no longer executes code from the mutable checkout. Stop legacy BLEED first:
-it does not own this lock. Keep it stopped if any install check fails.
+hash. The prober binds its ASN inventory to the same verified bundle and ignores
+legacy environment values that pointed into the protected mutable checkout.
+BLEED no longer executes code or reads method configuration from that checkout.
+Stop legacy BLEED first: it does not own this lock. Keep it stopped if any
+install check fails.
 
 ```bash
 sudo systemctl disable --now palimpsest-bleedthrough.timer
