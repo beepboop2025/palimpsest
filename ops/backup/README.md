@@ -1,5 +1,11 @@
 # Validated node backups
 
+The Common Crawl evidence Volume has a separate encrypted, Object-Lock-aware
+path because it contains private SQLite/WARC relationships and deliberately
+excludes the reconstructible bulk mirror. See
+[`COMMON-CRAWL-OFFSITE.md`](COMMON-CRAWL-OFFSITE.md). The generic nightly backup
+described below still covers PostgreSQL, `readings/`, and `data/`.
+
 `palimpsest-backup.sh` creates one timestamped directory containing:
 
 - a PostgreSQL custom-format dump and the successful `pg_restore --list`

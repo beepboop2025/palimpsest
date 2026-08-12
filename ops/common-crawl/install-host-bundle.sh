@@ -30,6 +30,10 @@ service_units=(
   palimpsest-common-crawl-context.timer
   palimpsest-common-crawl-filter@.service
 )
+backup_units=(
+  palimpsest-common-crawl-backup.service
+  palimpsest-common-crawl-backup.timer
+)
 network_units=(
   palimpsest-bleedthrough.service
   palimpsest-bleedthrough.timer
@@ -180,6 +184,14 @@ for unit_name in "${service_units[@]}"; do
     *) die "$unit_name must be stopped before installation" ;;
   esac
 done
+backup_state="$(
+  systemctl show --property=ActiveState --value \
+    palimpsest-common-crawl-backup.service 2>/dev/null || true
+)"
+case "$backup_state" in
+  ""|inactive|failed) ;;
+  *) die "palimpsest-common-crawl-backup.service must finish before installation" ;;
+esac
 
 # The old BLEED unit does not know about the shared lane. Hold both the timer and
 # service down until the revision-bound helper, ACL, and replacement unit exist.
@@ -390,7 +402,7 @@ trap cleanup EXIT
 
 validate_and_enroll_duckdb
 
-for directory in collectors config core processors scripts; do
+for directory in backup collectors config core processors scripts; do
   install -d -o root -g root -m 0755 "$bundle_tmp/$directory"
 done
 lane_bundle_files=(
@@ -437,6 +449,9 @@ validate_lane_bundle_permissions "$lane_bundle_tmp"
 sync -f "$lane_bundle_tmp"
 bundle_files=(
   "ops/common-crawl/README.md:README.md:0444"
+  "ops/backup/COMMON-CRAWL-OFFSITE.md:backup/README.md:0444"
+  "ops/backup/common_crawl_backup.py:backup/common_crawl_backup.py:0555"
+  "ops/backup/palimpsest-common-crawl-offsite-backup.sh:backup/palimpsest-common-crawl-offsite-backup.sh:0555"
   "collectors/__init__.py:collectors/__init__.py:0444"
   "collectors/common_crawl_lake.py:collectors/common_crawl_lake.py:0444"
   "config/common_crawl_targets.json:config/common_crawl_targets.json:0444"
@@ -462,7 +477,8 @@ chmod 0444 "$bundle_tmp/REVISION"
 (
   cd "$bundle_tmp"
   sha256sum \
-    README.md REVISION \
+    README.md REVISION backup/README.md backup/common_crawl_backup.py \
+    backup/palimpsest-common-crawl-offsite-backup.sh \
     collectors/__init__.py collectors/common_crawl_lake.py \
     config/common_crawl_targets.json \
     core/__init__.py core/governance.py core/safe_fetch.py \
@@ -549,7 +565,7 @@ mount_unit="$(systemd-escape --path --suffix=mount "$state_root")"
   || die "unexpected systemd mount unit name: $mount_unit"
 sed "s|@WAREHOUSE_SOURCE@|$warehouse_source|g" \
   "$mount_template" >"$unit_stage/$mount_unit"
-for unit_name in "${service_units[@]}"; do
+for unit_name in "${service_units[@]}" "${backup_units[@]}"; do
   install -m 0644 "$repo_root/ops/systemd/$unit_name" "$unit_stage/$unit_name"
   verify_git_blob "ops/systemd/$unit_name" "$unit_stage/$unit_name"
 done
@@ -563,7 +579,7 @@ verify_git_blob \
   "ops/systemd/palimpsest-network-lane.tmpfiles.conf" \
   "$unit_stage/palimpsest-network-lane.tmpfiles.conf"
 unit_paths=("$unit_stage/$mount_unit")
-for unit_name in "${service_units[@]}" "${network_units[@]}"; do
+for unit_name in "${service_units[@]}" "${backup_units[@]}" "${network_units[@]}"; do
   unit_paths+=("$unit_stage/$unit_name")
 done
 systemd-analyze verify "${unit_paths[@]}"
@@ -583,7 +599,7 @@ IFS= read -r deployed_revision <"$receipt_path"
 
 install -o root -g root -m 0644 \
   "$unit_stage/$mount_unit" "/etc/systemd/system/$mount_unit"
-for unit_name in "${service_units[@]}"; do
+for unit_name in "${service_units[@]}" "${backup_units[@]}"; do
   install -o root -g root -m 0644 \
     "$unit_stage/$unit_name" "/etc/systemd/system/$unit_name"
   verify_git_blob "ops/systemd/$unit_name" "/etc/systemd/system/$unit_name"

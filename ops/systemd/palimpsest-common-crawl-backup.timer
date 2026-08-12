@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Palimpsest Common Crawl off-host evidence backup weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 04:45:00 UTC
+RandomizedDelaySec=30m
+FixedRandomDelay=true
+AccuracySec=1m
+Persistent=true
+Unit=palimpsest-common-crawl-backup.service
+
+[Install]
+WantedBy=timers.target

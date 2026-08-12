@@ -149,3 +149,18 @@ velocity. Official institutional sites are useful for studying publication and
 revision behavior, but they are not a representative sample of Chinese public
 speech. These limitations are stored in the feature and summary artifacts, not
 left only in prose.
+
+## Evidence recovery
+
+The public Parquet mirror and raw target-filtered export can be rebuilt from
+Common Crawl, but selected WARC records and future human labels cannot. The
+production recovery lane therefore snapshots the SQLite database under the
+lake's mutation lock, includes only reviewed private state, verifies every
+content-addressed WARC mapping, encrypts before upload, and performs a full
+download/decrypt/isolated-restore verification before publishing a completion
+receipt. Unknown future state paths make the job fail closed.
+
+Object Storage is off-host from the Hetzner Volume, but using the same provider
+and location is still a correlated failure domain. The encrypted snapshot closes
+the immediate node/Volume-loss gap; a separate provider remains the next step
+for provider-independent recovery.

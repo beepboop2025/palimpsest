@@ -184,13 +184,29 @@ node's other warehouse reserves before enabling monthly exports. The installer
 prevents an accidental initial allocation on the root disk, and the committed
 importer has hard input, row, line, and record-size ceilings.
 
-The existing nightly Palimpsest artifact backup covers `readings/` and `data/`,
-not this directory. Do not assume this lake is protected by that timer. Back up a
-consistent SQLite snapshot plus `records/` and the import hashes to a separately
-mounted or off-host destination, or take a filesystem-level snapshot while both
-Common Crawl units are stopped. Raw URL Index exports are public and
-reconstructible, but human-selected WARC records and review labels should be
-treated as durable evidence.
+The ordinary nightly Palimpsest artifact backup covers `readings/` and `data/`,
+not this directory. The separate `palimpsest-common-crawl-backup.timer` protects
+the lake weekly. Its snapshot tool owns the same warehouse lock as imports and
+selected-record writes, creates a consistent SQLite backup, and includes
+allowlisted private state such as `records/`, future `labels/`, `reviews/`, and
+`decisions/`. It fails if a new top-level state path has not received an explicit
+backup decision.
+
+The off-host job encrypts the validated snapshot, writes it to a unique Object
+Storage key, downloads it, decrypts it into an isolated directory, and repeats
+the SQLite and WARC identity checks. `RECEIPT.json` is uploaded last and is the
+only completion marker. The uploader never remotely deletes. Production should
+require a bucket created with Object Lock and a reviewed default retention rule.
+The passphrase must also be escrowed somewhere other than the Hetzner node.
+
+Raw URL Index Parquet files are public and reconstructible, so the 168+ GiB
+mirror is intentionally excluded. Human-selected WARC records and human review
+state are not reconstructible and stay inside the protected snapshot. See
+`backup/README.md` in the immutable host bundle, or
+`ops/backup/COMMON-CRAWL-OFFSITE.md` in the repository, for configuration and an
+isolated recovery drill. A Hetzner Object Storage copy is off-host but remains
+same-provider and same-location; add a second provider if provider-independent
+disaster recovery becomes a requirement.
 
 ## Failure semantics
 
