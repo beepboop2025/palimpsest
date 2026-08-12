@@ -49,6 +49,7 @@ RUN if [ "$WITH_BROWSER" = "true" ]; then \
 # git history, and the ops/ deploy scaffolding.
 COPY --chown=palimpsest:palimpsest api/          api/
 COPY --chown=palimpsest:palimpsest core/         core/
+COPY --chown=palimpsest:palimpsest evidence/     evidence/
 COPY --chown=palimpsest:palimpsest collectors/   collectors/
 COPY --chown=palimpsest:palimpsest processors/   processors/
 COPY --chown=palimpsest:palimpsest storage/      storage/
