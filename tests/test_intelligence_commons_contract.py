@@ -30,6 +30,7 @@ VERSION = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$")
 PUBLIC_HOSTS = {
     "api.seiche.info",
     "drug-price-observatory.vercel.app",
+    "narcoscope.com",
     "github.com",
     "palimpsest.info",
     "seiche.info",
@@ -268,7 +269,7 @@ def test_connections_are_directional_honest_and_reference_public_projects() -> N
     assert narco["status"] == "ACTIVE"
     assert narco["contract"] == "narcoscope.palimpsest.china-aggregate.v1"
     assert narco["data_url"] == (
-        "https://drug-price-observatory.vercel.app/data/"
+        "https://narcoscope.com/data/"
         "narcoscope-palimpsest-v1.json"
     )
 

@@ -229,7 +229,9 @@ agent does not have to scrape the pages or guess at a schema:
 - MCP server (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
 - Tools: `list_signals` (discover every published signal and its source URL),
   `get_signal` (one signal's full payload; `max_rows` caps long row arrays and
-  any cap applied is reported with the true total), `whats_happening` (the
+  any cap applied is reported with the true total), `get_newsroom` (read the
+  evidence newsroom, wire, economic pulse, investigations desk, or editorial
+  gates with status and limitations attached), `whats_happening` (the
   board's own cross-signal verdict, with multiplicity paid for and coverage
   confounds flagged as artifacts rather than findings), and `gfw_reading`
   (network-layer and model-layer Great Firewall in one call).

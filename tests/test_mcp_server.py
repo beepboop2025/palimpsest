@@ -1,8 +1,8 @@
 """Offline proof of the MCP server's protocol contract and its request cap.
 
 dispatch() is pure and network-free once _fetch is stubbed, so the whole
-JSON-RPC surface can be checked without a socket: initialize must echo the
-client's protocol version rather than dictate ours, tools/list must advertise
+JSON-RPC surface can be checked without a socket: initialize must negotiate a
+supported protocol version, tools/list must advertise
 every tool with the fields a client routes on, an unknown tool must be an
 INVALID_PARAMS error and not a silent success, and a notification (no id) must
 draw no response at all.
@@ -38,10 +38,15 @@ def _rpc(method, params=None, msg_id=1):
 
 
 # ------------------------------------------------------------- initialize --
-def test_initialize_echoes_client_protocol_version():
+def test_initialize_replies_with_current_version_for_unsupported_client():
     out = mcp.dispatch(_rpc("initialize", {"protocolVersion": "2024-11-05"}))
-    assert out["result"]["protocolVersion"] == "2024-11-05"
+    assert out["result"]["protocolVersion"] == mcp.PROTOCOL_VERSION
     assert out["result"]["serverInfo"]["name"] == mcp.SERVER_NAME
+
+
+def test_initialize_echoes_a_supported_client_protocol_version():
+    out = mcp.dispatch(_rpc("initialize", {"protocolVersion": "2025-03-26"}))
+    assert out["result"]["protocolVersion"] == "2025-03-26"
 
 
 def test_initialize_falls_back_to_server_version_when_client_sends_none():
@@ -73,6 +78,21 @@ def test_signal_catalog_discloses_disabled_baike_and_independent_status():
     assert "quarantined" in baike["description"]
     assert "independent cadence and status" in listed["note"]
     assert "all signals self-update" not in listed["note"]
+
+
+def test_signal_catalog_exposes_the_reporting_and_investigation_surfaces():
+    listed = {row["name"]: row for row in mcp.tool_list_signals({})["signals"]}
+    for name in (
+        "newsroom",
+        "evidence-wire",
+        "china-economic-pulse",
+        "investigations",
+        "editorial-readiness",
+        "evidence-catalog",
+        "osint-china",
+    ):
+        assert name in listed
+        assert listed[name]["url"].startswith("https://palimpsest.info/readings/")
 
 
 def test_mcp_copy_discloses_that_labelled_stale_evidence_is_served():
@@ -108,6 +128,54 @@ def test_get_signal_returns_the_fetched_payload(monkeypatch):
     assert out["result"]["isError"] is False
     assert body["signal"] == "refusal-drift"
     assert body["source_url"].endswith("/readings/refusal-drift-latest.json")
+
+
+def test_get_newsroom_keeps_publication_state_and_bounds_the_selection(monkeypatch):
+    monkeypatch.setattr(mcp, "_fetch", lambda name: {
+        "schema_version": "palimpsest-investigations.v1",
+        "generated_at": "2026-08-12T14:00:00Z",
+        "publication_policy": {"automatic_publication": False},
+        "cases": [
+            {
+                "case_id": f"case-{i}",
+                "status": "open_research_lead",
+                "publication_gate": {"status": "blocked"},
+                "counterevidence": [{"statement": "countercase"}],
+                "limitations": ["one round"],
+                "right_to_reply": {"status": "not_started"},
+            }
+            for i in range(4)
+        ],
+    })
+    out = mcp.dispatch(_rpc("tools/call", {
+        "name": "get_newsroom",
+        "arguments": {
+            "view": "investigations",
+            "status": "open_research_lead",
+            "limit": 2,
+        },
+    }))
+    body = out["result"]["structuredContent"]
+    assert body["selection"] == {
+        "collection": "cases",
+        "returned": 2,
+        "matched": 4,
+        "total": 4,
+        "limit": 2,
+    }
+    assert all(
+        case["publication_gate"]["status"] == "blocked"
+        for case in body["data"]["cases"]
+    )
+    assert "not automatically publication-ready" in body["how_to_read_this"]
+
+
+def test_get_newsroom_rejects_unknown_views():
+    out = mcp.dispatch(_rpc("tools/call", {
+        "name": "get_newsroom",
+        "arguments": {"view": "rumours"},
+    }))
+    assert out["error"]["code"] == mcp.INVALID_PARAMS
 
 
 def test_model_excerpts_cannot_smuggle_instructions_into_the_caller(monkeypatch):
@@ -394,6 +462,33 @@ def test_untrusted_browser_origin_is_rejected_before_dispatch():
 
 def test_non_browser_mcp_clients_need_no_origin_header():
     assert _handler_for()._origin_allowed() is True
+
+
+def test_http_rejects_an_unsupported_mcp_protocol_header():
+    body = json.dumps(_rpc("ping")).encode()
+    handler = _handler_for()
+    handler.headers = {
+        "Content-Length": str(len(body)),
+        "MCP-Protocol-Version": "2099-01-01",
+    }
+    handler.rfile = io.BytesIO(body)
+    handler._send = lambda code, payload=None: setattr(
+        handler, "sent", (code, payload))
+
+    handler.do_POST()
+
+    assert handler.sent[0] == 400
+    assert "unsupported MCP protocol version" in handler.sent[1]["error"]["message"]
+
+
+def test_streamless_get_and_sessionless_delete_are_method_not_allowed():
+    for method in ("do_GET", "do_DELETE"):
+        handler = _handler_for()
+        handler._send = lambda code, payload=None, extra_headers=None: setattr(
+            handler, "sent", (code, payload, extra_headers))
+        getattr(handler, method)()
+        assert handler.sent[0] == 405
+        assert handler.sent[2]["Allow"] == "POST, OPTIONS"
 
 
 def test_http_tool_call_emits_one_privacy_safe_activation(capsys):

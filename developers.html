@@ -180,10 +180,11 @@
   <header class="dev-head ps-recede">
     <p class="ps-kicker">Public API · remote MCP · no key</p>
     <h1 class="ps-h1">Give your agent evidence that can still be checked</h1>
-    <p class="ps-lede">Palimpsest exposes current censorship measurements and tamper-evident
-    model evaluations through a read-only MCP server and stable JSON readings. A separate reviewed
-    ScamShield pack shares inert typologies and source links without making private message evidence
-    public. Every result keeps its timestamp, source, vantage and limitations attached.</p>
+    <p class="ps-lede">Palimpsest exposes current censorship measurements, tamper-evident
+    model evaluations, and its evidence-first newsroom through a read-only MCP server and stable
+    JSON readings. A separate reviewed ScamShield pack shares inert typologies and source links
+    without making private message evidence public. Every result keeps its timestamp, source,
+    publication state, counterevidence and limitations attached.</p>
     <div class="dev-actions">
       <a class="ps-btn" href="#connect">Connect the MCP server</a>
       <a class="ps-btn ps-btn--ghost" href="/openapi.json">Import OpenAPI</a>
@@ -192,7 +193,7 @@
       <a class="ps-btn ps-btn--ghost" href="/product-card.json">Product card</a>
     </div>
     <div class="proof ps-stagger" aria-label="Service facts">
-      <div class="ps-p1 ps-reveal"><b>4 tools</b><span>censorship + model-eval evidence</span></div>
+      <div class="ps-p1 ps-reveal"><b>5 tools</b><span>measurements + newsroom evidence</span></div>
       <div class="ps-p1 ps-reveal"><b>No auth</b><span>public data, no account or token</span></div>
       <div class="ps-p1 ps-reveal"><b>Read-only</b><span>timestamps and gaps stay visible</span></div>
     </div>
@@ -200,7 +201,7 @@
 
   <section id="connect" class="ps-defer">
     <h2 class="ps-section-head">Connect in under a minute</h2>
-    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all four tools
+    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all five tools
     from the server, so no schema needs to be copied by hand.</p>
     <div class="connect-grid">
       <article class="connect ps-p2 ps-reveal">
@@ -230,10 +231,11 @@
   </section>
 
   <section class="ps-defer">
-    <h2 class="ps-section-head">The four tools</h2>
+    <h2 class="ps-section-head">The five tools</h2>
     <div class="tool-grid ps-stagger">
       <article class="tool ps-p1 ps-reveal"><h3><code>list_signals</code></h3><p>Discover every published instrument, its scope, current source URL and independent status.</p><p class="args">arguments: none · call this first</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_signal</code></h3><p>Fetch one full reading, with timestamp, provenance, caps and any untrusted third-party text labelled.</p><p class="args">arguments: name · max_rows (optional)</p></article>
+      <article class="tool ps-p1 ps-reveal"><h3><code>get_newsroom</code></h3><p>Read the evidence newsroom, wire, economic pulse, investigations, or editorial gates without losing publication state.</p><p class="args">arguments: view · limit · status/priority (optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>whats_happening</code></h3><p>Ask the board for its multiplicity-aware verdict, with coverage failures separated from findings.</p><p class="args">arguments: none · best first answer</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>gfw_reading</code></h3><p>Read Great Firewall network blocking beside model-layer censorship without collapsing the two.</p><p class="args">arguments: none</p></article>
     </div>
@@ -273,7 +275,7 @@
 
   <section class="ps-defer" id="scamshield">
     <h2 class="ps-section-head">ScamShield reviewed bridge</h2>
-    <p class="dev-copy">The intelligence pack is a versioned static JSON contract, not a fifth MCP
+    <p class="dev-copy">The intelligence pack is a versioned static JSON contract, not an MCP
     tool. ScamShield loads its inert sources and typologies; a separate local stdin bridge can build
     a private Evidence Capsule from a structured assessment.</p>
     <div class="connect-grid">
@@ -303,7 +305,7 @@
 
   <section class="ps-defer">
     <h2 class="ps-section-head">OpenAI Responses API</h2>
-    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all four tools are
+    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all five tools are
     read-only, the example runs without per-call approval.</p>
     <div class="codebox ps-p2" style="padding:18px">
       <pre id="openai-example"><code>curl https://api.openai.com/v1/responses \
@@ -329,7 +331,7 @@
       <li class="ps-p1 ps-reveal"><b>Enable Developer mode</b> in an eligible ChatGPT workspace.</li>
       <li class="ps-p1 ps-reveal">Open <b>Settings → Apps → Create</b> and name the app “Palimpsest”.</li>
       <li class="ps-p1 ps-reveal">Paste <b>https://api.seiche.info/palimpsest/mcp</b> as the MCP endpoint. No OAuth details are required.</li>
-      <li class="ps-p1 ps-reveal"><b>Review the four discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
+      <li class="ps-p1 ps-reveal"><b>Review the five discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
     </ol>
   </section>
 

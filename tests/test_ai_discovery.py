@@ -62,12 +62,12 @@ def test_developer_page_exposes_every_activation_path():
     assert "claude mcp add --transport http" in page
     assert '"type": "mcp"' in page and '"require_approval": "never"' in page
     assert "Settings → Apps → Create" in page
-    assert "four discovered read-only tools" in page
+    assert "five discovered read-only tools" in page
     assert 'id="run-verdict"' in page and "whats_happening" in page
     assert "/assets/developers.js" in page
     assert 'id="scamshield"' in page
     assert "scamshield-intelligence-pack/v1" in page
-    assert "The intelligence pack is a versioned static JSON contract, not a fifth MCP" in page
+    assert "The intelligence pack is a versioned static JSON contract, not an MCP" in page
 
 
 def test_discovery_files_and_home_link_to_the_developer_surface():
