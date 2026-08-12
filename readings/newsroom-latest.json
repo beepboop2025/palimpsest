@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: content. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-12T03:40:03Z",
+  "generated_at": "2026-08-12T03:51:07Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "2b2fcc6e50b1f699c03cea0710d360c9db813f6d",
+  "source_commit": "6a6631ed66dca3f7acd8569566b8795cf3c7b126",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1378,19 +1378,19 @@
       "slug": "china-money-market-benchmarks",
       "url": "https://palimpsest.info/news/china-money-market-benchmarks/",
       "signal_id": "china-econ",
-      "headline": "2 official money-market benchmark families are reporting",
+      "headline": "3 official money-market benchmark families are reporting",
       "dek": "The feed carries published CFETS levels as economic context without inferring a policy signal from one print.",
       "section": "economy",
       "order": 1,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-12T03:08:38Z",
-      "modified_at": "2026-08-12T03:08:38Z",
-      "claim_fingerprint": "sha256:cbb2d9c224039e9f10ccd53b698f0b4f845c694d88ac2c1e1b8022aaedeef766",
+      "published_at": "2026-08-12T03:49:48Z",
+      "modified_at": "2026-08-12T03:49:48Z",
+      "claim_fingerprint": "sha256:ec0f881c4f5909c7ce1b1422ed24fed5ce90df6f28e8cbff1c7c66cab5ba5743",
       "metric": {
         "label": "benchmark families reporting",
-        "value": 2,
+        "value": 3,
         "unit": "count",
         "denominator": {
           "label": null,
@@ -1400,21 +1400,21 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "The current CFETS reading contains 2 reporting benchmark families."
+          "statement": "The current CFETS reading contains 3 reporting benchmark families."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/china-econ-latest.json",
         "input": {
           "filename": "china-econ-latest.json",
-          "sha256": "c072f1602a0ea6e46bfe921716e3979ea84fb1d4659c678a480fb9ce007933ae",
-          "bytes": 622
+          "sha256": "28c1c899a642d167e7fdbbd84b25271a2bb99cb89df8426bbb0543c0e9d1e079",
+          "bytes": 742
         },
-        "source_timestamp": "2026-08-12T03:08:38Z"
+        "source_timestamp": "2026-08-12T03:49:48Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
-        "version": 2
+        "version": 3
       },
       "limitations": [
         "Official benchmark levels are state-published inputs; interpreting policy requires relationships and history, not one level."
