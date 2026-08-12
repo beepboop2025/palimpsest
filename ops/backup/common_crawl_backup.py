@@ -240,7 +240,7 @@ def _database_backup(source_path: Path, destination_path: Path) -> dict[str, int
         source.close()
     destination_path.chmod(0o600)
     connection = sqlite3.connect(
-        f"file:{destination_path.as_posix()}?mode=ro", uri=True
+        destination_path.resolve(strict=True).as_uri() + "?mode=ro", uri=True
     )
     try:
         integrity = connection.execute("PRAGMA integrity_check").fetchall()
@@ -474,7 +474,8 @@ def verify_snapshot(
         digest = entry.get("sha256")
         size = entry.get("bytes")
         if (
-            relative in expected
+            relative in {MANIFEST_NAME, CHECKSUM_NAME}
+            or relative in expected
             or not isinstance(digest, str)
             or not SHA256_RE.fullmatch(digest)
             or type(size) is not int
@@ -491,11 +492,16 @@ def verify_snapshot(
         "public_parquet_mirror_included": False,
     }:
         raise BackupError("snapshot selection policy is malformed")
-    actual_files = {
-        path.relative_to(snapshot).as_posix()
-        for path in snapshot.rglob("*")
-        if path.is_file() and not path.is_symlink()
-    }
+    actual_files: set[str] = set()
+    for path in snapshot.rglob("*"):
+        relative = path.relative_to(snapshot).as_posix()
+        info = path.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            raise BackupError(f"snapshot contains a symlink: {relative}")
+        if stat.S_ISREG(info.st_mode):
+            actual_files.add(relative)
+        elif not stat.S_ISDIR(info.st_mode):
+            raise BackupError(f"snapshot contains a non-regular file: {relative}")
     expected_files = set(expected) | {MANIFEST_NAME, CHECKSUM_NAME}
     if actual_files != expected_files:
         raise BackupError("snapshot has missing or unmanifested files")

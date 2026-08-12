@@ -165,6 +165,14 @@ def test_verifier_detects_payload_tampering(tmp_path):
         backup.verify_snapshot(snapshot)
 
 
+def test_verifier_rejects_an_unmanifested_symlink(tmp_path):
+    snapshot, _ = _create(tmp_path)
+    (snapshot / "derived" / "unmanifested").symlink_to(tmp_path / "outside")
+
+    with pytest.raises(backup.BackupError, match="snapshot contains a symlink"):
+        backup.verify_snapshot(snapshot)
+
+
 def test_missing_selected_warc_can_never_publish(tmp_path):
     warehouse = _warehouse(tmp_path)
     next((warehouse / "records").rglob("*.warc.gz")).unlink()
