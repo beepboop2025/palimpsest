@@ -254,6 +254,14 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
         (copied_readings / artifact_id).write_bytes(
             (source_root / "readings" / artifact_id).read_bytes()
         )
+    manifest = json.loads((source_root / MANIFEST).read_text(encoding="utf-8"))
+    for immutable_path in manifest["immutable_revision_paths"]:
+        relative = Path(immutable_path)
+        if relative.parts[:2] != ("news", "analysis"):
+            continue
+        destination = publication_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((source_root / relative).read_bytes())
     monkeypatch.setattr(build_newsroom, "ROOT", publication_root)
 
     first_outputs = build_newsroom.build_outputs(
