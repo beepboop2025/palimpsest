@@ -47,12 +47,13 @@ uses this endpoint directly from the browser. CORS is deliberately limited to
 `https://palimpsest.info`; normal MCP clients send no browser `Origin` header,
 and a request carrying any other web origin is rejected before JSON-RPC dispatch.
 
-## The four tools
+## The five tools
 
 | Tool | What it answers |
 | --- | --- |
 | `list_signals` | What is measured at all — every signal's name, one-line description, and source URL. Call this first. |
 | `get_signal(name, max_rows=25)` | One signal's full latest reading, exactly as served on the site, with its `generated_at` and upstream sources. This is also the door to the model-evaluation side: `eval-registry` and `refusal-drift`. |
+| `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, investigations desk, or editorial-readiness gate. Drafts stay drafts; publication state, counterevidence, limitations and right-to-reply metadata remain attached. |
 | `whats_happening` | The censorship board's own cross-signal verdict: is anything actually happening right now, with multiplicity paid for and coverage confounds flagged as artifacts rather than findings. |
 | `gfw_reading` | The Great Firewall at both layers in one call — network blocking measured inside China (OONI) beside model-layer censorship (the Generative Firewall Index). |
 
@@ -61,7 +62,8 @@ pulls every signal and reasons over them itself will reproduce exactly the two e
 board was built to avoid: reading a per-signal false-alarm rate as if it were a board-level
 one, and reading a shrinking measurement base as easing censorship. `list_signals` is the
 authoritative roster — it is generated from the server's own table, so it never goes stale
-against this page.
+against this page. `get_newsroom` is the shorter route when the question is editorial or
+investigative rather than a single measurement.
 
 ## Row caps, and the text you are handed
 
@@ -122,7 +124,11 @@ reverse proxy in front of it:
 
 ```bash
 PYTHONPATH=. python3 mcp/palimpsest_mcp.py      # serves on 127.0.0.1:8793
-curl -s http://127.0.0.1:8793/ | python3 -m json.tool
+curl -sS -X POST http://127.0.0.1:8793/ \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"local-smoke","version":"1"}}}' \
+  | python3 -m json.tool
 ```
 
 It fetches from `palimpsest.info` like anyone else, so a self-hosted copy sees precisely what

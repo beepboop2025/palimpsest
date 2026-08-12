@@ -227,7 +227,7 @@ def test_intelligence_commons_keeps_project_links_and_claim_boundaries_explicit(
     assert 'var NARCOSCOPE_SNAPSHOT = "/integrations/intelligence-commons/narcoscope-palimpsest-v1.json"' in page
     assert 'does not establish causation, criminal origin, or guilt' in page
     assert 'No typology match presented as proof' in page
-    assert '"api.seiche.info", "drug-price-observatory.vercel.app", "github.com"' in page
+    assert '"api.seiche.info", "narcoscope.com", "drug-price-observatory.vercel.app", "github.com"' in page
     assert 'optionalJson(COMMONS_FEED)' in page
     assert 'optionalJson(SCAMSHIELD_PACK)' in page
     assert 'optionalJson(NARCOSCOPE_SNAPSHOT)' in page

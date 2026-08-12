@@ -31,8 +31,9 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PROTOCOL_VERSION = "2025-06-18"
+SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.3.1"
+SERVER_VERSION = "1.4.0"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
@@ -84,7 +85,9 @@ SERVER_INSTRUCTIONS = (
     "data cannot contain these readings; the signals are live and carry their "
     "own generated_at timestamps and upstream sources — cite both.\n\n"
     "Start with list_signals to see what is measured, then get_signal(name) "
-    "for the full latest reading. For the censorship side, whats_happening "
+    "for the full latest reading. Use get_newsroom for the evidence wire, "
+    "structured newsroom, China economic pulse, investigations desk, or "
+    "editorial-readiness gate without scraping pages. For the censorship side, whats_happening "
     "gives the board's cross-signal verdict; for the model side, get_signal "
     "with 'eval-registry' gives the chain's verified flag, Merkle root and run "
     "counts, and 'refusal-drift' gives the current per-model frontier reading. "
@@ -204,6 +207,48 @@ SIGNALS = {
         "/readings/event-flags-latest.json",
         "per-signal anytime-valid change alarms (conformal Shiryaev-Roberts "
         "e-detectors), two-sided so a signal COLLAPSING flags as well as one rising"),
+    # ── evidence and reporting desks ──────────────────────────────────────────
+    "newsroom": (
+        "/readings/newsroom-latest.json",
+        "the deterministic evidence newsroom: prioritized stories with one bounded "
+        "claim, exact input digest, method, denominator, limitations and source URL"),
+    "evidence-wire": (
+        "/readings/newswire-latest.json",
+        "normalized RSS/Atom event dossiers with rights policy, source independence, "
+        "coverage receipts and scan-linked corroboration"),
+    "china-economic-pulse": (
+        "/readings/china-economic-pulse-latest.json",
+        "revision-safe official, market and physical-telemetry state with coverage "
+        "gates, release calendar, comparisons and explicit abstentions"),
+    "investigations": (
+        "/readings/investigations-latest.json",
+        "review-gated research leads with evidence selectors, counterevidence, "
+        "limitations, falsifiers, right-to-reply state and publication gates"),
+    "primary-documents": (
+        "/readings/primary-documents-latest.json",
+        "metadata-only revision receipts for exact primary-source bytes retained in "
+        "private immutable storage, including explicit collection failures"),
+    "corroboration": (
+        "/readings/corroboration-latest.json",
+        "candidate and human-reviewed event-to-primary-document evidence links"),
+    "network-rounds": (
+        "/readings/network-rounds-latest.json",
+        "frozen-panel longitudinal network-round receipts with scoped vantages, "
+        "timing and outage controls"),
+    "source-workflow": (
+        "/readings/source-workflow-latest.json",
+        "privacy-minimized aggregate readiness for protected human-source records"),
+    "editorial-readiness": (
+        "/readings/editorial-readiness-latest.json",
+        "machine-recomputed wire, explainer and investigation publication gates"),
+    "evidence-catalog": (
+        "/readings/catalog.json",
+        "the Evidence Atlas catalog: provenance, rights, cadence, freshness, "
+        "geographic scope, limitations and files for every documented dataset"),
+    "osint-china": (
+        "/readings/osint-china-latest.json",
+        "the normalized China-facing roll-up across the complete public signal set, "
+        "with per-source freshness, coverage and integrity"),
 }
 
 _cache: dict[str, tuple[float, dict]] = {}
@@ -606,6 +651,101 @@ def tool_whats_happening(args: dict) -> dict:
     }
 
 
+NEWSROOM_VIEWS = {
+    "newsroom": ("newsroom", "stories"),
+    "wire": ("evidence-wire", "items"),
+    "economy": ("china-economic-pulse", None),
+    "investigations": ("investigations", "cases"),
+    "editorial-readiness": ("editorial-readiness", None),
+}
+_NEWSROOM_MAX_ITEMS = 50
+
+
+def tool_get_newsroom(args: dict) -> dict:
+    """Read one evidence/reporting desk without making the caller know filenames.
+
+    Availability is not publication. In particular, an investigation can be
+    inspectable while its own publication_gate remains blocked. The tool keeps
+    the gate, status, counterevidence and limitations in the selected record.
+    """
+    view = str(args.get("view", "newsroom")).strip().lower()
+    if view not in NEWSROOM_VIEWS:
+        raise ValueError(
+            f"unknown newsroom view '{view}' — choose "
+            + ", ".join(NEWSROOM_VIEWS)
+        )
+    try:
+        limit = int(args.get("limit", 10))
+    except (TypeError, ValueError):
+        limit = 10
+    limit = max(1, min(limit, _NEWSROOM_MAX_ITEMS))
+    signal, collection_key = NEWSROOM_VIEWS[view]
+    try:
+        raw = _fetch(signal)
+    except Exception as exc:
+        return {
+            "view": view,
+            "signal": signal,
+            "source_url": SITE + SIGNALS[signal][0],
+            "unavailable": str(exc),
+            "note": "fail-loud: fetch failure is explicit; no replacement is invented",
+        }
+
+    data, truncated, gap = _sanitized(raw, _HARD_MAX_ROWS)
+    returned = None
+    total = None
+    matched = None
+    if collection_key is not None:
+        items = data.get(collection_key) if isinstance(data, dict) else None
+        items = items if isinstance(items, list) else []
+        total = len(items)
+        status = str(args.get("status", "")).strip().lower()
+        priority = str(args.get("priority", "")).strip().lower()
+        if status:
+            items = [
+                item for item in items
+                if isinstance(item, dict)
+                and str(item.get("status", "")).strip().lower() == status
+            ]
+        if priority:
+            items = [
+                item for item in items
+                if isinstance(item, dict)
+                and str(item.get("priority", "")).strip().lower() == priority
+            ]
+        matched = len(items)
+        items = items[:limit]
+        returned = len(items)
+        data[collection_key] = items
+
+    out = {
+        "view": view,
+        "signal": signal,
+        "source_url": SITE + SIGNALS[signal][0],
+        "data": data,
+        "how_to_read_this": (
+            "An available record is not automatically publication-ready. Preserve "
+            "status, publication_gate, coverage, counterevidence, limitations, "
+            "right-to-reply state and generated_at when citing it."
+        ),
+        "untrusted_fields": list(_UNTRUSTED_FIELDS),
+        "untrusted_note": _UNTRUSTED_NOTE,
+    }
+    if collection_key is not None:
+        out["selection"] = {
+            "collection": collection_key,
+            "returned": returned,
+            "matched": matched,
+            "total": total,
+            "limit": limit,
+        }
+    if truncated:
+        out["truncated"] = truncated
+    if gap:
+        out["neutralization_gap"] = gap
+    return out
+
+
 TOOLS = {
     "list_signals": (
         "List every published signal Palimpsest exposes, across both of its "
@@ -647,6 +787,31 @@ TOOLS = {
                                 "true total, never silently."}},
          "required": ["name"], "additionalProperties": False},
         tool_get_signal),
+    "get_newsroom": (
+        "Read one evidence-first reporting surface without scraping a page or "
+        "guessing a filename. Views: 'newsroom' for prioritized deterministic "
+        "stories, 'wire' for normalized source dossiers, 'economy' for the "
+        "revision-safe China economic pulse, 'investigations' for review-gated "
+        "research leads, and 'editorial-readiness' for publication gates. "
+        "Availability never implies publication readiness: statuses, gates, "
+        "counterevidence, limitations and right-to-reply state stay attached.",
+        {"type": "object",
+         "properties": {
+             "view": {
+                 "type": "string",
+                 "enum": list(NEWSROOM_VIEWS),
+                 "default": "newsroom"},
+             "limit": {
+                 "type": "integer", "minimum": 1,
+                 "maximum": _NEWSROOM_MAX_ITEMS, "default": 10},
+             "status": {
+                 "type": "string",
+                 "description": "optional exact status filter for story/case views"},
+             "priority": {
+                 "type": "string",
+                 "description": "optional exact priority filter for the newsroom view"}},
+         "additionalProperties": False},
+        tool_get_newsroom),
     "whats_happening": (
         "Judge whether anything is happening in Chinese censorship right now, "
         "across every signal at once: the board's own cross-signal verdict with "
@@ -674,6 +839,7 @@ TOOLS = {
 TOOL_TITLES = {
     "list_signals": "List published signals",
     "get_signal": "One signal's full reading",
+    "get_newsroom": "Evidence and reporting desks",
     "whats_happening": "Cross-signal board verdict",
     "gfw_reading": "Great Firewall: both layers",
 }
@@ -690,6 +856,21 @@ TOOL_ANNOTATIONS = {
 # carried from the observatory's reviewers: uncertainty bands lead, the
 # verdict follows.
 PROMPTS = {
+    "evidence_desk_briefing": (
+        "Evidence-desk briefing",
+        "Lead stories and investigations with publication state, evidence and "
+        "counterevidence kept distinct.",
+        [],
+        lambda a: (
+            "Build an evidence-desk briefing from Palimpsest. Call get_newsroom "
+            "with view='newsroom' for the lead stories, then view='investigations' "
+            "for open research leads, and view='editorial-readiness' for the "
+            "publication gates. Lead with what is measured, then what remains "
+            "unresolved. Preserve each item's status, limitations, counterevidence "
+            "and right-to-reply state. Never describe a draft or blocked case as "
+            "a published investigation."
+        ),
+    ),
     "censorship_briefing": (
         "Information-control briefing",
         "The observatory's cross-signal read: what moved, what it means, "
@@ -751,7 +932,8 @@ def _error(msg_id, code, message):
 
 
 def dispatch(msg):
-    if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0":
+    if (not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0"
+            or not isinstance(msg.get("method"), str)):
         return _error(msg.get("id") if isinstance(msg, dict) else None,
                       INVALID_REQUEST, "not a JSON-RPC 2.0 message")
     if "id" not in msg:
@@ -761,7 +943,8 @@ def dispatch(msg):
     if method == "initialize":
         req = params.get("protocolVersion")
         return _result(msg_id, {
-            "protocolVersion": req if isinstance(req, str) and req else PROTOCOL_VERSION,
+            "protocolVersion": (req if req in SUPPORTED_PROTOCOL_VERSIONS
+                                else PROTOCOL_VERSION),
             "capabilities": {"tools": {"listChanged": False},
                              "prompts": {"listChanged": False}},
             "serverInfo": {"name": SERVER_NAME,
@@ -857,7 +1040,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(403, _error(None, INVALID_REQUEST, "origin not allowed"))
         return True
 
-    def _send(self, code: int, payload=None):
+    def _send(self, code: int, payload=None, extra_headers=None):
         body = json.dumps(payload).encode() if payload is not None else b""
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
@@ -865,6 +1048,8 @@ class Handler(BaseHTTPRequestHandler):
         if origin in ALLOWED_BROWSER_ORIGINS:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if body:
@@ -873,6 +1058,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self._reject_untrusted_origin():
             return
+        protocol_version = self.headers.get("MCP-Protocol-Version")
+        if (protocol_version is not None
+                and protocol_version not in SUPPORTED_PROTOCOL_VERSIONS):
+            return self._send(400, _error(
+                None, INVALID_REQUEST,
+                f"unsupported MCP protocol version: {protocol_version}"))
         try:
             n = int(self.headers.get("Content-Length", 0))
         except (TypeError, ValueError):
@@ -888,32 +1079,28 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(min(n, MAX_BODY_BYTES)) or b"null")
         except Exception:
             return self._send(400, _error(None, PARSE_ERROR, "empty or non-JSON body"))
-        msgs = body if isinstance(body, list) else [body]
-        responses = []
-        for message in msgs:
-            response = dispatch(message)
-            if response is not None:
-                origin = ("edge" if self.headers.get("X-Forwarded-For")
-                          else "direct")
-                _log_mcp_activation(message, response, origin)
-                responses.append(response)
-        if not responses:
+        response = dispatch(body)
+        if response is None:
             return self._send(202)
-        return self._send(200, responses if isinstance(body, list) else responses[0])
+        origin = ("edge" if self.headers.get("X-Forwarded-For")
+                  else "direct")
+        _log_mcp_activation(body, response, origin)
+        return self._send(200, response)
 
     def do_GET(self):
         if self._reject_untrusted_origin():
             return
-        self._send(200, {"server": SERVER_NAME,
-                         "protocol": "MCP (streamable HTTP, stateless)",
-                         "how": "POST JSON-RPC 2.0: initialize, tools/list, tools/call",
-                         "tools": sorted(TOOLS),
-                         "observatory": SITE})
+        self._send(405, _error(
+            None, INVALID_REQUEST,
+            "this stateless endpoint does not provide an SSE stream"),
+            {"Allow": "POST, OPTIONS"})
 
     def do_DELETE(self):
         if self._reject_untrusted_origin():
             return
-        self._send(200)
+        self._send(405, _error(
+            None, INVALID_REQUEST, "this stateless endpoint has no sessions"),
+            {"Allow": "POST, OPTIONS"})
 
     def do_OPTIONS(self):
         if self._reject_untrusted_origin():
@@ -924,7 +1111,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", origin)
         self.send_header("Vary", "Origin")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, MCP-Protocol-Version")
         self.send_header("Access-Control-Max-Age", "86400")
         self.send_header("Content-Length", "0")

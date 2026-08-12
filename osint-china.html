@@ -696,7 +696,7 @@
       var parsed = new URL(href);
       var allowed = [
         "palimpsest.info", "www.palimpsest.info", "seiche.info", "www.seiche.info",
-        "api.seiche.info", "drug-price-observatory.vercel.app", "github.com"
+        "api.seiche.info", "narcoscope.com", "drug-price-observatory.vercel.app", "github.com"
       ];
       if (parsed.protocol === "https:" && !parsed.username && !parsed.password &&
           allowed.indexOf(parsed.hostname.toLowerCase()) !== -1) return parsed.href;

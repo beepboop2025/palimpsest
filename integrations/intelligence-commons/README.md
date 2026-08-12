@@ -36,7 +36,7 @@ membership in a network.
 | Palimpsest | OSINT roll-up, evidence protocol, provenance ledger, review boundary | [OSINT China](https://palimpsest.info/osint-china.html) and its [machine-readable reading](https://palimpsest.info/readings/osint-china-latest.json) |
 | Seiche | Money-market plumbing and sealed market context | [Seiche](https://seiche.info/) and the [CN-CNY overview](https://api.seiche.info/api/v2/markets/CN-CNY/overview) |
 | ScamShield | Authorized-surface assessment and reviewed aggregate export | [Public repository](https://github.com/beepboop2025/scamshield) and the active [reviewed intelligence pack](https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json) |
-| NarcoScope | Aggregate drug-market observatory | [Live observatory](https://drug-price-observatory.vercel.app/) |
+| NarcoScope | Aggregate drug-market observatory | [Live observatory](https://narcoscope.com/) |
 
 Each project remains independently governed. The manifest links public
 surfaces; it does not transfer ownership, merge licences, or make one project a
