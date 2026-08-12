@@ -318,28 +318,37 @@ class AnalysisBroker:
         except ContainerContractError as exc:
             raise BrokerError(str(exc)) from exc
         command[0] = str(self.docker_path)
-        with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-            process = subprocess.Popen(
-                command,
-                stdin=subprocess.DEVNULL,
-                stdout=stdout,
-                stderr=stderr,
-                close_fds=True,
-                env=_DOCKER_ENV,
-            )
-            timed_out = False
-            try:
-                returncode = process.wait(timeout=CONTAINER_TIMEOUT_SECONDS)
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                self._remove_container(allow_absent=False)
+        cidfile = stage / "container.cid"
+        try:
+            with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout,
+                    stderr=stderr,
+                    close_fds=True,
+                    env=_DOCKER_ENV,
+                )
+                timed_out = False
                 try:
-                    returncode = process.wait(timeout=60)
+                    returncode = process.wait(timeout=CONTAINER_TIMEOUT_SECONDS)
                 except subprocess.TimeoutExpired:
-                    process.kill()
-                    returncode = process.wait(timeout=30)
-            stdout_tail = _tail(stdout)
-            stderr_tail = _tail(stderr)
+                    timed_out = True
+                    self._remove_container(allow_absent=False)
+                    try:
+                        returncode = process.wait(timeout=60)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        returncode = process.wait(timeout=30)
+                stdout_tail = _tail(stdout)
+                stderr_tail = _tail(stderr)
+        finally:
+            # Docker creates this control receipt as root. Keep its complete
+            # lifecycle on the broker side of the UID 10001 trust boundary.
+            try:
+                cidfile.unlink()
+            except FileNotFoundError:
+                pass
         return {
             "ok": True,
             "returncode": returncode,

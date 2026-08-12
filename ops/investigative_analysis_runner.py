@@ -1206,12 +1206,14 @@ def _run_once_locked(
                 f"isolated analysis container failed with status {returncode}: "
                 f"{(stderr_tail or stdout_tail)[-1000:]}"
             )
-        # Docker --rm guarantees a completed container no longer owns the name;
-        # the cidfile is now only a local receipt and can be discarded.
-        try:
-            cidfile.unlink()
-        except FileNotFoundError:
-            pass
+        # Docker --rm guarantees a completed container no longer owns the name.
+        # The root broker owns and removes its CID receipt; the direct test path
+        # must dispose of the receipt itself.
+        if not brokered:
+            try:
+                cidfile.unlink()
+            except FileNotFoundError:
+                pass
         _validate_frozen_sources(frozen_readings, input_manifest)
         candidate = _validate_completed_run(
             staged_readings=staged_readings,

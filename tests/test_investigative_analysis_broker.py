@@ -129,6 +129,9 @@ def test_run_operation_builds_only_the_fixed_networkless_command(
     class FakeProcess:
         def __init__(self, command, **kwargs):
             captured.append(command)
+            Path(command[command.index("--cidfile") + 1]).write_text(
+                "c" * 64 + "\n", encoding="ascii"
+            )
             kwargs["stdout"].write(b"ok\n")
             self.returncode = 0
 
@@ -155,6 +158,7 @@ def test_run_operation_builds_only_the_fixed_networkless_command(
     assert f"{stage / 'readings'}:/app/readings:rw" in command
     assert f"{stage / 'private'}:/app/private:rw" in command
     assert "sh" not in command and "bash" not in command
+    assert not (stage / "container.cid").exists()
 
 
 def test_timeout_removes_only_the_fixed_container(
@@ -176,7 +180,10 @@ def test_timeout_removes_only_the_fixed_container(
     class TimeoutProcess:
         calls = 0
 
-        def __init__(self, _command, **_kwargs):
+        def __init__(self, command, **_kwargs):
+            Path(command[command.index("--cidfile") + 1]).write_text(
+                "c" * 64 + "\n", encoding="ascii"
+            )
             self.returncode = 137
 
         def wait(self, timeout):
@@ -199,3 +206,4 @@ def test_timeout_removes_only_the_fixed_container(
     assert result["timed_out"] is True
     assert result["returncode"] == 137
     assert removed == [False]
+    assert not (stage / "container.cid").exists()
