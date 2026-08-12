@@ -28,9 +28,9 @@ TasksMax=64
 MemoryMax=2G
 
 ProtectSystem=strict
-ProtectHome=read-only
-ReadOnlyPaths=/usr/local/libexec/palimpsest-common-crawl /etc/palimpsest /root/.config/anchor /var/lib/palimpsest/common-crawl
-ReadWritePaths=/var/cache/palimpsest-common-crawl-backup /var/lib/palimpsest-common-crawl-backup /var/lib/palimpsest/common-crawl/.common-crawl.lock
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-common-crawl /etc/palimpsest /var/lib/palimpsest/common-crawl
+ReadWritePaths=/var/cache/palimpsest-common-crawl-backup /var/lib/palimpsest-common-crawl-backup
 CacheDirectory=palimpsest-common-crawl-backup
 CacheDirectoryMode=0700
 StateDirectory=palimpsest-common-crawl-backup
@@ -39,8 +39,11 @@ PrivateTmp=true
 PrivateDevices=true
 PrivateMounts=true
 NoNewPrivileges=true
-CapabilityBoundingSet=
-AmbientCapabilities=
+# The evidence files are owned by the locked analytical identity and may be
+# mode 0600.  This read-only capability permits the root backup process to copy
+# them while ProtectSystem/ReadOnlyPaths still prohibit warehouse mutation.
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+AmbientCapabilities=CAP_DAC_READ_SEARCH
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectKernelLogs=true

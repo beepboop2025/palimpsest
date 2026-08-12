@@ -93,12 +93,31 @@ def _is_within(path: Path, parent: Path) -> bool:
 
 
 @contextmanager
-def _exclusive_lock(path: Path, timeout_seconds: float) -> Iterator[None]:
+def _exclusive_lock(
+    path: Path, timeout_seconds: float, *, create: bool = False
+) -> Iterator[None]:
+    label = "snapshot coordination lock" if create else "shared warehouse lock"
+    flags = (
+        (os.O_RDWR | os.O_CREAT) if create else os.O_RDONLY
+    ) | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except FileNotFoundError as exc:
+        raise BackupError(f"{label} is missing: {path}") from exc
+    except OSError as exc:
+        raise BackupError(f"cannot open {label}: {path}: {exc}") from exc
+
     deadline = time.monotonic() + timeout_seconds
-    with path.open("a+b") as handle:
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise BackupError(f"{label} is unsafe: {path}")
         while True:
             try:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                # Linux permits an exclusive advisory flock on a read-only file
+                # descriptor.  The backup can therefore coordinate with writers
+                # without needing any write access to the evidence warehouse.
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except BlockingIOError:
                 if time.monotonic() >= deadline:
@@ -107,7 +126,9 @@ def _exclusive_lock(path: Path, timeout_seconds: float) -> Iterator[None]:
         try:
             yield
         finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
 
 
 def _sha256(path: Path) -> tuple[str, int]:
@@ -338,7 +359,9 @@ def create_snapshot(args: argparse.Namespace) -> dict[str, Any]:
         raise BackupError("snapshot limits must be positive")
     incomplete.mkdir(mode=0o700)
     try:
-        with _exclusive_lock(output_root / ".snapshot.lock", args.lock_timeout):
+        with _exclusive_lock(
+            output_root / ".snapshot.lock", args.lock_timeout, create=True
+        ):
             with _exclusive_lock(warehouse / WAREHOUSE_LOCK, args.lock_timeout):
                 directories = _validate_source_layout(warehouse)
                 counts = _database_backup(

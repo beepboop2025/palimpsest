@@ -29,6 +29,7 @@ backup = _load_backup_module()
 def _warehouse(root: Path, *, with_record: bool = True) -> Path:
     warehouse = root / "warehouse"
     warehouse.mkdir()
+    (warehouse / backup.WAREHOUSE_LOCK).touch(mode=0o640)
     (warehouse / "derived").mkdir()
     (warehouse / "derived" / "story-ranking-features.jsonl").write_text(
         '{"training_label":"unreviewed"}\n', encoding="utf-8"
@@ -190,6 +191,16 @@ def test_unreviewed_top_level_state_fails_closed(tmp_path):
         _create(tmp_path, warehouse)
 
 
+def test_snapshot_requires_the_existing_shared_lock_without_creating_it(tmp_path):
+    warehouse = _warehouse(tmp_path)
+    lock = warehouse / backup.WAREHOUSE_LOCK
+    lock.unlink()
+
+    with pytest.raises(backup.BackupError, match="shared warehouse lock is missing"):
+        _create(tmp_path, warehouse)
+    assert not lock.exists()
+
+
 def test_included_tree_rejects_symlinks(tmp_path):
     warehouse = _warehouse(tmp_path)
     (warehouse / "labels").mkdir()
@@ -238,8 +249,14 @@ def test_systemd_job_is_sandboxed_and_uses_restore_verified_script():
     assert "ConditionFileIsExecutable=" in unit
     assert "EnvironmentFile=/root/.config/anchor/object-storage.env" in unit
     assert "ProtectSystem=strict" in unit
+    assert "ProtectHome=true" in unit
     assert "ReadOnlyPaths=" in unit and "/var/lib/palimpsest/common-crawl" in unit
-    assert "ReadWritePaths=" in unit and ".common-crawl.lock" in unit
+    read_write_paths = next(
+        line for line in unit.splitlines() if line.startswith("ReadWritePaths=")
+    )
+    assert ".common-crawl.lock" not in read_write_paths
+    assert "CapabilityBoundingSet=CAP_DAC_READ_SEARCH" in unit
+    assert "AmbientCapabilities=CAP_DAC_READ_SEARCH" in unit
     assert "StateDirectory=palimpsest-common-crawl-backup" in unit
     assert "OnCalendar=Sun" in timer
     assert "Persistent=true" in timer
