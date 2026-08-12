@@ -57,7 +57,7 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
         'python -m core.evidence_mesh --now "$mesh_clock"',
         "python -m core.machine_investigations",
         "python -m scripts.build_newsroom",
-        "python -m scripts.build_data_catalog",
+        'python -m scripts.build_data_catalog --now "$catalog_clock"',
     }
     assert write_commands.isdisjoint(preflight_commands)
     assert write_commands <= {
@@ -66,7 +66,9 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
         if line.strip().startswith("python ")
     }
     assert "mesh_clock=$(python -c" in rebuild
+    assert "catalog_clock=$(python -c" in rebuild
     assert 'readings/evidence-mesh-latest.json' in rebuild
+    assert 'readings/catalog.json' in rebuild
     assert "git diff --exit-code" in rebuild
 
 
