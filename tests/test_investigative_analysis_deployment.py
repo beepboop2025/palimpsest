@@ -245,7 +245,8 @@ def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
     assert "StandardOutput=socket" in broker_unit
     assert "ReadWritePaths=/var/lib/palimpsest-analysis/runs" in broker_unit
     assert "RestrictAddressFamilies=AF_UNIX" in broker_unit
-    assert "CapabilityBoundingSet=" in broker_unit
+    assert "\nCapabilityBoundingSet=CAP_CHOWN\n" in broker_unit
+    assert "\nAmbientCapabilities=\n" in broker_unit
 
 
 def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> None:

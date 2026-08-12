@@ -33,7 +33,9 @@ InaccessiblePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/newswire /var
 PrivateTmp=true
 PrivateDevices=true
 NoNewPrivileges=true
-CapabilityBoundingSet=
+# Promotion reclaims analysis-user files as root-owned immutable evidence.
+# The writable namespace is limited to the runs tree, so retain only CAP_CHOWN.
+CapabilityBoundingSet=CAP_CHOWN
 AmbientCapabilities=
 ProtectKernelTunables=true
 ProtectKernelModules=true
