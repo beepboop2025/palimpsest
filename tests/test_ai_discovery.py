@@ -154,6 +154,13 @@ def test_scamshield_guide_is_crawlable_citable_and_safety_bounded():
     assert '"@type": "FAQPage"' in guide
 
 
+def test_shared_shell_loads_privacy_first_web_analytics():
+    shell = (ROOT / "assets" / "shell.js").read_text(encoding="utf-8")
+    assert "https://static.cloudflareinsights.com/beacon.min.js" in shell
+    assert "99a9c5f167624ed488a68a34b5513371" in shell
+    assert 'document.querySelector("script[data-cf-beacon]")' in shell
+
+
 def test_indexnow_ownership_key_is_self_consistent():
     keys = list(ROOT.glob("*.txt"))
     key_file = ROOT / "e4159f59fe77cfbdc21709c132ca3753.txt"
