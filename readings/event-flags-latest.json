@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-08-12T03:11:13.030680+00:00",
+  "generated_at": "2026-08-12T08:03:41.208682+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 31.2098,
-      "n": 137,
+      "stat": 44.9036,
+      "n": 138,
       "n_alarms_in_history": 1,
-      "age_hours": 0.2,
+      "age_hours": 0.1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 3.3318,
-      "n": 256,
+      "stat": 2.644,
+      "n": 258,
       "n_alarms_in_history": 4,
-      "age_hours": 0.4,
+      "age_hours": 0.2,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
-      "state": "watch",
-      "stat": 555.6501,
-      "n": 256,
-      "n_alarms_in_history": 1,
-      "age_hours": 0.4,
+      "state": "alarm",
+      "stat": 1004.8143,
+      "n": 258,
+      "n_alarms_in_history": 2,
+      "age_hours": 0.2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -32,15 +32,15 @@
       "stat": 41.8312,
       "n": 24,
       "n_alarms_in_history": 0,
-      "age_hours": 20.7,
+      "age_hours": 25.5,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 5.3764,
-      "n": 145,
+      "stat": 3.7193,
+      "n": 146,
       "n_alarms_in_history": 0,
-      "age_hours": 7.4,
+      "age_hours": 4.8,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 1.7753,
       "n": 72,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 4.9,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -67,31 +67,31 @@
       "stat": 0.0,
       "n": 1,
       "n_alarms_in_history": 0,
-      "age_hours": 8.6,
+      "age_hours": 13.5,
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "stat": 4.3825,
-      "n": 397,
+      "stat": 2.8091,
+      "n": 399,
       "n_alarms_in_history": 6,
-      "age_hours": 99.2,
+      "age_hours": 56.1,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 94,
+      "n": 95,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 0.0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 95,
+      "n": 96,
       "n_alarms_in_history": 0,
-      "age_hours": 0.2,
+      "age_hours": 0.1,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
@@ -99,7 +99,7 @@
       "stat": 5.0028,
       "n": 11,
       "n_alarms_in_history": 0,
-      "age_hours": 27.2,
+      "age_hours": 32.1,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -109,52 +109,52 @@
     },
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
-      "e": 0.0004,
+      "e": 0.0005,
       "n_models": 4,
       "models": {
         "anthropic/claude-3-haiku": {
           "state": "quiet",
           "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 31,
+          "pairs_seen": 32,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 451
+          "monitored_comparisons": 492
         },
         "meta-llama/llama-3.3-70b-instruct": {
           "state": "quiet",
-          "evalue": 0.0011,
+          "evalue": 0.0016,
           "p0": 0.008849,
-          "pairs_seen": 31,
+          "pairs_seen": 32,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.008849,
-          "monitored_comparisons": 451
+          "monitored_comparisons": 492
         },
         "mistralai/mistral-nemo": {
           "state": "quiet",
-          "evalue": 0.0003,
+          "evalue": 0.0002,
           "p0": 0.114619,
-          "pairs_seen": 31,
+          "pairs_seen": 32,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.114619,
-          "monitored_comparisons": 431
+          "monitored_comparisons": 472
         },
         "openai/gpt-4o-mini": {
           "state": "quiet",
           "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 31,
+          "pairs_seen": 32,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 451
+          "monitored_comparisons": 492
         }
       },
-      "n_rows": 124,
+      "n_rows": 128,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 13.5,
+      "age_hours": 5.3,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
