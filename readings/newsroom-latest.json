@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 3 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-12T08:45:18Z",
+  "generated_at": "2026-08-12T09:02:41Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "92198745999278fcb9f8039d8895365437a04bce",
+  "source_commit": "c0b17b73cd93d05f43baf55deb738e4d0a6a81f0",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 29,
+    "live": 30,
     "status": "degraded",
     "counts": {
-      "live": 29,
+      "live": 30,
       "degraded": 1,
-      "stale": 3,
+      "stale": 2,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-12T08:06:01Z",
       "modified_at": "2026-08-12T08:06:01Z",
-      "claim_fingerprint": "sha256:571cb8af960bde17696c54710f9e2aa6846413508d4b7f3a2940ee4129571c12",
+      "claim_fingerprint": "sha256:39a3359ef0af9868bfb6259a859da336eeb7b9a1d45a5d6d48f80e2c13e6c54d",
       "metric": {
         "label": "board e-value",
         "value": 100.864,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 3 stale. The board-wide e-value is 100.864; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale. The board-wide e-value is 100.864; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -1742,20 +1742,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "Private runtime bridge: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The sanitized intelligence bridge ranks 177 aggregate topics",
+      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-12T06:59:16Z",
-      "modified_at": "2026-08-12T06:59:16Z",
-      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
+      "status": "live",
+      "published_at": "2026-08-12T08:59:16Z",
+      "modified_at": "2026-08-12T08:59:16Z",
+      "claim_fingerprint": "sha256:6341aaf3cb70d040e70af55749ada356610b5d2771c411b01a28a6da966f2f07",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "topics ranked",
+        "value": 177,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -1763,25 +1763,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
+          "type": "observation",
+          "statement": "The current sanitized optional export contains 177 ranked aggregate topics."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "4cdab9c15e494cd0c7cc8a4fc9e51e48cbc7d98bb22b9b453eeda84d1b8abb57",
-          "bytes": 153447
+          "sha256": "a5d741560bd563b1e05eef618d380a3c39ca7d7d8c4256a46d3475a4819c45a2",
+          "bytes": 153456
         },
-        "source_timestamp": "2026-08-12T06:59:16Z"
+        "source_timestamp": "2026-08-12T08:59:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
         "version": "nemesis-public-v2"
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
