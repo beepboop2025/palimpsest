@@ -1,9 +1,8 @@
 [Unit]
 Description=Build private Palimpsest investigative leads from a frozen evidence snapshot
 Documentation=file:///usr/local/libexec/palimpsest-analysis/current/README.md
-Requires=docker.service
-After=docker.service palimpsest-evidence-wire.service
-ConditionFileIsExecutable=/usr/bin/docker
+Requires=palimpsest-investigative-broker.socket
+After=palimpsest-investigative-broker.socket palimpsest-evidence-wire.service
 ConditionPathExists=/etc/palimpsest/deployed-commit
 ConditionPathExists=/usr/local/libexec/palimpsest-analysis/current/REVISION
 ConditionPathIsDirectory=/var/lib/palimpsest/readings
@@ -13,9 +12,7 @@ ConditionPathIsDirectory=/var/lib/palimpsest/newswire
 Type=oneshot
 User=10001
 Group=10001
-SupplementaryGroups=docker
 WorkingDirectory=/var/lib/palimpsest-analysis
-EnvironmentFile=-/etc/palimpsest/investigative-analysis.env
 ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-analysis/current/verify-host-bundle.sh
 ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-analysis/current/REVISION /etc/palimpsest/deployed-commit
 ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-analysis/current/investigative_analysis_runner.py
@@ -27,9 +24,8 @@ IOSchedulingPriority=7
 TasksMax=96
 MemoryMax=1536M
 
-# The host process only snapshots local evidence and asks Docker to run a
-# network-less container. It cannot read the mutable checkout or write live
-# readings/RSS; only the private analysis run and candidate directories mutate.
+# The unprivileged process snapshots local evidence and talks only to the fixed
+# root-owned broker socket. It has no Docker-group or daemon-socket authority.
 ProtectSystem=strict
 ProtectHome=true
 ReadOnlyPaths=/usr/local/libexec/palimpsest-analysis /etc/palimpsest/deployed-commit /var/lib/palimpsest/readings /var/lib/palimpsest/newswire

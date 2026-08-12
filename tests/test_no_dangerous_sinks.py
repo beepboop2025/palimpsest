@@ -60,8 +60,14 @@ _SINKS = re.compile(
 #   run_duckdb_filter.py: invokes the root-owned, hash-pinned DuckDB binary with no
 #   argv derived from evidence. Its stdin is deterministic SQL generated from the
 #   reviewed institutional-host config and root-owned crawl plan.
+#   investigative_analysis_broker.py: this is the root-owned privilege boundary
+#   whose sole purpose is to invoke /usr/bin/docker. The image ID comes from its
+#   root-owned bundle; command, mounts, entrypoint, and every option come from the
+#   shared fixed contract. The strict request parser supplies only a validated
+#   staging token, deployed commit, and decision clock, and no shell is involved.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
+    ("ops/investigative_analysis_broker.py", "subprocess."),
     ("ops/network-lane/network_lane.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
@@ -134,3 +140,20 @@ def test_network_lane_keeps_fixed_no_shell_process_boundaries():
     assert '[str(path), "--version"]' in local_filter
     assert "[str(duckdb_path)]" in local_filter
     assert "input=sql.encode(\"utf-8\")" in local_filter
+
+
+def test_analysis_broker_keeps_a_fixed_no_shell_docker_boundary():
+    broker = (ROOT / "ops" / "investigative_analysis_broker.py").read_text(
+        encoding="utf-8"
+    )
+    contract = (
+        ROOT / "core" / "investigative_container_contract.py"
+    ).read_text(encoding="utf-8")
+
+    assert "shell=True" not in broker and "shell=True" not in contract
+    assert 'Path("/usr/bin/docker")' in broker
+    assert "command = docker_command(" in broker
+    assert 'CONTAINER_NAME = "palimpsest-investigative-analysis"' in contract
+    assert '"--network",\n        "none"' in contract
+    assert '"--pull",\n        "never"' in contract
+    assert '"--entrypoint",\n        "/usr/local/bin/python3"' in contract

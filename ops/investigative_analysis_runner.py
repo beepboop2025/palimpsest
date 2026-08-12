@@ -10,13 +10,14 @@ import json
 import os
 import re
 import shutil
+import socket
 import stat
 import tempfile
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from subprocess import CompletedProcess, TimeoutExpired, run as run_process
+from subprocess import CompletedProcess, TimeoutExpired
 from typing import Any, Callable, Iterable
 
 from core.investigative_candidates import (
@@ -24,7 +25,13 @@ from core.investigative_candidates import (
     publish_private_candidates,
     validate_candidates,
 )
-
+from core.investigative_container_contract import (
+    COMMIT_PATTERN as _COMMIT,
+    CONTAINER_NAME,
+    IMAGE_ID_PATTERN as _IMAGE_ID,
+    ContainerContractError,
+    docker_command,
+)
 
 DEFAULT_READINGS = Path("/var/lib/palimpsest/readings")
 DEFAULT_NEWSWIRE = Path("/var/lib/palimpsest/newswire")
@@ -33,17 +40,15 @@ DEFAULT_RUNS = DEFAULT_ANALYSIS_ROOT / "runs"
 DEFAULT_PRIVATE = DEFAULT_ANALYSIS_ROOT / "private"
 DEFAULT_COMMIT_FILE = Path("/etc/palimpsest/deployed-commit")
 DEFAULT_IMAGE = "palimpsest/app:local"
-CONTAINER_NAME = "palimpsest-investigative-analysis"
-CONTAINER_UID = 10001
-CONTAINER_GID = 10001
+DEFAULT_BROKER_SOCKET = Path("/run/palimpsest-investigative-broker.sock")
+BROKER_SCHEMA = "palimpsest-investigative-broker-request.v1"
+MAX_BROKER_RESPONSE_BYTES = 64 * 1024
 MAX_FILES = 256
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 MIN_FREE_BYTES = 10 * 1024 * 1024 * 1024
 MAX_RUNS = 48
 SNAPSHOT_QUIET_SECONDS = 0.25
-_COMMIT = re.compile(r"^[0-9a-f]{40}$")
-_IMAGE_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
 _RUN_NAME = re.compile(r"^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 RUN_SCHEMA = "palimpsest-investigative-analysis-run.v1"
 RUN_STEPS = (
@@ -313,10 +318,27 @@ def snapshot_inputs(
     newswire_dir: Path,
     staging_readings: Path,
     previous_readings: Path | None = None,
+    precreated: bool = False,
 ) -> tuple[str, str, list[dict[str, Any]], str]:
     """Return trigger hash, full-lineage hash, manifest, and decision clock."""
 
-    staging_readings.mkdir(parents=True, mode=0o750)
+    if precreated:
+        try:
+            staging_metadata = staging_readings.stat(follow_symlinks=False)
+        except OSError as exc:
+            raise AnalysisRunnerError(
+                "broker-prepared snapshot directory is missing"
+            ) from exc
+        if (
+            not stat.S_ISDIR(staging_metadata.st_mode)
+            or staging_readings.is_symlink()
+            or any(staging_readings.iterdir())
+        ):
+            raise AnalysisRunnerError(
+                "broker-prepared snapshot directory is unsafe or non-empty"
+            )
+    else:
+        staging_readings.mkdir(parents=True, mode=0o750)
     manifest: list[dict[str, Any]] = []
     source_signatures: list[tuple[Path, tuple[int, int, int, int, int]]] = []
     clocks: list[datetime] = []
@@ -404,79 +426,58 @@ def snapshot_inputs(
     )
 
 
-def docker_command(
+def _call_broker(
+    request: dict[str, Any],
     *,
-    image_id: str,
-    frozen_readings: Path,
-    staged_readings: Path,
-    candidate_dir: Path,
-    cidfile: Path,
-    input_commit: str,
-    decision_clock: str,
-) -> list[str]:
-    if not _COMMIT.fullmatch(input_commit):
-        raise AnalysisRunnerError("deployed commit receipt is invalid")
-    if not _IMAGE_ID.fullmatch(image_id):
-        raise AnalysisRunnerError("analysis image ID is invalid")
+    socket_path: Path = DEFAULT_BROKER_SOCKET,
+) -> dict[str, Any]:
+    """Send one bounded request to the root-owned socket-activated broker."""
+
+    payload = (
+        json.dumps(
+            {"schema_version": BROKER_SCHEMA, **request},
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("ascii")
+        + b"\n"
+    )
+    if len(payload) > 4096:
+        raise AnalysisRunnerError("analysis broker request exceeds 4096 bytes")
     try:
-        parsed_clock = datetime.fromisoformat(decision_clock.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise AnalysisRunnerError("analysis decision clock is invalid") from exc
-    if parsed_clock.tzinfo is None or parsed_clock.utcoffset() is None:
-        raise AnalysisRunnerError("analysis decision clock is not timezone-aware")
-    return [
-        "/usr/bin/docker",
-        "run",
-        "--rm",
-        "--pull",
-        "never",
-        "--cidfile",
-        str(cidfile),
-        "--name",
-        CONTAINER_NAME,
-        "--network",
-        "none",
-        "--read-only",
-        "--user",
-        f"{CONTAINER_UID}:{CONTAINER_GID}",
-        "--cap-drop",
-        "ALL",
-        "--security-opt",
-        "no-new-privileges",
-        "--pids-limit",
-        "256",
-        "--memory",
-        "1g",
-        "--cpus",
-        "2",
-        "--tmpfs",
-        "/tmp:size=128m,mode=1777",
-        "--env",
-        "PYTHONPATH=/app",
-        "--env",
-        f"PALIMPSEST_INPUT_COMMIT={input_commit}",
-        "--volume",
-        f"{frozen_readings}:/app/frozen:ro",
-        "--volume",
-        f"{staged_readings}:/app/readings:rw",
-        "--volume",
-        f"{candidate_dir}:/app/private:rw",
-        "--entrypoint",
-        "/usr/local/bin/python3",
-        image_id,
-        "-m",
-        "scripts.investigative_analysis_run",
-        "--frozen-dir",
-        "/app/frozen",
-        "--readings-dir",
-        "/app/readings",
-        "--private-dir",
-        "/app/private",
-        "--input-commit",
-        input_commit,
-        "--decision-clock",
-        decision_clock,
-    ]
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(21 * 60)
+            connection.connect(str(socket_path))
+            connection.sendall(payload)
+            connection.shutdown(socket.SHUT_WR)
+            chunks: list[bytes] = []
+            received = 0
+            while True:
+                chunk = connection.recv(
+                    min(8192, MAX_BROKER_RESPONSE_BYTES + 1 - received)
+                )
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                received += len(chunk)
+                if received > MAX_BROKER_RESPONSE_BYTES:
+                    raise AnalysisRunnerError("analysis broker response is oversized")
+    except (OSError, TimeoutError) as exc:
+        raise AnalysisRunnerError("analysis broker is unavailable") from exc
+    try:
+        response = json.loads(
+            b"".join(chunks),
+            object_pairs_hook=_strict_object,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, AnalysisRunnerError) as exc:
+        raise AnalysisRunnerError("analysis broker returned invalid JSON") from exc
+    if not isinstance(response, dict) or not response.get("ok"):
+        detail = response.get("error") if isinstance(response, dict) else None
+        if not isinstance(detail, str) or not detail:
+            detail = "request failed without a bounded error"
+        raise AnalysisRunnerError(f"analysis broker rejected request: {detail[:500]}")
+    return response
 
 
 def _resolve_image_id(
@@ -942,7 +943,7 @@ def _run_once_locked(
     private_root: Path = DEFAULT_PRIVATE,
     commit_file: Path = DEFAULT_COMMIT_FILE,
     image: str = DEFAULT_IMAGE,
-    execute: Callable[..., CompletedProcess] = run_process,
+    execute: Callable[..., CompletedProcess] | None = None,
 ) -> dict[str, Any]:
     """Snapshot, analyze without a network, and promote one complete private run."""
 
@@ -952,12 +953,47 @@ def _run_once_locked(
         raise AnalysisRunnerError("deployed commit receipt is missing") from exc
     if not _COMMIT.fullmatch(input_commit):
         raise AnalysisRunnerError("deployed commit receipt is invalid")
-    image_id = _resolve_image_id(image, input_commit, execute)
+    brokered = execute is None
+    if brokered:
+        if (
+            runs_dir != DEFAULT_RUNS
+            or private_root != DEFAULT_PRIVATE
+            or commit_file != DEFAULT_COMMIT_FILE
+            or image != DEFAULT_IMAGE
+        ):
+            raise AnalysisRunnerError("brokered analysis requires the fixed host paths")
+        identity = _call_broker({"operation": "identity"})
+        if set(identity) != {"ok", "input_commit", "image_id"}:
+            raise AnalysisRunnerError("analysis broker identity response is not exact")
+        if identity.get("input_commit") != input_commit or not _IMAGE_ID.fullmatch(
+            str(identity.get("image_id", ""))
+        ):
+            raise AnalysisRunnerError(
+                "analysis broker identity does not match deployment"
+            )
+        image_id = str(identity["image_id"])
+    else:
+        image_id = _resolve_image_id(image, input_commit, execute)
 
-    runs_dir.mkdir(parents=True, mode=0o750, exist_ok=True)
+    if brokered:
+        try:
+            runs_metadata = runs_dir.stat(follow_symlinks=False)
+        except OSError as exc:
+            raise AnalysisRunnerError(
+                "broker-managed runs directory is missing"
+            ) from exc
+        if not stat.S_ISDIR(runs_metadata.st_mode):
+            raise AnalysisRunnerError("broker-managed runs path is not a directory")
+    else:
+        runs_dir.mkdir(parents=True, mode=0o750, exist_ok=True)
     private_root.mkdir(parents=True, mode=0o700, exist_ok=True)
     _require_capacity(runs_dir)
-    _reconcile_staging(runs_dir, execute)
+    if brokered:
+        reconcile = _call_broker({"operation": "reconcile"})
+        if set(reconcile) != {"ok"}:
+            raise AnalysisRunnerError("analysis broker reconcile response is not exact")
+    else:
+        _reconcile_staging(runs_dir, execute)
     ledger_dir = private_root / "ledger"
     ledger_dir.mkdir(mode=0o700, exist_ok=True)
     latest = ledger_dir / "candidates-latest.json"
@@ -1011,12 +1047,32 @@ def _run_once_locked(
     elif latest.exists() or history.exists():
         raise AnalysisRunnerError("candidate ledger exists without a committed run")
 
-    staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=runs_dir))
+    if brokered:
+        prepared = _call_broker({"operation": "prepare"})
+        if set(prepared) != {"ok", "stage_name"} or not isinstance(
+            prepared.get("stage_name"), str
+        ):
+            raise AnalysisRunnerError("analysis broker prepare response is not exact")
+        staging = runs_dir / prepared["stage_name"]
+    else:
+        staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=runs_dir))
     frozen_readings = staging / "inputs"
     staged_readings = staging / "readings"
     staged_candidates = staging / "private"
-    staged_readings.mkdir(mode=0o750)
-    staged_candidates.mkdir(mode=0o700)
+    if brokered:
+        for broker_directory in (
+            staging,
+            frozen_readings,
+            staged_readings,
+            staged_candidates,
+        ):
+            if not broker_directory.is_dir() or broker_directory.is_symlink():
+                raise AnalysisRunnerError(
+                    "analysis broker prepared an unsafe directory"
+                )
+    else:
+        staged_readings.mkdir(mode=0o750)
+        staged_candidates.mkdir(mode=0o700)
     cidfile = staging / "container.cid"
     preserve_staging = False
     try:
@@ -1030,6 +1086,7 @@ def _run_once_locked(
             newswire_dir=newswire_dir,
             staging_readings=frozen_readings,
             previous_readings=previous_readings,
+            precreated=brokered,
         )
         _atomic_json(
             staging / "input-manifest.json",
@@ -1056,47 +1113,98 @@ def _run_once_locked(
                 raise AnalysisRunnerError(
                     "private candidate latest drifted from the completed run"
                 )
-            _safe_cleanup_staging(staging, runs_dir)
+            if brokered:
+                cleaned = _call_broker(
+                    {"operation": "cleanup", "stage_name": staging.name}
+                )
+                if set(cleaned) != {"ok"}:
+                    raise AnalysisRunnerError(
+                        "analysis broker cleanup response is not exact"
+                    )
+            else:
+                _safe_cleanup_staging(staging, runs_dir)
             return {
                 "status": "unchanged",
                 "input_fingerprint": trigger_fingerprint,
                 "image_id": image_id,
             }
 
-        command = docker_command(
-            image_id=image_id,
-            frozen_readings=frozen_readings,
-            staged_readings=staged_readings,
-            candidate_dir=staged_candidates,
-            cidfile=cidfile,
-            input_commit=input_commit,
-            decision_clock=decision_clock,
-        )
-        container_cleaned = False
-        try:
-            result = execute(
-                command, check=False, text=True, capture_output=True, timeout=20 * 60
+        if brokered:
+            broker_result = _call_broker(
+                {
+                    "operation": "run",
+                    "stage_name": staging.name,
+                    "input_commit": input_commit,
+                    "decision_clock": decision_clock,
+                }
             )
-        except TimeoutExpired as exc:
+            if set(broker_result) != {
+                "ok",
+                "returncode",
+                "stdout_tail",
+                "stderr_tail",
+                "timed_out",
+            }:
+                raise AnalysisRunnerError("analysis broker run response is not exact")
+            if broker_result.get("timed_out") is not False:
+                raise AnalysisRunnerError(
+                    "isolated analysis container exceeded the 20 minute deadline"
+                )
+            returncode = broker_result.get("returncode")
+            stdout_tail = broker_result.get("stdout_tail")
+            stderr_tail = broker_result.get("stderr_tail")
+            if (
+                not isinstance(returncode, int)
+                or isinstance(returncode, bool)
+                or not isinstance(stdout_tail, str)
+                or not isinstance(stderr_tail, str)
+            ):
+                raise AnalysisRunnerError("analysis broker run fields are invalid")
+        else:
             try:
-                _force_remove_container(execute, allow_absent=False)
-                container_cleaned = True
-            except AnalysisRunnerError as cleanup_error:
-                preserve_staging = True
-                raise cleanup_error from exc
-            raise AnalysisRunnerError(
-                "isolated analysis container exceeded the 20 minute deadline"
-            ) from exc
-        finally:
-            if container_cleaned:
+                command = docker_command(
+                    image_id=image_id,
+                    frozen_readings=frozen_readings,
+                    staged_readings=staged_readings,
+                    candidate_dir=staged_candidates,
+                    cidfile=cidfile,
+                    input_commit=input_commit,
+                    decision_clock=decision_clock,
+                )
+            except ContainerContractError as exc:
+                raise AnalysisRunnerError(str(exc)) from exc
+            container_cleaned = False
+            try:
+                result = execute(
+                    command,
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                    timeout=20 * 60,
+                )
+            except TimeoutExpired as exc:
                 try:
-                    cidfile.unlink()
-                except FileNotFoundError:
-                    pass
-        if result.returncode:
+                    _force_remove_container(execute, allow_absent=False)
+                    container_cleaned = True
+                except AnalysisRunnerError as cleanup_error:
+                    preserve_staging = True
+                    raise cleanup_error from exc
+                raise AnalysisRunnerError(
+                    "isolated analysis container exceeded the 20 minute deadline"
+                ) from exc
+            finally:
+                if container_cleaned:
+                    try:
+                        cidfile.unlink()
+                    except FileNotFoundError:
+                        pass
+            returncode = result.returncode
+            stdout_tail = result.stdout or ""
+            stderr_tail = result.stderr or ""
+        if returncode:
             raise AnalysisRunnerError(
-                f"isolated analysis container failed with status {result.returncode}: "
-                f"{(result.stderr or result.stdout or '')[-1000:]}"
+                f"isolated analysis container failed with status {returncode}: "
+                f"{(stderr_tail or stdout_tail)[-1000:]}"
             )
         # Docker --rm guarantees a completed container no longer owns the name;
         # the cidfile is now only a local receipt and can be discarded.
@@ -1119,8 +1227,24 @@ def _run_once_locked(
         if final.exists():
             raise AnalysisRunnerError(f"run destination already exists: {final}")
         _fsync_tree(staging)
-        os.replace(staging, final)
-        _fsync_directory(runs_dir)
+        if brokered:
+            promoted = _call_broker(
+                {
+                    "operation": "promote",
+                    "stage_name": staging.name,
+                    "final_name": final.name,
+                }
+            )
+            if (
+                set(promoted) != {"ok", "final_name"}
+                or promoted.get("final_name") != final.name
+            ):
+                raise AnalysisRunnerError(
+                    "analysis broker promote response is not exact"
+                )
+        else:
+            os.replace(staging, final)
+            _fsync_directory(runs_dir)
         state_document = {
             "schema_version": "palimpsest-investigative-analysis-state.v1",
             "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -1142,7 +1266,14 @@ def _run_once_locked(
             latest_path=latest,
             history_path=history,
         )
-        _prune_runs(runs_dir, MAX_RUNS, final)
+        if brokered:
+            pruned = _call_broker({"operation": "prune"})
+            if set(pruned) != {"ok", "removed"} or not isinstance(
+                pruned.get("removed"), int
+            ):
+                raise AnalysisRunnerError("analysis broker prune response is not exact")
+        else:
+            _prune_runs(runs_dir, MAX_RUNS, final)
         return {
             "status": "completed",
             "input_fingerprint": trigger_fingerprint,
@@ -1152,7 +1283,10 @@ def _run_once_locked(
         }
     except Exception:
         if staging.exists() and not preserve_staging:
-            _safe_cleanup_staging(staging, runs_dir)
+            if brokered:
+                _call_broker({"operation": "cleanup", "stage_name": staging.name})
+            else:
+                _safe_cleanup_staging(staging, runs_dir)
         raise
 
 
@@ -1164,7 +1298,7 @@ def run_once(
     private_root: Path = DEFAULT_PRIVATE,
     commit_file: Path = DEFAULT_COMMIT_FILE,
     image: str = DEFAULT_IMAGE,
-    execute: Callable[..., CompletedProcess] = run_process,
+    execute: Callable[..., CompletedProcess] | None = None,
 ) -> dict[str, Any]:
     """Serialize, snapshot, and complete one isolated investigative analysis run."""
 
@@ -1189,7 +1323,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         runs_dir=DEFAULT_RUNS,
         private_root=DEFAULT_PRIVATE,
         commit_file=DEFAULT_COMMIT_FILE,
-        image=os.getenv("PALIMPSEST_ANALYSIS_IMAGE", DEFAULT_IMAGE),
+        image=DEFAULT_IMAGE,
     )
     print(
         f"investigative analysis {result['status']} · {result['input_fingerprint'][:12]}"

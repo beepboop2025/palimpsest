@@ -201,6 +201,11 @@ _ALLOWED = {
         "PERMANENTLY EXEMPT: the independent witness is a deliberate from-scratch "
         "implementation that must be able to check the observatory without sharing the "
         "observatory's code, so it must never import core/.",
+    "ops/investigative_analysis_runner.py":
+        "AF_UNIX client to the fixed /run/palimpsest-investigative-broker.sock path. This is "
+        "a local privilege-separation channel, not IP egress: systemd owns the mode-0660 "
+        "socket, the peer is a root-owned fixed-operation broker, and the analysis service's "
+        "RestrictAddressFamilies policy permits AF_UNIX only.",
 }
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -9,7 +10,6 @@ import pytest
 
 from core.investigative_candidates import build_candidates, canonical_json_bytes
 from ops import investigative_analysis_runner as runner
-
 
 COMMIT = "a" * 40
 IMAGE_ID = "sha256:" + "b" * 64
@@ -309,6 +309,96 @@ def test_run_is_idempotent_and_promotes_only_after_container_success(
     assert len(calls) == 2
 
 
+def test_production_path_uses_broker_for_every_privileged_lifecycle_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+    runs.mkdir()
+    operations: list[str] = []
+
+    monkeypatch.setattr(runner, "DEFAULT_READINGS", readings)
+    monkeypatch.setattr(runner, "DEFAULT_NEWSWIRE", wire)
+    monkeypatch.setattr(runner, "DEFAULT_RUNS", runs)
+    monkeypatch.setattr(runner, "DEFAULT_PRIVATE", private)
+    monkeypatch.setattr(runner, "DEFAULT_COMMIT_FILE", commit)
+
+    def broker(request: dict) -> dict:
+        operation = request["operation"]
+        operations.append(operation)
+        if operation == "identity":
+            return {"ok": True, "input_commit": COMMIT, "image_id": IMAGE_ID}
+        if operation == "reconcile":
+            return {"ok": True}
+        if operation == "prepare":
+            stage_name = ".staging-0123456789abcdef"
+            stage = runs / stage_name
+            for name in ("inputs", "readings", "private"):
+                (stage / name).mkdir(parents=True, exist_ok=True)
+            return {"ok": True, "stage_name": stage_name}
+        if operation == "run":
+            stage = runs / request["stage_name"]
+            command = runner.docker_command(
+                image_id=IMAGE_ID,
+                frozen_readings=stage / "inputs",
+                staged_readings=stage / "readings",
+                candidate_dir=stage / "private",
+                cidfile=stage / "container.cid",
+                input_commit=COMMIT,
+                decision_clock=request["decision_clock"],
+            )
+            _complete_fake_container(command)
+            return {
+                "ok": True,
+                "returncode": 0,
+                "stdout_tail": "ok",
+                "stderr_tail": "",
+                "timed_out": False,
+            }
+        if operation == "promote":
+            (runs / request["stage_name"]).replace(runs / request["final_name"])
+            return {"ok": True, "final_name": request["final_name"]}
+        if operation == "prune":
+            return {"ok": True, "removed": 0}
+        if operation == "cleanup":
+            shutil.rmtree(runs / request["stage_name"])
+            return {"ok": True}
+        raise AssertionError(f"unexpected broker operation: {operation}")
+
+    monkeypatch.setattr(runner, "_call_broker", broker)
+
+    first = runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+    )
+    second = runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+    )
+
+    assert first["status"] == "completed"
+    assert second["status"] == "unchanged"
+    assert operations == [
+        "identity",
+        "reconcile",
+        "prepare",
+        "run",
+        "promote",
+        "prune",
+        "identity",
+        "reconcile",
+        "prepare",
+        "cleanup",
+    ]
+
+
 def test_container_cannot_mutate_frozen_evidence_or_rewrite_stale_outputs(
     tmp_path: Path,
 ) -> None:
@@ -531,6 +621,7 @@ def test_systemd_contract_keeps_analysis_private_and_recurring() -> None:
     ).read_text()
     timer = (root / "ops/systemd/palimpsest-investigative-analysis.timer").read_text()
     source = (root / "ops/investigative_analysis_runner.py").read_text()
+    container_contract = (root / "core/investigative_container_contract.py").read_text()
 
     assert "/usr/local/libexec/palimpsest-analysis" in service
     assert "/var/lib/palimpsest/readings /var/lib/palimpsest/newswire" in service
@@ -539,10 +630,13 @@ def test_systemd_contract_keeps_analysis_private_and_recurring() -> None:
         "/var/lib/palimpsest-analysis/private" in service
     )
     assert "User=10001" in service and "Group=10001" in service
-    assert "SupplementaryGroups=docker" in service
+    assert "SupplementaryGroups=docker" not in service
+    assert "Requires=palimpsest-investigative-broker.socket" in service
     assert "TimeoutStartSec=35m" in service
     assert "RestrictAddressFamilies=AF_UNIX" in service
     assert "OnCalendar=*:15,45" in timer
-    assert '"--network"' in source and '"none"' in source
+    assert '"--network"' in container_contract and '"none"' in container_contract
+    assert "DEFAULT_BROKER_SOCKET" in source
+    assert "execute: Callable[..., CompletedProcess] | None = None" in source
     assert 'private_root / "cascade.lock"' in source
     assert "private-review-only" in source

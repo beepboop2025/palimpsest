@@ -487,8 +487,9 @@ source tree and needs read access only:
 
 ```bash
 sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
+sudo install -d -o root -g palimpsest-analysis -m 0710 \
+  /var/lib/palimpsest-analysis/runs
 sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0700 \
-  /var/lib/palimpsest-analysis/runs \
   /var/lib/palimpsest-analysis/private
 sudo setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings
 sudo find /var/lib/palimpsest/readings -type d \
@@ -509,7 +510,9 @@ with `217/USER` when the host has no matching passwd/group records.
 ```bash
 sudo systemctl stop palimpsest-investigative-analysis.timer 2>/dev/null || true
 sudo systemctl stop palimpsest-investigative-analysis.service 2>/dev/null || true
+sudo systemctl stop palimpsest-investigative-broker.socket 2>/dev/null || true
 sudo bash ops/investigative-analysis/install-host-bundle.sh
+sudo systemctl enable --now palimpsest-investigative-broker.socket
 sudo systemctl enable --now palimpsest-investigative-analysis.timer
 sudo systemctl start palimpsest-investigative-analysis.service
 journalctl -u palimpsest-investigative-analysis.service -n 80 --no-pager
@@ -531,11 +534,14 @@ The append-only candidate-version ledger fails closed at 256 MiB; alert and
 perform an editorial retention review at 192 MiB (75%) rather than allowing an
 automatic truncation to erase its audit history.
 
-The service needs Docker's Unix socket through `SupplementaryGroups=docker`.
-Docker-group access is root-equivalent, so the unit's UID, read-only paths, and
-capability restrictions are defense in depth rather than containment from the
-daemon. Only the root-owned bundle is executed; the mutable Git checkout is not
-visible to the service.
+Docker-group access is root-equivalent, so the analysis unit has no Docker
+supplementary group and cannot open the daemon socket. A mode-0660 systemd
+socket admits only UID/GID 10001; each connection starts a root-owned broker
+that verifies peer credentials and accepts one fixed, bounded operation. The
+broker rechecks the immutable image ID and constructs the networkless command,
+mounts, entrypoint, and arguments. Its root-owned run-directory parent also
+prevents a checked bind-mount path from being replaced between validation and
+launch. The mutable Git checkout is visible to neither unit.
 
 ---
 
@@ -751,6 +757,10 @@ sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || tr
 while systemctl is-active --quiet palimpsest-investigative-analysis.service; do
   sleep 2
 done
+sudo systemctl stop palimpsest-investigative-broker.socket 2>/dev/null || true
+test -z "$(systemctl list-units --no-legend --plain \
+  --state=active,activating,deactivating \
+  'palimpsest-investigative-broker@*.service')"
 while systemctl is-active --quiet palimpsest-common-crawl-import.service \
   || systemctl is-active --quiet palimpsest-common-crawl-context.service; do
   sleep 2
@@ -763,6 +773,7 @@ sudo bash ops/investigative-analysis/install-host-bundle.sh
 COMMON_CRAWL_WAREHOUSE_SOURCE=/mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
 sudo bash ops/common-crawl/install-host-bundle.sh \
   --warehouse-source "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+sudo systemctl enable --now palimpsest-investigative-broker.socket
 sudo systemctl enable --now palimpsest-investigative-analysis.timer
 sudo systemctl start palimpsest-investigative-analysis.service
 sudo systemctl enable --now palimpsest-common-crawl-import.path

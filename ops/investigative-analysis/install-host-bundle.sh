@@ -32,8 +32,13 @@ receipt_dir="/etc/palimpsest"
 receipt_path="$receipt_dir/deployed-commit"
 service_name="palimpsest-investigative-analysis.service"
 timer_name="palimpsest-investigative-analysis.timer"
+broker_socket_name="palimpsest-investigative-broker.socket"
+broker_service_name="palimpsest-investigative-broker@.service"
 runtime_name="palimpsest-analysis"
 runtime_id="10001"
+analysis_root="/var/lib/palimpsest-analysis"
+runs_root="$analysis_root/runs"
+private_root="$analysis_root/private"
 
 # Prevent an invoking shell from redirecting Git's object/index/worktree view
 # away from the checkout whose files this installer copies.
@@ -47,8 +52,8 @@ for command_name in getent git groupadd groupdel passwd readlink useradd; do
     || die "required command is missing: $command_name"
 done
 if [[ "$mode" == "install" ]]; then
-  for command_name in chmod chown cmp docker install ln mktemp mv rm sha256sum \
-    stat sync systemctl systemd-analyze; do
+  for command_name in chmod chown cmp docker find install ln mktemp mv rm \
+    sha256sum stat sync systemctl systemd-analyze; do
     command -v "$command_name" >/dev/null 2>&1 \
       || die "required command is missing: $command_name"
   done
@@ -148,6 +153,61 @@ ensure_runtime_identity() {
     || die "analysis identity creation did not converge"
 }
 
+normalize_analysis_storage() {
+  local entry unsafe_member
+
+  if [[ -e "$analysis_root" || -L "$analysis_root" ]]; then
+    [[ -d "$analysis_root" && ! -L "$analysis_root" ]] \
+      || die "analysis root is not a real directory"
+  else
+    install -d -o root -g root -m 0711 "$analysis_root"
+  fi
+  chown root:root "$analysis_root"
+  chmod 0711 "$analysis_root"
+  if [[ -e "$runs_root" || -L "$runs_root" ]]; then
+    [[ -d "$runs_root" && ! -L "$runs_root" ]] \
+      || die "analysis runs root is not a real directory"
+  else
+    install -d -o root -g "$runtime_name" -m 0710 "$runs_root"
+  fi
+
+  # Take rename authority away before inspecting legacy user-owned run trees.
+  chown root:"$runtime_name" "$runs_root"
+  chmod 0710 "$runs_root"
+  while IFS= read -r -d '' entry; do
+    [[ -d "$entry" && ! -L "$entry" ]] \
+      || die "analysis runs root contains a non-directory entry"
+    [[ "${entry##*/}" =~ ^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$ ]] \
+      || die "analysis runs root contains an unrecognized or stale entry"
+  done < <(find "$runs_root" -mindepth 1 -maxdepth 1 -print0)
+  unsafe_member="$(
+    find "$runs_root" -mindepth 1 \
+      \( -type l -o \( ! -type d ! -type f \) \) -print -quit
+  )"
+  [[ -z "$unsafe_member" ]] \
+    || die "analysis run tree contains a link or special file"
+  find "$runs_root" -mindepth 1 -type d \
+    -exec chown root:"$runtime_name" {} + -exec chmod 0750 {} +
+  find "$runs_root" -mindepth 1 -type f \
+    -exec chown root:"$runtime_name" {} + -exec chmod 0640 {} +
+
+  if [[ -e "$private_root" || -L "$private_root" ]]; then
+    [[ -d "$private_root" && ! -L "$private_root" ]] \
+      || die "analysis private root is not a real directory"
+  else
+    install -d -o "$runtime_name" -g "$runtime_name" -m 0700 "$private_root"
+  fi
+  chown "$runtime_name":"$runtime_name" "$private_root"
+  chmod 0700 "$private_root"
+  [[ "$(stat -c '%u:%g:%a' "$analysis_root")" == "0:0:711" ]] \
+    || die "analysis root ownership or mode is unsafe"
+  [[ "$(stat -c '%u:%g:%a' "$runs_root")" == "0:$runtime_id:710" ]] \
+    || die "analysis runs root ownership or mode is unsafe"
+  [[ "$(stat -c '%u:%g:%a' "$private_root")" \
+      == "$runtime_id:$runtime_id:700" ]] \
+    || die "analysis private root ownership or mode is unsafe"
+}
+
 if ! revision="$(
   git -c "safe.directory=$repo_root" -C "$repo_root" \
     rev-parse --verify HEAD 2>/dev/null
@@ -183,7 +243,7 @@ verify_git_blob() {
 # inactive oneshot prevents the current symlink and receipt changing underneath
 # a run.  Unknown/systemd-error states fail closed instead of being treated as
 # inactive.
-for unit_name in "$timer_name" "$service_name"; do
+for unit_name in "$timer_name" "$service_name" "$broker_socket_name"; do
   if ! unit_state="$(
     systemctl show --property=ActiveState --value "$unit_name" 2>/dev/null
   )"; then
@@ -197,6 +257,12 @@ for unit_name in "$timer_name" "$service_name"; do
     *) die "unexpected systemd state for $unit_name: $unit_state" ;;
   esac
 done
+active_broker_instances="$(
+  systemctl list-units --no-legend --plain --state=active,activating,deactivating \
+    'palimpsest-investigative-broker@*.service' 2>/dev/null || true
+)"
+[[ -z "$active_broker_instances" ]] \
+  || die "an investigative broker request is still active"
 
 if ! image_metadata="$(
   docker image inspect --format \
@@ -213,10 +279,13 @@ read -r image_revision image_id extra <<<"$image_metadata"
   || die "image inspection returned a malformed immutable ID"
 
 ensure_runtime_identity
+normalize_analysis_storage
 
 systemd-analyze verify \
   "$repo_root/ops/systemd/$service_name" \
-  "$repo_root/ops/systemd/$timer_name"
+  "$repo_root/ops/systemd/$timer_name" \
+  "$repo_root/ops/systemd/$broker_socket_name" \
+  "$repo_root/ops/systemd/$broker_service_name"
 
 install -d -o root -g root -m 0755 "$bundle_root" "$receipt_dir"
 bundle_tmp="$(mktemp -d "$bundle_root/.bundle-$revision.XXXXXX")"
@@ -242,11 +311,17 @@ install -d -o root -g root -m 0755 "$bundle_tmp/core"
 install -o root -g root -m 0555 \
   "$repo_root/ops/investigative_analysis_runner.py" \
   "$bundle_tmp/investigative_analysis_runner.py"
+install -o root -g root -m 0555 \
+  "$repo_root/ops/investigative_analysis_broker.py" \
+  "$bundle_tmp/investigative_analysis_broker.py"
 install -o root -g root -m 0444 \
   "$repo_root/core/__init__.py" "$bundle_tmp/core/__init__.py"
 install -o root -g root -m 0444 \
   "$repo_root/core/investigative_candidates.py" \
   "$bundle_tmp/core/investigative_candidates.py"
+install -o root -g root -m 0444 \
+  "$repo_root/core/investigative_container_contract.py" \
+  "$bundle_tmp/core/investigative_container_contract.py"
 install -o root -g root -m 0444 \
   "$repo_root/ops/investigative-analysis/README.md" "$bundle_tmp/README.md"
 install -o root -g root -m 0555 \
@@ -254,19 +329,27 @@ install -o root -g root -m 0555 \
   "$bundle_tmp/verify-host-bundle.sh"
 verify_git_blob ops/investigative_analysis_runner.py \
   "$bundle_tmp/investigative_analysis_runner.py"
+verify_git_blob ops/investigative_analysis_broker.py \
+  "$bundle_tmp/investigative_analysis_broker.py"
 verify_git_blob core/__init__.py "$bundle_tmp/core/__init__.py"
 verify_git_blob core/investigative_candidates.py \
   "$bundle_tmp/core/investigative_candidates.py"
+verify_git_blob core/investigative_container_contract.py \
+  "$bundle_tmp/core/investigative_container_contract.py"
 verify_git_blob ops/investigative-analysis/README.md "$bundle_tmp/README.md"
 verify_git_blob ops/investigative-analysis/verify-host-bundle.sh \
   "$bundle_tmp/verify-host-bundle.sh"
 printf '%s\n' "$revision" >"$bundle_tmp/REVISION"
 chown root:root "$bundle_tmp/REVISION"
 chmod 0444 "$bundle_tmp/REVISION"
+printf '%s\n' "$image_id" >"$bundle_tmp/IMAGE_ID"
+chown root:root "$bundle_tmp/IMAGE_ID"
+chmod 0444 "$bundle_tmp/IMAGE_ID"
 (
   cd "$bundle_tmp"
-  sha256sum README.md REVISION core/__init__.py \
-    core/investigative_candidates.py investigative_analysis_runner.py \
+  sha256sum README.md REVISION IMAGE_ID core/__init__.py \
+    core/investigative_candidates.py core/investigative_container_contract.py \
+    investigative_analysis_runner.py investigative_analysis_broker.py \
     verify-host-bundle.sh \
     >MANIFEST.sha256
 )
@@ -298,13 +381,15 @@ if [[ -e "$bundle_final" ]]; then
     || die "existing bundle core path is unsafe"
   [[ "$(stat -c '%u:%g:%a' "$bundle_final/core")" == "0:0:755" ]] \
     || die "existing bundle core ownership or mode is unsafe"
-  for bundle_file in README.md REVISION MANIFEST.sha256 core/__init__.py \
-    core/investigative_candidates.py investigative_analysis_runner.py \
+  for bundle_file in README.md REVISION IMAGE_ID MANIFEST.sha256 core/__init__.py \
+    core/investigative_candidates.py core/investigative_container_contract.py \
+    investigative_analysis_runner.py investigative_analysis_broker.py \
     verify-host-bundle.sh; do
     [[ -f "$bundle_final/$bundle_file" && ! -L "$bundle_final/$bundle_file" ]] \
       || die "existing bundle file is unsafe: $bundle_file"
     expected_mode="444"
     [[ "$bundle_file" == "investigative_analysis_runner.py" \
+        || "$bundle_file" == "investigative_analysis_broker.py" \
         || "$bundle_file" == "verify-host-bundle.sh" ]] \
       && expected_mode="555"
     [[ "$(stat -c '%u:%g:%a' "$bundle_final/$bundle_file")" \
@@ -325,7 +410,14 @@ install -o root -g root -m 0644 \
   "$repo_root/ops/systemd/$service_name" "/etc/systemd/system/$service_name"
 install -o root -g root -m 0644 \
   "$repo_root/ops/systemd/$timer_name" "/etc/systemd/system/$timer_name"
-for unit_name in "$service_name" "$timer_name"; do
+install -o root -g root -m 0644 \
+  "$repo_root/ops/systemd/$broker_socket_name" \
+  "/etc/systemd/system/$broker_socket_name"
+install -o root -g root -m 0644 \
+  "$repo_root/ops/systemd/$broker_service_name" \
+  "/etc/systemd/system/$broker_service_name"
+for unit_name in "$service_name" "$timer_name" "$broker_socket_name" \
+  "$broker_service_name"; do
   verify_git_blob "ops/systemd/$unit_name" "/etc/systemd/system/$unit_name"
   [[ "$(stat -c '%u:%g:%a' "/etc/systemd/system/$unit_name")" == "0:0:644" ]] \
     || die "installed unit ownership or mode is unsafe: $unit_name"

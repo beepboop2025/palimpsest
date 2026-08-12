@@ -1,0 +1,14 @@
+[Unit]
+Description=Fixed-operation broker socket for Palimpsest investigative analysis
+
+[Socket]
+ListenStream=/run/palimpsest-investigative-broker.sock
+SocketUser=root
+SocketGroup=palimpsest-analysis
+SocketMode=0660
+Accept=yes
+MaxConnections=8
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

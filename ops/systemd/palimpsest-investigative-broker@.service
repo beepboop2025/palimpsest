@@ -1,0 +1,53 @@
+[Unit]
+Description=Execute one fixed Palimpsest investigative broker operation
+Documentation=file:///usr/local/libexec/palimpsest-analysis/current/README.md
+Requires=docker.service
+After=docker.service
+ConditionFileIsExecutable=/usr/bin/docker
+ConditionPathExists=/etc/palimpsest/deployed-commit
+ConditionPathExists=/usr/local/libexec/palimpsest-analysis/current/REVISION
+ConditionPathExists=/usr/local/libexec/palimpsest-analysis/current/IMAGE_ID
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-analysis/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-analysis/current/REVISION /etc/palimpsest/deployed-commit
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/palimpsest-analysis/current/investigative_analysis_broker.py
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+TimeoutStartSec=22m
+UMask=0027
+TasksMax=48
+MemoryMax=128M
+
+# This root process has one parser and one fixed Docker command surface. It
+# cannot read evidence/private state and may mutate only broker-managed runs.
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-analysis /etc/palimpsest/deployed-commit
+ReadWritePaths=/var/lib/palimpsest-analysis/runs
+InaccessiblePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/newswire /var/lib/palimpsest-analysis/private
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX

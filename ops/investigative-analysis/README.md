@@ -3,8 +3,9 @@
 This service turns the Hetzner node's retained aggregate readings into a private
 editorial-lead ledger every thirty minutes. It adds **no collection traffic**.
 Each run takes a stable copy of the live reading files and RSS evidence ledger,
-then executes the existing analytical stack inside the production image with
-Docker networking set to `none`.
+then asks a root-owned, socket-activated broker to execute the existing
+analytical stack inside the production image with Docker networking set to
+`none`. The analysis identity never receives the Docker socket.
 
 The fixed order is:
 
@@ -78,8 +79,9 @@ node, `/home/palimpsest/palimpsest`). A code tree copied by rsync/SCP without
 sudo bash ops/investigative-analysis/install-host-bundle.sh --ensure-identity
 
 sudo install -d -o root -g root -m 0711 /var/lib/palimpsest-analysis
+sudo install -d -o root -g palimpsest-analysis -m 0710 \
+  /var/lib/palimpsest-analysis/runs
 sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0700 \
-  /var/lib/palimpsest-analysis/runs \
   /var/lib/palimpsest-analysis/private
 # UID 10001 is also the collector identity. Preserve its write/default-write
 # access to readings; systemd presents that source read-only to this unit.
@@ -92,33 +94,41 @@ sudo find /var/lib/palimpsest/newswire -type d \
   -exec setfacl -m d:u:palimpsest-analysis:rX {} +
 
 # First install: these units may not exist yet. The installer itself verifies
-# that neither unit is active and refuses an unknown state. It also revalidates
-# the identity before installing the root-owned bundle and units.
+# that the timer, analysis service, broker socket, and broker instances are
+# inactive. It revalidates the identity before installing the bundle and units.
 sudo systemctl stop palimpsest-investigative-analysis.timer 2>/dev/null || true
 sudo systemctl stop palimpsest-investigative-analysis.service 2>/dev/null || true
+sudo systemctl stop palimpsest-investigative-broker.socket 2>/dev/null || true
 sudo bash ops/investigative-analysis/install-host-bundle.sh
+sudo systemctl enable --now palimpsest-investigative-broker.socket
 sudo systemctl enable --now palimpsest-investigative-analysis.timer
 sudo systemctl start palimpsest-investigative-analysis.service
 ```
 
-The optional `/etc/palimpsest/investigative-analysis.env` supports only
-`PALIMPSEST_ANALYSIS_IMAGE`; pass the same image reference as the installer's
-single argument so it verifies that image before writing the receipt. Readings,
-newswire, runs, private state, and commit-receipt paths are fixed in code and in
-the unit's filesystem policy. Environment variables that appear to override
-those roots are intentionally unsupported.
+The installer's optional single argument selects the image only while root
+certifies the deployment. Its immutable image ID is written into the versioned
+bundle; the recurring service accepts no image environment variable. Readings,
+newswire, runs, private state, commit receipt, image ID, command, mounts, and
+container arguments are fixed in code and in the units' filesystem policy.
+Environment variables that appear to override those roots are intentionally
+unsupported.
 
-`SupplementaryGroups=docker` is operationally necessary for this host runner,
-but membership in the Docker group is root-equivalent: a process able to command
-the daemon can ask it to mount host paths. The unit's unprivileged UID and systemd
-hardening are defense in depth, not a security boundary against a compromised
-Docker daemon. Keep the bundle and unit files root-owned, and do not grant UID
+Docker group is root-equivalent, so UID 10001 has neither
+`SupplementaryGroups=docker` nor direct access to `/var/run/docker.sock`.
+It can connect only to a mode-0660 systemd socket. Each connection starts a
+root-owned broker that verifies `SO_PEERCRED` is exactly UID/GID 10001, accepts
+one bounded strict-JSON operation, rechecks the bundle/receipt/image identities,
+and constructs the sole networkless Docker command itself. The broker owns the
+run-directory parent, preventing the analysis process from replacing a checked
+bind-mount path. Keep the bundle and unit files root-owned, and do not grant UID
 10001 write access to `/usr/local/libexec/palimpsest-analysis`.
 
 ## Verify
 
 ```sh
 systemctl status palimpsest-investigative-analysis.service --no-pager
+systemctl status palimpsest-investigative-broker.socket --no-pager
+systemctl show -p SupplementaryGroups palimpsest-investigative-analysis.service
 systemctl list-timers palimpsest-investigative-analysis.timer --no-pager
 journalctl -u palimpsest-investigative-analysis.service -n 80 --no-pager
 sudo jq '{schema_version,generated_at,edition_id,n_candidates,coverage}' \
@@ -132,7 +142,8 @@ manual start with no changed evidence must log `unchanged` and add no candidate
 version or forecast-history row.
 
 For every later deploy, stop the analysis timer, wait for the oneshot service to
-be inactive, update to a clean commit, rebuild the image, run
-`install-host-bundle.sh`, and re-enable the timer. If any verification or atomic
-rename fails, leave the timer stopped: the previous receipt remains the last
-certified deployment.
+be inactive, stop the broker socket and confirm no broker instance remains,
+update to a clean commit, rebuild the image, run `install-host-bundle.sh`, and
+re-enable the broker socket and timer. If any verification or atomic rename
+fails, leave both stopped: the previous receipt remains the last certified
+deployment.

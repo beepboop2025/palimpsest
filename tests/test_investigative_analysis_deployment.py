@@ -5,12 +5,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "ops/docker/prod-compose"
 INSTALLER = ROOT / "ops/investigative-analysis/install-host-bundle.sh"
 VERIFIER = ROOT / "ops/investigative-analysis/verify-host-bundle.sh"
 SERVICE = ROOT / "ops/systemd/palimpsest-investigative-analysis.service"
+BROKER_SOCKET = ROOT / "ops/systemd/palimpsest-investigative-broker.socket"
+BROKER_SERVICE = ROOT / "ops/systemd/palimpsest-investigative-broker@.service"
 README = ROOT / "ops/investigative-analysis/README.md"
 DEPLOY_GUIDE = ROOT / "ops/DEPLOY-HETZNER.md"
 BACKUP_README = ROOT / "ops/backup/README.md"
@@ -200,8 +201,14 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
         "docker image inspect"
     )
     assert source.index("docker image inspect") < source.index(
-        "\nensure_runtime_identity\n\nsystemd-analyze"
+        "\nensure_runtime_identity\nnormalize_analysis_storage\n\nsystemd-analyze"
     )
+    assert 'broker_socket_name="palimpsest-investigative-broker.socket"' in source
+    assert "core/investigative_container_contract.py" in source
+    assert "investigative_analysis_broker.py" in source
+    assert 'printf \'%s\\n\' "$image_id" >"$bundle_tmp/IMAGE_ID"' in source
+    assert 'chown root:"$runtime_name" "$runs_root"' in source
+    assert 'chmod 0710 "$runs_root"' in source
 
 
 def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
@@ -225,7 +232,20 @@ def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
     assert "/home/palimpsest/palimpsest" not in unit
     assert "ProtectHome=true" in unit
     assert "TimeoutStartSec=35m" in unit
-    assert "SupplementaryGroups=docker" in unit
+    assert "SupplementaryGroups=docker" not in unit
+    assert "Requires=palimpsest-investigative-broker.socket" in unit
+
+    socket_unit = BROKER_SOCKET.read_text(encoding="utf-8")
+    broker_unit = BROKER_SERVICE.read_text(encoding="utf-8")
+    assert "SocketGroup=palimpsest-analysis" in socket_unit
+    assert "SocketMode=0660" in socket_unit
+    assert "Accept=yes" in socket_unit
+    assert "User=root" in broker_unit and "Group=root" in broker_unit
+    assert "StandardInput=socket" in broker_unit
+    assert "StandardOutput=socket" in broker_unit
+    assert "ReadWritePaths=/var/lib/palimpsest-analysis/runs" in broker_unit
+    assert "RestrictAddressFamilies=AF_UNIX" in broker_unit
+    assert "CapabilityBoundingSet=" in broker_unit
 
 
 def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> None:
@@ -240,7 +260,7 @@ def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> N
     assert "256 MiB hard ceiling" in documentation
     assert "192 MiB (75%)" in documentation
     assert "Docker group is root-equivalent" in documentation
-    assert "PALIMPSEST_ANALYSIS_IMAGE" in documentation
+    assert "root-owned broker" in documentation
     assert "Environment variables that appear to override" in documentation
     assert "copied by rsync/SCP" in documentation
     assert "217/USER" in documentation
