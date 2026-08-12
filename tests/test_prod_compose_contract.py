@@ -8,6 +8,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "ops" / "docker" / "docker-compose.prod.yml"
 DOCKERIGNORE = ROOT / ".dockerignore"
+DOCKERFILE = ROOT / "ops" / "docker" / "Dockerfile.app"
 
 
 def test_schema_gate_precedes_every_application_service():
@@ -48,14 +49,21 @@ def test_app_build_context_is_an_allowlist_without_runtime_state_or_secrets():
     assert "**" in rules
     for required in (
         "!requirements.txt", "!inject_ddti.py", "!api/**", "!core/**",
-        "!collectors/**", "!processors/**", "!storage/**", "!censorwatch/**",
-        "!config/**", "!scripts/**", "!ops/docker/Dockerfile.app",
+        "!evidence/**", "!collectors/**", "!processors/**", "!storage/**",
+        "!censorwatch/**", "!config/**", "!scripts/**",
+        "!ops/docker/Dockerfile.app",
     ):
         assert required in rules
     assert not any(
         rule.startswith(("!readings", "!data", "!.git", "!ops/docker/.env"))
         for rule in rules
     )
+
+
+def test_app_image_copies_the_evidence_document_dependency():
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert "evidence/     evidence/" in dockerfile
 
 
 def test_radar_bearer_secret_is_mounted_only_into_collector_worker():
