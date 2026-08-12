@@ -442,9 +442,10 @@ def _network_evidence(
             "ooni-gfw",
             "OONI anomaly index",
             "/gfw_index",
-            "/n_measurements",
-            "OONI's window covers completed measurements across several test families. "
-            "An anomaly is not a confirmed block and the probe/test mix is not China's population.",
+            "/n_completed_measurements",
+            "OONI's anomaly index uses completed measurements across several test families; "
+            "the separate total-measurement count also includes failed attempts. An anomaly is "
+            "not a confirmed block and the probe/test mix is not China's population.",
         ),
         (
             "in-path-interference",

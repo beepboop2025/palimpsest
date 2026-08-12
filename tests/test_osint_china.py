@@ -177,6 +177,27 @@ def test_valid_source_retains_the_complete_payload_and_normalizes_contract(mod, 
     assert "Ranks terms" in signal["summary"]
 
 
+def test_ooni_denominator_is_completed_measurements_not_attempt_volume(mod, tmp_path):
+    payload = {
+        "generated_at": "2026-08-04T11:30:00Z",
+        "source": "fixture OONI aggregate",
+        "gfw_index": 57.6,
+        "n_measurements": 245_883,
+        "n_completed_measurements": 243_931,
+    }
+    _write_json(tmp_path / "ooni-gfw-latest.json", payload)
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "ooni-gfw")
+
+    assert signal["metric"] == {
+        "label": "GFW anomaly index",
+        "value": 57.6,
+        "unit": "percent",
+        "denominator": {"label": "completed measurements", "value": 243_931},
+    }
+    assert signal["payload"]["n_measurements"] == 245_883
+
+
 @pytest.mark.parametrize("invalid", [True, False, "4", "not-a-number"])
 def test_scalar_metrics_reject_booleans_and_arbitrary_strings(mod, tmp_path, invalid):
     _write_json(tmp_path / "ddti-latest.json", {

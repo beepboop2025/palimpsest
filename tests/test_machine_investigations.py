@@ -351,6 +351,25 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         self.assertEqual(len(network["evidence"]), 3)
         self.assertEqual(len(groups), 2)
         self.assertNotIn("censored-planet", evidence)
+        self.assertEqual(
+            evidence["ooni-gfw"]["selector"],
+            "json-pointer:/gfw_index;denominator-json-pointer:/n_completed_measurements",
+        )
+        raw_ooni = _json(READINGS / "ooni-gfw-latest.json")
+        completed = sum(
+            row["measurement_count"] - row["failure_count"]
+            for row in raw_ooni["tests"] if row.get("available")
+        )
+        anomalies = sum(
+            row["anomaly_count"]
+            for row in raw_ooni["tests"] if row.get("available")
+        )
+        self.assertEqual(evidence["ooni-gfw"]["denominator"], {
+            "label": "completed measurements", "value": completed,
+        })
+        self.assertEqual(raw_ooni["n_completed_measurements"], completed)
+        self.assertEqual(round(100 * anomalies / completed, 1), evidence["ooni-gfw"]["value"])
+        self.assertGreater(raw_ooni["n_measurements"], completed)
         self.assertEqual(evaluation["independent_group_ids"], groups)
         self.assertEqual(evaluation["observed_independent_groups"], len(groups))
         self.assertGreaterEqual(len(groups), evaluation["minimum_independent_groups"])

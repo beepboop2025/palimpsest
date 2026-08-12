@@ -157,7 +157,8 @@ SIGNALS: tuple[SignalSpec, ...] = (
     # Independent network and circumvention vantages.
     _s("ooni-gfw", "OONI Great Firewall index", "network", "ooni-gfw-latest.json", 6, 14,
        "Aggregates OONI measurements made by probes in China across network test families.",
-       "GFW anomaly index", ("gfw_index",), "percent", "measurements", ("n_measurements",)),
+       "GFW anomaly index", ("gfw_index",), "percent", "completed measurements",
+       ("n_completed_measurements",)),
     _s("in-path-interference", "In-path interference", "network", "in-path-interference-latest.json", 6, 14,
        "Separates middlebox signatures, transport failures and tests that could not execute.",
        "middlebox index", ("middlebox_index",), "percent",

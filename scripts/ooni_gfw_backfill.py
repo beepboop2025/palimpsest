@@ -29,13 +29,16 @@ def _index_for(since: str, until: str) -> dict | None:
     usable = [t for t in tests if t.get("available")]
     if not usable:
         return None
-    tot_valid = sum((t["measurement_count"] - t["failure_count"]) for t in usable)
+    n_measurements = sum(t["measurement_count"] for t in usable)
+    n_completed_measurements = sum(
+        t["measurement_count"] - t["failure_count"] for t in usable)
     tot_anom = sum(t["anomaly_count"] for t in usable)
-    if tot_valid <= 0:
+    if n_completed_measurements <= 0:
         return None
     return {
-        "gfw_index": round(100 * tot_anom / tot_valid, 1),
-        "n_measurements": sum(t["measurement_count"] for t in usable),
+        "gfw_index": round(100 * tot_anom / n_completed_measurements, 1),
+        "n_measurements": n_measurements,
+        "n_completed_measurements": n_completed_measurements,
         "n_tests_with_data": len(usable),
     }
 
@@ -74,7 +77,8 @@ def main() -> None:
         existing[key] = row
         added += 1
         print(f"  {since}..{until}: index {idx['gfw_index']} "
-              f"({idx['n_measurements']} measurements)")
+              f"({idx['n_completed_measurements']} completed measurements from "
+              f"{idx['n_measurements']} attempts)")
 
     # rewrite history sorted by window end date
     rows = sorted(existing.values(),

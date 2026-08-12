@@ -24,7 +24,7 @@ HIST = os.path.join(READINGS, "ooni-gfw-history.jsonl")
 # correction that leaves the values identical would never earn a history line and
 # the record would show the numbers carrying on under a method that had in fact
 # been replaced.
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 
 
 WINDOW_DAYS = 7   # CN measurement volume is uneven; a 7d window keeps the rate stable
@@ -66,9 +66,14 @@ def main() -> None:
     # Overall GFW pressure: measurement-weighted mean anomaly rate across the
     # tests that had data, scaled to 0-100. Weighting by measurement count stops
     # a thinly-measured test from dominating.
-    tot_valid = sum((t["measurement_count"] - t["failure_count"]) for t in usable)
+    n_measurements = sum(t["measurement_count"] for t in usable)
+    n_completed_measurements = sum(
+        t["measurement_count"] - t["failure_count"] for t in usable)
     tot_anom = sum(t["anomaly_count"] for t in usable)
-    gfw_index = round(100 * tot_anom / tot_valid, 1) if tot_valid > 0 else None
+    gfw_index = (
+        round(100 * tot_anom / n_completed_measurements, 1)
+        if n_completed_measurements > 0 else None
+    )
 
     for t in tests:
         t["reading"] = _reading(t)
@@ -80,13 +85,19 @@ def main() -> None:
         "scope": ("live Great Firewall network blocking — website, messenger and "
                   "circumvention-tool reachability, measured inside China by OONI Probe"),
         "method": ("side-channel: we ingest OONI's already-aggregated open data; "
-                   "we never probe a censored resource ourselves (vantage-insensitive)"),
+                   "gfw_index is anomalous completed measurements divided by all "
+                   "completed measurements; we never probe a censored resource "
+                   "ourselves (vantage-insensitive)"),
         "china_caveat": ("the GFW blocks via RST/DNS injection without a block page, so "
                          "OONI 'confirmed' is near-zero for CN; we track anomaly rate, not confirmed"),
         "window_days": WINDOW_DAYS,
         "since": since, "until": until,
         "gfw_index": gfw_index,
-        "n_measurements": sum(t["measurement_count"] for t in usable),
+        # Keep attempted volume separate from the arithmetic denominator: OONI's
+        # failure_count is part of measurement_count, but failed runs abstain from
+        # both the anomaly numerator and denominator.
+        "n_measurements": n_measurements,
+        "n_completed_measurements": n_completed_measurements,
         "n_tests_with_data": len(usable),
         "tests": tests,
         "top_blocked": top,
@@ -131,6 +142,7 @@ def main() -> None:
                 "generated_at": out["generated_at"],
                 "gfw_index": gfw_index,
                 "n_measurements": out["n_measurements"],
+                "n_completed_measurements": out["n_completed_measurements"],
                 "n_tests_with_data": out["n_tests_with_data"],
                 "top_blocked": (top[0]["domain"] if top else None),
             }, ensure_ascii=False) + "\n")
@@ -139,13 +151,18 @@ def main() -> None:
               "with this round's observation time, history untouched")
 
     print(f"=== OONI GFW signal — index {gfw_index} "
-          f"({out['n_measurements']} CN measurements, {len(usable)}/{len(tests)} tests) ===")
+          f"({out['n_completed_measurements']} completed CN measurements from "
+          f"{out['n_measurements']} attempts, {len(usable)}/{len(tests)} tests) ===")
     for t in tests:
         print(f"  {t['test']:<18} {t.get('reading')}")
     if top:
         print("  top blocked:")
         for d in top[:8]:
-            print(f"    {d['domain'][:40]:<40} {d['anomaly_rate']*100:.0f}% ({d['measurement_count']} probes)")
+            print(
+                f"    {d['domain'][:40]:<40} {d['anomaly_rate']*100:.0f}% "
+                f"({d['completed_measurement_count']} completed from "
+                f"{d['measurement_count']} attempts)"
+            )
 
 
 if __name__ == "__main__":
