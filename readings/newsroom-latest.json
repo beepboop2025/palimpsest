@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-12T16:47:05Z",
+  "generated_at": "2026-08-12T16:51:35Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "c0a2914ae1e85e9a062ac019c05bf2ad414ed62b",
+  "source_commit": "90716244612f1612e24374f3fe38a773de3fb9d1",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -650,43 +650,43 @@
       "slug": "ooni-great-firewall-index",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "signal_id": "ooni-gfw",
-      "headline": "OONI's China anomaly index is 57.6% across 245,883 measurements",
+      "headline": "OONI's China anomaly index is 58.7% across 274,785 completed measurements",
       "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
       "section": "network",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-12T13:52:42Z",
-      "modified_at": "2026-08-12T13:52:42Z",
-      "claim_fingerprint": "sha256:a6ae51b4675a8c9039da80e9babc42f5894305be0ae1fdbec55000a82349f0ae",
+      "published_at": "2026-08-12T16:38:25Z",
+      "modified_at": "2026-08-12T16:38:25Z",
+      "claim_fingerprint": "sha256:8421fdc8bf25835f9e05b4a12d08475baa88d3b2233bb9be574ba94f34b8b899",
       "metric": {
         "label": "GFW anomaly index",
-        "value": 57.6,
+        "value": 58.7,
         "unit": "percent",
         "denominator": {
-          "label": "measurements",
-          "value": 245883
+          "label": "completed measurements",
+          "value": 274785
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current OONI aggregate reports a 57.6% anomaly index across 245,883 China measurements."
+          "statement": "The current OONI aggregate reports a 58.7% anomaly index across 274,785 completed China measurements."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
         "input": {
           "filename": "ooni-gfw-latest.json",
-          "sha256": "cf1abfcf63068a8bd7f742c3917a5ca96f09dbd2e5489b9a24a4c93fbbd18d8b",
-          "bytes": 6102
+          "sha256": "29de34c5cb6f96a56caa6533e76c98bfaa694b8ac58977f18e9be828bfd6c16d",
+          "bytes": 7894
         },
-        "source_timestamp": "2026-08-12T13:52:42Z"
+        "source_timestamp": "2026-08-12T16:38:25Z"
       },
       "method": {
-        "summary": "side-channel: we ingest OONI's already-aggregated open data; we never probe a censored resource ourselves (vantage-insensitive)",
-        "version": 1
+        "summary": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
+        "version": 2
       },
       "limitations": [
         "Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship."
@@ -712,14 +712,14 @@
       "status": "live",
       "published_at": "2026-08-12T13:54:13Z",
       "modified_at": "2026-08-12T13:54:13Z",
-      "claim_fingerprint": "sha256:e42d522e1dff5171e41e4a49d04399850ae83070853aecab8a8847e46f9a0d83",
+      "claim_fingerprint": "sha256:75aa9022813b78b59d4090c13aab758e18f058e72c4aad8aa935ad11e059df78",
       "metric": {
         "label": "middlebox index",
         "value": 1.39,
         "unit": "percent",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "completed middlebox tests",
+          "value": 9726
         }
       },
       "claims": [
@@ -732,8 +732,8 @@
         "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
         "input": {
           "filename": "in-path-interference-latest.json",
-          "sha256": "6c2cbb5c478e8b9b174d66ef08e02f1ddba38af5d8508fb26c623836197e185a",
-          "bytes": 4226
+          "sha256": "7dcc99824b3e0cba5413b61ce713a54c39c1098a0ac3fae30e842057d7405520",
+          "bytes": 4264
         },
         "source_timestamp": "2026-08-12T13:54:13Z"
       },
@@ -807,7 +807,7 @@
       "slug": "inside-china-view",
       "url": "https://palimpsest.info/news/inside-china-view/",
       "signal_id": "inside-view",
-      "headline": "100% of the 11-domain mainland panel is blocked",
+      "headline": "100% of the 5-domain mainland panel is blocked",
       "dek": "Volunteer probes inside China are compared with a same-round external control before an answer is classified.",
       "section": "network",
       "order": 4,
@@ -816,20 +816,20 @@
       "status": "live",
       "published_at": "2026-08-12T14:02:03Z",
       "modified_at": "2026-08-12T14:02:03Z",
-      "claim_fingerprint": "sha256:c334fcba27212b56b191744279de1b7d3a14901cd39fdebbbd01a399adf63b55",
+      "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
       "metric": {
         "label": "blocked share",
         "value": 1.0,
         "unit": "ratio",
         "denominator": {
-          "label": "panel size",
-          "value": 11
+          "label": "qualifying answered measurement domains",
+          "value": 5
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current controlled panel reports 100% blocked responses across 11 tested domains."
+          "statement": "The current controlled panel reports 100% blocked responses across 5 tested domains."
         }
       ],
       "evidence": {

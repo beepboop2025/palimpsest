@@ -74,7 +74,7 @@ The same page now exposes those retained payloads as a searchable structured led
 **evidence spine** across four deliberately separate lanes: information controls, monetary plumbing,
 aggregate illicit-market observables, and reviewed scam/laundering signals. The versioned
 [`intelligence-commons` manifest](integrations/intelligence-commons/manifest-v1.json) connects
-Palimpsest, ScamShield, NarcoScope and Seiche through typed, directional contracts. A connection is
+Palimpsest, ScamShield, NarcoScope, Seiche and LiquiLens through typed, directional contracts. A connection is
 context, not causation: typology matches do not establish predicate offences or source of funds;
 private models, raw messages, exact IOCs and operational leads never cross into the public commons.
 

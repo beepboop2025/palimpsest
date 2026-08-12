@@ -1,0 +1,157 @@
+{
+  "schema_version": "palimpsest-machine-evidence-capsule.v1",
+  "capsule_type": "redacted-aggregate-evidence",
+  "content_address": {
+    "algorithm": "sha256",
+    "scope": "original-input-bytes",
+    "sha256": "f46c6e5a21f8fc4f12d40f01788a6faf82442712c365ed0758ff626133864302"
+  },
+  "original_input": {
+    "artifact_id": "primary-documents-latest.json",
+    "generated_at": "2026-08-12T11:09:06Z",
+    "sha256": "f46c6e5a21f8fc4f12d40f01788a6faf82442712c365ed0758ff626133864302",
+    "integrity": "exact-input-bytes-verified"
+  },
+  "citations": [
+    {
+      "evidence_id": "evidence-primary-document-coverage",
+      "title": "Primary-document capture and parsing coverage",
+      "role": "context",
+      "source_class": "PRIMARY_SOURCE",
+      "source_id": "primary-documents",
+      "selector": "coverage, documents[*].observation_state",
+      "source_timestamp": "2026-08-12T11:09:06Z",
+      "independence_group": "pipeline:primary-document-receipts",
+      "upstream_groups": [
+        "hkex-listed-company-disclosures",
+        "imf-portwatch-ais",
+        "mot-transport-statistics",
+        "nbs-housing-prices",
+        "nbs-official-statistics",
+        "nea-energy-statistics",
+        "pboc-credit-statistics",
+        "sentinel5p-atmosphere",
+        "spb-postal-statistics",
+        "sse-listed-company-disclosures",
+        "szse-listed-company-disclosures",
+        "viirs-radiance",
+        "world-bank-enterprise-survey"
+      ],
+      "value": {
+        "type": "unparsed-document-records",
+        "value": 13
+      },
+      "denominator": {
+        "type": "aggregate-count",
+        "label": "document records",
+        "value": 13
+      },
+      "interpretation_limit": "The index records retrieval metadata for 14 registered sources; captured documents marked not_parsed do not provide normalized observations for synthesis.",
+      "freshness": "current",
+      "rights": {
+        "redistribution": "OPEN",
+        "reuse": "derived_only",
+        "training": "prohibited"
+      },
+      "attribution": {
+        "attribution_required": false,
+        "providers": [
+          {
+            "name": "NBS",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "PBOC",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "GACC",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "MOT",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "State Post Bureau",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "NEA",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "IMF PortWatch",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "Copernicus",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "NASA",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "HKEX",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "SSE",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "SZSE",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "World Bank",
+            "source_url": null,
+            "terms_url": null
+          }
+        ],
+        "upstream_groups": [
+          "publisher:copernicus",
+          "publisher:gacc",
+          "publisher:hkex",
+          "publisher:imf-portwatch",
+          "publisher:mot",
+          "publisher:nasa",
+          "publisher:nbs",
+          "publisher:nea",
+          "publisher:pboc",
+          "publisher:sse",
+          "publisher:state-post-bureau",
+          "publisher:szse",
+          "publisher:world-bank"
+        ],
+        "public_source_url": "https://palimpsest.info/readings/primary-documents-latest.json",
+        "upstream_source_urls": [],
+        "source_statement": null,
+        "license": {
+          "name": "MIT for Palimpsest receipts; publisher rights and terms apply to retained source bytes",
+          "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "aggregate_only": true,
+    "raw_input_included": false,
+    "person_level_data_included": false,
+    "contact_data_included": false,
+    "ip_addresses_included": false
+  }
+}

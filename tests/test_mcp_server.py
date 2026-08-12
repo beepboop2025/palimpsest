@@ -59,6 +59,7 @@ def test_initialize_instructions_route_both_applications():
     assert "censorship" in text
     assert "eval" in text and "pre-registered" in text
     assert "refusal" in text
+    assert "machine-analysis" in text and "abstentionreport" in text
 
 
 # -------------------------------------------------------------- tools/list --
@@ -90,6 +91,8 @@ def test_signal_catalog_exposes_the_reporting_and_investigation_surfaces():
         "editorial-readiness",
         "evidence-catalog",
         "osint-china",
+        "evidence-mesh",
+        "machine-investigations",
     ):
         assert name in listed
         assert listed[name]["url"].startswith("https://palimpsest.info/readings/")
@@ -178,6 +181,43 @@ def test_get_newsroom_rejects_unknown_views():
     assert out["error"]["code"] == mcp.INVALID_PARAMS
 
 
+def test_get_newsroom_exposes_machine_analysis_without_hiding_abstentions(monkeypatch):
+    cases = [
+        {
+            "case_id": "network-case",
+            "status": "published",
+            "report_type": "AnalysisReport",
+            "claim_blocks": [{"sentence_citation_ids": [["evidence-ooni"]]}],
+            "limitations": ["scoped measurements are not a national rate"],
+        },
+        {
+            "case_id": "economy-case",
+            "status": "abstained",
+            "report_type": "AbstentionReport",
+            "status_reason": "not enough independent eligible evidence groups",
+            "claim_blocks": [{"sentence_citation_ids": [["evidence-gap"]]}],
+            "limitations": ["no eligible time series"],
+        },
+    ]
+    monkeypatch.setattr(mcp, "_fetch", lambda name: {
+        "schema_version": "palimpsest-machine-investigations.v1",
+        "generated_at": "2026-08-12T14:00:00Z",
+        "cases": cases,
+    })
+
+    body = mcp.dispatch(_rpc("tools/call", {
+        "name": "get_newsroom",
+        "arguments": {"view": "machine-analysis", "limit": 10},
+    }))["result"]["structuredContent"]
+
+    assert body["signal"] == "machine-investigations"
+    assert body["selection"]["returned"] == 2
+    assert body["data"]["cases"] == cases
+    assert {case["report_type"] for case in body["data"]["cases"]} == {
+        "AnalysisReport", "AbstentionReport",
+    }
+
+
 def test_model_excerpts_cannot_smuggle_instructions_into_the_caller(monkeypatch):
     """An excerpt is verbatim output of a model under study, and our readers
     are agents. A model that emits hidden instructions must not be able to
@@ -206,9 +246,10 @@ def test_long_row_arrays_are_capped_and_the_cap_is_disclosed(monkeypatch):
     """
     rows = [{"concept": f"c{i}", "excerpt": "x"} for i in range(200)]
     monkeypatch.setattr(mcp, "_fetch", lambda name: {"dataset": list(rows)})
-    call = lambda args: mcp.dispatch(_rpc(
-        "tools/call", {"name": "get_signal", "arguments": args})
-    )["result"]["structuredContent"]
+    def call(args):
+        return mcp.dispatch(_rpc(
+            "tools/call", {"name": "get_signal", "arguments": args})
+        )["result"]["structuredContent"]
 
     body = call({"name": "generative-firewall-index"})
     assert len(body["data"]["dataset"]) == mcp._DEFAULT_MAX_ROWS
@@ -387,6 +428,16 @@ def test_non_jsonrpc_message_is_invalid_request():
 def test_unknown_method_is_method_not_found():
     out = mcp.dispatch(_rpc("resources/subscribe"))
     assert out["error"]["code"] == mcp.METHOD_NOT_FOUND
+
+
+def test_evidence_desk_prompt_routes_machine_analysis_and_preserves_abstention():
+    out = mcp.dispatch(_rpc(
+        "prompts/get", {"name": "evidence_desk_briefing", "arguments": {}}
+    ))
+    prompt = out["result"]["messages"][0]["content"]["text"]
+    assert "view='machine-analysis'" in prompt
+    assert "citations" in prompt
+    assert "Never describe an AbstentionReport" in prompt
 
 
 # ------------------------------------------------------- both applications --

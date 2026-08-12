@@ -25,6 +25,27 @@ METHOD_VERSION = 1
 WINDOW_DAYS = 70   # CP publishes ~weekly; a wide window guarantees coverage
 
 
+def _ordered_series(rows: list[dict]) -> list[dict]:
+    """Return one valid observation per date in chronological order.
+
+    The upstream GraphQL API does not promise row order.  Sorting before taking
+    a tail prevents an older response chunk from masquerading as the latest
+    chart window.  Later duplicate rows win deterministically because they are
+    the last value observed for the same date in the response.
+    """
+    by_date: dict[str, dict] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        date = row.get("date")
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except (TypeError, ValueError):
+            continue
+        by_date[date] = row
+    return [by_date[date] for date in sorted(by_date)]
+
+
 def main() -> None:
     now = datetime.now(timezone.utc)
     since = (now - timedelta(days=WINDOW_DAYS)).strftime("%Y-%m-%d")
@@ -32,7 +53,7 @@ def main() -> None:
 
     rate = cn_interference_rate(since, until)
     events = cn_events(since, until)
-    series = cn_timeseries(since, until)
+    series = _ordered_series(cn_timeseries(since, until))
 
     # Honesty guard: if the API gave us neither a rate nor events nor a series,
     # abstain rather than publish an empty board.

@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
 OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+TESTS_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 
 
 def _json(path: str) -> dict:
@@ -25,6 +26,50 @@ def _staged_occurrences(workflow: str, artifact: str) -> int:
         line.strip().rstrip("\\").strip() == artifact
         for line in workflow.splitlines()
     )
+
+
+def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
+    workflow = TESTS_WORKFLOW.read_text(encoding="utf-8")
+    contract = workflow[workflow.index("  contract:"):]
+    preflight_marker = "- name: Check the committed deterministic machine-newsroom graph"
+    rebuild_marker = "- name: Rebuild and prove the deterministic graph is unchanged"
+    preflight_start = contract.index(preflight_marker)
+    rebuild_start = contract.index(rebuild_marker)
+    preflight = contract[preflight_start:rebuild_start]
+    rebuild = contract[rebuild_start:contract.index("      - name: Read the public surface")]
+
+    required_checks = {
+        "python -m scripts.sync_narcoscope --check",
+        "python -m core.evidence_mesh --check",
+        "python -m core.machine_investigations --check",
+        "python -m scripts.build_newsroom --check",
+        "python -m scripts.build_data_catalog --check",
+        "python scripts/seal_readings.py --check",
+    }
+    preflight_commands = {
+        line.strip()
+        for line in preflight.splitlines()
+        if line.strip().startswith("python ")
+    }
+    assert required_checks <= preflight_commands
+
+    write_commands = {
+        'python -m core.evidence_mesh --now "$mesh_clock"',
+        "python -m core.machine_investigations",
+        "python -m scripts.build_newsroom",
+        'python -m scripts.build_data_catalog --now "$catalog_clock"',
+    }
+    assert write_commands.isdisjoint(preflight_commands)
+    assert write_commands <= {
+        line.strip()
+        for line in rebuild.splitlines()
+        if line.strip().startswith("python ")
+    }
+    assert "mesh_clock=$(python -c" in rebuild
+    assert "catalog_clock=$(python -c" in rebuild
+    assert 'readings/evidence-mesh-latest.json' in rebuild
+    assert 'readings/catalog.json' in rebuild
+    assert "git diff --exit-code" in rebuild
 
 
 def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
@@ -77,6 +122,12 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
     assert schemas["Investigations"] == {
         "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
     }
+    assert schemas["EvidenceMesh"] == {
+        "$ref": "https://palimpsest.info/protocol/evidence-mesh-v1.schema.json"
+    }
+    assert schemas["MachineInvestigations"] == {
+        "$ref": "https://palimpsest.info/protocol/machine-investigations-v1.schema.json"
+    }
     reporting = {
         "PrimaryDocuments": "primary-documents-v1.schema.json",
         "Corroboration": "corroboration-v1.schema.json",
@@ -97,6 +148,12 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
         ),
         "/readings/investigations-latest.json": (
             "getInvestigations", "Investigations"
+        ),
+        "/readings/evidence-mesh-latest.json": (
+            "getEvidenceMesh", "EvidenceMesh"
+        ),
+        "/readings/machine-investigations-latest.json": (
+            "getMachineInvestigations", "MachineInvestigations"
         ),
         "/readings/primary-documents-latest.json": (
             "getPrimaryDocuments", "PrimaryDocuments"
@@ -123,7 +180,8 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
         assert responses[response_name]["content"]["application/json"]["schema"] == {
             "$ref": f"#/components/schemas/{response_name}"
         }
-        assert (ROOT / path.lstrip("/")).is_file()
+        if path != "/readings/machine-investigations-latest.json":
+            assert (ROOT / path.lstrip("/")).is_file()
 
 
 def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
@@ -132,21 +190,32 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
     robots = (ROOT / "robots.txt").read_text(encoding="utf-8")
     llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
 
-    for url in (
+    stable_desks = (
         "https://palimpsest.info/news/wire/",
         "https://palimpsest.info/news/economy/",
         "https://palimpsest.info/news/investigations/",
         "https://palimpsest.info/news/standards/",
-    ):
+    )
+    for url in stable_desks:
         assert url in sitemap
         assert url in news_sitemap
         assert url in llms
+    # The generated sitemap acquires the analysis desk in the same publication
+    # run that creates its first validated reading. Keep root and agent discovery
+    # explicit before that atomic run, without hand-editing generated bytes.
+    analysis_url = "https://palimpsest.info/news/analysis/"
+    assert analysis_url in sitemap
+    assert analysis_url in llms
+    if (ROOT / "readings" / "machine-investigations-latest.json").exists():
+        assert analysis_url in news_sitemap
     for url in (
         "https://palimpsest.info/news/feed.json",
         "https://palimpsest.info/news/feed.xml",
         "https://palimpsest.info/readings/newswire-latest.json",
         "https://palimpsest.info/readings/china-economic-pulse-latest.json",
         "https://palimpsest.info/readings/investigations-latest.json",
+        "https://palimpsest.info/readings/evidence-mesh-latest.json",
+        "https://palimpsest.info/readings/machine-investigations-latest.json",
         "https://palimpsest.info/readings/primary-documents-latest.json",
         "https://palimpsest.info/readings/corroboration-latest.json",
         "https://palimpsest.info/readings/network-rounds-latest.json",
@@ -157,6 +226,8 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
         "https://palimpsest.info/protocol/newswire-v1.schema.json",
         "https://palimpsest.info/protocol/economic-pulse-v1.schema.json",
         "https://palimpsest.info/protocol/investigations-v1.schema.json",
+        "https://palimpsest.info/protocol/evidence-mesh-v1.schema.json",
+        "https://palimpsest.info/protocol/machine-investigations-v1.schema.json",
         "https://palimpsest.info/protocol/primary-documents-v1.schema.json",
         "https://palimpsest.info/protocol/corroboration-v1.schema.json",
         "https://palimpsest.info/protocol/network-rounds-v1.schema.json",
@@ -180,9 +251,11 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
 
 def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    assert 'const CACHE = "palimpsest-v11"' in worker
+    assert 'const CACHE = "palimpsest-v12"' in worker
     assert '"/readings/newswire-latest.json"' in worker
     assert '"/readings/china-economic-pulse-latest.json"' in worker
+    assert '"/readings/evidence-mesh-latest.json"' in worker
+    assert '"/readings/machine-investigations-latest.json"' in worker
     for name in (
         "primary-documents",
         "corroboration",
@@ -223,6 +296,25 @@ def test_mutable_investigation_cases_are_network_only_but_revisions_are_not():
     assert "caches.match" not in branch
 
 
+def test_mutable_machine_reports_are_network_only_but_revisions_are_not():
+    worker = (ROOT / "sw.js").read_text(encoding="utf-8")
+    declaration = re.search(
+        r"const LIVE_MACHINE_ANALYSIS_REPORT = /(.+)/;", worker
+    )
+    assert declaration is not None
+    matcher = re.compile(declaration.group(1).replace(r"\/", "/"))
+    assert matcher.fullmatch("/news/analysis/network-conditions/report.json")
+    assert not matcher.fullmatch(
+        "/news/analysis/network-conditions/revisions/"
+        "machinev-0123456789abcdef01234567.json"
+    )
+    marker = "if (LIVE_MACHINE_ANALYSIS_REPORT.test(url.pathname))"
+    branch = worker[worker.index(marker):]
+    branch = branch[:branch.index("return;")]
+    assert 'fetch(req, { cache: "no-store" })' in branch
+    assert "caches.match" not in branch
+
+
 def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
     assert 'cron: "17,47 * * * *"' in workflow
@@ -238,7 +330,14 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         r"\s*python -m scripts\.build_network_rounds\n"
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
+        r"\s*python -m scripts\.sync_narcoscope --check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m core\.evidence_mesh\n"
+        r"\s*python -m core\.evidence_mesh --check\n"
+        r"\s*python -m core\.machine_investigations\n"
+        r"\s*python -m core\.machine_investigations --check\n"
         r"\s*python -m scripts\.build_newsroom\n"
+        r"\s*python -m scripts\.build_newsroom --check\n"
         r"\s*python -m scripts\.build_data_catalog\n"
         r"\s*python scripts/seal_readings\.py",
         workflow,
@@ -251,6 +350,8 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         "readings/china-economic-pulse-latest.json",
         "readings/osint-china-latest.json",
         "readings/investigations-latest.json",
+        "readings/evidence-mesh-latest.json",
+        "readings/machine-investigations-latest.json",
         "readings/primary-documents-latest.json",
         "readings/corroboration-latest.json",
         "readings/network-rounds-latest.json",
@@ -277,6 +378,10 @@ def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner()
         "tests/test_ai_discovery.py",
         "tests/test_investigations.py",
         "tests/test_investigations_renderer.py",
+        "tests/test_narcoscope_bridge.py",
+        "tests/test_evidence_mesh.py",
+        "tests/test_machine_investigations.py",
+        "tests/test_machine_investigations_renderer.py",
         "tests/test_primary_documents.py",
         "tests/test_corroboration.py",
         "tests/test_network_rounds.py",
@@ -305,11 +410,22 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     assert workflow.count("python -m scripts.build_network_rounds") == 3
     assert workflow.count("python -m scripts.build_corroboration") == 3
     assert workflow.count("python -m scripts.build_editorial_readiness") == 3
+    assert workflow.count("python -m scripts.sync_narcoscope --check") == 3
+    assert workflow.count("python -m scripts.sync_narcoscope --remote-check") == 3
+    assert workflow.count("python -m core.evidence_mesh") == 6
+    assert workflow.count("python -m core.machine_investigations") == 6
+    assert workflow.count("python -m scripts.build_newsroom --check") == 3
     assert _staged_occurrences(
         workflow, "readings/china-economic-pulse-latest.json"
     ) == 3
     assert _staged_occurrences(
         workflow, "readings/investigations-latest.json"
+    ) == 3
+    assert _staged_occurrences(
+        workflow, "readings/evidence-mesh-latest.json"
+    ) == 3
+    assert _staged_occurrences(
+        workflow, "readings/machine-investigations-latest.json"
     ) == 3
     for artifact in (
         "readings/primary-documents-latest.json",
@@ -326,6 +442,12 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_network_rounds\n"
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
+        r"\s*python -m scripts\.sync_narcoscope --check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m core\.evidence_mesh\n"
+        r"\s*python -m core\.evidence_mesh --check\n"
+        r"\s*python -m core\.machine_investigations\n"
+        r"\s*python -m core\.machine_investigations --check\n"
         r"\s*python -m scripts\.build_newsroom",
         workflow,
     ):
@@ -337,6 +459,12 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_network_rounds\n"
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
+        r"\s*python -m scripts\.sync_narcoscope --check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m core\.evidence_mesh\n"
+        r"\s*python -m core\.evidence_mesh --check\n"
+        r"\s*python -m core\.machine_investigations\n"
+        r"\s*python -m core\.machine_investigations --check\n"
         r"\s*python -m scripts\.build_newsroom",
         workflow,
     )) == 3

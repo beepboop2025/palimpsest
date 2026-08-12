@@ -164,6 +164,35 @@ def test_investigations_catalog_exposes_review_gates_and_public_contract():
     assert "does not automate allegations" in description
 
 
+def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+
+    mesh = by_id["evidence-mesh"]
+    assert (mesh["stage"], mesh["collection_mode"], mesh["cadence"]) == (
+        "provenance",
+        "deterministic-pinned-inputs",
+        "PT1H",
+    )
+    assert mesh["latest"] == "readings/evidence-mesh-latest.json"
+    assert "partner artifacts" in mesh["description"]
+    assert "automatically admitted" in mesh["description"]
+
+    machine = by_id["machine-investigations"]
+    assert (machine["stage"], machine["collection_mode"], machine["cadence"]) == (
+        "publication",
+        "deterministic-machine-analysis-gated",
+        "PT1H",
+    )
+    assert machine["latest"] == "readings/machine-investigations-latest.json"
+    assert machine["landing_page"] == "news/analysis/"
+    assert machine["count_fields"] == ["n_cases"]
+    description = machine["description"].lower()
+    assert "sentence-level citations" in description
+    assert "no human interviews" in description
+    assert "abstentionreport" in description
+
+
 def test_reporting_newsroom_catalog_keeps_five_capabilities_distinct():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}
@@ -243,6 +272,27 @@ def test_generated_files_match_builder_under_source_date_epoch(monkeypatch, tmp_
     assert built["generated_at"].endswith("Z")
     assert jsonld["dateModified"] == built["generated_at"]
     assert package["created"] == built["generated_at"]
+
+
+def test_cli_now_replays_an_exact_timezone_aware_catalog_clock(monkeypatch, capsys):
+    seen = {}
+
+    def fake_build_catalog(*, now=None):
+        seen["now"] = now
+        summary = {"datasets": 0, "published_bytes": 0, "history_rows": 0}
+        return ({"summary": summary}, {}, {})
+
+    monkeypatch.setattr(catalog, "build_catalog", fake_build_catalog)
+    assert catalog.main(["--check", "--now", "2026-08-12T16:14:02.289540Z"]) == 0
+    assert seen["now"] == datetime(
+        2026, 8, 12, 16, 14, 2, 289540, tzinfo=timezone.utc
+    )
+    assert json.loads(capsys.readouterr().out)["status"] == "ok"
+
+
+def test_cli_now_rejects_an_ambient_timezone(monkeypatch):
+    with pytest.raises(SystemExit):
+        catalog.main(["--check", "--now", "2026-08-12T16:14:02"])
 
 
 def test_checked_in_catalog_views_do_not_drift_from_source_and_readings():

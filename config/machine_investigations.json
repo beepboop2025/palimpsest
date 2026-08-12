@@ -1,0 +1,49 @@
+{
+  "schema_version": "palimpsest-machine-investigations-config.v1",
+  "desk_id": "palimpsest-machine-investigations",
+  "minimum_independent_groups": 2,
+  "inputs": [
+    {
+      "input_id": "evidence-mesh",
+      "filename": "evidence-mesh-latest.json",
+      "public_url": "https://palimpsest.info/readings/evidence-mesh-latest.json",
+      "expected_schema_version": "palimpsest-evidence-mesh.v1"
+    },
+    {
+      "input_id": "osint-china",
+      "filename": "osint-china-latest.json",
+      "public_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "expected_schema_version": "osint-china.v1"
+    },
+    {
+      "input_id": "economic-pulse",
+      "filename": "china-economic-pulse-latest.json",
+      "public_url": "https://palimpsest.info/readings/china-economic-pulse-latest.json",
+      "expected_schema_version": "palimpsest-economic-pulse.v1"
+    },
+    {
+      "input_id": "primary-documents",
+      "filename": "primary-documents-latest.json",
+      "public_url": "https://palimpsest.info/readings/primary-documents-latest.json",
+      "expected_schema_version": "palimpsest-primary-documents.v1"
+    }
+  ],
+  "cases": [
+    {
+      "case_key": "network-rate-denominators",
+      "slug": "china-network-filtering-has-no-honest-single-rate",
+      "url": "/news/analysis/china-network-filtering-has-no-honest-single-rate/",
+      "title": "China's network filtering has no honest single rate",
+      "dek": "Multiple scoped instruments report observable network interference, while their incompatible panels, protocols and denominators rule out one national percentage.",
+      "profile": "automated_evidence_analysis"
+    },
+    {
+      "case_key": "economic-state-readiness",
+      "slug": "china-economic-evidence-readiness",
+      "url": "/news/analysis/china-economic-evidence-readiness/",
+      "title": "Is Palimpsest ready to describe China's economic direction?",
+      "dek": "The machine desk tests primary-document parsing, historical depth and cross-desk coverage, then either publishes a bounded readiness analysis or records why it abstained.",
+      "profile": "machine_brief"
+    }
+  ]
+}

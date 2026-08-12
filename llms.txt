@@ -76,7 +76,7 @@ Agents can consume the complete strict feed at
 [RSS 2.0 edition](https://palimpsest.info/news/feed.xml). Stable story pages and per-story
 JSON records are listed in the [news sitemap](https://palimpsest.info/news/sitemap.xml).
 
-The newsroom now has three evidence-first desks that keep reporting separate from
+The newsroom now has four evidence-first desks that keep reporting separate from
 measurement. The [Evidence Wire](https://palimpsest.info/news/wire/) normalizes every
 accepted item in a declared seven-day, closed-allowlist window into a versioned event
 dossier. Each dossier exposes what a source reported, which independent source groups
@@ -96,6 +96,13 @@ evidence receipts, counterevidence, limitations, falsification conditions and ou
 publication gates. An open lead is not labeled a completed investigation, and the system
 does not automate allegations, motive or causal attribution.
 
+The [Machine Analysis Desk](https://palimpsest.info/news/analysis/) publishes deterministic
+evidence syntheses and explicit abstentions from the checked-in
+[Evidence Mesh](https://palimpsest.info/readings/evidence-mesh-latest.json). It conducts no
+human interviews. Every analytical sentence names its evidence IDs, shared source lineage
+is de-duplicated, and countercases, limitations, falsifiers, corrections and evaluation
+receipts remain visible. A failed gate is a schema.org Report, never a NewsArticle.
+
 The [Reporting Standards](https://palimpsest.info/news/standards/) page exposes the deeper
 newsroom gate. Primary-document receipts, conservative corroboration decisions, frozen
 network rounds and privacy-minimized human-source readiness remain separate artifacts.
@@ -108,6 +115,8 @@ Machine-readable contracts:
 - [Evidence Wire latest](https://palimpsest.info/readings/newswire-latest.json)
 - [China Economic Pulse latest](https://palimpsest.info/readings/china-economic-pulse-latest.json)
 - [Investigations Desk latest](https://palimpsest.info/readings/investigations-latest.json)
+- [Evidence Mesh latest](https://palimpsest.info/readings/evidence-mesh-latest.json)
+- [Machine Analysis Desk latest](https://palimpsest.info/readings/machine-investigations-latest.json)
 - [Primary Document Archive latest](https://palimpsest.info/readings/primary-documents-latest.json)
 - [Reviewed Corroboration Ledger latest](https://palimpsest.info/readings/corroboration-latest.json)
 - [Frozen Network Rounds latest](https://palimpsest.info/readings/network-rounds-latest.json)
@@ -118,6 +127,8 @@ Machine-readable contracts:
 - [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
 - [Economic Pulse JSON Schema](https://palimpsest.info/protocol/economic-pulse-v1.schema.json)
 - [Investigations JSON Schema](https://palimpsest.info/protocol/investigations-v1.schema.json)
+- [Evidence Mesh JSON Schema](https://palimpsest.info/protocol/evidence-mesh-v1.schema.json)
+- [Machine Analysis JSON Schema](https://palimpsest.info/protocol/machine-investigations-v1.schema.json)
 - [Primary Documents JSON Schema](https://palimpsest.info/protocol/primary-documents-v1.schema.json)
 - [Corroboration JSON Schema](https://palimpsest.info/protocol/corroboration-v1.schema.json)
 - [Network Rounds JSON Schema](https://palimpsest.info/protocol/network-rounds-v1.schema.json)
@@ -196,6 +207,7 @@ leads are excluded from the public surface.
 - [Evidence Wire](https://palimpsest.info/news/wire/): versioned RSS/Atom event dossiers with per-source coverage receipts, source independence and scan-linked corroboration
 - [China Economic Pulse](https://palimpsest.info/news/economy/): revision-safe official, market and physical-telemetry state with coverage gates and honest abstention
 - [Investigations Desk](https://palimpsest.info/news/investigations/): review-gated research leads with source receipts, counterevidence, limitations, falsifiers and explicit publication gates
+- [Machine Analysis Desk](https://palimpsest.info/news/analysis/): deterministic, no-interview AnalysisReports and AbstentionReports with sentence-level evidence IDs, countercases, limits, falsifiers, correction history and evaluation receipts
 - [Reporting Standards](https://palimpsest.info/news/standards/): public readiness receipts for primary evidence, corroboration, protected human reporting and publication gates
 - [OSINT China](https://palimpsest.info/osint-china.html): the continuous public roll-up across every China-facing signal, including per-source freshness, coverage failures and the complete machine-readable bundle
 - [Evidence Atlas](https://palimpsest.info/data.html): searchable inventory of every public dataset, its measurement layer, collection mode, freshness, geographic scope, rights, limitations, latest file and history; also published as [catalog JSON](https://palimpsest.info/readings/catalog.json), [DCAT/schema.org JSON-LD](https://palimpsest.info/readings/catalog.jsonld), and a [Frictionless Data Package](https://palimpsest.info/datapackage.json)
@@ -230,8 +242,9 @@ agent does not have to scrape the pages or guess at a schema:
 - Tools: `list_signals` (discover every published signal and its source URL),
   `get_signal` (one signal's full payload; `max_rows` caps long row arrays and
   any cap applied is reported with the true total), `get_newsroom` (read the
-  evidence newsroom, wire, economic pulse, investigations desk, or editorial
-  gates with status and limitations attached), `whats_happening` (the
+  evidence newsroom, wire, economic pulse, machine-analysis desk,
+  investigations desk, or editorial gates with status, citations and
+  limitations attached), `whats_happening` (the
   board's own cross-signal verdict, with multiplicity paid for and coverage
   confounds flagged as artifacts rather than findings), and `gfw_reading`
   (network-layer and model-layer Great Firewall in one call).

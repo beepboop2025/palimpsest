@@ -90,7 +90,7 @@ def _history(tmp_path):
     path = tmp_path / "in-path-interference-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def test_a_repeated_finding_still_refreshes_the_observation_time(publish):
@@ -104,6 +104,7 @@ def test_a_repeated_finding_still_refreshes_the_observation_time(publish):
     assert second["generated_at"] > first["generated_at"], (
         "an unchanged answer must still publish this round's observation time")
     assert second["middlebox_index"] == first["middlebox_index"]
+    assert second["middlebox_completed_count"] == 1000
 
 
 def test_a_repeated_finding_does_not_move_last_changed_at(publish):

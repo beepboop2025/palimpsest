@@ -127,7 +127,13 @@ def top_blocked_domains(since: str, until: str, top_n: int = 25,
         rate = _rate(anomaly, measurement, failure)
         if rate is None or rate <= 0:
             continue
-        ranked.append({"domain": domain, "anomaly_count": anomaly,
-                       "measurement_count": measurement, "anomaly_rate": rate})
+        ranked.append({
+            "domain": domain,
+            "anomaly_count": anomaly,
+            "measurement_count": measurement,
+            "failure_count": failure,
+            "completed_measurement_count": measurement - failure,
+            "anomaly_rate": rate,
+        })
     ranked.sort(key=lambda x: (x["anomaly_rate"], x["anomaly_count"]), reverse=True)
     return ranked[:top_n]

@@ -52,7 +52,14 @@ jobs:
           python -m scripts.build_network_rounds
           python -m scripts.build_corroboration
           python -m scripts.build_editorial_readiness
+          python -m scripts.sync_narcoscope --check
+          python -m scripts.sync_narcoscope --remote-check
+          python -m core.evidence_mesh
+          python -m core.evidence_mesh --check
+          python -m core.machine_investigations
+          python -m core.machine_investigations --check
           python -m scripts.build_newsroom
+          python -m scripts.build_newsroom --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -69,6 +76,10 @@ jobs:
             tests/test_osint_china_page.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
+            tests/test_narcoscope_bridge.py \
+            tests/test_evidence_mesh.py \
+            tests/test_machine_investigations.py \
+            tests/test_machine_investigations_renderer.py \
             tests/test_primary_documents.py \
             tests/test_corroboration.py \
             tests/test_network_rounds.py \
@@ -99,6 +110,8 @@ jobs:
             readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
+            readings/evidence-mesh-latest.json \
+            readings/machine-investigations-latest.json \
             readings/primary-documents-latest.json \
             readings/corroboration-latest.json \
             readings/network-rounds-latest.json \
@@ -149,7 +162,14 @@ jobs:
           python -m scripts.build_network_rounds
           python -m scripts.build_corroboration
           python -m scripts.build_editorial_readiness
+          python -m scripts.sync_narcoscope --check
+          python -m scripts.sync_narcoscope --remote-check
+          python -m core.evidence_mesh
+          python -m core.evidence_mesh --check
+          python -m core.machine_investigations
+          python -m core.machine_investigations --check
           python -m scripts.build_newsroom
+          python -m scripts.build_newsroom --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -167,6 +187,10 @@ jobs:
             tests/test_osint_china_page.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
+            tests/test_narcoscope_bridge.py \
+            tests/test_evidence_mesh.py \
+            tests/test_machine_investigations.py \
+            tests/test_machine_investigations_renderer.py \
             tests/test_primary_documents.py \
             tests/test_corroboration.py \
             tests/test_network_rounds.py \
@@ -198,6 +222,8 @@ jobs:
             readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
+            readings/evidence-mesh-latest.json \
+            readings/machine-investigations-latest.json \
             readings/primary-documents-latest.json \
             readings/corroboration-latest.json \
             readings/network-rounds-latest.json \
@@ -249,7 +275,14 @@ jobs:
           python -m scripts.build_network_rounds
           python -m scripts.build_corroboration
           python -m scripts.build_editorial_readiness
+          python -m scripts.sync_narcoscope --check
+          python -m scripts.sync_narcoscope --remote-check
+          python -m core.evidence_mesh
+          python -m core.evidence_mesh --check
+          python -m core.machine_investigations
+          python -m core.machine_investigations --check
           python -m scripts.build_newsroom
+          python -m scripts.build_newsroom --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -267,6 +300,10 @@ jobs:
             tests/test_osint_china_page.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
+            tests/test_narcoscope_bridge.py \
+            tests/test_evidence_mesh.py \
+            tests/test_machine_investigations.py \
+            tests/test_machine_investigations_renderer.py \
             tests/test_primary_documents.py \
             tests/test_corroboration.py \
             tests/test_network_rounds.py \
@@ -298,6 +335,8 @@ jobs:
             readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
+            readings/evidence-mesh-latest.json \
+            readings/machine-investigations-latest.json \
             readings/primary-documents-latest.json \
             readings/corroboration-latest.json \
             readings/network-rounds-latest.json \

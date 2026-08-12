@@ -1,0 +1,164 @@
+{
+  "schema_version": "palimpsest-evidence-mesh-config.v1",
+  "max_input_bytes": 8388608,
+  "projects": [
+    {
+      "id": "palimpsest",
+      "title": "Palimpsest",
+      "status": "ACTIVE",
+      "public_url": "https://palimpsest.info/osint-china.html",
+      "capabilities": [
+        "PUBLIC_SOURCE_ACQUISITION",
+        "PRIMARY_DOCUMENT_ARCHIVE",
+        "NETWORK_MEASUREMENT",
+        "EVENT_SYNTHESIS",
+        "PROVENANCE_AND_CITATION"
+      ],
+      "input_contracts": [
+        {
+          "id": "palimpsest-catalog",
+          "contract": "palimpsest-public-data-catalog/v1",
+          "transport": "LOCAL_FILE",
+          "required": true,
+          "local_path": "config/public_data_catalog.json",
+          "public_url": "https://palimpsest.info/data.html",
+          "allowed_role": "evidence"
+        },
+        {
+          "id": "palimpsest-osint",
+          "contract": "osint-china.v1",
+          "transport": "LOCAL_FILE",
+          "required": true,
+          "local_path": "readings/osint-china-latest.json",
+          "public_url": "https://palimpsest.info/readings/osint-china-latest.json",
+          "allowed_role": "evidence"
+        },
+        {
+          "id": "intelligence-commons",
+          "contract": "palimpsest-intelligence-commons-manifest/v1",
+          "transport": "LOCAL_FILE",
+          "required": true,
+          "local_path": "integrations/intelligence-commons/manifest-v1.json",
+          "public_url": "https://palimpsest.info/osint-china.html",
+          "allowed_role": "context"
+        }
+      ]
+    },
+    {
+      "id": "seiche",
+      "title": "Seiche",
+      "status": "REVIEW_GATED",
+      "public_url": null,
+      "capabilities": [
+        "MONETARY_MARKET_CONTEXT",
+        "FUNDING_STRESS_MEASUREMENT",
+        "FORECAST_CALIBRATION"
+      ],
+      "input_contracts": [
+        {
+          "id": "seiche-partner-snapshot",
+          "contract": "lab-evidence-envelope/v1",
+          "transport": "CALLER_SUPPLIED_LOCAL_FILE",
+          "required": false,
+          "local_path": null,
+          "public_url": null,
+          "allowed_role": "context"
+        }
+      ]
+    },
+    {
+      "id": "liquilens",
+      "title": "LiquiLens",
+      "status": "REVIEW_GATED",
+      "public_url": null,
+      "capabilities": [
+        "MACRO_FINANCIAL_ANOMALY_DETECTION",
+        "HISTORICAL_REGIME_COMPARISON",
+        "FORECAST_CALIBRATION"
+      ],
+      "input_contracts": [
+        {
+          "id": "liquilens-partner-snapshot",
+          "contract": "lab-evidence-envelope/v1",
+          "transport": "CALLER_SUPPLIED_LOCAL_FILE",
+          "required": false,
+          "local_path": null,
+          "public_url": null,
+          "allowed_role": "context"
+        }
+      ]
+    },
+    {
+      "id": "scamshield",
+      "title": "ScamShield",
+      "status": "ACTIVE",
+      "public_url": "https://github.com/beepboop2025/scamshield",
+      "capabilities": [
+        "CONSENT_SCOPED_SCAM_ASSESSMENT",
+        "REVIEWED_TYPOLOGY_LIBRARY",
+        "PRIVACY_MINIMIZED_CANDIDATE_EXPORT"
+      ],
+      "input_contracts": [
+        {
+          "id": "scamshield-typology-pack",
+          "contract": "scamshield-intelligence-pack/v1",
+          "transport": "LOCAL_FILE",
+          "required": true,
+          "local_path": "integrations/scamshield/intelligence-pack-v1.json",
+          "public_url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
+          "allowed_role": "typology"
+        }
+      ]
+    },
+    {
+      "id": "narcoscope",
+      "title": "NarcoScope",
+      "status": "ACTIVE",
+      "public_url": "https://drug-price-observatory.vercel.app/",
+      "capabilities": [
+        "OFFICIAL_ILLICIT_MARKET_AGGREGATES",
+        "DRUG_PRICE_AND_SEIZURE_HISTORY",
+        "DECLARED_COVERAGE_GAPS"
+      ],
+      "input_contracts": [
+        {
+          "id": "narcoscope-china-aggregate",
+          "contract": "narcoscope.palimpsest.china-aggregate.v1",
+          "transport": "LOCAL_PINNED_MIRROR",
+          "required": true,
+          "local_path": "integrations/intelligence-commons/narcoscope-palimpsest-v1.json",
+          "public_url": "https://drug-price-observatory.vercel.app/data/narcoscope-palimpsest-v1.json",
+          "allowed_role": "evidence"
+        },
+        {
+          "id": "narcoscope-pin-receipt",
+          "contract": "palimpsest-partner-pin/v1",
+          "transport": "LOCAL_FILE",
+          "required": true,
+          "local_path": "integrations/intelligence-commons/narcoscope-pin-v1.json",
+          "public_url": null,
+          "allowed_role": "context"
+        }
+      ]
+    }
+  ],
+  "derived_dependencies": {
+    "vantage-fusion": ["ooni-gfw", "censored-planet", "net4people"],
+    "silence-index": ["ddti", "weibo-hotsearch", "gdelt"],
+    "event-flags": ["ddti", "ooni-gfw", "censored-planet", "ioda-outages", "wayback", "china-econ"],
+    "board-alarm": ["event-flags"],
+    "coverage-guard": ["event-flags"],
+    "cross-layer": ["event-flags"],
+    "forecast-ledger": ["event-flags"],
+    "erasure-observatory": ["wayback", "baike-redaction", "github-refuge", "app-storefront", "apple-censorship"],
+    "newsroom": ["board-alarm", "event-flags", "coverage-guard", "forecast-ledger", "cross-layer"],
+    "china-economic-pulse": ["china-econ", "cny-fix-gap", "data-darkness", "stock-connect", "believability"],
+    "investigations": ["newsroom", "china-economic-pulse", "primary-documents"],
+    "corroboration": ["newswire", "primary-documents"],
+    "network-rounds": ["inside-view", "ioda-outages", "wayback", "app-storefront"],
+    "editorial-readiness": ["newswire", "primary-documents", "corroboration", "investigations", "source-workflow"]
+  },
+  "narcoscope_pin": {
+    "freshness_days": 14
+  }
+}

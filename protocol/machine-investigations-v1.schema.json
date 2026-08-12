@@ -1,0 +1,352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/machine-investigations-v1.schema.json",
+  "title": "Palimpsest machine investigations v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "desk_id", "generated_at", "source", "method", "scope",
+    "publication_profiles", "input_receipts", "n_cases", "cases",
+    "reproducibility_receipt"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-machine-investigations.v1"},
+    "desk_id": {"const": "palimpsest-machine-investigations"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "source": {"$ref": "#/$defs/text"},
+    "method": {"$ref": "#/$defs/text"},
+    "scope": {"$ref": "#/$defs/text"},
+    "publication_profiles": {
+      "type": "array",
+      "prefixItems": [
+        {"const": "machine_brief"},
+        {"const": "automated_evidence_analysis"}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "input_receipts": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/inputReceipt"}
+    },
+    "n_cases": {"const": 2},
+    "cases": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/case"}
+    },
+    "reproducibility_receipt": {"$ref": "#/$defs/reproducibilityReceipt"}
+  },
+  "$defs": {
+    "text": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "httpsUrl": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "inputReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_id", "filename", "public_url", "schema_version", "generated_at",
+        "sha256", "bytes", "validation"
+      ],
+      "properties": {
+        "input_id": {"$ref": "#/$defs/identifier"},
+        "filename": {"type": "string", "pattern": "^[a-z0-9-]+-latest\\.json$"},
+        "public_url": {"$ref": "#/$defs/httpsUrl"},
+        "schema_version": {"type": "string", "minLength": 1, "maxLength": 100},
+        "generated_at": {"$ref": "#/$defs/timestamp"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "validation": {"const": "verified"}
+      }
+    },
+    "citationIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hypothesis_id", "statement", "disposition", "citation_ids", "falsifier_ids"],
+      "properties": {
+        "hypothesis_id": {"$ref": "#/$defs/identifier"},
+        "statement": {"$ref": "#/$defs/text"},
+        "disposition": {"enum": ["supported", "rejected", "abstained"]},
+        "citation_ids": {"$ref": "#/$defs/citationIds"},
+        "falsifier_ids": {"$ref": "#/$defs/citationIds"}
+      }
+    },
+    "sentence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sentence_id", "text", "citation_ids"],
+      "properties": {
+        "sentence_id": {"$ref": "#/$defs/identifier"},
+        "text": {"$ref": "#/$defs/text"},
+        "citation_ids": {"$ref": "#/$defs/citationIds"}
+      }
+    },
+    "claimBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["block_id", "paragraph", "sentences", "citation_ids", "independence_group_ids"],
+      "properties": {
+        "block_id": {"$ref": "#/$defs/identifier"},
+        "paragraph": {"$ref": "#/$defs/text"},
+        "sentences": {
+          "type": "array", "minItems": 1, "maxItems": 30,
+          "items": {"$ref": "#/$defs/sentence"}
+        },
+        "citation_ids": {"$ref": "#/$defs/citationIds"},
+        "independence_group_ids": {
+          "type": "array", "minItems": 1, "maxItems": 50, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 160}
+        }
+      }
+    },
+    "denominator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value"],
+      "properties": {
+        "label": {"type": "string", "minLength": 1, "maxLength": 120},
+        "value": {"type": "number", "minimum": 0}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id", "title", "role", "source_class", "source_id", "artifact_id",
+        "artifact_url", "artifact_generated_at", "artifact_sha256", "selector",
+        "source_timestamp", "independence_group", "upstream_groups", "value",
+        "value_type", "denominator", "interpretation_limit", "integrity", "freshness"
+      ],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/identifier"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 240},
+        "role": {"enum": ["support", "context", "counter"]},
+        "source_class": {"type": "string", "minLength": 1, "maxLength": 100},
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "artifact_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "artifact_url": {"$ref": "#/$defs/httpsUrl"},
+        "artifact_generated_at": {"$ref": "#/$defs/timestamp"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "selector": {"type": "string", "minLength": 1, "maxLength": 300},
+        "source_timestamp": {"$ref": "#/$defs/timestamp"},
+        "independence_group": {"type": "string", "minLength": 1, "maxLength": 160},
+        "upstream_groups": {
+          "type": "array", "maxItems": 100, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 160}
+        },
+        "value": {"type": ["string", "number"]},
+        "value_type": {"type": "string", "minLength": 1, "maxLength": 100},
+        "denominator": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/denominator"}]},
+        "interpretation_limit": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "integrity": {"enum": ["embedded-receipt-verified", "exact-input-bytes-verified"]},
+        "freshness": {"enum": ["fresh", "current"]}
+      }
+    },
+    "countercase": {
+      "type": "object", "additionalProperties": false,
+      "required": ["countercase_id", "statement", "citation_ids", "disposition"],
+      "properties": {
+        "countercase_id": {"$ref": "#/$defs/identifier"},
+        "statement": {"$ref": "#/$defs/text"},
+        "citation_ids": {"$ref": "#/$defs/citationIds"},
+        "disposition": {"$ref": "#/$defs/text"}
+      }
+    },
+    "limitation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["limitation_id", "statement", "consequence"],
+      "properties": {
+        "limitation_id": {"$ref": "#/$defs/identifier"},
+        "statement": {"$ref": "#/$defs/text"},
+        "consequence": {"$ref": "#/$defs/text"}
+      }
+    },
+    "falsifier": {
+      "type": "object", "additionalProperties": false,
+      "required": ["falsifier_id", "statement", "test", "status", "citation_ids"],
+      "properties": {
+        "falsifier_id": {"$ref": "#/$defs/identifier"},
+        "statement": {"$ref": "#/$defs/text"},
+        "test": {"$ref": "#/$defs/text"},
+        "status": {"enum": ["not-triggered", "evidence-needed", "triggered"]},
+        "citation_ids": {"$ref": "#/$defs/citationIds"}
+      }
+    },
+    "methodStep": {
+      "type": "object", "additionalProperties": false,
+      "required": ["step_id", "description", "reproducible"],
+      "properties": {
+        "step_id": {"$ref": "#/$defs/identifier"},
+        "description": {"$ref": "#/$defs/text"},
+        "reproducible": {"const": true}
+      }
+    },
+    "revisionHistory": {
+      "type": "object", "additionalProperties": false,
+      "required": ["revision_id", "published_at", "change_type", "summary"],
+      "properties": {
+        "revision_id": {"$ref": "#/$defs/identifier"},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "change_type": {"$ref": "#/$defs/identifier"},
+        "summary": {"$ref": "#/$defs/text"}
+      }
+    },
+    "corrections": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "last_corrected_at", "policy", "history"],
+      "properties": {
+        "status": {"enum": ["none", "corrected"]},
+        "last_corrected_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]},
+        "policy": {"$ref": "#/$defs/text"},
+        "history": {
+          "type": "array", "minItems": 1, "maxItems": 2048,
+          "items": {"$ref": "#/$defs/revisionHistory"}
+        }
+      }
+    },
+    "safety": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "analysis_mode", "human_interviews", "personal_data", "individual_allegations",
+        "inferred_motives", "prohibited_interpretations"
+      ],
+      "properties": {
+        "analysis_mode": {"const": "deterministic-machine-analysis"},
+        "human_interviews": {"const": "none"},
+        "personal_data": {"const": "none"},
+        "individual_allegations": {"const": "none"},
+        "inferred_motives": {"const": "none"},
+        "prohibited_interpretations": {
+          "type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true,
+          "items": {"$ref": "#/$defs/text"}
+        }
+      }
+    },
+    "gate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["gate_id", "label", "passed", "observed", "required", "detail"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/identifier"},
+        "label": {"$ref": "#/$defs/text"},
+        "passed": {"type": "boolean"},
+        "observed": {"type": "number"},
+        "required": {"type": "number"},
+        "detail": {"$ref": "#/$defs/text"}
+      }
+    },
+    "evaluationReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "status", "publishable", "minimum_independent_groups",
+        "observed_independent_groups", "independent_group_ids", "citation_coverage",
+        "gates", "failed_gate_ids", "evaluated_at"
+      ],
+      "properties": {
+        "status": {"enum": ["passed", "failed"]},
+        "publishable": {"type": "boolean"},
+        "minimum_independent_groups": {"type": "integer", "minimum": 2},
+        "observed_independent_groups": {"type": "integer", "minimum": 0},
+        "independent_group_ids": {
+          "type": "array", "maxItems": 50, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 160}
+        },
+        "citation_coverage": {"const": 1.0},
+        "gates": {
+          "type": "array", "minItems": 1, "maxItems": 30,
+          "items": {"$ref": "#/$defs/gate"}
+        },
+        "failed_gate_ids": {
+          "type": "array", "maxItems": 30, "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "evaluated_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id", "revision_id", "source_case_id", "source_revision_id", "slug",
+        "url", "title", "dek", "profile", "status", "report_type", "status_reason",
+        "published_at", "updated_at", "hypotheses", "claim_blocks", "evidence",
+        "countercases", "limitations", "falsifiers", "methodology", "corrections",
+        "safety", "evaluation_receipt"
+      ],
+      "properties": {
+        "case_id": {"$ref": "#/$defs/identifier"},
+        "revision_id": {"$ref": "#/$defs/identifier"},
+        "source_case_id": {"$ref": "#/$defs/identifier"},
+        "source_revision_id": {"$ref": "#/$defs/identifier"},
+        "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "url": {"type": "string", "pattern": "^/news/analysis/[a-z0-9-]+/$"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 180},
+        "dek": {"type": "string", "minLength": 1, "maxLength": 400},
+        "profile": {"enum": ["machine_brief", "automated_evidence_analysis"]},
+        "status": {"enum": ["published", "abstained"]},
+        "report_type": {"enum": ["AnalysisReport", "AbstentionReport"]},
+        "status_reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "hypotheses": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/hypothesis"}},
+        "claim_blocks": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/claimBlock"}},
+        "evidence": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"$ref": "#/$defs/evidence"}},
+        "countercases": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/countercase"}},
+        "limitations": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/limitation"}},
+        "falsifiers": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/falsifier"}},
+        "methodology": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/methodStep"}},
+        "corrections": {"$ref": "#/$defs/corrections"},
+        "safety": {"$ref": "#/$defs/safety"},
+        "evaluation_receipt": {"$ref": "#/$defs/evaluationReceipt"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "published"}}},
+          "then": {
+            "properties": {
+              "report_type": {"const": "AnalysisReport"},
+              "evaluation_receipt": {
+                "properties": {"status": {"const": "passed"}, "publishable": {"const": true}}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "abstained"}}},
+          "then": {
+            "properties": {
+              "report_type": {"const": "AbstentionReport"},
+              "evaluation_receipt": {
+                "properties": {"status": {"const": "failed"}, "publishable": {"const": false}}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reproducibilityReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "config_sha256", "input_set_sha256", "case_set_sha256", "builder"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "config_sha256": {"$ref": "#/$defs/sha256"},
+        "input_set_sha256": {"$ref": "#/$defs/sha256"},
+        "case_set_sha256": {"$ref": "#/$defs/sha256"},
+        "builder": {"const": "core.machine_investigations.v1"}
+      }
+    }
+  }
+}

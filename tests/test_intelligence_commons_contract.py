@@ -6,6 +6,7 @@ lose when a UI or producer is added later; they do not fetch any linked site.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -22,6 +23,8 @@ MANIFEST_PATH = COMMONS / "manifest-v1.json"
 README_PATH = COMMONS / "README.md"
 NARCOSCOPE_PATH = COMMONS / "narcoscope-palimpsest-v1.json"
 NARCOSCOPE_SCHEMA_PATH = COMMONS / "narcoscope-palimpsest-v1.schema.json"
+NARCOSCOPE_PIN_PATH = COMMONS / "narcoscope-pin-v1.json"
+PARTNER_PIN_SCHEMA_PATH = ROOT / "protocol" / "partner-pin-v1.schema.json"
 PACK_PATH = ROOT / "integrations" / "scamshield" / "intelligence-pack-v1.json"
 
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
@@ -184,7 +187,7 @@ def test_manifest_has_the_exact_ui_shape_and_closed_public_project_set() -> None
     }
     assert manifest["schema"] == "palimpsest-intelligence-commons-manifest/v1"
     assert VERSION.fullmatch(manifest["version"])
-    assert manifest["version"] == "2026-08-09.4"
+    assert manifest["version"] == "2026-08-12.1"
     assert manifest["title"] == "Palimpsest Intelligence Commons"
 
     project_fields = {
@@ -194,14 +197,23 @@ def test_manifest_has_the_exact_ui_shape_and_closed_public_project_set() -> None
     projects = manifest["projects"]
     assert all(set(project) == project_fields for project in projects)
     assert {project["id"] for project in projects} == {
-        "palimpsest", "seiche", "scamshield", "narcoscope",
+        "palimpsest", "seiche", "liquilens", "scamshield", "narcoscope",
     }
-    assert all(project["status"] == "ACTIVE" for project in projects)
+    assert {project["status"] for project in projects} == {
+        "ACTIVE", "REVIEW_GATED",
+    }
+    assert next(
+        project for project in projects if project["id"] == "liquilens"
+    )["status"] == "REVIEW_GATED"
     assert all(IDENTIFIER.fullmatch(project["id"]) for project in projects)
     assert len({project["id"] for project in projects}) == len(projects)
     for project in projects:
-        _assert_public_url_or_reserved_path(project["public_url"])
-        _assert_public_url_or_reserved_path(project["data_url"])
+        if project["status"] == "ACTIVE":
+            _assert_public_url_or_reserved_path(project["public_url"])
+            _assert_public_url_or_reserved_path(project["data_url"])
+        else:
+            assert project["public_url"] is None
+            assert project["data_url"] is None
 
 
 def test_manifest_lanes_and_typologies_have_no_dangling_references() -> None:
@@ -255,7 +267,10 @@ def test_connections_are_directional_honest_and_reference_public_projects() -> N
             "ACTIVE", "REPOSITORY_READY", "REVIEW_GATED", "PLANNED",
         }
         assert CONTRACT.fullmatch(connection["contract"]), connection["contract"]
-        _assert_public_url_or_reserved_path(connection["data_url"])
+        if connection["data_url"] is not None:
+            _assert_public_url_or_reserved_path(connection["data_url"])
+        else:
+            assert connection["status"] != "ACTIVE"
         assert len(connection["claim_boundary"]) >= 100
 
     by_id = {connection["id"]: connection for connection in connections}
@@ -265,6 +280,9 @@ def test_connections_are_directional_honest_and_reference_public_projects() -> N
     )
     assert by_id["palimpsest-to-seiche-china-context"]["status"] == "ACTIVE"
     assert by_id["seiche-to-palimpsest-monetary-context"]["status"] == "PLANNED"
+    assert by_id["liquilens-to-palimpsest-financial-context"]["status"] == (
+        "REVIEW_GATED"
+    )
     narco = by_id["narcoscope-to-palimpsest-public-aggregate"]
     assert narco["status"] == "ACTIVE"
     assert narco["contract"] == "narcoscope.palimpsest.china-aggregate.v1"
@@ -315,16 +333,33 @@ def test_pinned_narcoscope_object_is_aggregate_official_and_subject_free() -> No
     } & keys
 
 
+def test_narcoscope_pin_receipt_binds_current_bytes_and_keeps_prior_revision() -> None:
+    artifact_bytes = NARCOSCOPE_PATH.read_bytes()
+    receipt = _load(NARCOSCOPE_PIN_PATH)
+    schema = _load(PARTNER_PIN_SCHEMA_PATH)
+
+    assert set(receipt) == {
+        "schema", "producer", "source_url", "artifact_id", "current", "superseded",
+    }
+    assert receipt["schema"] == "palimpsest-partner-pin/v1"
+    assert schema["properties"]["schema"]["const"] == receipt["schema"]
+    assert receipt["current"]["data_as_of"] == "2026-08-12"
+    assert receipt["current"]["sha256"] == hashlib.sha256(artifact_bytes).hexdigest()
+    assert receipt["superseded"][0]["data_as_of"] == "2026-08-03"
+
+
 def test_current_seiche_and_scamshield_links_are_pinned() -> None:
     manifest = _load(MANIFEST_PATH)
     projects = {project["id"]: project for project in manifest["projects"]}
     connections = {
         connection["id"]: connection for connection in manifest["connections"]
     }
-    assert projects["seiche"]["public_url"] == "https://seiche.info/"
-    assert projects["seiche"]["data_url"] == (
-        "https://api.seiche.info/api/v2/markets/CN-CNY/overview"
-    )
+    assert projects["seiche"]["status"] == "REVIEW_GATED"
+    assert projects["seiche"]["public_url"] is None
+    assert projects["seiche"]["data_url"] is None
+    assert projects["liquilens"]["status"] == "REVIEW_GATED"
+    assert projects["liquilens"]["public_url"] is None
+    assert projects["liquilens"]["data_url"] is None
     assert projects["scamshield"]["public_url"] == (
         "https://github.com/beepboop2025/scamshield"
     )
@@ -411,7 +446,10 @@ def test_protocol_documents_rules_schema_cannot_compare_and_readme_links_resolve
 
 @pytest.mark.parametrize(
     "path",
-    (SCHEMA_PATH, MANIFEST_PATH, PACK_PATH, NARCOSCOPE_PATH, NARCOSCOPE_SCHEMA_PATH),
+    (
+        SCHEMA_PATH, MANIFEST_PATH, PACK_PATH, NARCOSCOPE_PATH,
+        NARCOSCOPE_SCHEMA_PATH, NARCOSCOPE_PIN_PATH, PARTNER_PIN_SCHEMA_PATH,
+    ),
 )
 def test_machine_readable_inputs_reject_duplicate_keys(path: Path) -> None:
     # The helper already parsed the real files. This synthetic input proves that

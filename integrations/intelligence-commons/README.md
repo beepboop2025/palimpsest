@@ -1,8 +1,8 @@
 # Palimpsest Intelligence Commons
 
 This directory is the machine-readable public map connecting Palimpsest,
-Seiche, ScamShield, and NarcoScope without pretending that their measurements
-have the same grain, cadence, licence, or evidentiary meaning.
+Seiche, LiquiLens, ScamShield, and NarcoScope without pretending that their
+measurements have the same grain, cadence, licence, or evidentiary meaning.
 
 - [`manifest-v1.json`](manifest-v1.json) is the UI and integration manifest.
 - [`../../protocol/lab-evidence-envelope-v1.schema.json`](../../protocol/lab-evidence-envelope-v1.schema.json)
@@ -19,7 +19,7 @@ projects merely appearing in the same lane.
 | Lane | Owning public projects | What it can say |
 | --- | --- | --- |
 | Information controls | Palimpsest | Which public deletion, blocking, interference, erasure, and model-control signals reported, with freshness and coverage attached. |
-| Monetary plumbing | Palimpsest and Seiche | What observed CNY funding, fixing, cross-border, and related plumbing measures show under each source's evidence and licence gate. |
+| Monetary plumbing | Palimpsest, Seiche, and LiquiLens | What observed CNY funding, fixing, cross-border, BIS financial, and related plumbing measures show under each source's evidence and licence gate. |
 | Illicit-market observables | NarcoScope | What public aggregate seizure, retail-price, mortality, and wastewater modalities report at their native jurisdiction and cadence. |
 | Reviewed laundering and scam signals | ScamShield and Palimpsest | What privacy-minimized patterns or reviewed monetary events occurred inside an explicitly bounded, authorized sampling frame. |
 
@@ -34,7 +34,8 @@ membership in a network.
 | Project | Public role | Current public surface |
 | --- | --- | --- |
 | Palimpsest | OSINT roll-up, evidence protocol, provenance ledger, review boundary | [OSINT China](https://palimpsest.info/osint-china.html) and its [machine-readable reading](https://palimpsest.info/readings/osint-china-latest.json) |
-| Seiche | Money-market plumbing and sealed market context | [Seiche](https://seiche.info/) and the [CN-CNY overview](https://api.seiche.info/api/v2/markets/CN-CNY/overview) |
+| Seiche | Money-market plumbing and sealed market context | Review-gated; no verified public Palimpsest data endpoint is declared |
+| LiquiLens | Bitemporal BIS evidence, decision gates, and financial-data candidate generation | Review-gated; its repository is private and no public Palimpsest projection is declared |
 | ScamShield | Authorized-surface assessment and reviewed aggregate export | [Public repository](https://github.com/beepboop2025/scamshield) and the active [reviewed intelligence pack](https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json) |
 | NarcoScope | Aggregate drug-market observatory | [Live observatory](https://narcoscope.com/) |
 
@@ -62,11 +63,17 @@ Evidence Capsules and privacy-minimized review candidates; nothing is
 auto-published. The active Palimpsest → Seiche path is external China context,
 not a hidden model feature.
 
-The reverse Seiche → Palimpsest projection is deliberately `PLANNED`. Its live
-API link is useful now, but a future envelope must still pass Seiche's
+The reverse Seiche → Palimpsest projection is deliberately review-gated. No
+public data endpoint is currently verified; a future supplied envelope must still pass Seiche's
 observation, eligibility, provenance, and redistribution gates. When displayed,
 it remains context-only: it does not enter a composite, forecast, trading rule,
 or causal model.
+
+LiquiLens → Palimpsest is review-gated: LiquiLens has bitemporal evidence,
+machine-candidate, source-dependence, decision-gate, and evaluation contracts in
+source control, but Palimpsest does not claim a live public projection that has
+not been verified. Its unresolved mappings and robustness blocks remain
+coverage evidence, not zeroes and not a licence to manufacture a conclusion.
 
 ## NarcoScope public aggregate
 
@@ -82,8 +89,14 @@ corridor incidents, aggregate OFAC designation coverage and wildlife
 confiscation coverage. Each envelope preserves its native temporal grain,
 publisher, source URL, edition, local input date and SHA-256, measurement
 semantics, data, and limitations. The checked-in Palimpsest copy is byte-for-byte
-pinned from the producer and is not a substitute for verifying the canonical
-deployment.
+pinned from the producer and bound to
+[`narcoscope-pin-v1.json`](narcoscope-pin-v1.json), which records its content
+hash, admission clock, data-as-of clock, and superseded pins. It is not a
+substitute for verifying the canonical deployment.
+The receipt follows the strict
+[`partner-pin-v1` schema](../../protocol/partner-pin-v1.schema.json); runtime
+validation additionally checks monotonic clocks, unique hashes, and exact-byte
+identity, which JSON Schema cannot compare.
 
 The connection is `ACTIVE`: NarcoScope's production Vite deployment exposes the
 canonical JSON with the same bytes as the reviewed Palimpsest pin. Availability
@@ -138,9 +151,15 @@ The focused tests are standard-library-only and offline:
 
 ```bash
 python3 -m pytest -q tests/test_intelligence_commons_contract.py
+python3 -m pytest -q tests/test_narcoscope_bridge.py
+python3 -m scripts.sync_narcoscope --check
+python3 -m scripts.sync_narcoscope --remote-check
 ```
 
-They pin manifest keys, project and lane references, directional status,
+The first pin check is offline. The remote check is the pre-publication egress
+gate: it fetches the fixed producer URL, validates the producer contract, and
+requires byte-for-byte identity with the admitted artifact. They pin manifest
+keys, project and lane references, directional status,
 approved public URL hosts, the NarcoScope artifact location and pinned-copy
 privacy rules, the shared schema's
 privacy and evidence gates, the non-causality language, and the absence of local

@@ -1,0 +1,518 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/evidence-mesh-v1.schema.json",
+  "title": "Palimpsest Evidence Mesh v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source",
+    "method",
+    "scope",
+    "safety",
+    "inputs",
+    "projects",
+    "resources",
+    "dependency_groups",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": { "const": "palimpsest-evidence-mesh.v1" },
+    "generated_at": { "$ref": "#/$defs/timestamp" },
+    "source": { "$ref": "#/$defs/text" },
+    "method": { "$ref": "#/$defs/text" },
+    "scope": { "$ref": "#/$defs/text" },
+    "safety": { "$ref": "#/$defs/safety" },
+    "inputs": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/inputReceipt" }
+    },
+    "projects": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/project" }
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024,
+      "items": { "$ref": "#/$defs/resource" }
+    },
+    "dependency_groups": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": { "$ref": "#/$defs/dependencyGroup" }
+    },
+    "summary": { "$ref": "#/$defs/summary" }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timestampOrNull": {
+      "oneOf": [
+        { "$ref": "#/$defs/timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "urlOrNull": {
+      "oneOf": [
+        { "type": "string", "format": "uri", "pattern": "^https://" },
+        { "type": "null" }
+      ]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "availability": {
+      "enum": ["available", "stale", "unavailable"]
+    },
+    "role": {
+      "enum": ["evidence", "context", "typology", "candidate-only"]
+    },
+    "evidenceClass": {
+      "enum": [
+        "OFFICIAL_DOCUMENT",
+        "OFFICIAL_STATISTIC",
+        "MARKET_OBSERVATION",
+        "RESEARCH_DATASET",
+        "REVIEWED_REPORT",
+        "CONSENT_SCOPED_AGGREGATE",
+        "METHOD_OR_ASSUMPTION",
+        "DERIVED_ANALYSIS",
+        "PUBLICATION_WORKFLOW",
+        "INTEGRITY_PROOF"
+      ]
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_only",
+        "person_level_data",
+        "contact_data",
+        "exact_iocs",
+        "missing_is_zero",
+        "automatic_attribution"
+      ],
+      "properties": {
+        "aggregate_only": { "const": true },
+        "person_level_data": { "const": false },
+        "contact_data": { "const": false },
+        "exact_iocs": { "const": false },
+        "missing_is_zero": { "const": false },
+        "automatic_attribution": { "const": false }
+      }
+    },
+    "inputReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_id",
+        "project_id",
+        "contract",
+        "required",
+        "availability",
+        "locator",
+        "public_url",
+        "sha256",
+        "bytes",
+        "observed_version",
+        "observed_at",
+        "expected_sha256",
+        "byte_identity",
+        "resource_count",
+        "reason"
+      ],
+      "properties": {
+        "input_id": { "$ref": "#/$defs/identifier" },
+        "project_id": { "$ref": "#/$defs/identifier" },
+        "contract": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "required": { "type": "boolean" },
+        "availability": { "$ref": "#/$defs/availability" },
+        "locator": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "public_url": { "$ref": "#/$defs/urlOrNull" },
+        "sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "bytes": {
+          "oneOf": [
+            { "$ref": "#/$defs/count" },
+            { "type": "null" }
+          ]
+        },
+        "observed_version": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 128 },
+            { "type": "null" }
+          ]
+        },
+        "observed_at": { "$ref": "#/$defs/timestampOrNull" },
+        "expected_sha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "byte_identity": { "enum": ["match", "mismatch", "not-checked"] },
+        "resource_count": {
+          "oneOf": [
+            { "$ref": "#/$defs/count" },
+            { "type": "null" }
+          ]
+        },
+        "reason": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 1024 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "availability": { "const": "unavailable" } },
+            "required": ["availability"]
+          },
+          "then": {
+            "properties": {
+              "sha256": { "type": "null" },
+              "bytes": { "type": "null" },
+              "observed_version": { "type": "null" },
+              "observed_at": { "type": "null" },
+              "resource_count": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "inputContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "contract",
+        "transport",
+        "required",
+        "local_path",
+        "public_url",
+        "allowed_role"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "contract": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "transport": {
+          "enum": [
+            "LOCAL_FILE",
+            "LOCAL_PINNED_MIRROR",
+            "PUBLIC_HTTPS_DECLARATION",
+            "CALLER_SUPPLIED_LOCAL_FILE"
+          ]
+        },
+        "required": { "type": "boolean" },
+        "local_path": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 512 },
+            { "type": "null" }
+          ]
+        },
+        "public_url": { "$ref": "#/$defs/urlOrNull" },
+        "allowed_role": { "$ref": "#/$defs/role" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "status",
+        "public_url",
+        "manifest_status",
+        "availability",
+        "capabilities",
+        "input_contracts",
+        "resource_ids"
+      ],
+      "properties": {
+        "id": { "enum": ["palimpsest", "seiche", "liquilens", "scamshield", "narcoscope"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "status": { "enum": ["ACTIVE", "REPOSITORY_READY", "REVIEW_GATED", "PLANNED"] },
+        "public_url": { "$ref": "#/$defs/urlOrNull" },
+        "manifest_status": { "enum": ["declared", "not-declared"] },
+        "availability": { "$ref": "#/$defs/availability" },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          }
+        },
+        "input_contracts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/inputContract" }
+        },
+        "resource_ids": {
+          "type": "array",
+          "maxItems": 1024,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["redistribution", "reuse", "training"],
+      "properties": {
+        "redistribution": {
+          "enum": ["OPEN", "ATTRIBUTION_REQUIRED", "LINK_ONLY", "RESTRICTED", "UNKNOWN"]
+        },
+        "reuse": { "enum": ["prohibited", "metadata_only", "derived_only", "full_text"] },
+        "training": { "enum": ["prohibited", "metadata_only", "derived_only", "full_text"] }
+      }
+    },
+    "clocks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_time", "knowledge_time", "publication_time"],
+      "properties": {
+        "event_time": { "$ref": "#/$defs/timestampOrNull" },
+        "knowledge_time": { "$ref": "#/$defs/timestampOrNull" },
+        "publication_time": { "$ref": "#/$defs/timestampOrNull" }
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observed_at", "deadline", "age_hours", "cadence"],
+      "properties": {
+        "status": { "enum": ["fresh", "stale", "unknown", "unavailable"] },
+        "observed_at": { "$ref": "#/$defs/timestampOrNull" },
+        "deadline": { "$ref": "#/$defs/timestampOrNull" },
+        "age_hours": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "null" }
+          ]
+        },
+        "cadence": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 64 },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "sourceTemporalCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "from_year", "to_year", "snapshot_date"],
+      "properties": {
+        "kind": { "enum": ["year_range", "snapshot"] },
+        "from_year": { "type": ["integer", "null"], "minimum": 1900, "maximum": 2200 },
+        "to_year": { "type": ["integer", "null"], "minimum": 1900, "maximum": 2200 },
+        "snapshot_date": { "type": ["string", "null"], "format": "date" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "year_range" } } },
+          "then": {
+            "properties": {
+              "from_year": { "type": "integer" },
+              "to_year": { "type": "integer" },
+              "snapshot_date": { "const": null }
+            }
+          },
+          "else": {
+            "properties": {
+              "from_year": { "const": null },
+              "to_year": { "const": null },
+              "snapshot_date": { "type": "string", "format": "date" }
+            }
+          }
+        }
+      ]
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_id",
+        "project_id",
+        "namespace",
+        "source_id",
+        "title",
+        "availability",
+        "allowed_role",
+        "evidence_class",
+        "independence_group",
+        "upstream_groups",
+        "independence_eligible",
+        "dependency_resource_ids",
+        "rights",
+        "clocks",
+        "freshness",
+        "source_temporal_coverage",
+        "contract",
+        "public_url",
+        "input_id",
+        "limitations"
+      ],
+      "properties": {
+        "resource_id": { "$ref": "#/$defs/identifier" },
+        "project_id": { "enum": ["palimpsest", "seiche", "liquilens", "scamshield", "narcoscope"] },
+        "namespace": { "enum": ["catalog", "osint", "artifact", "typology", "partner"] },
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "availability": { "$ref": "#/$defs/availability" },
+        "allowed_role": { "$ref": "#/$defs/role" },
+        "evidence_class": { "$ref": "#/$defs/evidenceClass" },
+        "independence_group": { "$ref": "#/$defs/identifier" },
+        "upstream_groups": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "independence_eligible": { "type": "boolean" },
+        "dependency_resource_ids": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "rights": { "$ref": "#/$defs/rights" },
+        "clocks": { "$ref": "#/$defs/clocks" },
+        "freshness": { "$ref": "#/$defs/freshness" },
+        "source_temporal_coverage": {
+          "oneOf": [
+            { "$ref": "#/$defs/sourceTemporalCoverage" },
+            { "type": "null" }
+          ]
+        },
+        "contract": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "public_url": { "$ref": "#/$defs/urlOrNull" },
+        "input_id": { "$ref": "#/$defs/identifier" },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 8192 }
+        }
+      }
+    },
+    "dependencyGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group_id",
+        "resource_ids",
+        "available_resource_count",
+        "independence_eligible_resource_count"
+      ],
+      "properties": {
+        "group_id": { "$ref": "#/$defs/identifier" },
+        "resource_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "available_resource_count": { "$ref": "#/$defs/count" },
+        "independence_eligible_resource_count": { "$ref": "#/$defs/count" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected", "accounted", "complete"],
+      "properties": {
+        "expected": { "$ref": "#/$defs/count" },
+        "accounted": { "$ref": "#/$defs/count" },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "namedCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "count"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "count": { "$ref": "#/$defs/count" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_count",
+        "resource_count",
+        "available_resource_count",
+        "stale_resource_count",
+        "unavailable_resource_count",
+        "independent_groups_available",
+        "optional_inputs_unavailable",
+        "palimpsest_catalog",
+        "palimpsest_osint",
+        "project_resource_counts",
+        "role_counts"
+      ],
+      "properties": {
+        "project_count": { "$ref": "#/$defs/count" },
+        "resource_count": { "$ref": "#/$defs/count" },
+        "available_resource_count": { "$ref": "#/$defs/count" },
+        "stale_resource_count": { "$ref": "#/$defs/count" },
+        "unavailable_resource_count": { "$ref": "#/$defs/count" },
+        "independent_groups_available": { "$ref": "#/$defs/count" },
+        "optional_inputs_unavailable": { "$ref": "#/$defs/count" },
+        "palimpsest_catalog": { "$ref": "#/$defs/coverage" },
+        "palimpsest_osint": { "$ref": "#/$defs/coverage" },
+        "project_resource_counts": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/namedCount" }
+        },
+        "role_counts": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/namedCount" }
+        }
+      }
+    }
+  }
+}

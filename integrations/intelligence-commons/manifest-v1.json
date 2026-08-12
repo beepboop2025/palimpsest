@@ -1,8 +1,8 @@
 {
   "schema": "palimpsest-intelligence-commons-manifest/v1",
-  "version": "2026-08-09.4",
+  "version": "2026-08-12.1",
   "title": "Palimpsest Intelligence Commons",
-  "scope": "A public, provenance-bearing map of China information controls, monetary plumbing, illicit-market observables, and reviewed laundering or scam signals across four independently governed projects.",
+  "scope": "A public, provenance-bearing map of China information controls, monetary plumbing, illicit-market observables, and reviewed laundering or scam signals across five independently governed projects.",
   "claim_boundary": "The lanes are descriptive context, not a fused score or causal model. Temporal alignment or co-movement does not establish that drug proceeds, scams, censorship, underground banking, or any person or entity caused money-market stress, and no typology relationship establishes guilt.",
   "projects": [
     {
@@ -17,11 +17,20 @@
     {
       "id": "seiche",
       "title": "Seiche",
-      "role": "Public money-market plumbing and funding-stress context with sealed market APIs.",
-      "status": "ACTIVE",
-      "public_url": "https://seiche.info/",
-      "data_url": "https://api.seiche.info/api/v2/markets/CN-CNY/overview",
-      "public_boundary": "Provides observed or derived monetary context under its own evidence and redistribution gates; intelligence-commons signals remain context-only and do not enter composites, forecasts, or trading eligibility."
+      "role": "Review-gated money-market plumbing and funding-stress context.",
+      "status": "REVIEW_GATED",
+      "public_url": null,
+      "data_url": null,
+      "public_boundary": "No public Palimpsest data endpoint is currently verified. A caller-supplied envelope may provide context only after evidence and redistribution gates pass; it cannot enter composites, forecasts, or trading eligibility."
+    },
+    {
+      "id": "liquilens",
+      "title": "LiquiLens",
+      "role": "Bitemporal BIS evidence, source-dependence-aware financial synthesis, decision gates, and machine editorial candidates.",
+      "status": "REVIEW_GATED",
+      "public_url": null,
+      "data_url": null,
+      "public_boundary": "The repository is private and no canonical public Palimpsest projection is claimed live; a caller-supplied envelope must pass mapping, history, redistribution, and robustness gates."
     },
     {
       "id": "scamshield",
@@ -66,13 +75,15 @@
       "question": "What do observable CNY funding, fixing, cross-border, and market-plumbing measures say without importing illicit-flow assumptions?",
       "project_ids": [
         "palimpsest",
-        "seiche"
+        "seiche",
+        "liquilens"
       ],
       "signal_ids": [
         "china-econ",
         "cny-fix-gap",
         "stock-connect",
-        "seiche-cn-cny"
+        "seiche-cn-cny",
+        "liquilens-bis-evidence"
       ],
       "typology_ids": [],
       "evidence_rule": "Preserve instrument, units, jurisdiction, event time, source licence, revision state, and Seiche eligibility; intelligence-commons context never enters a composite or forecast by default."
@@ -160,8 +171,18 @@
       "direction": "ONE_WAY",
       "status": "PLANNED",
       "contract": "lab-evidence-envelope/v1",
-      "data_url": "https://api.seiche.info/api/v2/markets/CN-CNY/overview",
+      "data_url": null,
       "claim_boundary": "A future public projection may show eligible observed market context, but no illicit-market lane becomes a Seiche model input and no cross-lane co-movement is a causal claim."
+    },
+    {
+      "id": "liquilens-to-palimpsest-financial-context",
+      "from_project_id": "liquilens",
+      "to_project_id": "palimpsest",
+      "direction": "ONE_WAY",
+      "status": "REVIEW_GATED",
+      "contract": "lab-evidence-envelope/v1",
+      "data_url": null,
+      "claim_boundary": "A future admitted projection may contribute bitemporal BIS and financial context only after source-dependence, eligibility, history, redistribution, and robustness gates pass; candidate or blocked outputs are not independent corroboration or findings."
     },
     {
       "id": "narcoscope-to-palimpsest-public-aggregate",
@@ -176,11 +197,11 @@
   ],
   "private_boundary": "Private owner-operated analysis may consume admitted public envelopes inward, but it is not a project in this public manifest, a dependency of any public project, or a source of public calibrated outputs. No private repository, filesystem path, implementation detail, code, data, parameter, or calibration crosses outward.",
   "limitations": [
-    "The four projects have different sampling frames, jurisdictions, licences, revision policies, and cadences; records must not be silently joined or forward-filled.",
+    "The five projects have different sampling frames, jurisdictions, licences, revision policies, and cadences; records must not be silently joined or forward-filled.",
     "The commons does not claim to show everything happening in China, all of Telegram, the total illicit economy, or unobserved financial flows.",
     "Primary endpoints, archives, and mirrors that share one upstream collection pipeline count as one source group.",
     "ScamShield reviewed events are bounded samples and must not be extrapolated into national proceeds or total platform activity.",
-    "NarcoScope-to-Palimpsest is active, producer-owned, and byte-pinned in Palimpsest; Seiche-to-Palimpsest remains a planned envelope projection.",
+    "NarcoScope-to-Palimpsest is active, producer-owned, byte-pinned, and revision-receipted in Palimpsest; Seiche-to-Palimpsest and LiquiLens-to-Palimpsest remain review-gated with no verified public data endpoint rather than falsely live.",
     "Licence-restricted or privacy-controlled values remain redacted even when their source and coverage state are visible.",
     "Cross-lane lag analysis requires a preregistered hypothesis, native-cadence alignment, an untouched holdout, independent sources, and publication of null results before any narrower association claim."
   ]

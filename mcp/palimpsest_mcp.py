@@ -33,7 +33,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.4.0"
+SERVER_VERSION = "1.5.0"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
@@ -86,8 +86,11 @@ SERVER_INSTRUCTIONS = (
     "own generated_at timestamps and upstream sources — cite both.\n\n"
     "Start with list_signals to see what is measured, then get_signal(name) "
     "for the full latest reading. Use get_newsroom for the evidence wire, "
-    "structured newsroom, China economic pulse, investigations desk, or "
-    "editorial-readiness gate without scraping pages. For the censorship side, whats_happening "
+    "structured newsroom, China economic pulse, deterministic machine-analysis "
+    "desk, investigations desk, or editorial-readiness gate without scraping "
+    "pages. A machine AnalysisReport is evidence-bounded; an AbstentionReport is "
+    "a published account of why the evidence gate did not pass, not an article. "
+    "For the censorship side, whats_happening "
     "gives the board's cross-signal verdict; for the model side, get_signal "
     "with 'eval-registry' gives the chain's verified flag, Merkle root and run "
     "counts, and 'refusal-drift' gives the current per-model frontier reading. "
@@ -249,6 +252,15 @@ SIGNALS = {
         "/readings/osint-china-latest.json",
         "the normalized China-facing roll-up across the complete public signal set, "
         "with per-source freshness, coverage and integrity"),
+    "evidence-mesh": (
+        "/readings/evidence-mesh-latest.json",
+        "the provenance and eligibility graph joining Palimpsest collectors with "
+        "NarcoScope and review-gated Seiche, LiquiLens and ScamShield contracts; "
+        "includes lineage, rights, freshness and unavailable-source states"),
+    "machine-investigations": (
+        "/readings/machine-investigations-latest.json",
+        "deterministic evidence analyses and explicit abstentions with sentence-level "
+        "citations, countercases, limitations, falsifiers and reproducibility receipts"),
 }
 
 _cache: dict[str, tuple[float, dict]] = {}
@@ -655,6 +667,7 @@ NEWSROOM_VIEWS = {
     "newsroom": ("newsroom", "stories"),
     "wire": ("evidence-wire", "items"),
     "economy": ("china-economic-pulse", None),
+    "machine-analysis": ("machine-investigations", "cases"),
     "investigations": ("investigations", "cases"),
     "editorial-readiness": ("editorial-readiness", None),
 }
@@ -791,7 +804,8 @@ TOOLS = {
         "Read one evidence-first reporting surface without scraping a page or "
         "guessing a filename. Views: 'newsroom' for prioritized deterministic "
         "stories, 'wire' for normalized source dossiers, 'economy' for the "
-        "revision-safe China economic pulse, 'investigations' for review-gated "
+        "revision-safe China economic pulse, 'machine-analysis' for deterministic "
+        "AnalysisReports and AbstentionReports, 'investigations' for review-gated "
         "research leads, and 'editorial-readiness' for publication gates. "
         "Availability never implies publication readiness: statuses, gates, "
         "counterevidence, limitations and right-to-reply state stay attached.",
@@ -863,11 +877,13 @@ PROMPTS = {
         [],
         lambda a: (
             "Build an evidence-desk briefing from Palimpsest. Call get_newsroom "
-            "with view='newsroom' for the lead stories, then view='investigations' "
-            "for open research leads, and view='editorial-readiness' for the "
-            "publication gates. Lead with what is measured, then what remains "
-            "unresolved. Preserve each item's status, limitations, counterevidence "
-            "and right-to-reply state. Never describe a draft or blocked case as "
+            "with view='machine-analysis' for evidence-bounded analyses and explicit "
+            "abstentions, view='newsroom' for the measurement briefs, then "
+            "view='investigations' for open research leads and "
+            "view='editorial-readiness' for the publication gates. Lead with what "
+            "is measured, then what remains unresolved. Preserve each item's "
+            "status, citations, limitations, counterevidence and right-to-reply "
+            "state. Never describe an AbstentionReport, draft or blocked case as "
             "a published investigation."
         ),
     ),

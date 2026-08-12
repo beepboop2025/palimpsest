@@ -98,6 +98,42 @@ jobs:
             tests/test_cadence_matches_crons.py \
             tests/test_method_version_guard.py
 
+      - name: Check the committed deterministic machine-newsroom graph
+        run: |
+          # These checks MUST precede every write-mode builder below. Otherwise a
+          # tampered committed artifact could be silently replaced and then pass its
+          # check against the just-written bytes.
+          #
+          # The partner aggregate is admitted only through its separately reviewed,
+          # hash-bound supersession receipt. CI validates that pin and never fetches
+          # or auto-admits replacement partner bytes.
+          python -m scripts.sync_narcoscope --check
+          python -m core.evidence_mesh --check
+          python -m core.machine_investigations --check
+          python -m scripts.build_newsroom --check
+          python -m scripts.build_data_catalog --check
+          python scripts/seal_readings.py --check
+
+      - name: Rebuild and prove the deterministic graph is unchanged
+        run: |
+          # Replay the already validated mesh at its recorded publication
+          # clock.  A no-argument build intentionally means "publish a new
+          # snapshot now" and therefore cannot prove byte reproducibility.
+          mesh_clock=$(python -c 'import json; print(json.load(open("readings/evidence-mesh-latest.json"))["generated_at"])')
+          catalog_clock=$(python -c 'import json; print(json.load(open("readings/catalog.json"))["generated_at"])')
+          python -m core.evidence_mesh --now "$mesh_clock"
+          python -m core.machine_investigations
+          python -m scripts.build_newsroom
+          python -m scripts.build_data_catalog --now "$catalog_clock"
+          git diff --exit-code -- \
+            readings/evidence-mesh-latest.json \
+            readings/machine-investigations-latest.json \
+            readings/newsroom-latest.json \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json \
+            news/
+
       - name: Read the public surface
         # Being in this job rather than in pytest above buys nothing against a data commit,
         # and the earlier version of this comment claimed it did. GitHub honours [skip ci]

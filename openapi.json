@@ -3,7 +3,7 @@
   "info": {
     "title": "Palimpsest Public Readings API",
     "version": "1.4.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom, deterministic machine-analysis desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -31,6 +31,12 @@
       },
       "Investigations": {
         "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
+      },
+      "EvidenceMesh": {
+        "$ref": "https://palimpsest.info/protocol/evidence-mesh-v1.schema.json"
+      },
+      "MachineInvestigations": {
+        "$ref": "https://palimpsest.info/protocol/machine-investigations-v1.schema.json"
       },
       "PrimaryDocuments": {
         "$ref": "https://palimpsest.info/protocol/primary-documents-v1.schema.json"
@@ -217,6 +223,14 @@
       "description": "Review-gated research leads and reviewed investigations with evidence receipts, counterevidence and falsifiers",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Investigations"}}}
       },
+      "EvidenceMesh": {
+        "description": "Deterministic inventory of eligible public aggregate evidence, source lineage, freshness and rights gates",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvidenceMesh"}}}
+      },
+      "MachineInvestigations": {
+        "description": "Deterministic AnalysisReports and AbstentionReports with sentence-level citations and evaluation receipts",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MachineInvestigations"}}}
+      },
       "PrimaryDocuments": {
         "description": "Metadata-only revision receipts for exact primary-source bytes retained in private immutable storage",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PrimaryDocuments"}}}
@@ -273,6 +287,16 @@
       "operationId": "getInvestigations",
       "summary": "Read review-gated research leads with evidence receipts, counterevidence and falsification conditions",
       "responses": {"200": {"$ref": "#/components/responses/Investigations"}}
+    }},
+    "/readings/evidence-mesh-latest.json": {"get": {
+      "operationId": "getEvidenceMesh",
+      "summary": "Read the deterministic inventory of eligible evidence, lineage, freshness and reuse gates",
+      "responses": {"200": {"$ref": "#/components/responses/EvidenceMesh"}}
+    }},
+    "/readings/machine-investigations-latest.json": {"get": {
+      "operationId": "getMachineInvestigations",
+      "summary": "Read deterministic machine analyses and explicit evidence-gate abstentions",
+      "responses": {"200": {"$ref": "#/components/responses/MachineInvestigations"}}
     }},
     "/readings/primary-documents-latest.json": {"get": {
       "operationId": "getPrimaryDocuments",

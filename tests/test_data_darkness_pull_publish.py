@@ -109,49 +109,155 @@ def _history(tmp_path):
     path = tmp_path / "data-darkness-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
     text = WORKFLOW.read_text(encoding="utf-8")
-    build = "python -m scripts.build_osint_china"
-    seal = "python scripts/seal_readings.py"
-    tests = "tests/test_osint_china.py"
-    scrub = "python scripts/verify_public_surface.py"
-    push = "git push origin HEAD:main"
+    lines = [line.strip() for line in text.splitlines()]
+    graph = [
+        "python -m scripts.build_economic_pulse",
+        'python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"',
+        "python -m scripts.build_investigations",
+        "python -m scripts.build_network_rounds",
+        "python -m scripts.build_corroboration",
+        "python -m scripts.build_editorial_readiness",
+        "python -m scripts.sync_narcoscope --check",
+        "python -m scripts.sync_narcoscope --remote-check",
+        "python -m core.evidence_mesh",
+        "python -m core.evidence_mesh --check",
+        "python -m core.machine_investigations",
+        "python -m core.machine_investigations --check",
+        "python -m scripts.build_newsroom",
+        "python -m scripts.build_newsroom --check",
+        "python -m scripts.build_data_catalog",
+        "python scripts/seal_readings.py",
+    ]
+    retry_graph = list(graph)
+    retry_graph[1] = (
+        'python -m scripts.build_osint_china --input-commit '
+        '"$(git rev-parse origin/main)"'
+    )
+
+    def sequence_starts(sequence):
+        width = len(sequence)
+        return [
+            index
+            for index in range(len(lines) - width + 1)
+            if lines[index:index + width] == sequence
+        ]
+
+    def continued_blocks(opener):
+        blocks = []
+        for index, line in enumerate(text.splitlines()):
+            if line.strip() != opener:
+                continue
+            block = []
+            for continuation in text.splitlines()[index + 1:]:
+                if not continuation.startswith("            "):
+                    break
+                block.append(continuation.strip().removesuffix("\\").strip())
+            blocks.append(block)
+        return blocks
 
     assert "python -m pip install --quiet --require-hashes" in text
     assert "-r .github/osint-china-ci-requirements.txt" in text
-    assert text.count(build) == 2
-    assert text.count(seal) == 2
-    assert text.count(tests) == 2
-    assert text.count(scrub) == 2
     assert "git pull --rebase origin main || true" not in text
+    assert len(sequence_starts(graph)) == 1
+    assert len(sequence_starts(retry_graph)) == 2
 
-    collect_at = text.index("python -m scripts.data_darkness_pull")
-    build_at = text.index(build)
-    seal_at = text.index(seal)
-    tests_at = text.index(tests)
-    scrub_at = text.index(scrub)
-    commit_at = text.index("git commit")
-    assert collect_at < build_at < seal_at < tests_at < scrub_at < commit_at
+    graph_starts = sorted(sequence_starts(graph) + sequence_starts(retry_graph))
+    pytest_starts = [
+        index for index, line in enumerate(lines)
+        if line == "python -m pytest -q \\"
+    ]
+    scrub_starts = [
+        index for index, line in enumerate(lines)
+        if line == "run: python scripts/verify_public_surface.py"
+    ]
+    stage_starts = [
+        index for index, line in enumerate(lines) if line == "git add \\"
+    ]
+    assert len(graph_starts) == len(pytest_starts) == len(scrub_starts) == 3
+    assert len(stage_starts) == 3
+    for graph_at, tests_at, scrub_at, stage_at in zip(
+        graph_starts, pytest_starts, scrub_starts, stage_starts, strict=True
+    ):
+        seal_at = graph_at + len(graph) - 1
+        assert seal_at < tests_at < scrub_at < stage_at
+    assert lines.index("run: python -m scripts.data_darkness_pull") < graph_starts[0]
 
-    for path in (
+    for command in graph[:1] + graph[2:]:
+        assert lines.count(command) == 3
+    assert lines.count(graph[1]) == 1
+    assert lines.count(retry_graph[1]) == 2
+
+    required_tests = {
+        "tests/test_data_darkness.py",
+        "tests/test_data_darkness_pull_publish.py",
+        "tests/test_osint_china.py",
+        "tests/test_osint_china_page.py",
+        "tests/test_economic_pulse.py",
+        "tests/test_investigations.py",
+        "tests/test_investigations_renderer.py",
+        "tests/test_narcoscope_bridge.py",
+        "tests/test_evidence_mesh.py",
+        "tests/test_machine_investigations.py",
+        "tests/test_machine_investigations_renderer.py",
+        "tests/test_primary_documents.py",
+        "tests/test_corroboration.py",
+        "tests/test_network_rounds.py",
+        "tests/test_source_workflow.py",
+        "tests/test_editorial_readiness.py",
+        "tests/test_structured_newsroom.py",
+        "tests/test_evidence_wire_publication.py",
+        "tests/test_ai_discovery.py",
+        "tests/test_data_catalog.py",
+        "tests/test_seal_readings.py",
+        "tests/test_publication_contract.py",
+        "tests/test_public_surface_scrub.py",
+    }
+    test_blocks = continued_blocks("python -m pytest -q \\")
+    assert len(test_blocks) == 3
+    assert all(required_tests <= set(block) for block in test_blocks)
+
+    required_artifacts = {
         "readings/data-darkness-latest.json",
         "readings/data-darkness-history.jsonl",
+        "readings/china-economic-pulse-latest.json",
         "readings/osint-china-latest.json",
+        "readings/investigations-latest.json",
+        "readings/evidence-mesh-latest.json",
+        "readings/machine-investigations-latest.json",
+        "readings/primary-documents-latest.json",
+        "readings/corroboration-latest.json",
+        "readings/network-rounds-latest.json",
+        "readings/source-workflow-latest.json",
+        "readings/editorial-readiness-latest.json",
+        "readings/newsroom-latest.json",
         "readings/readings-ledger.jsonl",
-    ):
-        assert text.count(path) >= 2
+        "readings/catalog.json",
+        "readings/catalog.jsonld",
+        "datapackage.json",
+        "news/",
+    }
+    stage_blocks = continued_blocks("git add \\")
+    assert len(stage_blocks) == 3
+    assert all(required_artifacts <= set(block) for block in stage_blocks)
 
     assert "if git rebase origin/main; then" in text
     assert "git switch --detach origin/main" in text
-    retry_build = text.rindex(build)
-    retry_seal = text.rindex(seal)
-    retry_tests = text.rindex(tests)
-    retry_scrub = text.rindex(scrub)
-    push_at = text.rindex(push)
-    assert commit_at < retry_build < retry_seal < retry_tests < retry_scrub < push_at
+    assert text.count('git checkout "$candidate" --') == 2
+    assert "id: push_attempt" in text
+    assert "continue-on-error: true" in text
+    assert text.count("if: steps.push_attempt.outcome == 'failure'") == 6
+    push_starts = [
+        index for index, line in enumerate(lines)
+        if line == "run: git push origin HEAD:main"
+    ]
+    assert len(push_starts) == 2
+    assert stage_starts[1] < push_starts[0] < graph_starts[2]
+    assert stage_starts[2] < push_starts[1]
 
 
 def test_an_unchanged_round_still_refreshes_the_observation_time(publish):

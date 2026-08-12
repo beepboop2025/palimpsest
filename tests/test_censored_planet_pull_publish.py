@@ -144,3 +144,25 @@ def test_a_method_bump_republishes_and_moves_last_changed_at(publish, monkeypatc
     assert bumped["last_changed_at"] == bumped["generated_at"]
     assert bumped["last_changed_at"] != first["last_changed_at"]
     assert len(_history(tmp_path)) == 2
+
+
+def test_series_tail_is_deduplicated_sorted_and_latest(publish):
+    run, _tmp_path = publish
+    rows = [
+        {"date": f"2026-07-{day:02d}", "value": day}
+        for day in range(1, 32)
+    ]
+    rows = [
+        rows[-1],
+        {"date": "not-a-date", "value": 999},
+        *rows[:-1],
+        {"date": "2026-07-15", "value": 1500},
+    ]
+
+    reading = run(series=rows)
+
+    assert reading["series_points"] == 31
+    assert [row["date"] for row in reading["series_tail"]] == [
+        f"2026-07-{day:02d}" for day in range(2, 32)
+    ]
+    assert next(row for row in reading["series_tail"] if row["date"] == "2026-07-15")["value"] == 1500

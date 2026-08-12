@@ -153,13 +153,22 @@ def observe_all(since: str, until: str, *, get=_get) -> list:
             for t, fam, label in TESTS]
 
 
+def family_completed_count(observations: list, family: str) -> int:
+    """Return the exact completed-test denominator used by ``family_index``."""
+    return sum(
+        o["completed_count"]
+        for o in observations
+        if o["family"] == family and o.get("available")
+    )
+
+
 def family_index(observations: list, family: str) -> float | None:
     """Measurement-weighted anomaly rate across the available tests in one
     family, 0-100. Weighting by completed count stops a thinly-measured test
     from dominating a family."""
     usable = [o for o in observations
               if o["family"] == family and o.get("available")]
-    denom = sum(o["completed_count"] for o in usable)
+    denom = family_completed_count(observations, family)
     if not denom:
         return None
     num = sum(o["anomaly_count"] for o in usable)

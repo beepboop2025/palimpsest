@@ -15,10 +15,11 @@ import json
 
 import pytest
 
+import collectors.ooni_gfw as collector
 import scripts.ooni_gfw_pull as pull
 
 
-def _tests(anomaly: int, measurement: int = 100) -> list[dict]:
+def _tests(anomaly: int, measurement: int = 100, failure: int = 0) -> list[dict]:
     """One available test is the whole input the writer needs, so the OONI HTTP
     layer never runs. Moving the anomaly count is how a round 'moves'."""
     return [{
@@ -27,8 +28,8 @@ def _tests(anomaly: int, measurement: int = 100) -> list[dict]:
         "available": True,
         "anomaly_count": anomaly,
         "measurement_count": measurement,
-        "failure_count": 0,
-        "anomaly_rate": round(anomaly / measurement, 4),
+        "failure_count": failure,
+        "anomaly_rate": round(anomaly / (measurement - failure), 4),
     }]
 
 
@@ -39,11 +40,12 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "OUT", str(tmp_path / "ooni-gfw-latest.json"))
     monkeypatch.setattr(pull, "HIST", str(tmp_path / "ooni-gfw-history.jsonl"))
 
-    def run(anomaly=62, top=None):
-        signals = _tests(anomaly)
+    def run(anomaly=62, measurement=100, failure=0, top=None):
+        signals = _tests(anomaly, measurement, failure)
         blocked = top if top is not None else [
             {"domain": "torproject.org", "anomaly_count": 40,
-             "measurement_count": 50, "anomaly_rate": 0.8}]
+             "measurement_count": 50, "failure_count": 0,
+             "completed_measurement_count": 50, "anomaly_rate": 0.8}]
         monkeypatch.setattr(pull, "test_signals", lambda since, until: signals)
         monkeypatch.setattr(pull, "top_blocked_domains",
                             lambda since, until: blocked)
@@ -58,7 +60,28 @@ def _history(tmp_path):
     path = tmp_path / "ooni-gfw-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [
+        json.loads(line)
+        for line in path.read_text().splitlines()
+        if line.strip()
+    ]
+
+
+def test_top_blocked_rate_publishes_its_completed_denominator(monkeypatch):
+    monkeypatch.setattr(collector, "_get", lambda params, **kwargs: {"result": [{
+        "domain": "example.test",
+        "anomaly_count": 8,
+        "measurement_count": 12,
+        "failure_count": 2,
+    }]})
+
+    [row] = collector.top_blocked_domains(
+        "2026-08-01", "2026-08-08", min_measurements=1)
+
+    assert row["anomaly_rate"] == 0.8
+    assert row["completed_measurement_count"] == 10
+    assert row["failure_count"] == 2
+    assert row["measurement_count"] == 12
 
 
 def test_a_repeated_finding_still_refreshes_the_observation_time(publish):
@@ -103,13 +126,26 @@ def test_a_moved_index_moves_last_changed_at_and_appends(publish):
     assert len(_history(tmp_path)) == 2
 
 
+def test_index_denominator_excludes_failures_but_attempt_volume_is_preserved(publish):
+    run, tmp_path = publish
+    reading = run(anomaly=140_532, measurement=245_883, failure=1_952)
+
+    assert reading["gfw_index"] == 57.6
+    assert reading["n_completed_measurements"] == 243_931
+    assert reading["n_measurements"] == 245_883
+    assert _history(tmp_path)[0]["n_completed_measurements"] == 243_931
+    assert _history(tmp_path)[0]["n_measurements"] == 245_883
+
+
 def test_a_moved_top_blocked_list_also_counts_as_movement(publish):
     """The index can hold still while the set of interfered-with sites turns
     over, and that turnover is a finding in its own right."""
     run, tmp_path = publish
     run(anomaly=62)
     moved = run(anomaly=62, top=[{"domain": "wikipedia.org", "anomaly_count": 30,
-                                  "measurement_count": 40, "anomaly_rate": 0.75}])
+                                  "measurement_count": 40, "failure_count": 0,
+                                  "completed_measurement_count": 40,
+                                  "anomaly_rate": 0.75}])
 
     assert moved["last_changed_at"] == moved["generated_at"]
     assert len(_history(tmp_path)) == 2
