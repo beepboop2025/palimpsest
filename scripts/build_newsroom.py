@@ -374,7 +374,11 @@ def _machine_attribution_metadata(
             ),
             None,
         )
-        source_url = matched_url or registered.get("source_url")
+        # A reviewed provider registry is the canonical public attribution
+        # target.  A hostname extracted from a source statement can identify
+        # provenance, but it may be an API root that is not a usable landing
+        # page (Globalping's API root currently returns 404).
+        source_url = registered.get("source_url") or matched_url
         terms_url = registered.get("terms_url")
         providers.append({
             "name": name,
