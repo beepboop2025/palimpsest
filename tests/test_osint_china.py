@@ -484,6 +484,8 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     text = WORKFLOW.read_text(encoding="utf-8")
     assert 'cron: "58 * * * *"' in text
     assert "workflow_dispatch" in text
+    assert 'workflows: ["Refresh Stock Connect telemetry"]' in text
+    assert "github.event.workflow_run.conclusion == 'success'" in text
     assert "group: osint-china-refresh" in text
     assert "cancel-in-progress: false" in text
     economic_pulse = text.index("python -m scripts.build_economic_pulse")

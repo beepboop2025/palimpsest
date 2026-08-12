@@ -9,6 +9,10 @@ on:
   schedule:
     - cron: "58 * * * *"
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Refresh Stock Connect telemetry"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
@@ -19,6 +23,9 @@ concurrency:
 
 jobs:
   publish:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
