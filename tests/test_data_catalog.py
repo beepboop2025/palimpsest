@@ -274,6 +274,27 @@ def test_generated_files_match_builder_under_source_date_epoch(monkeypatch, tmp_
     assert package["created"] == built["generated_at"]
 
 
+def test_cli_now_replays_an_exact_timezone_aware_catalog_clock(monkeypatch, capsys):
+    seen = {}
+
+    def fake_build_catalog(*, now=None):
+        seen["now"] = now
+        summary = {"datasets": 0, "published_bytes": 0, "history_rows": 0}
+        return ({"summary": summary}, {}, {})
+
+    monkeypatch.setattr(catalog, "build_catalog", fake_build_catalog)
+    assert catalog.main(["--check", "--now", "2026-08-12T16:14:02.289540Z"]) == 0
+    assert seen["now"] == datetime(
+        2026, 8, 12, 16, 14, 2, 289540, tzinfo=timezone.utc
+    )
+    assert json.loads(capsys.readouterr().out)["status"] == "ok"
+
+
+def test_cli_now_rejects_an_ambient_timezone(monkeypatch):
+    with pytest.raises(SystemExit):
+        catalog.main(["--check", "--now", "2026-08-12T16:14:02"])
+
+
 def test_checked_in_catalog_views_do_not_drift_from_source_and_readings():
     committed = json.loads(
         (ROOT / "readings" / "catalog.json").read_text(encoding="utf-8")

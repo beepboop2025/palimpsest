@@ -53,7 +53,7 @@ and a request carrying any other web origin is rejected before JSON-RPC dispatch
 | --- | --- |
 | `list_signals` | What is measured at all — every signal's name, one-line description, and source URL. Call this first. |
 | `get_signal(name, max_rows=25)` | One signal's full latest reading, exactly as served on the site, with its `generated_at` and upstream sources. This is also the door to the model-evaluation side: `eval-registry` and `refusal-drift`. |
-| `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, investigations desk, or editorial-readiness gate. Drafts stay drafts; publication state, counterevidence, limitations and right-to-reply metadata remain attached. |
+| `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, deterministic machine-analysis desk, investigations desk, or editorial-readiness gate. Analysis, abstention and draft states remain distinct; citations, counterevidence, limitations and right-to-reply metadata stay attached. |
 | `whats_happening` | The censorship board's own cross-signal verdict: is anything actually happening right now, with multiplicity paid for and coverage confounds flagged as artifacts rather than findings. |
 | `gfw_reading` | The Great Firewall at both layers in one call — network blocking measured inside China (OONI) beside model-layer censorship (the Generative Firewall Index). |
 
@@ -63,7 +63,10 @@ board was built to avoid: reading a per-signal false-alarm rate as if it were a 
 one, and reading a shrinking measurement base as easing censorship. `list_signals` is the
 authoritative roster — it is generated from the server's own table, so it never goes stale
 against this page. `get_newsroom` is the shorter route when the question is editorial or
-investigative rather than a single measurement.
+investigative rather than a single measurement. Its `machine-analysis` view returns both
+published `AnalysisReport` records and explicit `AbstentionReport` records; an abstention is
+never promoted into a news article merely because it is available to the client. The underlying
+eligibility and lineage graph is separately available as the `evidence-mesh` signal.
 
 ## Row caps, and the text you are handed
 

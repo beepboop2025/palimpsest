@@ -355,8 +355,24 @@ def _atomic_json(path: Path, value: Any) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="validate the source and build in memory only")
+    parser.add_argument(
+        "--now",
+        help="build at this timezone-aware ISO-8601 clock (for deterministic replay)",
+    )
     args = parser.parse_args(argv)
-    catalog, jsonld, datapackage = build_catalog()
+    build_time = None
+    if args.now is not None:
+        text = args.now.strip()
+        try:
+            build_time = datetime.fromisoformat(
+                text[:-1] + "+00:00" if text.endswith("Z") else text
+            )
+        except ValueError:
+            parser.error("--now must be a valid ISO-8601 timestamp")
+        if build_time.tzinfo is None or build_time.utcoffset() is None:
+            parser.error("--now must include a timezone")
+        build_time = build_time.astimezone(timezone.utc)
+    catalog, jsonld, datapackage = build_catalog(now=build_time)
     if not args.check:
         _atomic_json(ROOT / "readings" / "catalog.json", catalog)
         _atomic_json(ROOT / "readings" / "catalog.jsonld", jsonld)

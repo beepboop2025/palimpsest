@@ -120,10 +120,11 @@ jobs:
           # clock.  A no-argument build intentionally means "publish a new
           # snapshot now" and therefore cannot prove byte reproducibility.
           mesh_clock=$(python -c 'import json; print(json.load(open("readings/evidence-mesh-latest.json"))["generated_at"])')
+          catalog_clock=$(python -c 'import json; print(json.load(open("readings/catalog.json"))["generated_at"])')
           python -m core.evidence_mesh --now "$mesh_clock"
           python -m core.machine_investigations
           python -m scripts.build_newsroom
-          python -m scripts.build_data_catalog
+          python -m scripts.build_data_catalog --now "$catalog_clock"
           git diff --exit-code -- \
             readings/evidence-mesh-latest.json \
             readings/machine-investigations-latest.json \
