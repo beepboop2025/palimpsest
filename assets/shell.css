@@ -616,6 +616,130 @@ a.ps-p3:hover { box-shadow: var(--ps-lift-3); }
    never scroll horizontally — that rule is enforced by body.ps overflow-x too. */
 .ps-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 
+/* Evidence dispatch route: a native-details navigator for the public-interest
+   side of the network. It stays useful without JavaScript and makes the reason
+   for each cross-product route visible before a reader follows it. */
+.evidence-dispatch {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid color-mix(in srgb, var(--tk-live, #06d6e0) 34%, var(--ps-edge-2));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--tk-live, #06d6e0) 13%, transparent), transparent 38%),
+    linear-gradient(145deg, rgba(10, 20, 27, .96), rgba(7, 12, 18, .88));
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .22);
+}
+.evidence-dispatch__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 340px);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+.evidence-dispatch__head > p {
+  margin: 0;
+  color: var(--tk-text-3, #7d8ca3);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.evidence-route {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.evidence-route__stop {
+  --route-accent: var(--tk-live, #06d6e0);
+  min-width: 0;
+  border: 1px solid var(--ps-edge-2);
+  border-radius: 13px;
+  background: rgba(8, 14, 20, .76);
+  transition: border-color var(--ps-t-fast) var(--ps-ease),
+              transform var(--ps-t-fast) var(--ps-ease),
+              background var(--ps-t-fast) var(--ps-ease);
+}
+.evidence-route__stop--narco { --route-accent: #9d6bff; }
+.evidence-route__stop--signal { --route-accent: #f2a85d; }
+.evidence-route__stop--scam { --route-accent: #67d391; }
+.evidence-route__stop:hover,
+.evidence-route__stop[open] {
+  border-color: color-mix(in srgb, var(--route-accent) 62%, var(--ps-edge-2));
+  background: color-mix(in srgb, var(--route-accent) 7%, rgba(8, 14, 20, .92));
+  transform: translateY(-2px);
+}
+.evidence-route__stop summary {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  min-height: 116px;
+  padding: 16px 44px 16px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.evidence-route__stop summary::-webkit-details-marker { display: none; }
+.evidence-route__stop summary::after {
+  content: "+";
+  position: absolute;
+  top: 15px;
+  right: 16px;
+  color: var(--route-accent);
+  font: 500 20px/1 var(--tk-font-mono);
+  transition: transform var(--ps-t-fast) var(--ps-ease);
+}
+.evidence-route__stop[open] summary::after { transform: rotate(45deg); }
+.evidence-route__stop summary strong {
+  color: var(--tk-text-0, #fff);
+  font-size: 15px;
+  letter-spacing: -.01em;
+}
+.evidence-route__stop summary > span:last-child {
+  color: var(--tk-text-3, #7d8ca3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.evidence-route__step {
+  color: var(--route-accent);
+  font-family: var(--tk-font-mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.evidence-route__body {
+  margin: 0 16px 16px;
+  padding-top: 13px;
+  border-top: 1px solid color-mix(in srgb, var(--route-accent) 28%, transparent);
+}
+.evidence-route__body p {
+  margin: 0 0 11px;
+  color: var(--tk-text-2, #94a3b8);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.evidence-route__body a {
+  color: var(--route-accent);
+  font-family: var(--tk-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-decoration: none;
+}
+.evidence-route__body a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.evidence-route__links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+
+@media (max-width: 720px) {
+  .evidence-dispatch__head { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .evidence-route { grid-template-columns: minmax(0, 1fr); }
+  .evidence-route__stop summary { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .evidence-route__stop,
+  .evidence-route__stop summary::after { transition: none; }
+  .evidence-route__stop:hover,
+  .evidence-route__stop[open] { transform: none; }
+}
+
 /* Long pages: let the browser skip layout for offscreen sections. */
 .ps-defer { content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
