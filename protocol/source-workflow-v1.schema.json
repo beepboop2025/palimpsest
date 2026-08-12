@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/source-workflow-v1.schema.json",
+  "title": "Palimpsest Source Workflow v1",
+  "description": "Aggregate readiness receipts for already-encrypted human-reporting records. No source identity or note text is public.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "scope", "method", "n_packages", "n_records", "packages"],
+  "properties": {
+    "schema_version": {"const": "palimpsest-source-workflow.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "scope": {"$ref": "#/$defs/text"},
+    "method": {"$ref": "#/$defs/text"},
+    "n_packages": {"$ref": "#/$defs/count"},
+    "n_records": {"$ref": "#/$defs/count"},
+    "packages": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/package"}}
+  },
+  "$defs": {
+    "timestamp": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "count": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "voiceCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["affected", "expert", "institution_response", "skeptical_expert"],
+      "properties": {
+        "affected": {"$ref": "#/$defs/count"},
+        "expert": {"$ref": "#/$defs/count"},
+        "institution_response": {"$ref": "#/$defs/count"},
+        "skeptical_expert": {"$ref": "#/$defs/count"}
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_id", "n_records", "n_usable_records", "voice_counts", "verified_voice_counts", "consent_granted", "verified", "safety_reviewed", "right_to_reply", "readiness"],
+      "properties": {
+        "package_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "n_records": {"$ref": "#/$defs/count"},
+        "n_usable_records": {"$ref": "#/$defs/count"},
+        "voice_counts": {"$ref": "#/$defs/voiceCounts"},
+        "verified_voice_counts": {"$ref": "#/$defs/voiceCounts"},
+        "consent_granted": {"$ref": "#/$defs/count"},
+        "verified": {"$ref": "#/$defs/count"},
+        "safety_reviewed": {"$ref": "#/$defs/count"},
+        "right_to_reply": {
+          "type": "object", "additionalProperties": false,
+          "required": ["applicable", "pending", "complete"],
+          "properties": {"applicable": {"type": "boolean"}, "pending": {"$ref": "#/$defs/count"}, "complete": {"$ref": "#/$defs/count"}}
+        },
+        "readiness": {
+          "type": "object", "additionalProperties": false,
+          "required": ["expert_voice", "skeptical_expert_voice", "affected_voice", "all_consented", "all_verified", "all_safety_reviewed", "right_to_reply_complete"],
+          "properties": {
+            "expert_voice": {"type": "boolean"}, "skeptical_expert_voice": {"type": "boolean"}, "affected_voice": {"type": "boolean"},
+            "all_consented": {"type": "boolean"}, "all_verified": {"type": "boolean"}, "all_safety_reviewed": {"type": "boolean"}, "right_to_reply_complete": {"type": "boolean"}
+          }
+        }
+      }
+    }
+  }
+}

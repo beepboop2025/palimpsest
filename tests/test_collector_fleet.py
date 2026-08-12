@@ -187,7 +187,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 22  # feed head + index processor + 20 passive snapshots
+    assert len(specs) == 23  # feed head + index processor + 21 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -197,6 +197,9 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     )
     belief = next(spec for spec in specs if spec["source"] == "believability")
     assert belief["cadence_seconds"] == 31 * 24 * 3600
+    primary = next(spec for spec in specs if spec["source"] == "primary-documents")
+    assert primary["output_path"] == "readings/primary-documents-latest.json"
+    assert primary["cadence_seconds"] == 24 * 3600
 
 
 def test_vigorous_profile_really_samples_fast_sources_more_often():
@@ -255,11 +258,16 @@ def test_snapshot_success_requires_the_observation_token_to_advance(tmp_path):
     ("research-corpus", {
         "generated_at": "t", "n_sources": 5, "n_changed": 1,
     }, 5),
+    ("primary-documents", {
+        "generated_at": "new-check", "last_successful_at": "last-good",
+        "n_documents": 11,
+    }, 11),
 ])
 def test_record_count_is_source_specific(tmp_path, source, document, expected):
     path = tmp_path / "reading.json"
     path.write_text(json.dumps(document), encoding="utf-8")
-    assert _observation(path, source) == ("t", expected)
+    expected_token = "last-good" if source == "primary-documents" else "t"
+    assert _observation(path, source) == (expected_token, expected)
 
 
 def test_successful_snapshot_can_be_retained_as_an_immutable_artifact(
@@ -348,6 +356,42 @@ def test_research_corpus_invokes_the_bounded_cli_with_fleet_readings(
     monkeypatch.setattr(ingest, "main", lambda argv: seen.append(argv) or 0)
     _invoke_snapshot("research-corpus", tmp_path)
     assert seen == [["--readings", str(tmp_path / "readings")]]
+
+
+def test_inside_view_refresh_also_builds_the_scoped_round_ledger(
+    monkeypatch, tmp_path,
+):
+    seen = []
+    import scripts.build_network_rounds as rounds
+    import scripts.inside_view_pull as pull
+
+    monkeypatch.setattr(pull, "main", lambda: seen.append("inside-view"))
+    monkeypatch.setattr(rounds, "main", lambda argv: seen.append(argv) or 0)
+
+    _invoke_snapshot("inside-view", tmp_path)
+
+    assert seen == [
+        "inside-view",
+        [
+            "--inside-view",
+            str(tmp_path / "readings" / "inside-view-latest.json"),
+            "--outage",
+            str(tmp_path / "readings" / "ioda-outages-latest.json"),
+            "--output",
+            str(tmp_path / "readings" / "network-rounds-latest.json"),
+        ],
+    ]
+
+
+def test_primary_documents_invokes_the_closed_registry_cli(monkeypatch, tmp_path):
+    seen = []
+    import scripts.primary_documents_pull as pull
+
+    monkeypatch.setattr(pull, "main", lambda argv: seen.append(argv) or 0)
+    _invoke_snapshot("primary-documents", tmp_path)
+    assert seen == [
+        ["--output", str(tmp_path / "readings" / "primary-documents-latest.json")]
+    ]
 
 
 def test_ddti_head_passes_the_bounded_config_to_the_collector():

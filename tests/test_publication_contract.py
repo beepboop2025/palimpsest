@@ -69,6 +69,13 @@ CONTRACT = {
                                "n_metrics"),
     "investigations":       _d("generated_at", ["source", "method", "scope"],
                                "n_cases"),
+    "primary-documents":    _d("generated_at", ["source_registry", "method", "scope"],
+                               "n_documents"),
+    "corroboration":        _d("generated_at", ["source_inputs", "method", "scope"],
+                               "n_events"),
+    "network-rounds":       _d("generated_at", ["panel", "method", "scope"],
+                               "n_rounds"),
+    "source-workflow":      _d("generated_at", ["method", "scope"], "n_records"),
     # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -106,6 +113,11 @@ CONTRACT = {
         "ts", ["registry_root", "erasure_root"],
         reason="anchoring infrastructure rather than a measurement: it records which "
                "roots were witnessed where, and witnesses are enumerated, not sampled."),
+    "editorial-readiness": _d(
+        "generated_at", ["source_inputs", "method", "scope"],
+        reason="a gate spans different declared populations: wire dossiers are counted "
+               "inside wire, while explainers and investigations are enumerated in "
+               "packages and summary; one top-level denominator would conflate them."),
 
     # ── roll-ups over other signals: their denominator is the layer set ───────
     "erasure-observatory": _d(
@@ -195,6 +207,11 @@ SCHEDULED_PUBLICATIONS = {
     "investigations",
     "newswire",
     "newsroom",
+    "primary-documents",
+    "corroboration",
+    "network-rounds",
+    "source-workflow",
+    "editorial-readiness",
     "research-corpus",
 }
 
@@ -271,6 +288,21 @@ def test_bleedthrough_graduated_to_a_scheduled_fixed_origin_import():
     assert "bleedthrough" in SCHEDULED_PUBLICATIONS
 
 
+def test_reporting_newsroom_feeds_have_explicit_publication_contracts():
+    assert CONTRACT["primary-documents"]["denominator"] == "n_documents"
+    assert CONTRACT["corroboration"]["denominator"] == "n_events"
+    assert CONTRACT["network-rounds"]["denominator"] == "n_rounds"
+    assert CONTRACT["source-workflow"]["denominator"] == "n_records"
+    assert CONTRACT["editorial-readiness"]["denominator"] is None
+    assert {
+        "primary-documents",
+        "corroboration",
+        "network-rounds",
+        "source-workflow",
+        "editorial-readiness",
+    } <= SCHEDULED_PUBLICATIONS
+
+
 def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     sitemap = open(os.path.join(ROOT, "sitemap.xml"), encoding="utf-8").read()
     robots = open(os.path.join(ROOT, "robots.txt"), encoding="utf-8").read()
@@ -283,12 +315,14 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "https://palimpsest.info/news/investigations/" in sitemap
     assert "https://palimpsest.info/news/investigations/" in llms
     assert "https://palimpsest.info/readings/investigations-latest.json" in llms
+    assert "https://palimpsest.info/news/standards/" in sitemap
+    assert "https://palimpsest.info/news/standards/" in llms
     assert robots.splitlines().count("Sitemap: https://palimpsest.info/sitemap.xml") == 1
     assert robots.splitlines().count(
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v10"' in worker
+    assert 'const CACHE = "palimpsest-v11"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
@@ -308,6 +342,14 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "caches.match" not in syndication_branch
 
     assert '"/readings/investigations-latest.json"' in worker
+    for name in (
+        "primary-documents",
+        "corroboration",
+        "network-rounds",
+        "source-workflow",
+        "editorial-readiness",
+    ):
+        assert f'"/readings/{name}-latest.json"' in worker
     evidence_branch = worker[
         worker.index("if (LIVE_EVIDENCE_READINGS.has(url.pathname))"):
     ]

@@ -1,0 +1,69 @@
+{
+  "schema_version": "palimpsest-network-panels.v1",
+  "minimum_comparable_rounds": 3,
+  "synchronization_window_minutes": 15,
+  "minimum_inside_asns": 3,
+  "minimum_inside_regions": 3,
+  "external_control_countries": ["DE", "NL"],
+  "protocols": [
+    {
+      "id": "DNS",
+      "state": "collecting",
+      "method": "Globalping same-round A-record comparison from consented mainland cloud probes",
+      "limitation": "Only consented datacenter ASNs are eligible; this is not a household or national sample."
+    },
+    {
+      "id": "HTTP",
+      "state": "consent_review",
+      "method": "Frozen-path HTTP response comparison with same-round external controls",
+      "limitation": "Inactive until target paths, request semantics, probe consent, and operator risk review are approved."
+    },
+    {
+      "id": "HTTPS_TLS",
+      "state": "consent_review",
+      "method": "TLS handshake and certificate-path comparison without submitting credentials or application data",
+      "limitation": "Inactive until the probe provider and target-specific safety review authorize sensitive handshakes."
+    },
+    {
+      "id": "QUIC",
+      "state": "infrastructure_required",
+      "method": "QUIC version-negotiation and handshake outcome comparison against synchronized controls",
+      "limitation": "The current consented provider has no reviewed QUIC measurement path; absence is reported, not simulated."
+    }
+  ],
+  "evidence_controls": [
+    {
+      "id": "routing-outage",
+      "artifact_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
+      "purpose": "Distinguish a target- or protocol-specific failure from broad reachability loss."
+    },
+    {
+      "id": "archived-policy",
+      "artifact_url": "https://palimpsest.info/readings/wayback-latest.json",
+      "purpose": "Retain before-and-after public policy and webpage evidence without treating archive absence as deletion proof."
+    },
+    {
+      "id": "app-store-before-after",
+      "artifact_url": "https://palimpsest.info/readings/app-storefront-latest.json",
+      "purpose": "Compare app availability across declared storefronts and rounds."
+    }
+  ],
+  "panel": {
+    "id": "china-multiprotocol-core-v1",
+    "version": 1,
+    "targets": [
+      {"domain": "archive.org", "category": "archive", "role": "boundary"},
+      {"domain": "dns.google", "category": "control", "role": "control"},
+      {"domain": "duckduckgo.com", "category": "search", "role": "boundary"},
+      {"domain": "en.wikipedia.org", "category": "reference", "role": "boundary"},
+      {"domain": "github.com", "category": "developer-platform", "role": "boundary"},
+      {"domain": "one.one.one.one", "category": "control", "role": "control"},
+      {"domain": "rsf.org", "category": "rights", "role": "measurement"},
+      {"domain": "torproject.org", "category": "circumvention", "role": "measurement"},
+      {"domain": "wikileaks.org", "category": "information", "role": "measurement"},
+      {"domain": "www.hrw.org", "category": "rights", "role": "measurement"},
+      {"domain": "zh.wikipedia.org", "category": "reference", "role": "measurement"}
+    ]
+  },
+  "claim_boundary": "Report only that a named target failed or succeeded under a named protocol, method, round, and vantage set; never publish a national censorship percentage from this panel."
+}

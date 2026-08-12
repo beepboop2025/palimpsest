@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.2.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, China economic pulse, review-gated investigations desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.3.0",
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -31,6 +31,21 @@
       },
       "Investigations": {
         "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
+      },
+      "PrimaryDocuments": {
+        "$ref": "https://palimpsest.info/protocol/primary-documents-v1.schema.json"
+      },
+      "Corroboration": {
+        "$ref": "https://palimpsest.info/protocol/corroboration-v1.schema.json"
+      },
+      "NetworkRounds": {
+        "$ref": "https://palimpsest.info/protocol/network-rounds-v1.schema.json"
+      },
+      "SourceWorkflow": {
+        "$ref": "https://palimpsest.info/protocol/source-workflow-v1.schema.json"
+      },
+      "EditorialReadiness": {
+        "$ref": "https://palimpsest.info/protocol/editorial-readiness-v1.schema.json"
       },
       "NewsroomDenominator": {
         "type": "object",
@@ -202,6 +217,26 @@
       "description": "Review-gated research leads and reviewed investigations with evidence receipts, counterevidence and falsifiers",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Investigations"}}}
       },
+      "PrimaryDocuments": {
+        "description": "Metadata-only revision receipts for exact primary-source bytes retained in private immutable storage",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PrimaryDocuments"}}}
+      },
+      "Corroboration": {
+        "description": "Candidate and human-reviewed event-to-primary-document evidence links",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Corroboration"}}}
+      },
+      "NetworkRounds": {
+        "description": "Frozen-panel longitudinal network round receipts with scoped vantages and controls",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NetworkRounds"}}}
+      },
+      "SourceWorkflow": {
+        "description": "Privacy-minimized aggregate readiness for protected human-source records",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SourceWorkflow"}}}
+      },
+      "EditorialReadiness": {
+        "description": "Recomputed wire, explainer and investigation publication gates",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EditorialReadiness"}}}
+      },
       "NewsroomFeed": {
         "description": "Published structured newsroom edition",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
@@ -238,6 +273,31 @@
       "operationId": "getInvestigations",
       "summary": "Read review-gated research leads with evidence receipts, counterevidence and falsification conditions",
       "responses": {"200": {"$ref": "#/components/responses/Investigations"}}
+    }},
+    "/readings/primary-documents-latest.json": {"get": {
+      "operationId": "getPrimaryDocuments",
+      "summary": "Read immutable primary-document revision receipts and explicit collection failures",
+      "responses": {"200": {"$ref": "#/components/responses/PrimaryDocuments"}}
+    }},
+    "/readings/corroboration-latest.json": {"get": {
+      "operationId": "getCorroboration",
+      "summary": "Read conservative candidate links and recorded editorial corroboration decisions",
+      "responses": {"200": {"$ref": "#/components/responses/Corroboration"}}
+    }},
+    "/readings/network-rounds-latest.json": {"get": {
+      "operationId": "getNetworkRounds",
+      "summary": "Read frozen-panel network rounds with protocol, vantage, timing and outage controls",
+      "responses": {"200": {"$ref": "#/components/responses/NetworkRounds"}}
+    }},
+    "/readings/source-workflow-latest.json": {"get": {
+      "operationId": "getSourceWorkflow",
+      "summary": "Read privacy-minimized human-source consent, verification, safety and reply readiness",
+      "responses": {"200": {"$ref": "#/components/responses/SourceWorkflow"}}
+    }},
+    "/readings/editorial-readiness-latest.json": {"get": {
+      "operationId": "getEditorialReadiness",
+      "summary": "Read machine-recomputed evidence and human-reporting publication gates",
+      "responses": {"200": {"$ref": "#/components/responses/EditorialReadiness"}}
     }},
     "/datapackage.json": {"get": {
       "operationId": "getEvidenceDataPackage",

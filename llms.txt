@@ -96,15 +96,33 @@ evidence receipts, counterevidence, limitations, falsification conditions and ou
 publication gates. An open lead is not labeled a completed investigation, and the system
 does not automate allegations, motive or causal attribution.
 
+The [Reporting Standards](https://palimpsest.info/news/standards/) page exposes the deeper
+newsroom gate. Primary-document receipts, conservative corroboration decisions, frozen
+network rounds and privacy-minimized human-source readiness remain separate artifacts.
+Wire briefs may remain explicitly single-source; explainers and investigations stay
+blocked until their evidence and human-reporting requirements are recorded. Passing a
+gate never publishes automatically.
+
 Machine-readable contracts:
 
 - [Evidence Wire latest](https://palimpsest.info/readings/newswire-latest.json)
 - [China Economic Pulse latest](https://palimpsest.info/readings/china-economic-pulse-latest.json)
 - [Investigations Desk latest](https://palimpsest.info/readings/investigations-latest.json)
+- [Primary Document Archive latest](https://palimpsest.info/readings/primary-documents-latest.json)
+- [Reviewed Corroboration Ledger latest](https://palimpsest.info/readings/corroboration-latest.json)
+- [Frozen Network Rounds latest](https://palimpsest.info/readings/network-rounds-latest.json)
+- [Protected Source Workflow summary](https://palimpsest.info/readings/source-workflow-latest.json)
+- [Editorial Readiness Gate latest](https://palimpsest.info/readings/editorial-readiness-latest.json)
 - [Bounded news source registry](https://palimpsest.info/config/news_sources.json)
+- [Primary document source registry](https://palimpsest.info/config/primary_document_sources.json)
 - [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
 - [Economic Pulse JSON Schema](https://palimpsest.info/protocol/economic-pulse-v1.schema.json)
 - [Investigations JSON Schema](https://palimpsest.info/protocol/investigations-v1.schema.json)
+- [Primary Documents JSON Schema](https://palimpsest.info/protocol/primary-documents-v1.schema.json)
+- [Corroboration JSON Schema](https://palimpsest.info/protocol/corroboration-v1.schema.json)
+- [Network Rounds JSON Schema](https://palimpsest.info/protocol/network-rounds-v1.schema.json)
+- [Source Workflow JSON Schema](https://palimpsest.info/protocol/source-workflow-v1.schema.json)
+- [Editorial Readiness JSON Schema](https://palimpsest.info/protocol/editorial-readiness-v1.schema.json)
 
 ## The Verifiable Eval Registry
 
@@ -178,6 +196,7 @@ leads are excluded from the public surface.
 - [Evidence Wire](https://palimpsest.info/news/wire/): versioned RSS/Atom event dossiers with per-source coverage receipts, source independence and scan-linked corroboration
 - [China Economic Pulse](https://palimpsest.info/news/economy/): revision-safe official, market and physical-telemetry state with coverage gates and honest abstention
 - [Investigations Desk](https://palimpsest.info/news/investigations/): review-gated research leads with source receipts, counterevidence, limitations, falsifiers and explicit publication gates
+- [Reporting Standards](https://palimpsest.info/news/standards/): public readiness receipts for primary evidence, corroboration, protected human reporting and publication gates
 - [OSINT China](https://palimpsest.info/osint-china.html): the continuous public roll-up across every China-facing signal, including per-source freshness, coverage failures and the complete machine-readable bundle
 - [Evidence Atlas](https://palimpsest.info/data.html): searchable inventory of every public dataset, its measurement layer, collection mode, freshness, geographic scope, rights, limitations, latest file and history; also published as [catalog JSON](https://palimpsest.info/readings/catalog.json), [DCAT/schema.org JSON-LD](https://palimpsest.info/readings/catalog.jsonld), and a [Frictionless Data Package](https://palimpsest.info/datapackage.json)
 - [Observatory](https://palimpsest.info/dashboards/ddti_observatory.html): live fear index, topic network, provenance-on-pull

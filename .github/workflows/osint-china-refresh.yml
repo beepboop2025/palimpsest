@@ -59,6 +59,9 @@ jobs:
           python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
+          python -m scripts.build_network_rounds
+          python -m scripts.build_corroboration
+          python -m scripts.build_editorial_readiness
           python -m scripts.build_newsroom
           python -m scripts.build_data_catalog
 
@@ -76,6 +79,11 @@ jobs:
             tests/test_economic_pulse.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
+            tests/test_primary_documents.py \
+            tests/test_corroboration.py \
+            tests/test_network_rounds.py \
+            tests/test_source_workflow.py \
+            tests/test_editorial_readiness.py \
             tests/test_structured_newsroom.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
@@ -97,6 +105,11 @@ jobs:
             readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
+            readings/primary-documents-latest.json \
+            readings/corroboration-latest.json \
+            readings/network-rounds-latest.json \
+            readings/source-workflow-latest.json \
+            readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
@@ -157,6 +170,9 @@ jobs:
           python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
+          python -m scripts.build_network_rounds
+          python -m scripts.build_corroboration
+          python -m scripts.build_editorial_readiness
           python -m scripts.build_newsroom
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
@@ -173,6 +189,11 @@ jobs:
             tests/test_economic_pulse.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
+            tests/test_primary_documents.py \
+            tests/test_corroboration.py \
+            tests/test_network_rounds.py \
+            tests/test_source_workflow.py \
+            tests/test_editorial_readiness.py \
             tests/test_structured_newsroom.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
@@ -195,6 +216,11 @@ jobs:
             readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
+            readings/primary-documents-latest.json \
+            readings/corroboration-latest.json \
+            readings/network-rounds-latest.json \
+            readings/source-workflow-latest.json \
+            readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
@@ -256,6 +282,9 @@ jobs:
           python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
+          python -m scripts.build_network_rounds
+          python -m scripts.build_corroboration
+          python -m scripts.build_editorial_readiness
           python -m scripts.build_newsroom
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
@@ -272,6 +301,11 @@ jobs:
             tests/test_economic_pulse.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
+            tests/test_primary_documents.py \
+            tests/test_corroboration.py \
+            tests/test_network_rounds.py \
+            tests/test_source_workflow.py \
+            tests/test_editorial_readiness.py \
             tests/test_structured_newsroom.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
@@ -294,6 +328,11 @@ jobs:
             readings/china-economic-pulse-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
+            readings/primary-documents-latest.json \
+            readings/corroboration-latest.json \
+            readings/network-rounds-latest.json \
+            readings/source-workflow-latest.json \
+            readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \

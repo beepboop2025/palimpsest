@@ -115,7 +115,13 @@ def test_json_feed_rss_and_sitemap_are_parseable_and_complete():
 
     sitemap = ET.fromstring(build_newsroom.build_sitemap(feed))
     namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    assert len(sitemap.findall("s:url", namespace)) == feed["n_stories"] + 1
+    urls = sitemap.findall("s:url", namespace)
+    assert len(urls) == feed["n_stories"] + 2
+    assert any(
+        node.find("s:loc", namespace).text
+        == "https://palimpsest.info/news/standards/"
+        for node in urls
+    )
 
 
 def test_publication_is_idempotent_and_check_detects_drift(tmp_path):

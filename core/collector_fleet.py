@@ -102,6 +102,7 @@ SNAPSHOT_OUTPUTS = {
     "believability": "readings/believability-latest.json",
     "cloudflare-radar-tcp": "readings/cloudflare-radar-tcp-latest.json",
     "research-corpus": "readings/research-corpus-latest.json",
+    "primary-documents": "readings/primary-documents-latest.json",
 }
 
 
@@ -145,6 +146,7 @@ _STANDARD = {
     "research-corpus": Cadence(
         31, "*/12", expires_s=8 * 3600, interval_s=12 * 3600,
     ),
+    "primary-documents": Cadence(37, 2, expires_s=12 * 3600),
 }
 
 
@@ -191,6 +193,9 @@ _VIGOROUS = {
     "research-corpus": Cadence(
         31, "*/6", expires_s=4 * 3600, interval_s=6 * 3600,
     ),
+    # Official release/catalog pages update at most daily. More frequent reads
+    # would add upstream traffic without producing an additional vintage.
+    "primary-documents": Cadence(37, 2, expires_s=12 * 3600),
 }
 
 
@@ -364,6 +369,7 @@ _COUNT_PATHS = {
     "believability": ("n_components_present",),
     "cloudflare-radar-tcp": ("geographies",),
     "research-corpus": ("n_sources",),
+    "primary-documents": ("n_documents",),
 }
 
 
@@ -374,7 +380,11 @@ def _observation(path: Path, source: str | None = None) -> tuple[str | None, int
         doc = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         return None, 0
-    token = doc.get("generated_at") or doc.get("as_of") or doc.get("timestamp")
+    token = (
+        doc.get("last_successful_at")
+        if source == "primary-documents"
+        else doc.get("generated_at") or doc.get("as_of") or doc.get("timestamp")
+    )
     if source == "cny-fix-gap":
         return str(token) if token is not None else None, 1 if token is not None else 0
     current = doc
@@ -442,7 +452,16 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         main()
     elif name == "inside-view":
         from scripts.inside_view_pull import main
+        from scripts.build_network_rounds import main as build_rounds
+
         main()
+        code = build_rounds([
+            "--inside-view", str(root / SNAPSHOT_OUTPUTS[name]),
+            "--outage", str(root / SNAPSHOT_OUTPUTS["ioda-outages"]),
+            "--output", str(root / "readings" / "network-rounds-latest.json"),
+        ])
+        if code:
+            raise RuntimeError("network-round ledger build failed")
     elif name == "in-path-interference":
         from scripts.in_path_interference_pull import main
         main()
@@ -497,6 +516,12 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         code = main(["--readings", str(root / "readings")])
         if code:
             raise RuntimeError("research-corpus collector failed")
+    elif name == "primary-documents":
+        from scripts.primary_documents_pull import main
+
+        code = main(["--output", str(root / SNAPSHOT_OUTPUTS[name])])
+        if code:
+            raise RuntimeError("primary-document collector failed")
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 

@@ -42,6 +42,17 @@ points.
 When a gate does not pass, the public case remains in evidence gathering or
 abstains. Unknown fields are never expanded into narrative prose.
 
+The newsroom-wide v2 profile adds the reporting requirements that cannot be
+inferred from a case file alone: at least one captured primary release,
+historical or comparable context, a material chart/map/timeline,
+sentence-level citations, a verified expert and relevant affected voice,
+human editing and independent fact-checking. Investigations also require a
+skeptical expert, completed right-to-reply for allegations, visible updates,
+an assessed falsification condition and protected-source safety review. These
+checks are recomputed in `/readings/editorial-readiness-latest.json` and shown
+at `/news/standards/`. Passing authorizes editorial consideration only; no gate
+can trigger automatic publication.
+
 ## Anatomy of a public case
 
 Every case page exposes:
@@ -94,6 +105,11 @@ physical-risk review.
 - `/news/investigations/{case-id}/revisions/{version-id}.json` — an immutable
   revision.
 - `/readings/investigations-latest.json` — the validated investigations desk.
+- `/news/standards/` — the human-readable newsroom quality gate.
+- `/readings/editorial-readiness-latest.json` — recomputed wire, explainer and
+  investigation readiness.
+- `/readings/source-workflow-latest.json` — privacy-minimized aggregate source
+  readiness; never interview text or identity.
 
 The newsroom renderer builds every output in memory and validates the complete
 investigations document before it writes. If the latest structured record is

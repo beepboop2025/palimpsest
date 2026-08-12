@@ -228,6 +228,33 @@ def test_connection_is_closed_even_when_a_hop_is_refused(monkeypatch):
     assert conns and all(c.closed for c in conns)
 
 
+def test_transport_failure_tries_the_next_already_validated_address(monkeypatch):
+    attempts = []
+    response = _FakeBodyResponse(b"official release")
+
+    monkeypatch.setattr(
+        sf,
+        "_validate_public",
+        lambda _host: [
+            (sf.socket.AF_INET6, "2001:4860:4860::8888"),
+            (sf.socket.AF_INET, "93.184.216.34"),
+        ],
+    )
+
+    def fake_connect(scheme, host, ip, port, timeout, ctx):
+        attempts.append(ip)
+        if len(attempts) == 1:
+            raise ConnectionResetError("first public route reset")
+        return _FakeConn(response)
+
+    monkeypatch.setattr(sf, "_connect", fake_connect)
+
+    assert safe_fetch_bytes("https://example.com/release", timeout=1.0) == (
+        b"official release"
+    )
+    assert attempts == ["2001:4860:4860::8888", "93.184.216.34"]
+
+
 def test_bytes_seam_preserves_invalid_utf8_for_a_strict_caller(monkeypatch):
     raw = b'{"title":"\xff"}'
     monkeypatch.setattr(

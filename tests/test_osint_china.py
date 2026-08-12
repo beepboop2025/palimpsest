@@ -94,12 +94,17 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert {spec.filename for spec in mod.SIGNALS} >= {"latest.json", "anchors-latest.json"}
     assert mod.EXCLUDED_LATEST_FILES == {
         "china-economic-pulse-latest.json",
+        "corroboration-latest.json",
+        "editorial-readiness-latest.json",
         "eval-registry-latest.json",
         "investigations-latest.json",
+        "network-rounds-latest.json",
         "newswire-latest.json",
         "newsroom-latest.json",
+        "primary-documents-latest.json",
         "research-corpus-latest.json",
         "refusal-drift-latest.json",
+        "source-workflow-latest.json",
     }
 
 
@@ -484,12 +489,27 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     economic_pulse = text.index("python -m scripts.build_economic_pulse")
     build = text.index("python -m scripts.build_osint_china")
     investigations = text.index("python -m scripts.build_investigations")
+    network_rounds = text.index("python -m scripts.build_network_rounds")
+    corroboration = text.index("python -m scripts.build_corroboration")
+    editorial = text.index("python -m scripts.build_editorial_readiness")
     newsroom = text.index("python -m scripts.build_newsroom")
     catalog = text.index("python -m scripts.build_data_catalog")
     tests = text.index("tests/test_osint_china.py")
     surface = text.index("python scripts/verify_public_surface.py")
     commit = text.index("git commit")
-    assert economic_pulse < build < investigations < newsroom < catalog < tests < surface < commit
+    assert (
+        economic_pulse
+        < build
+        < investigations
+        < network_rounds
+        < corroboration
+        < editorial
+        < newsroom
+        < catalog
+        < tests
+        < surface
+        < commit
+    )
     assert "readings/osint-china-latest.json" in text
     assert "python -m scripts.newswire_pull" not in text
 
@@ -511,6 +531,9 @@ def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
     build_blocks = re.findall(
         r"python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
+        r"\s*python -m scripts\.build_network_rounds\n"
+        r"\s*python -m scripts\.build_corroboration\n"
+        r"\s*python -m scripts\.build_editorial_readiness\n"
         r"\s*python -m scripts\.build_newsroom\n"
         r"\s*python -m scripts\.build_data_catalog",
         text,
