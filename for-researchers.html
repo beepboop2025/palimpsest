@@ -3,17 +3,60 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palimpsest — Data &amp; Methods for Researchers and Journalists</title>
-<meta name="description" content="How to use, verify, and cite Palimpsest's live censorship data. Open datasets, documented methodology, honest scope, and citation formats for reporters, think tanks, and researchers.">
+<title>China Internet Censorship Data and AI Evaluation Evidence | Palimpsest</title>
+<meta name="description" content="Free China internet censorship data, Great Firewall measurements, deletion evidence and tamper-evident AI refusal evaluations—with methods, limits and citation-ready source files.">
 <link rel="canonical" href="https://palimpsest.info/for-researchers.html">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Palimpsest — Data &amp; Methods for Researchers and Journalists">
-<meta property="og:description" content="Live, open censorship datasets with documented method and honest scope. Built to be cited.">
+<meta property="og:title" content="China Internet Censorship Data and AI Evaluation Evidence">
+<meta property="og:description" content="Great Firewall measurements, deletion evidence and sealed AI refusal evaluations with source files, methods and explicit limits.">
 <meta property="og:url" content="https://palimpsest.info/for-researchers.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta property="article:modified_time" content="2026-08-13">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://palimpsest.info/for-researchers.html#article",
+      "headline": "China internet censorship data and AI evaluation evidence",
+      "description": "A research guide to Palimpsest's China internet censorship measurements, deletion evidence and tamper-evident AI refusal evaluations.",
+      "dateModified": "2026-08-13",
+      "mainEntityOfPage": "https://palimpsest.info/for-researchers.html",
+      "author": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+      "publisher": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://palimpsest.info/for-researchers.html#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What data can measure the Great Firewall of China?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Palimpsest publishes separate network measurements from OONI open data, Censored Planet and volunteer DNS probes. The sources use different vantage points and methods, so Palimpsest reports disagreement as an interval and does not turn unlike measurements into a single national blocking rate."}
+        },
+        {
+          "@type": "Question",
+          "name": "How can internet deletion and censorship be measured?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Palimpsest treats documented removals as observations, ranks changing censor attention and novelty, and publishes the source samples and time series beside each reading. A removal record is evidence of observed deletion, not proof of motive or a complete census of all censorship."}
+        },
+        {
+          "@type": "Question",
+          "name": "What does an AI model refusal rate prove?",
+          "acceptedAnswer": {"@type": "Answer", "text": "A refusal rate describes behavior on a frozen prompt suite at a stated time. It does not by itself prove why a model refused, how every user will be treated or that results from different suites are directly comparable. Palimpsest seals prompts and transcripts so the reported labels can be checked."}
+        }
+      ]
+    }
+  ]
+}
+</script>
 
 <meta name="theme-color" content="#0b1622">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
@@ -34,6 +77,11 @@
 
   .fr-head { padding: clamp(32px, 6vw, 62px) 0 2px; }
   .btn-row { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 0 6px; }
+  .answer-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .answer-grid article { padding: 17px 18px; }
+  .answer-grid h3 { color: var(--tk-text-0, #fff); font-size: 15px; line-height: 1.4; margin: 0 0 8px; }
+  .answer-grid p { margin: 0; }
+  @media (max-width: 760px) { .answer-grid { grid-template-columns: minmax(0, 1fr); } }
 
   /* ---- prose. Scoped to unclassed elements so a .ps-* class always wins. ---- */
   .fr p:not([class]) { color: var(--tk-text-2, #94a3b8); font-size: 14.5px; line-height: 1.62; max-width: 72ch; }
@@ -220,8 +268,8 @@
 
   <header class="fr-head ps-recede">
   <p class="ps-kicker">For researchers, journalists and analysts</p>
-  <h1 class="ps-h1">Palimpsest data and methods</h1>
-  <p class="ps-lede">Palimpsest is an open, public-good observatory that measures how authoritarian states, and their state-aligned AI models, censor. It treats deletion as data and watches the censor, never the censored. Everything below is free to use and built to be cited. If a number is here, its raw evidence is here too.</p>
+  <h1 class="ps-h1">China internet censorship data and AI evaluation evidence</h1>
+  <p class="ps-lede">Palimpsest is a free public-good observatory for researching the Great Firewall, documented deletion and AI-model refusal behavior. It keeps network, content and model evidence separate, publishes source files and limitations beside every reading, and watches the censor—never the censored.</p>
 
   <div class="btn-row">
     <a class="ps-btn" href="/osint-china.html">Open OSINT China</a>
@@ -231,6 +279,24 @@
   </div>
 
   </header>
+
+  <section class="ps-defer" id="plain-answers">
+  <h2 class="ps-section-head">Plain answers for researchers</h2>
+  <div class="answer-grid ps-stagger">
+    <article class="ps-p1 ps-reveal">
+      <h3>What data can measure the Great Firewall of China?</h3>
+      <p>Use more than one vantage. Palimpsest publishes separate measurements from <a href="/readings/ooni-gfw.html">OONI and Censored Planet</a> and from <a href="/readings/inside-view.html">volunteer DNS probes</a>. When methods disagree, the result is an interval—not a fabricated national rate.</p>
+    </article>
+    <article class="ps-p1 ps-reveal">
+      <h3>How can internet deletion and censorship be measured?</h3>
+      <p>Documented removals can be treated as observations, then compared over time for changing attention and novelty. The <a href="/dashboards/ddti_observatory.html">DDTI Observatory</a> exposes the samples behind each reading. A deletion does not, by itself, prove motive or measure every act of censorship.</p>
+    </article>
+    <article class="ps-p1 ps-reveal">
+      <h3>What does an AI model refusal rate prove?</h3>
+      <p>It describes behavior on a frozen prompt suite at a stated time. It does not prove motive or universal behavior. The <a href="/readings/eval-registry.html">Eval Registry</a> seals prompts, outputs and labels so others can verify the record and avoid comparing incompatible suites.</p>
+    </article>
+  </div>
+  </section>
 
   <section class="ps-defer" id="signals">
   <h2 class="ps-section-head">Live signals</h2>

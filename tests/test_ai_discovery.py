@@ -133,6 +133,27 @@ def test_scamshield_public_surfaces_share_one_bounded_contract():
     assert "not guilt" in combined
 
 
+def test_scamshield_guide_is_crawlable_citable_and_safety_bounded():
+    guide_url = "https://palimpsest.info/guides/telegram-scam-message-checker/"
+    guide = (
+        ROOT / "guides" / "telegram-scam-message-checker" / "index.html"
+    ).read_text(encoding="utf-8")
+    sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+    card = _json("product-card.json")
+
+    assert f'<link rel="canonical" href="{guide_url}">' in guide
+    assert guide_url in sitemap
+    assert guide_url in llms
+    assert card["access"]["scamshield_public_guide"] == guide_url
+    assert "ScamShield by Palimpsest" in guide
+    assert "not a finding of guilt" in guide
+    assert "not the same as safe" in guide
+    assert "https://www.cybercrime.gov.in/" in guide
+    assert '"@type": "SoftwareApplication"' in guide
+    assert '"@type": "FAQPage"' in guide
+
+
 def test_indexnow_ownership_key_is_self_consistent():
     keys = list(ROOT.glob("*.txt"))
     key_file = ROOT / "e4159f59fe77cfbdc21709c132ca3753.txt"
