@@ -33,7 +33,10 @@ InaccessiblePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/newswire /var
 PrivateTmp=true
 PrivateDevices=true
 NoNewPrivileges=true
-CapabilityBoundingSet=
+# The broker transfers broker-created staging paths to GID 10001 and seals
+# completed members back to UID 0. Keep only the capability required for that
+# ownership transition; the analysis service itself remains capability-free.
+CapabilityBoundingSet=CAP_CHOWN
 AmbientCapabilities=
 ProtectKernelTunables=true
 ProtectKernelModules=true

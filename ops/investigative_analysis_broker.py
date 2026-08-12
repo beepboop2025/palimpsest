@@ -406,9 +406,9 @@ class AnalysisBroker:
                     stage.mkdir(mode=0o1770)
                 except FileExistsError:
                     continue
-                os.chown(stage, 0, ANALYSIS_GID)
-                os.chmod(stage, 0o1770)
                 try:
+                    os.chown(stage, 0, ANALYSIS_GID)
+                    os.chmod(stage, 0o1770)
                     for child_name in ("inputs", "readings", "private"):
                         child = stage / child_name
                         child.mkdir(mode=0o770)

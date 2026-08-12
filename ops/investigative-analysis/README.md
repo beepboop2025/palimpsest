@@ -123,6 +123,12 @@ run-directory parent, preventing the analysis process from replacing a checked
 bind-mount path. Keep the bundle and unit files root-owned, and do not grant UID
 10001 write access to `/usr/local/libexec/palimpsest-analysis`.
 
+The broker's capability bounding set contains only `CAP_CHOWN`. It uses that
+capability inside its sole writable path to grant UID/GID 10001 access to a
+new staging tree, then seal every completed member back to root ownership before
+atomic promotion. Its ambient capability set is empty. The analysis service has
+an empty bounding set and never receives this capability.
+
 ## Verify
 
 ```sh

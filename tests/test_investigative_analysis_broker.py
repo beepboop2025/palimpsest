@@ -90,6 +90,30 @@ def test_request_reader_rejects_duplicates_and_oversize() -> None:
         )
 
 
+def test_prepare_removes_partial_stage_when_ownership_transition_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instance = _broker(tmp_path)
+    instance.runs_dir.mkdir()
+    monkeypatch.setattr(instance, "_require_runs_root", lambda: None)
+    monkeypatch.setattr(broker_module.secrets, "token_hex", lambda _size: "1" * 16)
+
+    def reject_chown(*_args, **_kwargs) -> None:
+        raise PermissionError("CAP_CHOWN unavailable")
+
+    monkeypatch.setattr(broker_module.os, "chown", reject_chown)
+
+    with pytest.raises(PermissionError, match="CAP_CHOWN unavailable"):
+        instance.dispatch(
+            {
+                "schema_version": broker_module.BROKER_SCHEMA,
+                "operation": "prepare",
+            }
+        )
+
+    assert not list(instance.runs_dir.iterdir())
+
+
 def test_run_operation_builds_only_the_fixed_networkless_command(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

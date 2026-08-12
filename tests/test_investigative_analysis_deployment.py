@@ -245,7 +245,9 @@ def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:
     assert "StandardOutput=socket" in broker_unit
     assert "ReadWritePaths=/var/lib/palimpsest-analysis/runs" in broker_unit
     assert "RestrictAddressFamilies=AF_UNIX" in broker_unit
-    assert "CapabilityBoundingSet=" in broker_unit
+    assert broker_unit.count("CapabilityBoundingSet=") == 1
+    assert "CapabilityBoundingSet=CAP_CHOWN" in broker_unit
+    assert "AmbientCapabilities=\n" in broker_unit
 
 
 def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> None:
@@ -261,6 +263,7 @@ def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> N
     assert "192 MiB (75%)" in documentation
     assert "Docker group is root-equivalent" in documentation
     assert "root-owned broker" in documentation
+    assert "CAP_CHOWN" in documentation
     assert "Environment variables that appear to override" in documentation
     assert "copied by rsync/SCP" in documentation
     assert "217/USER" in documentation
