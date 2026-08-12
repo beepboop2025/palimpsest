@@ -196,6 +196,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "tests/test_data_darkness.py",
         "tests/test_data_darkness_pull_publish.py",
         "tests/test_osint_china.py",
+        "tests/test_osint_china_page.py",
         "tests/test_economic_pulse.py",
         "tests/test_investigations.py",
         "tests/test_investigations_renderer.py",

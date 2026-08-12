@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-12T16:13:59Z",
+  "generated_at": "2026-08-12T16:25:12Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "7b0e0195d9da029880dd05f28e0b8e0f45312801",
+  "source_commit": "5b26f8b6fe28788c9056f3665ac3ecdefe236d2e",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -712,14 +712,14 @@
       "status": "live",
       "published_at": "2026-08-12T13:54:13Z",
       "modified_at": "2026-08-12T13:54:13Z",
-      "claim_fingerprint": "sha256:e42d522e1dff5171e41e4a49d04399850ae83070853aecab8a8847e46f9a0d83",
+      "claim_fingerprint": "sha256:75aa9022813b78b59d4090c13aab758e18f058e72c4aad8aa935ad11e059df78",
       "metric": {
         "label": "middlebox index",
         "value": 1.39,
         "unit": "percent",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "completed middlebox tests",
+          "value": 9726
         }
       },
       "claims": [
@@ -732,8 +732,8 @@
         "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
         "input": {
           "filename": "in-path-interference-latest.json",
-          "sha256": "6c2cbb5c478e8b9b174d66ef08e02f1ddba38af5d8508fb26c623836197e185a",
-          "bytes": 4226
+          "sha256": "7dcc99824b3e0cba5413b61ce713a54c39c1098a0ac3fae30e842057d7405520",
+          "bytes": 4264
         },
         "source_timestamp": "2026-08-12T13:54:13Z"
       },
@@ -807,7 +807,7 @@
       "slug": "inside-china-view",
       "url": "https://palimpsest.info/news/inside-china-view/",
       "signal_id": "inside-view",
-      "headline": "100% of the 11-domain mainland panel is blocked",
+      "headline": "100% of the 5-domain mainland panel is blocked",
       "dek": "Volunteer probes inside China are compared with a same-round external control before an answer is classified.",
       "section": "network",
       "order": 4,
@@ -816,20 +816,20 @@
       "status": "live",
       "published_at": "2026-08-12T14:02:03Z",
       "modified_at": "2026-08-12T14:02:03Z",
-      "claim_fingerprint": "sha256:c334fcba27212b56b191744279de1b7d3a14901cd39fdebbbd01a399adf63b55",
+      "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
       "metric": {
         "label": "blocked share",
         "value": 1.0,
         "unit": "ratio",
         "denominator": {
-          "label": "panel size",
-          "value": 11
+          "label": "qualifying answered measurement domains",
+          "value": 5
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current controlled panel reports 100% blocked responses across 11 tested domains."
+          "statement": "The current controlled panel reports 100% blocked responses across 5 tested domains."
         }
       ],
       "evidence": {
