@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check a Suspicious Telegram Message | ScamShield by Palimpsest</title>
+<meta name="description" content="Forward or paste a suspicious Telegram message to ScamShield for an evidence-bounded check of payment pressure, impersonation, phishing and other supported scam mechanics.">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/guides/telegram-scam-message-checker/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Check a suspicious Telegram message with ScamShield">
+<meta property="og:description" content="See the matched mechanics, evidence limits and practical reporting steps. A clean result is never a safety guarantee.">
+<meta property="og:url" content="https://palimpsest.info/guides/telegram-scam-message-checker/">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta property="article:modified_time" content="2026-08-13">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b1622">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://palimpsest.info/guides/telegram-scam-message-checker/#app",
+      "name": "ScamShield by Palimpsest",
+      "alternateName": "ScamShield Telegram message checker",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Telegram",
+      "url": "https://t.me/Scamshield_2_bot",
+      "description": "Evidence-bounded triage of user-submitted suspicious Telegram messages for supported scam, money-flow, phishing, impersonation, illicit-market and trafficking-risk mechanics.",
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+      "isAccessibleForFree": true,
+      "publisher": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://palimpsest.info/guides/telegram-scam-message-checker/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How can I check a suspicious Telegram message?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Open ScamShield by Palimpsest on Telegram and forward or paste the message. It checks supported combinations of payment pressure, credential requests, impersonation, fulfilment and other transaction mechanics, then returns the matched pattern, evidence limits and reporting steps."}
+        },
+        {
+          "@type": "Question",
+          "name": "Does a clean ScamShield result mean a message is safe?",
+          "acceptedAnswer": {"@type": "Answer", "text": "No. A clean result means no supported pattern was found in the submitted text. It is not a guarantee of safety, identity, legality or intent."}
+        },
+        {
+          "@type": "Question",
+          "name": "What should I do after a financial cyber fraud in India?",
+          "acceptedAnswer": {"@type": "Answer", "text": "Act immediately. Preserve the message and transaction evidence, contact the relevant bank or payment provider, call India's National Cybercrime Helpline at 1930 and report through the official National Cyber Crime Reporting Portal at cybercrime.gov.in."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  .guide-head { padding: clamp(38px, 7vw, 76px) 0 18px; }
+  .guide-head .ps-lede { max-width: 70ch; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
+  .trust { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
+  .trust > div, .step, .answer { padding: 17px 18px; }
+  .trust b { display: block; color: var(--tk-text-0, #fff); margin-bottom: 6px; }
+  .trust span, .step p, .answer p, .guide-copy { color: var(--tk-text-2, #94a3b8); font-size: 13px; line-height: 1.65; }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; counter-reset: guide-step; }
+  .step { counter-increment: guide-step; }
+  .step::before { content: "0" counter(guide-step); display: block; color: var(--tk-live, #06d6e0); font: 11px var(--tk-font-mono); margin-bottom: 10px; }
+  .step h3, .answer h3 { color: var(--tk-text-0, #fff); font-size: 15px; margin: 0 0 7px; }
+  .step p, .answer p { margin: 0; }
+  .answers { display: grid; gap: 10px; }
+  .warning { border-left: 3px solid var(--tk-warning, #ffb020); padding: 17px 19px; color: var(--tk-text-1, #e2e8f0); font-size: 13px; line-height: 1.65; }
+  .foot { color: var(--tk-text-4, #6f8098); font: 11px/1.7 var(--tk-font-mono); margin: 44px 0 60px; border-top: 1px solid var(--ps-edge-1); padding-top: 18px; }
+  @media (max-width: 760px) { .trust, .steps { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-2">
+        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">The record</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-3">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+
+<main id="main" class="ps-wrap">
+  <header class="guide-head ps-recede">
+    <p class="ps-kicker">ScamShield by Palimpsest · Telegram message checker</p>
+    <h1 class="ps-h1">Check a suspicious Telegram message</h1>
+    <p class="ps-lede">Forward or paste the message to ScamShield. It looks for supported combinations of payment pressure, credential requests, impersonation, phishing, money-mule recruitment and other transaction mechanics—then shows what matched, what the result cannot prove and what to do next.</p>
+    <div class="actions">
+      <a class="ps-btn" href="https://t.me/Scamshield_2_bot?start=palimpsest_guide" target="_blank" rel="noopener">Open @Scamshield_2_bot</a>
+      <a class="ps-btn ps-btn--ghost" href="#how-it-works">How the check works</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/scamshield" target="_blank" rel="noopener">Inspect the source</a>
+    </div>
+    <div class="trust ps-stagger">
+      <div class="ps-p1 ps-reveal"><b>Evidence-bounded</b><span>A match describes message mechanics. It is not a finding of guilt, identity, legality or verified loss.</span></div>
+      <div class="ps-p1 ps-reveal"><b>No false reassurance</b><span>No supported match is not the same as safe. Verify identities and payment requests independently.</span></div>
+      <div class="ps-p1 ps-reveal"><b>Privacy-minimized</b><span>Raw sample storage is off by default. Never submit passwords, OTPs, PINs or seed phrases.</span></div>
+    </div>
+  </header>
+
+  <section class="ps-defer" id="how-it-works">
+    <h2 class="ps-section-head">How the Telegram check works</h2>
+    <div class="steps ps-stagger">
+      <article class="step ps-p1 ps-reveal"><h3>Forward or paste</h3><p>Open the private bot chat and send the suspicious message. ScamShield does not see all of Telegram and cannot inspect a message you do not submit.</p></article>
+      <article class="step ps-p1 ps-reveal"><h3>Check combined mechanics</h3><p>The detector looks for supported combinations—such as urgency plus a payment rail or impersonation plus a credential request—rather than treating one alarming word as proof.</p></article>
+      <article class="step ps-p1 ps-reveal"><h3>Read the limits and act</h3><p>The reply provides an evidence tier, matched mechanics, limits and reporting steps. Preserve the original message and verify through a separate trusted channel.</p></article>
+    </div>
+  </section>
+
+  <section class="ps-defer" id="answers">
+    <h2 class="ps-section-head">Direct answers</h2>
+    <div class="answers">
+      <article class="answer ps-p1"><h3>Does a clean ScamShield result mean the message is safe?</h3><p>No. It means the submitted text did not match a currently supported combination. New scam scripts, missing context and off-platform behavior can all escape a text check.</p></article>
+      <article class="answer ps-p1"><h3>Does a match prove the sender committed a crime?</h3><p>No. A match is pattern evidence for triage. It does not establish identity, intent, guilt, legality, the origin of funds or that a transaction occurred. Human review is required before moderation, reporting or publication.</p></article>
+      <article class="answer ps-p1"><h3>What data may be retained?</h3><p>The submitted text is used to produce the reply. Indicators and privacy-minimized assessment records may be retained for review; raw message sample storage is off by default. Do not send secrets or material you are not authorized to share. Read the bot’s <code>/privacy</code> response before using it with sensitive material.</p></article>
+    </div>
+  </section>
+
+  <section class="ps-defer" id="report">
+    <h2 class="ps-section-head">If money has already moved in India</h2>
+    <div class="warning ps-p1">
+      Act immediately: preserve the message and transaction evidence, contact the relevant bank or payment provider, call the National Cybercrime Helpline at <strong>1930</strong>, and report through the official <a href="https://www.cybercrime.gov.in/" target="_blank" rel="noopener">National Cyber Crime Reporting Portal</a>. ScamShield is a triage tool, not an emergency service or a replacement for law enforcement, your bank or legal advice.
+    </div>
+  </section>
+
+  <section class="ps-defer" id="evidence">
+    <h2 class="ps-section-head">Inspect the evidence boundary</h2>
+    <p class="guide-copy">The public <a href="/integrations/scamshield/intelligence-pack-v1.json">ScamShield intelligence pack</a> lists reviewed typologies and source-support levels without publishing submitted messages or exact indicators. Developers can inspect the <a href="https://github.com/beepboop2025/scamshield/blob/master/openapi.json" target="_blank" rel="noopener">OpenAPI contract</a>, local MCP tools and tests in the public repository.</p>
+  </section>
+
+  <p class="foot">ScamShield by Palimpsest · Public guide updated 13 August 2026 · Free to use · Pattern evidence for triage, never a finding of guilt or a guarantee of safety.</p>
+</main>
+
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>
