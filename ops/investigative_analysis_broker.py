@@ -17,7 +17,13 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from core.investigative_container_contract import (
+# Isolated mode deliberately omits the script directory from ``sys.path``.
+# Add only the resolved, revision-bound bundle that contains this root-owned
+# entrypoint; the bundle verifier authenticates every imported file first.
+_BUNDLE_IMPORT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(_BUNDLE_IMPORT_ROOT))
+
+from core.investigative_container_contract import (  # noqa: E402
     COMMIT_PATTERN,
     CONTAINER_NAME,
     IMAGE_ID_PATTERN,

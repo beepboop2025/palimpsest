@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import io
+import json
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,6 +13,38 @@ from ops import investigative_analysis_broker as broker_module
 
 COMMIT = "a" * 40
 IMAGE_ID = "sha256:" + "b" * 64
+
+
+def test_root_entrypoint_imports_its_verified_bundle_under_isolated_python(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    (bundle / "core").mkdir(parents=True)
+    for source, target in (
+        (Path(broker_module.__file__), bundle / "investigative_analysis_broker.py"),
+        (
+            Path(broker_module.__file__).parents[1]
+            / "core"
+            / "investigative_container_contract.py",
+            bundle / "core" / "investigative_container_contract.py",
+        ),
+        (
+            Path(broker_module.__file__).parents[1] / "core" / "__init__.py",
+            bundle / "core" / "__init__.py",
+        ),
+    ):
+        shutil.copy2(source, target)
+
+    completed = subprocess.run(
+        [sys.executable, "-I", str(bundle / "investigative_analysis_broker.py")],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout)["ok"] is False
+    assert b"ModuleNotFoundError" not in completed.stderr
 
 
 def _broker(tmp_path: Path) -> broker_module.AnalysisBroker:
