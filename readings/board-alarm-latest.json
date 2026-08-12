@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-11T19:49:28.533794+00:00",
-  "board_e_value": 30.537,
+  "generated_at": "2026-08-12T03:14:08.763105+00:00",
+  "board_e_value": 59.142,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,29 +13,29 @@
   },
   "layers": {
     "network": {
-      "e": 18.665,
+      "e": 19.606,
       "n_signals": 4,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "censored_planet": 41.831,
         "ioda_outages": 1.0,
-        "ooni_gfw": 27.444,
+        "ooni_gfw": 31.21,
         "tor_bridge_cn": 4.383
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 43.541,
+      "e": 95.356,
       "n_signals": 6,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 5.003,
-        "ddti_novelty": 239.563,
-        "ddti_threat": 4.065,
-        "gdelt_containment": 9.726,
-        "github_refuge": 1.893,
+        "ddti_novelty": 555.65,
+        "ddti_threat": 3.332,
+        "gdelt_containment": 5.376,
+        "github_refuge": 1.775,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
@@ -59,34 +59,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 27.4444,
-      "n": 136,
+      "e": 31.2098,
+      "n": 137,
       "direction": "down",
-      "robust_z": -1.01,
+      "robust_z": -1.27,
       "driver_side": "down",
-      "readings_since_alarm": 85,
+      "readings_since_alarm": 86,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 4.0646,
-      "n": 254,
+      "e": 3.3318,
+      "n": 256,
       "direction": "down",
-      "robust_z": -0.34,
+      "robust_z": -0.47,
       "driver_side": "up",
-      "readings_since_alarm": 15,
+      "readings_since_alarm": 17,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "watch",
-      "e": 239.5626,
-      "n": 254,
+      "e": 555.6501,
+      "n": 256,
       "direction": "down",
       "robust_z": -9.44,
       "driver_side": "down",
-      "readings_since_alarm": 82,
+      "readings_since_alarm": 84,
       "n_alarms_in_history": 1,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -103,10 +103,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 9.7256,
-      "n": 144,
-      "direction": "up",
-      "robust_z": 1.35,
+      "e": 5.3764,
+      "n": 145,
+      "direction": "down",
+      "robust_z": -1.35,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -114,8 +114,8 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 1.8927,
-      "n": 71,
+      "e": 1.7753,
+      "n": 72,
       "direction": "flat",
       "robust_z": 0.0,
       "driver_side": "down",
@@ -135,8 +135,14 @@
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation"
     },
     "bleedthrough_capacity": {
-      "state": "no_data",
-      "n": 0,
+      "state": "warming_up",
+      "e": 0.0,
+      "n": 1,
+      "direction": "flat",
+      "robust_z": null,
+      "driver_side": null,
+      "readings_since_alarm": null,
+      "n_alarms_in_history": 0,
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
@@ -153,7 +159,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 93,
+      "n": 94,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -164,7 +170,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 94,
+      "n": 95,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -235,7 +241,7 @@
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 6.1,
+      "age_hours": 13.5,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
