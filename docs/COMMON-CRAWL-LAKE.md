@@ -123,6 +123,20 @@ The context document contains no generated headline or article body. Its model
 features describe review priority, not truth. Automatic publication is
 prohibited, and causal language remains prohibited without a declared design.
 
+The configured editorial policy intentionally favors distinctive, defensible
+leads. Forty points come from declared archive-anomaly magnitude and breadth,
+35 from evidence strength and independent evidence groups, and 15 from live
+linked instruments. A primary- or measurement-backed archive anomaly receives
+a 10-point under-coverage bonus when only one or two independent groups cover
+it. This is a discovery proxy, not proof that no other publisher has the story;
+the output meaning explicitly disclaims global exclusivity.
+
+The score orders the private human-review queue only. Editors still determine
+public importance, seek missing perspectives and right of reply, verify every
+claim, and apply the existing publication gate. Strong writing and complete
+coverage are article-level editorial responsibilities and are never inferred
+from this metadata score.
+
 ## Honest limitations
 
 Common Crawl is very large but not complete. Link popularity, crawl seeds,

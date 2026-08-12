@@ -712,8 +712,9 @@ def test_rss_context_join_is_point_in_time_structured_and_never_auto_publishes(t
     assert event["event_id"] == "event-" + "1" * 24
     assert event["automatic_publication_eligible"] is False
     assert event["relation"] == "context-not-causation"
-    assert event["editorial_priority"]["status"] == "unconfigured-human-policy"
-    assert event["editorial_priority"]["score"] is None
+    assert event["editorial_priority"]["status"] == "configured"
+    assert 0 <= event["editorial_priority"]["score"] <= 100
+    assert "global exclusivity" in event["editorial_priority"]["meaning"]
     assert event["signal_context"][0]["input_sha256"] == "a" * 64
     assert any(item["target_id"] == "pbc" for item in event["archive_context"])
     assert all(item["available_at"] <= event["published_at"] for item in event["archive_context"])
