@@ -12,7 +12,7 @@
         "pipeline:palimpsest-inside-view",
         "publisher:ooni"
       ],
-      "paragraph": "OONI anomaly index reports 57.6 percent across 245,883 measurements, OONI in-path middlebox index reports 1.39 percent across 9,726 completed middlebox tests, and Inside-China fixed DNS panel reports 1.0 ratio across 5 qualifying answered measurement domains. The three cited values do not share a population, protocol, test family, denominator, or even a common unit, while measurements with the same independence-group identifier count only once. The cited measurements record observable interference within their named methods, but they cannot be combined into one defensible national filtering percentage.",
+      "paragraph": "OONI anomaly index reports 58.7 percent across 274,785 completed measurements, OONI in-path middlebox index reports 1.39 percent across 9,726 completed middlebox tests, and Inside-China fixed DNS panel reports 1.0 ratio across 5 qualifying answered measurement domains. The three cited values do not share a population, protocol, test family, denominator, or even a common unit, while measurements with the same independence-group identifier count only once. The cited measurements record observable interference within their named methods, but they cannot be combined into one defensible national filtering percentage.",
       "sentences": [
         {
           "citation_ids": [
@@ -21,7 +21,7 @@
             "evidence-inside-view"
           ],
           "sentence_id": "network-denominators-sentence-1",
-          "text": "OONI anomaly index reports 57.6 percent across 245,883 measurements, OONI in-path middlebox index reports 1.39 percent across 9,726 completed middlebox tests, and Inside-China fixed DNS panel reports 1.0 ratio across 5 qualifying answered measurement domains."
+          "text": "OONI anomaly index reports 58.7 percent across 274,785 completed measurements, OONI in-path middlebox index reports 1.39 percent across 9,726 completed middlebox tests, and Inside-China fixed DNS panel reports 1.0 ratio across 5 qualifying answered measurement domains."
         },
         {
           "citation_ids": [
@@ -78,8 +78,8 @@
     "history": [
       {
         "change_type": "initial-publication",
-        "published_at": "2026-08-12T16:25:14Z",
-        "revision_id": "machinev-8a72599c80bdb677c7dd82bb",
+        "published_at": "2026-08-12T16:46:11Z",
+        "revision_id": "machinev-e48e7babd43237a3732faf49",
         "summary": "Initial deterministic revision for this exact cited input set."
       }
     ],
@@ -108,7 +108,7 @@
   "dek": "Multiple scoped instruments report observable network interference, while their incompatible panels, protocols and denominators rule out one national percentage.",
   "evaluation_receipt": {
     "citation_coverage": 1.0,
-    "evaluated_at": "2026-08-12T16:25:14Z",
+    "evaluated_at": "2026-08-12T16:46:11Z",
     "failed_gate_ids": [],
     "gates": [
       {
@@ -163,29 +163,29 @@
   },
   "evidence": [
     {
-      "artifact_generated_at": "2026-08-12T13:52:42Z",
+      "artifact_generated_at": "2026-08-12T16:38:25Z",
       "artifact_id": "ooni-gfw-latest.json",
-      "artifact_sha256": "cf1abfcf63068a8bd7f742c3917a5ca96f09dbd2e5489b9a24a4c93fbbd18d8b",
-      "artifact_url": "https://palimpsest.info/news/analysis/evidence/sha256-cf1abfcf63068a8bd7f742c3917a5ca96f09dbd2e5489b9a24a4c93fbbd18d8b.json",
+      "artifact_sha256": "29de34c5cb6f96a56caa6533e76c98bfaa694b8ac58977f18e9be828bfd6c16d",
+      "artifact_url": "https://palimpsest.info/news/analysis/evidence/sha256-29de34c5cb6f96a56caa6533e76c98bfaa694b8ac58977f18e9be828bfd6c16d.json",
       "denominator": {
-        "label": "measurements",
-        "value": 245883
+        "label": "completed measurements",
+        "value": 274785
       },
       "evidence_id": "evidence-ooni-gfw",
       "freshness": "fresh",
       "independence_group": "publisher:ooni",
       "integrity": "embedded-receipt-verified",
-      "interpretation_limit": "OONI's window covers completed measurements across several test families. An anomaly is not a confirmed block and the probe/test mix is not China's population.",
+      "interpretation_limit": "OONI's anomaly index uses completed measurements across several test families; the separate total-measurement count also includes failed attempts. An anomaly is not a confirmed block and the probe/test mix is not China's population.",
       "role": "support",
-      "selector": "json-pointer:/gfw_index;denominator-json-pointer:/n_measurements",
+      "selector": "json-pointer:/gfw_index;denominator-json-pointer:/n_completed_measurements",
       "source_class": "RESEARCH_DATASET",
       "source_id": "ooni-gfw",
-      "source_timestamp": "2026-08-12T13:52:42Z",
+      "source_timestamp": "2026-08-12T16:38:25Z",
       "title": "OONI anomaly index",
       "upstream_groups": [
         "publisher:ooni"
       ],
-      "value": 57.6,
+      "value": 58.7,
       "value_type": "percent"
     },
     {
@@ -342,9 +342,9 @@
     }
   ],
   "profile": "automated_evidence_analysis",
-  "published_at": "2026-08-12T16:25:14Z",
+  "published_at": "2026-08-12T16:46:11Z",
   "report_type": "AnalysisReport",
-  "revision_id": "machinev-8a72599c80bdb677c7dd82bb",
+  "revision_id": "machinev-e48e7babd43237a3732faf49",
   "safety": {
     "analysis_mode": "deterministic-machine-analysis",
     "human_interviews": "none",
@@ -359,10 +359,10 @@
   },
   "slug": "china-network-filtering-has-no-honest-single-rate",
   "source_case_id": "machine-source-80b1b871bed35fc29d24",
-  "source_revision_id": "machine-sourcev-5e631a6fcb94e1cc63da77d6",
+  "source_revision_id": "machine-sourcev-9ad103173cededf00754b88a",
   "status": "published",
   "status_reason": "Published because citations are complete, all 3 republished measurements are fresh and rights-eligible, and 2 lineage-independent groups meet the configured minimum of 2.",
   "title": "China's network filtering has no honest single rate",
-  "updated_at": "2026-08-12T16:25:14Z",
+  "updated_at": "2026-08-12T16:46:11Z",
   "url": "/news/analysis/china-network-filtering-has-no-honest-single-rate/"
 }

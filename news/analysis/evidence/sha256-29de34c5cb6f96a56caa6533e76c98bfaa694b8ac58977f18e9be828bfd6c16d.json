@@ -4,12 +4,12 @@
   "content_address": {
     "algorithm": "sha256",
     "scope": "original-input-bytes",
-    "sha256": "cf1abfcf63068a8bd7f742c3917a5ca96f09dbd2e5489b9a24a4c93fbbd18d8b"
+    "sha256": "29de34c5cb6f96a56caa6533e76c98bfaa694b8ac58977f18e9be828bfd6c16d"
   },
   "original_input": {
     "artifact_id": "ooni-gfw-latest.json",
-    "generated_at": "2026-08-12T13:52:42Z",
-    "sha256": "cf1abfcf63068a8bd7f742c3917a5ca96f09dbd2e5489b9a24a4c93fbbd18d8b",
+    "generated_at": "2026-08-12T16:38:25Z",
+    "sha256": "29de34c5cb6f96a56caa6533e76c98bfaa694b8ac58977f18e9be828bfd6c16d",
     "integrity": "embedded-receipt-verified"
   },
   "citations": [
@@ -19,22 +19,22 @@
       "role": "support",
       "source_class": "RESEARCH_DATASET",
       "source_id": "ooni-gfw",
-      "selector": "json-pointer:/gfw_index;denominator-json-pointer:/n_measurements",
-      "source_timestamp": "2026-08-12T13:52:42Z",
+      "selector": "json-pointer:/gfw_index;denominator-json-pointer:/n_completed_measurements",
+      "source_timestamp": "2026-08-12T16:38:25Z",
       "independence_group": "publisher:ooni",
       "upstream_groups": [
         "publisher:ooni"
       ],
       "value": {
         "type": "percent",
-        "value": 57.6
+        "value": 58.7
       },
       "denominator": {
         "type": "aggregate-count",
-        "label": "measurements",
-        "value": 245883
+        "label": "completed measurements",
+        "value": 274785
       },
-      "interpretation_limit": "OONI's window covers completed measurements across several test families. An anomaly is not a confirmed block and the probe/test mix is not China's population.",
+      "interpretation_limit": "OONI's anomaly index uses completed measurements across several test families; the separate total-measurement count also includes failed attempts. An anomaly is not a confirmed block and the probe/test mix is not China's population.",
       "freshness": "fresh",
       "rights": {
         "redistribution": "ATTRIBUTION_REQUIRED",
