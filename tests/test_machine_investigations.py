@@ -538,6 +538,10 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         value["cases"][0]["evidence"][0]["value"] += 1
         mutations.append(("evidence value", value))
 
+        denominator = copy.deepcopy(baseline)
+        denominator["cases"][0]["evidence"][0]["denominator"] = None
+        mutations.append(("proportional evidence without denominator", denominator))
+
         gates = copy.deepcopy(baseline)
         gates["cases"][1]["evaluation_receipt"]["gates"][1]["passed"] = True
         mutations.append(("gate result", gates))

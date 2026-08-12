@@ -110,7 +110,7 @@ _MACHINE_PROVIDER_LINKS = {
         "terms_url": "https://github.com/ooni/license/blob/master/data/LICENSE.md",
     },
     "Globalping": {
-        "source_url": "https://api.globalping.io/",
+        "source_url": "https://globalping.io/docs/api.globalping.io",
         "terms_url": "https://globalping.io/terms",
     },
     "Team Cymru": {

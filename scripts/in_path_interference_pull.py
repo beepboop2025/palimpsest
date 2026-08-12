@@ -15,7 +15,8 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from collectors.in_path_interference import (control_state, execution_blackouts,
-                                             family_index, observe_all)
+                                             family_completed_count, family_index,
+                                             observe_all)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
@@ -76,6 +77,7 @@ def main() -> None:
         return
 
     middlebox = family_index(observations, "MIDDLEBOX")
+    middlebox_completed = family_completed_count(observations, "MIDDLEBOX")
     transport = family_index(observations, "TRANSPORT")
     blackouts = execution_blackouts(observations)
 
@@ -92,6 +94,7 @@ def main() -> None:
                    "anomaly rate — it has an execution-failure rate, reported separately"),
         "control": control,
         "middlebox_index": middlebox,
+        "middlebox_completed_count": middlebox_completed,
         "middlebox_reading": _middlebox_reading(middlebox),
         "transport_index": transport,
         "transport_reading": _transport_reading(transport),

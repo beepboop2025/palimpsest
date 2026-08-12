@@ -409,27 +409,30 @@ def test_atomic_write_and_check_are_byte_deterministic(tmp_path: Path) -> None:
 
 def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -> None:
     root = _isolated_root(tmp_path)
-    machine_path = root / "readings/machine-investigations-latest.json"
-    _write_json(machine_path, {
-        "schema_version": "deliberately-not-parsed",
-        "generated_at": "2026-08-12T12:00:00Z",
-        "payload": "first",
-    })
+    publication_paths = {
+        "evidence-mesh": root / "readings/evidence-mesh-latest.json",
+        "machine-investigations": root / "readings/machine-investigations-latest.json",
+        "newsroom": root / "readings/newsroom-latest.json",
+    }
+    for path in publication_paths.values():
+        path.unlink(missing_ok=True)
     first = build_evidence_mesh(root, now=NOW)
 
-    _write_json(machine_path, {
-        "schema_version": "still-deliberately-not-parsed",
-        "generated_at": "2099-01-01T00:00:00Z",
-        "payload": "different bytes must not enter the mesh",
-    })
+    for path in publication_paths.values():
+        _write_json(path, {
+            "schema_version": "deliberately-not-parsed",
+            "generated_at": "2099-01-01T00:00:00Z",
+            "payload": "downstream bytes must not enter the mesh",
+        })
     second = build_evidence_mesh(root, now=NOW)
 
     assert canonical_json_bytes(first) == canonical_json_bytes(second)
-    machine = _resource(second, "palimpsest:catalog:machine-investigations")
-    assert machine["availability"] == "available"
-    assert set(machine["clocks"].values()) == {None}
-    assert machine["allowed_role"] == "context"
-    assert machine["independence_eligible"] is False
+    for dataset_id in publication_paths:
+        plane = _resource(second, f"palimpsest:catalog:{dataset_id}")
+        assert plane["availability"] == "available"
+        assert set(plane["clocks"].values()) == {None}
+        assert plane["allowed_role"] == "context"
+        assert plane["independence_eligible"] is False
 
 
 def test_every_resource_carries_rights_clocks_freshness_role_and_lineage(mesh: dict) -> None:

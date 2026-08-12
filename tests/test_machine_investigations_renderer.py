@@ -360,7 +360,7 @@ def test_attribution_required_sources_render_rights_providers_and_upstream_links
     assert "CC BY-NC-SA 4.0 source data" in rendered
     assert "MIT for Palimpsest output; provider terms apply" in rendered
     assert 'href="https://api.ooni.io/"' in rendered
-    assert 'href="https://api.globalping.io/"' in rendered
+    assert 'href="https://globalping.io/docs/api.globalping.io"' in rendered
     assert 'href="https://globalping.io/terms"' in rendered
     assert 'href="https://www.team-cymru.com/ip-asn-mapping"' in rendered
     assert 'href="https://www.team-cymru.com/terms"' in rendered
@@ -387,7 +387,7 @@ def test_attribution_required_sources_render_rights_providers_and_upstream_links
         "https://palimpsest.info/readings/inside-view-latest.json"
     )
     assert citation["attribution"]["upstream_source_urls"] == [
-        "https://api.globalping.io/"
+        "https://globalping.io/docs/api.globalping.io"
     ]
     assert citation["attribution"]["upstream_groups"] == [
         "publisher:globalping",
@@ -396,7 +396,7 @@ def test_attribution_required_sources_render_rights_providers_and_upstream_links
     assert citation["attribution"]["providers"] == [
         {
             "name": "Globalping",
-            "source_url": "https://api.globalping.io/",
+            "source_url": "https://globalping.io/docs/api.globalping.io",
             "terms_url": "https://globalping.io/terms",
         },
         {

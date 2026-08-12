@@ -446,7 +446,7 @@ def _network_evidence(
             "in-path-interference",
             "OONI in-path middlebox index",
             "/middlebox_index",
-            None,
+            "/middlebox_completed_count",
             "This is derived from OONI measurements and shares the publisher:ooni lineage. "
             "Its completed-test denominator and test family differ from the OONI reachability index.",
         ),
@@ -1352,6 +1352,10 @@ def _validate_evidence(value: Any, path: str, generated_at: str) -> Mapping[str,
         raise MachineInvestigationsError(f"{path}.value is non-finite")
     _text(row["value_type"], f"{path}.value_type", maximum=100)
     denominator = row["denominator"]
+    if row["value_type"] in {"percent", "ratio", "rate", "share"} and denominator is None:
+        raise MachineInvestigationsError(
+            f"{path}.denominator is required for a proportional measurement"
+        )
     if denominator is not None:
         denominator = _exact(denominator, {"label", "value"}, f"{path}.denominator")
         _text(denominator["label"], f"{path}.denominator.label", maximum=120)

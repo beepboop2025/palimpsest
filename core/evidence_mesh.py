@@ -42,7 +42,11 @@ MAX_PARTNER_RECORDS = 256
 MAX_TEXT = 8192
 
 PROJECT_IDS = ("palimpsest", "seiche", "liquilens", "scamshield", "narcoscope")
-PUBLICATION_PLANE_IDS = frozenset({"evidence-mesh", "machine-investigations"})
+PUBLICATION_PLANE_IDS = frozenset({
+    "evidence-mesh",
+    "machine-investigations",
+    "newsroom",
+})
 ALLOWED_ROLES = frozenset({"evidence", "context", "typology", "candidate-only"})
 AVAILABILITY = frozenset({"available", "stale", "unavailable"})
 FRESHNESS = frozenset({"fresh", "stale", "unknown", "unavailable"})
@@ -1093,7 +1097,17 @@ def build_evidence_mesh(
             fresh = _freshness(observed, deadline, moment, dataset["cadence"], availability)
             fresh["status"] = freshness_state
         else:
-            if dataset["status"] == "disabled" or not latest_path.exists():
+            if publication_plane:
+                # These resources are downstream discovery surfaces.  Their
+                # catalog declaration is stable input, but their file
+                # presence is not: the files are created only after this mesh
+                # is sealed.  Treat a declared live plane as available without
+                # observing its bytes, or the graph changes merely because a
+                # later build step completed.
+                availability = (
+                    "unavailable" if dataset["status"] == "disabled" else "available"
+                )
+            elif dataset["status"] == "disabled" or not latest_path.exists():
                 availability = "unavailable"
             else:
                 availability = "available"

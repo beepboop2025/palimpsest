@@ -9,7 +9,7 @@ All offline: `get` is injected, nothing reaches api.ooni.io.
 from __future__ import annotations
 
 from collectors.in_path_interference import (control_state, execution_blackouts,
-                                             family_index, observe_all,
+                                             family_completed_count, family_index, observe_all,
                                              observe_test)
 
 SINCE, UNTIL = "2026-05-01", "2026-08-01"
@@ -75,6 +75,7 @@ def test_family_index_weights_by_completed_count():
                                     "anomaly_count": 100}),    # 50%
     ]
     idx = family_index(obs, "MIDDLEBOX")
+    assert family_completed_count(obs, "MIDDLEBOX") == 10200
     assert idx == round(100 * 200 / 10200, 2)      # ~1.96, not the 25.5 a mean would give
     assert idx < 3
 
@@ -87,6 +88,7 @@ def test_family_index_excludes_unavailable_tests():
                                    "anomaly_count": 0}),       # never completes
     ]
     assert family_index(obs, "TRANSPORT") == 30.0
+    assert family_completed_count(obs, "TRANSPORT") == 1000
 
 
 def test_family_index_is_none_when_family_has_nothing_usable():

@@ -54,7 +54,7 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
     assert required_checks <= preflight_commands
 
     write_commands = {
-        "python -m core.evidence_mesh",
+        'python -m core.evidence_mesh --now "$mesh_clock"',
         "python -m core.machine_investigations",
         "python -m scripts.build_newsroom",
         "python -m scripts.build_data_catalog",
@@ -65,6 +65,8 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
         for line in rebuild.splitlines()
         if line.strip().startswith("python ")
     }
+    assert "mesh_clock=$(python -c" in rebuild
+    assert 'readings/evidence-mesh-latest.json' in rebuild
     assert "git diff --exit-code" in rebuild
 
 
