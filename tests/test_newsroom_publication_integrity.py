@@ -1,12 +1,14 @@
 """Adversarial filesystem checks for the generated machine-analysis desk."""
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
-from core import machine_investigations
+from core import investigations, machine_investigations, newsroom, newswire
 from scripts import build_newsroom
 
 
@@ -210,3 +212,174 @@ def test_history_independent_development_revision_is_proven_for_cleanup(
     assert build_newsroom.check(outputs, root=tmp_path) == [f"extra {relative}"]
     build_newsroom.publish(outputs, root=tmp_path)
     assert not stale_path.exists()
+
+
+def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A revision is immutable only if its complete citation closure survives."""
+
+    source_root = build_newsroom.ROOT
+    feed = newsroom.build_news_feed(
+        source_root / "readings/osint-china-latest.json",
+        source_root / "config/newsroom.json",
+    )
+    wire = newswire.strict_json_loads(
+        (source_root / "readings/newswire-latest.json").read_bytes(),
+        label="newswire",
+    )
+    pulse = newswire.strict_json_loads(
+        (source_root / "readings/china-economic-pulse-latest.json").read_bytes(),
+        label="economic pulse",
+    )
+    human = newswire.strict_json_loads(
+        (source_root / "readings/investigations-latest.json").read_bytes(),
+        label="investigations",
+    )
+    first_machine = newswire.strict_json_loads(
+        (source_root / "readings/machine-investigations-latest.json").read_bytes(),
+        label="machine investigations",
+    )
+    investigations.validate_investigations(human)
+    machine_investigations.validate_machine_investigations(first_machine)
+
+    publication_root = tmp_path / "publication"
+    copied_readings = publication_root / "readings"
+    copied_readings.mkdir(parents=True)
+    for artifact_id in {
+        evidence["artifact_id"]
+        for case in first_machine["cases"]
+        for evidence in case["evidence"]
+    }:
+        (copied_readings / artifact_id).write_bytes(
+            (source_root / "readings" / artifact_id).read_bytes()
+        )
+    monkeypatch.setattr(build_newsroom, "ROOT", publication_root)
+
+    first_outputs = build_newsroom.build_outputs(
+        feed,
+        wire=wire,
+        pulse=pulse,
+        investigations=human,
+        machine_analyses=first_machine,
+        archive_root=publication_root,
+    )
+    build_newsroom.publish(first_outputs, root=publication_root)
+
+    refreshed_machine = copy.deepcopy(first_machine)
+    previous_case = first_machine["cases"][0]
+    refreshed_case = copy.deepcopy(previous_case)
+    changed_evidence = refreshed_case["evidence"][0]
+    changed_input_path = copied_readings / changed_evidence["artifact_id"]
+    changed_input = newswire.strict_json_loads(
+        changed_input_path.read_bytes(), label="changed aggregate input"
+    )
+    changed_input["archive_test_generation"] = 2
+    changed_input_raw = build_newsroom._pretty_json(changed_input)
+    changed_input_path.write_bytes(changed_input_raw)
+    changed_digest = hashlib.sha256(changed_input_raw).hexdigest()
+    changed_evidence["artifact_sha256"] = changed_digest
+    changed_evidence["artifact_url"] = (
+        "https://palimpsest.info/news/analysis/evidence/"
+        f"sha256-{changed_digest}.json"
+    )
+    next_time = "2026-08-13T00:00:00Z"
+    refreshed_case["updated_at"] = next_time
+    refreshed_case["evaluation_receipt"]["evaluated_at"] = next_time
+    refreshed_machine["cases"][0] = machine_investigations._finalize_case(
+        refreshed_case, previous_case
+    )
+    refreshed_machine["generated_at"] = next_time
+    refreshed_machine["reproducibility_receipt"]["case_set_sha256"] = (
+        machine_investigations._digest(refreshed_machine["cases"])
+    )
+    machine_investigations.validate_machine_investigations(refreshed_machine)
+
+    old_revision = (
+        Path("news/analysis")
+        / previous_case["slug"]
+        / "revisions"
+        / f"{previous_case['revision_id']}.json"
+    )
+    old_capsules = {
+        Path(path): first_outputs[Path(path)]
+        for path in json.loads(first_outputs[MANIFEST])["immutable_revision_paths"]
+        if path.startswith("news/analysis/evidence/sha256-")
+    }
+    changed_old_capsule = build_newsroom._machine_evidence_archive_path(
+        previous_case["evidence"][0]
+    )
+    assert changed_old_capsule in old_capsules
+
+    (publication_root / old_revision).write_bytes(b"{}\n")
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="invalid immutable machine-analysis revision",
+    ):
+        build_newsroom.build_outputs(
+            feed,
+            wire=wire,
+            pulse=pulse,
+            investigations=human,
+            machine_analyses=refreshed_machine,
+            archive_root=publication_root,
+        )
+    (publication_root / old_revision).write_bytes(first_outputs[old_revision])
+
+    # Even syntactically valid tampering is rejected before a later revision
+    # can quietly orphan or replace the evidence behind the old citation URL.
+    (publication_root / changed_old_capsule).write_bytes(b"{}\n")
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="invalid immutable machine evidence capsule",
+    ):
+        build_newsroom.build_outputs(
+            feed,
+            wire=wire,
+            pulse=pulse,
+            investigations=human,
+            machine_analyses=refreshed_machine,
+            archive_root=publication_root,
+        )
+    (publication_root / changed_old_capsule).write_bytes(
+        old_capsules[changed_old_capsule]
+    )
+
+    second_outputs = build_newsroom.build_outputs(
+        feed,
+        wire=wire,
+        pulse=pulse,
+        investigations=human,
+        machine_analyses=refreshed_machine,
+        archive_root=publication_root,
+    )
+    second_manifest = json.loads(second_outputs[MANIFEST])
+    assert second_outputs[old_revision] == first_outputs[old_revision]
+    for path, original_bytes in old_capsules.items():
+        assert second_outputs[path] == original_bytes
+        assert str(path) in second_manifest["immutable_revision_paths"]
+    new_revision = old_revision.with_name(
+        f"{refreshed_machine['cases'][0]['revision_id']}.json"
+    )
+    new_capsule = Path("news/analysis/evidence") / f"sha256-{changed_digest}.json"
+    assert new_revision in second_outputs
+    assert new_capsule in second_outputs
+
+    build_newsroom.publish(second_outputs, root=publication_root)
+    assert build_newsroom.check(second_outputs, root=publication_root) == []
+    assert (publication_root / old_revision).read_bytes() == first_outputs[old_revision]
+    assert all(
+        (publication_root / path).read_bytes() == original_bytes
+        for path, original_bytes in old_capsules.items()
+    )
+
+    conflicting = dict(second_outputs)
+    conflicting[changed_old_capsule] = b'{"rewritten":true}\n'
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="refusing to overwrite immutable analysis bytes",
+    ):
+        build_newsroom.publish(conflicting, root=publication_root)
+    assert (publication_root / changed_old_capsule).read_bytes() == (
+        old_capsules[changed_old_capsule]
+    )

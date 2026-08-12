@@ -106,7 +106,7 @@ _MACHINE_CAPSULE_CITATION_FIELDS = {
 }
 _MACHINE_PROVIDER_LINKS = {
     "OONI": {
-        "source_url": "https://api.ooni.org/",
+        "source_url": "https://api.ooni.io/",
         "terms_url": "https://github.com/ooni/license/blob/master/data/LICENSE.md",
     },
     "Globalping": {
@@ -362,6 +362,7 @@ def _machine_attribution_metadata(
     )
     source_urls = _machine_external_source_urls(source_statement)
     providers = []
+    normalized_source_urls: list[str] = []
     for provider in dataset["sources"]:
         name = _machine_safe_public_string(provider, f"{source_id}.provider")
         registered = _MACHINE_PROVIDER_LINKS.get(name, {})
@@ -380,7 +381,7 @@ def _machine_attribution_metadata(
         # page (Globalping's API root currently returns 404).
         source_url = registered.get("source_url") or matched_url
         terms_url = registered.get("terms_url")
-        providers.append({
+        provider_metadata = {
             "name": name,
             "source_url": (
                 _machine_https_url(source_url, f"{source_id}.{name}.source_url")
@@ -390,7 +391,27 @@ def _machine_attribution_metadata(
                 _machine_https_url(terms_url, f"{source_id}.{name}.terms_url")
                 if terms_url else None
             ),
-        })
+        }
+        providers.append(provider_metadata)
+        if matched_url is not None and provider_metadata["source_url"] is not None:
+            canonical_url = provider_metadata["source_url"]
+            if canonical_url not in normalized_source_urls:
+                normalized_source_urls.append(canonical_url)
+
+    # Preserve a safely extracted source URL only when it did not identify a
+    # provider with a reviewed canonical landing page.  This keeps provenance
+    # complete without publishing known-unusable inferred API roots.
+    matched_hosts = {
+        urlsplit(url).hostname
+        for provider in providers
+        for url in source_urls
+        if provider["source_url"] is not None
+        and provider["name"].lower().replace(" ", "")
+        in (urlsplit(url).hostname or "").replace("-", "")
+    }
+    for source_url in source_urls:
+        if urlsplit(source_url).hostname not in matched_hosts:
+            normalized_source_urls.append(source_url)
 
     license_value = dataset["license"]
     license_metadata = {
@@ -429,7 +450,7 @@ def _machine_attribution_metadata(
             "public_source_url": _machine_https_url(
                 resource["public_url"], f"{source_id}.public_source_url"
             ),
-            "upstream_source_urls": source_urls,
+            "upstream_source_urls": normalized_source_urls,
             "source_statement": source_statement,
             "license": license_metadata,
         },
@@ -3199,6 +3220,194 @@ def build_sitemap(
     return xml.encode("utf-8")
 
 
+def _machine_evidence_archive_path(evidence: Mapping[str, Any]) -> Path:
+    """Resolve one case receipt to its exact managed capsule path."""
+
+    digest = evidence.get("artifact_sha256")
+    filename = f"sha256-{digest}.json"
+    if not isinstance(digest, str) or _MACHINE_EVIDENCE_FILENAME.fullmatch(
+        filename
+    ) is None:
+        raise newsroom.NewsroomError("machine evidence has an invalid archive hash")
+    expected_url = f"{SITE}/news/analysis/evidence/{filename}"
+    if evidence.get("artifact_url") != expected_url:
+        raise newsroom.NewsroomError(
+            "machine evidence does not use its content-addressed URL: "
+            f"{evidence.get('artifact_id')}"
+        )
+    return _ANALYSIS_ROOT / "evidence" / filename
+
+
+def _machine_revision_capsule_binding(
+    evidence: Mapping[str, Any],
+    capsule: Mapping[str, Any],
+    *,
+    revision_id: str,
+) -> None:
+    """Prove an archived capsule contains the exact receipt a revision cites."""
+
+    original = capsule["original_input"]
+    expected_original = {
+        "artifact_id": evidence["artifact_id"],
+        "generated_at": evidence["artifact_generated_at"],
+        "sha256": evidence["artifact_sha256"],
+        "integrity": evidence["integrity"],
+    }
+    if original != expected_original:
+        raise newsroom.NewsroomError(
+            f"machine revision {revision_id} has a mismatched evidence capsule input"
+        )
+
+    expected_citation = {
+        "evidence_id": evidence["evidence_id"],
+        "title": evidence["title"],
+        "role": evidence["role"],
+        "source_class": evidence["source_class"],
+        "source_id": evidence["source_id"],
+        "selector": evidence["selector"],
+        "source_timestamp": evidence["source_timestamp"],
+        "independence_group": evidence["independence_group"],
+        "upstream_groups": evidence["upstream_groups"],
+        "value": {
+            "type": evidence["value_type"],
+            "value": evidence["value"],
+        },
+        "denominator": (
+            None
+            if evidence["denominator"] is None
+            else {"type": "aggregate-count", **evidence["denominator"]}
+        ),
+        "interpretation_limit": evidence["interpretation_limit"],
+        "freshness": evidence["freshness"],
+    }
+    matches = [
+        citation
+        for citation in capsule["citations"]
+        if citation["evidence_id"] == evidence["evidence_id"]
+    ]
+    if len(matches) != 1 or any(
+        matches[0][field] != value for field, value in expected_citation.items()
+    ):
+        raise newsroom.NewsroomError(
+            f"machine revision {revision_id} is not closed over its evidence capsule"
+        )
+
+
+def _validated_archived_machine_revision(
+    raw: bytes, *, slug: str, revision_filename: str
+) -> Mapping[str, Any]:
+    """Validate an immutable revision without consulting today's input files."""
+
+    record = _generated_machine_case(
+        raw,
+        slug=slug,
+        revision_filename=revision_filename,
+    )
+    if record is None:
+        raise newsroom.NewsroomError(
+            f"invalid immutable machine-analysis revision: {revision_filename}"
+        )
+    try:
+        machine_investigations_model._scan_no_pii(record, "archived_revision")
+        machine_investigations_model._validate_case(
+            record,
+            "archived_revision",
+            record["updated_at"],
+            {
+                "slug": record["slug"],
+                "url": record["url"],
+                "title": record["title"],
+                "dek": record["dek"],
+                "profile": record["profile"],
+            },
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise newsroom.NewsroomError(
+            f"invalid immutable machine-analysis revision: {revision_filename}"
+        ) from exc
+    return record
+
+
+def _read_immutable_analysis_file(
+    relative: Path, *, root: Path
+) -> bytes:
+    """Read a bounded archive file through no-follow directory descriptors."""
+
+    if not _is_managed_analysis_path(relative) or not (
+        "/revisions/" in relative.as_posix()
+        or relative.parts[:3] == ("news", "analysis", "evidence")
+    ):
+        raise newsroom.NewsroomError(
+            f"refusing to read a non-immutable analysis path: {relative}"
+        )
+    flags = _directory_open_flags()
+    try:
+        directory_fd = os.open(root, flags)
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            f"cannot safely open publication root: {exc}"
+        ) from exc
+    try:
+        for component in relative.parts[:-1]:
+            try:
+                child_fd = os.open(component, flags, dir_fd=directory_fd)
+            except OSError as exc:
+                raise newsroom.NewsroomError(
+                    f"cannot safely read immutable analysis file {relative}: {exc}"
+                ) from exc
+            os.close(directory_fd)
+            directory_fd = child_fd
+        file_flags = (
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+        )
+        try:
+            descriptor = os.open(relative.name, file_flags, dir_fd=directory_fd)
+        except OSError as exc:
+            raise newsroom.NewsroomError(
+                f"cannot safely read immutable analysis file {relative}: {exc}"
+            ) from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or not 1 <= metadata.st_size <= machine_investigations_model.MAX_OUTPUT_BYTES
+            ):
+                raise newsroom.NewsroomError(
+                    f"immutable analysis file is not a bounded regular file: {relative}"
+                )
+            chunks: list[bytes] = []
+            remaining = metadata.st_size
+            while remaining:
+                chunk = os.read(descriptor, min(remaining, 64 * 1024))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            raw = b"".join(chunks)
+            if len(raw) != metadata.st_size:
+                raise newsroom.NewsroomError(
+                    f"immutable analysis file changed while reading: {relative}"
+                )
+            return raw
+        finally:
+            os.close(descriptor)
+    finally:
+        os.close(directory_fd)
+
+
+def _retain_immutable_analysis_output(
+    outputs: dict[Path, bytes], relative: Path, raw: bytes
+) -> None:
+    previous = outputs.get(relative)
+    if previous is not None and previous != raw:
+        raise newsroom.NewsroomError(
+            f"refusing to overwrite immutable analysis bytes: {relative}"
+        )
+    outputs[relative] = raw
+
+
 def build_outputs(
     feed: Mapping[str, Any],
     *,
@@ -3206,6 +3415,7 @@ def build_outputs(
     pulse: Mapping[str, Any] | None = None,
     investigations: Mapping[str, Any] | None = None,
     machine_analyses: Mapping[str, Any] | None = None,
+    archive_root: Path = ROOT,
 ) -> dict[Path, bytes]:
     """Return every public output without touching the filesystem."""
 
@@ -3299,39 +3509,68 @@ def build_outputs(
                 "utf-8"
             )
             outputs[base / "report.json"] = case_raw
-            for event in case["corrections"]["history"]:
+            for history_index, event in enumerate(case["corrections"]["history"]):
                 revision_id = event["revision_id"]
                 revision_path = base / "revisions" / f"{revision_id}.json"
                 if revision_id == case["revision_id"]:
                     revision_raw = case_raw
                 else:
-                    source_path = ROOT / revision_path
-                    try:
-                        revision_raw = source_path.read_bytes()
-                    except OSError as exc:
-                        raise newsroom.NewsroomError(
-                            f"missing immutable machine-analysis revision: {revision_path}"
-                        ) from exc
-                    if _generated_machine_case(
-                        revision_raw,
-                        slug=case["slug"],
-                        revision_filename=revision_path.name,
-                    ) is None:
-                        raise newsroom.NewsroomError(
-                            f"invalid immutable machine-analysis revision: {revision_path}"
+                    revision_raw = _read_immutable_analysis_file(
+                        revision_path, root=archive_root
+                    )
+                revision_record = _validated_archived_machine_revision(
+                    revision_raw,
+                    slug=case["slug"],
+                    revision_filename=revision_path.name,
+                )
+                expected_history = case["corrections"]["history"][
+                    : history_index + 1
+                ]
+                if (
+                    revision_record["case_id"] != case["case_id"]
+                    or revision_record["source_case_id"] != case["source_case_id"]
+                    or revision_record["profile"] != case["profile"]
+                    or revision_record["published_at"] != case["published_at"]
+                    or revision_record["corrections"]["history"]
+                    != expected_history
+                ):
+                    raise newsroom.NewsroomError(
+                        "immutable machine-analysis revision is not the exact "
+                        f"history prefix: {revision_path}"
+                    )
+                _retain_immutable_analysis_output(
+                    outputs, revision_path, revision_raw
+                )
+
+                # Historical revision JSON is useful only while every capsule
+                # it cites remains an addressable part of the same archive.
+                if revision_id != case["revision_id"]:
+                    for archived_row in revision_record["evidence"]:
+                        capsule_path = _machine_evidence_archive_path(archived_row)
+                        capsule_raw = _read_immutable_analysis_file(
+                            capsule_path, root=archive_root
                         )
-                outputs[revision_path] = revision_raw
+                        capsule = _machine_evidence_capsule_bytes(
+                            capsule_raw,
+                            expected_digest=archived_row["artifact_sha256"],
+                        )
+                        if capsule is None:
+                            raise newsroom.NewsroomError(
+                                "invalid immutable machine evidence capsule: "
+                                f"{capsule_path}"
+                            )
+                        _machine_revision_capsule_binding(
+                            archived_row,
+                            capsule,
+                            revision_id=revision_id,
+                        )
+                        _retain_immutable_analysis_output(
+                            outputs, capsule_path, capsule_raw
+                        )
             for evidence in case["evidence"]:
                 raw, raw_document = _machine_read_cited_input(evidence)
                 digest = hashlib.sha256(raw).hexdigest()
-                expected_url = (
-                    f"{SITE}/news/analysis/evidence/sha256-{digest}.json"
-                )
-                if evidence["artifact_url"] != expected_url:
-                    raise newsroom.NewsroomError(
-                        "machine evidence does not use its content-addressed URL: "
-                        f"{evidence['artifact_id']}"
-                    )
+                _machine_evidence_archive_path(evidence)
                 prior = archived_evidence.setdefault(
                     digest,
                     {"raw": raw, "raw_document": raw_document, "evidence": []},
@@ -3343,15 +3582,34 @@ def build_outputs(
                 if evidence not in prior["evidence"]:
                     prior["evidence"].append(evidence)
         for digest, archived in archived_evidence.items():
+            capsule_path = (
+                Path("news/analysis/evidence") / f"sha256-{digest}.json"
+            )
+            retained_raw = outputs.get(capsule_path)
+            if retained_raw is not None:
+                retained_capsule = _machine_evidence_capsule_bytes(
+                    retained_raw, expected_digest=digest
+                )
+                if retained_capsule is None:
+                    raise newsroom.NewsroomError(
+                        f"invalid retained machine evidence capsule: {capsule_path}"
+                    )
+                for evidence in archived["evidence"]:
+                    _machine_revision_capsule_binding(
+                        evidence,
+                        retained_capsule,
+                        revision_id="current-report",
+                    )
+                continue
             capsule = _machine_evidence_capsule(
                 archived["evidence"],
                 raw=archived["raw"],
                 raw_document=archived["raw_document"],
                 context=evidence_context,
             )
-            outputs[
-                Path("news/analysis/evidence") / f"sha256-{digest}.json"
-            ] = _pretty_json(capsule)
+            _retain_immutable_analysis_output(
+                outputs, capsule_path, _pretty_json(capsule)
+            )
     for story in feed["stories"]:
         base = Path("news") / story["slug"]
         outputs[base / "index.html"] = render_story(
@@ -3438,6 +3696,15 @@ def _is_managed_analysis_path(relative: Path) -> bool:
         and _ANALYSIS_CASE_SLUG.fullmatch(parts[2]) is not None
         and parts[3] == "revisions"
         and _MACHINE_REVISION_FILENAME.fullmatch(parts[4]) is not None
+    )
+
+
+def _is_immutable_analysis_path(relative: Path) -> bool:
+    """Return whether publication must never replace existing unequal bytes."""
+
+    return _is_managed_analysis_path(relative) and (
+        "/revisions/" in relative.as_posix()
+        or relative.parts[:3] == ("news", "analysis", "evidence")
     )
 
 
@@ -3768,13 +4035,25 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
             manifest_item = (relative, payload)
             continue
         destination = root / relative
-        try:
-            current = destination.read_bytes()
-        except FileNotFoundError:
-            current = None
+        if _is_immutable_analysis_path(relative):
+            try:
+                destination.lstat()
+            except FileNotFoundError:
+                current = None
+            else:
+                current = _read_immutable_analysis_file(relative, root=root)
+        else:
+            try:
+                current = destination.read_bytes()
+            except FileNotFoundError:
+                current = None
         if current == payload:
             unchanged += 1
             continue
+        if current is not None and _is_immutable_analysis_path(relative):
+            raise newsroom.NewsroomError(
+                f"refusing to overwrite immutable analysis bytes: {relative}"
+            )
         _atomic_write(destination, payload)
         changed += 1
     for relative in sorted(
@@ -3801,11 +4080,23 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
     drift = []
     for relative, payload in sorted(outputs.items(), key=lambda item: str(item[0])):
         destination = root / relative
-        try:
-            current = destination.read_bytes()
-        except FileNotFoundError:
-            drift.append(f"missing {relative}")
-            continue
+        if _is_immutable_analysis_path(relative):
+            try:
+                destination.lstat()
+            except FileNotFoundError:
+                drift.append(f"missing {relative}")
+                continue
+            try:
+                current = _read_immutable_analysis_file(relative, root=root)
+            except newsroom.NewsroomError:
+                drift.append(f"stale {relative}")
+                continue
+        else:
+            try:
+                current = destination.read_bytes()
+            except FileNotFoundError:
+                drift.append(f"missing {relative}")
+                continue
         if current != payload:
             drift.append(f"stale {relative}")
     for relative in sorted(_extra_managed_analysis_paths(outputs, root=root), key=str):
