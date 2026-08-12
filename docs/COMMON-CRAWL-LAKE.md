@@ -124,12 +124,15 @@ features describe review priority, not truth. Automatic publication is
 prohibited, and causal language remains prohibited without a declared design.
 
 The configured editorial policy intentionally favors distinctive, defensible
-leads. Forty points come from declared archive-anomaly magnitude and breadth,
-35 from evidence strength and independent evidence groups, and 15 from live
-linked instruments. A primary- or measurement-backed archive anomaly receives
-a 10-point under-coverage bonus when only one or two independent groups cover
-it. This is a discovery proxy, not proof that no other publisher has the story;
-the output meaning explicitly disclaims global exclusivity.
+leads. Up to 40 points come from point-in-time archive context and declared
+archive-anomaly magnitude and breadth, 35 from evidence strength and independent
+evidence groups, and 15 from live linked instruments. A primary- or
+measurement-backed report receives a 10-point under-coverage bonus when only one
+or two independent groups cover it. The first five archive points reward useful
+historical reporting context during the six-crawl model warm-up; they do not
+assert an anomaly. Under-coverage is a discovery proxy, not proof that no other
+publisher has the story, and the output meaning explicitly disclaims global
+exclusivity.
 
 The score orders the private human-review queue only. Editors still determine
 public importance, seek missing perspectives and right of reply, verify every
