@@ -1,15 +1,15 @@
 {
- "asof": "2026-08-11",
+ "asof": "2026-08-12",
  "band_pct": 2.0,
  "cross_check_diff": null,
- "gap": -0.044679,
- "gap_pct": -0.658,
- "generated_at": "2026-08-11T17:55:27Z",
- "history_days": 7,
+ "gap": -0.045021,
+ "gap_pct": -0.6632,
+ "generated_at": "2026-08-12T17:56:10Z",
+ "history_days": 8,
  "method_note": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
  "method_version": 1,
  "note": "persistent one-sided gaps are the market disputing the state's price; the fix itself is the policy statement",
  "source": "PBOC USD/CNY central parity (via this repo's china-econ history, CFETS-published) vs ECB euro foreign exchange reference rates (USD/CNY derived as EURCNY/EURUSD; source: ECB), cross-checked against Bank of Canada Valet noon rates (source: Bank of Canada)",
- "usdcny_parity": 6.79,
- "usdcny_spot_ecb": 6.745321
+ "usdcny_parity": 6.7882,
+ "usdcny_spot_ecb": 6.743179
 }
