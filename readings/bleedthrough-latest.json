@@ -25,22 +25,10 @@
       "kind": "pool_rotation",
       "severity": "low",
       "vantage": "CN/AS4134"
-    },
-    {
-      "detail": "forged-IP pool rotated",
-      "kind": "pool_rotation",
-      "severity": "low",
-      "vantage": "CN/AS4837"
-    },
-    {
-      "detail": "forged-IP pool rotated",
-      "kind": "pool_rotation",
-      "severity": "low",
-      "vantage": "CN/AS9808"
     }
   ],
-  "generated_at": "2026-08-11T18:35:41.054570Z",
-  "last_changed_at": "2026-08-11T18:35:41.054570Z",
+  "generated_at": "2026-08-12T14:23:19.068693Z",
+  "last_changed_at": "2026-08-12T14:23:19.068693Z",
   "max_process_count": 2,
   "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
   "method_version": 2,
@@ -54,7 +42,7 @@
     },
     "burst": 24,
     "caveat": "single-vantage round: observed censorship varies with network path, so cross-region comparisons from one prober are not identifiable (cf. arXiv:2406.19304).",
-    "code_version": "7c344e98f5d9b5e84be269d65ee9c6267a002701",
+    "code_version": "aa31d794bb4289c3e6c6a6186c66b8b88e9cf177",
     "flow_id_policy": "ephemeral source port per query (paths not pinned)",
     "queries_attempted": 5184,
     "rate_per_sec": 5.0,
@@ -76,6 +64,6 @@
   "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
   "signal": "bleedthrough",
   "title": "GFW injector fleet",
-  "vantages_injecting": 210,
+  "vantages_injecting": 216,
   "vantages_probed": 216
 }
