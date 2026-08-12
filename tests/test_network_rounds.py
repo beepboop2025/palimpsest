@@ -43,9 +43,19 @@ def test_current_dns_reading_becomes_a_scoped_frozen_panel_round():
     assert document["longitudinal_status"] == "warming_up"
     current = document["rounds"][0]
     assert current["protocol"] == "DNS"
-    assert current["geographic_coverage"]["observed_asns"] >= 3
-    assert current["geographic_coverage"]["observed_regions"] >= 3
+    coverage = current["geographic_coverage"]
+    assert coverage["observed_asns"] == len(current["inside_asns"])
+    assert coverage["required_asns"] == 3
+    assert coverage["observed_regions"] == len(current["inside_regions"])
+    assert coverage["required_regions"] == 3
     assert current["outage_control"]["status"] == "no-wide-outage-observed"
+    failures = current["comparability_failures"]
+    assert ("asn-coverage-below-minimum" in failures) is (
+        coverage["observed_asns"] < coverage["required_asns"]
+    )
+    assert ("regional-coverage-below-minimum" in failures) is (
+        coverage["observed_regions"] < coverage["required_regions"]
+    )
     assert "round-window-not-recorded" in current["comparability_failures"]
     assert all(
         row["domain"] in row["statement"] and "DNS" in row["statement"]
@@ -91,6 +101,10 @@ def test_three_strictly_comparable_rounds_unlock_only_longitudinal_status():
         row["source_input_sha256"] = hashlib.sha256(f"round-{index}".encode()).hexdigest()
         row["routing_control"]["status"] = "resolved"
         row["outage_control"]["generated_at"] = f"2026-08-{day}T08:05:00Z"
+        row["inside_asns"] = [4134, 37963, 45090]
+        row["inside_regions"] = ["Beijing", "Guangzhou", "Shanghai"]
+        row["geographic_coverage"]["observed_asns"] = len(row["inside_asns"])
+        row["geographic_coverage"]["observed_regions"] = len(row["inside_regions"])
         identity = {
             "panel_sha256": first["panel"]["sha256"],
             "protocol": row["protocol"],
