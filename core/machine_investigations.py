@@ -33,6 +33,10 @@ DESK_ID = "palimpsest-machine-investigations"
 PUBLICATION_PROFILES = ["machine_brief", "automated_evidence_analysis"]
 MAX_INPUT_BYTES = 8 * 1024 * 1024
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
+# At four material revisions per day this preserves roughly 512 days of
+# append-only case history.  The document-wide byte ceiling remains the final
+# guard against unusually large history text or other payload growth.
+MAX_CORRECTION_HISTORY_ITEMS = 2048
 
 SOURCE = (
     "Palimpsest public evidence mesh, OSINT-China roll-up, economic pulse and "
@@ -1208,7 +1212,7 @@ def _finalize_case(
             raise MachineInvestigationsError("previous correction history is not bound to its revision")
     else:
         history = copy.deepcopy(previous_case["corrections"]["history"])
-        if len(history) >= 100:
+        if len(history) >= MAX_CORRECTION_HISTORY_ITEMS:
             raise MachineInvestigationsError("case revision history reached its safety bound")
         history.append({
             "revision_id": "pending",
@@ -1547,7 +1551,11 @@ def _validate_case(case_value: Any, path: str, generated_at: str, config_case: M
             raise MachineInvestigationsError(f"{path}.corrections.last_corrected_at is non-canonical")
     _text(corrections["policy"], f"{path}.corrections.policy")
     history = corrections["history"]
-    if type(history) is not list or not history or len(history) > 100:
+    if (
+        type(history) is not list
+        or not history
+        or len(history) > MAX_CORRECTION_HISTORY_ITEMS
+    ):
         raise MachineInvestigationsError(f"{path}.corrections.history must contain revision history")
     for index, item in enumerate(history):
         item_path = f"{path}.corrections.history[{index}]"

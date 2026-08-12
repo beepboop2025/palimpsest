@@ -212,7 +212,7 @@
         "last_corrected_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]},
         "policy": {"$ref": "#/$defs/text"},
         "history": {
-          "type": "array", "minItems": 1, "maxItems": 100,
+          "type": "array", "minItems": 1, "maxItems": 2048,
           "items": {"$ref": "#/$defs/revisionHistory"}
         }
       }

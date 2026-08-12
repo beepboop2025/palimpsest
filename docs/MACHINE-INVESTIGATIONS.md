@@ -234,6 +234,15 @@ rewritten, rolled-back, duplicate, or non-chronological history is rejected
 before the current head can be replaced; changing history bytes necessarily
 changes the current revision ID.
 
+Each case retains at most 2,048 correction-history entries. At the expected
+upper cadence of four material revisions per day, that is about 512 days of
+append-only history before a protocol migration or archival rollover is
+required. The 2 MiB document-wide output ceiling remains an independent final
+guard: reaching either limit fails closed instead of silently truncating the
+chain. Contract tests exercise more than 100 real successive revisions and the
+full two-case capacity shape, keeping this protocol, runtime limit, and byte
+budget aligned.
+
 ## Safety boundary
 
 Only checked-in, public, aggregate artifacts may cross this boundary. Safety

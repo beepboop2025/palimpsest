@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -195,6 +196,10 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         self.assertEqual(
             definitions["reproducibilityReceipt"]["properties"]["builder"]["const"],
             "core.machine_investigations.v1",
+        )
+        self.assertEqual(
+            definitions["corrections"]["properties"]["history"]["maxItems"],
+            machine.MAX_CORRECTION_HISTORY_ITEMS,
         )
 
     def test_build_and_canonical_bytes_are_deterministic(self) -> None:
@@ -442,6 +447,79 @@ class MachineInvestigationsContractTests(unittest.TestCase):
             self.assertEqual(
                 new["corrections"]["history"][-1]["revision_id"], new["revision_id"]
             )
+
+    def test_revision_history_has_a_production_horizon_under_the_output_ceiling(self) -> None:
+        expected_daily_material_revisions = 4
+        self.assertGreaterEqual(
+            machine.MAX_CORRECTION_HISTORY_ITEMS,
+            expected_daily_material_revisions * 365,
+        )
+
+        start = datetime(2030, 1, 1, tzinfo=timezone.utc)
+        document = _build(as_of=start.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+        # Exercise 128 genuine, content-changing transitions through the same
+        # append-only finalizer used in production.  This specifically guards
+        # against the former 100-entry cliff.
+        for index in range(1, 129):
+            timestamp = (start + timedelta(hours=index)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            candidate = copy.deepcopy(document["cases"][0])
+            candidate["updated_at"] = timestamp
+            candidate["evaluation_receipt"]["evaluated_at"] = timestamp
+            candidate["limitations"][0]["consequence"] = (
+                f"Lifecycle fixture revision {index}; interpretation remains bounded."
+            )
+            document["cases"][0] = machine._finalize_case(
+                candidate,
+                previous_case=document["cases"][0],
+            )
+            document["generated_at"] = timestamp
+            document["reproducibility_receipt"]["case_set_sha256"] = _digest(
+                document["cases"]
+            )
+            validate_machine_investigations(document, config_path=CONFIG)
+
+        history = document["cases"][0]["corrections"]["history"]
+        self.assertEqual(len(history), 129)
+        self.assertEqual(len({row["revision_id"] for row in history}), len(history))
+        lifecycle_raw = canonical_json_bytes(document)
+        self.assertEqual(canonical_json_bytes(json.loads(lifecycle_raw)), lifecycle_raw)
+        self.assertLess(len(lifecycle_raw), machine.MAX_OUTPUT_BYTES)
+
+        # Model the full allowed two-case shape with the same fixed-size rows
+        # emitted by production.  The active head still binds every prior row,
+        # while the global byte guard proves the chosen horizon fits v1.
+        capacity_timestamp = "2031-01-01T00:00:00Z"
+        for case_index, case in enumerate(document["cases"]):
+            capacity_history = copy.deepcopy(case["corrections"]["history"])
+            while len(capacity_history) < machine.MAX_CORRECTION_HISTORY_ITEMS:
+                item_index = len(capacity_history)
+                capacity_history.append({
+                    "revision_id": f"machinev-capacity-{case_index}-{item_index}",
+                    "published_at": capacity_timestamp,
+                    "change_type": "data-refresh",
+                    "summary": (
+                        "Deterministic refresh after a cited input, gate, or publication "
+                        "state changed."
+                    ),
+                })
+            case["corrections"]["history"] = capacity_history
+            case["updated_at"] = capacity_timestamp
+            case["evaluation_receipt"]["evaluated_at"] = capacity_timestamp
+            case["revision_id"] = machine._case_revision_id(case)
+            capacity_history[-1]["revision_id"] = case["revision_id"]
+
+        document["generated_at"] = capacity_timestamp
+        document["reproducibility_receipt"]["case_set_sha256"] = _digest(document["cases"])
+        validate_machine_investigations(document, config_path=CONFIG)
+        capacity_raw = canonical_json_bytes(document)
+        self.assertEqual(canonical_json_bytes(json.loads(capacity_raw)), capacity_raw)
+        self.assertLess(len(capacity_raw), machine.MAX_OUTPUT_BYTES)
+
+        over_capacity = copy.deepcopy(document["cases"][0])
+        over_capacity["limitations"][0]["consequence"] = "One revision beyond capacity."
+        with self.assertRaisesRegex(MachineInvestigationsError, "reached its safety bound"):
+            machine._finalize_case(over_capacity, previous_case=document["cases"][0])
 
     def test_history_bytes_are_bound_to_the_current_revision(self) -> None:
         baseline = _build()
