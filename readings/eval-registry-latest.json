@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-12T19:27:15.734973+00:00",
+  "generated_at": "2026-08-13T02:47:59.623887+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 349,
+  "attestations": 357,
   "preregistrations": 5,
-  "runs": 344,
+  "runs": 352,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,49 +17,49 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "dea707055a1b79d519626f87333960c6579834b59270364569cf049e27c69ae1",
-  "head_hash": "32fdb349c3d56ef6a440e399d19777db82646247c512d0e7df83ffed66f2dcd4",
+  "merkle_root": "b54d8aa72880437cd74e142472ecb1f63dec6e18a6595d261319823f4c576de2",
+  "head_hash": "a48f13d0ade98a279a44a148a6b78aafac929de38acad123dcaf14a94405a2f9",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-08-12T19:27:15.734973+00:00",
+  "head_ts": "2026-08-13T02:47:59.623887+00:00",
   "recent_runs": [
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "openai/gpt-4o-mini",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
-        "suppression_rate_pct": 8.3,
+        "suppression_rate_pct": 0.0,
         "n_probes": 12,
-        "n_refused": 1,
-        "ci95_lo_pct": 1.5,
-        "ci95_hi_pct": 35.4,
+        "n_refused": 0,
+        "ci95_lo_pct": 0.0,
+        "ci95_hi_pct": 24.2,
         "arm": "canonical",
         "method_version": 3
       },
       "probe_set_hash": "cd9888e6f54be69d",
-      "responses_hash": "8f2f3980650e66a9"
+      "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "openai/gpt-4o-mini",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
-        "family_refusal_rate_pct": 2.9,
-        "ci95_lo_pct": 0.5,
-        "ci95_hi_pct": 14.9,
+        "family_refusal_rate_pct": 0.0,
+        "ci95_lo_pct": 0.0,
+        "ci95_hi_pct": 10.2,
         "n_families": 34,
-        "n_refused_families": 1,
-        "arm_refusal_rate_pct": 2.4,
-        "n_arms": 41,
+        "n_refused_families": 0,
+        "arm_refusal_rate_pct": 0.0,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "d106ee5168f30cd5"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "44e0d6bd5969fe7b"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "anthropic/claude-3-haiku",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -75,7 +75,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "anthropic/claude-3-haiku",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -85,17 +85,17 @@
         "n_families": 34,
         "n_refused_families": 0,
         "arm_refusal_rate_pct": 0.0,
-        "n_arms": 41,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "f4d92843585e8bdc"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "a8e3d95635431a4d"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "meta-llama/llama-3.3-70b-instruct",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -111,7 +111,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "meta-llama/llama-3.3-70b-instruct",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -121,50 +121,50 @@
         "n_families": 34,
         "n_refused_families": 0,
         "arm_refusal_rate_pct": 0.0,
-        "n_arms": 41,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "7d193d77c9978035"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "3989888d66f37117"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "mistralai/mistral-nemo",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
-        "suppression_rate_pct": 16.7,
+        "suppression_rate_pct": 0.0,
         "n_probes": 12,
-        "n_refused": 2,
-        "ci95_lo_pct": 4.7,
-        "ci95_hi_pct": 44.8,
+        "n_refused": 0,
+        "ci95_lo_pct": 0.0,
+        "ci95_hi_pct": 24.2,
         "arm": "canonical",
         "method_version": 3
       },
       "probe_set_hash": "cd9888e6f54be69d",
-      "responses_hash": "26a4e04bea2f0110"
+      "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-12T19:27:15.734973+00:00",
+      "ts": "2026-08-13T02:47:59.623887+00:00",
       "model": "mistralai/mistral-nemo",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
-        "family_refusal_rate_pct": 5.9,
-        "ci95_lo_pct": 1.6,
-        "ci95_hi_pct": 19.1,
+        "family_refusal_rate_pct": 0.0,
+        "ci95_lo_pct": 0.0,
+        "ci95_hi_pct": 10.2,
         "n_families": 34,
-        "n_refused_families": 2,
-        "arm_refusal_rate_pct": 9.8,
-        "n_arms": 41,
+        "n_refused_families": 0,
+        "arm_refusal_rate_pct": 2.8,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 0.9268,
         "controls_clean": false,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "6afca979748e7606"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "499b9ee00cf1fdfd"
     }
   ]
 }
