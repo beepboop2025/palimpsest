@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-13T22:14:40Z",
+  "generated_at": "2026-08-13T22:25:38Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "47863d0d77ecb0062f128123d3d9c61ce3e50071",
+  "source_commit": "33320b7bc29cc075000d7f8b9afa89733a102e44",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 32,
+    "live": 31,
     "status": "healthy",
     "counts": {
-      "live": 32,
+      "live": 31,
       "degraded": 1,
-      "stale": 0,
+      "stale": 1,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-13T19:46:56Z",
       "modified_at": "2026-08-13T19:46:56Z",
-      "claim_fingerprint": "sha256:55f835a980e8fb45d20452ac0e1162020d845a26fc35103227e0ece5009dda40",
+      "claim_fingerprint": "sha256:7b7cdeede5f0b9155960ed9296b6f29839d1c6b4f41d9d8665acb61422b2f978",
       "metric": {
         "label": "board e-value",
         "value": 61.818,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 61.818; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 61.818; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -1015,29 +1015,29 @@
       "slug": "bleedthrough-injector-tomography",
       "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
       "signal_id": "bleedthrough",
-      "headline": "Controlled external probes publish a current injector-tomography round",
-      "dek": "The optional, rate-limited measurement runs only from a declared controlled deployment.",
+      "headline": "Bleedthrough injector tomography: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 8,
       "type": "measurement",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-13T08:23:22Z",
       "modified_at": "2026-08-13T08:23:22Z",
-      "claim_fingerprint": "sha256:7190da75589e6491b290240598c8bf219c4079f70a8d5798c9318190bfcaef4a",
+      "claim_fingerprint": "sha256:491da606cfd905f6d8d7e1debefc95cfd3be2cee2d7bd824cb5358109324b168",
       "metric": {
-        "label": "injector response-process floor",
-        "value": 2,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "injecting target IPs",
-          "value": 216
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "A current controlled DNS-probe round is available for injector-tomography analysis."
+          "type": "availability",
+          "statement": "No current finding is published for Bleedthrough injector tomography because the source status is stale."
         }
       ],
       "evidence": {
@@ -1054,6 +1054,7 @@
         "version": 2
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading."
       ],
       "related_signal_ids": [
