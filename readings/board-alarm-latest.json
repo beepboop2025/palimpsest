@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-13T14:10:12.590646+00:00",
-  "board_e_value": 41.165,
+  "generated_at": "2026-08-13T19:46:56.075129+00:00",
+  "board_e_value": 61.818,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -14,28 +14,28 @@
   },
   "layers": {
     "network": {
-      "e": 107.099,
+      "e": 163.812,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 91.997,
         "ioda_outages": 1.0,
-        "ooni_gfw": 332.589,
+        "ooni_gfw": 559.441,
         "tor_bridge_cn": 2.809
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 4.07,
+      "e": 4.126,
       "n_signals": 6,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 14.924,
-        "ddti_novelty": 0.75,
-        "ddti_threat": 2.41,
-        "gdelt_containment": 1.976,
+        "ddti_novelty": 0.938,
+        "ddti_threat": 2.65,
+        "gdelt_containment": 1.884,
         "github_refuge": 3.36,
         "weibo_suppression": 1.0
       },
@@ -65,34 +65,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "watch",
-      "e": 332.5895,
-      "n": 144,
+      "e": 559.4409,
+      "n": 145,
       "direction": "down",
-      "robust_z": -1.5,
+      "robust_z": -1.46,
       "driver_side": "down",
-      "readings_since_alarm": 93,
+      "readings_since_alarm": 94,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 2.4096,
-      "n": 268,
+      "e": 2.6496,
+      "n": 270,
       "direction": "down",
-      "robust_z": -0.95,
+      "robust_z": -0.99,
       "driver_side": "down",
-      "readings_since_alarm": 29,
+      "readings_since_alarm": 31,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 0.75,
-      "n": 268,
+      "e": 0.9375,
+      "n": 270,
       "direction": "down",
       "robust_z": -9.44,
       "driver_side": "up",
-      "readings_since_alarm": 10,
+      "readings_since_alarm": 12,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -109,10 +109,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 1.9759,
-      "n": 151,
-      "direction": "down",
-      "robust_z": -0.34,
+      "e": 1.8837,
+      "n": 152,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -171,7 +171,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 100,
+      "n": 101,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -182,7 +182,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 101,
+      "n": 102,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -215,45 +215,45 @@
           "state": "quiet",
           "evalue": 0.0,
           "p0": 0.004663,
-          "pairs_seen": 36,
+          "pairs_seen": 37,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 656
+          "monitored_comparisons": 697
         },
         "meta-llama/llama-3.3-70b-instruct": {
           "state": "quiet",
-          "evalue": 0.0003,
+          "evalue": 0.0002,
           "p0": 0.008849,
-          "pairs_seen": 36,
+          "pairs_seen": 37,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.008849,
-          "monitored_comparisons": 656
+          "monitored_comparisons": 697
         },
         "mistralai/mistral-nemo": {
           "state": "quiet",
           "evalue": 0.0001,
           "p0": 0.114619,
-          "pairs_seen": 36,
+          "pairs_seen": 37,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.114619,
-          "monitored_comparisons": 634
+          "monitored_comparisons": 675
         },
         "openai/gpt-4o-mini": {
           "state": "quiet",
           "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 36,
+          "pairs_seen": 37,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 656
+          "monitored_comparisons": 697
         }
       },
-      "n_rows": 144,
+      "n_rows": 148,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 6.3,
+      "age_hours": 0.5,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {
