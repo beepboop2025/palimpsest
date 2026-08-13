@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -111,6 +112,35 @@ def test_evidence_atlas_is_discoverable_by_humans_and_agents():
     assert "https://palimpsest.info/readings/catalog.jsonld" in llms
     assert card["evidence"]["data_catalog_json"].endswith("/readings/catalog.json")
     assert card["access"]["dataset_catalog"] == "https://palimpsest.info/data.html"
+
+
+def test_stable_public_surfaces_have_exact_sitemap_and_canonical_urls():
+    namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    sitemap = ET.parse(ROOT / "sitemap.xml")
+    sitemap_urls = {
+        location.text
+        for location in sitemap.findall("s:url/s:loc", namespace)
+    }
+    surfaces = {
+        "fund.html": "https://palimpsest.info/fund.html",
+        "readings/app-store.html": (
+            "https://palimpsest.info/readings/app-store.html"
+        ),
+        "readings/blocklist.html": (
+            "https://palimpsest.info/readings/blocklist.html"
+        ),
+        "readings/in-path-interference.html": (
+            "https://palimpsest.info/readings/in-path-interference.html"
+        ),
+        "readings/inside-view.html": (
+            "https://palimpsest.info/readings/inside-view.html"
+        ),
+    }
+
+    assert set(surfaces.values()) <= sitemap_urls
+    for relative_path, canonical_url in surfaces.items():
+        page = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert f'<link rel="canonical" href="{canonical_url}">' in page
 
 
 def test_scamshield_public_surfaces_share_one_bounded_contract():
