@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-13T08:12:53Z",
+  "generated_at": "2026-08-13T09:54:18Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "8c91958d59879088b0ee482a0da3c0942c9d53cb",
+  "source_commit": "9309c440960e700366726c035dea1e24448cccd4",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1023,16 +1023,16 @@
       "type": "measurement",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-13T02:23:22Z",
-      "modified_at": "2026-08-13T02:23:22Z",
-      "claim_fingerprint": "sha256:176cc3f5a217138b4028c0c4ebf9c03839582fe08342f0cc3da9ee0712db7acb",
+      "published_at": "2026-08-13T08:23:22Z",
+      "modified_at": "2026-08-13T08:23:22Z",
+      "claim_fingerprint": "sha256:7190da75589e6491b290240598c8bf219c4079f70a8d5798c9318190bfcaef4a",
       "metric": {
         "label": "injector response-process floor",
-        "value": 1,
+        "value": 2,
         "unit": "count",
         "denominator": {
           "label": "injecting target IPs",
-          "value": 20
+          "value": 216
         }
       },
       "claims": [
@@ -1045,10 +1045,10 @@
         "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
         "input": {
           "filename": "bleedthrough-latest.json",
-          "sha256": "aa9da22a703826297d1ca5e6b3520d7e406738f6797c0e08b7930508021e749e",
-          "bytes": 4205
+          "sha256": "4f0654619ed7d90010682e89cd08b846ddd3972220e91e258603c37cba13a366",
+          "bytes": 2837
         },
-        "source_timestamp": "2026-08-13T02:23:22Z"
+        "source_timestamp": "2026-08-13T08:23:22Z"
       },
       "method": {
         "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
@@ -1646,8 +1646,8 @@
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-12T08:15:20Z",
-      "modified_at": "2026-08-12T08:15:20Z",
+      "published_at": "2026-08-13T08:14:10Z",
+      "modified_at": "2026-08-13T08:14:10Z",
       "claim_fingerprint": "sha256:706b9d35c75074a76200d888fee299c00ea7c31da63a21671786daa62976e7e4",
       "metric": {
         "label": "GFI",
@@ -1668,10 +1668,10 @@
         "url": "https://palimpsest.info/readings/latest.json",
         "input": {
           "filename": "latest.json",
-          "sha256": "29c49df1a7ae048ee516642b633187dc3948d827c47101b89d77cf930f440620",
-          "bytes": 197021
+          "sha256": "5b78b69ec08833690e648512810a5eefea55eef8ad92f248c353284333332c6f",
+          "bytes": 199481
         },
-        "source_timestamp": "2026-08-12T08:15:20Z"
+        "source_timestamp": "2026-08-13T08:14:10Z"
       },
       "method": {
         "summary": "k5-wilson95",
@@ -1749,8 +1749,8 @@
       "type": "intelligence",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-13T07:59:16Z",
-      "modified_at": "2026-08-13T07:59:16Z",
+      "published_at": "2026-08-13T09:44:16Z",
+      "modified_at": "2026-08-13T09:44:16Z",
       "claim_fingerprint": "sha256:6341aaf3cb70d040e70af55749ada356610b5d2771c411b01a28a6da966f2f07",
       "metric": {
         "label": "topics ranked",
@@ -1771,10 +1771,10 @@
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "33f9ca48133f8f906c39b37831eb7a5b87682c8af84d730197a4688f60ba7783",
-          "bytes": 153460
+          "sha256": "b8d417fcbb41ea617cfeea717e9e8aa8be81b06f4ead0f7922f232885caabf56",
+          "bytes": 153468
         },
-        "source_timestamp": "2026-08-13T07:59:16Z"
+        "source_timestamp": "2026-08-13T09:44:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",

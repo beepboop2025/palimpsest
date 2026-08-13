@@ -1,98 +1,50 @@
 {
-  "distinct_pools": 3,
+  "distinct_pools": 6,
   "distinct_pools_basis": "union of forged IPs per region, not per-target samples",
   "events": [
     {
-      "detail": "injector-process floor changed from 2 to 1",
+      "detail": "injector-process floor changed from 1 to 2",
       "kind": "capacity_shift",
       "severity": "medium",
       "vantage": "CN-BJ/AS4808"
     },
     {
-      "detail": "injector-process floor changed from 2 to 1",
+      "detail": "injector-process floor changed from 1 to 2",
       "kind": "capacity_shift",
       "severity": "medium",
       "vantage": "CN-GD/AS17623"
     },
     {
-      "detail": "injector-process floor changed from 2 to 1",
+      "detail": "injector-process floor changed from 1 to 2",
       "kind": "capacity_shift",
       "severity": "medium",
       "vantage": "CN-SH/AS4812"
     },
     {
-      "detail": "injector-process floor changed from 2 to 1",
+      "detail": "injector-process floor changed from 1 to 2",
       "kind": "capacity_shift",
       "severity": "medium",
       "vantage": "CN/AS4134"
     },
     {
-      "detail": "injector-process floor changed from 2 to 1",
+      "detail": "injector-process floor changed from 1 to 2",
       "kind": "capacity_shift",
       "severity": "medium",
       "vantage": "CN/AS4837"
     },
     {
-      "detail": "injector-process floor changed from 2 to 1",
+      "detail": "injector-process floor changed from 1 to 2",
       "kind": "capacity_shift",
       "severity": "medium",
       "vantage": "CN/AS9808"
-    },
-    {
-      "detail": "previously injecting target became silent",
-      "kind": "injector_silent",
-      "severity": "high",
-      "vantage": "CN-BJ/AS4808"
-    },
-    {
-      "detail": "previously injecting target became silent",
-      "kind": "injector_silent",
-      "severity": "high",
-      "vantage": "CN-GD/AS17623"
-    },
-    {
-      "detail": "previously injecting target became silent",
-      "kind": "injector_silent",
-      "severity": "high",
-      "vantage": "CN-SH/AS4812"
-    },
-    {
-      "detail": "previously injecting target became silent",
-      "kind": "injector_silent",
-      "severity": "high",
-      "vantage": "CN/AS4134"
-    },
-    {
-      "detail": "previously injecting target became silent",
-      "kind": "injector_silent",
-      "severity": "high",
-      "vantage": "CN/AS4837"
-    },
-    {
-      "detail": "previously injecting target became silent",
-      "kind": "injector_silent",
-      "severity": "high",
-      "vantage": "CN/AS9808"
-    },
-    {
-      "detail": "regional forged-IP pool diverged from the shared baseline",
-      "kind": "regional_firewall_candidate",
-      "severity": "high",
-      "vantage": "CN-BJ/AS4808"
-    },
-    {
-      "detail": "regional forged-IP pool diverged from the shared baseline",
-      "kind": "regional_firewall_candidate",
-      "severity": "high",
-      "vantage": "CN-SH/AS4812"
     }
   ],
-  "generated_at": "2026-08-13T02:23:22.376280Z",
-  "last_changed_at": "2026-08-13T02:23:22.376280Z",
-  "max_process_count": 1,
+  "generated_at": "2026-08-13T08:23:22.295960Z",
+  "last_changed_at": "2026-08-13T08:23:22.295960Z",
+  "max_process_count": 2,
   "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
   "method_version": 2,
-  "pool_sampling_suspected": false,
+  "pool_sampling_suspected": true,
   "probe_domain": "torproject.org",
   "process_count_semantics": "floor",
   "provenance": {
@@ -124,6 +76,6 @@
   "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
   "signal": "bleedthrough",
   "title": "GFW injector fleet",
-  "vantages_injecting": 20,
+  "vantages_injecting": 216,
   "vantages_probed": 216
 }
