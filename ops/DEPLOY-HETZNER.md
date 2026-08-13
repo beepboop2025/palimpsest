@@ -808,6 +808,18 @@ sudo systemctl start palimpsest-common-crawl-import.service
 sudo systemctl enable --now palimpsest-bleedthrough.timer
 ```
 
+When a complete URL Index mirror predates the hardened network-lane receipts,
+do not bypass the local-filter guard and do not redownload it merely to create a
+stamp. With the heavy units stopped, use the root-only offline adoption command
+documented in `ops/network-lane/README.md`; it validates the exact manifest,
+inventory, Parquet framing, pinned tools, config, and deployed revision under
+both locks. After the adopted stamp is at least 15 minutes old, run the manual
+filter service. Move its reviewed hidden staging file into `inbox/` using the
+scope-addressed `CC-MAIN-YYYY-WW.finance-v1.<scope>.jsonl.gz` name so an earlier
+scope export is never overwritten. The importer will count existing capture
+locators as duplicates and insert only observations newly admitted by the
+expanded scope.
+
 The Compose wrapper and both bundle installers fail closed on Git-status errors
 and a dirty checkout. The investigative installer writes
 `/etc/palimpsest/deployed-commit` only as its final commit point. The Common

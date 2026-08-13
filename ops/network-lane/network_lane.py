@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Serialize Palimpsest's heavy network jobs and preserve crash evidence.
 
-The wrapper deliberately exposes only two production jobs: the fixed
-BLEEDTHROUGH prober and Common Crawl's pinned ``cc-downloader`` manifest flow.
-It never evaluates a shell command.  An internal command-taking function exists
-so the lock/signal contract can be tested with inert child processes.
+The wrapper deliberately exposes only two production network jobs: the fixed
+BLEEDTHROUGH prober and Common Crawl's pinned ``cc-downloader`` manifest flow,
+plus a root-only offline adoption operation for an existing mirror.  It never
+evaluates a shell command.  An internal command-taking function exists so the
+lock/signal contract can be tested with inert child processes.
 """
 
 from __future__ import annotations
@@ -53,6 +54,8 @@ MIN_THREADS = 1
 MAX_THREADS = 10
 MIN_RETRIES = 1
 MAX_RETRIES = 1000
+MIN_OPERATOR_REASON_CHARS = 8
+MAX_OPERATOR_REASON_CHARS = 500
 MAX_JSON_BYTES = 64 * 1024
 MAX_CONFIG_BYTES = 16 * 1024
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
@@ -362,6 +365,47 @@ def _sha256_fd(fd: int) -> str:
     while chunk := os.read(fd, 1024 * 1024):
         digest.update(chunk)
     return digest.hexdigest()
+
+
+def _inspect_mirror_config_binding(
+    plan: MirrorPlan, *, expected_config_uid: int = 0
+) -> dict[str, Any]:
+    """Re-open the validated plan and bind its exact bytes to a receipt."""
+
+    descriptor, _ = _secure_regular_file(
+        plan.config_path,
+        label="mirror config",
+        max_bytes=MAX_CONFIG_BYTES,
+        expected_uid=expected_config_uid,
+    )
+    try:
+        body = _read_fd(
+            descriptor, max_bytes=MAX_CONFIG_BYTES, label="mirror config"
+        )
+        raw = _strict_json_bytes(body, label="mirror config")
+        digest = hashlib.sha256(body).hexdigest()
+    finally:
+        os.close(descriptor)
+
+    expected = {
+        "schema_version": 1,
+        "crawl": plan.crawl,
+        "volume_root": str(plan.volume_root),
+        "manifest_path": str(plan.manifest_path),
+        "mirror_root": str(plan.mirror_root),
+        "threads": plan.threads,
+        "retries": plan.retries,
+        "downloader_sha256": plan.downloader_sha256,
+    }
+    if raw != expected:
+        raise LaneConfigurationError(
+            "mirror config changed after its plan was validated"
+        )
+    return {
+        "schema_version": 1,
+        "path": str(plan.config_path),
+        "sha256": digest,
+    }
 
 
 def _inspect_manifest_with_paths(
@@ -924,6 +968,18 @@ def _timestamp(now_ns: int) -> str:
     )
 
 
+def _normalize_operator_reason(reason: str, *, operation: str) -> str:
+    if not isinstance(reason, str):
+        raise LaneConfigurationError(f"{operation} reason must be text")
+    normalized = " ".join(reason.split())
+    if not MIN_OPERATOR_REASON_CHARS <= len(normalized) <= MAX_OPERATOR_REASON_CHARS:
+        raise LaneConfigurationError(
+            f"{operation} reason must be "
+            f"{MIN_OPERATOR_REASON_CHARS}..{MAX_OPERATOR_REASON_CHARS} characters"
+        )
+    return normalized
+
+
 def _refuse_orphan(paths: LanePaths) -> None:
     marker = _read_state_json(paths.active, orphan=True)
     if marker is not None:
@@ -1199,6 +1255,126 @@ def execute_guarded_job(
         return outcome.exit_status
 
 
+def adopt_mirror(
+    plan: MirrorPlan,
+    *,
+    reason: str,
+    state_dir: Path | str = DEFAULT_STATE_DIR,
+    downloader_path: Path = DOWNLOADER_PATH,
+    expected_config_uid: int = 0,
+    expected_downloader_uid: int = 0,
+    expected_manifest_uid: int = 0,
+    revision_path: Path = BUNDLE_REVISION_PATH,
+    expected_revision_uid: int = 0,
+    expected_volume_root: Path | None = None,
+    allowed_volume_parent: Path = DEFAULT_VOLUME_PARENT,
+    require_non_root_volume: bool = True,
+    require_production_config_path: bool = True,
+    now_ns: Callable[[], int] = time.time_ns,
+) -> int:
+    """Validate and receipt an existing mirror without running a download."""
+
+    if os.geteuid() != 0:
+        raise LaneConfigurationError("mirror adoption must run as root")
+    normalized_reason = _normalize_operator_reason(reason, operation="adoption")
+    paths = LanePaths.from_root(state_dir)
+    with ExitStack() as locks:
+        # Preserve the live-mirror order: no reader or heavy network job can
+        # overlap the complete validation and publication boundary.
+        locks.enter_context(_exclusive_lane(paths))
+        locks.enter_context(_exclusive_dataset(paths))
+        _refuse_orphan(paths)
+        started_ns = now_ns()
+
+        validated_plan = load_mirror_plan(
+            plan.config_path,
+            plan.crawl,
+            expected_config_uid=expected_config_uid,
+            expected_volume_root=expected_volume_root,
+            allowed_volume_parent=allowed_volume_parent,
+            require_non_root_volume=require_non_root_volume,
+            require_production_config_path=require_production_config_path,
+        )
+        if validated_plan != plan:
+            raise LaneConfigurationError(
+                "mirror plan no longer matches its root-owned config"
+            )
+        config_receipt = _inspect_mirror_config_binding(
+            validated_plan, expected_config_uid=expected_config_uid
+        )
+        manifest_receipt, expected_objects = _inspect_manifest_with_paths(
+            validated_plan, expected_manifest_uid=expected_manifest_uid
+        )
+        inventory = inspect_mirror_inventory(validated_plan, expected_objects)
+        if not inventory["valid"]:
+            details = ", ".join(inventory.get("errors", [])[:5])
+            suffix = f": {details}" if details else ""
+            raise LaneConfigurationError(
+                "cannot adopt mirror with an invalid output inventory" + suffix
+            )
+        tool_receipt = inspect_downloader(
+            validated_plan.downloader_sha256,
+            path=downloader_path,
+            expected_uid=expected_downloader_uid,
+        )
+        revision = inspect_runtime_revision(
+            path=revision_path, expected_uid=expected_revision_uid
+        )
+
+        completed_ns = now_ns()
+        invocation_id = uuid.uuid4().hex
+        completed = {
+            "schema_version": RECEIPT_SCHEMA,
+            "state": "completed",
+            "job_kind": "common-crawl-mirror",
+            "invocation_id": invocation_id,
+            "wrapper_pid": os.getpid(),
+            "started_at": _timestamp(started_ns),
+            "started_unix_ns": started_ns,
+            "completed_at": _timestamp(completed_ns),
+            "completed_unix_ns": completed_ns,
+            "exit_status": 0,
+            "received_signal": None,
+            "spawn_error": None,
+            "process_group_cleanup_required": False,
+            "crawl": validated_plan.crawl,
+            "config_path": str(validated_plan.config_path),
+            "config": config_receipt,
+            "volume_root": str(validated_plan.volume_root),
+            "mirror_root": str(validated_plan.mirror_root),
+            "threads": validated_plan.threads,
+            "retries": validated_plan.retries,
+            "network_lane_revision": revision,
+            "tool": tool_receipt,
+            "manifest": manifest_receipt,
+            "output_inventory": inventory,
+            "adoption": {
+                "adopted": True,
+                "mode": "offline-existing-mirror",
+                "reason": normalized_reason,
+                "operator_uid": os.geteuid(),
+                "download_command_executed": False,
+            },
+            "integrity_limit": (
+                "offline adoption validates the root-owned manifest, config, "
+                "tool and revision plus exact path-and-size inventory and PAR1 "
+                "framing; it does not prove transfer provenance or hash complete "
+                "Parquet object contents"
+            ),
+        }
+        receipt_path = paths.receipts / (
+            f"common-crawl-mirror-{invocation_id}.json"
+        )
+        _atomic_write_json(receipt_path, completed)
+        stamp = {
+            **completed,
+            "receipt_path": str(receipt_path),
+            "receipt_sha256": hashlib.sha256(receipt_path.read_bytes()).hexdigest(),
+        }
+        _atomic_write_json(paths.mirror_completed, stamp)
+        return 0
+
+
 def run_mirror(
     plan: MirrorPlan,
     *,
@@ -1337,9 +1513,9 @@ def reconcile_orphan(
 
     if INVOCATION_RE.fullmatch(expected_invocation_id) is None:
         raise LaneConfigurationError("expected invocation id must be 32 lowercase hex")
-    normalized_reason = " ".join(reason.split())
-    if not 8 <= len(normalized_reason) <= 500:
-        raise LaneConfigurationError("reconciliation reason must be 8..500 characters")
+    normalized_reason = _normalize_operator_reason(
+        reason, operation="reconciliation"
+    )
     paths = LanePaths.from_root(state_dir)
     with ExitStack() as locks:
         locks.enter_context(_exclusive_lane(paths))
@@ -1398,6 +1574,14 @@ def build_parser() -> argparse.ArgumentParser:
     mirror.add_argument("--crawl", required=True)
     mirror.add_argument("--config", type=Path, required=True)
 
+    adopt = commands.add_parser(
+        "adopt-mirror",
+        help="validate and receipt an already populated mirror without downloading",
+    )
+    adopt.add_argument("--crawl", required=True)
+    adopt.add_argument("--config", type=Path, required=True)
+    adopt.add_argument("--reason", required=True)
+
     bleed = commands.add_parser(
         "bleedthrough", help="run the fixed BLEEDTHROUGH prober"
     )
@@ -1417,6 +1601,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "mirror":
             plan = load_mirror_plan(args.config, args.crawl)
             return run_mirror(plan, state_dir=args.state_dir)
+        if args.command == "adopt-mirror":
+            if os.geteuid() != 0:
+                raise LaneConfigurationError("mirror adoption must run as root")
+            plan = load_mirror_plan(args.config, args.crawl)
+            return adopt_mirror(
+                plan,
+                state_dir=args.state_dir,
+                reason=args.reason,
+            )
         if args.command == "bleedthrough":
             return run_bleedthrough(
                 state_dir=args.state_dir, quiet_seconds=args.quiet_seconds

@@ -3,9 +3,16 @@
 ## What this method adds
 
 Palimpsest's Wayback collector reconstructs a small reviewed URL watchlist. The
-Common Crawl lake adds a different scale: monthly, domain-level metadata for ten
-reviewed Chinese public institutions. It reads an external public archive rather
-than bypassing access controls or asking anyone inside China to act.
+Common Crawl lake adds a different scale: monthly, domain-level metadata for a
+reviewed cross-product set of central banks, regulators, statistical agencies,
+filing systems, and market authorities. It reads an external public archive rather
+than bypassing publisher access controls. The original China set remains the
+Palimpsest core; broader targets route explicitly to LiquiLens, Undertow, Seiche,
+and/or Palimpsest.
+
+Target policy schema v2 makes aliases and product routes mandatory. The code-level
+allowlist must exactly match the committed config, so an old v1 file or an unreviewed
+host cannot silently widen a production filter.
 
 Common Crawl publishes two useful indexes. Its CDXJ index supports small URL
 lookups. Its Parquet URL Index is designed for bulk analytical queries and
@@ -27,7 +34,7 @@ Every accepted row records:
 
 | Field | Purpose |
 | --- | --- |
-| `target_id` | Reviewed institution identity. |
+| `target_id` | Reviewed institution identity; config carries exact aliases and product routes. |
 | `crawl` | Common Crawl monthly collection identity. |
 | `canonical_url`, `url_sha256` | Private URL identity and stable join key. |
 | `capture_at` | UTC evidence time. |
@@ -42,7 +49,7 @@ Every accepted row records:
 The private SQLite warehouse keeps URLs because longitudinal change detection
 requires stable page identity. Public or model-facing features do not carry the
 URLs. Social profiles, personal accounts, arbitrary domains, credentials,
-CAPTCHAs, and live Chinese-host fetching are outside this method.
+CAPTCHAs, and live publisher-host fetching are outside this method.
 
 ## Features and labels
 
@@ -146,9 +153,10 @@ Common Crawl is very large but not complete. Link popularity, crawl seeds,
 robots rules, language, JavaScript rendering, and transient reachability shape
 what appears. Monthly cadence is historical context, not minute-level deletion
 velocity. Official institutional sites are useful for studying publication and
-revision behavior, but they are not a representative sample of Chinese public
-speech. These limitations are stored in the feature and summary artifacts, not
-left only in prose.
+revision behavior, but they are not a representative sample of the financial web
+or of Chinese public speech. Product routes describe relevance, not an independent
+label or a licence. These limitations are stored in the feature and summary
+artifacts, not left only in prose.
 
 ## Evidence recovery
 

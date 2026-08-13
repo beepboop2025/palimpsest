@@ -1,15 +1,16 @@
-"""Private, structured Common Crawl evidence lake for reviewed China institutions.
+"""Private, structured Common Crawl evidence lake for reviewed financial institutions.
 
 Common Crawl already holds monthly, outside-the-wall captures of public web pages.
 This module turns reviewed URL Index exports into a local SQLite history without
-contacting the original Chinese hosts. The high-volume path is deliberately import
+contacting the original publisher hosts. The high-volume path is deliberately import
 based: operators query the public Parquet URL Index with DuckDB or Athena, then this
 code validates and ingests the resulting JSONL/CSV stream. The rate-limited CDX API
 is reserved for a small exact-URL diagnostic path.
 
 The public and training boundaries are conservative:
 
-* only code-and-config allowlisted institutional hosts are accepted;
+* only code-and-config allowlisted institutional hosts and exact aliases are accepted;
+* every target routes explicitly to LiquiLens, Undertow, Seiche, and/or Palimpsest;
 * full URLs remain in the private warehouse;
 * feature exports contain aggregate metadata, never source bodies or URLs;
 * a missing monthly capture is an archive coverage gap, never a deletion label;
@@ -83,18 +84,244 @@ _SOURCE = {
 }
 
 # Config cannot silently widen collection to arbitrary hosts. A target addition requires a
-# code review and a config change, and every initial source remains metadata-only.
-_APPROVED_TARGETS: dict[str, tuple[str, tuple[str, ...]]] = {
-    "state-council": ("www.gov.cn", ("government", "policy", "politics")),
-    "nbs": ("www.stats.gov.cn", ("economy", "government", "measurement")),
-    "pbc": ("www.pbc.gov.cn", ("economy", "government", "policy")),
-    "safe": ("www.safe.gov.cn", ("economy", "government", "policy")),
-    "ndrc": ("www.ndrc.gov.cn", ("economy", "government", "policy")),
-    "miit": ("www.miit.gov.cn", ("technology", "government", "policy")),
-    "cac": ("www.cac.gov.cn", ("censorship", "technology", "government", "policy")),
-    "csrc": ("www.csrc.gov.cn", ("economy", "government", "policy")),
-    "customs": ("www.customs.gov.cn", ("economy", "government", "measurement")),
-    "mof": ("www.mof.gov.cn", ("economy", "government", "policy")),
+# code review and a config change, and every source remains metadata-only. Canonical hosts
+# are listed first; aliases cover publisher-owned bare/www or data subdomains without
+# weakening the exact-host boundary.
+_APPROVED_PRODUCTS = frozenset({"liquilens", "undertow", "seiche", "palimpsest"})
+_APPROVED_TARGETS: dict[
+    str, tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]
+] = {
+    # China policy and institutional evidence (Palimpsest plus product companions).
+    "state-council": (
+        ("www.gov.cn", "gov.cn"),
+        ("government", "policy", "politics"),
+        ("palimpsest",),
+    ),
+    "nbs": (
+        ("www.stats.gov.cn", "stats.gov.cn"),
+        ("economy", "government", "measurement"),
+        ("palimpsest", "seiche"),
+    ),
+    "pbc": (
+        ("www.pbc.gov.cn", "pbc.gov.cn"),
+        ("economy", "funding", "government", "policy"),
+        ("liquilens", "palimpsest", "seiche"),
+    ),
+    "safe": (
+        ("www.safe.gov.cn", "safe.gov.cn"),
+        ("economy", "foreign-exchange", "government", "policy"),
+        ("palimpsest", "seiche", "undertow"),
+    ),
+    "ndrc": (
+        ("www.ndrc.gov.cn", "ndrc.gov.cn"),
+        ("economy", "government", "policy"),
+        ("palimpsest",),
+    ),
+    "miit": (
+        ("www.miit.gov.cn", "miit.gov.cn"),
+        ("technology", "government", "policy"),
+        ("palimpsest",),
+    ),
+    "cac": (
+        ("www.cac.gov.cn", "cac.gov.cn"),
+        ("censorship", "technology", "government", "policy"),
+        ("palimpsest",),
+    ),
+    "csrc": (
+        ("www.csrc.gov.cn", "csrc.gov.cn"),
+        ("economy", "institutions", "markets", "policy"),
+        ("liquilens", "palimpsest", "undertow"),
+    ),
+    "customs": (
+        ("www.customs.gov.cn", "customs.gov.cn"),
+        ("economy", "government", "measurement", "trade"),
+        ("palimpsest", "seiche"),
+    ),
+    "mof": (
+        ("www.mof.gov.cn", "mof.gov.cn"),
+        ("economy", "fiscal", "government", "policy"),
+        ("palimpsest", "seiche"),
+    ),
+    # United States funding, prudential, filing, and market evidence.
+    "federal-reserve": (
+        ("www.federalreserve.gov", "federalreserve.gov"),
+        ("banking", "funding", "markets", "monetary-policy"),
+        ("liquilens", "seiche", "undertow"),
+    ),
+    "new-york-fed": (
+        ("www.newyorkfed.org", "newyorkfed.org", "markets.newyorkfed.org"),
+        ("funding", "markets", "monetary-policy", "settlement"),
+        ("seiche", "undertow"),
+    ),
+    "us-treasury": (
+        ("home.treasury.gov", "treasury.gov", "www.treasury.gov"),
+        ("fiscal", "funding", "government", "markets"),
+        ("liquilens", "seiche", "undertow"),
+    ),
+    "us-fiscal-data": (
+        ("fiscaldata.treasury.gov",),
+        ("fiscal", "funding", "measurement"),
+        ("seiche",),
+    ),
+    "sec": (
+        ("www.sec.gov", "sec.gov", "data.sec.gov"),
+        ("filings", "institutions", "markets", "securities"),
+        ("liquilens", "undertow"),
+    ),
+    "fdic": (
+        ("www.fdic.gov", "fdic.gov", "api.fdic.gov"),
+        ("banking", "failures", "institutions", "prudential"),
+        ("liquilens",),
+    ),
+    "occ": (
+        ("www.occ.treas.gov", "occ.treas.gov", "www.occ.gov", "occ.gov"),
+        ("banking", "institutions", "prudential"),
+        ("liquilens",),
+    ),
+    "ffiec": (
+        ("www.ffiec.gov", "ffiec.gov"),
+        ("banking", "filings", "institutions", "prudential"),
+        ("liquilens",),
+    ),
+    "ncua": (
+        ("ncua.gov", "www.ncua.gov"),
+        ("banking", "institutions", "prudential"),
+        ("liquilens",),
+    ),
+    "office-financial-research": (
+        ("www.financialresearch.gov", "financialresearch.gov"),
+        ("funding", "institutions", "markets", "systemic-risk"),
+        ("liquilens", "seiche", "undertow"),
+    ),
+    "cftc": (
+        ("www.cftc.gov", "cftc.gov"),
+        ("derivatives", "markets", "positioning"),
+        ("undertow",),
+    ),
+    "finra": (
+        ("www.finra.org", "finra.org"),
+        ("institutions", "markets", "securities"),
+        ("liquilens", "undertow"),
+    ),
+    # India institutional and market evidence.
+    "rbi": (
+        ("www.rbi.org.in", "rbi.org.in", "rbidocs.rbi.org.in"),
+        ("banking", "funding", "monetary-policy", "prudential"),
+        ("liquilens", "seiche"),
+    ),
+    "sebi": (
+        ("www.sebi.gov.in", "sebi.gov.in"),
+        ("institutions", "markets", "securities"),
+        ("liquilens", "undertow"),
+    ),
+    "mca-india": (
+        ("www.mca.gov.in", "mca.gov.in"),
+        ("companies", "filings", "institutions"),
+        ("liquilens",),
+    ),
+    # United Kingdom and Europe.
+    "bank-of-england": (
+        ("www.bankofengland.co.uk", "bankofengland.co.uk"),
+        ("banking", "funding", "monetary-policy", "prudential"),
+        ("liquilens", "seiche"),
+    ),
+    "fca": (
+        ("www.fca.org.uk", "fca.org.uk"),
+        ("institutions", "markets", "prudential"),
+        ("liquilens", "undertow"),
+    ),
+    "ecb": (
+        ("www.ecb.europa.eu", "ecb.europa.eu", "data-api.ecb.europa.eu"),
+        ("banking", "funding", "monetary-policy", "settlement"),
+        ("liquilens", "seiche"),
+    ),
+    "eba": (
+        ("www.eba.europa.eu", "eba.europa.eu"),
+        ("banking", "institutions", "prudential"),
+        ("liquilens",),
+    ),
+    "esma": (
+        ("www.esma.europa.eu", "esma.europa.eu"),
+        ("markets", "securities", "settlement"),
+        ("liquilens", "undertow"),
+    ),
+    # Multilateral and cross-market evidence.
+    "bis": (
+        ("www.bis.org", "bis.org"),
+        ("banking", "funding", "markets", "prudential"),
+        ("liquilens", "seiche", "undertow"),
+    ),
+    "financial-stability-board": (
+        ("www.fsb.org", "fsb.org"),
+        ("banking", "funding", "markets", "systemic-risk"),
+        ("liquilens", "seiche", "undertow"),
+    ),
+    "iosco": (
+        ("www.iosco.org", "iosco.org"),
+        ("institutions", "markets", "securities"),
+        ("liquilens", "undertow"),
+    ),
+    "imf": (
+        ("www.imf.org", "imf.org"),
+        ("economy", "funding", "measurement", "policy"),
+        ("liquilens", "palimpsest", "seiche"),
+    ),
+    "world-bank-data": (
+        ("api.worldbank.org", "data.worldbank.org"),
+        ("economy", "measurement", "policy"),
+        ("palimpsest", "seiche"),
+    ),
+    "oecd": (
+        ("www.oecd.org", "oecd.org", "stats.oecd.org"),
+        ("economy", "measurement", "policy"),
+        ("palimpsest", "seiche"),
+    ),
+    # Asia-Pacific and Canadian central-bank/prudential evidence.
+    "bank-of-japan": (
+        ("www.boj.or.jp", "boj.or.jp"),
+        ("funding", "markets", "monetary-policy"),
+        ("seiche", "undertow"),
+    ),
+    "japan-fsa": (
+        ("www.fsa.go.jp", "fsa.go.jp"),
+        ("banking", "institutions", "markets", "prudential"),
+        ("liquilens", "undertow"),
+    ),
+    "mas": (
+        ("www.mas.gov.sg", "mas.gov.sg"),
+        ("banking", "funding", "markets", "prudential"),
+        ("liquilens", "seiche", "undertow"),
+    ),
+    "hkma": (
+        ("www.hkma.gov.hk", "hkma.gov.hk"),
+        ("banking", "funding", "monetary-policy", "prudential"),
+        ("liquilens", "seiche"),
+    ),
+    "rbnz": (
+        ("www.rbnz.govt.nz", "rbnz.govt.nz"),
+        ("banking", "funding", "monetary-policy", "prudential"),
+        ("liquilens", "seiche"),
+    ),
+    "rba": (
+        ("www.rba.gov.au", "rba.gov.au"),
+        ("funding", "markets", "monetary-policy"),
+        ("seiche",),
+    ),
+    "apra": (
+        ("www.apra.gov.au", "apra.gov.au"),
+        ("banking", "institutions", "prudential"),
+        ("liquilens",),
+    ),
+    "bank-of-canada": (
+        ("www.bankofcanada.ca", "bankofcanada.ca"),
+        ("funding", "markets", "monetary-policy"),
+        ("seiche", "undertow"),
+    ),
+    "osfi": (
+        ("www.osfi-bsif.gc.ca", "osfi-bsif.gc.ca"),
+        ("banking", "institutions", "prudential"),
+        ("liquilens",),
+    ),
 }
 
 _CONFIG_KEYS = frozenset({"schema_version", "source", "limits", "targets"})
@@ -113,7 +340,16 @@ _LIMIT_KEYS = frozenset(
     }
 )
 _TARGET_KEYS = frozenset(
-    {"id", "host", "topics", "scope", "training_use", "rights_ref"}
+    {
+        "id",
+        "host",
+        "aliases",
+        "topics",
+        "products",
+        "scope",
+        "training_use",
+        "rights_ref",
+    }
 )
 
 _ROW_ALIASES: dict[str, tuple[str, ...]] = {
@@ -177,7 +413,9 @@ class Limits:
 class Target:
     id: str
     host: str
+    aliases: tuple[str, ...]
     topics: tuple[str, ...]
+    products: tuple[str, ...]
     scope: str
     training_use: str
     rights_ref: str
@@ -194,7 +432,11 @@ class LakeConfig:
 
     @property
     def target_by_host(self) -> dict[str, Target]:
-        return {target.host: target for target in self.targets}
+        return {
+            host: target
+            for target in self.targets
+            for host in (target.host, *target.aliases)
+        }
 
     @property
     def target_by_id(self) -> dict[str, Target]:
@@ -206,7 +448,9 @@ class LakeConfig:
             {
                 "id": target.id,
                 "host": target.host,
+                "aliases": list(target.aliases),
                 "topics": list(target.topics),
+                "products": list(target.products),
                 "scope": target.scope,
                 "training_use": target.training_use,
                 "rights_ref": target.rights_ref,
@@ -288,8 +532,8 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> LakeConfig:
     except (UnicodeError, ValueError, TypeError) as exc:
         raise ConfigurationError("Common Crawl config is not valid JSON") from exc
     root = _exact_object(document, _CONFIG_KEYS, "config")
-    if root["schema_version"] != 1 or isinstance(root["schema_version"], bool):
-        raise ConfigurationError("Common Crawl config requires schema_version 1")
+    if root["schema_version"] != 2 or isinstance(root["schema_version"], bool):
+        raise ConfigurationError("Common Crawl config requires schema_version 2")
 
     source = _exact_object(root["source"], _SOURCE_KEYS, "source")
     if source != _SOURCE:
@@ -344,11 +588,26 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> LakeConfig:
         item = _exact_object(value, _TARGET_KEYS, f"targets[{index}]")
         target_id = item["id"]
         host = item["host"]
+        aliases = item["aliases"]
         topics = item["topics"]
+        products = item["products"]
         if type(target_id) is not str or not _TARGET_ID_RE.fullmatch(target_id):
             raise ConfigurationError(f"targets[{index}].id is invalid")
         if type(host) is not str or host != host.lower() or not _HOST_RE.fullmatch(host):
             raise ConfigurationError(f"targets[{index}].host is invalid")
+        if (
+            not isinstance(aliases, list)
+            or len(aliases) > 8
+            or aliases != list(dict.fromkeys(aliases))
+            or any(
+                type(alias) is not str
+                or alias != alias.lower()
+                or not _HOST_RE.fullmatch(alias)
+                or alias == host
+                for alias in aliases
+            )
+        ):
+            raise ConfigurationError(f"targets[{index}].aliases is invalid")
         if (
             not isinstance(topics, list)
             or not topics
@@ -357,10 +616,19 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> LakeConfig:
             or any(type(topic) is not str or not _TARGET_ID_RE.fullmatch(topic) for topic in topics)
         ):
             raise ConfigurationError(f"targets[{index}].topics is invalid")
+        if (
+            not isinstance(products, list)
+            or not products
+            or products != list(dict.fromkeys(products))
+            or products != sorted(products)
+            or any(product not in _APPROVED_PRODUCTS for product in products)
+        ):
+            raise ConfigurationError(f"targets[{index}].products is invalid")
         expected = _APPROVED_TARGETS.get(target_id)
-        if expected != (host, tuple(topics)):
+        target_hosts = (host, *aliases)
+        if expected != (target_hosts, tuple(topics), tuple(products)):
             raise ConfigurationError(f"target {target_id!r} is not in the code-level allowlist")
-        if target_id in seen_ids or host in seen_hosts:
+        if target_id in seen_ids or any(value in seen_hosts for value in target_hosts):
             raise ConfigurationError("target ids and hosts must be unique")
         scope = item["scope"]
         rights_ref = item["rights_ref"]
@@ -374,14 +642,16 @@ def load_config(path: Path | str = DEFAULT_CONFIG) -> LakeConfig:
             Target(
                 id=target_id,
                 host=host,
+                aliases=tuple(aliases),
                 topics=tuple(topics),
+                products=tuple(products),
                 scope=scope,
                 training_use="metadata_only",
                 rights_ref=rights_ref,
             )
         )
         seen_ids.add(target_id)
-        seen_hosts.add(host)
+        seen_hosts.update(target_hosts)
     if set(seen_ids) != set(_APPROVED_TARGETS):
         raise ConfigurationError("approved targets are missing from config")
     return LakeConfig(
@@ -1220,7 +1490,9 @@ def build_feature_rows(
             "method_version": METHOD_VERSION,
             "target_id": target.id,
             "host": target.host,
+            "aliases": list(target.aliases),
             "topics": list(target.topics),
+            "products": list(target.products),
             "crawl": raw["crawl"],
             "previous_crawl": raw["previous_crawl"],
             "first_capture_at": raw["first_capture_at"],
@@ -1335,7 +1607,9 @@ def build_summary(
             {
                 "id": target.id,
                 "host": target.host,
+                "aliases": list(target.aliases),
                 "topics": list(target.topics),
+                "products": list(target.products),
                 "latest_crawl": row["crawl"] if row else None,
                 "latest_capture_at": row["last_capture_at"] if row else None,
                 "latest_available_at": row["available_at"] if row else None,
@@ -1378,7 +1652,7 @@ def build_summary(
             "Common Crawl coverage is incomplete and popularity-biased.",
             "A missing capture is an archive coverage gap, not evidence of deletion.",
             "A digest change proves archived bytes changed; it does not identify cause or intent.",
-            "Targets are institution-level only and source bodies remain outside public output.",
+            "Targets are reviewed first-party institutions and source bodies remain outside public output.",
         ],
     }
     summary["summary_sha256"] = hashlib.sha256(_canonical_json(summary)).hexdigest()
@@ -1480,6 +1754,7 @@ def render_duckdb_export_sql(
     temp_directory: Path | str,
     bulk_volume_root: Path | str,
     config_path: Path | str = DEFAULT_CONFIG,
+    expected_scope_sha256: str | None = None,
 ) -> str:
     """Render a reviewed local-DuckDB URL Index export query.
 
@@ -1488,13 +1763,18 @@ def render_duckdb_export_sql(
     """
 
     config = load_config(config_path)
+    if (
+        expected_scope_sha256 is not None
+        and config.scope_sha256 != expected_scope_sha256
+    ):
+        raise ValidationError("target scope changed after the filter plan was built")
     crawl_id = _crawl(crawl, None)
     if not index_glob or len(index_glob) > 4096:
         raise ValidationError("index_glob is missing or too long")
     if not output_path or len(output_path) > 4096:
         raise ValidationError("output_path is missing or too long")
     spill = validate_duckdb_spill_directory(temp_directory, bulk_volume_root=bulk_volume_root)
-    hosts = ", ".join(_sql_literal(target.host) for target in config.targets)
+    hosts = ", ".join(_sql_literal(host) for host in sorted(config.target_by_host))
     return f"""-- Generated by Palimpsest. Query a LOCAL Common Crawl URL Index mirror.
 SET memory_limit = {_sql_literal(DUCKDB_MEMORY_LIMIT)};
 SET threads = {DUCKDB_THREADS};

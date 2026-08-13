@@ -445,6 +445,65 @@ def _write_plan_config(
     path.chmod(0o400)
 
 
+def _adoption_fixture(tmp_path: Path):
+    crawl = "CC-MAIN-2026-30"
+    volume_root = tmp_path / "common-crawl"
+    mirror_root = volume_root / "index-mirror"
+    relative = (
+        f"cc-index/table/cc-main/warc/crawl={crawl}/subset=warc/"
+        "part-00000-fixture.c000.zstd.parquet"
+    )
+    parquet = mirror_root / relative
+    parquet.parent.mkdir(parents=True)
+    parquet.write_bytes(b"PAR1offline-populatedPAR1")
+    manifest = mirror_root / "cc-index-table.paths.gz"
+    with gzip.open(manifest, "wb") as stream:
+        stream.write((relative + "\n").encode("ascii"))
+    manifest.chmod(0o400)
+
+    downloader = tmp_path / "cc-downloader"
+    downloader_arg_log = tmp_path / "downloader-args.log"
+    downloader_sha256 = _write_fake_downloader(
+        downloader, downloader_arg_log
+    )
+    config = tmp_path / "mirror.json"
+    _write_plan_config(
+        config,
+        crawl=crawl,
+        volume_root=volume_root,
+        mirror_root=mirror_root,
+    )
+    raw_config = json.loads(config.read_text(encoding="utf-8"))
+    raw_config["downloader_sha256"] = downloader_sha256
+    config.chmod(0o600)
+    config.write_text(json.dumps(raw_config), encoding="utf-8")
+    config.chmod(0o400)
+    plan = lane.load_mirror_plan(
+        config,
+        crawl,
+        expected_config_uid=os.getuid(),
+        expected_volume_root=volume_root,
+        allowed_volume_parent=tmp_path,
+        require_non_root_volume=False,
+        require_production_config_path=False,
+    )
+    revision = tmp_path / "REVISION"
+    revision.write_text("e" * 40 + "\n", encoding="ascii")
+    revision.chmod(0o400)
+    return SimpleNamespace(
+        crawl=crawl,
+        config=config,
+        downloader=downloader,
+        downloader_arg_log=downloader_arg_log,
+        mirror_root=mirror_root,
+        parquet=parquet,
+        plan=plan,
+        revision=revision,
+        state=_state(tmp_path),
+        volume_root=volume_root,
+    )
+
+
 def test_plan_rejects_invalid_crawl_id_before_reading_config(tmp_path):
     with pytest.raises(lane.LaneConfigurationError, match="CC-MAIN-YYYY-WW"):
         lane.load_mirror_plan(
@@ -662,6 +721,133 @@ def test_fixed_cc_downloader_plan_records_a_complete_receipt_skeleton(tmp_path):
         str(manifest),
         str(mirror_root),
     ]
+
+
+def test_offline_adoption_validates_and_publishes_a_verifiable_stamp(
+    tmp_path, monkeypatch
+):
+    fixture = _adoption_fixture(tmp_path)
+    monkeypatch.setattr(lane.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        lane,
+        "_run_child",
+        lambda *_args, **_kwargs: pytest.fail(
+            "offline adoption entered the downloader execution path"
+        ),
+    )
+    clock = iter([1_800_000_000_000_000_000, 1_800_000_001_000_000_000])
+
+    assert lane.adopt_mirror(
+        fixture.plan,
+        reason="  restored   from reviewed offline volume custody log  ",
+        state_dir=fixture.state,
+        downloader_path=fixture.downloader,
+        expected_config_uid=os.getuid(),
+        expected_downloader_uid=os.getuid(),
+        expected_manifest_uid=os.getuid(),
+        revision_path=fixture.revision,
+        expected_revision_uid=os.getuid(),
+        expected_volume_root=fixture.volume_root,
+        allowed_volume_parent=tmp_path,
+        require_non_root_volume=False,
+        require_production_config_path=False,
+        now_ns=lambda: next(clock),
+    ) == 0
+
+    assert not fixture.downloader_arg_log.exists()
+    assert not (fixture.state / "state/active.json").exists()
+    stamp = json.loads(
+        (fixture.state / "state/mirror-completed.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert stamp["state"] == "completed"
+    assert stamp["exit_status"] == 0
+    assert stamp["crawl"] == fixture.crawl
+    assert stamp["network_lane_revision"] == "e" * 40
+    assert stamp["adoption"] == {
+        "adopted": True,
+        "download_command_executed": False,
+        "mode": "offline-existing-mirror",
+        "operator_uid": 0,
+        "reason": "restored from reviewed offline volume custody log",
+    }
+    assert stamp["config"]["path"] == str(fixture.config)
+    assert stamp["config"]["sha256"] == hashlib.sha256(
+        fixture.config.read_bytes()
+    ).hexdigest()
+    assert stamp["manifest"]["object_count"] == 1
+    assert stamp["output_inventory"]["valid"] is True
+    assert stamp["output_inventory"]["parquet_magic_validated_count"] == 1
+    assert "does not prove transfer provenance" in stamp["integrity_limit"]
+    receipt = Path(stamp["receipt_path"])
+    assert receipt.exists()
+    assert stamp["receipt_sha256"] == hashlib.sha256(receipt.read_bytes()).hexdigest()
+
+    with lane.exclusive_dataset(fixture.state):
+        readiness = lane.verify_completed_mirror(
+            fixture.plan,
+            state_dir=fixture.state,
+            expected_manifest_uid=os.getuid(),
+        )
+    assert readiness["receipt_sha256"] == stamp["receipt_sha256"]
+
+
+def test_offline_adoption_refuses_bad_inventory_without_publishing(
+    tmp_path, monkeypatch
+):
+    fixture = _adoption_fixture(tmp_path)
+    monkeypatch.setattr(lane.os, "geteuid", lambda: 0)
+    (fixture.parquet.parent / "part-unexpected.parquet").write_bytes(
+        b"PAR1unexpectedPAR1"
+    )
+
+    with pytest.raises(lane.LaneConfigurationError, match="invalid output inventory"):
+        lane.adopt_mirror(
+            fixture.plan,
+            reason="reviewed offline volume before adoption",
+            state_dir=fixture.state,
+            downloader_path=fixture.downloader,
+            expected_config_uid=os.getuid(),
+            expected_downloader_uid=os.getuid(),
+            expected_manifest_uid=os.getuid(),
+            revision_path=fixture.revision,
+            expected_revision_uid=os.getuid(),
+            expected_volume_root=fixture.volume_root,
+            allowed_volume_parent=tmp_path,
+            require_non_root_volume=False,
+            require_production_config_path=False,
+        )
+
+    assert list((fixture.state / "receipts").iterdir()) == []
+    assert not (fixture.state / "state/mirror-completed.json").exists()
+    assert not fixture.downloader_arg_log.exists()
+
+
+def test_adopt_mirror_cli_refuses_non_root_before_loading_config(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(lane.os, "geteuid", lambda: 10001)
+    monkeypatch.setattr(
+        lane,
+        "load_mirror_plan",
+        lambda *_args, **_kwargs: pytest.fail("non-root CLI loaded the mirror config"),
+    )
+
+    assert lane.main(
+        [
+            "--state-dir",
+            str(tmp_path / "missing-state"),
+            "adopt-mirror",
+            "--crawl",
+            "CC-MAIN-2026-30",
+            "--config",
+            "/etc/palimpsest/common-crawl-mirror/CC-MAIN-2026-30.json",
+            "--reason",
+            "operator reviewed offline adoption",
+        ]
+    ) == lane.EXIT_CONFIG
+    assert "mirror adoption must run as root" in capsys.readouterr().err
 
 
 def test_mirror_refuses_below_256_gib_before_inspection_or_child_start(

@@ -93,22 +93,38 @@ def _db(warehouse: Path):
 def test_config_is_closed_to_reviewed_institutional_metadata_only_targets():
     config = lake.load_config(CONFIG)
 
-    assert len(config.targets) == 10
-    assert set(config.target_by_host) == {
-        "www.gov.cn",
-        "www.stats.gov.cn",
-        "www.pbc.gov.cn",
-        "www.safe.gov.cn",
-        "www.ndrc.gov.cn",
-        "www.miit.gov.cn",
-        "www.cac.gov.cn",
-        "www.csrc.gov.cn",
-        "www.customs.gov.cn",
-        "www.mof.gov.cn",
-    }
+    assert len(config.targets) == 45
+    assert len(config.target_by_host) == 98
+    assert config.target_by_host["pbc.gov.cn"].id == "pbc"
+    assert config.target_by_host["data.sec.gov"].id == "sec"
+    assert config.target_by_host["markets.newyorkfed.org"].id == "new-york-fed"
     assert all(target.scope == "institution-level public record" for target in config.targets)
     assert all(target.training_use == "metadata_only" for target in config.targets)
+    assert {product for target in config.targets for product in target.products} == {
+        "liquilens",
+        "undertow",
+        "seiche",
+        "palimpsest",
+    }
     assert len(config.scope_sha256) == 64
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("aliases", ["wildcard.example"]),
+        ("products", ["palimpsest"]),
+        ("training_use", "full_text"),
+    ],
+)
+def test_config_rejects_host_route_or_rights_drift(tmp_path, field, replacement):
+    document = json.loads(CONFIG.read_text(encoding="utf-8"))
+    document["targets"][2][field] = replacement
+    changed = tmp_path / "changed-targets.json"
+    changed.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(lake.ConfigurationError):
+        lake.load_config(changed)
 
 
 def test_normalization_keeps_exact_archive_provenance_but_rejects_scope_drift():
@@ -122,6 +138,12 @@ def test_normalization_keeps_exact_archive_provenance_but_rejects_scope_drift():
     assert observation.languages == "zho,eng"
     assert observation.warc_record_offset == 100
     assert len(observation.locator_sha256) == 64
+
+    alias = _row(url="https://pbc.gov.cn/english/130721/fixture.html")
+    alias["url_host_name"] = "pbc.gov.cn"
+    alias_observation = lake.normalize_observation(alias, config)
+    assert alias_observation is not None
+    assert alias_observation.target_id == "pbc"
 
     outside = _row(url="https://weibo.com/u/123")
     outside["url_host_name"] = "weibo.com"
@@ -420,6 +442,8 @@ def test_duckdb_plan_is_resource_bounded_and_metadata_only(tmp_path, monkeypatch
     assert sql.index("SET memory_limit") < sql.index("COPY (")
     assert "url_host_name IN" in sql
     assert "'www.pbc.gov.cn'" in sql
+    assert "'pbc.gov.cn'" in sql
+    assert "'data.sec.gov'" in sql
     assert "warc_record_offset" in sql and "warc_record_length" in sql
     assert "content" not in sql.replace("content_digest", "").replace(
         "content_mime_detected", ""
@@ -433,6 +457,24 @@ def test_duckdb_plan_is_resource_bounded_and_metadata_only(tmp_path, monkeypatch
         bulk_volume_root=bulk_volume,
         config_path=CONFIG,
     )
+
+
+def test_duckdb_plan_refuses_scope_drift(tmp_path, monkeypatch):
+    bulk_volume = tmp_path / "bulk-volume"
+    spill = bulk_volume / "duckdb-spill" / "CC-MAIN-2026-30"
+    spill.mkdir(parents=True)
+    _allow_test_bulk_volume(monkeypatch, bulk_volume)
+
+    with pytest.raises(lake.ValidationError, match="scope changed"):
+        lake.render_duckdb_export_sql(
+            "CC-MAIN-2026-30",
+            "/srv/common-crawl/*.parquet",
+            "/var/lib/palimpsest/common-crawl/out.jsonl.gz",
+            temp_directory=spill,
+            bulk_volume_root=bulk_volume,
+            config_path=CONFIG,
+            expected_scope_sha256="0" * 64,
+        )
 
 
 def test_duckdb_spill_guard_rejects_relative_and_root_disk_paths(tmp_path):
@@ -1104,7 +1146,10 @@ def test_local_filter_plan_derives_exact_partition_and_hidden_staging(tmp_path):
         / f"crawl={plan.crawl}"
         / "subset=warc"
     )
-    assert plan.output == plan.warehouse / f".{plan.crawl}.jsonl.gz.staging"
+    assert len(plan.scope_sha256) == 64
+    assert plan.output == plan.warehouse / (
+        f".{plan.crawl}.finance-v1.{plan.scope_sha256[:16]}.jsonl.gz.staging"
+    )
     assert plan.spill == plan.warehouse / "duckdb-spill" / plan.crawl
     assert not plan.output.exists()
 
@@ -1182,6 +1227,7 @@ def test_local_filter_runner_is_fixed_argv_bounded_and_staging_only(
     receipt = json.loads(capsys.readouterr().out)
     assert receipt["status"] == "hidden-staging-ready-for-review"
     assert receipt["publication_eligible"] is False
+    assert receipt["scope_sha256"] == plan.scope_sha256
     assert receipt["tool"] == {
         "path": str(duckdb),
         "sha256": hashlib.sha256(duckdb.read_bytes()).hexdigest(),
@@ -1193,6 +1239,7 @@ def test_local_filter_runner_is_fixed_argv_bounded_and_staging_only(
     durable_receipt = Path(receipt["receipt"])
     receipt_document = json.loads(durable_receipt.read_text(encoding="utf-8"))
     assert receipt_document["bundle_revision"] == "b" * 40
+    assert receipt_document["scope_sha256"] == plan.scope_sha256
     assert receipt_document["input"]["receipt_sha256"] == "c" * 64
     assert receipt_document["sql_sha256"] == hashlib.sha256(
         b"SELECT 1;\n"

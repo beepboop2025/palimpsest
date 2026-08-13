@@ -22,7 +22,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, ContextManager
 
-from collectors.common_crawl_lake import render_duckdb_export_sql
+from collectors.common_crawl_lake import load_config, render_duckdb_export_sql
 
 
 CRAWL_RE = re.compile(r"CC-MAIN-[0-9]{4}-[0-9]{2}\Z")
@@ -35,7 +35,14 @@ NETWORK_HELPER_PATH = Path(
     "/usr/local/libexec/palimpsest-network-lane/current/network_lane.py"
 )
 NETWORK_STATE = Path("/var/lib/palimpsest/network-lane")
-TARGET_CONFIG = Path(__file__).resolve().parent / "config/common_crawl_targets.json"
+_SCRIPT_ROOT = Path(__file__).resolve().parent
+_BUNDLED_TARGET_CONFIG = _SCRIPT_ROOT / "config/common_crawl_targets.json"
+_REPOSITORY_TARGET_CONFIG = _SCRIPT_ROOT.parents[1] / "config/common_crawl_targets.json"
+TARGET_CONFIG = (
+    _BUNDLED_TARGET_CONFIG
+    if _BUNDLED_TARGET_CONFIG.is_file()
+    else _REPOSITORY_TARGET_CONFIG
+)
 MIN_FILTER_FREE_BYTES = 160 * 1024 * 1024 * 1024
 FILTER_RECEIPT_SCHEMA = "palimpsest-common-crawl-local-filter/v1"
 MAX_PIN_BYTES = 256
@@ -52,6 +59,7 @@ class FilterTemporaryError(RuntimeError):
 @dataclass(frozen=True)
 class FilterPlan:
     crawl: str
+    scope_sha256: str
     mirror_config: Path
     partition: Path
     warehouse: Path
@@ -201,13 +209,18 @@ def build_filter_plan(
         raise FilterConfigurationError("warehouse must use a non-root filesystem")
     if partition_info.st_dev != warehouse_info.st_dev:
         raise FilterConfigurationError("mirror and warehouse must use the same Volume")
+    scope_sha256 = load_config(TARGET_CONFIG).scope_sha256
     return FilterPlan(
         crawl=crawl,
+        scope_sha256=scope_sha256,
         mirror_config=mirror_config,
         partition=partition,
         warehouse=warehouse,
         spill=warehouse / "duckdb-spill" / crawl,
-        output=warehouse / f".{crawl}.jsonl.gz.staging",
+        output=(
+            warehouse
+            / f".{crawl}.finance-v1.{scope_sha256[:16]}.jsonl.gz.staging"
+        ),
     )
 
 
@@ -517,6 +530,7 @@ def _run_filter_locked(
         temp_directory=spill,
         bulk_volume_root=plan.warehouse,
         config_path=TARGET_CONFIG,
+        expected_scope_sha256=plan.scope_sha256,
     )
     sql_sha256 = hashlib.sha256(sql.encode("utf-8")).hexdigest()
     completed = subprocess.run(
@@ -571,6 +585,7 @@ def _run_filter_locked(
         "status": "hidden-staging-ready-for-review",
         "publication_eligible": False,
         "crawl": plan.crawl,
+        "scope_sha256": plan.scope_sha256,
         "started_unix_ns": started_ns,
         "completed_unix_ns": completed_ns,
         "bundle_revision": bundle_revision,
@@ -592,6 +607,7 @@ def _run_filter_locked(
         json.dumps(
             {
                 "crawl": plan.crawl,
+                "scope_sha256": plan.scope_sha256,
                 "output": str(plan.output),
                 "output_bytes": output_information.st_size,
                 "publication_eligible": False,

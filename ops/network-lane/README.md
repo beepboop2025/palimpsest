@@ -116,6 +116,41 @@ auditable. This is a start-time reserve, not a promise that an unexpectedly
 large upstream crawl cannot consume more space; operators must still monitor
 the mounted Volume.
 
+### Adopt an already populated mirror
+
+An existing offline-populated mirror can be adopted only through a deliberate
+root invocation. Stop the mirror, filter, and BLEED services first, confirm
+that no related process remains, and supply an auditable 8–500 character
+reason (runs of whitespace are normalized):
+
+```bash
+CRAWL=CC-MAIN-2026-30
+sudo python3 /usr/local/libexec/palimpsest-network-lane/current/network_lane.py \
+  --state-dir /var/lib/palimpsest/network-lane adopt-mirror \
+  --crawl "$CRAWL" \
+  --config "/etc/palimpsest/common-crawl-mirror/$CRAWL.json" \
+  --reason 'copied from the retired mirror volume; operator checked custody log'
+```
+
+`adopt-mirror` takes the network-lane lock and then the dataset lock, refuses
+any active/orphan marker, and holds both locks through receipt publication. It
+revalidates the root-owned closed-shape config and path manifest, the configured
+downloader's ownership, SHA-256, and exact version, and the deployed bundle
+revision. It then requires the exact manifest inventory with no missing or
+extra crawl objects and checks `PAR1` framing on every object. The downloader
+is invoked only for its fixed `--version` identification; no `download` command
+or network transfer is started.
+
+Success writes a durable per-invocation receipt and the normal successful
+`mirror-completed.json` stamp with exit status 0. Both identify the operation as
+an offline adoption and retain the operator reason. The receipt explicitly
+limits the claim: adoption binds root-owned inputs, canonical paths and sizes,
+and Parquet framing, but cannot prove transfer provenance or complete object
+contents because upstream provides no per-object content hashes. Local
+readiness remains unchanged and recomputes the manifest and inventory under the
+dataset lock before accepting the adopted stamp. BLEED's 900-second quiet clock
+starts at adoption completion.
+
 ## Install and run
 
 The Common Crawl host installer is the only supported installer for this lane.

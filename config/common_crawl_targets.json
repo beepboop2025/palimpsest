@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "source": {
     "collection_catalog_url": "https://index.commoncrawl.org/collinfo.json",
     "index_base_url": "https://index.commoncrawl.org/",
@@ -18,85 +18,50 @@
     "archive_requests_per_second": 0.1
   },
   "targets": [
-    {
-      "id": "state-council",
-      "host": "www.gov.cn",
-      "topics": ["government", "policy", "politics"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "nbs",
-      "host": "www.stats.gov.cn",
-      "topics": ["economy", "government", "measurement"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "pbc",
-      "host": "www.pbc.gov.cn",
-      "topics": ["economy", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "safe",
-      "host": "www.safe.gov.cn",
-      "topics": ["economy", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "ndrc",
-      "host": "www.ndrc.gov.cn",
-      "topics": ["economy", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "miit",
-      "host": "www.miit.gov.cn",
-      "topics": ["technology", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "cac",
-      "host": "www.cac.gov.cn",
-      "topics": ["censorship", "technology", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "csrc",
-      "host": "www.csrc.gov.cn",
-      "topics": ["economy", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "customs",
-      "host": "www.customs.gov.cn",
-      "topics": ["economy", "government", "measurement"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    },
-    {
-      "id": "mof",
-      "host": "www.mof.gov.cn",
-      "topics": ["economy", "government", "policy"],
-      "scope": "institution-level public record",
-      "training_use": "metadata_only",
-      "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained"
-    }
+    {"id": "state-council", "host": "www.gov.cn", "aliases": ["gov.cn"], "topics": ["government", "policy", "politics"], "products": ["palimpsest"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "nbs", "host": "www.stats.gov.cn", "aliases": ["stats.gov.cn"], "topics": ["economy", "government", "measurement"], "products": ["palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "pbc", "host": "www.pbc.gov.cn", "aliases": ["pbc.gov.cn"], "topics": ["economy", "funding", "government", "policy"], "products": ["liquilens", "palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "safe", "host": "www.safe.gov.cn", "aliases": ["safe.gov.cn"], "topics": ["economy", "foreign-exchange", "government", "policy"], "products": ["palimpsest", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "ndrc", "host": "www.ndrc.gov.cn", "aliases": ["ndrc.gov.cn"], "topics": ["economy", "government", "policy"], "products": ["palimpsest"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "miit", "host": "www.miit.gov.cn", "aliases": ["miit.gov.cn"], "topics": ["technology", "government", "policy"], "products": ["palimpsest"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "cac", "host": "www.cac.gov.cn", "aliases": ["cac.gov.cn"], "topics": ["censorship", "technology", "government", "policy"], "products": ["palimpsest"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "csrc", "host": "www.csrc.gov.cn", "aliases": ["csrc.gov.cn"], "topics": ["economy", "institutions", "markets", "policy"], "products": ["liquilens", "palimpsest", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "customs", "host": "www.customs.gov.cn", "aliases": ["customs.gov.cn"], "topics": ["economy", "government", "measurement", "trade"], "products": ["palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "mof", "host": "www.mof.gov.cn", "aliases": ["mof.gov.cn"], "topics": ["economy", "fiscal", "government", "policy"], "products": ["palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "federal-reserve", "host": "www.federalreserve.gov", "aliases": ["federalreserve.gov"], "topics": ["banking", "funding", "markets", "monetary-policy"], "products": ["liquilens", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "new-york-fed", "host": "www.newyorkfed.org", "aliases": ["newyorkfed.org", "markets.newyorkfed.org"], "topics": ["funding", "markets", "monetary-policy", "settlement"], "products": ["seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "us-treasury", "host": "home.treasury.gov", "aliases": ["treasury.gov", "www.treasury.gov"], "topics": ["fiscal", "funding", "government", "markets"], "products": ["liquilens", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "us-fiscal-data", "host": "fiscaldata.treasury.gov", "aliases": [], "topics": ["fiscal", "funding", "measurement"], "products": ["seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "sec", "host": "www.sec.gov", "aliases": ["sec.gov", "data.sec.gov"], "topics": ["filings", "institutions", "markets", "securities"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "fdic", "host": "www.fdic.gov", "aliases": ["fdic.gov", "api.fdic.gov"], "topics": ["banking", "failures", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "occ", "host": "www.occ.treas.gov", "aliases": ["occ.treas.gov", "www.occ.gov", "occ.gov"], "topics": ["banking", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "ffiec", "host": "www.ffiec.gov", "aliases": ["ffiec.gov"], "topics": ["banking", "filings", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "ncua", "host": "ncua.gov", "aliases": ["www.ncua.gov"], "topics": ["banking", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "office-financial-research", "host": "www.financialresearch.gov", "aliases": ["financialresearch.gov"], "topics": ["funding", "institutions", "markets", "systemic-risk"], "products": ["liquilens", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "cftc", "host": "www.cftc.gov", "aliases": ["cftc.gov"], "topics": ["derivatives", "markets", "positioning"], "products": ["undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "finra", "host": "www.finra.org", "aliases": ["finra.org"], "topics": ["institutions", "markets", "securities"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "rbi", "host": "www.rbi.org.in", "aliases": ["rbi.org.in", "rbidocs.rbi.org.in"], "topics": ["banking", "funding", "monetary-policy", "prudential"], "products": ["liquilens", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "sebi", "host": "www.sebi.gov.in", "aliases": ["sebi.gov.in"], "topics": ["institutions", "markets", "securities"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "mca-india", "host": "www.mca.gov.in", "aliases": ["mca.gov.in"], "topics": ["companies", "filings", "institutions"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "bank-of-england", "host": "www.bankofengland.co.uk", "aliases": ["bankofengland.co.uk"], "topics": ["banking", "funding", "monetary-policy", "prudential"], "products": ["liquilens", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "fca", "host": "www.fca.org.uk", "aliases": ["fca.org.uk"], "topics": ["institutions", "markets", "prudential"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "ecb", "host": "www.ecb.europa.eu", "aliases": ["ecb.europa.eu", "data-api.ecb.europa.eu"], "topics": ["banking", "funding", "monetary-policy", "settlement"], "products": ["liquilens", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "eba", "host": "www.eba.europa.eu", "aliases": ["eba.europa.eu"], "topics": ["banking", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "esma", "host": "www.esma.europa.eu", "aliases": ["esma.europa.eu"], "topics": ["markets", "securities", "settlement"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "bis", "host": "www.bis.org", "aliases": ["bis.org"], "topics": ["banking", "funding", "markets", "prudential"], "products": ["liquilens", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "financial-stability-board", "host": "www.fsb.org", "aliases": ["fsb.org"], "topics": ["banking", "funding", "markets", "systemic-risk"], "products": ["liquilens", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "iosco", "host": "www.iosco.org", "aliases": ["iosco.org"], "topics": ["institutions", "markets", "securities"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "imf", "host": "www.imf.org", "aliases": ["imf.org"], "topics": ["economy", "funding", "measurement", "policy"], "products": ["liquilens", "palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "world-bank-data", "host": "api.worldbank.org", "aliases": ["data.worldbank.org"], "topics": ["economy", "measurement", "policy"], "products": ["palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "oecd", "host": "www.oecd.org", "aliases": ["oecd.org", "stats.oecd.org"], "topics": ["economy", "measurement", "policy"], "products": ["palimpsest", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "bank-of-japan", "host": "www.boj.or.jp", "aliases": ["boj.or.jp"], "topics": ["funding", "markets", "monetary-policy"], "products": ["seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "japan-fsa", "host": "www.fsa.go.jp", "aliases": ["fsa.go.jp"], "topics": ["banking", "institutions", "markets", "prudential"], "products": ["liquilens", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "mas", "host": "www.mas.gov.sg", "aliases": ["mas.gov.sg"], "topics": ["banking", "funding", "markets", "prudential"], "products": ["liquilens", "seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "hkma", "host": "www.hkma.gov.hk", "aliases": ["hkma.gov.hk"], "topics": ["banking", "funding", "monetary-policy", "prudential"], "products": ["liquilens", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "rbnz", "host": "www.rbnz.govt.nz", "aliases": ["rbnz.govt.nz"], "topics": ["banking", "funding", "monetary-policy", "prudential"], "products": ["liquilens", "seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "rba", "host": "www.rba.gov.au", "aliases": ["rba.gov.au"], "topics": ["funding", "markets", "monetary-policy"], "products": ["seiche"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "apra", "host": "www.apra.gov.au", "aliases": ["apra.gov.au"], "topics": ["banking", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "bank-of-canada", "host": "www.bankofcanada.ca", "aliases": ["bankofcanada.ca"], "topics": ["funding", "markets", "monetary-policy"], "products": ["seiche", "undertow"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"},
+    {"id": "osfi", "host": "www.osfi-bsif.gc.ca", "aliases": ["osfi-bsif.gc.ca"], "topics": ["banking", "institutions", "prudential"], "products": ["liquilens"], "scope": "institution-level public record", "training_use": "metadata_only", "rights_ref": "Common Crawl Terms of Use; upstream publisher rights retained; metadata-only pending source-specific rights review"}
   ]
 }

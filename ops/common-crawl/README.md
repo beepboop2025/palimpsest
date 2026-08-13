@@ -1,7 +1,7 @@
 # Common Crawl evidence lake on Hetzner
 
 This lane stores structured archive metadata under
-`/var/lib/palimpsest/common-crawl`. It does not contact Chinese hosts. Bulk data
+`/var/lib/palimpsest/common-crawl`. It does not contact the indexed publishers. Bulk data
 comes from a local copy of Common Crawl's public Parquet URL Index, and selected
 source bytes come from exact byte ranges on `data.commoncrawl.org` only after an
 operator chooses a reviewed locator.
@@ -91,16 +91,17 @@ FILTER_UNIT="palimpsest-common-crawl-filter@${CRAWL}.service"
 sudo systemctl start "$FILTER_UNIT"
 sudo journalctl -u "$FILTER_UNIT" -n 200 --no-pager
 sudo -u palimpsest-analysis gzip -t \
-  /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.jsonl.gz.staging
+  /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.finance-v1.<scope>.jsonl.gz.staging
 # Only after an operator reviews the hidden staging artifact:
 sudo -u palimpsest-analysis mv \
-  /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.jsonl.gz.staging \
-  /var/lib/palimpsest/common-crawl/inbox/CC-MAIN-2026-30.jsonl.gz
+  /var/lib/palimpsest/common-crawl/.CC-MAIN-2026-30.finance-v1.<scope>.jsonl.gz.staging \
+  /var/lib/palimpsest/common-crawl/inbox/CC-MAIN-2026-30.finance-v1.<scope>.jsonl.gz
 ```
 
-The generated query selects only the ten reviewed institutional hosts and only
+The generated query selects only the reviewed exact institutional hosts/aliases and only
 URL, time, response metadata, digest, language, MIME type, and WARC locator
-fields. It does not export page bodies. DuckDB is an operator dependency for the
+fields. Each institution carries explicit LiquiLens, Undertow, Seiche, and/or
+Palimpsest routes. It does not export page bodies. DuckDB is an operator dependency for the
 bulk query, not an application runtime dependency. Install it as a real
 root-owned executable at `/usr/local/bin/duckdb` reporting exact version 1.5.5.
 On the first reviewed install, the host installer enrolls its SHA-256 in the
@@ -131,7 +132,9 @@ sudo -u palimpsest-analysis python3 -m scripts.common_crawl_lake \
   import-inbox /var/lib/palimpsest/common-crawl/inbox
 ```
 
-Never write a still-growing file directly under `inbox/`. Build it in a staging
+Never write a still-growing file directly under `inbox/` or overwrite an earlier
+scope export. The scope-addressed filename lets the importer replay old rows as
+duplicates and insert only missing captures. Build it in a staging
 directory on the same filesystem and rename it into the inbox only after DuckDB
 exits successfully. The importer hashes each exact export, so retries are
 idempotent and a malformed in-scope row rolls back the complete file.

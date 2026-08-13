@@ -240,7 +240,10 @@ def build_archive_context(
         published_at = _timestamp(event.get("published_at"), "event.published_at")
         topic_set = {topic for topic in topics if type(topic) is str}
         target_ids = [
-            target.id for target in config.targets if topic_set.intersection(target.topics)
+            target.id
+            for target in config.targets
+            if "palimpsest" in target.products
+            and topic_set.intersection(target.topics)
         ]
         archive_context = []
         for target_id in target_ids:
