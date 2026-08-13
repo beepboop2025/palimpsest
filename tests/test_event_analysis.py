@@ -82,13 +82,45 @@ def test_dispositions_follow_scope_and_collector_freshness(inputs, analyses) -> 
     assert counts["outside-remit"] > 0
     assert counts["source-assessment"] > 0
     assert counts["collector-context"] > 0
-    assert counts["collector-abstention"] > 0
+    expected_abstentions = 0
     for analysis in analyses.values():
         statuses = [row["status"] for row in analysis["collector_context"]]
-        if analysis["disposition"] == "collector-context":
-            assert statuses and set(statuses) == {"live"}
-        elif analysis["disposition"] == "collector-abstention":
-            assert statuses and any(status != "live" for status in statuses)
+        expected = (
+            "outside-remit"
+            if analysis["scope_status"] == "outside-remit"
+            else "source-assessment"
+            if not statuses
+            else "collector-context"
+            if set(statuses) == {"live"}
+            else "collector-abstention"
+        )
+        assert analysis["disposition"] == expected
+        if expected == "collector-abstention":
+            expected_abstentions += 1
+    assert counts["collector-abstention"] == expected_abstentions
+
+
+def test_non_live_declared_collector_forces_an_explicit_abstention(inputs) -> None:
+    wire, feed = inputs
+    event = next(
+        row
+        for row in wire["events"]
+        if row["declared_links"]["scan_signal_ids"]
+        or row["declared_links"]["economic_signal_ids"]
+    )
+    signal_id = sorted(
+        set(event["declared_links"]["scan_signal_ids"])
+        | set(event["declared_links"]["economic_signal_ids"])
+    )[0]
+    modified_feed = copy.deepcopy(feed)
+    story = next(row for row in modified_feed["stories"] if row["signal_id"] == signal_id)
+    story["status"] = "stale"
+    story["metric"]["value"] = None
+
+    analysis = event_analysis.build_event_analysis(event, wire=wire, feed=modified_feed)
+
+    assert analysis["disposition"] == "collector-abstention"
+    assert any(row["status"] == "stale" for row in analysis["collector_context"])
 
 
 def test_analysis_is_deterministic_and_changes_when_bound_collector_evidence_changes(

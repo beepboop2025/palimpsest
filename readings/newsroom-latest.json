@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-13T17:44:41Z",
+  "generated_at": "2026-08-13T17:58:27Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "ba909697cb84c061db39524a41836461f0d098fe",
+  "source_commit": "effa6a6bb7f0ddb6e22b2730700717d0ced3dc95",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 31,
-    "status": "degraded",
+    "live": 32,
+    "status": "healthy",
     "counts": {
-      "live": 31,
+      "live": 32,
       "degraded": 1,
-      "stale": 1,
+      "stale": 0,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-13T14:10:12Z",
       "modified_at": "2026-08-13T14:10:12Z",
-      "claim_fingerprint": "sha256:d08c15b402fca6147f4356570abce9fbacafa448aa5bd150e7abf66dfe165dbc",
+      "claim_fingerprint": "sha256:182df806a4d85e59f87122cba75fd13d2dec789971d9e8e80173bddea2d5c1e1",
       "metric": {
         "label": "board e-value",
         "value": 41.165,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 41.165; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 41.165; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -494,46 +494,45 @@
       "slug": "silence-index",
       "url": "https://palimpsest.info/news/silence-index/",
       "signal_id": "silence-index",
-      "headline": "Silence index: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "0 of 25 considered topics meet the blackout rule",
+      "dek": "The index looks for topics loud abroad and absent from the permitted domestic proxy, while publishing every abstention.",
       "section": "attention",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "stale",
-      "published_at": "2026-08-11T19:34:59Z",
-      "modified_at": "2026-08-11T19:34:59Z",
-      "claim_fingerprint": "sha256:dd0cef3624285bdb741fadf4ad138ac30cc90a95d271c28721e470c25febbfee",
+      "status": "live",
+      "published_at": "2026-08-13T17:41:06Z",
+      "modified_at": "2026-08-13T17:41:06Z",
+      "claim_fingerprint": "sha256:db8ea3175b55f16e75cb8cd5cee3264f56078e38b2b6c5c9a79156779c59988c",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "blackout topics",
+        "value": 0,
+        "unit": "count",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "topics considered",
+          "value": 25
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Silence index because the source status is stale."
+          "type": "finding",
+          "statement": "0 blackout topics meet the predeclared rule among 25 topics considered in this round."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/silence-index-latest.json",
         "input": {
           "filename": "silence-index-latest.json",
-          "sha256": "bac4048dff59da179951ca8a5deaeddcc2cf8f2a095ea2d8a8075df83c41d6fe",
-          "bytes": 6637
+          "sha256": "b77b63a808d49c504554206efe37516254870e026bc8c832c27ec080e1f6a00f",
+          "bytes": 6631
         },
-        "source_timestamp": "2026-08-11T19:34:59Z"
+        "source_timestamp": "2026-08-13T17:41:06Z"
       },
       "method": {
         "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain."
       ],
       "related_signal_ids": [
@@ -1432,19 +1431,19 @@
       "slug": "cny-fix-gap",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
       "signal_id": "cny-fix-gap",
-      "headline": "The official yuan fix gap is -0.6632% against the independent reference",
+      "headline": "The official yuan fix gap is -0.6743% against the independent reference",
       "dek": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
       "section": "economy",
       "order": 2,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-12T17:56:10Z",
-      "modified_at": "2026-08-12T17:56:10Z",
-      "claim_fingerprint": "sha256:89413a47eef462a5a3a01fd3ccdfa30963c082f378132a979d82b5a82f56cd5e",
+      "published_at": "2026-08-13T17:55:55Z",
+      "modified_at": "2026-08-13T17:55:55Z",
+      "claim_fingerprint": "sha256:78a0a82a2517302daf78d0f6da5bc09772c7470c1a1326cc3db1c3042b6c1de5",
       "metric": {
         "label": "fix gap",
-        "value": -0.6632,
+        "value": -0.6743,
         "unit": "percent",
         "denominator": {
           "label": null,
@@ -1454,17 +1453,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current official-fix minus independent-reference gap is -0.6632%."
+          "statement": "The current official-fix minus independent-reference gap is -0.6743%."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
         "input": {
           "filename": "cny-fix-gap-latest.json",
-          "sha256": "c02c6dc6d99e209a47e0cdceb343c33bd07f1b410a07509f51f99e9a022b76c4",
+          "sha256": "721c467d01130b5e5367527c888e5f7c0cf7c62bc613f491bd71a5e41216b7e6",
           "bytes": 1429
         },
-        "source_timestamp": "2026-08-12T17:56:10Z"
+        "source_timestamp": "2026-08-13T17:55:55Z"
       },
       "method": {
         "summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
