@@ -59,14 +59,20 @@ def _mutated_config(tmp_path: Path, mutate):
     return path
 
 
-def test_real_desk_has_two_open_research_leads_and_network_is_first():
+def test_real_desk_has_two_bounded_research_leads_and_network_is_first():
     document = _build()
 
     assert document["schema_version"] == "palimpsest-investigations.v1"
     assert document["desk_id"] == "palimpsest-investigations"
     assert document["n_cases"] == len(document["cases"]) == 2
     assert document["cases"][0]["slug"] == "china-network-filtering-no-single-rate"
-    assert {row["status"] for row in document["cases"]} == {"evidence_gathering"}
+    assert document["cases"][0]["status"] == "evidence_gathering"
+    assert {row["status"] for row in document["cases"]} <= {
+        "evidence_gathering", "abstained"
+    }
+    for case in document["cases"]:
+        if any(evidence["freshness"] == "stale" for evidence in case["evidence"]):
+            assert case["status"] == "abstained"
     assert all(row["published_at"] is None for row in document["cases"])
     assert all(not row["publication_gate"]["publishable"] for row in document["cases"])
     assert all(row["version_id"].startswith("investigationv-") for row in document["cases"])
@@ -121,7 +127,9 @@ def test_every_evidence_reference_is_hashed_timestamped_allowlisted_and_scalar()
             assert row["artifact_url"].startswith("https://palimpsest.info/readings/")
             assert row["source_url"].startswith("https://palimpsest.info/readings/")
             assert row["integrity"] == "verified"
-            assert row["freshness"] == "current"
+            assert row["freshness"] in {"current", "stale"}
+            if receipt["freshness"] == "stale":
+                assert row["freshness"] == "stale"
             assert row["value_type"] in {"text", "integer", "number", "boolean", "null"}
             assert not isinstance(row["value"], (dict, list))
 
