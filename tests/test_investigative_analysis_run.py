@@ -9,6 +9,10 @@ from pathlib import Path
 
 from core.analytical_pieces import validate_draft_set, validate_packet_set
 from core.investigative_candidates import canonical_json_bytes, validate_candidates
+from core.wire_claim_audits import (
+    canonical_json_bytes as wire_canonical_json_bytes,
+    validate_wire_claim_audits,
+)
 from ops.investigative_analysis_runner import (
     DERIVED_LATEST,
     WIRE_STATUS_NAME,
@@ -111,12 +115,16 @@ def test_real_offline_cascade_is_complete_and_byte_replayable(tmp_path: Path) ->
         assert candidate_raw == canonical_json_bytes(candidate)
         packet_raw = (private / "analytical-packets-latest.json").read_bytes()
         draft_raw = (private / "analytical-drafts-latest.json").read_bytes()
+        audit_raw = (private / "wire-claim-audits-latest.json").read_bytes()
         packets = json.loads(packet_raw)
         drafts = json.loads(draft_raw)
+        audits = json.loads(audit_raw)
         validate_packet_set(packets)
         validate_draft_set(packets, drafts)
         assert packet_raw == canonical_json_bytes(packets)
         assert draft_raw == canonical_json_bytes(drafts)
+        validate_wire_claim_audits(audits)
+        assert audit_raw == wire_canonical_json_bytes(audits)
 
         run_manifest = json.loads(
             (work / "analysis-run-manifest.json").read_text(encoding="utf-8")
@@ -133,6 +141,7 @@ def test_real_offline_cascade_is_complete_and_byte_replayable(tmp_path: Path) ->
         artifacts["candidates-latest.json"] = candidate_raw
         artifacts["analytical-packets-latest.json"] = packet_raw
         artifacts["analytical-drafts-latest.json"] = draft_raw
+        artifacts["wire-claim-audits-latest.json"] = audit_raw
         editions.append(artifacts)
 
     assert editions[0] == editions[1]

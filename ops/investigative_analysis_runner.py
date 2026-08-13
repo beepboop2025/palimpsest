@@ -28,6 +28,7 @@ from core.analytical_pieces import (
     validate_packet_set,
 )
 from core.investigative_candidates import (
+    atomic_write,
     build_candidates,
     canonical_json_bytes,
     publish_private_candidates,
@@ -39,6 +40,13 @@ from core.investigative_container_contract import (
     IMAGE_ID_PATTERN as _IMAGE_ID,
     ContainerContractError,
     docker_command,
+)
+from core.wire_claim_audits import (
+    DELIVERY_POLICY as WIRE_DELIVERY_POLICY,
+    WireClaimAuditError,
+    build_wire_claim_audits,
+    canonical_json_bytes as wire_canonical_json_bytes,
+    validate_wire_claim_audits,
 )
 
 DEFAULT_READINGS = Path("/var/lib/palimpsest/readings")
@@ -65,9 +73,11 @@ ANALYSIS_STATUS_SCHEMA = "palimpsest-investigative-analysis-attempt.v1"
 _RUN_NAME = re.compile(r"^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 RUN_SCHEMA_V1 = "palimpsest-investigative-analysis-run.v1"
 RUN_SCHEMA_V2 = "palimpsest-investigative-analysis-run.v2"
-RUN_SCHEMA = RUN_SCHEMA_V2
+RUN_SCHEMA_V3 = "palimpsest-investigative-analysis-run.v3"
+RUN_SCHEMA = RUN_SCHEMA_V3
 STATE_SCHEMA_V1 = "palimpsest-investigative-analysis-state.v1"
 STATE_SCHEMA_V2 = "palimpsest-investigative-analysis-state.v2"
+STATE_SCHEMA_V3 = "palimpsest-investigative-analysis-state.v3"
 LEGACY_RUN_STEPS = (
     "vantage_fusion",
     "event_flags",
@@ -80,11 +90,12 @@ LEGACY_RUN_STEPS = (
     "investigations",
     "candidate_edition",
 )
-RUN_STEPS = (
+RUN_STEPS_V2 = (
     *LEGACY_RUN_STEPS,
     "analytical_packets",
     "analytical_template_drafts",
 )
+RUN_STEPS = (*RUN_STEPS_V2, "wire_claim_audits")
 DERIVED_LATEST = (
     "vantage-fusion-latest.json",
     "event-flags-latest.json",
@@ -839,11 +850,21 @@ def _validate_state(state: dict[str, Any]) -> str | None:
         "analytical_draft_edition_id",
         "analytical_draft_count",
     }
+    wire = {
+        "wire_claim_audit_edition_id",
+        "wire_claim_audit_count",
+        "wire_claim_audit_brief_eligible_count",
+        "wire_delivery_policy",
+    }
     schema = state.get("schema_version")
     if (
         (schema == STATE_SCHEMA_V1 and set(state) != common)
         or (schema == STATE_SCHEMA_V2 and set(state) != common | analytical)
-        or schema not in {STATE_SCHEMA_V1, STATE_SCHEMA_V2}
+        or (
+            schema == STATE_SCHEMA_V3
+            and set(state) != common | analytical | wire
+        )
+        or schema not in {STATE_SCHEMA_V1, STATE_SCHEMA_V2, STATE_SCHEMA_V3}
         or state.get("network_policy") != "docker-network-none"
         or state.get("publication_policy") != "private-review-only"
     ):
@@ -868,7 +889,7 @@ def _validate_state(state: dict[str, Any]) -> str | None:
         or not 0 <= state["candidate_count"] <= 128
     ):
         raise AnalysisRunnerError("analysis state identity fields are invalid")
-    if schema == STATE_SCHEMA_V2 and (
+    if schema in {STATE_SCHEMA_V2, STATE_SCHEMA_V3} and (
         not re.fullmatch(
             r"packetset-[0-9a-f]{24}",
             str(state.get("analytical_packet_edition_id", "")),
@@ -883,6 +904,22 @@ def _validate_state(state: dict[str, Any]) -> str | None:
         or not 0 <= state["analytical_draft_count"] <= 128
     ):
         raise AnalysisRunnerError("analysis state analytical identity is invalid")
+    if schema == STATE_SCHEMA_V3 and (
+        not re.fullmatch(
+            r"auditset-[0-9a-f]{24}",
+            str(state.get("wire_claim_audit_edition_id", "")),
+        )
+        or type(state.get("wire_claim_audit_count")) is not int
+        or not 0 <= state["wire_claim_audit_count"] <= 4096
+        or type(state.get("wire_claim_audit_brief_eligible_count")) is not int
+        or not (
+            0
+            <= state["wire_claim_audit_brief_eligible_count"]
+            <= state["wire_claim_audit_count"]
+        )
+        or state.get("wire_delivery_policy") != WIRE_DELIVERY_POLICY
+    ):
+        raise AnalysisRunnerError("analysis state Wire audit identity is invalid")
     manifest = state.get("input_manifest")
     if not isinstance(manifest, list) or not manifest or len(manifest) > MAX_FILES:
         raise AnalysisRunnerError("analysis state input manifest is invalid")
@@ -905,7 +942,12 @@ def _validate_completed_run(
     decision_clock: str,
     expected_schema: str,
     require_current_derivation: bool,
-) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+]:
     manifest_path = staged_readings / "analysis-run-manifest.json"
     manifest = _parse_object(_stable_read(manifest_path), manifest_path.name)
     legacy_keys = {
@@ -927,11 +969,21 @@ def _validate_completed_run(
         "analytical_draft_edition_id",
         "analytical_draft_count",
     }
+    wire_keys = {
+        "wire_claim_audit_edition_id",
+        "wire_claim_audit_count",
+        "wire_claim_audit_brief_eligible_count",
+        "wire_delivery_policy",
+    }
     schema = manifest.get("schema_version")
     if (
         (schema == RUN_SCHEMA_V1 and set(manifest) != legacy_keys)
         or (schema == RUN_SCHEMA_V2 and set(manifest) != legacy_keys | analytical_keys)
-        or schema not in {RUN_SCHEMA_V1, RUN_SCHEMA_V2}
+        or (
+            schema == RUN_SCHEMA_V3
+            and set(manifest) != legacy_keys | analytical_keys | wire_keys
+        )
+        or schema not in {RUN_SCHEMA_V1, RUN_SCHEMA_V2, RUN_SCHEMA_V3}
     ):
         raise AnalysisRunnerError("analysis run manifest has an unsupported shape")
     if schema != expected_schema:
@@ -955,7 +1007,13 @@ def _validate_completed_run(
         or manifest.get("publication_policy") != "private-review-only"
     ):
         raise AnalysisRunnerError("analysis run weakened its safety policy")
-    expected_steps = LEGACY_RUN_STEPS if schema == RUN_SCHEMA_V1 else RUN_STEPS
+    expected_steps = (
+        LEGACY_RUN_STEPS
+        if schema == RUN_SCHEMA_V1
+        else RUN_STEPS_V2
+        if schema == RUN_SCHEMA_V2
+        else RUN_STEPS
+    )
     if manifest.get("steps") != list(expected_steps):
         raise AnalysisRunnerError(
             "analysis run did not complete the exact step sequence"
@@ -1040,7 +1098,7 @@ def _validate_completed_run(
     # analytical projection. The caller must force one v2 run rather than
     # synthesizing files into this historical directory.
     if schema == RUN_SCHEMA_V1:
-        return candidate, None, None
+        return candidate, None, None, None
 
     packet_path = candidate_dir / "analytical-packets-latest.json"
     draft_path = candidate_dir / "analytical-drafts-latest.json"
@@ -1080,7 +1138,46 @@ def _validate_completed_run(
             raise AnalysisRunnerError(
                 "staged analytical artifacts do not derive from the frozen readings"
             )
-    return candidate, packets, drafts
+    if schema == RUN_SCHEMA_V2:
+        return candidate, packets, drafts, None
+
+    audit_path = candidate_dir / "wire-claim-audits-latest.json"
+    audit_raw = _stable_read(audit_path)
+    audits = _parse_object(audit_raw, audit_path.name)
+    try:
+        validate_wire_claim_audits(audits)
+    except WireClaimAuditError as exc:
+        raise AnalysisRunnerError("staged Wire claim audits are invalid") from exc
+    if audit_raw != wire_canonical_json_bytes(audits):
+        raise AnalysisRunnerError("staged Wire claim audits are not canonical JSON")
+    eligible_count = sum(
+        audit.get("brief_eligible") is True for audit in audits.get("audits", [])
+    )
+    if (
+        manifest.get("wire_claim_audit_edition_id") != audits.get("edition_id")
+        or manifest.get("wire_claim_audit_count") != audits.get("n_audits")
+        or manifest.get("wire_claim_audit_brief_eligible_count") != eligible_count
+        or manifest.get("wire_delivery_policy") != WIRE_DELIVERY_POLICY
+        or audits.get("delivery_policy") != WIRE_DELIVERY_POLICY
+    ):
+        raise AnalysisRunnerError("Wire claim audits do not match the run manifest")
+    if require_current_derivation:
+        try:
+            expected_audits = build_wire_claim_audits(
+                staged_readings,
+                decision_clock=datetime.fromisoformat(
+                    decision_clock.replace("Z", "+00:00")
+                ),
+            )
+        except (ValueError, WireClaimAuditError) as exc:
+            raise AnalysisRunnerError(
+                "cannot independently rebuild staged Wire claim audits"
+            ) from exc
+        if audit_raw != wire_canonical_json_bytes(expected_audits):
+            raise AnalysisRunnerError(
+                "staged Wire claim audits do not derive from the frozen readings"
+            )
+    return candidate, packets, drafts, audits
 
 
 @contextmanager
@@ -1255,12 +1352,15 @@ def _run_once_locked(
         _reconcile_staging(runs_dir, execute)
     ledger_dir = private_root / "ledger"
     ledger_dir.mkdir(mode=0o700, exist_ok=True)
+    delivery_dir = private_root / "delivery"
+    delivery_dir.mkdir(mode=0o700, exist_ok=True)
     latest = ledger_dir / "candidates-latest.json"
     history = ledger_dir / "candidate-versions.jsonl"
+    wire_latest = delivery_dir / "wire-claim-audits-latest.json"
     state_path = private_root / "state.json"
     state = _load_state(state_path)
     state_schema = _validate_state(state)
-    force_upgrade = state_schema == STATE_SCHEMA_V1
+    force_upgrade = state_schema != STATE_SCHEMA_V3
     previous_path = (
         Path(state["run_path"]) if isinstance(state.get("run_path"), str) else None
     )
@@ -1280,6 +1380,7 @@ def _run_once_locked(
             raise AnalysisRunnerError("analysis state run is not a real directory")
     previous_readings = previous_path / "readings" if previous_path else None
     previous_candidate: dict[str, Any] | None = None
+    previous_audits: dict[str, Any] | None = None
     if previous_path is not None:
         previous_commit = state.get("input_commit")
         if not isinstance(previous_commit, str) or not _COMMIT.fullmatch(
@@ -1289,13 +1390,22 @@ def _run_once_locked(
         previous_clock = state.get("decision_clock")
         if not isinstance(previous_clock, str):
             raise AnalysisRunnerError("analysis state has an invalid decision clock")
-        previous_candidate, previous_packets, previous_drafts = _validate_completed_run(
+        (
+            previous_candidate,
+            previous_packets,
+            previous_drafts,
+            previous_audits,
+        ) = _validate_completed_run(
             staged_readings=previous_readings,
             candidate_dir=previous_path / "private",
             input_commit=previous_commit,
             decision_clock=previous_clock,
             expected_schema=(
-                RUN_SCHEMA_V1 if state_schema == STATE_SCHEMA_V1 else RUN_SCHEMA_V2
+                RUN_SCHEMA_V1
+                if state_schema == STATE_SCHEMA_V1
+                else RUN_SCHEMA_V2
+                if state_schema == STATE_SCHEMA_V2
+                else RUN_SCHEMA_V3
             ),
             require_current_derivation=False,
         )
@@ -1303,7 +1413,7 @@ def _run_once_locked(
             state_schema == STATE_SCHEMA_V1
             and (previous_packets is not None or previous_drafts is not None)
         ) or (
-            state_schema == STATE_SCHEMA_V2
+            state_schema in {STATE_SCHEMA_V2, STATE_SCHEMA_V3}
             and (previous_packets is None or previous_drafts is None)
         ):
             raise AnalysisRunnerError(
@@ -1318,7 +1428,7 @@ def _run_once_locked(
             raise AnalysisRunnerError(
                 "analysis state candidate identity disagrees with its immutable run"
             )
-        if state_schema == STATE_SCHEMA_V2 and (
+        if state_schema in {STATE_SCHEMA_V2, STATE_SCHEMA_V3} and (
             state.get("analytical_packet_edition_id")
             != previous_packets.get("edition_id")
             or state.get("analytical_packet_count")
@@ -1331,6 +1441,21 @@ def _run_once_locked(
             raise AnalysisRunnerError(
                 "analysis state analytical identity disagrees with its immutable run"
             )
+        if state_schema == STATE_SCHEMA_V3 and (
+            previous_audits is None
+            or state.get("wire_claim_audit_edition_id")
+            != previous_audits.get("edition_id")
+            or state.get("wire_claim_audit_count")
+            != previous_audits.get("n_audits")
+            or state.get("wire_claim_audit_brief_eligible_count")
+            != sum(
+                audit.get("brief_eligible") is True
+                for audit in previous_audits.get("audits", [])
+            )
+        ):
+            raise AnalysisRunnerError(
+                "analysis state Wire audit identity disagrees with its immutable run"
+            )
         _validate_frozen_sources(previous_path / "inputs", state["input_manifest"])
         # Latest/history are repairable projections of the immutable completed
         # run. Reconcile them before looking at new inputs so a prior post-commit
@@ -1340,8 +1465,16 @@ def _run_once_locked(
             latest_path=latest,
             history_path=history,
         )
-    elif latest.exists() or history.exists():
-        raise AnalysisRunnerError("candidate ledger exists without a committed run")
+        if previous_audits is not None:
+            atomic_write(
+                wire_latest,
+                wire_canonical_json_bytes(previous_audits),
+                mode=0o600,
+            )
+    elif latest.exists() or history.exists() or wire_latest.exists():
+        raise AnalysisRunnerError(
+            "analysis projections exist without a committed run"
+        )
 
     if brokered:
         prepared = _call_broker({"operation": "prepare"})
@@ -1404,11 +1537,19 @@ def _run_once_locked(
             and (previous_readings / "analysis-run-manifest.json").is_file()
             and latest.is_file()
             and history.is_file()
+            and wire_latest.is_file()
         ):
             assert previous_candidate is not None
+            assert previous_audits is not None
             if _stable_read(latest) != canonical_json_bytes(previous_candidate):
                 raise AnalysisRunnerError(
                     "private candidate latest drifted from the completed run"
+                )
+            if _stable_read(wire_latest) != wire_canonical_json_bytes(
+                previous_audits
+            ):
+                raise AnalysisRunnerError(
+                    "Wire delivery projection drifted from the completed run"
                 )
             if brokered:
                 cleaned = _call_broker(
@@ -1514,17 +1655,17 @@ def _run_once_locked(
             except FileNotFoundError:
                 pass
         _validate_frozen_sources(frozen_readings, input_manifest)
-        candidate, packets, drafts = _validate_completed_run(
+        candidate, packets, drafts, audits = _validate_completed_run(
             staged_readings=staged_readings,
             candidate_dir=staged_candidates,
             input_commit=input_commit,
             decision_clock=decision_clock,
-            expected_schema=RUN_SCHEMA_V2,
+            expected_schema=RUN_SCHEMA_V3,
             require_current_derivation=True,
         )
-        if packets is None or drafts is None:
+        if packets is None or drafts is None or audits is None:
             raise AnalysisRunnerError(
-                "current analysis run did not produce v2 analytical artifacts"
+                "current analysis run did not produce v3 analytical artifacts"
             )
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         execution_fingerprint = hashlib.sha256(
@@ -1553,7 +1694,7 @@ def _run_once_locked(
             os.replace(staging, final)
             _fsync_directory(runs_dir)
         state_document = {
-            "schema_version": STATE_SCHEMA_V2,
+            "schema_version": STATE_SCHEMA_V3,
             "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "input_commit": input_commit,
             "image_id": image_id,
@@ -1568,6 +1709,12 @@ def _run_once_locked(
             "analytical_packet_count": packets["n_packets"],
             "analytical_draft_edition_id": drafts["edition_id"],
             "analytical_draft_count": drafts["n_drafts"],
+            "wire_claim_audit_edition_id": audits["edition_id"],
+            "wire_claim_audit_count": audits["n_audits"],
+            "wire_claim_audit_brief_eligible_count": sum(
+                audit["brief_eligible"] for audit in audits["audits"]
+            ),
+            "wire_delivery_policy": WIRE_DELIVERY_POLICY,
             "network_policy": "docker-network-none",
             "publication_policy": "private-review-only",
         }
@@ -1576,6 +1723,11 @@ def _run_once_locked(
             candidate,
             latest_path=latest,
             history_path=history,
+        )
+        atomic_write(
+            wire_latest,
+            wire_canonical_json_bytes(audits),
+            mode=0o600,
         )
         if brokered:
             pruned = _call_broker({"operation": "prune"})
@@ -1592,6 +1744,9 @@ def _run_once_locked(
             "decision_clock": decision_clock,
             "run_path": str(final),
             "candidate_versions_added": ledger_result["versions_added"],
+            "wire_briefs_eligible": sum(
+                audit["brief_eligible"] for audit in audits["audits"]
+            ),
         }
     except Exception:
         if staging.exists() and not preserve_staging:
