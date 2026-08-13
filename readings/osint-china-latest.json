@@ -23,25 +23,17 @@
       "source_id": "baike-redaction",
       "summary": "optional collector is disabled pending authorized access; no current Baike measurement is claimed",
       "title": "Baike redaction: degraded"
-    },
-    {
-      "id": "health-nemesis",
-      "kind": "health",
-      "severity": "notice",
-      "source_id": "nemesis",
-      "summary": "freshness deadline has passed",
-      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-13T21:30:17Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "generated_at": "2026-08-13T21:35:39Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 31,
+      "live": 32,
       "missing": 0,
-      "stale": 1
+      "stale": 0
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -50,7 +42,7 @@
     "required_total": 29,
     "status": "healthy"
   },
-  "input_commit": "31a42baa6cab76d6f9613bfe0bee801bf343fc31",
+  "input_commit": "5b34cba782826f6c8f55367203f4ccd81ae7cae7",
   "layers": [
     {
       "id": "command",
@@ -163,20 +155,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 31,
+  "n_signals_live": 32,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -186,7 +178,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:46:56Z",
       "health": {
-        "age_hours": 1.722,
+        "age_hours": 1.812,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -514,7 +506,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:43:59Z",
       "health": {
-        "age_hours": 1.772,
+        "age_hours": 1.861,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -738,7 +730,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:46:56Z",
       "health": {
-        "age_hours": 1.722,
+        "age_hours": 1.812,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -886,7 +878,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:46:56Z",
       "health": {
-        "age_hours": 1.722,
+        "age_hours": 1.812,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1425,7 +1417,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:46:56Z",
       "health": {
-        "age_hours": 1.722,
+        "age_hours": 1.812,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1752,7 +1744,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-14T02:26:39Z",
       "health": {
-        "age_hours": 2.06,
+        "age_hours": 2.15,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2485,7 +2477,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:48:12Z",
       "health": {
-        "age_hours": 1.701,
+        "age_hours": 1.791,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2784,7 +2776,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:40:38Z",
       "health": {
-        "age_hours": 1.827,
+        "age_hours": 1.917,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3123,7 +3115,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:45:03Z",
       "health": {
-        "age_hours": 1.754,
+        "age_hours": 1.843,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3430,7 +3422,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 87.631,
+        "age_hours": 87.72,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3741,7 +3733,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T16:05:04Z",
       "health": {
-        "age_hours": 7.42,
+        "age_hours": 7.509,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4015,7 +4007,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:29:48Z",
       "health": {
-        "age_hours": 2.008,
+        "age_hours": 2.097,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4345,7 +4337,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:32:11Z",
       "health": {
-        "age_hours": 1.968,
+        "age_hours": 2.058,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4516,7 +4508,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T09:00:39Z",
       "health": {
-        "age_hours": 14.494,
+        "age_hours": 14.583,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4692,7 +4684,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:39:08Z",
       "health": {
-        "age_hours": 1.852,
+        "age_hours": 1.942,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7123,7 +7115,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:31:02Z",
       "health": {
-        "age_hours": 1.988,
+        "age_hours": 2.077,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7173,7 +7165,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:45:26Z",
       "health": {
-        "age_hours": 14.748,
+        "age_hours": 14.837,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7246,7 +7238,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:45:43Z",
       "health": {
-        "age_hours": 1.743,
+        "age_hours": 1.832,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7324,7 +7316,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:23:22Z",
       "health": {
-        "age_hours": 13.115,
+        "age_hours": 13.205,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7445,7 +7437,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:35:34Z",
       "health": {
-        "age_hours": 1.912,
+        "age_hours": 2.001,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7586,7 +7578,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T15:53:42Z",
       "health": {
-        "age_hours": 7.61,
+        "age_hours": 7.699,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7675,7 +7667,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 336.983,
+        "age_hours": 337.073,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7829,7 +7821,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T16:05:05Z",
       "health": {
-        "age_hours": 7.42,
+        "age_hours": 7.509,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8008,7 +8000,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:50:13Z",
       "health": {
-        "age_hours": 1.668,
+        "age_hours": 1.757,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8184,7 +8176,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:58:14Z",
       "health": {
-        "age_hours": 14.534,
+        "age_hours": 14.623,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8288,7 +8280,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:41:57Z",
       "health": {
-        "age_hours": 1.806,
+        "age_hours": 1.895,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8355,7 +8347,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T19:55:55Z",
       "health": {
-        "age_hours": 3.573,
+        "age_hours": 3.662,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8407,7 +8399,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T16:34:46Z",
       "health": {
-        "age_hours": 6.925,
+        "age_hours": 7.015,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8465,7 +8457,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 10.402,
+        "age_hours": 10.491,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8621,7 +8613,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 204.33,
+        "age_hours": 204.419,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8689,7 +8681,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T10:14:10Z",
       "health": {
-        "age_hours": 13.268,
+        "age_hours": 13.358,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14109,7 +14101,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T09:35:36Z",
       "health": {
-        "age_hours": 1.911,
+        "age_hours": 2.001,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14153,24 +14145,24 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-13T21:29:16Z",
+      "freshness_deadline": "2026-08-13T22:29:16Z",
       "health": {
-        "age_hours": 1.017,
+        "age_hours": 0.106,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
       },
       "id": "nemesis",
       "input": {
         "bytes": 153464,
         "filename": "nemesis-latest.json",
-        "sha256": "fb2ae0e2a5f04758b43394dc4a1d2196ea2899ea0b587e6f4350248c671d7489"
+        "sha256": "a68c7d26aa0463935713c53f4e96a585576948274ff298daf269a4c789159d86"
       },
       "layer": "nemesis",
-      "live": false,
+      "live": true,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -14225,7 +14217,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786652956.297,
+        "data_timestamp": 1786656556.274,
         "ddti": {
           "by_domain": {
             "ECONOMY": 5,
@@ -14237,7 +14229,7 @@
             "SOCIETY": 7,
             "UNREST": 7
           },
-          "generated_at": 1786652956.297,
+          "generated_at": 1786656556.274,
           "n_posts": 14,
           "n_posts_scored": 14,
           "n_terms": 177,
@@ -14282,7 +14274,7 @@
               "total": 8
             },
             {
-              "attention": 2.14,
+              "attention": 2.13,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14317,11 +14309,11 @@
               "tag_observations": 7,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 2.14,
+              "threat": 2.13,
               "total": 7
             },
             {
-              "attention": 2.09,
+              "attention": 2.08,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14356,7 +14348,7 @@
               "tag_observations": 7,
               "term": "online censorship",
               "text_observations": 0,
-              "threat": 2.09,
+              "threat": 2.08,
               "total": 7
             },
             {
@@ -14529,7 +14521,7 @@
               "total": 2
             },
             {
-              "attention": 1.05,
+              "attention": 1.04,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14887,11 +14879,11 @@
               "tag_observations": 3,
               "term": "state media",
               "text_observations": 0,
-              "threat": 1.33,
+              "threat": 1.32,
               "total": 3
             },
             {
-              "attention": 1.24,
+              "attention": 1.23,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15769,7 +15761,7 @@
               "total": 3
             },
             {
-              "attention": 0.67,
+              "attention": 0.66,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15796,7 +15788,7 @@
               "tag_observations": 2,
               "term": "cyberspace administration of china",
               "text_observations": 0,
-              "threat": 0.67,
+              "threat": 0.66,
               "total": 2
             },
             {
@@ -16602,7 +16594,7 @@
               "total": 1
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16629,7 +16621,7 @@
               "tag_observations": 2,
               "term": "online public opinion",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 2
             },
             {
@@ -18621,7 +18613,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786652956.308,
+          "generated_at": 1786656556.292,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 31,
@@ -18669,33 +18661,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786652956.316,
+        "generated_at": 1786656556.303,
         "health": {
           "freshness": {
-            "age_seconds": 0.019,
-            "core_data_at": 1786652956.297,
+            "age_seconds": 0.029,
+            "core_data_at": 1786656556.274,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.27,
-            "finished_at": 1786652956.315,
+            "duration_s": 0.26,
+            "finished_at": 1786656556.303,
             "healthy": true,
-            "id": 872,
-            "started_at": 1786652956.045,
+            "id": 876,
+            "started_at": 1786656556.046,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.27,
-            "finished_at": 1786652956.315,
+            "duration_s": 0.26,
+            "finished_at": 1786656556.303,
             "healthy": true,
-            "id": 872,
-            "started_at": 1786652956.045,
+            "id": 876,
+            "started_at": 1786656556.046,
             "status": "ok"
           },
-          "last_successful_run_at": 1786652956.315,
+          "last_successful_run_at": 1786656556.303,
           "live": true,
           "posts": 28,
           "ready": true,
@@ -18772,7 +18764,7 @@
             ],
             "score": 3.6,
             "term": "internet censorship",
-            "threat": 2.14
+            "threat": 2.13
           },
           {
             "domain": "INFORMATION",
@@ -18805,9 +18797,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 3.6,
+            "score": 3.5,
             "term": "online censorship",
-            "threat": 2.09
+            "threat": 2.08
           },
           {
             "domain": "OTHER",
@@ -18964,10 +18956,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786652956.315,
-          "ddti_generated_at": 1786652956.297,
-          "economic_generated_at": 1786652956.308,
-          "last_successful_run_at": 1786652956.315,
+          "data_updated_at": 1786656556.303,
+          "ddti_generated_at": 1786656556.274,
+          "economic_generated_at": 1786656556.292,
+          "last_successful_run_at": 1786656556.303,
           "latest_fetched_at": 1786419856.092,
           "latest_published_at": 1786417036.0
         }
@@ -18975,9 +18967,9 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-13T20:29:16Z",
-      "status": "stale",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-13T20:29:16Z passed its freshness deadline 2026-08-13T21:29:16Z, so it is not labelled live. Latest payload reports topics ranked at 177 count.",
+      "source_timestamp": "2026-08-13T21:29:16Z",
+      "status": "live",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 177 count.",
       "title": "Private runtime bridge"
     }
   ],
