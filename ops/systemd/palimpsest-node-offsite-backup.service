@@ -1,0 +1,67 @@
+[Unit]
+Description=Encrypt, upload, and restore-verify the latest Palimpsest node backup
+Documentation=file:///usr/local/libexec/palimpsest-node-offsite/current/README.md
+After=network-online.target palimpsest-backup.service
+Wants=network-online.target
+RequiresMountsFor=/home/palimpsest/backups/node
+AssertFileIsExecutable=/usr/local/libexec/palimpsest-node-offsite/current/palimpsest-node-offsite-backup.sh
+AssertPathExists=/usr/local/libexec/palimpsest-node-offsite/current/REVISION
+AssertPathExists=/etc/palimpsest/deployed-commit
+AssertPathExists=/etc/palimpsest/node-offsite.env
+AssertPathExists=/etc/palimpsest/node-offsite.passphrase
+AssertPathExists=/etc/palimpsest/node-offsite-rclone.conf
+AssertPathExists=/usr/local/libexec/palimpsest-node-offsite/current/POSTGRES_IMAGE_ID
+AssertPathExists=/home/palimpsest/backups/node/.backup.lock
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/usr/local/libexec/palimpsest-node-offsite/current
+EnvironmentFile=/etc/palimpsest/node-offsite.env
+LoadCredential=node-offsite-rclone.conf:/etc/palimpsest/node-offsite-rclone.conf
+LoadCredential=node-offsite-passphrase:/etc/palimpsest/node-offsite.passphrase
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-node-offsite/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-node-offsite/current/REVISION /etc/palimpsest/deployed-commit
+ExecStart=/usr/bin/bash /usr/local/libexec/palimpsest-node-offsite/current/palimpsest-node-offsite-backup.sh
+TimeoutStartSec=4h
+UMask=0077
+Nice=15
+IOSchedulingClass=idle
+TasksMax=64
+MemoryMax=1G
+LimitCORE=0
+
+# Root holds only read-search authority for the mode-0600 snapshot owned by the
+# locked Palimpsest runtime identity. The source tree and all secrets are
+# mounted read-only; only the private cache and status directories are writable.
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/usr/local/libexec/palimpsest-node-offsite /etc/palimpsest/deployed-commit /etc/palimpsest/node-offsite.env /home/palimpsest/backups/node /run/docker.sock
+ReadWritePaths=/var/cache/palimpsest-node-offsite /var/lib/palimpsest-node-offsite
+CacheDirectory=palimpsest-node-offsite
+CacheDirectoryMode=0700
+StateDirectory=palimpsest-node-offsite
+StateDirectoryMode=0700
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+AmbientCapabilities=CAP_DAC_READ_SEARCH
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

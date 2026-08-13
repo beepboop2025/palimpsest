@@ -25,7 +25,6 @@ analysis_root="$fixture_root/analysis"
 newswire_root="$state_root/newswire"
 backup_root="$fixture_root/backups"
 failed_root="$fixture_root/failed-backups"
-offsite_root="$fixture_root/offsite"
 fake_bin="$fixture_root/bin"
 fake_container="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 fake_image="sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
@@ -34,7 +33,7 @@ mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
   "$analysis_root/private" \
   "$analysis_root/runs/run-20260813T010203Z-0123456789ab/private" \
   "$newswire_root" \
-  "$backup_root" "$failed_root" "$offsite_root" "$fake_bin"
+  "$backup_root" "$failed_root" "$fake_bin"
 # Match the canonical path the backup resolves before it constructs Docker
 # bind mounts (TMPDIR may carry a harmless trailing slash on some runners).
 state_root="$(cd "$state_root" && pwd -P)"
@@ -151,8 +150,6 @@ common_env=(
 
 env "${common_env[@]}" \
   PALIMPSEST_BACKUP_DIR="$backup_root" \
-  PALIMPSEST_BACKUP_COPY_DIR="$offsite_root" \
-  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1 \
   "$backup_script"
 
 snapshot="$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name '20*Z' -print | head -1)"
@@ -218,39 +215,25 @@ if grep -Fq "$private_state_payload" \
   fail "private analysis payload leaked into backup metadata"
 fi
 
-snapshot_id="$(basename "$snapshot")"
-[[ -d "$offsite_root/$snapshot_id" ]] || fail "off-host copy is missing"
-(cd "$offsite_root/$snapshot_id" && sha256sum --check SHA256SUMS >/dev/null)
-tar --list --gzip --file "$offsite_root/$snapshot_id/artifacts.tar.gz" | \
-  grep -q '^analysis/private/state.json$' || \
-  fail "off-host copy omits private analysis state"
-tar --list --gzip --file "$offsite_root/$snapshot_id/artifacts.tar.gz" | \
-  grep -q '^newswire/newswire-versions.jsonl$' || \
-  fail "off-host copy omits evidence-wire lineage"
-
-unencrypted_root="$fixture_root/unencrypted-offsite-backups"
-mkdir -p "$unencrypted_root"
-if env "${common_env[@]}" \
-  PALIMPSEST_BACKUP_DIR="$unencrypted_root" \
-  PALIMPSEST_BACKUP_COPY_DIR="$offsite_root" \
-  "$backup_script"; then
-  fail "off-host copy without encryption attestation unexpectedly ran"
-fi
-[[ -z "$(find "$unencrypted_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
-  fail "unencrypted off-host refusal left a published or incomplete directory"
-
-recursive_copy_backup_root="$fixture_root/recursive-copy-backups"
-recursive_copy_root="$state_root/data/offsite-copy"
-mkdir -p "$recursive_copy_backup_root" "$recursive_copy_root"
-if env "${common_env[@]}" \
-  PALIMPSEST_BACKUP_DIR="$recursive_copy_backup_root" \
-  PALIMPSEST_BACKUP_COPY_DIR="$recursive_copy_root" \
-  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1 \
-  "$backup_script"; then
-  fail "copy directory inside an archived source unexpectedly ran"
-fi
-[[ -z "$(find "$recursive_copy_backup_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
-  fail "recursive copy refusal left a published or incomplete directory"
+for retired_setting in \
+  PALIMPSEST_BACKUP_COPY_DIR PALIMPSEST_BACKUP_HOOK \
+  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED; do
+  retired_root="$fixture_root/retired-${retired_setting}"
+  mkdir -p "$retired_root"
+  retired_value=1
+  [[ "$retired_setting" == PALIMPSEST_BACKUP_COPY_DIR ]] && \
+    retired_value="$fixture_root/retired-copy-destination"
+  [[ "$retired_setting" == PALIMPSEST_BACKUP_HOOK ]] && \
+    retired_value="$fixture_root/retired-hook"
+  if env "${common_env[@]}" \
+    PALIMPSEST_BACKUP_DIR="$retired_root" \
+    "$retired_setting=$retired_value" \
+    "$backup_script"; then
+    fail "retired generic offsite setting unexpectedly ran: $retired_setting"
+  fi
+  [[ -z "$(find "$retired_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+    fail "retired offsite refusal left backup output: $retired_setting"
+done
 
 if env "${common_env[@]}" \
   PALIMPSEST_BACKUP_DIR="$failed_root" \
@@ -325,4 +308,4 @@ fi
 [[ -z "$(find "$checkout_copy_backup_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
   fail "checkout copy refusal left a published or incomplete directory"
 
-printf 'PASS: backup publication, newswire/analysis coverage, mount binding, encrypted off-host contract, and failure cleanup\n'
+printf 'PASS: local backup publication, newswire/analysis coverage, mount binding, retired offsite rejection, and failure cleanup\n'

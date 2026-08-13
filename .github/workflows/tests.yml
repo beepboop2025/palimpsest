@@ -62,8 +62,19 @@ jobs:
 
       - name: Exercise the validated backup contract
         run: |
-          bash -n ops/backup/palimpsest-backup.sh ops/backup/test-backup.sh
+          bash -n \
+            ops/backup/palimpsest-backup.sh \
+            ops/backup/test-backup.sh \
+            ops/backup/palimpsest-node-offsite-backup.sh \
+            ops/node-offsite/install-host-bundle.sh
+          sh -n ops/node-offsite/verify-host-bundle.sh
+          test "$(grep -c '^OnSuccess=palimpsest-node-offsite-backup.service$' \
+            ops/systemd/palimpsest-backup.offsite-trigger.conf)" = 1
           bash ops/backup/test-backup.sh
+          python -m pytest -q \
+            tests/test_node_backup_snapshot.py \
+            tests/test_node_offsite_backup.py \
+            tests/test_node_offsite_deployment.py
 
       - name: Run the full suite
         run: python -m pytest tests/ censorwatch/tests/ -q

@@ -90,16 +90,13 @@ file before reloading systemd. The ready-to-install
 `/home/palimpsest/backups/node` as mode `0700`, owned by `palimpsest`, first.
 
 The repository script must be executable (`git` preserves that mode). Configure
-retention in `/etc/palimpsest/backup.env`. Because this archive contains private
-analytical material, `PALIMPSEST_BACKUP_COPY_DIR` is permitted only when that
-mount provides authenticated encryption in transit and encryption at rest with
-Palimpsest-owned keys. A plain remote filesystem is not an acceptable off-host
-backup. The remote directory must already be mounted and writable; the job
-refuses to create it. Local retention does not prune the remote. An uploader
-hook must be an absolute executable path, not a shell command, and must encrypt
-the complete snapshot before any network transfer. Do not reuse the Common
-Crawl backup credentials or passphrase; node backups require an isolated
-bucket, credentials, and recovery secret.
+retention in `/etc/palimpsest/backup.env`. Off-host publication is intentionally
+outside this unprivileged job. The historical copy-directory, arbitrary-hook,
+and encryption-attestation settings are rejected because a flag cannot prove
+that private analysis was encrypted or restored. Use the separately
+credentialed, root-owned node-offsite service documented in
+[`../node-offsite/README.md`](../node-offsite/README.md). Never reuse the Common
+Crawl backup credentials or passphrase.
 
 The job intentionally fails when any included evidence or analysis file is
 unreadable. Do

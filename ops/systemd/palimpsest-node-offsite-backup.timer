@@ -1,0 +1,13 @@
+[Unit]
+Description=Upload and restore-verify a Palimpsest node backup every night
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+RandomizedDelaySec=30m
+FixedRandomDelay=true
+AccuracySec=1m
+Persistent=true
+Unit=palimpsest-node-offsite-backup.service
+
+[Install]
+WantedBy=timers.target

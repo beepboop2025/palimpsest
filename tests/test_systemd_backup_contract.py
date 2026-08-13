@@ -40,7 +40,9 @@ def test_backup_archive_and_restore_preserve_numeric_producer_ownership():
     assert "artifact_roots=readings,data,newswire,analysis" in script
     assert "dst=/source/analysis,readonly" in script
     assert "dst=/source/newswire,readonly" in script
-    assert "PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED" in script
+    assert "PALIMPSEST_BACKUP_COPY_DIR is retired" in script
+    assert "PALIMPSEST_BACKUP_HOOK is retired" in script
+    assert "PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED is retired" in script
     assert 'LOCK_PATH = "/source/analysis/private/cascade.lock"' in helper
     assert 'NEWSWIRE_LOCK_PATH = "/source/newswire/newswire.lock"' in helper
     assert "os.O_NOFOLLOW" in helper

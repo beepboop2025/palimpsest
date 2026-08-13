@@ -28,13 +28,6 @@ require_absolute_nonroot_path() {
   [[ "$value" != "/" ]] || die "$label must not be /"
 }
 
-paths_overlap() {
-  local left="${1%/}"
-  local right="${2%/}"
-  [[ "$left" == "$right" || "$left/" == "$right/"* || \
-    "$right/" == "$left/"* ]]
-}
-
 repo_root="${PALIMPSEST_ROOT:-/home/deploy/palimpsest}"
 state_root="${PALIMPSEST_STATE_ROOT:-}"
 analysis_root="${PALIMPSEST_ANALYSIS_ROOT:-/var/lib/palimpsest-analysis}"
@@ -44,7 +37,7 @@ retention_days="${PALIMPSEST_BACKUP_RETENTION_DAYS:-14}"
 minimum_free_mb="${PALIMPSEST_BACKUP_MIN_FREE_MB:-1024}"
 copy_root="${PALIMPSEST_BACKUP_COPY_DIR:-}"
 copy_hook="${PALIMPSEST_BACKUP_HOOK:-}"
-offsite_encrypted="${PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED:-0}"
+offsite_encrypted="${PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED:-}"
 compose_project="${PALIMPSEST_COMPOSE_PROJECT:-palimpsest}"
 artifact_service="${PALIMPSEST_BACKUP_ARTIFACT_SERVICE:-worker}"
 
@@ -57,19 +50,19 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
   die "retention days must be between 1 and 3650"
 [[ "$minimum_free_mb" =~ ^[0-9]+$ ]] || die "minimum free MB must be an integer"
 (( minimum_free_mb >= 64 )) || die "minimum free MB must be at least 64"
-[[ "$offsite_encrypted" =~ ^[01]$ ]] || \
-  die "PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED must be 0 or 1"
-if [[ -n "$copy_root" || -n "$copy_hook" ]]; then
-  [[ "$offsite_encrypted" == 1 ]] || \
-    die "off-host backup requires PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1"
-fi
+[[ -z "$copy_root" ]] || \
+  die "PALIMPSEST_BACKUP_COPY_DIR is retired; use the isolated node-offsite service"
+[[ -z "$copy_hook" ]] || \
+  die "PALIMPSEST_BACKUP_HOOK is retired; use the isolated node-offsite service"
+[[ -z "$offsite_encrypted" ]] || \
+  die "PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED is retired with the generic offsite path"
 [[ "$compose_project" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
   die "unsafe Compose project name: $compose_project"
 [[ "$artifact_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
   die "unsafe artifact service name: $artifact_service"
 
 for command_name in docker flock sha256sum tar find awk date hostname df \
-  mkdir dirname basename mv cp rm; do
+  mkdir dirname basename mv rm; do
   require_command "$command_name"
 done
 
@@ -153,25 +146,6 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
     "$newswire_root/" != "$analysis_root/"* ]] || \
   die "newswire root and analysis root must not contain one another"
 
-if [[ -n "$copy_root" ]]; then
-  require_absolute_nonroot_path PALIMPSEST_BACKUP_COPY_DIR "$copy_root"
-  # Do not create this path: if it is meant to be a mounted remote and the
-  # mount disappeared, creating it would silently put a second copy locally.
-  [[ -d "$copy_root" && -w "$copy_root" ]] || \
-    die "off-host copy directory is unavailable or not writable: $copy_root"
-  copy_root="$(cd "$copy_root" && pwd -P)"
-  require_absolute_nonroot_path PALIMPSEST_BACKUP_COPY_DIR "$copy_root"
-  paths_overlap "$copy_root" "$backup_root" && \
-    die "copy directory and backup directory must not contain one another"
-  paths_overlap "$copy_root" "$repo_root" && \
-    die "copy directory and repository must not contain one another"
-  for archived_root in \
-    "$readings_root" "$data_root" "$analysis_root" "$newswire_root"; do
-    paths_overlap "$copy_root" "$archived_root" && \
-      die "copy directory must not overlap an archived source root"
-  done
-fi
-
 exec 9>"$backup_root/.backup.lock"
 flock -n 9 || die "another backup is already running"
 
@@ -183,7 +157,6 @@ available_kb="$(df -Pk "$backup_root" | awk 'NR == 2 {print $4}')"
 snapshot_id="$(date -u +%Y%m%dT%H%M%SZ)"
 final_dir="$backup_root/$snapshot_id"
 staging_dir="$backup_root/.incomplete-${snapshot_id}.$$"
-copy_staging=""
 
 cleanup() {
   local status=$?
@@ -192,10 +165,6 @@ cleanup() {
         "$(dirname -- "$staging_dir")" == "$backup_root" && \
         "$(basename -- "$staging_dir")" == .incomplete-* ]]; then
     rm -rf -- "$staging_dir"
-  fi
-  if [[ -n "$copy_staging" && -d "$copy_staging" && \
-        "$(basename -- "$copy_staging")" == .incomplete-* ]]; then
-    rm -rf -- "$copy_staging"
   fi
   exit "$status"
 }
@@ -316,27 +285,6 @@ postgres_version="$(
 mv -- "$staging_dir" "$final_dir"
 staging_dir=""
 log "published validated backup: $final_dir"
-
-if [[ -n "$copy_root" ]]; then
-  copy_final="$copy_root/$snapshot_id"
-  copy_staging="$copy_root/.incomplete-${snapshot_id}.$$"
-  [[ ! -e "$copy_final" && ! -e "$copy_staging" ]] || \
-    die "off-host destination already exists for $snapshot_id"
-  mkdir -m 0700 -- "$copy_staging"
-  cp -a -- "$final_dir/." "$copy_staging/"
-  (cd "$copy_staging" && sha256sum --check SHA256SUMS >/dev/null)
-  mv -- "$copy_staging" "$copy_final"
-  copy_staging=""
-  log "copied and revalidated backup: $copy_final"
-fi
-
-if [[ -n "$copy_hook" ]]; then
-  require_absolute_nonroot_path PALIMPSEST_BACKUP_HOOK "$copy_hook"
-  [[ -x "$copy_hook" && -f "$copy_hook" ]] || \
-    die "backup hook is not an executable file: $copy_hook"
-  "$copy_hook" "$final_dir" "$snapshot_id"
-  log "off-host backup hook completed"
-fi
 
 # Retention is intentionally restricted to direct children with the exact UTC
 # snapshot naming convention. Dot-prefixed incomplete work and arbitrary

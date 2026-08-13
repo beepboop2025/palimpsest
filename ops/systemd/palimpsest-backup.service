@@ -2,8 +2,7 @@
 Description=Create and validate a Palimpsest node backup
 Documentation=file:///home/deploy/palimpsest/ops/backup/README.md
 Requires=docker.service
-After=docker.service network-online.target
-Wants=network-online.target
+After=docker.service
 ConditionFileIsExecutable=/home/deploy/palimpsest/ops/backup/palimpsest-backup.sh
 
 [Service]
@@ -19,6 +18,7 @@ IOSchedulingClass=best-effort
 IOSchedulingPriority=7
 TimeoutStartSec=4h
 NoNewPrivileges=true
+PrivateNetwork=true
 PrivateTmp=true
 ProtectSystem=full
 ReadOnlyPaths=/var/lib/palimpsest-analysis /var/lib/palimpsest/newswire
@@ -26,3 +26,4 @@ ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX

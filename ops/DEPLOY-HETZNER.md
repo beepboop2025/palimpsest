@@ -746,11 +746,12 @@ review-gated analytical runs and must be restored as a separate root.
   `pg_restore --list`, the `readings/` + `data/` + private `newswire/` and
   `analysis/` trees
   validated by tar, and SHA-256 checksums. It is published by atomic rename
-  only after all checks pass, retains 14 days by default, and supports either an
-  encrypted pre-mounted off-host directory or an encrypting uploader hook.
-  Plain remote storage is forbidden because the snapshot includes private
-  analysis. Installation, off-host settings, checksum verification, and a
-  non-destructive restore drill
+  only after all checks pass and retains 14 days by default. The historical
+  mounted-copy and arbitrary uploader-hook interfaces are retired; an
+  environment flag could not prove encryption or recovery. Encrypted off-node
+  publication is handled by the separately credentialed, immutable
+  `palimpsest-node-offsite-backup.service`. Installation, checksum verification,
+  and a non-destructive restore drill
   covering all four artifact roots are in
   [`ops/backup/README.md`](backup/README.md).
 
