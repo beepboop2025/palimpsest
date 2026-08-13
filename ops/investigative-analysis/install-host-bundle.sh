@@ -39,6 +39,7 @@ runtime_id="10001"
 analysis_root="/var/lib/palimpsest-analysis"
 runs_root="$analysis_root/runs"
 private_root="$analysis_root/private"
+delivery_root="$analysis_root/delivery"
 
 # Prevent an invoking shell from redirecting Git's object/index/worktree view
 # away from the checkout whose files this installer copies.
@@ -206,6 +207,30 @@ normalize_analysis_storage() {
   [[ "$(stat -c '%u:%g:%a' "$private_root")" \
       == "$runtime_id:$runtime_id:700" ]] \
     || die "analysis private root ownership or mode is unsafe"
+
+  if [[ -e "$delivery_root" || -L "$delivery_root" ]]; then
+    [[ -d "$delivery_root" && ! -L "$delivery_root" ]] \
+      || die "analysis delivery root is not a real directory"
+  else
+    install -d -o "$runtime_name" -g "$runtime_name" -m 0711 "$delivery_root"
+  fi
+  unsafe_member="$(
+    find "$delivery_root" -mindepth 1 -maxdepth 1 \
+      \( -type l -o ! -type f \) -print -quit
+  )"
+  [[ -z "$unsafe_member" ]] \
+    || die "analysis delivery root contains a link or special file"
+  while IFS= read -r -d '' entry; do
+    [[ "${entry##*/}" == "wire-claim-audits-latest.json" ]] \
+      || die "analysis delivery root contains an unrecognized file"
+  done < <(find "$delivery_root" -mindepth 1 -maxdepth 1 -type f -print0)
+  chown "$runtime_name":"$runtime_name" "$delivery_root"
+  chmod 0711 "$delivery_root"
+  find "$delivery_root" -mindepth 1 -maxdepth 1 -type f \
+    -exec chown "$runtime_name":"$runtime_name" {} + -exec chmod 0644 {} +
+  [[ "$(stat -c '%u:%g:%a' "$delivery_root")" \
+      == "$runtime_id:$runtime_id:711" ]] \
+    || die "analysis delivery root ownership or mode is unsafe"
 }
 
 if ! revision="$(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -449,6 +450,12 @@ def test_run_is_idempotent_and_promotes_only_after_container_success(
     assert Path(state["run_path"]).is_dir()
     assert state["image_id"] == IMAGE_ID
     assert not list(runs.glob(".staging-*"))
+    delivery = tmp_path / "delivery"
+    wire_projection = delivery / "wire-claim-audits-latest.json"
+    assert wire_projection.is_file()
+    assert stat.S_IMODE(delivery.stat().st_mode) == 0o711
+    assert stat.S_IMODE(wire_projection.stat().st_mode) == 0o644
+    assert not (private / "delivery").exists()
     receipt = json.loads((private / runner.ANALYSIS_STATUS_NAME).read_text())
     assert set(receipt) == {
         "schema_version",

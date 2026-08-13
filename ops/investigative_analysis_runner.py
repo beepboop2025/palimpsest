@@ -1212,6 +1212,33 @@ def _exclusive_lock(path: Path):
             os.close(descriptor)
 
 
+def _prepare_delivery_directory(private_root: Path) -> Path:
+    """Create the non-listable, delivery-safe sibling of the private tree."""
+
+    delivery_root = private_root.parent / "delivery"
+    try:
+        os.mkdir(delivery_root, 0o711)
+    except FileExistsError:
+        pass
+    except OSError as exc:
+        raise AnalysisRunnerError("cannot create the Wire delivery directory") from exc
+    try:
+        metadata = delivery_root.stat(follow_symlinks=False)
+    except OSError as exc:
+        raise AnalysisRunnerError("cannot inspect the Wire delivery directory") from exc
+    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != os.geteuid():
+        raise AnalysisRunnerError(
+            "Wire delivery path is not an analysis-owned real directory"
+        )
+    try:
+        os.chmod(delivery_root, 0o711, follow_symlinks=False)
+    except OSError as exc:
+        raise AnalysisRunnerError("cannot seal the Wire delivery directory") from exc
+    if stat.S_IMODE(delivery_root.stat(follow_symlinks=False).st_mode) != 0o711:
+        raise AnalysisRunnerError("Wire delivery directory mode is unsafe")
+    return delivery_root
+
+
 def _safe_cleanup_staging(path: Path, runs_dir: Path) -> None:
     if path.parent.resolve() != runs_dir.resolve() or not path.name.startswith(
         ".staging-"
@@ -1352,8 +1379,7 @@ def _run_once_locked(
         _reconcile_staging(runs_dir, execute)
     ledger_dir = private_root / "ledger"
     ledger_dir.mkdir(mode=0o700, exist_ok=True)
-    delivery_dir = private_root / "delivery"
-    delivery_dir.mkdir(mode=0o700, exist_ok=True)
+    delivery_dir = _prepare_delivery_directory(private_root)
     latest = ledger_dir / "candidates-latest.json"
     history = ledger_dir / "candidate-versions.jsonl"
     wire_latest = delivery_dir / "wire-claim-audits-latest.json"
@@ -1469,7 +1495,7 @@ def _run_once_locked(
             atomic_write(
                 wire_latest,
                 wire_canonical_json_bytes(previous_audits),
-                mode=0o600,
+                mode=0o644,
             )
     elif latest.exists() or history.exists() or wire_latest.exists():
         raise AnalysisRunnerError(
@@ -1727,7 +1753,7 @@ def _run_once_locked(
         atomic_write(
             wire_latest,
             wire_canonical_json_bytes(audits),
-            mode=0o600,
+            mode=0o644,
         )
         if brokered:
             pruned = _call_broker({"operation": "prune"})
