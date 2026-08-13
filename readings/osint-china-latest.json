@@ -39,25 +39,17 @@
       "source_id": "believability",
       "summary": "upstream status is not_ready",
       "title": "Believability read: degraded"
-    },
-    {
-      "id": "health-nemesis",
-      "kind": "health",
-      "severity": "notice",
-      "source_id": "nemesis",
-      "summary": "freshness deadline has passed",
-      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-13T05:52:09Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 3 stale.",
+  "generated_at": "2026-08-13T06:09:41Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 29,
+      "live": 30,
       "missing": 0,
-      "stale": 3
+      "stale": 2
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -66,7 +58,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "cc456c4b2173a9295dc96141fc319765fd7c8db8",
+  "input_commit": "f405b71fa86a6bace1b62ca822681c80e08c5e6d",
   "layers": [
     {
       "id": "command",
@@ -179,20 +171,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 29,
+  "n_signals_live": 30,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -202,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:17:37Z",
       "health": {
-        "age_hours": 2.575,
+        "age_hours": 2.868,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -522,7 +514,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:13:45Z",
       "health": {
-        "age_hours": 2.64,
+        "age_hours": 2.932,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -742,7 +734,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:17:37Z",
       "health": {
-        "age_hours": 2.575,
+        "age_hours": 2.868,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -890,7 +882,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:17:37Z",
       "health": {
-        "age_hours": 2.575,
+        "age_hours": 2.868,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1429,7 +1421,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:17:37Z",
       "health": {
-        "age_hours": 2.575,
+        "age_hours": 2.868,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1756,7 +1748,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-13T12:06:32Z",
       "health": {
-        "age_hours": 0.76,
+        "age_hours": 1.052,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2489,7 +2481,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:18:18Z",
       "health": {
-        "age_hours": 2.564,
+        "age_hours": 2.856,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2787,7 +2779,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:12:00Z",
       "health": {
-        "age_hours": 2.669,
+        "age_hours": 2.961,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3123,7 +3115,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T09:34:59Z",
       "health": {
-        "age_hours": 34.286,
+        "age_hours": 34.578,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -3430,7 +3422,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 71.995,
+        "age_hours": 72.287,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3741,7 +3733,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T05:12:03Z",
       "health": {
-        "age_hours": 2.668,
+        "age_hours": 2.96,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4015,7 +4007,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:03:23Z",
       "health": {
-        "age_hours": 2.813,
+        "age_hours": 3.105,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4345,7 +4337,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:05:42Z",
       "health": {
-        "age_hours": 2.774,
+        "age_hours": 3.066,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4516,7 +4508,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T08:56:11Z",
       "health": {
-        "age_hours": 22.933,
+        "age_hours": 23.225,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4692,7 +4684,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:11:37Z",
       "health": {
-        "age_hours": 2.675,
+        "age_hours": 2.968,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7118,7 +7110,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:04:21Z",
       "health": {
-        "age_hours": 2.797,
+        "age_hours": 3.089,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7168,7 +7160,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T08:42:35Z",
       "health": {
-        "age_hours": 23.159,
+        "age_hours": 23.452,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7241,7 +7233,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:15:57Z",
       "health": {
-        "age_hours": 2.603,
+        "age_hours": 2.895,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7317,9 +7309,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-13T10:23:20Z",
+      "freshness_deadline": "2026-08-13T16:23:22Z",
       "health": {
-        "age_hours": 9.48,
+        "age_hours": 3.772,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7329,9 +7321,9 @@
       },
       "id": "bleedthrough",
       "input": {
-        "bytes": 2693,
+        "bytes": 4205,
         "filename": "bleedthrough-latest.json",
-        "sha256": "65086257aa5235d9d7d7c77aaa9bd6dc66b36729be8aa2d73c5f454497a97829"
+        "sha256": "aa9da22a703826297d1ca5e6b3520d7e406738f6797c0e08b7930508021e749e"
       },
       "layer": "network",
       "live": true,
@@ -7340,60 +7332,108 @@
       "metric": {
         "denominator": {
           "label": "injecting target IPs",
-          "value": 216
+          "value": 20
         },
         "label": "injector response-process floor",
         "unit": "count",
-        "value": 2
+        "value": 1
       },
       "optional": true,
       "payload": {
-        "distinct_pools": 6,
+        "distinct_pools": 3,
         "distinct_pools_basis": "union of forged IPs per region, not per-target samples",
         "events": [
           {
-            "detail": "forged-IP pool rotated",
-            "kind": "pool_rotation",
-            "severity": "low",
+            "detail": "injector-process floor changed from 2 to 1",
+            "kind": "capacity_shift",
+            "severity": "medium",
             "vantage": "CN-BJ/AS4808"
           },
           {
-            "detail": "forged-IP pool rotated",
-            "kind": "pool_rotation",
-            "severity": "low",
+            "detail": "injector-process floor changed from 2 to 1",
+            "kind": "capacity_shift",
+            "severity": "medium",
             "vantage": "CN-GD/AS17623"
           },
           {
-            "detail": "forged-IP pool rotated",
-            "kind": "pool_rotation",
-            "severity": "low",
+            "detail": "injector-process floor changed from 2 to 1",
+            "kind": "capacity_shift",
+            "severity": "medium",
             "vantage": "CN-SH/AS4812"
           },
           {
-            "detail": "forged-IP pool rotated",
-            "kind": "pool_rotation",
-            "severity": "low",
+            "detail": "injector-process floor changed from 2 to 1",
+            "kind": "capacity_shift",
+            "severity": "medium",
             "vantage": "CN/AS4134"
           },
           {
-            "detail": "forged-IP pool rotated",
-            "kind": "pool_rotation",
-            "severity": "low",
+            "detail": "injector-process floor changed from 2 to 1",
+            "kind": "capacity_shift",
+            "severity": "medium",
             "vantage": "CN/AS4837"
           },
           {
-            "detail": "forged-IP pool rotated",
-            "kind": "pool_rotation",
-            "severity": "low",
+            "detail": "injector-process floor changed from 2 to 1",
+            "kind": "capacity_shift",
+            "severity": "medium",
             "vantage": "CN/AS9808"
+          },
+          {
+            "detail": "previously injecting target became silent",
+            "kind": "injector_silent",
+            "severity": "high",
+            "vantage": "CN-BJ/AS4808"
+          },
+          {
+            "detail": "previously injecting target became silent",
+            "kind": "injector_silent",
+            "severity": "high",
+            "vantage": "CN-GD/AS17623"
+          },
+          {
+            "detail": "previously injecting target became silent",
+            "kind": "injector_silent",
+            "severity": "high",
+            "vantage": "CN-SH/AS4812"
+          },
+          {
+            "detail": "previously injecting target became silent",
+            "kind": "injector_silent",
+            "severity": "high",
+            "vantage": "CN/AS4134"
+          },
+          {
+            "detail": "previously injecting target became silent",
+            "kind": "injector_silent",
+            "severity": "high",
+            "vantage": "CN/AS4837"
+          },
+          {
+            "detail": "previously injecting target became silent",
+            "kind": "injector_silent",
+            "severity": "high",
+            "vantage": "CN/AS9808"
+          },
+          {
+            "detail": "regional forged-IP pool diverged from the shared baseline",
+            "kind": "regional_firewall_candidate",
+            "severity": "high",
+            "vantage": "CN-BJ/AS4808"
+          },
+          {
+            "detail": "regional forged-IP pool diverged from the shared baseline",
+            "kind": "regional_firewall_candidate",
+            "severity": "high",
+            "vantage": "CN-SH/AS4812"
           }
         ],
-        "generated_at": "2026-08-12T20:23:20.448866Z",
-        "last_changed_at": "2026-08-12T20:23:20.448866Z",
-        "max_process_count": 2,
+        "generated_at": "2026-08-13T02:23:22.376280Z",
+        "last_changed_at": "2026-08-13T02:23:22.376280Z",
+        "max_process_count": 1,
         "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
         "method_version": 2,
-        "pool_sampling_suspected": true,
+        "pool_sampling_suspected": false,
         "probe_domain": "torproject.org",
         "process_count_semantics": "floor",
         "provenance": {
@@ -7425,22 +7465,22 @@
         "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
         "signal": "bleedthrough",
         "title": "GFW injector fleet",
-        "vantages_injecting": 216,
+        "vantages_injecting": 20,
         "vantages_probed": 216
       },
       "raw_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
       "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
       "source": "Optional deployment-controlled prober outside China",
-      "source_timestamp": "2026-08-12T20:23:20Z",
+      "source_timestamp": "2026-08-13T02:23:22Z",
       "status": "live",
-      "summary": "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; absence means no controlled deployment has published a current round. Latest payload reports injector response-process floor at 2 count across 216 injecting target IPs.",
+      "summary": "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; absence means no controlled deployment has published a current round. Latest payload reports injector response-process floor at 1 count across 20 injecting target IPs.",
       "title": "Bleedthrough injector tomography"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T18:01:41Z",
       "health": {
-        "age_hours": 1.841,
+        "age_hours": 2.133,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7571,7 +7611,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T05:05:35Z",
       "health": {
-        "age_hours": 2.776,
+        "age_hours": 3.068,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7660,7 +7700,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 321.348,
+        "age_hours": 321.64,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7814,7 +7854,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T05:11:59Z",
       "health": {
-        "age_hours": 2.669,
+        "age_hours": 2.961,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7993,7 +8033,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:21:23Z",
       "health": {
-        "age_hours": 2.513,
+        "age_hours": 2.805,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8169,7 +8209,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T08:54:45Z",
       "health": {
-        "age_hours": 22.956,
+        "age_hours": 23.249,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8273,7 +8313,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T17:12:37Z",
       "health": {
-        "age_hours": 2.659,
+        "age_hours": 2.951,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8340,7 +8380,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T19:56:10Z",
       "health": {
-        "age_hours": 11.933,
+        "age_hours": 12.225,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8392,7 +8432,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T16:33:58Z",
       "health": {
-        "age_hours": 15.303,
+        "age_hours": 15.595,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8450,7 +8490,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T13:05:54Z",
       "health": {
-        "age_hours": 18.771,
+        "age_hours": 19.063,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8606,7 +8646,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 188.694,
+        "age_hours": 188.986,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8674,7 +8714,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T10:15:20Z",
       "health": {
-        "age_hours": 21.613,
+        "age_hours": 21.906,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14036,7 +14076,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T18:01:44Z",
       "health": {
-        "age_hours": 1.84,
+        "age_hours": 2.132,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14081,24 +14121,24 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-12T22:29:16Z",
+      "freshness_deadline": "2026-08-13T06:59:16Z",
       "health": {
-        "age_hours": 8.381,
+        "age_hours": 0.174,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
       },
       "id": "nemesis",
       "input": {
-        "bytes": 153461,
+        "bytes": 153472,
         "filename": "nemesis-latest.json",
-        "sha256": "a1c2e979cf7bf6efcae2fb328e2158a99925786f1ed882ec8940adfe524e2285"
+        "sha256": "607ad034cc02ba63eeb0aa131c3c77c103d1eaf58e8a6d171ce7d1fce2d92cb5"
       },
       "layer": "nemesis",
-      "live": false,
+      "live": true,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -14153,7 +14193,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786570156.285,
+        "data_timestamp": 1786600756.261,
         "ddti": {
           "by_domain": {
             "ECONOMY": 5,
@@ -14165,13 +14205,13 @@
             "SOCIETY": 7,
             "UNREST": 7
           },
-          "generated_at": 1786570156.285,
+          "generated_at": 1786600756.261,
           "n_posts": 14,
           "n_posts_scored": 14,
           "n_terms": 177,
           "ranked": [
             {
-              "attention": 2.38,
+              "attention": 2.34,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14206,16 +14246,16 @@
               "tag_observations": 8,
               "term": "social media censorship",
               "text_observations": 0,
-              "threat": 2.38,
+              "threat": 2.34,
               "total": 8
             },
             {
-              "attention": 2.24,
+              "attention": 2.2,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
               "novelty": 0.0,
-              "recent": 2,
+              "recent": 1,
               "samples": [
                 {
                   "matched_in": [
@@ -14245,11 +14285,11 @@
               "tag_observations": 7,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 2.24,
+              "threat": 2.2,
               "total": 7
             },
             {
-              "attention": 2.19,
+              "attention": 2.15,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14284,11 +14324,11 @@
               "tag_observations": 7,
               "term": "online censorship",
               "text_observations": 0,
-              "threat": 2.19,
+              "threat": 2.15,
               "total": 7
             },
             {
-              "attention": 0.92,
+              "attention": 0.9,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14307,11 +14347,11 @@
               "tag_observations": 1,
               "term": "caixin",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 1.98,
               "total": 1
             },
             {
-              "attention": 0.92,
+              "attention": 0.9,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14330,11 +14370,11 @@
               "tag_observations": 1,
               "term": "defending rights",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 1.98,
               "total": 1
             },
             {
-              "attention": 0.92,
+              "attention": 0.9,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14353,11 +14393,11 @@
               "tag_observations": 1,
               "term": "gansu",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 1.98,
               "total": 1
             },
             {
-              "attention": 0.92,
+              "attention": 0.9,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14376,11 +14416,11 @@
               "tag_observations": 1,
               "term": "lanzhou",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 1.98,
               "total": 1
             },
             {
-              "attention": 0.92,
+              "attention": 0.9,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14399,11 +14439,11 @@
               "tag_observations": 1,
               "term": "trials",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 1.98,
               "total": 1
             },
             {
-              "attention": 0.92,
+              "attention": 0.9,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -14422,11 +14462,11 @@
               "tag_observations": 1,
               "term": "unpaid wages",
               "text_observations": 0,
-              "threat": 2.02,
+              "threat": 1.98,
               "total": 1
             },
             {
-              "attention": 1.23,
+              "attention": 1.2,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14453,11 +14493,11 @@
               "tag_observations": 2,
               "term": "migrant workers",
               "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.94,
               "total": 2
             },
             {
-              "attention": 1.1,
+              "attention": 1.08,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14484,11 +14524,11 @@
               "tag_observations": 2,
               "term": "investigative journalism",
               "text_observations": 0,
-              "threat": 1.76,
+              "threat": 1.73,
               "total": 2
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14507,11 +14547,11 @@
               "tag_observations": 1,
               "term": "china youth daily",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14530,11 +14570,11 @@
               "tag_observations": 1,
               "term": "humor",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14553,11 +14593,11 @@
               "tag_observations": 1,
               "term": "information technology",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14576,11 +14616,11 @@
               "tag_observations": 1,
               "term": "journalism",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14599,11 +14639,11 @@
               "tag_observations": 1,
               "term": "journalists",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14622,11 +14662,11 @@
               "tag_observations": 1,
               "term": "literacy",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14645,11 +14685,11 @@
               "tag_observations": 1,
               "term": "media",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14668,11 +14708,11 @@
               "tag_observations": 1,
               "term": "online media",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14691,11 +14731,11 @@
               "tag_observations": 1,
               "term": "press accreditation",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.71,
+              "attention": 0.69,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14714,11 +14754,11 @@
               "tag_observations": 1,
               "term": "reputation",
               "text_observations": 0,
-              "threat": 1.55,
+              "threat": 1.53,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14745,11 +14785,11 @@
               "tag_observations": 2,
               "term": "artificial intelligence",
               "text_observations": 0,
-              "threat": 1.43,
+              "threat": 1.41,
               "total": 2
             },
             {
-              "attention": 0.87,
+              "attention": 0.85,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -14776,11 +14816,11 @@
               "tag_observations": 2,
               "term": "arrests",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.37,
               "total": 2
             },
             {
-              "attention": 1.32,
+              "attention": 1.3,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14815,11 +14855,11 @@
               "tag_observations": 3,
               "term": "state media",
               "text_observations": 0,
-              "threat": 1.39,
+              "threat": 1.37,
               "total": 3
             },
             {
-              "attention": 1.3,
+              "attention": 1.27,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14854,11 +14894,11 @@
               "tag_observations": 3,
               "term": "social media",
               "text_observations": 0,
-              "threat": 1.37,
+              "threat": 1.34,
               "total": 3
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14877,11 +14917,11 @@
               "tag_observations": 0,
               "term": "404",
               "text_observations": 1,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14900,11 +14940,11 @@
               "tag_observations": 1,
               "term": "activism",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14923,11 +14963,11 @@
               "tag_observations": 1,
               "term": "activists",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14946,11 +14986,11 @@
               "tag_observations": 1,
               "term": "animal protection",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14969,11 +15009,11 @@
               "tag_observations": 1,
               "term": "animals",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -14992,11 +15032,11 @@
               "tag_observations": 1,
               "term": "blue-collar workers",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15015,11 +15055,11 @@
               "tag_observations": 1,
               "term": "business",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15038,11 +15078,11 @@
               "tag_observations": 1,
               "term": "censorship vault",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15061,11 +15101,11 @@
               "tag_observations": 0,
               "term": "deleted",
               "text_observations": 1,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15084,11 +15124,11 @@
               "tag_observations": 1,
               "term": "dogs",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -15107,11 +15147,11 @@
               "tag_observations": 1,
               "term": "economics",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -15130,11 +15170,11 @@
               "tag_observations": 1,
               "term": "employment",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15153,11 +15193,11 @@
               "tag_observations": 1,
               "term": "extortion",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15176,11 +15216,11 @@
               "tag_observations": 1,
               "term": "june 4th",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15199,11 +15239,11 @@
               "tag_observations": 1,
               "term": "legislation",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15222,11 +15262,11 @@
               "tag_observations": 1,
               "term": "local government",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -15245,11 +15285,11 @@
               "tag_observations": 1,
               "term": "market-economy",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15268,11 +15308,11 @@
               "tag_observations": 1,
               "term": "nationalism",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15291,11 +15331,11 @@
               "tag_observations": 1,
               "term": "police violence",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15314,11 +15354,11 @@
               "tag_observations": 1,
               "term": "protesters",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15337,11 +15377,11 @@
               "tag_observations": 1,
               "term": "protests",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15360,11 +15400,11 @@
               "tag_observations": 1,
               "term": "soccer",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15383,11 +15423,11 @@
               "tag_observations": 1,
               "term": "sports",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15406,11 +15446,11 @@
               "tag_observations": 1,
               "term": "transportation",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "ECONOMY",
               "is_new": false,
@@ -15429,11 +15469,11 @@
               "tag_observations": 1,
               "term": "unemployment",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15452,11 +15492,11 @@
               "tag_observations": 1,
               "term": "white-collar workers",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15475,11 +15515,11 @@
               "tag_observations": 1,
               "term": "workers",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.55,
+              "attention": 0.54,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15498,42 +15538,11 @@
               "tag_observations": 1,
               "term": "world cup",
               "text_observations": 0,
-              "threat": 1.21,
+              "threat": 1.19,
               "total": 1
             },
             {
-              "attention": 0.7,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.4,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
-                  "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 2,
-              "term": "cyberspace administration of china",
-              "text_observations": 0,
-              "threat": 1.12,
-              "total": 2
-            },
-            {
-              "attention": 1.06,
+              "attention": 1.04,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15568,195 +15577,11 @@
               "tag_observations": 2,
               "term": "police",
               "text_observations": 1,
-              "threat": 1.12,
+              "threat": 1.1,
               "total": 3
             },
             {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "changsha",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "cybersecurity",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "great firewall",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "hunan",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "internet",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "internet access",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "real name registration",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 0.5,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "wi-fi",
-              "text_observations": 0,
-              "threat": 1.11,
-              "total": 1
-            },
-            {
-              "attention": 1.07,
+              "attention": 1.05,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15791,11 +15616,11 @@
               "tag_observations": 3,
               "term": "floods",
               "text_observations": 0,
-              "threat": 1.07,
+              "threat": 1.05,
               "total": 3
             },
             {
-              "attention": 1.07,
+              "attention": 1.05,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15830,11 +15655,11 @@
               "tag_observations": 3,
               "term": "natural disasters",
               "text_observations": 0,
-              "threat": 1.07,
+              "threat": 1.05,
               "total": 3
             },
             {
-              "attention": 0.97,
+              "attention": 0.95,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15869,11 +15694,11 @@
               "tag_observations": 1,
               "term": "censorship",
               "text_observations": 3,
-              "threat": 0.97,
+              "threat": 0.95,
               "total": 4
             },
             {
-              "attention": 0.86,
+              "attention": 0.85,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15908,11 +15733,42 @@
               "tag_observations": 3,
               "term": "reporting",
               "text_observations": 0,
-              "threat": 0.86,
+              "threat": 0.85,
               "total": 3
             },
             {
-              "attention": 0.64,
+              "attention": 0.69,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+                  "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 2,
+              "term": "cyberspace administration of china",
+              "text_observations": 0,
+              "threat": 0.69,
+              "total": 2
+            },
+            {
+              "attention": 0.63,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15939,11 +15795,11 @@
               "tag_observations": 2,
               "term": "media censorship",
               "text_observations": 0,
-              "threat": 0.64,
+              "threat": 0.63,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15970,11 +15826,11 @@
               "tag_observations": 2,
               "term": "dams",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16001,11 +15857,11 @@
               "tag_observations": 2,
               "term": "death toll",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16032,11 +15888,11 @@
               "tag_observations": 2,
               "term": "disaster relief",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16063,11 +15919,11 @@
               "tag_observations": 2,
               "term": "infrastructure",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16094,11 +15950,11 @@
               "tag_observations": 2,
               "term": "rainfall",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16125,11 +15981,11 @@
               "tag_observations": 2,
               "term": "reservoirs",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16156,11 +16012,11 @@
               "tag_observations": 2,
               "term": "typhoons",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
-              "attention": 0.59,
+              "attention": 0.58,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16187,11 +16043,11 @@
               "tag_observations": 2,
               "term": "drones",
               "text_observations": 0,
-              "threat": 0.59,
+              "threat": 0.58,
               "total": 2
             },
             {
-              "attention": 0.51,
+              "attention": 0.5,
               "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
@@ -16219,11 +16075,195 @@
               "tag_observations": 2,
               "term": "hong kong",
               "text_observations": 1,
-              "threat": 0.51,
+              "threat": 0.5,
               "total": 2
             },
             {
-              "attention": 0.45,
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "changsha",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "cybersecurity",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "great firewall",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "hunan",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "internet",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "internet access",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "real name registration",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.49,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "wi-fi",
+              "text_observations": 0,
+              "threat": 0.49,
+              "total": 1
+            },
+            {
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16242,11 +16282,11 @@
               "tag_observations": 1,
               "term": "accountability",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16265,11 +16305,11 @@
               "tag_observations": 0,
               "term": "censored",
               "text_observations": 1,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16288,11 +16328,11 @@
               "tag_observations": 1,
               "term": "chengdu",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16311,11 +16351,11 @@
               "tag_observations": 1,
               "term": "henan",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16334,11 +16374,11 @@
               "tag_observations": 1,
               "term": "li zhi",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16357,11 +16397,11 @@
               "tag_observations": 1,
               "term": "mourning",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16380,11 +16420,11 @@
               "tag_observations": 1,
               "term": "state council",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16403,11 +16443,11 @@
               "tag_observations": 1,
               "term": "subway",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.45,
+              "attention": 0.44,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16426,11 +16466,11 @@
               "tag_observations": 1,
               "term": "zhengzhou",
               "text_observations": 0,
-              "threat": 0.45,
+              "threat": 0.44,
               "total": 1
             },
             {
-              "attention": 0.43,
+              "attention": 0.42,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16457,11 +16497,11 @@
               "tag_observations": 2,
               "term": "wechat",
               "text_observations": 0,
-              "threat": 0.43,
+              "threat": 0.42,
               "total": 2
             },
             {
-              "attention": 0.39,
+              "attention": 0.38,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16480,11 +16520,11 @@
               "tag_observations": 1,
               "term": "emergency response",
               "text_observations": 0,
-              "threat": 0.39,
+              "threat": 0.38,
               "total": 1
             },
             {
-              "attention": 0.39,
+              "attention": 0.38,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -16503,11 +16543,11 @@
               "tag_observations": 1,
               "term": "environment",
               "text_observations": 0,
-              "threat": 0.39,
+              "threat": 0.38,
               "total": 1
             },
             {
-              "attention": 0.39,
+              "attention": 0.38,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16526,7 +16566,7 @@
               "tag_observations": 1,
               "term": "storms",
               "text_observations": 0,
-              "threat": 0.39,
+              "threat": 0.38,
               "total": 1
             },
             {
@@ -16561,7 +16601,7 @@
               "total": 2
             },
             {
-              "attention": 0.35,
+              "attention": 0.34,
               "direct_signal_observations": 0,
               "domain": "LEADERSHIP",
               "is_new": false,
@@ -16588,11 +16628,11 @@
               "tag_observations": 2,
               "term": "xi jinping",
               "text_observations": 0,
-              "threat": 0.35,
+              "threat": 0.34,
               "total": 2
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16611,11 +16651,11 @@
               "tag_observations": 1,
               "term": "anti-sedition laws",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -16634,11 +16674,11 @@
               "tag_observations": 0,
               "term": "arrest",
               "text_observations": 1,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16657,11 +16697,11 @@
               "tag_observations": 1,
               "term": "banned books",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16680,11 +16720,11 @@
               "tag_observations": 1,
               "term": "book ban",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16703,11 +16743,11 @@
               "tag_observations": 1,
               "term": "book banning",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16726,11 +16766,11 @@
               "tag_observations": 1,
               "term": "discourse censorship",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16749,11 +16789,11 @@
               "tag_observations": 1,
               "term": "freedom of expression",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16772,11 +16812,11 @@
               "tag_observations": 1,
               "term": "freedom of information",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16795,11 +16835,11 @@
               "tag_observations": 1,
               "term": "hong kong censorship",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
@@ -16818,11 +16858,11 @@
               "tag_observations": 1,
               "term": "hong kong national security law",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.32,
+              "attention": 0.31,
               "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
@@ -16841,11 +16881,11 @@
               "tag_observations": 1,
               "term": "hong kong publishing",
               "text_observations": 0,
-              "threat": 0.32,
+              "threat": 0.31,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16864,11 +16904,11 @@
               "tag_observations": 1,
               "term": "birth control",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16887,11 +16927,11 @@
               "tag_observations": 1,
               "term": "birth rate",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16910,11 +16950,11 @@
               "tag_observations": 1,
               "term": "births",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16933,11 +16973,11 @@
               "tag_observations": 1,
               "term": "children",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -16956,11 +16996,11 @@
               "tag_observations": 1,
               "term": "children education",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16979,11 +17019,11 @@
               "tag_observations": 1,
               "term": "children's rights",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17002,11 +17042,11 @@
               "tag_observations": 1,
               "term": "demographics",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -17025,11 +17065,11 @@
               "tag_observations": 1,
               "term": "education",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -17048,11 +17088,11 @@
               "tag_observations": 1,
               "term": "education reform",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17071,11 +17111,11 @@
               "tag_observations": 1,
               "term": "hukou",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17094,11 +17134,11 @@
               "tag_observations": 1,
               "term": "left-behind children",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -17117,11 +17157,11 @@
               "tag_observations": 1,
               "term": "migrant education",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17140,11 +17180,11 @@
               "tag_observations": 1,
               "term": "migrants",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17163,11 +17203,11 @@
               "tag_observations": 1,
               "term": "rural areas",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17186,11 +17226,11 @@
               "tag_observations": 1,
               "term": "rural children",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -17209,11 +17249,11 @@
               "tag_observations": 1,
               "term": "rural education",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17232,11 +17272,11 @@
               "tag_observations": 1,
               "term": "rural migration",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17255,11 +17295,11 @@
               "tag_observations": 1,
               "term": "the great divide",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.25,
+              "attention": 0.24,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17278,11 +17318,11 @@
               "tag_observations": 1,
               "term": "fccc",
               "text_observations": 0,
-              "threat": 0.25,
+              "threat": 0.24,
               "total": 1
             },
             {
-              "attention": 0.25,
+              "attention": 0.24,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17301,11 +17341,11 @@
               "tag_observations": 1,
               "term": "foreign media",
               "text_observations": 0,
-              "threat": 0.25,
+              "threat": 0.24,
               "total": 1
             },
             {
-              "attention": 0.25,
+              "attention": 0.24,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17324,11 +17364,11 @@
               "tag_observations": 1,
               "term": "media conditions",
               "text_observations": 0,
-              "threat": 0.25,
+              "threat": 0.24,
               "total": 1
             },
             {
-              "attention": 0.25,
+              "attention": 0.24,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17347,11 +17387,11 @@
               "tag_observations": 1,
               "term": "media control",
               "text_observations": 0,
-              "threat": 0.25,
+              "threat": 0.24,
               "total": 1
             },
             {
-              "attention": 0.25,
+              "attention": 0.24,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17370,7 +17410,7 @@
               "tag_observations": 1,
               "term": "visas",
               "text_observations": 0,
-              "threat": 0.25,
+              "threat": 0.24,
               "total": 1
             },
             {
@@ -17420,7 +17460,7 @@
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17439,11 +17479,11 @@
               "tag_observations": 1,
               "term": "#metoo",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17462,11 +17502,11 @@
               "tag_observations": 1,
               "term": "celebrities",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "RIGHTS",
               "is_new": false,
@@ -17485,11 +17525,11 @@
               "tag_observations": 1,
               "term": "civil rights lawyers",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
@@ -17508,11 +17548,11 @@
               "tag_observations": 1,
               "term": "covid-19",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17531,11 +17571,11 @@
               "tag_observations": 1,
               "term": "directives from the ministry of truth",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
@@ -17554,11 +17594,11 @@
               "tag_observations": 1,
               "term": "hong kong extradition",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -17577,11 +17617,11 @@
               "tag_observations": 1,
               "term": "hong kong protests",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17600,11 +17640,11 @@
               "tag_observations": 1,
               "term": "huawei",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17623,11 +17663,11 @@
               "tag_observations": 1,
               "term": "inner mongolia",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17646,11 +17686,11 @@
               "tag_observations": 1,
               "term": "internet video",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17669,11 +17709,11 @@
               "tag_observations": 1,
               "term": "kim jong un",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17692,11 +17732,11 @@
               "tag_observations": 1,
               "term": "li wenliang",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17715,11 +17755,11 @@
               "tag_observations": 1,
               "term": "meng wanzhou",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17738,11 +17778,11 @@
               "tag_observations": 1,
               "term": "north korea",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17761,11 +17801,11 @@
               "tag_observations": 1,
               "term": "peng liyuan",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17784,11 +17824,11 @@
               "tag_observations": 1,
               "term": "people's liberation army",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17807,11 +17847,11 @@
               "tag_observations": 1,
               "term": "pingdu",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17830,11 +17870,11 @@
               "tag_observations": 1,
               "term": "public security bureau",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "RIGHTS",
               "is_new": false,
@@ -17853,11 +17893,11 @@
               "tag_observations": 1,
               "term": "rights lawyers",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -17876,11 +17916,11 @@
               "tag_observations": 1,
               "term": "social media censorship complicity",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17899,11 +17939,11 @@
               "tag_observations": 1,
               "term": "tax evasion",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "RIGHTS",
               "is_new": false,
@@ -17922,11 +17962,11 @@
               "tag_observations": 1,
               "term": "tibet",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17945,11 +17985,11 @@
               "tag_observations": 1,
               "term": "wang yi",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -17968,11 +18008,11 @@
               "tag_observations": 1,
               "term": "xi mingze",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.2,
+              "attention": 0.19,
               "direct_signal_observations": 0,
               "domain": "RIGHTS",
               "is_new": false,
@@ -17991,11 +18031,11 @@
               "tag_observations": 1,
               "term": "xinjiang",
               "text_observations": 0,
-              "threat": 0.2,
+              "threat": 0.19,
               "total": 1
             },
             {
-              "attention": 0.19,
+              "attention": 0.18,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18014,11 +18054,11 @@
               "tag_observations": 1,
               "term": "netizen comments",
               "text_observations": 0,
-              "threat": 0.19,
+              "threat": 0.18,
               "total": 1
             },
             {
-              "attention": 0.19,
+              "attention": 0.18,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18037,11 +18077,11 @@
               "tag_observations": 1,
               "term": "united states",
               "text_observations": 0,
-              "threat": 0.19,
+              "threat": 0.18,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "LEADERSHIP",
               "is_new": false,
@@ -18060,11 +18100,11 @@
               "tag_observations": 1,
               "term": "communist party",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18083,11 +18123,11 @@
               "tag_observations": 1,
               "term": "communist youth league",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18106,11 +18146,11 @@
               "tag_observations": 1,
               "term": "factions",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18129,11 +18169,11 @@
               "tag_observations": 1,
               "term": "party history",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18152,11 +18192,11 @@
               "tag_observations": 1,
               "term": "political struggle",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18175,11 +18215,11 @@
               "tag_observations": 1,
               "term": "power struggle",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "LEADERSHIP",
               "is_new": false,
@@ -18198,11 +18238,11 @@
               "tag_observations": 1,
               "term": "xi jinping image",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
-              "attention": 0.16,
+              "attention": 0.15,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18221,7 +18261,7 @@
               "tag_observations": 1,
               "term": "youth league faction",
               "text_observations": 0,
-              "threat": 0.16,
+              "threat": 0.15,
               "total": 1
             },
             {
@@ -18549,7 +18589,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786570156.304,
+          "generated_at": 1786600756.285,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 31,
@@ -18562,7 +18602,7 @@
                 }
               ],
               "term": "wages",
-              "weight": 0.92
+              "weight": 0.9
             },
             {
               "samples": [
@@ -18572,7 +18612,7 @@
                 }
               ],
               "term": "economy",
-              "weight": 0.55
+              "weight": 0.54
             },
             {
               "samples": [
@@ -18582,7 +18622,7 @@
                 }
               ],
               "term": "unemployment",
-              "weight": 0.55
+              "weight": 0.54
             },
             {
               "samples": [
@@ -18592,38 +18632,38 @@
                 }
               ],
               "term": "tax",
-              "weight": 0.2
+              "weight": 0.19
             }
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786570156.314,
+        "generated_at": 1786600756.296,
         "health": {
           "freshness": {
-            "age_seconds": 0.029,
-            "core_data_at": 1786570156.285,
+            "age_seconds": 0.035,
+            "core_data_at": 1786600756.261,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.28,
-            "finished_at": 1786570156.313,
+            "duration_s": 0.26,
+            "finished_at": 1786600756.296,
             "healthy": true,
-            "id": 780,
-            "started_at": 1786570156.028,
+            "id": 814,
+            "started_at": 1786600756.035,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.28,
-            "finished_at": 1786570156.313,
+            "duration_s": 0.26,
+            "finished_at": 1786600756.296,
             "healthy": true,
-            "id": 780,
-            "started_at": 1786570156.028,
+            "id": 814,
+            "started_at": 1786600756.035,
             "status": "ok"
           },
-          "last_successful_run_at": 1786570156.313,
+          "last_successful_run_at": 1786600756.296,
           "live": true,
           "posts": 28,
           "ready": true,
@@ -18663,9 +18703,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
               }
             ],
-            "score": 4.3,
+            "score": 4.2,
             "term": "social media censorship",
-            "threat": 2.38
+            "threat": 2.34
           },
           {
             "domain": "INFORMATION",
@@ -18698,9 +18738,9 @@
                 "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
               }
             ],
-            "score": 3.8,
+            "score": 3.7,
             "term": "internet censorship",
-            "threat": 2.24
+            "threat": 2.2
           },
           {
             "domain": "INFORMATION",
@@ -18735,7 +18775,7 @@
             ],
             "score": 3.7,
             "term": "online censorship",
-            "threat": 2.19
+            "threat": 2.15
           },
           {
             "domain": "OTHER",
@@ -18752,9 +18792,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "caixin",
-            "threat": 2.02
+            "threat": 1.98
           },
           {
             "domain": "OTHER",
@@ -18771,9 +18811,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "defending rights",
-            "threat": 2.02
+            "threat": 1.98
           },
           {
             "domain": "OTHER",
@@ -18790,9 +18830,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "gansu",
-            "threat": 2.02
+            "threat": 1.98
           },
           {
             "domain": "OTHER",
@@ -18809,9 +18849,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "lanzhou",
-            "threat": 2.02
+            "threat": 1.98
           },
           {
             "domain": "OTHER",
@@ -18828,9 +18868,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "trials",
-            "threat": 2.02
+            "threat": 1.98
           },
           {
             "domain": "ECONOMY",
@@ -18847,9 +18887,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "unpaid wages",
-            "threat": 2.02
+            "threat": 1.98
           },
           {
             "domain": "OTHER",
@@ -18876,7 +18916,7 @@
             ],
             "score": 2.8,
             "term": "migrant workers",
-            "threat": 1.97
+            "threat": 1.94
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -18892,10 +18932,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786570156.313,
-          "ddti_generated_at": 1786570156.285,
-          "economic_generated_at": 1786570156.304,
-          "last_successful_run_at": 1786570156.313,
+          "data_updated_at": 1786600756.296,
+          "ddti_generated_at": 1786600756.261,
+          "economic_generated_at": 1786600756.285,
+          "last_successful_run_at": 1786600756.296,
           "latest_fetched_at": 1786419856.092,
           "latest_published_at": 1786417036.0
         }
@@ -18903,9 +18943,9 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-12T21:29:16Z",
-      "status": "stale",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-12T21:29:16Z passed its freshness deadline 2026-08-12T22:29:16Z, so it is not labelled live. Latest payload reports topics ranked at 177 count.",
+      "source_timestamp": "2026-08-13T05:59:16Z",
+      "status": "live",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 177 count.",
       "title": "Private runtime bridge"
     }
   ],
