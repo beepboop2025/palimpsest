@@ -39,25 +39,17 @@
       "source_id": "believability",
       "summary": "upstream status is not_ready",
       "title": "Believability read: degraded"
-    },
-    {
-      "id": "health-nemesis",
-      "kind": "health",
-      "severity": "notice",
-      "source_id": "nemesis",
-      "summary": "freshness deadline has passed",
-      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-13T15:17:33Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 3 stale.",
+  "generated_at": "2026-08-13T15:50:57Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 29,
+      "live": 30,
       "missing": 0,
-      "stale": 3
+      "stale": 2
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -66,7 +58,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "a4c190ac4d1287713982b425dc71fe68b7b7a904",
+  "input_commit": "e1094458715dba52c6c6c0db81d128c183fd1424",
   "layers": [
     {
       "id": "command",
@@ -179,20 +171,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 29,
+  "n_signals_live": 30,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -202,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 1.122,
+        "age_hours": 1.679,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -530,7 +522,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:07:40Z",
       "health": {
-        "age_hours": 1.165,
+        "age_hours": 1.721,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -754,7 +746,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 1.122,
+        "age_hours": 1.679,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -902,7 +894,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 1.122,
+        "age_hours": 1.679,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1441,7 +1433,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 1.122,
+        "age_hours": 1.679,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1768,7 +1760,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-13T20:48:58Z",
       "health": {
-        "age_hours": 1.476,
+        "age_hours": 2.033,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2501,7 +2493,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:12:13Z",
       "health": {
-        "age_hours": 1.089,
+        "age_hours": 1.645,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2799,7 +2791,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:05:00Z",
       "health": {
-        "age_hours": 1.209,
+        "age_hours": 1.766,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3138,7 +3130,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T09:34:59Z",
       "health": {
-        "age_hours": 43.709,
+        "age_hours": 44.266,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -3445,7 +3437,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 81.418,
+        "age_hours": 81.975,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3756,7 +3748,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T16:05:04Z",
       "health": {
-        "age_hours": 1.208,
+        "age_hours": 1.764,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4030,7 +4022,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T03:52:53Z",
       "health": {
-        "age_hours": 1.411,
+        "age_hours": 1.968,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4360,7 +4352,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T03:54:30Z",
       "health": {
-        "age_hours": 1.384,
+        "age_hours": 1.941,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4531,7 +4523,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T09:00:39Z",
       "health": {
-        "age_hours": 8.281,
+        "age_hours": 8.838,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4707,7 +4699,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:03:34Z",
       "health": {
-        "age_hours": 1.233,
+        "age_hours": 1.79,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6541,7 +6533,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T03:53:56Z",
       "health": {
-        "age_hours": 1.394,
+        "age_hours": 1.95,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6591,7 +6583,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:45:26Z",
       "health": {
-        "age_hours": 8.535,
+        "age_hours": 9.092,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6664,7 +6656,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:09:37Z",
       "health": {
-        "age_hours": 1.132,
+        "age_hours": 1.689,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6742,7 +6734,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:23:22Z",
       "health": {
-        "age_hours": 6.903,
+        "age_hours": 7.46,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6863,7 +6855,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:11:19Z",
       "health": {
-        "age_hours": 7.104,
+        "age_hours": 7.66,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7004,7 +6996,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T15:53:42Z",
       "health": {
-        "age_hours": 1.397,
+        "age_hours": 1.954,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7093,7 +7085,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 330.771,
+        "age_hours": 331.328,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7247,7 +7239,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T16:05:05Z",
       "health": {
-        "age_hours": 1.208,
+        "age_hours": 1.764,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7426,7 +7418,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:14:18Z",
       "health": {
-        "age_hours": 1.054,
+        "age_hours": 1.611,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7602,7 +7594,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:58:14Z",
       "health": {
-        "age_hours": 8.322,
+        "age_hours": 8.878,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7706,7 +7698,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:06:14Z",
       "health": {
-        "age_hours": 1.189,
+        "age_hours": 1.745,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7773,7 +7765,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T19:56:10Z",
       "health": {
-        "age_hours": 21.356,
+        "age_hours": 21.913,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7825,7 +7817,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T16:34:46Z",
       "health": {
-        "age_hours": 0.713,
+        "age_hours": 1.27,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7883,7 +7875,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 4.189,
+        "age_hours": 4.746,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8039,7 +8031,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 198.118,
+        "age_hours": 198.674,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8107,7 +8099,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T10:14:10Z",
       "health": {
-        "age_hours": 7.056,
+        "age_hours": 7.613,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13527,7 +13519,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:11:20Z",
       "health": {
-        "age_hours": 7.103,
+        "age_hours": 7.66,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13573,24 +13565,24 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-13T15:14:16Z",
+      "freshness_deadline": "2026-08-13T16:44:16Z",
       "health": {
-        "age_hours": 1.055,
+        "age_hours": 0.111,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
       },
       "id": "nemesis",
       "input": {
-        "bytes": 153471,
+        "bytes": 153459,
         "filename": "nemesis-latest.json",
-        "sha256": "7b29cb18071781e42f0560a56c3a1d5732c5e8c0f22881e842bcdfd4045be36e"
+        "sha256": "3269d5cf0f49919f4bcb2caa5405d741d90dcdae6800f43bccac6ef976994d9a"
       },
       "layer": "nemesis",
-      "live": false,
+      "live": true,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -13645,7 +13637,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786630456.276,
+        "data_timestamp": 1786635856.481,
         "ddti": {
           "by_domain": {
             "ECONOMY": 5,
@@ -13657,7 +13649,7 @@
             "SOCIETY": 7,
             "UNREST": 7
           },
-          "generated_at": 1786630456.276,
+          "generated_at": 1786635856.481,
           "n_posts": 14,
           "n_posts_scored": 14,
           "n_terms": 177,
@@ -13799,7 +13791,7 @@
               "tag_observations": 1,
               "term": "caixin",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.94,
               "total": 1
             },
             {
@@ -13822,7 +13814,7 @@
               "tag_observations": 1,
               "term": "defending rights",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.94,
               "total": 1
             },
             {
@@ -13845,7 +13837,7 @@
               "tag_observations": 1,
               "term": "gansu",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.94,
               "total": 1
             },
             {
@@ -13868,7 +13860,7 @@
               "tag_observations": 1,
               "term": "lanzhou",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.94,
               "total": 1
             },
             {
@@ -13891,7 +13883,7 @@
               "tag_observations": 1,
               "term": "trials",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.94,
               "total": 1
             },
             {
@@ -13914,7 +13906,7 @@
               "tag_observations": 1,
               "term": "unpaid wages",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.94,
               "total": 1
             },
             {
@@ -13999,7 +13991,7 @@
               "tag_observations": 1,
               "term": "china youth daily",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14022,7 +14014,7 @@
               "tag_observations": 1,
               "term": "humor",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14045,7 +14037,7 @@
               "tag_observations": 1,
               "term": "information technology",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14068,7 +14060,7 @@
               "tag_observations": 1,
               "term": "journalism",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14091,7 +14083,7 @@
               "tag_observations": 1,
               "term": "journalists",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14114,7 +14106,7 @@
               "tag_observations": 1,
               "term": "literacy",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14137,7 +14129,7 @@
               "tag_observations": 1,
               "term": "media",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14160,7 +14152,7 @@
               "tag_observations": 1,
               "term": "online media",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14183,7 +14175,7 @@
               "tag_observations": 1,
               "term": "press accreditation",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14206,7 +14198,7 @@
               "tag_observations": 1,
               "term": "reputation",
               "text_observations": 0,
-              "threat": 1.5,
+              "threat": 1.49,
               "total": 1
             },
             {
@@ -14268,11 +14260,11 @@
               "tag_observations": 2,
               "term": "arrests",
               "text_observations": 0,
-              "threat": 1.35,
+              "threat": 1.34,
               "total": 2
             },
             {
-              "attention": 1.28,
+              "attention": 1.27,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14994,7 +14986,7 @@
               "total": 1
             },
             {
-              "attention": 1.03,
+              "attention": 1.02,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -15111,7 +15103,7 @@
               "total": 3
             },
             {
-              "attention": 0.94,
+              "attention": 0.93,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15146,7 +15138,7 @@
               "tag_observations": 1,
               "term": "censorship",
               "text_observations": 3,
-              "threat": 0.94,
+              "threat": 0.93,
               "total": 4
             },
             {
@@ -15220,7 +15212,7 @@
               "total": 2
             },
             {
-              "attention": 0.62,
+              "attention": 0.61,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15247,7 +15239,7 @@
               "tag_observations": 2,
               "term": "media censorship",
               "text_observations": 0,
-              "threat": 0.62,
+              "threat": 0.61,
               "total": 2
             },
             {
@@ -15501,75 +15493,6 @@
             {
               "attention": 0.49,
               "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "changsha",
-              "text_observations": 0,
-              "threat": 0.49,
-              "total": 1
-            },
-            {
-              "attention": 0.49,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "cybersecurity",
-              "text_observations": 0,
-              "threat": 0.49,
-              "total": 1
-            },
-            {
-              "attention": 0.49,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "great firewall",
-              "text_observations": 0,
-              "threat": 0.49,
-              "total": 1
-            },
-            {
-              "attention": 0.49,
-              "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
               "novelty": 0.0,
@@ -15600,7 +15523,76 @@
               "total": 2
             },
             {
-              "attention": 0.49,
+              "attention": 0.48,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "changsha",
+              "text_observations": 0,
+              "threat": 0.48,
+              "total": 1
+            },
+            {
+              "attention": 0.48,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "cybersecurity",
+              "text_observations": 0,
+              "threat": 0.48,
+              "total": 1
+            },
+            {
+              "attention": 0.48,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "great firewall",
+              "text_observations": 0,
+              "threat": 0.48,
+              "total": 1
+            },
+            {
+              "attention": 0.48,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15619,11 +15611,11 @@
               "tag_observations": 1,
               "term": "hunan",
               "text_observations": 0,
-              "threat": 0.49,
+              "threat": 0.48,
               "total": 1
             },
             {
-              "attention": 0.49,
+              "attention": 0.48,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15642,11 +15634,11 @@
               "tag_observations": 1,
               "term": "internet",
               "text_observations": 0,
-              "threat": 0.49,
+              "threat": 0.48,
               "total": 1
             },
             {
-              "attention": 0.49,
+              "attention": 0.48,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15665,11 +15657,11 @@
               "tag_observations": 1,
               "term": "internet access",
               "text_observations": 0,
-              "threat": 0.49,
+              "threat": 0.48,
               "total": 1
             },
             {
-              "attention": 0.49,
+              "attention": 0.48,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15688,11 +15680,11 @@
               "tag_observations": 1,
               "term": "real name registration",
               "text_observations": 0,
-              "threat": 0.49,
+              "threat": 0.48,
               "total": 1
             },
             {
-              "attention": 0.49,
+              "attention": 0.48,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15711,11 +15703,11 @@
               "tag_observations": 1,
               "term": "wi-fi",
               "text_observations": 0,
-              "threat": 0.49,
+              "threat": 0.48,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15734,11 +15726,11 @@
               "tag_observations": 1,
               "term": "accountability",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -15757,11 +15749,11 @@
               "tag_observations": 0,
               "term": "censored",
               "text_observations": 1,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15780,11 +15772,11 @@
               "tag_observations": 1,
               "term": "chengdu",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15803,11 +15795,11 @@
               "tag_observations": 1,
               "term": "henan",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15826,11 +15818,11 @@
               "tag_observations": 1,
               "term": "li zhi",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15849,11 +15841,11 @@
               "tag_observations": 1,
               "term": "mourning",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15872,11 +15864,11 @@
               "tag_observations": 1,
               "term": "state council",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15895,11 +15887,11 @@
               "tag_observations": 1,
               "term": "subway",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
-              "attention": 0.44,
+              "attention": 0.43,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15918,7 +15910,7 @@
               "tag_observations": 1,
               "term": "zhengzhou",
               "text_observations": 0,
-              "threat": 0.44,
+              "threat": 0.43,
               "total": 1
             },
             {
@@ -16084,7 +16076,7 @@
               "total": 2
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16103,11 +16095,11 @@
               "tag_observations": 1,
               "term": "anti-sedition laws",
               "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "UNREST",
               "is_new": false,
@@ -16126,11 +16118,11 @@
               "tag_observations": 0,
               "term": "arrest",
               "text_observations": 1,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
-              "attention": 0.31,
+              "attention": 0.3,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16149,191 +16141,7 @@
               "tag_observations": 1,
               "term": "banned books",
               "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "book ban",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "book banning",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "discourse censorship",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "freedom of expression",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "freedom of information",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "hong kong censorship",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "FOREIGN",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "hong kong national security law",
-              "text_observations": 0,
-              "threat": 0.31,
-              "total": 1
-            },
-            {
-              "attention": 0.31,
-              "direct_signal_observations": 0,
-              "domain": "FOREIGN",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
-                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "hong kong publishing",
-              "text_observations": 0,
-              "threat": 0.31,
+              "threat": 0.3,
               "total": 1
             },
             {
@@ -16401,6 +16209,52 @@
               ],
               "tag_observations": 1,
               "term": "births",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "book ban",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "book banning",
               "text_observations": 0,
               "threat": 0.3,
               "total": 1
@@ -16500,6 +16354,29 @@
             {
               "attention": 0.3,
               "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "discourse censorship",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
               "domain": "SOCIETY",
               "is_new": false,
               "novelty": 0.0,
@@ -16539,6 +16416,121 @@
               ],
               "tag_observations": 1,
               "term": "education reform",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "freedom of expression",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "freedom of information",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "hong kong censorship",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "FOREIGN",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "hong kong national security law",
+              "text_observations": 0,
+              "threat": 0.3,
+              "total": 1
+            },
+            {
+              "attention": 0.3,
+              "direct_signal_observations": 0,
+              "domain": "FOREIGN",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+                  "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "hong kong publishing",
               "text_observations": 0,
               "threat": 0.3,
               "total": 1
@@ -18041,7 +18033,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786630456.293,
+          "generated_at": 1786635856.501,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 31,
@@ -18089,33 +18081,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786630456.299,
+        "generated_at": 1786635856.512,
         "health": {
           "freshness": {
-            "age_seconds": 0.023,
-            "core_data_at": 1786630456.276,
+            "age_seconds": 0.031,
+            "core_data_at": 1786635856.481,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.26,
-            "finished_at": 1786630456.299,
+            "duration_s": 0.47,
+            "finished_at": 1786635856.512,
             "healthy": true,
-            "id": 847,
-            "started_at": 1786630456.042,
+            "id": 853,
+            "started_at": 1786635856.043,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.26,
-            "finished_at": 1786630456.299,
+            "duration_s": 0.47,
+            "finished_at": 1786635856.512,
             "healthy": true,
-            "id": 847,
-            "started_at": 1786630456.042,
+            "id": 853,
+            "started_at": 1786635856.043,
             "status": "ok"
           },
-          "last_successful_run_at": 1786630456.299,
+          "last_successful_run_at": 1786635856.512,
           "live": true,
           "posts": 28,
           "ready": true,
@@ -18246,7 +18238,7 @@
             ],
             "score": 3.0,
             "term": "caixin",
-            "threat": 1.95
+            "threat": 1.94
           },
           {
             "domain": "OTHER",
@@ -18265,7 +18257,7 @@
             ],
             "score": 3.0,
             "term": "defending rights",
-            "threat": 1.95
+            "threat": 1.94
           },
           {
             "domain": "OTHER",
@@ -18284,7 +18276,7 @@
             ],
             "score": 3.0,
             "term": "gansu",
-            "threat": 1.95
+            "threat": 1.94
           },
           {
             "domain": "OTHER",
@@ -18303,7 +18295,7 @@
             ],
             "score": 3.0,
             "term": "lanzhou",
-            "threat": 1.95
+            "threat": 1.94
           },
           {
             "domain": "OTHER",
@@ -18322,7 +18314,7 @@
             ],
             "score": 3.0,
             "term": "trials",
-            "threat": 1.95
+            "threat": 1.94
           },
           {
             "domain": "ECONOMY",
@@ -18341,7 +18333,7 @@
             ],
             "score": 3.0,
             "term": "unpaid wages",
-            "threat": 1.95
+            "threat": 1.94
           },
           {
             "domain": "OTHER",
@@ -18384,10 +18376,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786630456.299,
-          "ddti_generated_at": 1786630456.276,
-          "economic_generated_at": 1786630456.293,
-          "last_successful_run_at": 1786630456.299,
+          "data_updated_at": 1786635856.512,
+          "ddti_generated_at": 1786635856.481,
+          "economic_generated_at": 1786635856.501,
+          "last_successful_run_at": 1786635856.512,
           "latest_fetched_at": 1786419856.092,
           "latest_published_at": 1786417036.0
         }
@@ -18395,9 +18387,9 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-13T14:14:16Z",
-      "status": "stale",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-13T14:14:16Z passed its freshness deadline 2026-08-13T15:14:16Z, so it is not labelled live. Latest payload reports topics ranked at 177 count.",
+      "source_timestamp": "2026-08-13T15:44:16Z",
+      "status": "live",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 177 count.",
       "title": "Private runtime bridge"
     }
   ],
