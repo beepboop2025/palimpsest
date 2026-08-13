@@ -49,6 +49,11 @@ MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 MIN_FREE_BYTES = 10 * 1024 * 1024 * 1024
 MAX_RUNS = 48
 SNAPSHOT_QUIET_SECONDS = 0.25
+WIRE_STATUS_NAME = "newswire-status.json"
+WIRE_STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
+WIRE_STATUS_MAX_AGE = timedelta(minutes=75)
+ANALYSIS_STATUS_NAME = "analysis-status.json"
+ANALYSIS_STATUS_SCHEMA = "palimpsest-investigative-analysis-attempt.v1"
 _RUN_NAME = re.compile(r"^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 RUN_SCHEMA = "palimpsest-investigative-analysis-run.v1"
 RUN_STEPS = (
@@ -89,6 +94,20 @@ _DERIVED_STEMS = {
 
 class AnalysisRunnerError(RuntimeError):
     """A snapshot or isolated analysis run failed closed."""
+
+
+def _utc_stamp() -> str:
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def _failure_class(exc: BaseException) -> str:
+    name = type(exc).__name__
+    return name if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,79}", name) else "Exception"
 
 
 def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -267,6 +286,81 @@ def _source_files(readings_dir: Path, newswire_dir: Path) -> list[tuple[str, Pat
     return rows
 
 
+def _validate_newswire_status(
+    *,
+    newswire_dir: Path,
+    frozen_latest: Path,
+    observed_at: datetime,
+    signatures: list[tuple[Path, tuple[int, int, int, int, int]]],
+) -> None:
+    """Require a recent successful wire attempt bound to the frozen latest bytes."""
+
+    if observed_at.tzinfo is None or observed_at.utcoffset() is None:
+        raise AnalysisRunnerError("wire receipt validation clock is timezone-naive")
+    observed_at = observed_at.astimezone(timezone.utc)
+    status_path = newswire_dir / WIRE_STATUS_NAME
+    raw, signature = _stable_read_with_signature(status_path, max_bytes=16 * 1024)
+    signatures.append((status_path, signature))
+    receipt = _parse_object(raw, WIRE_STATUS_NAME)
+    if (
+        set(receipt)
+        != {
+            "schema_version",
+            "attempted_at",
+            "completed_at",
+            "status",
+            "fresh_sources",
+            "output_generated_at",
+            "output_sha256",
+            "failure_class",
+        }
+        or receipt.get("schema_version") != WIRE_STATUS_SCHEMA
+    ):
+        raise AnalysisRunnerError("newswire status receipt contract is not exact")
+    if (
+        receipt.get("status") != "success"
+        or receipt.get("failure_class") is not None
+        or type(receipt.get("fresh_sources")) is not int
+        or receipt["fresh_sources"] <= 0
+    ):
+        raise AnalysisRunnerError(
+            "newswire status receipt is not a successful fresh run"
+        )
+    clocks: dict[str, datetime] = {}
+    for field in ("attempted_at", "completed_at"):
+        value = receipt.get(field)
+        if not isinstance(value, str):
+            raise AnalysisRunnerError(f"newswire status {field} is invalid")
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise AnalysisRunnerError(f"newswire status {field} is invalid") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise AnalysisRunnerError(f"newswire status {field} is timezone-naive")
+        clocks[field] = parsed.astimezone(timezone.utc)
+    if clocks["attempted_at"] > clocks["completed_at"]:
+        raise AnalysisRunnerError("newswire status receipt clocks are inverted")
+    if clocks["completed_at"] > observed_at + timedelta(minutes=10):
+        raise AnalysisRunnerError("newswire status receipt is from the future")
+    if observed_at - clocks["completed_at"] > WIRE_STATUS_MAX_AGE:
+        raise AnalysisRunnerError("newswire status receipt is older than 75 minutes")
+
+    latest_raw = _stable_read(frozen_latest)
+    latest = _parse_object(latest_raw, frozen_latest.name)
+    output_generated_at = receipt.get("output_generated_at")
+    output_sha256 = receipt.get("output_sha256")
+    if (
+        not isinstance(output_generated_at, str)
+        or output_generated_at != latest.get("generated_at")
+        or not isinstance(output_sha256, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", output_sha256)
+        or output_sha256 != hashlib.sha256(latest_raw).hexdigest()
+    ):
+        raise AnalysisRunnerError(
+            "newswire status receipt does not match the frozen latest output"
+        )
+
+
 def _write_snapshot_file(path: Path, raw: bytes) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o640)
     try:
@@ -319,6 +413,7 @@ def snapshot_inputs(
     staging_readings: Path,
     previous_readings: Path | None = None,
     precreated: bool = False,
+    now: datetime | None = None,
 ) -> tuple[str, str, list[dict[str, Any]], str]:
     """Return trigger hash, full-lineage hash, manifest, and decision clock."""
 
@@ -364,6 +459,12 @@ def snapshot_inputs(
                 ),
             }
         )
+    _validate_newswire_status(
+        newswire_dir=newswire_dir,
+        frozen_latest=staging_readings / "newswire-latest.json",
+        observed_at=now or datetime.now(timezone.utc),
+        signatures=source_signatures,
+    )
     baseline = (
         previous_readings
         if previous_readings and previous_readings.is_dir()
@@ -415,7 +516,15 @@ def snapshot_inputs(
     # to that exact clock here so sub-second source timestamps cannot make an
     # otherwise correct output look stale or make replay bytes diverge.
     decision = max(clocks).replace(microsecond=0)
-    if decision > datetime.now(timezone.utc) + timedelta(minutes=10):
+    decision_validation_clock = now or datetime.now(timezone.utc)
+    if (
+        decision_validation_clock.tzinfo is None
+        or decision_validation_clock.utcoffset() is None
+    ):
+        raise AnalysisRunnerError("snapshot validation clock is timezone-naive")
+    if decision > decision_validation_clock.astimezone(timezone.utc) + timedelta(
+        minutes=10
+    ):
         raise AnalysisRunnerError("source snapshot contains a future decision clock")
     decision_clock = decision.isoformat().replace("+00:00", "Z")
     return (
@@ -555,6 +664,34 @@ def _atomic_json(path: Path, value: dict[str, Any], mode: int = 0o600) -> None:
             temporary.unlink()
         except FileNotFoundError:
             pass
+
+
+def _write_analysis_status(
+    private_root: Path,
+    *,
+    attempted_at: str,
+    result: dict[str, Any] | None = None,
+    failure: BaseException | None = None,
+) -> None:
+    status = result.get("status") if result is not None else "failed"
+    if status not in {"completed", "unchanged", "failed"}:
+        status = "failed"
+    _atomic_json(
+        private_root / ANALYSIS_STATUS_NAME,
+        {
+            "schema_version": ANALYSIS_STATUS_SCHEMA,
+            "attempted_at": attempted_at,
+            "completed_at": _utc_stamp(),
+            "status": status,
+            "decision_clock": (
+                result.get("decision_clock") if result is not None else None
+            ),
+            "input_fingerprint": (
+                result.get("input_fingerprint") if result is not None else None
+            ),
+            "failure_class": _failure_class(failure) if failure is not None else None,
+        },
+    )
 
 
 def _load_state(path: Path) -> dict[str, Any]:
@@ -1127,6 +1264,7 @@ def _run_once_locked(
                 "status": "unchanged",
                 "input_fingerprint": trigger_fingerprint,
                 "image_id": image_id,
+                "decision_clock": decision_clock,
             }
 
         if brokered:
@@ -1281,6 +1419,7 @@ def _run_once_locked(
             "status": "completed",
             "input_fingerprint": trigger_fingerprint,
             "image_id": image_id,
+            "decision_clock": decision_clock,
             "run_path": str(final),
             "candidate_versions_added": ledger_result["versions_added"],
         }
@@ -1305,17 +1444,26 @@ def run_once(
 ) -> dict[str, Any]:
     """Serialize, snapshot, and complete one isolated investigative analysis run."""
 
+    attempted_at = _utc_stamp()
     private_root.mkdir(parents=True, mode=0o700, exist_ok=True)
     with _exclusive_lock(private_root / "cascade.lock"):
-        return _run_once_locked(
-            readings_dir=readings_dir,
-            newswire_dir=newswire_dir,
-            runs_dir=runs_dir,
-            private_root=private_root,
-            commit_file=commit_file,
-            image=image,
-            execute=execute,
-        )
+        try:
+            result = _run_once_locked(
+                readings_dir=readings_dir,
+                newswire_dir=newswire_dir,
+                runs_dir=runs_dir,
+                private_root=private_root,
+                commit_file=commit_file,
+                image=image,
+                execute=execute,
+            )
+            _write_analysis_status(
+                private_root, attempted_at=attempted_at, result=result
+            )
+            return result
+        except Exception as exc:
+            _write_analysis_status(private_root, attempted_at=attempted_at, failure=exc)
+            raise
 
 
 def main(argv: Iterable[str] | None = None) -> int:

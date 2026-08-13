@@ -1078,21 +1078,78 @@ def _previous_event_assignments(previous: Mapping[str, Any] | None) -> list[tupl
     return assignments
 
 
+def _preassign_previous_event_ids(
+    clusters: Sequence[Sequence[Mapping[str, Any]]],
+    previous_assignments: Sequence[tuple[str, str, set[str]]],
+) -> dict[int, str]:
+    """Assign prior identities one-to-one before cluster iteration can bias them."""
+
+    candidates: list[tuple[bool, int, str, tuple[str, ...], int]] = []
+    for cluster_index, items in enumerate(clusters):
+        item_ids = {item["item_id"] for item in items}
+        cluster_key = tuple(sorted(item_ids))
+        for event_id, _version_id, prior_items in previous_assignments:
+            overlap = len(item_ids & prior_items)
+            if not overlap:
+                continue
+            keeps_original_anchor = any(
+                _stable_id("event", {"anchor_item_id": item_id}) == event_id
+                for item_id in item_ids
+            )
+            candidates.append(
+                (
+                    not keeps_original_anchor,
+                    -overlap,
+                    event_id,
+                    cluster_key,
+                    cluster_index,
+                )
+            )
+
+    assigned_clusters: set[int] = set()
+    assigned_events: set[str] = set()
+    assignments: dict[int, str] = {}
+    for _not_anchor, _negative_overlap, event_id, _cluster_key, index in sorted(
+        candidates
+    ):
+        if index in assigned_clusters or event_id in assigned_events:
+            continue
+        assignments[index] = event_id
+        assigned_clusters.add(index)
+        assigned_events.add(event_id)
+    return assignments
+
+
 def _event_id_for_cluster(
     items: Sequence[Mapping[str, Any]],
-    previous_assignments: Sequence[tuple[str, str, set[str]]],
+    inherited_event_id: str | None,
     used: set[str],
 ) -> str:
-    item_ids = {item["item_id"] for item in items}
-    candidates = []
-    for event_id, _version_id, prior_items in previous_assignments:
-        overlap = len(item_ids & prior_items)
-        if overlap and event_id not in used:
-            candidates.append((-overlap, event_id))
-    if candidates:
-        return min(candidates)[1]
+    if inherited_event_id is not None:
+        if inherited_event_id in used:
+            raise NewswireError("prior event identity was assigned more than once")
+        return inherited_event_id
     anchor = min(items, key=lambda item: (item["published_at"], item["item_id"]))
-    return _stable_id("event", {"anchor_item_id": anchor["item_id"]})
+    natural_id = _stable_id("event", {"anchor_item_id": anchor["item_id"]})
+    if natural_id not in used:
+        return natural_id
+
+    # A prior multi-item event can split after an upstream metadata correction changes
+    # title clustering.  Another descendant may already have inherited the prior event
+    # ID while this descendant's natural anchor reproduces that same ID.  The clusters
+    # are conflicting partitions, not duplicate evidence: retain both and give the new
+    # partition a deterministic identity bound to its exact item membership.
+    split_id = _stable_id(
+        "event",
+        {
+            "anchor_item_id": anchor["item_id"],
+            "partition_item_ids": sorted(item["item_id"] for item in items),
+            "identity_variant": "split-partition-v1",
+        },
+    )
+    if split_id in used:
+        raise NewswireError("event identity collision after split disambiguation")
+    return split_id
 
 
 def _event_evidence_strength(items: Sequence[Mapping[str, Any]], n_groups: int) -> str:
@@ -1150,8 +1207,12 @@ def _build_events(
     used: set[str] = set()
     events: list[dict[str, Any]] = []
     role_rank = {"measurement": 0, "primary": 1, "research": 2, "documentation": 3, "media": 4}
-    for cluster in _cluster_items(items):
-        event_id = _event_id_for_cluster(cluster, previous_assignments, used)
+    clusters = _cluster_items(items)
+    inherited_ids = _preassign_previous_event_ids(clusters, previous_assignments)
+    for cluster_index, cluster in enumerate(clusters):
+        event_id = _event_id_for_cluster(
+            cluster, inherited_ids.get(cluster_index), used
+        )
         used.add(event_id)
         anchor = min(
             cluster,

@@ -4,10 +4,16 @@ import hashlib
 import json
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from core.investigative_candidates import canonical_json_bytes, validate_candidates
-from ops.investigative_analysis_runner import DERIVED_LATEST, snapshot_inputs
+from ops.investigative_analysis_runner import (
+    DERIVED_LATEST,
+    WIRE_STATUS_NAME,
+    WIRE_STATUS_SCHEMA,
+    snapshot_inputs,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,9 +51,35 @@ def test_real_offline_cascade_is_complete_and_byte_replayable(tmp_path: Path) ->
     """Exercise every real analysis driver over one immutable input cohort."""
 
     frozen = tmp_path / "frozen"
+    wire = tmp_path / "wire"
+    wire.mkdir()
+    for name in ("newswire-latest.json", "newswire-versions.jsonl"):
+        (wire / name).write_bytes((ROOT / "readings" / name).read_bytes())
+    latest_raw = (wire / "newswire-latest.json").read_bytes()
+    latest = json.loads(latest_raw)
+    completed = datetime.now(timezone.utc).replace(microsecond=0)
+    (wire / WIRE_STATUS_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": WIRE_STATUS_SCHEMA,
+                "attempted_at": (completed - timedelta(seconds=1))
+                .isoformat()
+                .replace("+00:00", "Z"),
+                "completed_at": completed.isoformat().replace("+00:00", "Z"),
+                "status": "success",
+                "fresh_sources": 1,
+                "output_generated_at": latest["generated_at"],
+                "output_sha256": hashlib.sha256(latest_raw).hexdigest(),
+                "failure_class": None,
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     _trigger, _lineage, manifest, decision_clock = snapshot_inputs(
         readings_dir=ROOT / "readings",
-        newswire_dir=ROOT / "readings",
+        newswire_dir=wire,
         staging_readings=frozen,
     )
     assert all(row["path"].startswith("readings/") for row in manifest)

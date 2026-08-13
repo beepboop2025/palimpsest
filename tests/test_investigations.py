@@ -18,6 +18,7 @@ from core.investigations import (
     validate_investigations,
 )
 import scripts.build_investigations as cli
+import scripts.build_osint_china as osint_china
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +58,33 @@ def _mutated_config(tmp_path: Path, mutate):
     path = tmp_path / "investigations.json"
     _write_json(path, config)
     return path
+
+
+def _rebuild_osint_after_source_mutation(tmp_path: Path, filename: str, mutate):
+    _copy_inputs(tmp_path)
+    source_path = tmp_path / filename
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    mutate(source)
+    _write_json(source_path, source)
+
+    previous = json.loads(
+        (tmp_path / "osint-china-latest.json").read_text(encoding="utf-8")
+    )
+    decision_clock = datetime.fromisoformat(
+        previous["generated_at"].replace("Z", "+00:00")
+    )
+    refreshed = osint_china.build_document(
+        tmp_path,
+        now=decision_clock,
+        input_commit=previous["input_commit"],
+    )
+    osint_china.write_atomic(refreshed, tmp_path / "osint-china-latest.json")
+    desk = build_investigations(
+        readings_dir=tmp_path,
+        config_path=DEFAULT_CONFIG_PATH,
+        as_of=decision_clock,
+    )
+    return refreshed, desk
 
 
 def test_real_desk_has_two_bounded_research_leads_and_network_is_first():
@@ -224,6 +252,62 @@ def test_degraded_selected_signal_forces_abstention_without_relabeling_it_curren
     assert row["freshness"] == "stale"
     assert network["status"] == "abstained"
     assert not network["publication_gate"]["publishable"]
+
+
+def test_null_ooni_denominator_is_retained_as_stale_abstention(tmp_path):
+    osint, document = _rebuild_osint_after_source_mutation(
+        tmp_path,
+        "ooni-gfw-latest.json",
+        lambda payload: payload.update({"n_completed_measurements": None}),
+    )
+
+    signal = next(row for row in osint["signals"] if row["id"] == "ooni-gfw")
+    network = _case(document, "china-network-filtering-no-single-rate")
+    evidence = {row["evidence_id"]: row for row in network["evidence"]}
+
+    assert signal["status"] == "degraded" and signal["live"] is False
+    assert evidence["ooni-anomaly-rate"]["value"] == signal["payload"]["gfw_index"]
+    assert evidence["ooni-measurement-count"]["value"] is None
+    assert evidence["ooni-measurement-count"]["value_type"] == "null"
+    assert evidence["ooni-measurement-count"]["freshness"] == "stale"
+    assert network["status"] == "abstained"
+
+
+def test_null_in_path_primary_metric_is_retained_as_stale_abstention(tmp_path):
+    osint, document = _rebuild_osint_after_source_mutation(
+        tmp_path,
+        "in-path-interference-latest.json",
+        lambda payload: payload.update({"middlebox_index": None}),
+    )
+
+    signal = next(
+        row for row in osint["signals"] if row["id"] == "in-path-interference"
+    )
+    network = _case(document, "china-network-filtering-no-single-rate")
+    evidence = {row["evidence_id"]: row for row in network["evidence"]}
+
+    assert signal["metric"] is None
+    assert signal["status"] == "degraded" and signal["live"] is False
+    assert evidence["in-path-rate"]["value"] is None
+    assert evidence["in-path-rate"]["value_type"] == "null"
+    assert evidence["in-path-rate"]["freshness"] == "stale"
+    assert network["status"] == "abstained"
+
+
+@pytest.mark.parametrize("malformed", [None, [], "not-an-object", {}])
+def test_malformed_osint_payload_intermediates_still_fail_closed(tmp_path, malformed):
+    _copy_inputs(tmp_path)
+    osint_path = tmp_path / "osint-china-latest.json"
+    osint = json.loads(osint_path.read_text(encoding="utf-8"))
+    signal = next(row for row in osint["signals"] if row["id"] == "ooni-gfw")
+    signal["payload"] = malformed
+    _write_json(osint_path, osint)
+
+    with pytest.raises(InvestigationError, match="evidence selector"):
+        build_investigations(
+            readings_dir=tmp_path,
+            config_path=DEFAULT_CONFIG_PATH,
+        )
 
 
 def test_closed_provenance_mapping_prevents_manufactured_corroboration(tmp_path):

@@ -4,6 +4,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,38 @@ def _write(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value) + "\n", encoding="utf-8")
 
 
+def _write_wire_status(
+    wire: Path,
+    *,
+    completed_at: datetime | None = None,
+    status: str = "success",
+    fresh_sources: int = 1,
+) -> None:
+    completed_at = (completed_at or datetime.now(timezone.utc)).replace(microsecond=0)
+    completed = completed_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    attempted = (
+        (completed_at - timedelta(seconds=1))
+        .astimezone(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    latest_raw = (wire / "newswire-latest.json").read_bytes()
+    latest = json.loads(latest_raw)
+    _write(
+        wire / runner.WIRE_STATUS_NAME,
+        {
+            "schema_version": runner.WIRE_STATUS_SCHEMA,
+            "attempted_at": attempted,
+            "completed_at": completed,
+            "status": status,
+            "fresh_sources": fresh_sources,
+            "output_generated_at": latest["generated_at"],
+            "output_sha256": hashlib.sha256(latest_raw).hexdigest(),
+            "failure_class": None if status == "success" else "NoFreshSources",
+        },
+    )
+
+
 def _inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     readings = tmp_path / "readings"
     wire = tmp_path / "newswire"
@@ -32,6 +65,7 @@ def _inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
         readings / "board-alarm-latest.json", {"generated_at": "2026-08-11T17:00:00Z"}
     )
     _write(wire / "newswire-latest.json", {"generated_at": "2026-08-11T18:00:00Z"})
+    _write_wire_status(wire)
     (wire / "newswire-versions.jsonl").write_text(
         '{"version_id":"eventv-000000000000000000000000"}\n', encoding="utf-8"
     )
@@ -201,6 +235,46 @@ def test_snapshot_rejects_future_source_clock(tmp_path: Path) -> None:
         )
 
 
+def test_snapshot_rejects_stale_failed_and_unbound_wire_receipts(
+    tmp_path: Path,
+) -> None:
+    now = datetime(2026, 8, 13, 12, 0, tzinfo=timezone.utc)
+
+    readings, wire, _commit = _inputs(tmp_path / "stale")
+    _write_wire_status(wire, completed_at=now - timedelta(minutes=76))
+    with pytest.raises(runner.AnalysisRunnerError, match="older than 75 minutes"):
+        runner.snapshot_inputs(
+            readings_dir=readings,
+            newswire_dir=wire,
+            staging_readings=tmp_path / "stale-stage",
+            now=now,
+        )
+
+    readings, wire, _commit = _inputs(tmp_path / "failed")
+    _write_wire_status(
+        wire, completed_at=now, status="no-fresh-sources", fresh_sources=0
+    )
+    with pytest.raises(runner.AnalysisRunnerError, match="not a successful fresh run"):
+        runner.snapshot_inputs(
+            readings_dir=readings,
+            newswire_dir=wire,
+            staging_readings=tmp_path / "failed-stage",
+            now=now,
+        )
+
+    readings, wire, _commit = _inputs(tmp_path / "unbound")
+    receipt_path = wire / runner.WIRE_STATUS_NAME
+    receipt = json.loads(receipt_path.read_text())
+    receipt["output_sha256"] = "0" * 64
+    _write(receipt_path, receipt)
+    with pytest.raises(runner.AnalysisRunnerError, match="does not match"):
+        runner.snapshot_inputs(
+            readings_dir=readings,
+            newswire_dir=wire,
+            staging_readings=tmp_path / "unbound-stage",
+        )
+
+
 def test_snapshot_rejects_duplicate_json_and_symlinks(tmp_path: Path) -> None:
     bad = tmp_path / "bad.json"
     bad.write_text('{"x":1,"x":2}\n', encoding="utf-8")
@@ -294,6 +368,40 @@ def test_run_is_idempotent_and_promotes_only_after_container_success(
     assert Path(state["run_path"]).is_dir()
     assert state["image_id"] == IMAGE_ID
     assert not list(runs.glob(".staging-*"))
+    receipt = json.loads((private / runner.ANALYSIS_STATUS_NAME).read_text())
+    assert set(receipt) == {
+        "schema_version",
+        "attempted_at",
+        "completed_at",
+        "status",
+        "decision_clock",
+        "input_fingerprint",
+        "failure_class",
+    }
+    assert receipt["schema_version"] == runner.ANALYSIS_STATUS_SCHEMA
+    assert receipt["status"] == "unchanged"
+    assert receipt["decision_clock"] == "2026-08-11T18:00:00Z"
+    assert receipt["failure_class"] is None
+
+    # A failed current wire attempt must stop the unchanged shortcut before a
+    # container can be launched or stale success can be reported.
+    _write_wire_status(wire, status="no-fresh-sources", fresh_sources=0)
+    with pytest.raises(runner.AnalysisRunnerError, match="not a successful fresh run"):
+        runner.run_once(
+            readings_dir=readings,
+            newswire_dir=wire,
+            runs_dir=runs,
+            private_root=private,
+            commit_file=commit,
+            execute=execute,
+        )
+    assert len(calls) == 1
+    failed_receipt_raw = (private / runner.ANALYSIS_STATUS_NAME).read_text()
+    failed_receipt = json.loads(failed_receipt_raw)
+    assert failed_receipt["status"] == "failed"
+    assert failed_receipt["failure_class"] == "AnalysisRunnerError"
+    assert "not a successful fresh run" not in failed_receipt_raw
+    _write_wire_status(wire)
 
     commit.write_text("d" * 40 + "\n", encoding="ascii")
     image_revision = "d" * 40
@@ -372,7 +480,9 @@ def test_production_path_uses_broker_for_every_privileged_lifecycle_step(
 
     def reject_analysis_uid_cid_cleanup(path: Path, *args, **kwargs) -> None:
         if path.name == "container.cid":
-            raise PermissionError("UID 10001 cannot unlink the broker-owned CID receipt")
+            raise PermissionError(
+                "UID 10001 cannot unlink the broker-owned CID receipt"
+            )
         real_unlink(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, "unlink", reject_analysis_uid_cid_cleanup)
@@ -503,6 +613,11 @@ def test_failed_container_leaves_no_promoted_run_or_state(tmp_path: Path) -> Non
     assert not (private / "state.json").exists()
     assert not list(runs.glob("run-*"))
     assert not list(runs.glob(".staging-*"))
+    receipt_raw = (private / runner.ANALYSIS_STATUS_NAME).read_text()
+    receipt = json.loads(receipt_raw)
+    assert receipt["status"] == "failed"
+    assert receipt["failure_class"] == "AnalysisRunnerError"
+    assert "boom" not in receipt_raw
 
 
 def test_runner_refuses_an_image_built_from_a_different_commit(tmp_path: Path) -> None:
@@ -609,6 +724,8 @@ def test_node_wide_lease_rejects_an_overlapping_manual_run(tmp_path: Path) -> No
     readings, wire, commit = _inputs(tmp_path)
     private = tmp_path / "private"
     private.mkdir()
+    prior_status = b'{"status":"active-run-sentinel"}\n'
+    (private / runner.ANALYSIS_STATUS_NAME).write_bytes(prior_status)
 
     with runner._exclusive_lock(private / "cascade.lock"):
         with pytest.raises(runner.AnalysisRunnerError, match="already running"):
@@ -621,6 +738,7 @@ def test_node_wide_lease_rejects_an_overlapping_manual_run(tmp_path: Path) -> No
             )
 
     assert (private / "cascade.lock").stat().st_mode & 0o777 == 0o600
+    assert (private / runner.ANALYSIS_STATUS_NAME).read_bytes() == prior_status
 
 
 def test_systemd_contract_keeps_analysis_private_and_recurring() -> None:
@@ -642,6 +760,10 @@ def test_systemd_contract_keeps_analysis_private_and_recurring() -> None:
     assert "SupplementaryGroups=docker" not in service
     assert "Requires=palimpsest-investigative-broker.socket" in service
     assert "TimeoutStartSec=35m" in service
+    assert "Restart=on-failure" in service
+    assert "RestartSec=2m" in service
+    assert "StartLimitIntervalSec=10m" in service
+    assert "StartLimitBurst=3" in service
     assert "RestrictAddressFamilies=AF_UNIX" in service
     assert "OnCalendar=*:15,45" in timer
     assert '"--network"' in container_contract and '"none"' in container_contract

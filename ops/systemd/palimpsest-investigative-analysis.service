@@ -7,6 +7,8 @@ ConditionPathExists=/etc/palimpsest/deployed-commit
 ConditionPathExists=/usr/local/libexec/palimpsest-analysis/current/REVISION
 ConditionPathIsDirectory=/var/lib/palimpsest/readings
 ConditionPathIsDirectory=/var/lib/palimpsest/newswire
+StartLimitIntervalSec=10m
+StartLimitBurst=3
 
 [Service]
 Type=oneshot
@@ -17,6 +19,8 @@ ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-analysis/current/verify-host-
 ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-analysis/current/REVISION /etc/palimpsest/deployed-commit
 ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-analysis/current/investigative_analysis_runner.py
 TimeoutStartSec=35m
+Restart=on-failure
+RestartSec=2m
 UMask=0027
 Nice=10
 IOSchedulingClass=best-effort

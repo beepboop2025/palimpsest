@@ -9,6 +9,7 @@ sources exits non-zero without touching the prior latest document or version led
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -30,9 +31,9 @@ from core.newswire import (
 )
 from core.safe_fetch import safe_fetch_bytes
 
-
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LEDGER_PATH = ROOT / "readings" / "newswire-versions.jsonl"
+STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
 MAX_LEDGER_RECORDS = 16384
 MAX_LEDGER_BYTES = 32 * 1024 * 1024
 MAX_PREVIOUS_BYTES = 64 * 1024 * 1024
@@ -66,7 +67,9 @@ def _parse_now(value: str | None) -> datetime:
     if value is None:
         return datetime.now(timezone.utc).replace(microsecond=0)
     try:
-        parsed = datetime.fromisoformat(value[:-1] + "+00:00" if value.endswith("Z") else value)
+        parsed = datetime.fromisoformat(
+            value[:-1] + "+00:00" if value.endswith("Z") else value
+        )
     except ValueError as exc:
         raise argparse.ArgumentTypeError("--now must be an ISO-8601 timestamp") from exc
     if parsed.tzinfo is None or parsed.utcoffset() is None:
@@ -114,9 +117,13 @@ def _load_ledger(path: Path) -> list[dict[str, Any]]:
 def _validate_ledger_record(value: Any, path: str) -> None:
     if type(value) is not dict or set(value) != _LEDGER_FIELDS:
         raise ValueError(f"{path} does not match the ledger contract")
-    if type(value["event_id"]) is not str or not _EVENT_ID_RE.fullmatch(value["event_id"]):
+    if type(value["event_id"]) is not str or not _EVENT_ID_RE.fullmatch(
+        value["event_id"]
+    ):
         raise ValueError(f"{path} has an invalid event_id")
-    if type(value["version_id"]) is not str or not _EVENT_VERSION_ID_RE.fullmatch(value["version_id"]):
+    if type(value["version_id"]) is not str or not _EVENT_VERSION_ID_RE.fullmatch(
+        value["version_id"]
+    ):
         raise ValueError(f"{path} has an invalid version_id")
     previous = value["previous_version_id"]
     if previous is not None and (
@@ -132,8 +139,11 @@ def _validate_ledger_record(value: Any, path: str) -> None:
         except ValueError as exc:
             raise ValueError(f"{path} has an invalid {field}") from exc
     headline = value["headline"]
-    if type(headline) is not str or not headline or len(headline) > 240 or any(
-        unicodedata.category(char) in {"Cc", "Cf", "Cs"} for char in headline
+    if (
+        type(headline) is not str
+        or not headline
+        or len(headline) > 240
+        or any(unicodedata.category(char) in {"Cc", "Cf", "Cs"} for char in headline)
     ):
         raise ValueError(f"{path} has an invalid headline")
     if value["evidence_strength"] not in _EVIDENCE_STRENGTHS:
@@ -144,12 +154,17 @@ def _validate_ledger_record(value: Any, path: str) -> None:
         or not source_ids
         or len(source_ids) > 64
         or source_ids != sorted(set(source_ids))
-        or any(type(source_id) is not str or not _SOURCE_ID_RE.fullmatch(source_id) for source_id in source_ids)
+        or any(
+            type(source_id) is not str or not _SOURCE_ID_RE.fullmatch(source_id)
+            for source_id in source_ids
+        )
     ):
         raise ValueError(f"{path} has invalid source_ids")
 
 
-def _next_ledger(document: dict[str, Any], prior: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _next_ledger(
+    document: dict[str, Any], prior: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     seen = {(row["event_id"], row["version_id"]) for row in prior}
     appended: list[dict[str, Any]] = []
     for event in sorted(document["events"], key=lambda value: value["event_id"]):
@@ -164,7 +179,9 @@ def _next_ledger(document: dict[str, Any], prior: list[dict[str, Any]]) -> list[
                 "published_at": event["published_at"],
                 "headline": event["headline"],
                 "evidence_strength": event["evidence_strength"],
-                "source_ids": sorted({ref["source_id"] for ref in event["evidence_refs"]}),
+                "source_ids": sorted(
+                    {ref["source_id"] for ref in event["evidence_refs"]}
+                ),
                 "previous_version_id": event["mutation"]["previous_version_id"],
             }
         )
@@ -199,28 +216,102 @@ def _ledger_bytes(records: list[dict[str, Any]]) -> bytes:
     return b"".join(canonical_json_bytes(record) + b"\n" for record in records)
 
 
+def _utc_stamp() -> str:
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def _failure_class(exc: BaseException) -> str:
+    name = type(exc).__name__
+    return name if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,79}", name) else "Exception"
+
+
+def _last_good_receipt(
+    output: Path, previous: dict[str, Any] | None
+) -> tuple[str | None, str | None]:
+    if previous is None or not output.is_file():
+        return None, None
+    generated_at = previous.get("generated_at")
+    return (
+        generated_at if isinstance(generated_at, str) else None,
+        hashlib.sha256(output.read_bytes()).hexdigest(),
+    )
+
+
+def _write_status(
+    path: Path | None,
+    *,
+    attempted_at: str,
+    status: str,
+    fresh_sources: int | None,
+    output_generated_at: str | None,
+    output_sha256: str | None,
+    failure_class: str | None,
+) -> None:
+    if path is None:
+        return
+    receipt = {
+        "schema_version": STATUS_SCHEMA,
+        "attempted_at": attempted_at,
+        "completed_at": _utc_stamp(),
+        "status": status,
+        "fresh_sources": fresh_sources,
+        "output_generated_at": output_generated_at,
+        "output_sha256": output_sha256,
+        "failure_class": failure_class,
+    }
+    _atomic_write(
+        path,
+        json.dumps(
+            receipt,
+            ensure_ascii=True,
+            sort_keys=True,
+            indent=2,
+            allow_nan=False,
+        ).encode("ascii")
+        + b"\n",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER_PATH)
+    parser.add_argument(
+        "--status",
+        type=Path,
+        help="atomic per-attempt status receipt (required by the scheduled service)",
+    )
     parser.add_argument("--workers", type=int, default=6)
-    parser.add_argument("--now", help="fixed ISO-8601 clock for reproducible/offline runs")
+    parser.add_argument(
+        "--now", help="fixed ISO-8601 clock for reproducible/offline runs"
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    now = _parse_now(args.now)
-    registry = load_source_registry(args.config)
-    previous = _load_previous(args.output)
-    prior_ledger = _load_ledger(args.ledger)
-    proxy = os.environ.get("PALIMPSEST_PROXY") or None
-
-    def fetch(url: str, **kwargs: Any) -> bytes:
-        return safe_fetch_bytes(url, proxy=proxy, **kwargs)
+    attempted_at = _utc_stamp()
+    previous: dict[str, Any] | None = None
+    last_generated_at: str | None = None
+    last_sha256: str | None = None
 
     try:
+        now = _parse_now(args.now)
+        previous = _load_previous(args.output)
+        last_generated_at, last_sha256 = _last_good_receipt(args.output, previous)
+        registry = load_source_registry(args.config)
+        prior_ledger = _load_ledger(args.ledger)
+        proxy = os.environ.get("PALIMPSEST_PROXY") or None
+
+        def fetch(url: str, **kwargs: Any) -> bytes:
+            return safe_fetch_bytes(url, proxy=proxy, **kwargs)
+
         document = collect_newswire(
             registry,
             fetch,
@@ -229,22 +320,94 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_workers=args.workers,
         )
     except NoSuccessfulSources as exc:
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="no-fresh-sources",
+            fresh_sources=0,
+            output_generated_at=last_generated_at,
+            output_sha256=last_sha256,
+            failure_class=_failure_class(exc),
+        )
         print(f"newswire: {exc}; prior latest and ledger preserved")
         return 2
+    except Exception as exc:
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="failed",
+            fresh_sources=None,
+            output_generated_at=last_generated_at,
+            output_sha256=last_sha256,
+            failure_class=_failure_class(exc),
+        )
+        raise
 
-    ledger = _next_ledger(document, prior_ledger)
-    # The bounded ledger lands before latest.  A crash can therefore leave an unused
-    # version receipt, but never a public latest version with no corresponding receipt.
-    _atomic_write(args.ledger, _ledger_bytes(ledger))
-    rendered = json.dumps(
-        document,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=2,
-        allow_nan=False,
-    ).encode("utf-8") + b"\n"
-    _atomic_write(args.output, rendered)
-    coverage = document["coverage"]
+    coverage = document.get("coverage")
+    counts = coverage.get("counts") if isinstance(coverage, dict) else None
+    fresh_sources = counts.get("success") if isinstance(counts, dict) else None
+    if type(fresh_sources) is not int or fresh_sources < 0:
+        exc = ValueError("newswire coverage is missing a valid fresh-source count")
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="failed",
+            fresh_sources=None,
+            output_generated_at=last_generated_at,
+            output_sha256=last_sha256,
+            failure_class=_failure_class(exc),
+        )
+        raise exc
+    if fresh_sources == 0:
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="no-fresh-sources",
+            fresh_sources=0,
+            output_generated_at=last_generated_at,
+            output_sha256=last_sha256,
+            failure_class="NoFreshSources",
+        )
+        print("newswire: zero fresh sources; prior latest and ledger preserved")
+        return 2
+
+    try:
+        ledger = _next_ledger(document, prior_ledger)
+        # The bounded ledger lands before latest.  A crash can therefore leave an
+        # unused version receipt, but never a public latest version with no
+        # corresponding receipt.
+        _atomic_write(args.ledger, _ledger_bytes(ledger))
+        rendered = (
+            json.dumps(
+                document,
+                ensure_ascii=False,
+                sort_keys=True,
+                indent=2,
+                allow_nan=False,
+            ).encode("utf-8")
+            + b"\n"
+        )
+        _atomic_write(args.output, rendered)
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="success",
+            fresh_sources=fresh_sources,
+            output_generated_at=document["generated_at"],
+            output_sha256=hashlib.sha256(rendered).hexdigest(),
+            failure_class=None,
+        )
+    except Exception as exc:
+        _write_status(
+            args.status,
+            attempted_at=attempted_at,
+            status="failed",
+            fresh_sources=fresh_sources,
+            output_generated_at=last_generated_at,
+            output_sha256=last_sha256,
+            failure_class=_failure_class(exc),
+        )
+        raise
     print(
         "newswire: "
         f"{document['n_items']} items -> {document['n_events']} events; "

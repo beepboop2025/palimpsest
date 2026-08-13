@@ -59,6 +59,10 @@ def _signal(document: dict, signal_id: str) -> dict:
 def _write_current_source(directory: Path, spec, timestamp="2026-08-04T11:00:00Z") -> dict:
     payload = {"method_version": 1, "source": f"fixture source for {spec.id}"}
     _put(payload, spec.timestamp_paths[0], timestamp)
+    if spec.metric_path:
+        _put(payload, spec.metric_path, 1)
+    if spec.denominator_path:
+        _put(payload, spec.denominator_path, 1)
     if spec.id == "anchors":
         payload.update({
             "registry_root": "a" * 64,
@@ -198,6 +202,39 @@ def test_ooni_denominator_is_completed_measurements_not_attempt_volume(mod, tmp_
     assert signal["payload"]["n_measurements"] == 245_883
 
 
+def test_null_ooni_denominator_degrades_the_declared_measurement(mod, tmp_path):
+    _write_json(tmp_path / "ooni-gfw-latest.json", {
+        "generated_at": "2026-08-04T11:30:00Z",
+        "source": "fixture OONI aggregate",
+        "gfw_index": 57.6,
+        "n_completed_measurements": None,
+    })
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "ooni-gfw")
+
+    assert signal["metric"]["value"] == 57.6
+    assert signal["metric"]["denominator"] is None
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert "denominator /n_completed_measurements" in signal["health"]["reason"]
+
+
+def test_null_in_path_primary_metric_degrades_without_inventing_a_value(mod, tmp_path):
+    _write_json(tmp_path / "in-path-interference-latest.json", {
+        "generated_at": "2026-08-04T11:30:00Z",
+        "source": "fixture OONI aggregate",
+        "middlebox_index": None,
+        "middlebox_completed_count": 9711,
+    })
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "in-path-interference")
+
+    assert signal["metric"] is None
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert "metric /middlebox_index" in signal["health"]["reason"]
+
+
 @pytest.mark.parametrize("invalid", [True, False, "4", "not-a-number"])
 def test_scalar_metrics_reject_booleans_and_arbitrary_strings(mod, tmp_path, invalid):
     _write_json(tmp_path / "ddti-latest.json", {
@@ -206,6 +243,8 @@ def test_scalar_metrics_reject_booleans_and_arbitrary_strings(mod, tmp_path, inv
     })
     signal = _signal(mod.build_document(tmp_path, NOW, "a" * 40), "ddti")
     assert signal["metric"] is None
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
 
 
 def test_missing_corrupt_and_stale_sources_remain_visible_and_never_live(mod, tmp_path):

@@ -42,6 +42,13 @@ points.
 When a gate does not pass, the public case remains in evidence gathering or
 abstains. Unknown fields are never expanded into narrative prose.
 
+OSINT evidence selectors resolve reviewed scalar leaves from the retained raw
+payload, not the roll-up's optional display-metric container. An explicit
+`null` leaf is preserved as an abstention, while the parent signal becomes
+non-live and every receipt selected from it becomes stale. Missing tokens,
+malformed intermediate containers and non-scalar leaves still fail the build
+closed; they are not treated as ordinary null observations.
+
 The newsroom-wide v2 profile adds the reporting requirements that cannot be
 inferred from a case file alone: at least one captured primary release,
 historical or comparable context, a material chart/map/timeline,

@@ -393,6 +393,35 @@ def _metric(spec: SignalSpec, payload: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _declared_metric_health_reason(
+    spec: SignalSpec, payload: dict[str, Any]
+) -> str | None:
+    """Explain why a declared measurement is incomplete without inventing a value."""
+    if not spec.metric_path or not spec.metric_label:
+        return None
+
+    failures: list[str] = []
+    value = _scalar_metric(
+        _at(payload, spec.metric_path),
+        allow_container_count=spec.metric_unit == "count",
+    )
+    if value is None:
+        failures.append(f"metric /{'/'.join(spec.metric_path)} is absent or non-scalar")
+
+    if spec.denominator_path and spec.denominator_label:
+        denominator = _scalar_metric(
+            _at(payload, spec.denominator_path), allow_container_count=True
+        )
+        if denominator is None:
+            failures.append(
+                f"denominator /{'/'.join(spec.denominator_path)} is absent or non-scalar"
+            )
+
+    if not failures:
+        return None
+    return "declared measurement is incomplete: " + "; ".join(failures)
+
+
 def _text(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
@@ -622,7 +651,19 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     metric = _metric(spec, payload)
     source, method, scope = _provenance(payload, spec)
     upstream_status = _upstream_status(payload)
-    semantic_reason = _semantic_health_reason(spec, payload)
+    semantic_reasons = [
+        reason
+        for reason in (
+            _semantic_health_reason(spec, payload),
+            (
+                _declared_metric_health_reason(spec, payload)
+                if not _is_degraded_upstream(upstream_status)
+                else None
+            ),
+        )
+        if reason
+    ]
+    semantic_reason = "; ".join(semantic_reasons) or None
     if spec.id == "baike-redaction" and semantic_reason:
         metric = None
 

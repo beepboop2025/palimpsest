@@ -6,6 +6,8 @@ After=network-online.target
 ConditionFileIsExecutable=/usr/bin/python3
 ConditionPathExists=/home/palimpsest/palimpsest/config/news_sources.json
 ConditionPathIsDirectory=/var/lib/palimpsest/newswire
+StartLimitIntervalSec=10m
+StartLimitBurst=3
 
 [Service]
 Type=oneshot
@@ -13,8 +15,10 @@ User=palimpsest
 Group=palimpsest
 WorkingDirectory=/home/palimpsest/palimpsest
 EnvironmentFile=-/etc/palimpsest/newswire.env
-ExecStart=/usr/bin/python3 -m scripts.newswire_pull --config /home/palimpsest/palimpsest/config/news_sources.json --output /var/lib/palimpsest/newswire/newswire-latest.json --ledger /var/lib/palimpsest/newswire/newswire-versions.jsonl --workers 6
+ExecStart=/usr/bin/python3 -m scripts.newswire_pull --config /home/palimpsest/palimpsest/config/news_sources.json --output /var/lib/palimpsest/newswire/newswire-latest.json --ledger /var/lib/palimpsest/newswire/newswire-versions.jsonl --status /var/lib/palimpsest/newswire/newswire-status.json --workers 6
 TimeoutStartSec=10m
+Restart=on-failure
+RestartSec=2m
 UMask=0027
 Nice=8
 IOSchedulingClass=best-effort

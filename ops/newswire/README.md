@@ -8,8 +8,16 @@ the public website's publication boundary.
 The collector stores feed metadata and links only. It never downloads article
 bodies, never executes fetched content, and treats each source as a receipt—not
 as proof. A failed or stale source remains visible in coverage. A run where no
-source parses successfully preserves the prior latest document and exits
-non-zero.
+source is fresh preserves the prior latest document and ledger, writes an
+atomic per-attempt receipt to
+`/var/lib/palimpsest/newswire/newswire-status.json`, and exits non-zero. A
+successful receipt records the fresh-source count and binds the run to the
+exact latest-document timestamp and SHA-256. This keeps “the collector ran”
+separate from “current evidence exists.”
+
+The systemd unit retries a failed attempt after two minutes, but permits only
+three starts in ten minutes. The half-hour timer remains the long-term recovery
+boundary after that bounded retry budget is exhausted.
 
 ## Install
 
@@ -43,6 +51,8 @@ systemctl list-timers palimpsest-evidence-wire.timer --no-pager
 sudo journalctl -u palimpsest-evidence-wire.service -n 100 --no-pager
 sudo -u palimpsest python3 -m json.tool \
   /var/lib/palimpsest/newswire/newswire-latest.json >/dev/null
+sudo -u palimpsest python3 -m json.tool \
+  /var/lib/palimpsest/newswire/newswire-status.json >/dev/null
 ```
 
 Stop immediately with:

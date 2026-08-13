@@ -292,8 +292,19 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
         "https://palimpsest.info/news/analysis/evidence/"
         f"sha256-{changed_digest}.json"
     )
+    # A later synthetic edition must be later than the complete input cohort,
+    # not merely later than the selected case. Data refreshes can advance an
+    # input receipt without changing that case's prior updated_at clock.
+    bound_clocks = [
+        previous_case["updated_at"],
+        first_machine["generated_at"],
+        *(receipt["generated_at"] for receipt in first_machine["input_receipts"]),
+    ]
     next_time = (
-        datetime.fromisoformat(previous_case["updated_at"].replace("Z", "+00:00"))
+        max(
+            datetime.fromisoformat(clock.replace("Z", "+00:00"))
+            for clock in bound_clocks
+        )
         + timedelta(seconds=1)
     ).isoformat().replace("+00:00", "Z")
     refreshed_case["updated_at"] = next_time

@@ -553,6 +553,91 @@ def test_event_id_persists_when_a_new_corroborating_source_is_added():
     assert second["events"][0]["lead"] is True
 
 
+def test_prior_event_split_keeps_conflicting_partitions_separate_with_unique_ids():
+    source = replace(_source("ooni"), declared_scan_ids=(), declared_economic_ids=())
+
+    def feed(first_title: str, second_title: str) -> bytes:
+        first = _rss(
+            source,
+            title=first_title,
+            url="https://ooni.org/report/0",
+            published="Tue, 11 Aug 2026 09:00:00 +0000",
+        ).decode().split("<item>", 1)[1].split("</item>", 1)[0]
+        second = _rss(
+            source,
+            title=second_title,
+            url="https://ooni.org/report/1",
+            published="Tue, 11 Aug 2026 10:00:00 +0000",
+        ).decode().split("<item>", 1)[1].split("</item>", 1)[0]
+        return f"<rss><channel><item>{first}</item><item>{second}</item></channel></rss>".encode()
+
+    registry = _registry(source)
+    prior = collect_newswire(
+        registry,
+        lambda _u, **_k: feed(
+            "Independent measurement finds a specific network disruption",
+            "Independent measurement finds a specific network disruption",
+        ),
+        now=NOW,
+    )
+    assert prior["n_events"] == 1
+
+    split_feed = feed(
+        "Independent measurement finds a specific network disruption",
+        "A wholly unrelated transparency bulletin is published",
+    )
+    current = collect_newswire(
+        registry,
+        lambda _u, **_k: split_feed,
+        now=NOW + timedelta(hours=1),
+        previous=prior,
+    )
+
+    assert current["n_items"] == current["n_events"] == 2
+    assert len({event["event_id"] for event in current["events"]}) == 2
+    assert sum(event["event_id"] == prior["events"][0]["event_id"] for event in current["events"]) == 1
+    inherited = next(
+        event
+        for event in current["events"]
+        if event["event_id"] == prior["events"][0]["event_id"]
+    )
+    assert inherited["evidence_refs"][0]["url"] == "https://ooni.org/report/0"
+    assert all(len(event["evidence_refs"]) == 1 for event in current["events"])
+    assert {
+        event["evidence_refs"][0]["item_id"] for event in current["events"]
+    } == {item["item_id"] for item in current["items"]}
+    validate_newswire_document(current)
+
+    repeated = collect_newswire(
+        registry,
+        lambda _u, **_k: split_feed,
+        now=NOW + timedelta(hours=2),
+        previous=current,
+    )
+    assert {event["event_id"] for event in repeated["events"]} == {
+        event["event_id"] for event in current["events"]
+    }
+
+
+def test_split_event_identity_fails_closed_if_disambiguation_also_collides():
+    item = {
+        "item_id": "item-" + "1" * 24,
+        "published_at": "2026-08-11T10:00:00Z",
+    }
+    natural_id = nw._stable_id("event", {"anchor_item_id": item["item_id"]})
+    split_id = nw._stable_id(
+        "event",
+        {
+            "anchor_item_id": item["item_id"],
+            "partition_item_ids": [item["item_id"]],
+            "identity_variant": "split-partition-v1",
+        },
+    )
+
+    with pytest.raises(NewswireError, match="identity collision"):
+        nw._event_id_for_cluster([item], None, {natural_id, split_id})
+
+
 def test_same_independence_group_never_inflates_corroboration():
     one = replace(_source("github-government-takedowns"), declared_scan_ids=())
     two = replace(_source("github-dmca"), declared_scan_ids=())

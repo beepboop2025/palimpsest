@@ -30,6 +30,8 @@ also remain excluded: the node is an analysis environment, not a publisher.
   `/var/lib/palimpsest-analysis/private/ledger/candidate-versions.jsonl`
 - Private run state:
   `/var/lib/palimpsest-analysis/private/state.json`
+- Per-attempt health receipt:
+  `/var/lib/palimpsest-analysis/private/analysis-status.json`
 - Mode-0600 cascade lease:
   `/var/lib/palimpsest-analysis/private/cascade.lock`
 
@@ -52,6 +54,14 @@ Candidate records are questions, not findings. They contain aggregate artifact
 hashes, selectors, limitations, falsification-oriented next steps, and a fixed
 `private-review-only` publication policy. They cannot alter
 `config/investigations.json` and cannot reach the public website.
+
+Before either a new run or the unchanged-input shortcut, the runner requires a
+successful evidence-wire receipt that reports at least one fresh source, is no
+more than 75 minutes old, and matches the frozen newswire bytes and publication
+clock. A failed attempt writes only a sanitized exception class to the analysis
+status receipt; the last complete run and candidate ledger remain intact. The
+systemd unit retries after two minutes with the same three-starts-per-ten-minute
+bound as the wire.
 
 ## Install
 
@@ -141,6 +151,8 @@ systemctl list-timers palimpsest-investigative-analysis.timer --no-pager
 journalctl -u palimpsest-investigative-analysis.service -n 80 --no-pager
 sudo jq '{schema_version,generated_at,edition_id,n_candidates,coverage}' \
   /var/lib/palimpsest-analysis/private/ledger/candidates-latest.json
+sudo jq '{schema_version,attempted_at,completed_at,status,failure_class}' \
+  /var/lib/palimpsest-analysis/private/analysis-status.json
 sudo jq '{network_policy,publication_policy,steps,candidate_edition_id}' \
   "$(sudo jq -r .run_path /var/lib/palimpsest-analysis/private/state.json)"/readings/analysis-run-manifest.json
 ```
