@@ -171,3 +171,26 @@ def test_indexnow_ownership_key_is_self_consistent():
     key_file = ROOT / "e4159f59fe77cfbdc21709c132ca3753.txt"
     assert key_file in keys
     assert key_file.read_text(encoding="utf-8").strip() == key_file.stem
+
+
+def test_current_search_and_answer_crawlers_are_explicitly_allowed():
+    robots = (ROOT / "robots.txt").read_text(encoding="utf-8")
+    for agent in (
+        "Googlebot",
+        "Google-Extended",
+        "OAI-SearchBot",
+        "ChatGPT-User",
+        "Claude-SearchBot",
+        "Claude-User",
+        "PerplexityBot",
+        "Perplexity-User",
+    ):
+        assert f"User-agent: {agent}\nAllow: /" in robots
+
+
+def test_ddti_monitor_has_one_visible_primary_heading():
+    page = (ROOT / "dashboards" / "ddti_dashboard.html").read_text(
+        encoding="utf-8"
+    )
+    assert page.count("<h1") == 1
+    assert '<h1 class="codename">PALIMPSEST<b>.</b>DDTI</h1>' in page
