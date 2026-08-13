@@ -1228,10 +1228,13 @@ def test_systemd_contract_keeps_analysis_private_and_recurring() -> None:
 
     assert "/usr/local/libexec/palimpsest-analysis" in service
     assert "/var/lib/palimpsest/readings /var/lib/palimpsest/newswire" in service
-    assert (
+    assert [
+        line for line in service.splitlines() if line.startswith("ReadWritePaths=")
+    ] == [
         "ReadWritePaths=/var/lib/palimpsest-analysis/runs "
-        "/var/lib/palimpsest-analysis/private" in service
-    )
+        "/var/lib/palimpsest-analysis/private "
+        "/var/lib/palimpsest-analysis/delivery"
+    ]
     assert "User=10001" in service and "Group=10001" in service
     assert "SupplementaryGroups=docker" not in service
     assert "Requires=palimpsest-investigative-broker.socket" in service
