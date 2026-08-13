@@ -19,6 +19,11 @@ from core.investigative_candidates import (
     build_candidates,
     canonical_json_bytes,
 )
+from core.wire_claim_audits import (
+    DELIVERY_POLICY as WIRE_DELIVERY_POLICY,
+    build_wire_claim_audits,
+    canonical_json_bytes as wire_canonical_json_bytes,
+)
 
 
 DERIVED_LATEST = (
@@ -287,6 +292,19 @@ def run(
     )
     completed.extend(("analytical_packets", "analytical_template_drafts"))
 
+    # The Wire audit is a separate delivery-safe projection. It covers every
+    # accepted feed event, but only entries passing its deterministic interest
+    # and evidence gates are eligible for an automated brief.
+    wire_audits = build_wire_claim_audits(
+        readings_dir,
+        decision_clock=decision_clock,
+    )
+    atomic_write(
+        private_dir / "wire-claim-audits-latest.json",
+        wire_canonical_json_bytes(wire_audits),
+    )
+    completed.append("wire_claim_audits")
+
     outputs = []
     for name in DERIVED_LATEST:
         path = readings_dir / name
@@ -300,7 +318,7 @@ def run(
             }
         )
     manifest = {
-        "schema_version": "palimpsest-investigative-analysis-run.v2",
+        "schema_version": "palimpsest-investigative-analysis-run.v3",
         "completed_at": decision_text,
         "input_commit": input_commit,
         "decision_clock": decision_text,
@@ -314,6 +332,12 @@ def run(
         "analytical_packet_count": packets["n_packets"],
         "analytical_draft_edition_id": drafts["edition_id"],
         "analytical_draft_count": drafts["n_drafts"],
+        "wire_claim_audit_edition_id": wire_audits["edition_id"],
+        "wire_claim_audit_count": wire_audits["n_audits"],
+        "wire_claim_audit_brief_eligible_count": sum(
+            audit["brief_eligible"] for audit in wire_audits["audits"]
+        ),
+        "wire_delivery_policy": WIRE_DELIVERY_POLICY,
         "outputs": outputs,
     }
     _write_manifest(readings_dir / "analysis-run-manifest.json", manifest)
@@ -342,7 +366,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         "investigative analysis -> "
         f"{manifest['candidate_edition_id']} · "
         f"{manifest['candidate_count']} staged candidates · "
-        f"{manifest['analytical_draft_count']} private working drafts"
+        f"{manifest['analytical_draft_count']} private working drafts · "
+        f"{manifest['wire_claim_audit_brief_eligible_count']} Wire briefs eligible"
     )
     return 0
 

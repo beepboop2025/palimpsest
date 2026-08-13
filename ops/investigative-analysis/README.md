@@ -14,8 +14,11 @@ The fixed order is:
    the forecast ledger;
 3. the revision-aware economic pulse;
 4. the OSINT roll-up and review-gated investigations builder;
-5. a private, content-addressed editorial candidate ledger.
+5. a private, content-addressed editorial candidate ledger;
 6. citation-bound evidence packets and deterministic private working templates.
+7. deterministic claim audits for every accepted Wire event, including current
+   collector context and competing causal scenarios rounded to five percentage
+   points.
 
 Silence Index is deliberately excluded because its current implementation calls
 the GDELT DOC API. Public newsroom rendering, sealing, anchoring, and Git commits
@@ -33,6 +36,10 @@ also remain excluded: the node is an analysis environment, not a publisher.
   `<run>/private/analytical-packets-latest.json`
 - Per-run deterministic working drafts:
   `<run>/private/analytical-drafts-latest.json`
+- Per-run complete Wire claim-audit edition:
+  `<run>/private/wire-claim-audits-latest.json`
+- Stable delivery-safe Wire projection:
+  `/var/lib/palimpsest-analysis/delivery/wire-claim-audits-latest.json`
 - Private run state:
   `/var/lib/palimpsest-analysis/private/state.json`
 - Per-attempt health receipt:
@@ -59,6 +66,20 @@ Candidate records are questions, not findings. They contain aggregate artifact
 hashes, selectors, limitations, falsification-oriented next steps, and a fixed
 `private-review-only` publication policy. They cannot alter
 `config/investigations.json` and cannot reach the public website.
+
+The separate Wire projection uses `automated-attributed-analysis`. It is the sole
+analysis output outside the mode-0700 private tree: its directory is mode 0711
+(traversable by an exact known path but not listable) and its validated file is
+mode 0644 for the isolated Palimpsest bot. The directory remains writable only by
+the analysis identity. That policy
+does not relax the candidate ledger's review gate: it permits only the exact,
+validated deterministic audit bytes to be read by the news bot. Each audit keeps
+publication provenance, independent-source structure, method-compatible collector
+context, and causal uncertainty separate. Its percentages sum to 100 and are
+coarse competing-scenario weights conditional on the retained source account;
+they are not calibrated probabilities of a hidden motive. Events that fail the
+interest, source, or evidence gates remain monitor/abstention records and are not
+eligible for automated briefs.
 
 The packet is the only supported input to a later private ranking or research
 assistant. It contains bounded aggregate observations, exact evidence IDs and hashes,
@@ -110,6 +131,8 @@ sudo install -d -o root -g palimpsest-analysis -m 0710 \
   /var/lib/palimpsest-analysis/runs
 sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0700 \
   /var/lib/palimpsest-analysis/private
+sudo install -d -o palimpsest-analysis -g palimpsest-analysis -m 0711 \
+  /var/lib/palimpsest-analysis/delivery
 # UID 10001 is also the collector identity. Preserve its write/default-write
 # access to readings; systemd presents that source read-only to this unit.
 sudo setfacl -R -m u:palimpsest-analysis:rwX /var/lib/palimpsest/readings
@@ -178,6 +201,8 @@ sudo jq '{edition_id,n_packets,publication_policy}' \
   "$(sudo jq -r .run_path /var/lib/palimpsest-analysis/private/state.json)"/private/analytical-packets-latest.json
 sudo jq '{edition_id,n_drafts,publication_policy}' \
   "$(sudo jq -r .run_path /var/lib/palimpsest-analysis/private/state.json)"/private/analytical-drafts-latest.json
+sudo jq '{edition_id,n_audits,counts,eligible:([.audits[]|select(.brief_eligible)]|length)}' \
+  /var/lib/palimpsest-analysis/delivery/wire-claim-audits-latest.json
 ```
 
 The manifest must say `docker-network-none` and `private-review-only`. A second

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +12,11 @@ import pytest
 
 from core.analytical_pieces import build_packet_set, build_template_draft_set
 from core.investigative_candidates import build_candidates, canonical_json_bytes
+from core.wire_claim_audits import (
+    DELIVERY_POLICY as WIRE_DELIVERY_POLICY,
+    build_wire_claim_audits,
+    canonical_json_bytes as wire_canonical_json_bytes,
+)
 from ops import investigative_analysis_runner as runner
 
 COMMIT = "a" * 40
@@ -70,7 +76,14 @@ def _inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     _write(
         readings / "board-alarm-latest.json", {"generated_at": "2026-08-11T17:00:00Z"}
     )
-    _write(wire / "newswire-latest.json", {"generated_at": "2026-08-11T18:00:00Z"})
+    _write(
+        wire / "newswire-latest.json",
+        {
+            "schema_version": "palimpsest-newswire.v1",
+            "generated_at": "2026-08-11T18:00:00Z",
+            "events": [],
+        },
+    )
     _write_wire_status(wire)
     (wire / "newswire-versions.jsonl").write_text(
         '{"version_id":"eventv-000000000000000000000000"}\n', encoding="utf-8"
@@ -90,6 +103,13 @@ def _complete_fake_container(command: list[str]) -> None:
             if value.endswith(":/app/readings:rw")
         )
     )
+    frozen = Path(
+        next(
+            value.split(":", 1)[0]
+            for value in volumes
+            if value.endswith(":/app/frozen:ro")
+        )
+    )
     candidate_dir = Path(
         next(
             value.split(":", 1)[0]
@@ -98,6 +118,9 @@ def _complete_fake_container(command: list[str]) -> None:
         )
     )
     generated_at = command[command.index("--decision-clock") + 1]
+    for source in frozen.iterdir():
+        if source.is_file():
+            shutil.copyfile(source, staged / source.name)
     documents = {
         "vantage-fusion-latest.json": {
             "generated_at": generated_at,
@@ -120,7 +143,11 @@ def _complete_fake_container(command: list[str]) -> None:
             "economic_state": {"status": "warming_up"},
             "coverage": {"adapter_ready_sources": []},
         },
-        "osint-china-latest.json": {"generated_at": generated_at},
+        "osint-china-latest.json": {
+            "schema_version": "osint-china.v1",
+            "generated_at": generated_at,
+            "signals": [],
+        },
         "investigations-latest.json": {"generated_at": generated_at},
     }
     for name, value in documents.items():
@@ -138,6 +165,13 @@ def _complete_fake_container(command: list[str]) -> None:
     )
     (candidate_dir / "analytical-drafts-latest.json").write_bytes(
         canonical_json_bytes(drafts)
+    )
+    audits = build_wire_claim_audits(
+        staged,
+        decision_clock=datetime.fromisoformat(generated_at.replace("Z", "+00:00")),
+    )
+    (candidate_dir / "wire-claim-audits-latest.json").write_bytes(
+        wire_canonical_json_bytes(audits)
     )
     outputs = []
     for name in runner.DERIVED_LATEST:
@@ -167,6 +201,12 @@ def _complete_fake_container(command: list[str]) -> None:
             "analytical_packet_count": packets["n_packets"],
             "analytical_draft_edition_id": drafts["edition_id"],
             "analytical_draft_count": drafts["n_drafts"],
+            "wire_claim_audit_edition_id": audits["edition_id"],
+            "wire_claim_audit_count": audits["n_audits"],
+            "wire_claim_audit_brief_eligible_count": sum(
+                audit["brief_eligible"] for audit in audits["audits"]
+            ),
+            "wire_delivery_policy": WIRE_DELIVERY_POLICY,
             "outputs": outputs,
         },
     )
@@ -410,6 +450,12 @@ def test_run_is_idempotent_and_promotes_only_after_container_success(
     assert Path(state["run_path"]).is_dir()
     assert state["image_id"] == IMAGE_ID
     assert not list(runs.glob(".staging-*"))
+    delivery = tmp_path / "delivery"
+    wire_projection = delivery / "wire-claim-audits-latest.json"
+    assert wire_projection.is_file()
+    assert stat.S_IMODE(delivery.stat().st_mode) == 0o711
+    assert stat.S_IMODE(wire_projection.stat().st_mode) == 0o644
+    assert not (private / "delivery").exists()
     receipt = json.loads((private / runner.ANALYSIS_STATUS_NAME).read_text())
     assert set(receipt) == {
         "schema_version",
@@ -459,7 +505,7 @@ def test_run_is_idempotent_and_promotes_only_after_container_success(
     assert len(calls) == 2
 
 
-def test_valid_v1_state_forces_one_immutable_v2_upgrade(tmp_path: Path) -> None:
+def test_valid_v1_state_forces_one_immutable_v3_upgrade(tmp_path: Path) -> None:
     readings, wire, commit = _inputs(tmp_path)
     runs = tmp_path / "runs"
     private = tmp_path / "private"
@@ -503,16 +549,25 @@ def test_valid_v1_state_forces_one_immutable_v2_upgrade(tmp_path: Path) -> None:
         "analytical_packet_count",
         "analytical_draft_edition_id",
         "analytical_draft_count",
+        "wire_claim_audit_edition_id",
+        "wire_claim_audit_count",
+        "wire_claim_audit_brief_eligible_count",
+        "wire_delivery_policy",
     ):
         old_manifest.pop(key)
     _write(old_manifest_path, old_manifest)
     (old_run / "private" / "analytical-packets-latest.json").unlink()
     (old_run / "private" / "analytical-drafts-latest.json").unlink()
+    (old_run / "private" / "wire-claim-audits-latest.json").unlink()
     for key in (
         "analytical_packet_edition_id",
         "analytical_packet_count",
         "analytical_draft_edition_id",
         "analytical_draft_count",
+        "wire_claim_audit_edition_id",
+        "wire_claim_audit_count",
+        "wire_claim_audit_brief_eligible_count",
+        "wire_delivery_policy",
     ):
         v2_state.pop(key)
     v2_state["schema_version"] = "palimpsest-investigative-analysis-state.v1"
@@ -544,7 +599,7 @@ def test_valid_v1_state_forces_one_immutable_v2_upgrade(tmp_path: Path) -> None:
     assert unchanged["status"] == "unchanged"
     assert len(calls) == 2
     current = json.loads((private / "state.json").read_text(encoding="utf-8"))
-    assert current["schema_version"] == runner.STATE_SCHEMA_V2
+    assert current["schema_version"] == runner.STATE_SCHEMA_V3
     assert Path(current["run_path"]) != old_run
     assert old_bytes == {
         path.relative_to(old_run): path.read_bytes()
@@ -553,7 +608,7 @@ def test_valid_v1_state_forces_one_immutable_v2_upgrade(tmp_path: Path) -> None:
     }
 
 
-def test_v2_state_cannot_reference_a_v1_run(tmp_path: Path) -> None:
+def test_v3_state_cannot_reference_a_v1_run(tmp_path: Path) -> None:
     readings, wire, commit = _inputs(tmp_path)
     runs = tmp_path / "runs"
     private = tmp_path / "private"
@@ -582,6 +637,10 @@ def test_v2_state_cannot_reference_a_v1_run(tmp_path: Path) -> None:
         "analytical_packet_count",
         "analytical_draft_edition_id",
         "analytical_draft_count",
+        "wire_claim_audit_edition_id",
+        "wire_claim_audit_count",
+        "wire_claim_audit_brief_eligible_count",
+        "wire_delivery_policy",
     ):
         manifest.pop(key)
     _write(manifest_path, manifest)
@@ -628,11 +687,16 @@ def test_fresh_container_cannot_return_a_legacy_v1_run(tmp_path: Path) -> None:
             "analytical_packet_count",
             "analytical_draft_edition_id",
             "analytical_draft_count",
+            "wire_claim_audit_edition_id",
+            "wire_claim_audit_count",
+            "wire_claim_audit_brief_eligible_count",
+            "wire_delivery_policy",
         ):
             manifest.pop(key)
         _write(manifest_path, manifest)
         (candidate_dir / "analytical-packets-latest.json").unlink()
         (candidate_dir / "analytical-drafts-latest.json").unlink()
+        (candidate_dir / "wire-claim-audits-latest.json").unlink()
         return subprocess.CompletedProcess(command, 0, "ok", "")
 
     with pytest.raises(runner.AnalysisRunnerError, match="required schema version"):

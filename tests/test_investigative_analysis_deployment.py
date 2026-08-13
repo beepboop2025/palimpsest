@@ -173,6 +173,7 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
     assert 'bundle_root="/usr/local/libexec/palimpsest-analysis"' in source
     assert "core/investigative_candidates.py" in source
     assert "core/analytical_pieces.py" in source
+    assert "core/wire_claim_audits.py" in source
     assert 'show "$revision:$repository_path"' in source
     assert "safe.directory=$repo_root" in source
     assert "MANIFEST.sha256" in source
@@ -210,6 +211,9 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
     assert 'printf \'%s\\n\' "$image_id" >"$bundle_tmp/IMAGE_ID"' in source
     assert 'chown root:"$runtime_name" "$runs_root"' in source
     assert 'chmod 0710 "$runs_root"' in source
+    assert 'delivery_root="$analysis_root/delivery"' in source
+    assert 'chmod 0711 "$delivery_root"' in source
+    assert 'chmod 0644 {} +' in source
 
 
 def test_systemd_executes_only_the_root_owned_versioned_bundle() -> None:

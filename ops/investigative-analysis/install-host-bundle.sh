@@ -39,6 +39,7 @@ runtime_id="10001"
 analysis_root="/var/lib/palimpsest-analysis"
 runs_root="$analysis_root/runs"
 private_root="$analysis_root/private"
+delivery_root="$analysis_root/delivery"
 
 # Prevent an invoking shell from redirecting Git's object/index/worktree view
 # away from the checkout whose files this installer copies.
@@ -206,6 +207,30 @@ normalize_analysis_storage() {
   [[ "$(stat -c '%u:%g:%a' "$private_root")" \
       == "$runtime_id:$runtime_id:700" ]] \
     || die "analysis private root ownership or mode is unsafe"
+
+  if [[ -e "$delivery_root" || -L "$delivery_root" ]]; then
+    [[ -d "$delivery_root" && ! -L "$delivery_root" ]] \
+      || die "analysis delivery root is not a real directory"
+  else
+    install -d -o "$runtime_name" -g "$runtime_name" -m 0711 "$delivery_root"
+  fi
+  unsafe_member="$(
+    find "$delivery_root" -mindepth 1 -maxdepth 1 \
+      \( -type l -o ! -type f \) -print -quit
+  )"
+  [[ -z "$unsafe_member" ]] \
+    || die "analysis delivery root contains a link or special file"
+  while IFS= read -r -d '' entry; do
+    [[ "${entry##*/}" == "wire-claim-audits-latest.json" ]] \
+      || die "analysis delivery root contains an unrecognized file"
+  done < <(find "$delivery_root" -mindepth 1 -maxdepth 1 -type f -print0)
+  chown "$runtime_name":"$runtime_name" "$delivery_root"
+  chmod 0711 "$delivery_root"
+  find "$delivery_root" -mindepth 1 -maxdepth 1 -type f \
+    -exec chown "$runtime_name":"$runtime_name" {} + -exec chmod 0644 {} +
+  [[ "$(stat -c '%u:%g:%a' "$delivery_root")" \
+      == "$runtime_id:$runtime_id:711" ]] \
+    || die "analysis delivery root ownership or mode is unsafe"
 }
 
 if ! revision="$(
@@ -323,6 +348,9 @@ install -o root -g root -m 0444 \
   "$repo_root/core/analytical_pieces.py" \
   "$bundle_tmp/core/analytical_pieces.py"
 install -o root -g root -m 0444 \
+  "$repo_root/core/wire_claim_audits.py" \
+  "$bundle_tmp/core/wire_claim_audits.py"
+install -o root -g root -m 0444 \
   "$repo_root/core/investigative_container_contract.py" \
   "$bundle_tmp/core/investigative_container_contract.py"
 install -o root -g root -m 0444 \
@@ -339,6 +367,8 @@ verify_git_blob core/investigative_candidates.py \
   "$bundle_tmp/core/investigative_candidates.py"
 verify_git_blob core/analytical_pieces.py \
   "$bundle_tmp/core/analytical_pieces.py"
+verify_git_blob core/wire_claim_audits.py \
+  "$bundle_tmp/core/wire_claim_audits.py"
 verify_git_blob core/investigative_container_contract.py \
   "$bundle_tmp/core/investigative_container_contract.py"
 verify_git_blob ops/investigative-analysis/README.md "$bundle_tmp/README.md"
@@ -354,6 +384,7 @@ chmod 0444 "$bundle_tmp/IMAGE_ID"
   cd "$bundle_tmp"
   sha256sum README.md REVISION IMAGE_ID core/__init__.py \
     core/investigative_candidates.py core/analytical_pieces.py \
+    core/wire_claim_audits.py \
     core/investigative_container_contract.py \
     investigative_analysis_runner.py investigative_analysis_broker.py \
     verify-host-bundle.sh \
@@ -389,6 +420,7 @@ if [[ -e "$bundle_final" ]]; then
     || die "existing bundle core ownership or mode is unsafe"
   for bundle_file in README.md REVISION IMAGE_ID MANIFEST.sha256 core/__init__.py \
     core/investigative_candidates.py core/analytical_pieces.py \
+    core/wire_claim_audits.py \
     core/investigative_container_contract.py \
     investigative_analysis_runner.py investigative_analysis_broker.py \
     verify-host-bundle.sh; do
