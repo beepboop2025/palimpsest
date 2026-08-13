@@ -39,17 +39,25 @@
       "source_id": "believability",
       "summary": "upstream status is not_ready",
       "title": "Believability read: degraded"
+    },
+    {
+      "id": "health-nemesis",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "nemesis",
+      "summary": "freshness deadline has passed",
+      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-13T12:47:23Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
+  "generated_at": "2026-08-13T13:50:32Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 29 are live. Health qualifiers: 1 degraded, 3 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 30,
+      "live": 29,
       "missing": 0,
-      "stale": 2
+      "stale": 3
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -58,7 +66,7 @@
     "required_total": 30,
     "status": "degraded"
   },
-  "input_commit": "fc2719e4de4f14ef5e755eb477621ee68b542a42",
+  "input_commit": "9292a0aba3413011aac656cc9eb6a352062f52ae",
   "layers": [
     {
       "id": "command",
@@ -171,20 +179,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 30,
+  "n_signals_live": 29,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -194,7 +202,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:07:23Z",
       "health": {
-        "age_hours": 4.667,
+        "age_hours": 5.719,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -521,7 +529,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:04:52Z",
       "health": {
-        "age_hours": 4.708,
+        "age_hours": 5.761,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -743,7 +751,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:07:23Z",
       "health": {
-        "age_hours": 4.667,
+        "age_hours": 5.719,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -891,7 +899,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:07:23Z",
       "health": {
-        "age_hours": 4.667,
+        "age_hours": 5.719,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1430,7 +1438,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:07:23Z",
       "health": {
-        "age_hours": 4.667,
+        "age_hours": 5.719,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1755,9 +1763,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-13T17:28:50Z",
+      "freshness_deadline": "2026-08-13T20:48:58Z",
       "health": {
-        "age_hours": 2.309,
+        "age_hours": 0.026,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1767,9 +1775,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 23093,
+        "bytes": 23087,
         "filename": "ddti-latest.json",
-        "sha256": "ee3d42d887101d6e6a325a8a732b7f889b1061d4dea1de3644d8b4df19ca265e"
+        "sha256": "0a4c3ea20429d08b80ec3c2f38af13555e07da38703fe45e1d15a1bd5ce70403"
       },
       "layer": "attention",
       "live": true,
@@ -1791,7 +1799,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 194.4,
+          "days_covered": 194.5,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1805,12 +1813,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-13T10:28:50.584249+00:00",
+        "generated_at": "2026-08-13T13:48:58.316250+00:00",
         "n_observations": 80,
         "n_terms": 190,
         "ranked": [
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-11T02:57:16+00:00",
@@ -1827,10 +1835,10 @@
               }
             ],
             "term": "Caixin",
-            "threat": 0.7849
+            "threat": 0.748
           },
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-11T02:57:16+00:00",
@@ -1847,10 +1855,10 @@
               }
             ],
             "term": "Gansu",
-            "threat": 0.7849
+            "threat": 0.748
           },
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-11T02:57:16+00:00",
@@ -1867,10 +1875,10 @@
               }
             ],
             "term": "Lanzhou",
-            "threat": 0.7849
+            "threat": 0.748
           },
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-11T02:57:16+00:00",
@@ -1887,10 +1895,10 @@
               }
             ],
             "term": "defending rights",
-            "threat": 0.7849
+            "threat": 0.748
           },
           {
-            "attention": 0.4487,
+            "attention": 0.4276,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-25T00:54:06+00:00",
@@ -1911,10 +1919,10 @@
               }
             ],
             "term": "migrant workers",
-            "threat": 0.7479
+            "threat": 0.7127
           },
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -1939,10 +1947,10 @@
               }
             ],
             "term": "social media",
-            "threat": 0.6167
+            "threat": 0.5877
           },
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-02-25T00:54:06+00:00",
@@ -1959,10 +1967,10 @@
               }
             ],
             "term": "unpaid wages",
-            "threat": 0.5606
+            "threat": 0.5343
           },
           {
-            "attention": 0.4485,
+            "attention": 0.4274,
             "burst_ratio": 0.75,
             "domain": "OTHER",
             "first_seen": "2026-03-24T05:52:38+00:00",
@@ -1979,10 +1987,10 @@
               }
             ],
             "term": "trials",
-            "threat": 0.4485
+            "threat": 0.4274
           },
           {
-            "attention": 0.0733,
+            "attention": 0.0698,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-23T02:11:05+00:00",
@@ -2007,10 +2015,10 @@
               }
             ],
             "term": "state media",
-            "threat": 0.1282
+            "threat": 0.1222
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2027,10 +2035,10 @@
               }
             ],
             "term": "AI Has Determined That My Press Card Is a Fake",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2047,10 +2055,10 @@
               }
             ],
             "term": "china youth daily",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2067,10 +2075,10 @@
               }
             ],
             "term": "information technology",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2087,10 +2095,10 @@
               }
             ],
             "term": "literacy",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2107,10 +2115,10 @@
               }
             ],
             "term": "media",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2127,10 +2135,10 @@
               }
             ],
             "term": "press accreditation",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-05T20:22:05+00:00",
@@ -2147,10 +2155,10 @@
               }
             ],
             "term": "reputation",
-            "threat": 0.1262
+            "threat": 0.1202
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-25T04:55:16+00:00",
@@ -2167,10 +2175,10 @@
               }
             ],
             "term": "online media",
-            "threat": 0.1081
+            "threat": 0.1031
           },
           {
-            "attention": 0.0732,
+            "attention": 0.0698,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2191,10 +2199,10 @@
               }
             ],
             "term": "investigative journalism",
-            "threat": 0.0977
+            "threat": 0.0931
           },
           {
-            "attention": 0.0733,
+            "attention": 0.0698,
             "burst_ratio": 0.82,
             "domain": "OTHER",
             "first_seen": "2026-02-20T20:32:28+00:00",
@@ -2219,10 +2227,10 @@
               }
             ],
             "term": "CDT translation",
-            "threat": 0.0733
+            "threat": 0.0698
           },
           {
-            "attention": 0.0724,
+            "attention": 0.069,
             "burst_ratio": 0.75,
             "domain": "OTHER",
             "first_seen": "2026-02-20T20:32:28+00:00",
@@ -2247,10 +2255,10 @@
               }
             ],
             "term": "Culture & the Arts",
-            "threat": 0.0724
+            "threat": 0.069
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": 0.6,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -2267,10 +2275,10 @@
               }
             ],
             "term": "AI",
-            "threat": 0.0721
+            "threat": 0.0687
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": 0.75,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -2291,10 +2299,10 @@
               }
             ],
             "term": "artificial intelligence",
-            "threat": 0.0721
+            "threat": 0.0687
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2311,10 +2319,10 @@
               }
             ],
             "term": "humor",
-            "threat": 0.0721
+            "threat": 0.0687
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": 0.75,
             "domain": "OTHER",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2331,10 +2339,10 @@
               }
             ],
             "term": "journalism",
-            "threat": 0.0721
+            "threat": 0.0687
           },
           {
-            "attention": 0.0721,
+            "attention": 0.0687,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2351,10 +2359,10 @@
               }
             ],
             "term": "journalists",
-            "threat": 0.0721
+            "threat": 0.0687
           },
           {
-            "attention": 0.0434,
+            "attention": 0.0414,
             "burst_ratio": 0.57,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2379,10 +2387,10 @@
               }
             ],
             "term": "WeChat",
-            "threat": 0.0434
+            "threat": 0.0414
           },
           {
-            "attention": 0.0146,
+            "attention": 0.0139,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-01T05:42:08+00:00",
@@ -2399,10 +2407,10 @@
               }
             ],
             "term": "709",
-            "threat": 0.0255
+            "threat": 0.0243
           },
           {
-            "attention": 0.0129,
+            "attention": 0.0123,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2419,10 +2427,10 @@
               }
             ],
             "term": "Economics",
-            "threat": 0.0226
+            "threat": 0.0215
           },
           {
-            "attention": 0.0129,
+            "attention": 0.0123,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2439,10 +2447,10 @@
               }
             ],
             "term": "World Cup",
-            "threat": 0.0226
+            "threat": 0.0215
           },
           {
-            "attention": 0.0129,
+            "attention": 0.0123,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-31T21:15:07+00:00",
@@ -2459,7 +2467,7 @@
               }
             ],
             "term": "animal protection",
-            "threat": 0.0226
+            "threat": 0.0215
           }
         ],
         "source_feeds": {
@@ -2481,7 +2489,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-13T10:28:50Z",
+      "source_timestamp": "2026-08-13T13:48:58Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 190 count.",
       "title": "Deletion-directive term index"
@@ -2490,7 +2498,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:08:46Z",
       "health": {
-        "age_hours": 4.644,
+        "age_hours": 5.696,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2789,7 +2797,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:03:14Z",
       "health": {
-        "age_hours": 4.736,
+        "age_hours": 5.788,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3126,7 +3134,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T09:34:59Z",
       "health": {
-        "age_hours": 41.207,
+        "age_hours": 42.259,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -3433,7 +3441,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 78.916,
+        "age_hours": 79.968,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3744,7 +3752,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T05:12:03Z",
       "health": {
-        "age_hours": 9.589,
+        "age_hours": 10.641,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4018,7 +4026,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T21:57:43Z",
       "health": {
-        "age_hours": 4.828,
+        "age_hours": 5.88,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4348,7 +4356,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T21:59:38Z",
       "health": {
-        "age_hours": 4.796,
+        "age_hours": 5.848,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4519,7 +4527,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T09:00:39Z",
       "health": {
-        "age_hours": 5.779,
+        "age_hours": 6.831,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4695,7 +4703,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:02:47Z",
       "health": {
-        "age_hours": 4.743,
+        "age_hours": 5.796,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7119,7 +7127,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T21:58:56Z",
       "health": {
-        "age_hours": 4.808,
+        "age_hours": 5.86,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7169,7 +7177,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:45:26Z",
       "health": {
-        "age_hours": 6.032,
+        "age_hours": 7.085,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7242,7 +7250,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:06:24Z",
       "health": {
-        "age_hours": 4.683,
+        "age_hours": 5.735,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7320,7 +7328,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:23:22Z",
       "health": {
-        "age_hours": 4.4,
+        "age_hours": 5.453,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7441,7 +7449,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:11:19Z",
       "health": {
-        "age_hours": 4.601,
+        "age_hours": 5.653,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7582,7 +7590,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T05:05:35Z",
       "health": {
-        "age_hours": 9.696,
+        "age_hours": 10.749,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7671,7 +7679,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 328.268,
+        "age_hours": 329.321,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7825,7 +7833,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T05:11:59Z",
       "health": {
-        "age_hours": 9.59,
+        "age_hours": 10.642,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8004,7 +8012,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:10:17Z",
       "health": {
-        "age_hours": 4.618,
+        "age_hours": 5.671,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8180,7 +8188,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:58:14Z",
       "health": {
-        "age_hours": 5.819,
+        "age_hours": 6.871,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8284,7 +8292,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:03:27Z",
       "health": {
-        "age_hours": 4.732,
+        "age_hours": 5.785,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8351,7 +8359,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T19:56:10Z",
       "health": {
-        "age_hours": 18.854,
+        "age_hours": 19.906,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8403,7 +8411,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T16:33:58Z",
       "health": {
-        "age_hours": 22.224,
+        "age_hours": 23.276,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8461,7 +8469,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 1.687,
+        "age_hours": 2.739,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8617,7 +8625,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 195.615,
+        "age_hours": 196.667,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8685,7 +8693,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T10:14:10Z",
       "health": {
-        "age_hours": 4.553,
+        "age_hours": 5.606,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14105,7 +14113,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:11:20Z",
       "health": {
-        "age_hours": 4.601,
+        "age_hours": 5.653,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14153,12 +14161,12 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-13T13:44:16Z",
       "health": {
-        "age_hours": 0.052,
+        "age_hours": 1.104,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": "ok"
       },
       "id": "nemesis",
@@ -14168,7 +14176,7 @@
         "sha256": "cd1fa4dfc22f5787e2f6b02f1601a9e61f11077e53b36bf94a7a79fd6dc0b0dc"
       },
       "layer": "nemesis",
-      "live": true,
+      "live": false,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -18974,8 +18982,8 @@
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
       "source_timestamp": "2026-08-13T12:44:16Z",
-      "status": "live",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 177 count.",
+      "status": "stale",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-13T12:44:16Z passed its freshness deadline 2026-08-13T13:44:16Z, so it is not labelled live. Latest payload reports topics ranked at 177 count.",
       "title": "Private runtime bridge"
     }
   ],
