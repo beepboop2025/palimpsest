@@ -10,7 +10,10 @@ on:
     - cron: "58 * * * *"
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Refresh Stock Connect telemetry"]
+    # These collectors update inputs embedded by the command-surface roll-up.
+    # Rebuild immediately so their successful publication cannot leave the
+    # recorded input commit and the served readings temporarily out of sync.
+    workflows: ["Refresh Stock Connect telemetry", "Refresh DDTI index"]
     types: [completed]
     branches: [main]
 
