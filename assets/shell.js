@@ -402,7 +402,10 @@
       path.indexOf("/readings/") === 0 ? "reading" :
       path.indexOf("/osint-china") === 0 ? "osint china" :
       path.indexOf("/china-brief") === 0 ? "china brief" :
-      path.indexOf("/dashboards/") === 0 ? "dashboard" : null;
+      path.indexOf("/dashboards/") === 0 ? "dashboard" :
+      path.indexOf("/for-researchers") === 0 ? "research guide" :
+      path.indexOf("/guides/") === 0 ? "public guide" :
+      path.indexOf("/news/") === 0 ? "newsroom" : null;
     if (!kicker) return;
     var main = document.querySelector("main") || document.body;
     var h1 = main.querySelector("h1");
@@ -506,6 +509,13 @@
       navigator.clipboard.writeText(meta.link)
         .then(function () { say("link copied"); }, function () { say("copy blocked"); });
     }, "copy a link to this page");
+    btn("copy citation", function () {
+      var accessed = new Date().toISOString().slice(0, 10);
+      var citation = 'Palimpsest. "' + meta.title + '." Palimpsest, accessed ' +
+        accessed + ". " + meta.link;
+      navigator.clipboard.writeText(citation)
+        .then(function () { say("citation copied"); }, function () { say("copy blocked"); });
+    }, "copy a citation with the canonical URL and access date");
     row.appendChild(note);
     h1.parentNode.insertBefore(row, h1.nextSibling);
   }

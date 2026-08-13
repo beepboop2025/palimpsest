@@ -39,6 +39,7 @@ PAGES = {
     "china-brief.html": "/china-brief.html",
     "readings/generative-firewall-index.html": "/readings/generative-firewall-index.html",
     "for-researchers.html": "/for-researchers.html",
+    "guides/telegram-scam-message-checker/index.html": "/guides/telegram-scam-message-checker/",
     "developers.html": "/developers.html",
     "evidence-capsules.html": "/evidence-capsules.html",
     "support.html": "/support.html",
