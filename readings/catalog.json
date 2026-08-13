@@ -1,6 +1,6 @@
 {
   "schema": "palimpsest-data-catalog/v1",
-  "generated_at": "2026-08-13T08:01:42.787688Z",
+  "generated_at": "2026-08-13T08:12:59.050841Z",
   "id": "palimpsest-evidence-atlas",
   "name": "Palimpsest Evidence Atlas",
   "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
@@ -12,10 +12,10 @@
     "datasets": 48,
     "states": {
       "disabled": 1,
-      "fresh": 34,
+      "fresh": 36,
       "gated": 5,
       "private-node": 1,
-      "stale": 5,
+      "stale": 3,
       "warming": 2
     },
     "layers": {
@@ -28,8 +28,8 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 3691130,
-    "history_rows": 3626
+    "published_bytes": 3691540,
+    "history_rows": 3642
   },
   "datasets": [
     {
@@ -62,7 +62,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T07:54:08.761583Z",
-        "age_seconds": 454,
+        "age_seconds": 1130,
         "counts": {
           "n_observations": 80,
           "n_terms": 190
@@ -110,7 +110,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T07:57:43.304586Z",
-        "age_seconds": 239,
+        "age_seconds": 915,
         "counts": {
           "n_measurements": 246897,
           "n_tests_with_data": 6
@@ -212,14 +212,14 @@
       },
       "artifacts": {
         "evidence_state": "gated",
-        "observed_at": "2026-08-13T03:11:37.569900Z",
-        "age_seconds": 17405,
+        "observed_at": "2026-08-13T08:02:47.542647Z",
+        "age_seconds": 611,
         "counts": {
           "panel_size": 11,
           "n_censored_answered": 5,
           "n_censored_blocked": 5
         },
-        "latest_bytes": 69879,
+        "latest_bytes": 69367,
         "history_bytes": 3471,
         "history_rows": 23,
         "latest_available": true,
@@ -266,7 +266,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T02:23:22.376280Z",
-        "age_seconds": 20300,
+        "age_seconds": 20976,
         "counts": {
           "vantages_probed": 216,
           "vantages_injecting": 20,
@@ -362,7 +362,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T07:59:38.331633Z",
-        "age_seconds": 124,
+        "age_seconds": 800,
         "counts": {},
         "latest_bytes": 4264,
         "history_bytes": 6846,
@@ -407,7 +407,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T07:00:39.828726Z",
-        "age_seconds": 3662,
+        "age_seconds": 4339,
         "counts": {
           "series_points": 70,
           "n_events": 0
@@ -452,7 +452,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T07:58:56Z",
-        "age_seconds": 166,
+        "age_seconds": 843,
         "counts": {},
         "latest_bytes": 668,
         "history_bytes": 14200,
@@ -498,7 +498,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T03:12:03.526912Z",
-        "age_seconds": 17379,
+        "age_seconds": 18055,
         "counts": {
           "n_recent": 5,
           "n_blocking": 1,
@@ -546,7 +546,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T06:45:26Z",
-        "age_seconds": 4576,
+        "age_seconds": 5253,
         "counts": {
           "history_days": 409
         },
@@ -589,8 +589,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:15:57.868862Z",
-        "age_seconds": 17144,
+        "observed_at": "2026-08-13T08:06:24.674488Z",
+        "age_seconds": 394,
         "counts": {},
         "latest_bytes": 2091,
         "history_bytes": 517,
@@ -633,16 +633,16 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-13T03:12:00Z",
-        "age_seconds": 17382,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-13T08:03:14Z",
+        "age_seconds": 585,
         "counts": {
-          "board_entries": 2432,
+          "board_entries": 2497,
           "ddti_terms_joined": 0
         },
-        "latest_bytes": 7007,
-        "history_bytes": 27112,
-        "history_rows": 98,
+        "latest_bytes": 7048,
+        "history_bytes": 27396,
+        "history_rows": 99,
         "latest_available": true,
         "history_available": true
       },
@@ -685,17 +685,17 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:18:18.366988Z",
-        "age_seconds": 17004,
+        "observed_at": "2026-08-13T08:08:46.339796Z",
+        "age_seconds": 252,
         "counts": {
           "n_terms": 25,
-          "n_with_global_data": 5,
+          "n_with_global_data": 4,
           "n_blackout": 0,
-          "n_containment": 5
+          "n_containment": 4
         },
-        "latest_bytes": 6740,
-        "history_bytes": 23887,
-        "history_rows": 150,
+        "latest_bytes": 6738,
+        "history_bytes": 24046,
+        "history_rows": 151,
         "latest_available": true,
         "history_available": true
       },
@@ -738,7 +738,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T03:11:59.644740Z",
-        "age_seconds": 17383,
+        "age_seconds": 18059,
         "counts": {
           "n_watched": 7,
           "n_present": 7,
@@ -793,7 +793,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T08:01:40.416612Z",
-        "age_seconds": 2,
+        "age_seconds": 678,
         "counts": {
           "n_sources": 5,
           "n_changed": 0,
@@ -845,7 +845,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T03:05:35.839499Z",
-        "age_seconds": 17766,
+        "age_seconds": 18443,
         "counts": {
           "n_watched": 4,
           "n_deletions": 0,
@@ -896,8 +896,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:21:23.002753Z",
-        "age_seconds": 16819,
+        "observed_at": "2026-08-13T08:10:17.247082Z",
+        "age_seconds": 161,
         "counts": {
           "panel_size": 12,
           "n_tracked": 10,
@@ -946,7 +946,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-13T06:58:14.789453Z",
-        "age_seconds": 3807,
+        "age_seconds": 4484,
         "counts": {
           "country.total_tested": 108993
         },
@@ -993,7 +993,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-10T05:52:27.182828Z",
-        "age_seconds": 266955,
+        "age_seconds": 267631,
         "counts": {
           "n_additions": 503,
           "n_gazetteer_proposals": 17
@@ -1042,7 +1042,7 @@
       "artifacts": {
         "evidence_state": "disabled",
         "observed_at": "2026-07-30T20:31:16.856256Z",
-        "age_seconds": 1164625,
+        "age_seconds": 1165302,
         "counts": {
           "n_entities": 10,
           "n_comparable": 0,
@@ -1094,7 +1094,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-12T11:05:54Z",
-        "age_seconds": 75348,
+        "age_seconds": 76025,
         "counts": {
           "n_series_watched": 7,
           "n_series_reporting": 7
@@ -1141,13 +1141,13 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:12:37Z",
-        "age_seconds": 17345,
+        "observed_at": "2026-08-13T08:03:27Z",
+        "age_seconds": 572,
         "counts": {
           "history_days": 43
         },
-        "latest_bytes": 742,
-        "history_bytes": 12668,
+        "latest_bytes": 741,
+        "history_bytes": 12761,
         "history_rows": 43,
         "latest_available": true,
         "history_available": true
@@ -1192,7 +1192,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-12T17:56:10Z",
-        "age_seconds": 50732,
+        "age_seconds": 51409,
         "counts": {
           "history_days": 8
         },
@@ -1242,7 +1242,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-05T09:10:30Z",
-        "age_seconds": 687072,
+        "age_seconds": 687749,
         "counts": {
           "n_components_present": 3,
           "n_components_required": 3,
@@ -1291,7 +1291,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-12T14:33:58Z",
-        "age_seconds": 62864,
+        "age_seconds": 63541,
         "counts": {
           "history_days": 152
         },
@@ -1340,7 +1340,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-11T19:34:59Z",
-        "age_seconds": 131203,
+        "age_seconds": 131880,
         "counts": {
           "n_topics_considered": 25,
           "n_scored": 0,
@@ -1390,16 +1390,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:13:45.528083Z",
-        "age_seconds": 17277,
+        "observed_at": "2026-08-13T08:04:52.911515Z",
+        "age_seconds": 486,
         "counts": {
           "n_signals": 15,
-          "n_reporting": 12,
+          "n_reporting": 13,
           "n_open": 14
         },
-        "latest_bytes": 6577,
-        "history_bytes": 13967,
-        "history_rows": 30,
+        "latest_bytes": 6629,
+        "history_bytes": 14484,
+        "history_rows": 31,
         "latest_available": true,
         "history_available": true
       },
@@ -1437,12 +1437,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:17:37.307735Z",
-        "age_seconds": 17045,
+        "observed_at": "2026-08-13T08:07:23.102851Z",
+        "age_seconds": 335,
         "counts": {},
-        "latest_bytes": 10495,
-        "history_bytes": 3869,
-        "history_rows": 22,
+        "latest_bytes": 10684,
+        "history_bytes": 4073,
+        "history_rows": 23,
         "latest_available": true,
         "history_available": true
       },
@@ -1480,10 +1480,10 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:17:37.409114Z",
-        "age_seconds": 17045,
+        "observed_at": "2026-08-13T08:07:23.205533Z",
+        "age_seconds": 335,
         "counts": {},
-        "latest_bytes": 4857,
+        "latest_bytes": 4856,
         "history_bytes": 4471,
         "history_rows": 14,
         "latest_available": true,
@@ -1526,8 +1526,8 @@
       },
       "artifacts": {
         "evidence_state": "warming",
-        "observed_at": "2026-08-13T03:17:37.551444Z",
-        "age_seconds": 17045,
+        "observed_at": "2026-08-13T08:07:23.358737Z",
+        "age_seconds": 335,
         "counts": {
           "n_pairs_tested": 4,
           "n_confirmed": 0
@@ -1576,16 +1576,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T03:17:37.461303Z",
-        "age_seconds": 17045,
+        "observed_at": "2026-08-13T08:07:23.263814Z",
+        "age_seconds": 335,
         "counts": {
-          "n_forecasts": 1309,
+          "n_forecasts": 1316,
           "n_signals_scored": 8,
           "n_beating_baseline": 4
         },
-        "latest_bytes": 13083,
-        "history_bytes": 59669,
-        "history_rows": 70,
+        "latest_bytes": 13085,
+        "history_bytes": 60585,
+        "history_rows": 71,
         "latest_available": true,
         "history_available": true
       },
@@ -1624,14 +1624,14 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T04:01:41.120961Z",
-        "age_seconds": 14401,
+        "observed_at": "2026-08-13T08:11:19.639727Z",
+        "age_seconds": 99,
         "counts": {
           "layers_contributing": 2
         },
-        "latest_bytes": 3911,
-        "history_bytes": 36935,
-        "history_rows": 131,
+        "latest_bytes": 4235,
+        "history_bytes": 37334,
+        "history_rows": 132,
         "latest_available": true,
         "history_available": true
       },
@@ -1670,12 +1670,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T06:09:41Z",
-        "age_seconds": 6721,
+        "observed_at": "2026-08-13T08:12:53Z",
+        "age_seconds": 6,
         "counts": {
           "n_stories": 33
         },
-        "latest_bytes": 71725,
+        "latest_bytes": 71723,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1720,7 +1720,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-12T16:13:51Z",
-        "age_seconds": 56871,
+        "age_seconds": 57548,
         "counts": {
           "n_items": 290,
           "n_events": 249,
@@ -1770,15 +1770,15 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-13T03:12:37Z",
-        "age_seconds": 17345,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-13T08:03:27Z",
+        "age_seconds": 572,
         "counts": {
           "n_metrics": 41,
           "coverage.registered_sources": 33,
           "coverage.observed_source_ids": 10
         },
-        "latest_bytes": 81492,
+        "latest_bytes": 81502,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1820,8 +1820,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T06:09:41Z",
-        "age_seconds": 6721,
+        "observed_at": "2026-08-13T08:12:53Z",
+        "age_seconds": 6,
         "counts": {
           "n_cases": 2
         },
@@ -1869,15 +1869,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T06:09:43Z",
-        "age_seconds": 6719,
+        "observed_at": "2026-08-13T08:12:55Z",
+        "age_seconds": 4,
         "counts": {
           "inputs": 8,
           "resources": 96,
           "dependency_groups": 68,
           "projects": 5
         },
-        "latest_bytes": 150194,
+        "latest_bytes": 150106,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1919,12 +1919,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T06:09:43Z",
-        "age_seconds": 6719,
+        "observed_at": "2026-08-13T08:12:55Z",
+        "age_seconds": 4,
         "counts": {
           "n_cases": 2
         },
-        "latest_bytes": 27328,
+        "latest_bytes": 27748,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1981,7 +1981,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-12T11:09:06Z",
-        "age_seconds": 75156,
+        "age_seconds": 75833,
         "counts": {
           "n_documents": 13,
           "n_vintages": 16,
@@ -2036,7 +2036,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-12T16:13:51Z",
-        "age_seconds": 56871,
+        "age_seconds": 57548,
         "counts": {
           "n_events": 249,
           "n_candidate_edges": 0,
@@ -2090,14 +2090,14 @@
       },
       "artifacts": {
         "evidence_state": "warming",
-        "observed_at": "2026-08-13T03:11:37Z",
-        "age_seconds": 17405,
+        "observed_at": "2026-08-13T08:02:47Z",
+        "age_seconds": 612,
         "counts": {
-          "n_rounds": 4,
+          "n_rounds": 5,
           "n_comparable_rounds": 0,
           "panel.target_count": 11
         },
-        "latest_bytes": 24416,
+        "latest_bytes": 29819,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2139,7 +2139,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-12T11:24:43Z",
-        "age_seconds": 74219,
+        "age_seconds": 74896,
         "counts": {
           "n_packages": 3,
           "n_records": 0
@@ -2193,8 +2193,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T06:09:41Z",
-        "age_seconds": 6721,
+        "observed_at": "2026-08-13T08:12:53Z",
+        "age_seconds": 6,
         "counts": {
           "summary.wire_events": 249,
           "summary.wire_eligible": 249,
@@ -2243,7 +2243,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-12T08:15:20.414341Z",
-        "age_seconds": 85582,
+        "age_seconds": 86258,
         "counts": {},
         "latest_bytes": 197021,
         "history_bytes": 128038,
@@ -2287,12 +2287,12 @@
       },
       "artifacts": {
         "evidence_state": "gated",
-        "observed_at": "2026-08-13T02:47:59.623887Z",
-        "age_seconds": 18823,
+        "observed_at": "2026-08-13T07:54:24.995124Z",
+        "age_seconds": 1114,
         "counts": {},
-        "latest_bytes": 70752,
-        "history_bytes": 65633,
-        "history_rows": 113,
+        "latest_bytes": 54567,
+        "history_bytes": 66801,
+        "history_rows": 114,
         "latest_available": true,
         "history_available": true
       },
@@ -2333,16 +2333,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T02:47:59.623887Z",
-        "age_seconds": 18823,
+        "observed_at": "2026-08-13T07:54:24.995124Z",
+        "age_seconds": 1114,
         "counts": {
-          "runs": 352,
+          "runs": 360,
           "models": 6,
           "problems": 0
         },
-        "latest_bytes": 5282,
-        "history_bytes": 240093,
-        "history_rows": 357,
+        "latest_bytes": 5278,
+        "history_bytes": 245611,
+        "history_rows": 365,
         "latest_available": true,
         "history_available": true
       },
@@ -2383,15 +2383,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-13T04:01:44.638583Z",
-        "age_seconds": 14398,
+        "observed_at": "2026-08-13T08:11:20.731129Z",
+        "age_seconds": 98,
         "counts": {
-          "wayback_snapshots": 2,
+          "wayback_snapshots": 3,
           "readings_problems": 0
         },
-        "latest_bytes": 693,
-        "history_bytes": 127615,
-        "history_rows": 122,
+        "latest_bytes": 795,
+        "history_bytes": 129019,
+        "history_rows": 123,
         "latest_available": true,
         "history_available": true
       },

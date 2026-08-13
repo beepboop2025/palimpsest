@@ -1,0 +1,75 @@
+{
+  "schema_version": "palimpsest-machine-evidence-capsule.v1",
+  "capsule_type": "redacted-aggregate-evidence",
+  "content_address": {
+    "algorithm": "sha256",
+    "scope": "original-input-bytes",
+    "sha256": "d684bf4aad2c026852f355cdd53b0f74b56a9238b158db1109c77483c7aec643"
+  },
+  "original_input": {
+    "artifact_id": "ooni-gfw-latest.json",
+    "generated_at": "2026-08-13T07:57:43Z",
+    "sha256": "d684bf4aad2c026852f355cdd53b0f74b56a9238b158db1109c77483c7aec643",
+    "integrity": "embedded-receipt-verified"
+  },
+  "citations": [
+    {
+      "evidence_id": "evidence-ooni-gfw",
+      "title": "OONI anomaly index",
+      "role": "support",
+      "source_class": "RESEARCH_DATASET",
+      "source_id": "ooni-gfw",
+      "selector": "json-pointer:/gfw_index;denominator-json-pointer:/n_completed_measurements",
+      "source_timestamp": "2026-08-13T07:57:43Z",
+      "independence_group": "publisher:ooni",
+      "upstream_groups": [
+        "publisher:ooni"
+      ],
+      "value": {
+        "type": "percent",
+        "value": 57.4
+      },
+      "denominator": {
+        "type": "aggregate-count",
+        "label": "completed measurements",
+        "value": 245148
+      },
+      "interpretation_limit": "OONI's anomaly index uses completed measurements across several test families; the separate total-measurement count also includes failed attempts. An anomaly is not a confirmed block and the probe/test mix is not China's population.",
+      "freshness": "fresh",
+      "rights": {
+        "redistribution": "ATTRIBUTION_REQUIRED",
+        "reuse": "derived_only",
+        "training": "prohibited"
+      },
+      "attribution": {
+        "attribution_required": true,
+        "providers": [
+          {
+            "name": "OONI",
+            "source_url": "https://api.ooni.io/",
+            "terms_url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+          }
+        ],
+        "upstream_groups": [
+          "publisher:ooni"
+        ],
+        "public_source_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+        "upstream_source_urls": [
+          "https://api.ooni.io/"
+        ],
+        "source_statement": "OONI aggregation API (api.ooni.io), probe_cc=CN",
+        "license": {
+          "name": "CC BY-NC-SA 4.0 source data",
+          "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "aggregate_only": true,
+    "raw_input_included": false,
+    "person_level_data_included": false,
+    "contact_data_included": false,
+    "ip_addresses_included": false
+  }
+}
