@@ -9,10 +9,12 @@ sources exits non-zero without touching the prior latest document or version led
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
 import re
+import stat
 import tempfile
 import unicodedata
 from datetime import datetime, timezone
@@ -37,6 +39,7 @@ STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
 MAX_LEDGER_RECORDS = 16384
 MAX_LEDGER_BYTES = 32 * 1024 * 1024
 MAX_PREVIOUS_BYTES = 64 * 1024 * 1024
+DEFAULT_LOCK_NAME = "newswire.lock"
 _EVENT_ID_RE = re.compile(r"^event-[0-9a-f]{24}$")
 _EVENT_VERSION_ID_RE = re.compile(r"^eventv-[0-9a-f]{24}$")
 _SOURCE_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,79}$")
@@ -257,7 +260,7 @@ def _write_status(
     receipt = {
         "schema_version": STATUS_SCHEMA,
         "attempted_at": attempted_at,
-        "completed_at": _utc_stamp(),
+        "completed_at": None if status == "running" else _utc_stamp(),
         "status": status,
         "fresh_sources": fresh_sources,
         "output_generated_at": output_generated_at,
@@ -287,6 +290,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="atomic per-attempt status receipt (required by the scheduled service)",
     )
+    parser.add_argument(
+        "--lock",
+        type=Path,
+        help="persistent exclusive attempt lock (required by the scheduled service)",
+    )
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument(
         "--now", help="fixed ISO-8601 clock for reproducible/offline runs"
@@ -296,10 +304,54 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    lock_descriptor: int | None = None
+    if args.lock is not None:
+        args.lock.parent.mkdir(parents=True, exist_ok=True)
+        lock_descriptor = os.open(
+            args.lock,
+            os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW,
+            0o600,
+        )
+        metadata = os.fstat(lock_descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_gid != os.getegid()
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+        ):
+            os.close(lock_descriptor)
+            raise ValueError("newswire attempt lock contract is invalid")
+        fcntl.flock(lock_descriptor, fcntl.LOCK_EX)
+
+    try:
+        return _main_locked(args)
+    finally:
+        if lock_descriptor is not None:
+            os.close(lock_descriptor)
+
+
+def _main_locked(args: argparse.Namespace) -> int:
+    """Run one complete attempt while the caller retains the exclusive lease."""
+
     attempted_at = _utc_stamp()
     previous: dict[str, Any] | None = None
     last_generated_at: str | None = None
     last_sha256: str | None = None
+
+    # Publish the in-flight state before reading or fetching any inputs.  The
+    # analysis timer must never mistake the prior successful receipt for the
+    # outcome of an attempt that is still able to replace the wire underneath
+    # its snapshot.
+    _write_status(
+        args.status,
+        attempted_at=attempted_at,
+        status="running",
+        fresh_sources=None,
+        output_generated_at=None,
+        output_sha256=None,
+        failure_class=None,
+    )
 
     try:
         now = _parse_now(args.now)

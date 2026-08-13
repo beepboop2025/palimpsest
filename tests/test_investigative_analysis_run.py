@@ -7,6 +7,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from core.analytical_pieces import validate_draft_set, validate_packet_set
 from core.investigative_candidates import canonical_json_bytes, validate_candidates
 from ops.investigative_analysis_runner import (
     DERIVED_LATEST,
@@ -108,6 +109,14 @@ def test_real_offline_cascade_is_complete_and_byte_replayable(tmp_path: Path) ->
         candidate = json.loads(candidate_raw)
         validate_candidates(candidate)
         assert candidate_raw == canonical_json_bytes(candidate)
+        packet_raw = (private / "analytical-packets-latest.json").read_bytes()
+        draft_raw = (private / "analytical-drafts-latest.json").read_bytes()
+        packets = json.loads(packet_raw)
+        drafts = json.loads(draft_raw)
+        validate_packet_set(packets)
+        validate_draft_set(packets, drafts)
+        assert packet_raw == canonical_json_bytes(packets)
+        assert draft_raw == canonical_json_bytes(drafts)
 
         run_manifest = json.loads(
             (work / "analysis-run-manifest.json").read_text(encoding="utf-8")
@@ -122,6 +131,8 @@ def test_real_offline_cascade_is_complete_and_byte_replayable(tmp_path: Path) ->
             for name in (*DERIVED_LATEST, "analysis-run-manifest.json")
         }
         artifacts["candidates-latest.json"] = candidate_raw
+        artifacts["analytical-packets-latest.json"] = packet_raw
+        artifacts["analytical-drafts-latest.json"] = draft_raw
         editions.append(artifacts)
 
     assert editions[0] == editions[1]

@@ -320,6 +320,9 @@ install -o root -g root -m 0444 \
   "$repo_root/core/investigative_candidates.py" \
   "$bundle_tmp/core/investigative_candidates.py"
 install -o root -g root -m 0444 \
+  "$repo_root/core/analytical_pieces.py" \
+  "$bundle_tmp/core/analytical_pieces.py"
+install -o root -g root -m 0444 \
   "$repo_root/core/investigative_container_contract.py" \
   "$bundle_tmp/core/investigative_container_contract.py"
 install -o root -g root -m 0444 \
@@ -334,6 +337,8 @@ verify_git_blob ops/investigative_analysis_broker.py \
 verify_git_blob core/__init__.py "$bundle_tmp/core/__init__.py"
 verify_git_blob core/investigative_candidates.py \
   "$bundle_tmp/core/investigative_candidates.py"
+verify_git_blob core/analytical_pieces.py \
+  "$bundle_tmp/core/analytical_pieces.py"
 verify_git_blob core/investigative_container_contract.py \
   "$bundle_tmp/core/investigative_container_contract.py"
 verify_git_blob ops/investigative-analysis/README.md "$bundle_tmp/README.md"
@@ -348,7 +353,8 @@ chmod 0444 "$bundle_tmp/IMAGE_ID"
 (
   cd "$bundle_tmp"
   sha256sum README.md REVISION IMAGE_ID core/__init__.py \
-    core/investigative_candidates.py core/investigative_container_contract.py \
+    core/investigative_candidates.py core/analytical_pieces.py \
+    core/investigative_container_contract.py \
     investigative_analysis_runner.py investigative_analysis_broker.py \
     verify-host-bundle.sh \
     >MANIFEST.sha256
@@ -382,7 +388,8 @@ if [[ -e "$bundle_final" ]]; then
   [[ "$(stat -c '%u:%g:%a' "$bundle_final/core")" == "0:0:755" ]] \
     || die "existing bundle core ownership or mode is unsafe"
   for bundle_file in README.md REVISION IMAGE_ID MANIFEST.sha256 core/__init__.py \
-    core/investigative_candidates.py core/investigative_container_contract.py \
+    core/investigative_candidates.py core/analytical_pieces.py \
+    core/investigative_container_contract.py \
     investigative_analysis_runner.py investigative_analysis_broker.py \
     verify-host-bundle.sh; do
     [[ -f "$bundle_final/$bundle_file" && ! -L "$bundle_final/$bundle_file" ]] \

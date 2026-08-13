@@ -172,6 +172,7 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
     assert "org.opencontainers.image.revision" in source
     assert 'bundle_root="/usr/local/libexec/palimpsest-analysis"' in source
     assert "core/investigative_candidates.py" in source
+    assert "core/analytical_pieces.py" in source
     assert 'show "$revision:$repository_path"' in source
     assert "safe.directory=$repo_root" in source
     assert "MANIFEST.sha256" in source

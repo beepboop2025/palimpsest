@@ -33,6 +33,9 @@ jobs:
       - name: Pull Censored Planet CN data and publish the signal
         run: python -m scripts.censored_planet_pull
 
+      - name: Validate downstream selectors without publishing derived output
+        run: python -B -m scripts.validate_investigation_dependencies
+
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
@@ -53,5 +56,6 @@ jobs:
             echo "no change"
           else
             git commit -m "data: Censored Planet signal refresh ($(date -u +%FT%TZ)) [skip ci]"
-            python scripts/push_data_commit.py
+            python scripts/push_data_commit.py \
+              --check-module scripts.validate_investigation_dependencies
           fi

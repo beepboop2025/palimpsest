@@ -33,6 +33,9 @@ jobs:
       - name: Fuse the censorship vantages
         run: python -m scripts.vantage_fusion_pull
 
+      - name: Validate downstream selectors without publishing derived output
+        run: python -B -m scripts.validate_investigation_dependencies
+
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
@@ -56,6 +59,7 @@ jobs:
           else
             git commit -m "data: vantage fusion refresh ($(date -u +%FT%TZ)) [skip ci]"
             python scripts/push_data_commit.py \
+              --check-module scripts.validate_investigation_dependencies \
               --rebuild-module scripts.vantage_fusion_pull \
               --stage readings/vantage-fusion-latest.json \
               --stage readings/vantage-fusion-history.jsonl

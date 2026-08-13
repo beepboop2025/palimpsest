@@ -1,5 +1,6 @@
 """Safety and attempt-receipt contract for the Hetzner evidence-wire job."""
 
+import fcntl
 import hashlib
 import json
 from pathlib import Path
@@ -29,6 +30,7 @@ def test_node_newswire_is_bounded_unprivileged_and_state_separated() -> None:
     assert "--output /var/lib/palimpsest/newswire/newswire-latest.json" in unit
     assert "--ledger /var/lib/palimpsest/newswire/newswire-versions.jsonl" in unit
     assert "--status /var/lib/palimpsest/newswire/newswire-status.json" in unit
+    assert "--lock /var/lib/palimpsest/newswire/newswire.lock" in unit
     assert "Restart=on-failure" in unit
     assert "RestartSec=2m" in unit
     assert "StartLimitIntervalSec=10m" in unit
@@ -43,6 +45,101 @@ def test_node_newswire_has_a_non_overlapping_half_hour_timer() -> None:
     assert "FixedRandomDelay=true" in timer
     assert "Persistent=true" in timer
     assert "Unit=palimpsest-evidence-wire.service" in timer
+
+
+def test_attempt_is_marked_running_before_collection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    status = tmp_path / "newswire-status.json"
+    document = {
+        "generated_at": "2026-08-13T00:00:00Z",
+        "n_items": 0,
+        "n_events": 0,
+        "events": [],
+        "coverage": {
+            "registry_sources": 1,
+            "successful_sources": 1,
+            "counts": {"success": 1},
+            "status": "healthy",
+        },
+    }
+    observed_running: dict[str, object] = {}
+
+    monkeypatch.setattr(pull, "load_source_registry", lambda _path: object())
+
+    def collect(*_args, **_kwargs):
+        observed_running.update(json.loads(status.read_text(encoding="utf-8")))
+        return document
+
+    monkeypatch.setattr(pull, "collect_newswire", collect)
+
+    assert (
+        pull.main(
+            [
+                "--config",
+                str(tmp_path / "registry.json"),
+                "--output",
+                str(output),
+                "--ledger",
+                str(ledger),
+                "--status",
+                str(status),
+            ]
+        )
+        == 0
+    )
+
+    assert set(observed_running) == {
+        "schema_version",
+        "attempted_at",
+        "completed_at",
+        "status",
+        "fresh_sources",
+        "output_generated_at",
+        "output_sha256",
+        "failure_class",
+    }
+    assert observed_running["schema_version"] == pull.STATUS_SCHEMA
+    assert observed_running["status"] == "running"
+    assert observed_running["completed_at"] is None
+    assert observed_running["fresh_sources"] is None
+    assert observed_running["output_generated_at"] is None
+    assert observed_running["output_sha256"] is None
+    assert observed_running["failure_class"] is None
+
+    terminal = json.loads(status.read_text(encoding="utf-8"))
+    assert terminal["attempted_at"] == observed_running["attempted_at"]
+    assert terminal["status"] == "success"
+    assert terminal["completed_at"] is not None
+
+
+def test_complete_attempt_runs_under_persistent_exclusive_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lock = tmp_path / "newswire.lock"
+    events: list[tuple[int, int]] = []
+
+    def locked_attempt(_args) -> int:
+        contender = lock.open("rb")
+        try:
+            with pytest.raises(BlockingIOError):
+                fcntl.flock(contender.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
+        finally:
+            contender.close()
+        return 17
+
+    monkeypatch.setattr(pull, "_main_locked", locked_attempt)
+
+    assert pull.main(["--lock", str(lock)]) == 17
+    metadata = lock.stat()
+    assert metadata.st_nlink == 1
+    assert metadata.st_mode & 0o777 == 0o600
+    with lock.open("rb") as contender:
+        fcntl.flock(contender.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
+        events.append((contender.fileno(), fcntl.LOCK_SH))
+    assert events
 
 
 def test_zero_fresh_sources_preserves_last_good_and_records_failure(

@@ -60,6 +60,10 @@ jobs:
         if: steps.active_probe_owner.outputs.inside_view == 'github'
         run: python -m scripts.inside_view_pull
 
+      - name: Validate downstream selectors without publishing derived output
+        if: steps.active_probe_owner.outputs.inside_view == 'github'
+        run: python -B -m scripts.validate_investigation_dependencies
+
       - name: Read the public surface before pushing it
         if: steps.active_probe_owner.outputs.inside_view == 'github'
         # This repository is served in full by Pages, so the push below is the publication
@@ -82,5 +86,6 @@ jobs:
             echo "no change"
           else
             git commit -m "data: Inside View refresh ($(date -u +%FT%TZ)) [skip ci]"
-            python scripts/push_data_commit.py
+            python scripts/push_data_commit.py \
+              --check-module scripts.validate_investigation_dependencies
           fi

@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+from core.analytical_pieces import build_packet_set, build_template_draft_set
 from core.investigative_candidates import (
     atomic_write,
     build_candidates,
@@ -272,6 +273,20 @@ def run(
     atomic_write(private_dir / "candidates-latest.json", canonical_json_bytes(document))
     completed.append("candidate_edition")
 
+    # Models never receive the source lake or choose their own evidence.  This
+    # compact, content-addressed projection is the only supported drafting input.
+    packets = build_packet_set(document)
+    drafts = build_template_draft_set(packets)
+    atomic_write(
+        private_dir / "analytical-packets-latest.json",
+        canonical_json_bytes(packets),
+    )
+    atomic_write(
+        private_dir / "analytical-drafts-latest.json",
+        canonical_json_bytes(drafts),
+    )
+    completed.extend(("analytical_packets", "analytical_template_drafts"))
+
     outputs = []
     for name in DERIVED_LATEST:
         path = readings_dir / name
@@ -285,7 +300,7 @@ def run(
             }
         )
     manifest = {
-        "schema_version": "palimpsest-investigative-analysis-run.v1",
+        "schema_version": "palimpsest-investigative-analysis-run.v2",
         "completed_at": decision_text,
         "input_commit": input_commit,
         "decision_clock": decision_text,
@@ -295,6 +310,10 @@ def run(
         "candidate_edition_id": document["edition_id"],
         "candidate_input_fingerprint": document["input_fingerprint"],
         "candidate_count": document["n_candidates"],
+        "analytical_packet_edition_id": packets["edition_id"],
+        "analytical_packet_count": packets["n_packets"],
+        "analytical_draft_edition_id": drafts["edition_id"],
+        "analytical_draft_count": drafts["n_drafts"],
         "outputs": outputs,
     }
     _write_manifest(readings_dir / "analysis-run-manifest.json", manifest)
@@ -322,7 +341,8 @@ def main(argv: Iterable[str] | None = None) -> int:
     print(
         "investigative analysis -> "
         f"{manifest['candidate_edition_id']} · "
-        f"{manifest['candidate_count']} staged candidates"
+        f"{manifest['candidate_count']} staged candidates · "
+        f"{manifest['analytical_draft_count']} private working drafts"
     )
     return 0
 

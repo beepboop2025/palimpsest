@@ -30,21 +30,32 @@ require_absolute_nonroot_path() {
 
 repo_root="${PALIMPSEST_ROOT:-/home/deploy/palimpsest}"
 state_root="${PALIMPSEST_STATE_ROOT:-}"
+analysis_root="${PALIMPSEST_ANALYSIS_ROOT:-/var/lib/palimpsest-analysis}"
+newswire_root="${PALIMPSEST_NEWSWIRE_ROOT:-/var/lib/palimpsest/newswire}"
 backup_root="${PALIMPSEST_BACKUP_DIR:-/home/deploy/backups/palimpsest}"
 retention_days="${PALIMPSEST_BACKUP_RETENTION_DAYS:-14}"
 minimum_free_mb="${PALIMPSEST_BACKUP_MIN_FREE_MB:-1024}"
 copy_root="${PALIMPSEST_BACKUP_COPY_DIR:-}"
 copy_hook="${PALIMPSEST_BACKUP_HOOK:-}"
+offsite_encrypted="${PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED:-0}"
 compose_project="${PALIMPSEST_COMPOSE_PROJECT:-palimpsest}"
 artifact_service="${PALIMPSEST_BACKUP_ARTIFACT_SERVICE:-worker}"
 
 require_absolute_nonroot_path PALIMPSEST_ROOT "$repo_root"
+require_absolute_nonroot_path PALIMPSEST_ANALYSIS_ROOT "$analysis_root"
+require_absolute_nonroot_path PALIMPSEST_NEWSWIRE_ROOT "$newswire_root"
 require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 [[ "$retention_days" =~ ^[0-9]+$ ]] || die "retention days must be an integer"
 (( retention_days >= 1 && retention_days <= 3650 )) || \
   die "retention days must be between 1 and 3650"
 [[ "$minimum_free_mb" =~ ^[0-9]+$ ]] || die "minimum free MB must be an integer"
 (( minimum_free_mb >= 64 )) || die "minimum free MB must be at least 64"
+[[ "$offsite_encrypted" =~ ^[01]$ ]] || \
+  die "PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED must be 0 or 1"
+if [[ -n "$copy_root" || -n "$copy_hook" ]]; then
+  [[ "$offsite_encrypted" == 1 ]] || \
+    die "off-host backup requires PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1"
+fi
 [[ "$compose_project" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
   die "unsafe Compose project name: $compose_project"
 [[ "$artifact_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
@@ -65,6 +76,25 @@ require_absolute_nonroot_path PALIMPSEST_STATE_ROOT "$state_root"
 [[ -d "$state_root" ]] || die "state root does not exist: $state_root"
 state_root="$(cd "$state_root" && pwd -P)"
 require_absolute_nonroot_path PALIMPSEST_STATE_ROOT "$state_root"
+[[ -d "$analysis_root" && ! -L "$analysis_root" ]] || \
+  die "analysis root is missing or is not a real directory: $analysis_root"
+analysis_root="$(cd "$analysis_root" && pwd -P)"
+require_absolute_nonroot_path PALIMPSEST_ANALYSIS_ROOT "$analysis_root"
+for analysis_subtree in runs private; do
+  [[ -d "$analysis_root/$analysis_subtree" && \
+      ! -L "$analysis_root/$analysis_subtree" ]] || \
+    die "analysis $analysis_subtree directory is missing or unsafe"
+done
+[[ -d "$newswire_root" && ! -L "$newswire_root" ]] || \
+  die "newswire root is missing or is not a real directory: $newswire_root"
+newswire_root="$(cd "$newswire_root" && pwd -P)"
+require_absolute_nonroot_path PALIMPSEST_NEWSWIRE_ROOT "$newswire_root"
+for newswire_file in \
+  newswire-latest.json newswire-versions.jsonl newswire-status.json newswire.lock; do
+  [[ -f "$newswire_root/$newswire_file" && \
+      ! -L "$newswire_root/$newswire_file" ]] || \
+    die "newswire recovery artifact is missing or unsafe: $newswire_file"
+done
 compose_file="$repo_root/ops/docker/docker-compose.prod.yml"
 compose_env="$repo_root/ops/docker/.env"
 [[ -r "$compose_file" ]] || die "Compose file is not readable: $compose_file"
@@ -81,6 +111,28 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 [[ "$backup_root" != "$state_root" ]] || die "backup directory cannot equal the state root"
 [[ "$backup_root/" != "$state_root/"* && "$state_root/" != "$backup_root/"* ]] || \
   die "backup directory and state root must not contain one another"
+[[ "$backup_root" != "$analysis_root" ]] || \
+  die "backup directory cannot equal the analysis root"
+[[ "$backup_root/" != "$analysis_root/"* && \
+    "$analysis_root/" != "$backup_root/"* ]] || \
+  die "backup directory and analysis root must not contain one another"
+[[ "$backup_root" != "$newswire_root" ]] || \
+  die "backup directory cannot equal the newswire root"
+[[ "$backup_root/" != "$newswire_root/"* && \
+    "$newswire_root/" != "$backup_root/"* ]] || \
+  die "backup directory and newswire root must not contain one another"
+[[ "$state_root" != "$analysis_root" ]] || \
+  die "state root cannot equal the analysis root"
+[[ "$state_root/" != "$analysis_root/"* && \
+    "$analysis_root/" != "$state_root/"* ]] || \
+  die "state root and analysis root must not contain one another"
+[[ "$newswire_root" != "$state_root" && "$newswire_root" != "$analysis_root" ]] || \
+  die "newswire root must be separate from state and analysis roots"
+[[ "$state_root/" != "$newswire_root/"* && \
+    "$newswire_root/" != "$state_root/"* && \
+    "$analysis_root/" != "$newswire_root/"* && \
+    "$newswire_root/" != "$analysis_root/"* ]] || \
+  die "newswire root must not contain or be contained by another restore root"
 
 exec 9>"$backup_root/.backup.lock"
 flock -n 9 || die "another backup is already running"
@@ -178,19 +230,22 @@ log "validating the PostgreSQL archive with pg_restore --list"
   <"$staging_dir/postgres.dump" >"$staging_dir/postgres.list"
 [[ -s "$staging_dir/postgres.list" ]] || die "pg_restore produced an empty listing"
 
-log "archiving readings/ and data/"
+log "archiving readings/, data/, evidence wire, and private analysis state"
 # Use the exact content-addressed image from the inspected worker, but do not
 # execute inside that live process. The one-shot archive container has no
 # network, a read-only root and source mounts, and only CAP_DAC_READ_SEARCH so
-# it can read every producer-owned mode-0600 artifact without mutating it.
+# it can read every producer-owned mode-0600 artifact without mutating it. Its
+# fixed helper holds a shared cascade lease only while it reads analytical state.
 docker run --rm --pull never --network none --read-only --log-driver none \
   --security-opt no-new-privileges:true --cap-drop ALL \
   --cap-add DAC_READ_SEARCH --user 0:0 --pids-limit 64 \
   --memory 512m --memory-swap 512m --cpus 1.0 \
   --mount "type=bind,src=$state_root/readings,dst=/source/readings,readonly" \
   --mount "type=bind,src=$state_root/data,dst=/source/data,readonly" \
-  --entrypoint tar "$artifact_image" --create --gzip --numeric-owner --file - \
-  --directory /source -- readings data >"$staging_dir/artifacts.tar.gz"
+  --mount "type=bind,src=$analysis_root,dst=/source/analysis,readonly" \
+  --mount "type=bind,src=$newswire_root,dst=/source/newswire,readonly" \
+  --entrypoint /usr/local/bin/python3 "$artifact_image" -I -B \
+  /app/scripts/palimpsest_backup_archive.py >"$staging_dir/artifacts.tar.gz"
 tar --list --gzip --file "$staging_dir/artifacts.tar.gz" \
   >"$staging_dir/artifacts.list"
 [[ -s "$staging_dir/artifacts.list" ]] || die "artifact archive listing is empty"
@@ -202,12 +257,13 @@ postgres_version="$(
     2>/dev/null || printf 'unknown'
 )"
 {
-  printf 'format_version=2\n'
+  printf 'format_version=3\n'
   printf 'snapshot_id=%s\n' "$snapshot_id"
   printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf 'host=%s\n' "$(hostname)"
   printf 'compose_project=%s\n' "$compose_project"
   printf 'postgres_version=%s\n' "$postgres_version"
+  printf 'artifact_roots=readings,data,newswire,analysis\n'
   printf 'contents=postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list\n'
 } >"$staging_dir/MANIFEST.txt"
 

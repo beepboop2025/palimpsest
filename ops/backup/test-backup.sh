@@ -19,6 +19,8 @@ fail() {
 
 repo="$fixture_root/repo"
 state_root="$fixture_root/state"
+analysis_root="$fixture_root/analysis"
+newswire_root="$fixture_root/newswire"
 backup_root="$fixture_root/backups"
 failed_root="$fixture_root/failed-backups"
 offsite_root="$fixture_root/offsite"
@@ -26,13 +28,40 @@ fake_bin="$fixture_root/bin"
 fake_container="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 fake_image="sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
 mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
+  "$state_root/data/evidence-documents" \
+  "$analysis_root/private" \
+  "$analysis_root/runs/run-20260813T010203Z-0123456789ab/private" \
+  "$newswire_root" \
   "$backup_root" "$failed_root" "$offsite_root" "$fake_bin"
+# Match the canonical path the backup resolves before it constructs Docker
+# bind mounts (TMPDIR may carry a harmless trailing slash on some runners).
+state_root="$(cd "$state_root" && pwd -P)"
+analysis_root="$(cd "$analysis_root" && pwd -P)"
+newswire_root="$(cd "$newswire_root" && pwd -P)"
 
 printf 'services: {}\n' >"$repo/ops/docker/docker-compose.prod.yml"
 printf 'POSTGRES_USER=palimpsest\nPOSTGRES_DB=palimpsest\n' \
   >"$repo/ops/docker/.env"
 printf '{"status":"ok"}\n' >"$state_root/readings/probe.json"
 printf 'immutable raw sample\n' >"$state_root/data/raw/sample.txt"
+printf 'private evidence sample\n' \
+  >"$state_root/data/evidence-documents/private.json"
+chmod 0600 "$state_root/data/evidence-documents/private.json"
+private_state_payload='private-analysis-state-do-not-log-7f839a'
+immutable_run_payload='immutable-analysis-run-do-not-log-a25c19'
+printf '%s\n' "$private_state_payload" >"$analysis_root/private/state.json"
+printf '%s\n' "$immutable_run_payload" \
+  >"$analysis_root/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json"
+printf 'analysis-lock-fixture\n' >"$analysis_root/private/cascade.lock"
+chmod 0600 "$analysis_root/private/cascade.lock" \
+  "$analysis_root/private/state.json" \
+  "$analysis_root/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json"
+printf '{"generated_at":"2026-08-13T01:02:03Z"}\n' \
+  >"$newswire_root/newswire-latest.json"
+printf '{"event_id":"fixture"}\n' >"$newswire_root/newswire-versions.jsonl"
+printf '{"status":"success"}\n' >"$newswire_root/newswire-status.json"
+printf 'newswire-lock-fixture\n' >"$newswire_root/newswire.lock"
+chmod 0600 "$newswire_root/newswire.lock"
 
 # These single-quoted strings are source code for the fake executable; their
 # variables must expand when that executable runs, not while this test writes it.
@@ -54,10 +83,22 @@ printf '%s\n' \
   '  printf "16.test\n"' \
   'elif [[ "$joined" == *" run --rm --pull never --network none "* ]]; then' \
   '  [[ "$joined" == *" --log-driver none "* ]] || exit 49' \
+  '  [[ "$joined" == *" --read-only "* ]] || exit 50' \
+  '  [[ "$joined" == *" --cap-drop ALL "* ]] || exit 51' \
   '  [[ "$joined" == *" --cap-add DAC_READ_SEARCH "* ]] || exit 46' \
-  '  [[ "$joined" == *" $FAKE_IMAGE_ID --create "* ]] || exit 47' \
-  '  [[ "$joined" == *" --numeric-owner "* ]] || exit 48' \
-  '  exec tar --create --gzip --file - --directory "$FAKE_STATE_ROOT" -- readings data' \
+  '  [[ "$joined" == *" --user 0:0 "* ]] || exit 52' \
+  '  [[ "$joined" == *"src=$FAKE_STATE_ROOT/readings,dst=/source/readings,readonly"* ]] || exit 53' \
+  '  [[ "$joined" == *"src=$FAKE_STATE_ROOT/data,dst=/source/data,readonly"* ]] || exit 54' \
+  '  [[ "$joined" == *"src=$FAKE_ANALYSIS_ROOT,dst=/source/analysis,readonly"* ]] || exit 55' \
+  '  [[ "$joined" == *"src=$FAKE_NEWSWIRE_ROOT,dst=/source/newswire,readonly"* ]] || exit 56' \
+  '  [[ "$joined" == *" --entrypoint /usr/local/bin/python3 $FAKE_IMAGE_ID -I -B /app/scripts/palimpsest_backup_archive.py "* ]] || exit 47' \
+  '  archive_fixture="$(mktemp -d)"' \
+  '  trap '\''rm -rf -- "$archive_fixture"'\'' EXIT' \
+  '  cp -a "$FAKE_STATE_ROOT/readings" "$archive_fixture/readings"' \
+  '  cp -a "$FAKE_STATE_ROOT/data" "$archive_fixture/data"' \
+  '  cp -a "$FAKE_ANALYSIS_ROOT" "$archive_fixture/analysis"' \
+  '  cp -a "$FAKE_NEWSWIRE_ROOT" "$archive_fixture/newswire"' \
+  '  tar --create --gzip --file - --directory "$archive_fixture" analysis readings data newswire' \
   'else' \
   '  printf "unexpected fake docker invocation: %s\n" "$*" >&2' \
   '  exit 43' \
@@ -95,16 +136,21 @@ common_env=(
   "PATH=$fake_bin:$PATH"
   "PALIMPSEST_ROOT=$repo"
   "PALIMPSEST_STATE_ROOT=$state_root"
+  "PALIMPSEST_ANALYSIS_ROOT=$analysis_root"
+  "PALIMPSEST_NEWSWIRE_ROOT=$newswire_root"
   "PALIMPSEST_BACKUP_RETENTION_DAYS=14"
   "PALIMPSEST_BACKUP_MIN_FREE_MB=64"
   "FAKE_CONTAINER_ID=$fake_container"
   "FAKE_IMAGE_ID=$fake_image"
   "FAKE_STATE_ROOT=$state_root"
+  "FAKE_ANALYSIS_ROOT=$analysis_root"
+  "FAKE_NEWSWIRE_ROOT=$newswire_root"
 )
 
 env "${common_env[@]}" \
   PALIMPSEST_BACKUP_DIR="$backup_root" \
   PALIMPSEST_BACKUP_COPY_DIR="$offsite_root" \
+  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1 \
   "$backup_script"
 
 snapshot="$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name '20*Z' -print | head -1)"
@@ -116,10 +162,80 @@ tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
   grep -q '^readings/probe.json$' || fail "readings artifact is missing"
 tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
   grep -q '^data/raw/sample.txt$' || fail "data artifact is missing"
+tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
+  grep -q '^data/evidence-documents/private.json$' || \
+  fail "private evidence artifact is missing"
+private_payload="$(
+  tar --extract --gzip --to-stdout --file "$snapshot/artifacts.tar.gz" \
+    data/evidence-documents/private.json
+)"
+[[ "$private_payload" == "private evidence sample" ]] || \
+  fail "private evidence artifact is unreadable"
+for analysis_member in \
+  analysis/private/cascade.lock \
+  analysis/private/state.json \
+  analysis/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json; do
+  tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
+    grep -q "^${analysis_member}$" || \
+    fail "private analysis artifact is missing: $analysis_member"
+done
+for newswire_member in \
+  newswire/newswire-latest.json \
+  newswire/newswire-versions.jsonl \
+  newswire/newswire-status.json \
+  newswire/newswire.lock; do
+  tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
+    grep -q "^${newswire_member}$" || \
+    fail "evidence-wire recovery artifact is missing: $newswire_member"
+done
+[[ "$(
+  tar --extract --gzip --to-stdout --file "$snapshot/artifacts.tar.gz" \
+    analysis/private/state.json
+)" == "$private_state_payload" ]] || fail "private analysis state is unreadable"
+[[ "$(
+  tar --extract --gzip --to-stdout --file "$snapshot/artifacts.tar.gz" \
+    analysis/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json
+)" == "$immutable_run_payload" ]] || fail "immutable analysis run is unreadable"
+
+restore_check="$fixture_root/restore-check"
+mkdir -m 0700 "$restore_check"
+tar --extract --gzip --file "$snapshot/artifacts.tar.gz" --directory "$restore_check"
+find "$restore_check/analysis/private/state.json" -prune -type f -perm 0600 \
+  -print -quit | grep -q . || fail "private analysis state mode was not preserved"
+find "$restore_check/analysis/private/cascade.lock" -prune -type f -perm 0600 \
+  -print -quit | grep -q . || fail "analysis cascade lock mode was not preserved"
+find "$restore_check/analysis/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json" \
+  -prune -type f -perm 0600 -print -quit | grep -q . || \
+  fail "immutable analysis run mode was not preserved"
+grep -Fq 'format_version=3' "$snapshot/MANIFEST.txt" || \
+  fail "backup manifest format was not upgraded"
+grep -Fq 'artifact_roots=readings,data,newswire,analysis' "$snapshot/MANIFEST.txt" || \
+  fail "backup manifest omits an artifact restore root"
+if grep -Fq "$private_state_payload" \
+  "$snapshot/MANIFEST.txt" "$snapshot/artifacts.list"; then
+  fail "private analysis payload leaked into backup metadata"
+fi
 
 snapshot_id="$(basename "$snapshot")"
 [[ -d "$offsite_root/$snapshot_id" ]] || fail "off-host copy is missing"
 (cd "$offsite_root/$snapshot_id" && sha256sum --check SHA256SUMS >/dev/null)
+tar --list --gzip --file "$offsite_root/$snapshot_id/artifacts.tar.gz" | \
+  grep -q '^analysis/private/state.json$' || \
+  fail "off-host copy omits private analysis state"
+tar --list --gzip --file "$offsite_root/$snapshot_id/artifacts.tar.gz" | \
+  grep -q '^newswire/newswire-versions.jsonl$' || \
+  fail "off-host copy omits evidence-wire lineage"
+
+unencrypted_root="$fixture_root/unencrypted-offsite-backups"
+mkdir -p "$unencrypted_root"
+if env "${common_env[@]}" \
+  PALIMPSEST_BACKUP_DIR="$unencrypted_root" \
+  PALIMPSEST_BACKUP_COPY_DIR="$offsite_root" \
+  "$backup_script"; then
+  fail "off-host copy without encryption attestation unexpectedly ran"
+fi
+[[ -z "$(find "$unencrypted_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "unencrypted off-host refusal left a published or incomplete directory"
 
 if env "${common_env[@]}" \
   PALIMPSEST_BACKUP_DIR="$failed_root" \
@@ -141,4 +257,26 @@ fi
 [[ -z "$(find "$wrong_mount_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
   fail "mount mismatch left a published or incomplete directory"
 
-printf 'PASS: backup publication, mount binding, off-host verification, and failure cleanup\n'
+wrong_analysis_mount_root="$fixture_root/wrong-analysis-mount-backups"
+mkdir -p "$wrong_analysis_mount_root"
+if env "${common_env[@]}" \
+  PALIMPSEST_BACKUP_DIR="$wrong_analysis_mount_root" \
+  FAKE_ANALYSIS_ROOT="$fixture_root/unexpected-analysis-source" \
+  "$backup_script"; then
+  fail "mismatched analysis bind mount unexpectedly published"
+fi
+[[ -z "$(find "$wrong_analysis_mount_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "analysis mount mismatch left a published or incomplete directory"
+
+missing_analysis_root="$fixture_root/missing-analysis-backups"
+mkdir -p "$missing_analysis_root"
+if env "${common_env[@]}" \
+  PALIMPSEST_ANALYSIS_ROOT="$fixture_root/does-not-exist" \
+  PALIMPSEST_BACKUP_DIR="$missing_analysis_root" \
+  "$backup_script"; then
+  fail "missing analysis root unexpectedly published"
+fi
+[[ -z "$(find "$missing_analysis_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "missing analysis root left a published or incomplete directory"
+
+printf 'PASS: backup publication, newswire/analysis coverage, mount binding, encrypted off-host contract, and failure cleanup\n'

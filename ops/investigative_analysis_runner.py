@@ -20,7 +20,15 @@ from pathlib import Path
 from subprocess import CompletedProcess, TimeoutExpired
 from typing import Any, Callable, Iterable
 
+from core.analytical_pieces import (
+    AnalyticalPieceError,
+    build_packet_set,
+    build_template_draft_set,
+    validate_draft_set,
+    validate_packet_set,
+)
 from core.investigative_candidates import (
+    build_candidates,
     canonical_json_bytes,
     publish_private_candidates,
     validate_candidates,
@@ -55,8 +63,12 @@ WIRE_STATUS_MAX_AGE = timedelta(minutes=75)
 ANALYSIS_STATUS_NAME = "analysis-status.json"
 ANALYSIS_STATUS_SCHEMA = "palimpsest-investigative-analysis-attempt.v1"
 _RUN_NAME = re.compile(r"^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
-RUN_SCHEMA = "palimpsest-investigative-analysis-run.v1"
-RUN_STEPS = (
+RUN_SCHEMA_V1 = "palimpsest-investigative-analysis-run.v1"
+RUN_SCHEMA_V2 = "palimpsest-investigative-analysis-run.v2"
+RUN_SCHEMA = RUN_SCHEMA_V2
+STATE_SCHEMA_V1 = "palimpsest-investigative-analysis-state.v1"
+STATE_SCHEMA_V2 = "palimpsest-investigative-analysis-state.v2"
+LEGACY_RUN_STEPS = (
     "vantage_fusion",
     "event_flags",
     "coverage_guard",
@@ -67,6 +79,11 @@ RUN_STEPS = (
     "osint_china",
     "investigations",
     "candidate_edition",
+)
+RUN_STEPS = (
+    *LEGACY_RUN_STEPS,
+    "analytical_packets",
+    "analytical_template_drafts",
 )
 DERIVED_LATEST = (
     "vantage-fusion-latest.json",
@@ -798,10 +815,10 @@ def _manifest_fingerprints(manifest: list[dict[str, Any]]) -> tuple[str, str]:
     )
 
 
-def _validate_state(state: dict[str, Any]) -> None:
+def _validate_state(state: dict[str, Any]) -> str | None:
     if not state:
-        return
-    expected = {
+        return None
+    common = {
         "schema_version",
         "completed_at",
         "input_commit",
@@ -816,9 +833,17 @@ def _validate_state(state: dict[str, Any]) -> None:
         "network_policy",
         "publication_policy",
     }
+    analytical = {
+        "analytical_packet_edition_id",
+        "analytical_packet_count",
+        "analytical_draft_edition_id",
+        "analytical_draft_count",
+    }
+    schema = state.get("schema_version")
     if (
-        set(state) != expected
-        or state.get("schema_version") != "palimpsest-investigative-analysis-state.v1"
+        (schema == STATE_SCHEMA_V1 and set(state) != common)
+        or (schema == STATE_SCHEMA_V2 and set(state) != common | analytical)
+        or schema not in {STATE_SCHEMA_V1, STATE_SCHEMA_V2}
         or state.get("network_policy") != "docker-network-none"
         or state.get("publication_policy") != "private-review-only"
     ):
@@ -843,6 +868,21 @@ def _validate_state(state: dict[str, Any]) -> None:
         or not 0 <= state["candidate_count"] <= 128
     ):
         raise AnalysisRunnerError("analysis state identity fields are invalid")
+    if schema == STATE_SCHEMA_V2 and (
+        not re.fullmatch(
+            r"packetset-[0-9a-f]{24}",
+            str(state.get("analytical_packet_edition_id", "")),
+        )
+        or not re.fullmatch(
+            r"draftset-[0-9a-f]{24}",
+            str(state.get("analytical_draft_edition_id", "")),
+        )
+        or type(state.get("analytical_packet_count")) is not int
+        or not 0 <= state["analytical_packet_count"] <= 128
+        or type(state.get("analytical_draft_count")) is not int
+        or not 0 <= state["analytical_draft_count"] <= 128
+    ):
+        raise AnalysisRunnerError("analysis state analytical identity is invalid")
     manifest = state.get("input_manifest")
     if not isinstance(manifest, list) or not manifest or len(manifest) > MAX_FILES:
         raise AnalysisRunnerError("analysis state input manifest is invalid")
@@ -854,6 +894,7 @@ def _validate_state(state: dict[str, Any]) -> None:
         raise AnalysisRunnerError(
             "analysis state fingerprint does not match its manifest"
         )
+    return str(schema)
 
 
 def _validate_completed_run(
@@ -862,10 +903,12 @@ def _validate_completed_run(
     candidate_dir: Path,
     input_commit: str,
     decision_clock: str,
-) -> dict[str, Any]:
+    expected_schema: str,
+    require_current_derivation: bool,
+) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
     manifest_path = staged_readings / "analysis-run-manifest.json"
     manifest = _parse_object(_stable_read(manifest_path), manifest_path.name)
-    expected_keys = {
+    legacy_keys = {
         "schema_version",
         "completed_at",
         "input_commit",
@@ -878,8 +921,23 @@ def _validate_completed_run(
         "candidate_count",
         "outputs",
     }
-    if set(manifest) != expected_keys or manifest.get("schema_version") != RUN_SCHEMA:
+    analytical_keys = {
+        "analytical_packet_edition_id",
+        "analytical_packet_count",
+        "analytical_draft_edition_id",
+        "analytical_draft_count",
+    }
+    schema = manifest.get("schema_version")
+    if (
+        (schema == RUN_SCHEMA_V1 and set(manifest) != legacy_keys)
+        or (schema == RUN_SCHEMA_V2 and set(manifest) != legacy_keys | analytical_keys)
+        or schema not in {RUN_SCHEMA_V1, RUN_SCHEMA_V2}
+    ):
         raise AnalysisRunnerError("analysis run manifest has an unsupported shape")
+    if schema != expected_schema:
+        raise AnalysisRunnerError(
+            "analysis run manifest does not match the required schema version"
+        )
     if manifest.get("input_commit") != input_commit:
         raise AnalysisRunnerError("analysis run manifest commit does not match")
     if manifest.get("decision_clock") != decision_clock:
@@ -897,7 +955,8 @@ def _validate_completed_run(
         or manifest.get("publication_policy") != "private-review-only"
     ):
         raise AnalysisRunnerError("analysis run weakened its safety policy")
-    if manifest.get("steps") != list(RUN_STEPS):
+    expected_steps = LEGACY_RUN_STEPS if schema == RUN_SCHEMA_V1 else RUN_STEPS
+    if manifest.get("steps") != list(expected_steps):
         raise AnalysisRunnerError(
             "analysis run did not complete the exact step sequence"
         )
@@ -958,7 +1017,70 @@ def _validate_completed_run(
         or manifest.get("candidate_count") != candidate.get("n_candidates")
     ):
         raise AnalysisRunnerError("candidate edition does not match the run manifest")
-    return candidate
+
+    expected_candidate: dict[str, Any] | None = None
+    if require_current_derivation:
+        try:
+            parsed_decision_clock = datetime.fromisoformat(
+                decision_clock.replace("Z", "+00:00")
+            )
+            expected_candidate = build_candidates(
+                staged_readings, decision_clock=parsed_decision_clock
+            )
+        except ValueError as exc:
+            raise AnalysisRunnerError(
+                "cannot independently rebuild staged analytical candidates"
+            ) from exc
+        if candidate_raw != canonical_json_bytes(expected_candidate):
+            raise AnalysisRunnerError(
+                "staged candidate edition does not derive from the frozen readings"
+            )
+
+    # An existing v1 run remains immutable and fully validated, but it has no
+    # analytical projection. The caller must force one v2 run rather than
+    # synthesizing files into this historical directory.
+    if schema == RUN_SCHEMA_V1:
+        return candidate, None, None
+
+    packet_path = candidate_dir / "analytical-packets-latest.json"
+    draft_path = candidate_dir / "analytical-drafts-latest.json"
+    packet_raw = _stable_read(packet_path)
+    draft_raw = _stable_read(draft_path)
+    packets = _parse_object(packet_raw, packet_path.name)
+    drafts = _parse_object(draft_raw, draft_path.name)
+    try:
+        validate_packet_set(packets)
+        validate_draft_set(packets, drafts)
+    except AnalyticalPieceError as exc:
+        raise AnalysisRunnerError("staged analytical artifacts are invalid") from exc
+    if packet_raw != canonical_json_bytes(packets) or draft_raw != canonical_json_bytes(
+        drafts
+    ):
+        raise AnalysisRunnerError("staged analytical artifacts are not canonical JSON")
+    if (
+        packets.get("candidate_edition_id") != candidate.get("edition_id")
+        or packets.get("candidate_input_fingerprint")
+        != candidate.get("input_fingerprint")
+        or manifest.get("analytical_packet_edition_id")
+        != packets.get("edition_id")
+        or manifest.get("analytical_packet_count") != packets.get("n_packets")
+        or manifest.get("analytical_draft_edition_id") != drafts.get("edition_id")
+        or manifest.get("analytical_draft_count") != drafts.get("n_drafts")
+    ):
+        raise AnalysisRunnerError(
+            "analytical artifacts do not match the candidate edition or run manifest"
+        )
+    if require_current_derivation:
+        assert expected_candidate is not None
+        expected_packets = build_packet_set(expected_candidate)
+        expected_drafts = build_template_draft_set(expected_packets)
+        if packet_raw != canonical_json_bytes(
+            expected_packets
+        ) or draft_raw != canonical_json_bytes(expected_drafts):
+            raise AnalysisRunnerError(
+                "staged analytical artifacts do not derive from the frozen readings"
+            )
+    return candidate, packets, drafts
 
 
 @contextmanager
@@ -1137,7 +1259,8 @@ def _run_once_locked(
     history = ledger_dir / "candidate-versions.jsonl"
     state_path = private_root / "state.json"
     state = _load_state(state_path)
-    _validate_state(state)
+    state_schema = _validate_state(state)
+    force_upgrade = state_schema == STATE_SCHEMA_V1
     previous_path = (
         Path(state["run_path"]) if isinstance(state.get("run_path"), str) else None
     )
@@ -1166,12 +1289,48 @@ def _run_once_locked(
         previous_clock = state.get("decision_clock")
         if not isinstance(previous_clock, str):
             raise AnalysisRunnerError("analysis state has an invalid decision clock")
-        previous_candidate = _validate_completed_run(
+        previous_candidate, previous_packets, previous_drafts = _validate_completed_run(
             staged_readings=previous_readings,
             candidate_dir=previous_path / "private",
             input_commit=previous_commit,
             decision_clock=previous_clock,
+            expected_schema=(
+                RUN_SCHEMA_V1 if state_schema == STATE_SCHEMA_V1 else RUN_SCHEMA_V2
+            ),
+            require_current_derivation=False,
         )
+        if (
+            state_schema == STATE_SCHEMA_V1
+            and (previous_packets is not None or previous_drafts is not None)
+        ) or (
+            state_schema == STATE_SCHEMA_V2
+            and (previous_packets is None or previous_drafts is None)
+        ):
+            raise AnalysisRunnerError(
+                "analysis state and immutable run schema versions disagree"
+            )
+        if (
+            state.get("candidate_edition_id")
+            != previous_candidate.get("edition_id")
+            or state.get("candidate_count")
+            != previous_candidate.get("n_candidates")
+        ):
+            raise AnalysisRunnerError(
+                "analysis state candidate identity disagrees with its immutable run"
+            )
+        if state_schema == STATE_SCHEMA_V2 and (
+            state.get("analytical_packet_edition_id")
+            != previous_packets.get("edition_id")
+            or state.get("analytical_packet_count")
+            != previous_packets.get("n_packets")
+            or state.get("analytical_draft_edition_id")
+            != previous_drafts.get("edition_id")
+            or state.get("analytical_draft_count")
+            != previous_drafts.get("n_drafts")
+        ):
+            raise AnalysisRunnerError(
+                "analysis state analytical identity disagrees with its immutable run"
+            )
         _validate_frozen_sources(previous_path / "inputs", state["input_manifest"])
         # Latest/history are repairable projections of the immutable completed
         # run. Reconcile them before looking at new inputs so a prior post-commit
@@ -1237,7 +1396,8 @@ def _run_once_locked(
             mode=0o640,
         )
         if (
-            state.get("trigger_fingerprint") == trigger_fingerprint
+            not force_upgrade
+            and state.get("trigger_fingerprint") == trigger_fingerprint
             and state.get("input_commit") == input_commit
             and state.get("image_id") == image_id
             and previous_readings is not None
@@ -1354,12 +1514,18 @@ def _run_once_locked(
             except FileNotFoundError:
                 pass
         _validate_frozen_sources(frozen_readings, input_manifest)
-        candidate = _validate_completed_run(
+        candidate, packets, drafts = _validate_completed_run(
             staged_readings=staged_readings,
             candidate_dir=staged_candidates,
             input_commit=input_commit,
             decision_clock=decision_clock,
+            expected_schema=RUN_SCHEMA_V2,
+            require_current_derivation=True,
         )
+        if packets is None or drafts is None:
+            raise AnalysisRunnerError(
+                "current analysis run did not produce v2 analytical artifacts"
+            )
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         execution_fingerprint = hashlib.sha256(
             f"{lineage_fingerprint}:{input_commit}:{image_id}".encode("ascii")
@@ -1387,7 +1553,7 @@ def _run_once_locked(
             os.replace(staging, final)
             _fsync_directory(runs_dir)
         state_document = {
-            "schema_version": "palimpsest-investigative-analysis-state.v1",
+            "schema_version": STATE_SCHEMA_V2,
             "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "input_commit": input_commit,
             "image_id": image_id,
@@ -1398,6 +1564,10 @@ def _run_once_locked(
             "run_path": str(final),
             "candidate_edition_id": candidate["edition_id"],
             "candidate_count": candidate["n_candidates"],
+            "analytical_packet_edition_id": packets["edition_id"],
+            "analytical_packet_count": packets["n_packets"],
+            "analytical_draft_edition_id": drafts["edition_id"],
+            "analytical_draft_count": drafts["n_drafts"],
             "network_policy": "docker-network-none",
             "publication_policy": "private-review-only",
         }

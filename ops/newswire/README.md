@@ -15,6 +15,11 @@ successful receipt records the fresh-source count and binds the run to the
 exact latest-document timestamp and SHA-256. This keeps “the collector ran”
 separate from “current evidence exists.”
 
+The scheduled command holds an exclusive lease on the persistent mode-0600
+`newswire.lock` for the complete attempt, including the in-flight receipt and
+terminal publication. The node backup takes a shared lease on the same inode,
+so it cannot mix latest, lineage, and status files from different attempts.
+
 The systemd unit retries a failed attempt after two minutes, but permits only
 three starts in ten minutes. The half-hour timer remains the long-term recovery
 boundary after that bounded retry budget is exhausted.
@@ -23,6 +28,8 @@ boundary after that bounded retry budget is exhausted.
 
 ```bash
 sudo install -d -o palimpsest -g palimpsest -m 0750 /var/lib/palimpsest/newswire
+sudo install -o palimpsest -g palimpsest -m 0600 /dev/null \
+  /var/lib/palimpsest/newswire/newswire.lock
 sudo install -d -o root -g root -m 0755 /etc/palimpsest
 sudo install -o root -g root -m 0644 \
   /home/palimpsest/palimpsest/ops/systemd/palimpsest-evidence-wire.service \

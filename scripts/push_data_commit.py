@@ -183,6 +183,38 @@ def _module_rebuilder(
     return rebuild, normalized_paths
 
 
+def _module_checker(
+    modules: Sequence[str],
+) -> Callable[[Path], None]:
+    if not modules:
+        raise PublishError("check mode requires at least one module")
+    normalized_modules = tuple(modules)
+    if len(normalized_modules) != len(set(normalized_modules)):
+        raise PublishError("check modules contain duplicates")
+    for module in normalized_modules:
+        if MODULE_RE.fullmatch(module) is None:
+            raise PublishError(f"unsafe check module: {module!r}")
+
+    def check_candidate(repo: Path) -> None:
+        head_before = _capture(repo, "rev-parse", "HEAD")
+        for module in normalized_modules:
+            completed = subprocess.run(
+                [sys.executable, "-B", "-m", module],
+                cwd=repo,
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise PublishError(
+                    f"candidate check failed ({module}): {completed.returncode}"
+                )
+        if _capture(repo, "rev-parse", "HEAD") != head_before:
+            raise PublishError("candidate checker changed HEAD")
+        if _capture(repo, "status", "--porcelain=v1", "--untracked-files=all"):
+            raise PublishError("candidate checker modified the checkout")
+
+    return check_candidate
+
+
 def publish(
     repo: Path = ROOT,
     *,
@@ -190,6 +222,7 @@ def publish(
     rebuild: Callable[[Path, str], bool] | None = None,
     rebuild_paths: Sequence[str] = (),
     input_paths: Sequence[str] = (),
+    candidate_check: Callable[[Path], None] | None = None,
 ) -> bool:
     """Rebase and push one verified candidate; return False for an upstream no-op."""
 
@@ -259,6 +292,8 @@ def publish(
         if ahead == 0:
             print("candidate bytes are already present on main")
             return False
+        if candidate_check is not None:
+            candidate_check(repo)
         if _run(repo, "push", "origin", "HEAD:main", check=False) == 0:
             print(f"published byte-identical candidate on attempt {attempt}")
             return True
@@ -272,6 +307,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--rebuild-module", action="append", default=[])
     parser.add_argument("--stage", action="append", default=[])
     parser.add_argument("--input-path", action="append", default=[])
+    parser.add_argument("--check-module", action="append", default=[])
     return parser.parse_args()
 
 
@@ -284,10 +320,14 @@ def main() -> int:
             rebuild, rebuild_paths = _module_rebuilder(
                 arguments.rebuild_module, arguments.stage
             )
+        candidate_check = (
+            _module_checker(arguments.check_module) if arguments.check_module else None
+        )
         publish(
             rebuild=rebuild,
             rebuild_paths=rebuild_paths,
             input_paths=arguments.input_path,
+            candidate_check=candidate_check,
         )
     except (OSError, PublishError, subprocess.SubprocessError, ValueError) as error:
         print(f"data publication refused: {error}", file=sys.stderr)

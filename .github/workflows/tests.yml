@@ -60,6 +60,11 @@ jobs:
         # censorwatch/tests need these; tests/ deliberately does not.
         run: pip install --quiet -r requirements.txt
 
+      - name: Exercise the validated backup contract
+        run: |
+          bash -n ops/backup/palimpsest-backup.sh ops/backup/test-backup.sh
+          bash ops/backup/test-backup.sh
+
       - name: Run the full suite
         run: python -m pytest tests/ censorwatch/tests/ -q
 

@@ -15,6 +15,7 @@ The fixed order is:
 3. the revision-aware economic pulse;
 4. the OSINT roll-up and review-gated investigations builder;
 5. a private, content-addressed editorial candidate ledger.
+6. citation-bound evidence packets and deterministic private working templates.
 
 Silence Index is deliberately excluded because its current implementation calls
 the GDELT DOC API. Public newsroom rendering, sealing, anchoring, and Git commits
@@ -28,6 +29,10 @@ also remain excluded: the node is an analysis environment, not a publisher.
   `/var/lib/palimpsest-analysis/private/ledger/candidates-latest.json`
 - Private immutable lead versions:
   `/var/lib/palimpsest-analysis/private/ledger/candidate-versions.jsonl`
+- Per-run evidence packets:
+  `<run>/private/analytical-packets-latest.json`
+- Per-run deterministic working drafts:
+  `<run>/private/analytical-drafts-latest.json`
 - Private run state:
   `/var/lib/palimpsest-analysis/private/state.json`
 - Per-attempt health receipt:
@@ -54,6 +59,18 @@ Candidate records are questions, not findings. They contain aggregate artifact
 hashes, selectors, limitations, falsification-oriented next steps, and a fixed
 `private-review-only` publication policy. They cannot alter
 `config/investigations.json` and cannot reach the public website.
+
+The packet is the only supported input to a later private ranking or research
+assistant. It contains bounded aggregate observations, exact evidence IDs and hashes,
+limitations, countercase prompts, and falsification-oriented next steps. The
+bundled working draft is produced without a model and demonstrates the strict
+JSON contract. Only `editorial_review` packets may contain deterministic
+assertion-bearing copy; research-plan and coverage-blocked packets remain
+abstentions. The v1 validator accepts only exact deterministic projections; it
+does not claim to prove free-form language entailment. Any future prose model
+must use a separate private submission contract plus human evidence review and
+must not create a publication transition. The scheduled container remains
+networkless and calls no model.
 
 Before either a new run or the unchanged-input shortcut, the runner requires a
 successful evidence-wire receipt that reports at least one fresh source, is no
@@ -102,6 +119,8 @@ sudo find /var/lib/palimpsest/readings -type d \
 sudo setfacl -R -m u:palimpsest-analysis:rX /var/lib/palimpsest/newswire
 sudo find /var/lib/palimpsest/newswire -type d \
   -exec setfacl -m d:u:palimpsest-analysis:rX {} +
+sudo install -o palimpsest -g palimpsest -m 0600 /dev/null \
+  /var/lib/palimpsest/newswire/newswire.lock
 
 # First install: these units may not exist yet. The installer itself verifies
 # that the timer, analysis service, broker socket, and broker instances are
@@ -155,6 +174,10 @@ sudo jq '{schema_version,attempted_at,completed_at,status,failure_class}' \
   /var/lib/palimpsest-analysis/private/analysis-status.json
 sudo jq '{network_policy,publication_policy,steps,candidate_edition_id}' \
   "$(sudo jq -r .run_path /var/lib/palimpsest-analysis/private/state.json)"/readings/analysis-run-manifest.json
+sudo jq '{edition_id,n_packets,publication_policy}' \
+  "$(sudo jq -r .run_path /var/lib/palimpsest-analysis/private/state.json)"/private/analytical-packets-latest.json
+sudo jq '{edition_id,n_drafts,publication_policy}' \
+  "$(sudo jq -r .run_path /var/lib/palimpsest-analysis/private/state.json)"/private/analytical-drafts-latest.json
 ```
 
 The manifest must say `docker-network-none` and `private-review-only`. A second

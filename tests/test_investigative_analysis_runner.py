@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from core.analytical_pieces import build_packet_set, build_template_draft_set
 from core.investigative_candidates import build_candidates, canonical_json_bytes
 from ops import investigative_analysis_runner as runner
 
@@ -19,6 +20,11 @@ IMAGE_ID = "sha256:" + "b" * 64
 def _write(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+
+
+def _content_id(prefix: str, value: dict, length: int) -> str:
+    digest = hashlib.sha256(canonical_json_bytes(value).rstrip(b"\n")).hexdigest()
+    return f"{prefix}-{digest[:length]}"
 
 
 def _write_wire_status(
@@ -125,6 +131,14 @@ def _complete_fake_container(command: list[str]) -> None:
     (candidate_dir / "candidates-latest.json").write_bytes(
         canonical_json_bytes(candidate)
     )
+    packets = build_packet_set(candidate)
+    drafts = build_template_draft_set(packets)
+    (candidate_dir / "analytical-packets-latest.json").write_bytes(
+        canonical_json_bytes(packets)
+    )
+    (candidate_dir / "analytical-drafts-latest.json").write_bytes(
+        canonical_json_bytes(drafts)
+    )
     outputs = []
     for name in runner.DERIVED_LATEST:
         raw = (staged / name).read_bytes()
@@ -149,6 +163,10 @@ def _complete_fake_container(command: list[str]) -> None:
             "candidate_edition_id": candidate["edition_id"],
             "candidate_input_fingerprint": candidate["input_fingerprint"],
             "candidate_count": candidate["n_candidates"],
+            "analytical_packet_edition_id": packets["edition_id"],
+            "analytical_packet_count": packets["n_packets"],
+            "analytical_draft_edition_id": drafts["edition_id"],
+            "analytical_draft_count": drafts["n_drafts"],
             "outputs": outputs,
         },
     )
@@ -272,6 +290,30 @@ def test_snapshot_rejects_stale_failed_and_unbound_wire_receipts(
             readings_dir=readings,
             newswire_dir=wire,
             staging_readings=tmp_path / "unbound-stage",
+        )
+
+
+def test_snapshot_rejects_running_wire_receipt(tmp_path: Path) -> None:
+    readings, wire, _commit = _inputs(tmp_path)
+    receipt_path = wire / runner.WIRE_STATUS_NAME
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt.update(
+        {
+            "completed_at": None,
+            "status": "running",
+            "fresh_sources": None,
+            "output_generated_at": None,
+            "output_sha256": None,
+            "failure_class": None,
+        }
+    )
+    _write(receipt_path, receipt)
+
+    with pytest.raises(runner.AnalysisRunnerError, match="not a successful fresh run"):
+        runner.snapshot_inputs(
+            readings_dir=readings,
+            newswire_dir=wire,
+            staging_readings=tmp_path / "stage",
         )
 
 
@@ -415,6 +457,376 @@ def test_run_is_idempotent_and_promotes_only_after_container_success(
     )
     assert after_deploy["status"] == "completed"
     assert len(calls) == 2
+
+
+def test_valid_v1_state_forces_one_immutable_v2_upgrade(tmp_path: Path) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+    calls: list[list[str]] = []
+
+    def execute(command, **_kwargs):
+        if command[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, f"{COMMIT} {IMAGE_ID}\n", "")
+        calls.append(command)
+        _complete_fake_container(command)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    first = runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+        execute=execute,
+    )
+    assert first["status"] == "completed"
+    v2_state = json.loads((private / "state.json").read_text(encoding="utf-8"))
+    old_run = Path(v2_state["run_path"])
+    old_manifest_path = old_run / "readings" / "analysis-run-manifest.json"
+    old_manifest = json.loads(old_manifest_path.read_text(encoding="utf-8"))
+    old_manifest["schema_version"] = "palimpsest-investigative-analysis-run.v1"
+    old_manifest["steps"] = [
+        "vantage_fusion",
+        "event_flags",
+        "coverage_guard",
+        "board_alarm",
+        "cross_layer",
+        "forecast_ledger",
+        "economic_pulse",
+        "osint_china",
+        "investigations",
+        "candidate_edition",
+    ]
+    for key in (
+        "analytical_packet_edition_id",
+        "analytical_packet_count",
+        "analytical_draft_edition_id",
+        "analytical_draft_count",
+    ):
+        old_manifest.pop(key)
+    _write(old_manifest_path, old_manifest)
+    (old_run / "private" / "analytical-packets-latest.json").unlink()
+    (old_run / "private" / "analytical-drafts-latest.json").unlink()
+    for key in (
+        "analytical_packet_edition_id",
+        "analytical_packet_count",
+        "analytical_draft_edition_id",
+        "analytical_draft_count",
+    ):
+        v2_state.pop(key)
+    v2_state["schema_version"] = "palimpsest-investigative-analysis-state.v1"
+    _write(private / "state.json", v2_state)
+    old_bytes = {
+        path.relative_to(old_run): path.read_bytes()
+        for path in old_run.rglob("*")
+        if path.is_file()
+    }
+
+    upgraded = runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+        execute=execute,
+    )
+    unchanged = runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+        execute=execute,
+    )
+
+    assert upgraded["status"] == "completed"
+    assert unchanged["status"] == "unchanged"
+    assert len(calls) == 2
+    current = json.loads((private / "state.json").read_text(encoding="utf-8"))
+    assert current["schema_version"] == runner.STATE_SCHEMA_V2
+    assert Path(current["run_path"]) != old_run
+    assert old_bytes == {
+        path.relative_to(old_run): path.read_bytes()
+        for path in old_run.rglob("*")
+        if path.is_file()
+    }
+
+
+def test_v2_state_cannot_reference_a_v1_run(tmp_path: Path) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+
+    def execute(command, **_kwargs):
+        if command[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, f"{COMMIT} {IMAGE_ID}\n", "")
+        _complete_fake_container(command)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+        execute=execute,
+    )
+    state = json.loads((private / "state.json").read_text(encoding="utf-8"))
+    manifest_path = Path(state["run_path"]) / "readings" / "analysis-run-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["schema_version"] = runner.RUN_SCHEMA_V1
+    manifest["steps"] = list(runner.LEGACY_RUN_STEPS)
+    for key in (
+        "analytical_packet_edition_id",
+        "analytical_packet_count",
+        "analytical_draft_edition_id",
+        "analytical_draft_count",
+    ):
+        manifest.pop(key)
+    _write(manifest_path, manifest)
+
+    with pytest.raises(
+        runner.AnalysisRunnerError, match="required schema version"
+    ):
+        runner.run_once(
+            readings_dir=readings,
+            newswire_dir=wire,
+            runs_dir=runs,
+            private_root=private,
+            commit_file=commit,
+            execute=execute,
+        )
+
+
+def test_fresh_container_cannot_return_a_legacy_v1_run(tmp_path: Path) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+
+    def execute(command, **_kwargs):
+        if command[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, f"{COMMIT} {IMAGE_ID}\n", "")
+        _complete_fake_container(command)
+        volumes = [
+            command[index + 1]
+            for index, value in enumerate(command)
+            if value == "--volume"
+        ]
+        staged = Path(
+            next(value.split(":", 1)[0] for value in volumes if value.endswith(":/app/readings:rw"))
+        )
+        candidate_dir = Path(
+            next(value.split(":", 1)[0] for value in volumes if value.endswith(":/app/private:rw"))
+        )
+        manifest_path = staged / "analysis-run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["schema_version"] = runner.RUN_SCHEMA_V1
+        manifest["steps"] = list(runner.LEGACY_RUN_STEPS)
+        for key in (
+            "analytical_packet_edition_id",
+            "analytical_packet_count",
+            "analytical_draft_edition_id",
+            "analytical_draft_count",
+        ):
+            manifest.pop(key)
+        _write(manifest_path, manifest)
+        (candidate_dir / "analytical-packets-latest.json").unlink()
+        (candidate_dir / "analytical-drafts-latest.json").unlink()
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    with pytest.raises(runner.AnalysisRunnerError, match="required schema version"):
+        runner.run_once(
+            readings_dir=readings,
+            newswire_dir=wire,
+            runs_dir=runs,
+            private_root=private,
+            commit_file=commit,
+            execute=execute,
+        )
+    assert not list(runs.glob("run-*"))
+    assert not (private / "state.json").exists()
+
+
+def test_unchanged_shortcut_rejects_state_identity_drift(tmp_path: Path) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+
+    def execute(command, **_kwargs):
+        if command[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, f"{COMMIT} {IMAGE_ID}\n", "")
+        _complete_fake_container(command)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    runner.run_once(
+        readings_dir=readings,
+        newswire_dir=wire,
+        runs_dir=runs,
+        private_root=private,
+        commit_file=commit,
+        execute=execute,
+    )
+    state_path = private / "state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state["analytical_packet_edition_id"] = "packetset-" + "0" * 24
+    state["analytical_packet_count"] = 0
+    _write(state_path, state)
+
+    with pytest.raises(
+        runner.AnalysisRunnerError, match="analytical identity disagrees"
+    ):
+        runner.run_once(
+            readings_dir=readings,
+            newswire_dir=wire,
+            runs_dir=runs,
+            private_root=private,
+            commit_file=commit,
+            execute=execute,
+        )
+
+
+def test_host_rejects_fully_valid_forged_candidate_before_promotion(
+    tmp_path: Path,
+) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+
+    def execute(command, **_kwargs):
+        if command[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, f"{COMMIT} {IMAGE_ID}\n", "")
+        _complete_fake_container(command)
+        volumes = [
+            command[index + 1]
+            for index, value in enumerate(command)
+            if value == "--volume"
+        ]
+        staged = Path(
+            next(
+                value.split(":", 1)[0]
+                for value in volumes
+                if value.endswith(":/app/readings:rw")
+            )
+        )
+        candidate_dir = Path(
+            next(
+                value.split(":", 1)[0]
+                for value in volumes
+                if value.endswith(":/app/private:rw")
+            )
+        )
+        event_path = staged / "event-flags-latest.json"
+        original_event = event_path.read_bytes()
+        event = json.loads(original_event)
+        event["active"] = ["forged.signal"]
+        _write(event_path, event)
+        candidate = build_candidates(staged)
+        packets = build_packet_set(candidate)
+        drafts = build_template_draft_set(packets)
+        (candidate_dir / "candidates-latest.json").write_bytes(
+            canonical_json_bytes(candidate)
+        )
+        (candidate_dir / "analytical-packets-latest.json").write_bytes(
+            canonical_json_bytes(packets)
+        )
+        (candidate_dir / "analytical-drafts-latest.json").write_bytes(
+            canonical_json_bytes(drafts)
+        )
+        event_path.write_bytes(original_event)
+        manifest_path = staged / "analysis-run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest.update(
+            candidate_edition_id=candidate["edition_id"],
+            candidate_input_fingerprint=candidate["input_fingerprint"],
+            candidate_count=candidate["n_candidates"],
+            analytical_packet_edition_id=packets["edition_id"],
+            analytical_packet_count=packets["n_packets"],
+            analytical_draft_edition_id=drafts["edition_id"],
+            analytical_draft_count=drafts["n_drafts"],
+        )
+        _write(manifest_path, manifest)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    with pytest.raises(runner.AnalysisRunnerError, match="derive from"):
+        runner.run_once(
+            readings_dir=readings,
+            newswire_dir=wire,
+            runs_dir=runs,
+            private_root=private,
+            commit_file=commit,
+            execute=execute,
+        )
+    assert not list(runs.glob("run-*"))
+    assert not (private / "state.json").exists()
+
+
+def test_host_rejects_valid_but_wrong_analytical_packet_before_promotion(
+    tmp_path: Path,
+) -> None:
+    readings, wire, commit = _inputs(tmp_path)
+    runs = tmp_path / "runs"
+    private = tmp_path / "private"
+
+    def execute(command, **_kwargs):
+        if command[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(command, 0, f"{COMMIT} {IMAGE_ID}\n", "")
+        _complete_fake_container(command)
+        candidate_dir = Path(
+            next(
+                value.split(":", 1)[0]
+                for index, value in enumerate(command)
+                if value == "--volume"
+                for value in [command[index + 1]]
+                if value.endswith(":/app/private:rw")
+            )
+        )
+        packet_path = candidate_dir / "analytical-packets-latest.json"
+        packets = json.loads(packet_path.read_text(encoding="utf-8"))
+        packets["scope"] += " forged"
+        packet_payload = {
+            key: value for key, value in packets.items() if key != "edition_id"
+        }
+        packets["edition_id"] = _content_id("packetset", packet_payload, 24)
+        drafts = build_template_draft_set(packets)
+        packet_path.write_bytes(canonical_json_bytes(packets))
+        (candidate_dir / "analytical-drafts-latest.json").write_bytes(
+            canonical_json_bytes(drafts)
+        )
+        volumes = [
+            command[index + 1]
+            for index, value in enumerate(command)
+            if value == "--volume"
+        ]
+        staged = Path(
+            next(
+                value.split(":", 1)[0]
+                for value in volumes
+                if value.endswith(":/app/readings:rw")
+            )
+        )
+        manifest_path = staged / "analysis-run-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest.update(
+            analytical_packet_edition_id=packets["edition_id"],
+            analytical_packet_count=packets["n_packets"],
+            analytical_draft_edition_id=drafts["edition_id"],
+            analytical_draft_count=drafts["n_drafts"],
+        )
+        _write(manifest_path, manifest)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    with pytest.raises(runner.AnalysisRunnerError, match="derive from"):
+        runner.run_once(
+            readings_dir=readings,
+            newswire_dir=wire,
+            runs_dir=runs,
+            private_root=private,
+            commit_file=commit,
+            execute=execute,
+        )
+    assert not list(runs.glob("run-*"))
+    assert not (private / "state.json").exists()
 
 
 def test_production_path_uses_broker_for_every_privileged_lifecycle_step(

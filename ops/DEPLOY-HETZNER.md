@@ -523,6 +523,8 @@ sudo find /var/lib/palimpsest/readings -type d \
 sudo setfacl -R -m u:palimpsest-analysis:rX /var/lib/palimpsest/newswire
 sudo find /var/lib/palimpsest/newswire -type d \
   -exec setfacl -m d:u:palimpsest-analysis:rX {} +
+sudo install -o palimpsest -g palimpsest -m 0600 /dev/null \
+  /var/lib/palimpsest/newswire/newswire.lock
 ```
 
 The application image must already have been built from the clean checked-out
@@ -674,10 +676,12 @@ warning at the top of this section.
 
 ## 8. Persistence, backups, and publishing results
 
-Four things carry state: the `pgdata` volume, the Redis AOF volume, the
-`readings/` tree, and the `data/` tree. PostgreSQL and the artifact trees are the
-evidence source of truth; Redis persistence prevents avoidable loss of queued
-coordination work across a host restart.
+Five things carry state: the `pgdata` volume, the Redis AOF volume, the
+`readings/` tree, the `data/` tree, and `/var/lib/palimpsest-analysis`.
+PostgreSQL and the artifact trees are the evidence source of truth; Redis
+persistence prevents avoidable loss of queued coordination work across a host
+restart. The analysis tree contains private mutable state plus immutable,
+review-gated analytical runs and must be restored as a separate root.
 
 - **readings/** is the auditable artifact. On the canonical repository it is published
   by the GitHub Actions refresh workflows and nothing else — leave it alone here. On a
@@ -716,19 +720,38 @@ coordination work across a host restart.
   ```
 
   The backup proves the always-on `worker` Compose service maps `/app/readings`
-  and `/app/data` to the exact configured state root. It then streams those
-  trees from a one-shot, networkless, read-only container using the worker's
-  exact image digest and only `CAP_DAC_READ_SEARCH`. This preserves private
-  modes and ownership while including artifacts from multiple producer UIDs.
-  Missing containers, named volumes, mismatched binds, and unpinned images fail
-  closed.
+  and `/app/data` to the exact configured state root. It then binds those trees
+  plus `/var/lib/palimpsest/newswire` and `/var/lib/palimpsest-analysis`
+  read-only into a one-shot, networkless,
+  read-only container using the worker's exact image digest, root with only
+  `CAP_DAC_READ_SEARCH`, and numeric archive ownership. This preserves mode-0600
+  private analysis state and immutable runs alongside artifacts from multiple
+  producer UIDs. Missing analysis roots, missing containers, named volumes,
+  mismatched binds, and unpinned images fail closed.
+  The image-bundled archive helper validates the mode-0600 UID/GID-10001
+  `private/cascade.lock`, takes a blocking shared lock, and holds it while
+  its in-process, descriptor-bound archive writer streams analysis coherently,
+  then releases the lease before streaming the other three approved roots.
+  The writer records numeric UID/GID values with blank account names and emits
+  only a generic failure, so a read error cannot expose a private filename. The
+  isolated image interpreter rejects noncanonical run names, links, special
+  files, wrong owners/modes, and an over-bound tree, then rechecks the full tree
+  fingerprint and lock pathname/inode after the complete stream. The runner
+  uses an exclusive lock on the same inode, so
+  promotion, state/ledger replacement, and pruning cannot interleave with the
+  backup. An invalid or missing lock fails closed rather than producing a
+  mixed-generation archive.
 
   Each timestamped snapshot contains a PostgreSQL custom archive validated by
-  `pg_restore --list`, the `readings/` + `data/` trees validated by tar, and
-  SHA-256 checksums. It is published by atomic rename only after all checks
-  pass, retains 14 days by default, and supports either a pre-mounted off-host
-  directory or an executable uploader hook. Installation, off-host settings,
-  checksum verification, and a non-destructive restore drill are in
+  `pg_restore --list`, the `readings/` + `data/` + private `newswire/` and
+  `analysis/` trees
+  validated by tar, and SHA-256 checksums. It is published by atomic rename
+  only after all checks pass, retains 14 days by default, and supports either an
+  encrypted pre-mounted off-host directory or an encrypting uploader hook.
+  Plain remote storage is forbidden because the snapshot includes private
+  analysis. Installation, off-host settings, checksum verification, and a
+  non-destructive restore drill
+  covering all four artifact roots are in
   [`ops/backup/README.md`](backup/README.md).
 
   The backup service fails closed when the bounded archive container cannot read

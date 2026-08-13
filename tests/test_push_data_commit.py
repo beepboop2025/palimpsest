@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
+import re
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+import yaml
 
-from scripts import push_data_commit
+from scripts import push_data_commit, validate_investigation_dependencies
 
 
 def _git(repo: Path, *arguments: str) -> str:
@@ -45,6 +49,13 @@ def _repositories(tmp_path: Path) -> tuple[Path, Path, Path]:
         "Path('input.txt').read_text(encoding='utf-8'), encoding='utf-8')\n"
         "if extra := os.environ.get('FAKE_EXTRA_OUTPUT'):\n"
         "    Path(extra).write_text('undeclared\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    (scripts / "fake_candidate_check.py").write_text(
+        "import os\n"
+        "from pathlib import Path\n"
+        "with Path(os.environ['FAKE_CHECK_LOG']).open('a', encoding='utf-8') as fh:\n"
+        "    fh.write('checked\\n')\n",
         encoding="utf-8",
     )
     (scripts / "verify_public_surface.py").write_text("", encoding="utf-8")
@@ -175,6 +186,48 @@ def test_publish_retries_one_rejected_push_without_changing_bytes(
 
     assert marker.is_file()
     assert _git(remote, "rev-parse", "main:source.json") == expected_blob
+
+
+def test_candidate_check_repeats_after_main_advances_and_candidate_rebases(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher)
+    log = tmp_path / "candidate-checks.log"
+    monkeypatch.setenv("FAKE_CHECK_LOG", str(log))
+    candidate_check = push_data_commit._module_checker(  # noqa: SLF001
+        ("scripts.fake_candidate_check",)
+    )
+    real_run = push_data_commit._run  # noqa: SLF001
+    raced = False
+
+    def advance_before_first_push(
+        repo: Path,
+        *arguments: str,
+        check: bool = True,
+    ) -> int:
+        nonlocal raced
+        if arguments[:2] == ("push", "origin") and not raced:
+            raced = True
+            (racer / "unrelated.txt").write_text("advanced\n", encoding="utf-8")
+            _git(racer, "add", "unrelated.txt")
+            _git(racer, "commit", "-qm", "advance during candidate check")
+            _git(racer, "push", "-q", "origin", "main")
+        return real_run(repo, *arguments, check=check)
+
+    monkeypatch.setattr(push_data_commit, "_run", advance_before_first_push)
+
+    assert (
+        push_data_commit.publish(
+            publisher,
+            candidate_check=candidate_check,
+        )
+        is True
+    )
+    assert raced is True
+    assert log.read_text(encoding="utf-8").splitlines() == ["checked", "checked"]
+    assert _git(remote, "show", "main:unrelated.txt") == "advanced"
 
 
 def test_rebuild_does_not_repeat_after_an_accepted_push_loses_its_ack(
@@ -333,6 +386,116 @@ def test_publish_rejects_dirty_or_non_data_candidate(tmp_path: Path) -> None:
     _git(publisher, "commit", "--amend", "-qm", "data without marker")
     with pytest.raises(push_data_commit.PublishError, match="skip ci"):
         push_data_commit.publish(publisher)
+
+
+def test_investigation_dependency_gate_uses_one_clock_and_a_temp_copy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readings = tmp_path / "source-readings"
+    readings.mkdir()
+    source = readings / "signal.json"
+    source.write_text('{"candidate":true}\n', encoding="utf-8")
+    observed: dict[str, Path | str] = {}
+
+    def argument(argv: tuple[str, ...], name: str) -> str:
+        return argv[argv.index(name) + 1]
+
+    def fake_osint(argv: tuple[str, ...]) -> dict[str, object]:
+        copied = Path(argument(argv, "--readings-dir"))
+        observed["readings"] = copied
+        observed["osint_clock"] = argument(argv, "--now")
+        assert copied != readings
+        assert (copied / source.name).read_bytes() == source.read_bytes()
+        Path(argument(argv, "--output")).write_text("{}\n", encoding="utf-8")
+        return {}
+
+    def fake_investigations(argv: tuple[str, ...]) -> int:
+        copied = Path(argument(argv, "--readings-dir"))
+        observed["investigations_clock"] = argument(argv, "--as-of")
+        assert (copied / "osint-china-latest.json").is_file()
+        Path(argument(argv, "--output")).write_text("{}\n", encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(
+        validate_investigation_dependencies.build_osint_china,
+        "main",
+        fake_osint,
+    )
+    monkeypatch.setattr(
+        validate_investigation_dependencies.build_investigations,
+        "main",
+        fake_investigations,
+    )
+
+    validate_investigation_dependencies.validate(
+        readings,
+        now=datetime(2026, 8, 13, 12, 34, 56, 999, tzinfo=timezone.utc),
+    )
+
+    assert observed["osint_clock"] == "2026-08-13T12:34:56Z"
+    assert observed["investigations_clock"] == observed["osint_clock"]
+    assert not Path(observed["readings"]).exists()
+    assert tuple(readings.iterdir()) == (source,)
+
+
+def _configured_investigation_signal_dependencies() -> set[str]:
+    config_path = Path(__file__).resolve().parents[1] / "config" / "investigations.json"
+    document = json.loads(config_path.read_text(encoding="utf-8"))
+    dependencies: set[str] = set()
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+        elif isinstance(value, str):
+            match = re.fullmatch(r"/signals/@id=([a-z0-9]+(?:-[a-z0-9]+)*)/.*", value)
+            if match:
+                dependencies.add(match.group(1))
+
+    visit(document)
+    return dependencies
+
+
+def test_every_investigation_signal_producer_runs_the_reusable_gate() -> None:
+    root = Path(__file__).resolve().parents[1]
+    workflow_root = root / ".github" / "workflows"
+    dependencies = _configured_investigation_signal_dependencies()
+    assert dependencies == {
+        "censored-planet",
+        "in-path-interference",
+        "inside-view",
+        "ioda-outages",
+        "ooni-gfw",
+        "vantage-fusion",
+    }
+
+    direct_gate = "python -B -m scripts.validate_investigation_dependencies"
+    push_gate = "--check-module scripts.validate_investigation_dependencies"
+    for signal_id in sorted(dependencies):
+        path = workflow_root / f"{signal_id}-refresh.yml"
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        job = next(iter(workflow["jobs"].values()))
+        runs = [
+            (index, step.get("run", ""))
+            for index, step in enumerate(job["steps"])
+            if isinstance(step, dict)
+        ]
+        precommit = [index for index, command in runs if command.strip() == direct_gate]
+        publishers = [
+            (index, command)
+            for index, command in runs
+            if "python scripts/push_data_commit.py" in command
+        ]
+
+        assert len(precommit) == 1, path.name
+        assert len(publishers) == 1, path.name
+        publish_index, publish_command = publishers[0]
+        assert precommit[0] < publish_index, path.name
+        assert push_gate in publish_command, path.name
 
 
 def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
