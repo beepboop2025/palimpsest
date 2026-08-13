@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -291,7 +292,10 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
         "https://palimpsest.info/news/analysis/evidence/"
         f"sha256-{changed_digest}.json"
     )
-    next_time = "2026-08-13T00:00:00Z"
+    next_time = (
+        datetime.fromisoformat(previous_case["updated_at"].replace("Z", "+00:00"))
+        + timedelta(seconds=1)
+    ).isoformat().replace("+00:00", "Z")
     refreshed_case["updated_at"] = next_time
     refreshed_case["evaluation_receipt"]["evaluated_at"] = next_time
     refreshed_machine["cases"][0] = machine_investigations._finalize_case(
