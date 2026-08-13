@@ -28,6 +28,13 @@ require_absolute_nonroot_path() {
   [[ "$value" != "/" ]] || die "$label must not be /"
 }
 
+paths_overlap() {
+  local left="${1%/}"
+  local right="${2%/}"
+  [[ "$left" == "$right" || "$left/" == "$right/"* || \
+    "$right/" == "$left/"* ]]
+}
+
 repo_root="${PALIMPSEST_ROOT:-/home/deploy/palimpsest}"
 state_root="${PALIMPSEST_STATE_ROOT:-}"
 analysis_root="${PALIMPSEST_ANALYSIS_ROOT:-/var/lib/palimpsest-analysis}"
@@ -99,8 +106,16 @@ compose_file="$repo_root/ops/docker/docker-compose.prod.yml"
 compose_env="$repo_root/ops/docker/.env"
 [[ -r "$compose_file" ]] || die "Compose file is not readable: $compose_file"
 [[ -r "$compose_env" ]] || die "production env is not readable: $compose_env"
-[[ -d "$state_root/readings" ]] || die "readings directory is missing from state root"
-[[ -d "$state_root/data" ]] || die "data directory is missing from state root"
+readings_root="$state_root/readings"
+data_root="$state_root/data"
+[[ -d "$readings_root" && ! -L "$readings_root" ]] || \
+  die "readings directory is missing or is not a real directory"
+[[ -d "$data_root" && ! -L "$data_root" ]] || \
+  die "data directory is missing or is not a real directory"
+readings_root="$(cd "$readings_root" && pwd -P)"
+data_root="$(cd "$data_root" && pwd -P)"
+require_absolute_nonroot_path PALIMPSEST_READINGS_ROOT "$readings_root"
+require_absolute_nonroot_path PALIMPSEST_DATA_ROOT "$data_root"
 
 mkdir -p -- "$backup_root"
 backup_root="$(cd "$backup_root" && pwd -P)"
@@ -126,13 +141,36 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 [[ "$state_root/" != "$analysis_root/"* && \
     "$analysis_root/" != "$state_root/"* ]] || \
   die "state root and analysis root must not contain one another"
-[[ "$newswire_root" != "$state_root" && "$newswire_root" != "$analysis_root" ]] || \
-  die "newswire root must be separate from state and analysis roots"
-[[ "$state_root/" != "$newswire_root/"* && \
-    "$newswire_root/" != "$state_root/"* && \
+[[ "$newswire_root" != "$readings_root" && \
+    "$newswire_root/" != "$readings_root/"* && \
+    "$readings_root/" != "$newswire_root/"* && \
+    "$newswire_root" != "$data_root" && \
+    "$newswire_root/" != "$data_root/"* && \
+    "$data_root/" != "$newswire_root/"* ]] || \
+  die "newswire root must not overlap the archived state subroots"
+[[ "$newswire_root" != "$analysis_root" && \
     "$analysis_root/" != "$newswire_root/"* && \
     "$newswire_root/" != "$analysis_root/"* ]] || \
-  die "newswire root must not contain or be contained by another restore root"
+  die "newswire root and analysis root must not contain one another"
+
+if [[ -n "$copy_root" ]]; then
+  require_absolute_nonroot_path PALIMPSEST_BACKUP_COPY_DIR "$copy_root"
+  # Do not create this path: if it is meant to be a mounted remote and the
+  # mount disappeared, creating it would silently put a second copy locally.
+  [[ -d "$copy_root" && -w "$copy_root" ]] || \
+    die "off-host copy directory is unavailable or not writable: $copy_root"
+  copy_root="$(cd "$copy_root" && pwd -P)"
+  require_absolute_nonroot_path PALIMPSEST_BACKUP_COPY_DIR "$copy_root"
+  paths_overlap "$copy_root" "$backup_root" && \
+    die "copy directory and backup directory must not contain one another"
+  paths_overlap "$copy_root" "$repo_root" && \
+    die "copy directory and repository must not contain one another"
+  for archived_root in \
+    "$readings_root" "$data_root" "$analysis_root" "$newswire_root"; do
+    paths_overlap "$copy_root" "$archived_root" && \
+      die "copy directory must not overlap an archived source root"
+  done
+fi
 
 exec 9>"$backup_root/.backup.lock"
 flock -n 9 || die "another backup is already running"
@@ -213,8 +251,8 @@ verify_bind_mount() {
 # Do not trust a running container merely because it belongs to the Compose
 # project. Bind its two archive paths to the exact configured state root before
 # trusting its image as the capability-bounded archive runtime.
-verify_bind_mount /app/readings "$state_root/readings"
-verify_bind_mount /app/data "$state_root/data"
+verify_bind_mount /app/readings "$readings_root"
+verify_bind_mount /app/data "$data_root"
 
 log "dumping PostgreSQL in custom format"
 # The quoted variables below intentionally expand in the container, where the
@@ -240,8 +278,8 @@ docker run --rm --pull never --network none --read-only --log-driver none \
   --security-opt no-new-privileges:true --cap-drop ALL \
   --cap-add DAC_READ_SEARCH --user 0:0 --pids-limit 64 \
   --memory 512m --memory-swap 512m --cpus 1.0 \
-  --mount "type=bind,src=$state_root/readings,dst=/source/readings,readonly" \
-  --mount "type=bind,src=$state_root/data,dst=/source/data,readonly" \
+  --mount "type=bind,src=$readings_root,dst=/source/readings,readonly" \
+  --mount "type=bind,src=$data_root,dst=/source/data,readonly" \
   --mount "type=bind,src=$analysis_root,dst=/source/analysis,readonly" \
   --mount "type=bind,src=$newswire_root,dst=/source/newswire,readonly" \
   --entrypoint /usr/local/bin/python3 "$artifact_image" -I -B \
@@ -280,16 +318,6 @@ staging_dir=""
 log "published validated backup: $final_dir"
 
 if [[ -n "$copy_root" ]]; then
-  require_absolute_nonroot_path PALIMPSEST_BACKUP_COPY_DIR "$copy_root"
-  # Do not create this path: if it is meant to be a mounted remote and the
-  # mount disappeared, creating it would silently put a second copy locally.
-  [[ -d "$copy_root" && -w "$copy_root" ]] || \
-    die "off-host copy directory is unavailable or not writable: $copy_root"
-  copy_root="$(cd "$copy_root" && pwd -P)"
-  require_absolute_nonroot_path PALIMPSEST_BACKUP_COPY_DIR "$copy_root"
-  [[ "$copy_root" != "$backup_root" ]] || die "copy directory equals backup directory"
-  [[ "$copy_root/" != "$backup_root/"* && "$backup_root/" != "$copy_root/"* ]] || \
-    die "copy directory and backup directory must not contain one another"
   copy_final="$copy_root/$snapshot_id"
   copy_staging="$copy_root/.incomplete-${snapshot_id}.$$"
   [[ ! -e "$copy_final" && ! -e "$copy_staging" ]] || \

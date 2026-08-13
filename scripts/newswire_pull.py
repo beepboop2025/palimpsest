@@ -39,7 +39,7 @@ STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
 MAX_LEDGER_RECORDS = 16384
 MAX_LEDGER_BYTES = 32 * 1024 * 1024
 MAX_PREVIOUS_BYTES = 64 * 1024 * 1024
-DEFAULT_LOCK_NAME = "newswire.lock"
+_TEMP_SUFFIX_RE = re.compile(r"^[a-z0-9_]{8}$")
 _EVENT_ID_RE = re.compile(r"^event-[0-9a-f]{24}$")
 _EVENT_VERSION_ID_RE = re.compile(r"^eventv-[0-9a-f]{24}$")
 _SOURCE_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,79}$")
@@ -215,6 +215,63 @@ def _atomic_write(path: Path, payload: bytes) -> None:
             temporary.unlink()
 
 
+def _reconcile_atomic_temporaries(paths: Sequence[Path | None]) -> None:
+    """Remove only abandoned files created by this producer's atomic writes."""
+
+    seen: set[tuple[Path, str]] = set()
+    for path in paths:
+        if path is None:
+            continue
+        parent = path.parent
+        if not parent.exists():
+            continue
+        prefix = f".{path.name}."
+        try:
+            parent_descriptor = os.open(
+                parent,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            )
+        except OSError as exc:
+            raise ValueError("newswire temporary directory is unsafe") from exc
+        try:
+            for name in os.listdir(parent_descriptor):
+                key = (parent, name)
+                suffix = name.removeprefix(prefix)
+                if (
+                    key in seen
+                    or not name.startswith(prefix)
+                    or not _TEMP_SUFFIX_RE.fullmatch(suffix)
+                ):
+                    continue
+                seen.add(key)
+                try:
+                    metadata = os.stat(
+                        name,
+                        dir_fd=parent_descriptor,
+                        follow_symlinks=False,
+                    )
+                except OSError as exc:
+                    raise ValueError(
+                        "newswire temporary artifact cannot be inspected"
+                    ) from exc
+                if (
+                    not stat.S_ISREG(metadata.st_mode)
+                    or metadata.st_nlink != 1
+                    or metadata.st_uid != os.geteuid()
+                    or metadata.st_gid != os.getegid()
+                    or stat.S_IMODE(metadata.st_mode) not in {0o600, 0o644}
+                ):
+                    raise ValueError("newswire temporary artifact is unsafe")
+                try:
+                    os.unlink(name, dir_fd=parent_descriptor)
+                except OSError as exc:
+                    raise ValueError(
+                        "newswire temporary artifact cannot be reconciled"
+                    ) from exc
+        finally:
+            os.close(parent_descriptor)
+
+
 def _ledger_bytes(records: list[dict[str, Any]]) -> bytes:
     return b"".join(canonical_json_bytes(record) + b"\n" for record in records)
 
@@ -325,6 +382,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         fcntl.flock(lock_descriptor, fcntl.LOCK_EX)
 
     try:
+        if lock_descriptor is not None:
+            _reconcile_atomic_temporaries((args.output, args.ledger, args.status))
         return _main_locked(args)
     finally:
         if lock_descriptor is not None:

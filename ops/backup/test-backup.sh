@@ -20,7 +20,9 @@ fail() {
 repo="$fixture_root/repo"
 state_root="$fixture_root/state"
 analysis_root="$fixture_root/analysis"
-newswire_root="$fixture_root/newswire"
+# Production keeps the evidence wire under the broader state root while the
+# archive mounts only the disjoint readings/ and data/ subtrees from that root.
+newswire_root="$state_root/newswire"
 backup_root="$fixture_root/backups"
 failed_root="$fixture_root/failed-backups"
 offsite_root="$fixture_root/offsite"
@@ -237,6 +239,19 @@ fi
 [[ -z "$(find "$unencrypted_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
   fail "unencrypted off-host refusal left a published or incomplete directory"
 
+recursive_copy_backup_root="$fixture_root/recursive-copy-backups"
+recursive_copy_root="$state_root/data/offsite-copy"
+mkdir -p "$recursive_copy_backup_root" "$recursive_copy_root"
+if env "${common_env[@]}" \
+  PALIMPSEST_BACKUP_DIR="$recursive_copy_backup_root" \
+  PALIMPSEST_BACKUP_COPY_DIR="$recursive_copy_root" \
+  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1 \
+  "$backup_script"; then
+  fail "copy directory inside an archived source unexpectedly ran"
+fi
+[[ -z "$(find "$recursive_copy_backup_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "recursive copy refusal left a published or incomplete directory"
+
 if env "${common_env[@]}" \
   PALIMPSEST_BACKUP_DIR="$failed_root" \
   FAKE_PG_RESTORE_FAIL=1 \
@@ -278,5 +293,36 @@ if env "${common_env[@]}" \
 fi
 [[ -z "$(find "$missing_analysis_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
   fail "missing analysis root left a published or incomplete directory"
+
+symlink_state_root="$fixture_root/symlink-state"
+symlink_data_target="$fixture_root/symlink-data-target"
+symlink_backup_root="$fixture_root/symlink-backups"
+symlink_copy_root="$symlink_data_target/offsite-copy"
+mkdir -p "$symlink_state_root/readings" "$symlink_data_target" \
+  "$symlink_backup_root" "$symlink_copy_root"
+ln -s "$symlink_data_target" "$symlink_state_root/data"
+if env "${common_env[@]}" \
+  PALIMPSEST_STATE_ROOT="$symlink_state_root" \
+  PALIMPSEST_BACKUP_DIR="$symlink_backup_root" \
+  PALIMPSEST_BACKUP_COPY_DIR="$symlink_copy_root" \
+  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1 \
+  "$backup_script"; then
+  fail "symlinked data root unexpectedly bypassed containment checks"
+fi
+[[ -z "$(find "$symlink_backup_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "symlinked data refusal left a published or incomplete directory"
+
+checkout_copy_backup_root="$fixture_root/checkout-copy-backups"
+checkout_copy_root="$repo/private-backups"
+mkdir -p "$checkout_copy_backup_root" "$checkout_copy_root"
+if env "${common_env[@]}" \
+  PALIMPSEST_BACKUP_DIR="$checkout_copy_backup_root" \
+  PALIMPSEST_BACKUP_COPY_DIR="$checkout_copy_root" \
+  PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED=1 \
+  "$backup_script"; then
+  fail "copy directory inside the checkout unexpectedly ran"
+fi
+[[ -z "$(find "$checkout_copy_backup_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "checkout copy refusal left a published or incomplete directory"
 
 printf 'PASS: backup publication, newswire/analysis coverage, mount binding, encrypted off-host contract, and failure cleanup\n'

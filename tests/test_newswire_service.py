@@ -142,6 +142,76 @@ def test_complete_attempt_runs_under_persistent_exclusive_lock(
     assert events
 
 
+def test_locked_attempt_reconciles_only_owned_atomic_temporaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+    status = tmp_path / "newswire-status.json"
+    lock = tmp_path / "newswire.lock"
+    stale = [
+        tmp_path / ".newswire-latest.json.abc123_4",
+        tmp_path / ".newswire-versions.jsonl.1234abcd",
+        tmp_path / ".newswire-status.json.a1b2c3d4",
+    ]
+    unrelated = tmp_path / ".not-a-newswire-temporary.abc123_4"
+    for path in (*stale, unrelated):
+        path.write_text("abandoned", encoding="utf-8")
+
+    def attempt(_args) -> int:
+        assert all(not path.exists() for path in stale)
+        assert unrelated.read_text(encoding="utf-8") == "abandoned"
+        return 0
+
+    monkeypatch.setattr(pull, "_main_locked", attempt)
+
+    assert (
+        pull.main(
+            [
+                "--output",
+                str(output),
+                "--ledger",
+                str(ledger),
+                "--status",
+                str(status),
+                "--lock",
+                str(lock),
+            ]
+        )
+        == 0
+    )
+
+
+def test_locked_attempt_rejects_unsafe_matching_temporary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outside = tmp_path / "outside"
+    outside.write_text("must survive", encoding="utf-8")
+    unsafe = tmp_path / ".newswire-latest.json.abc123_4"
+    unsafe.symlink_to(outside)
+    monkeypatch.setattr(
+        pull,
+        "_main_locked",
+        lambda _args: pytest.fail("unsafe temporary reached the collector"),
+    )
+
+    with pytest.raises(ValueError, match="temporary artifact is unsafe"):
+        pull.main(
+            [
+                "--output",
+                str(tmp_path / "newswire-latest.json"),
+                "--ledger",
+                str(tmp_path / "newswire-versions.jsonl"),
+                "--status",
+                str(tmp_path / "newswire-status.json"),
+                "--lock",
+                str(tmp_path / "newswire.lock"),
+            ]
+        )
+    assert unsafe.is_symlink()
+    assert outside.read_text(encoding="utf-8") == "must survive"
+
+
 def test_zero_fresh_sources_preserves_last_good_and_records_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
