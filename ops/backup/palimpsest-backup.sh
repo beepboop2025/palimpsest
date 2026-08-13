@@ -36,6 +36,7 @@ minimum_free_mb="${PALIMPSEST_BACKUP_MIN_FREE_MB:-1024}"
 copy_root="${PALIMPSEST_BACKUP_COPY_DIR:-}"
 copy_hook="${PALIMPSEST_BACKUP_HOOK:-}"
 compose_project="${PALIMPSEST_COMPOSE_PROJECT:-palimpsest}"
+artifact_service="${PALIMPSEST_BACKUP_ARTIFACT_SERVICE:-worker}"
 
 require_absolute_nonroot_path PALIMPSEST_ROOT "$repo_root"
 require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
@@ -46,6 +47,8 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 (( minimum_free_mb >= 64 )) || die "minimum free MB must be at least 64"
 [[ "$compose_project" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
   die "unsafe Compose project name: $compose_project"
+[[ "$artifact_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
+  die "unsafe artifact service name: $artifact_service"
 
 for command_name in docker flock sha256sum tar find awk date hostname df \
   mkdir dirname basename mv cp rm; do
@@ -118,6 +121,49 @@ compose=(
   -f "$compose_file"
 )
 
+artifact_container="$("${compose[@]}" ps -q "$artifact_service")"
+[[ "$artifact_container" =~ ^[a-f0-9]{12,64}$ ]] || \
+  die "artifact service is not running exactly one container: $artifact_service"
+artifact_image="$(docker inspect --format '{{.Image}}' "$artifact_container")"
+[[ "$artifact_image" =~ ^sha256:[a-f0-9]{64}$ ]] || \
+  die "artifact container has an unsafe image identity: $artifact_image"
+
+verify_bind_mount() {
+  local destination="$1"
+  local expected="$2"
+  local actual_source=""
+  local actual_type=""
+  local mount_destination mount_source mount_type
+
+  while IFS=$'\t' read -r mount_destination mount_source mount_type; do
+    if [[ "$mount_destination" == "$destination" ]]; then
+      [[ -z "$actual_source" ]] || \
+        die "artifact container has duplicate $destination mounts"
+      actual_source="$mount_source"
+      actual_type="$mount_type"
+    fi
+  done < <(
+    docker inspect --format \
+      '{{range .Mounts}}{{printf "%s\t%s\t%s\n" .Destination .Source .Type}}{{end}}' \
+      "$artifact_container"
+  )
+
+  [[ "$actual_type" == "bind" && -n "$actual_source" ]] || \
+    die "artifact container $destination is not a host bind mount"
+  [[ -d "$actual_source" ]] || \
+    die "artifact container mount source is not a directory: $actual_source"
+  actual_source="$(cd "$actual_source" && pwd -P)"
+  expected="$(cd "$expected" && pwd -P)"
+  [[ "$actual_source" == "$expected" ]] || \
+    die "artifact container $destination maps $actual_source, expected $expected"
+}
+
+# Do not trust a running container merely because it belongs to the Compose
+# project. Bind its two archive paths to the exact configured state root before
+# trusting its image as the capability-bounded archive runtime.
+verify_bind_mount /app/readings "$state_root/readings"
+verify_bind_mount /app/data "$state_root/data"
+
 log "dumping PostgreSQL in custom format"
 # The quoted variables below intentionally expand in the container, where the
 # official image provides POSTGRES_USER/POSTGRES_DB, not in this host shell.
@@ -133,8 +179,18 @@ log "validating the PostgreSQL archive with pg_restore --list"
 [[ -s "$staging_dir/postgres.list" ]] || die "pg_restore produced an empty listing"
 
 log "archiving readings/ and data/"
-tar --create --gzip --file "$staging_dir/artifacts.tar.gz" \
-  --directory "$state_root" -- readings data
+# Use the exact content-addressed image from the inspected worker, but do not
+# execute inside that live process. The one-shot archive container has no
+# network, a read-only root and source mounts, and only CAP_DAC_READ_SEARCH so
+# it can read every producer-owned mode-0600 artifact without mutating it.
+docker run --rm --pull never --network none --read-only --log-driver none \
+  --security-opt no-new-privileges:true --cap-drop ALL \
+  --cap-add DAC_READ_SEARCH --user 0:0 --pids-limit 64 \
+  --memory 512m --memory-swap 512m --cpus 1.0 \
+  --mount "type=bind,src=$state_root/readings,dst=/source/readings,readonly" \
+  --mount "type=bind,src=$state_root/data,dst=/source/data,readonly" \
+  --entrypoint tar "$artifact_image" --create --gzip --numeric-owner --file - \
+  --directory /source -- readings data >"$staging_dir/artifacts.tar.gz"
 tar --list --gzip --file "$staging_dir/artifacts.tar.gz" \
   >"$staging_dir/artifacts.list"
 [[ -s "$staging_dir/artifacts.list" ]] || die "artifact archive listing is empty"
@@ -146,7 +202,7 @@ postgres_version="$(
     2>/dev/null || printf 'unknown'
 )"
 {
-  printf 'format_version=1\n'
+  printf 'format_version=2\n'
   printf 'snapshot_id=%s\n' "$snapshot_id"
   printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf 'host=%s\n' "$(hostname)"

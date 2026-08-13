@@ -23,6 +23,8 @@ backup_root="$fixture_root/backups"
 failed_root="$fixture_root/failed-backups"
 offsite_root="$fixture_root/offsite"
 fake_bin="$fixture_root/bin"
+fake_container="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+fake_image="sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
 mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
   "$backup_root" "$failed_root" "$offsite_root" "$fake_bin"
 
@@ -39,7 +41,9 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -eu' \
   'joined=" $* "' \
-  'if [[ "$joined" == *" pg_dump "* ]]; then' \
+  'if [[ "$joined" == *" ps -q worker "* ]]; then' \
+  '  printf "%s\n" "$FAKE_CONTAINER_ID"' \
+  'elif [[ "$joined" == *" pg_dump "* ]]; then' \
   '  printf "fake-custom-dump\n"' \
   'elif [[ "$joined" == *" pg_restore --list "* ]]; then' \
   '  payload="$(command cat)"' \
@@ -48,13 +52,44 @@ printf '%s\n' \
   '  printf "; fake archive listing\n"' \
   'elif [[ "$joined" == *" psql "* ]]; then' \
   '  printf "16.test\n"' \
+  'elif [[ "$joined" == *" run --rm --pull never --network none "* ]]; then' \
+  '  [[ "$joined" == *" --log-driver none "* ]] || exit 49' \
+  '  [[ "$joined" == *" --cap-add DAC_READ_SEARCH "* ]] || exit 46' \
+  '  [[ "$joined" == *" $FAKE_IMAGE_ID --create "* ]] || exit 47' \
+  '  [[ "$joined" == *" --numeric-owner "* ]] || exit 48' \
+  '  exec tar --create --gzip --file - --directory "$FAKE_STATE_ROOT" -- readings data' \
   'else' \
   '  printf "unexpected fake docker invocation: %s\n" "$*" >&2' \
   '  exit 43' \
   'fi' \
   >"$fake_bin/docker"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -eu' \
+  '[[ "$1" == inspect && "$2" == --format ]] || exit 44' \
+  '[[ "${4:-}" == "$FAKE_CONTAINER_ID" ]] || exit 45' \
+  'if [[ "$3" == "{{.Image}}" ]]; then' \
+  '  printf "%s\n" "$FAKE_IMAGE_ID"' \
+  'else' \
+  '  printf "/app/readings\t%s\tbind\n" "$FAKE_STATE_ROOT/readings"' \
+  '  printf "/app/data\t%s\tbind\n" "${FAKE_DATA_SOURCE:-$FAKE_STATE_ROOT/data}"' \
+  'fi' \
+  >"$fake_bin/docker-inspect"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$fake_bin/flock"
-chmod 0755 "$fake_bin/docker" "$fake_bin/flock"
+chmod 0755 "$fake_bin/docker" "$fake_bin/docker-inspect" "$fake_bin/flock"
+
+# The backup calls both `docker compose` and `docker inspect`. Keep one fake
+# entry point while dispatching the latter to its focused fixture.
+mv "$fake_bin/docker" "$fake_bin/docker-compose-fake"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -eu' \
+  'if [[ "${1:-}" == inspect ]]; then' \
+  '  exec "$(dirname "$0")/docker-inspect" "$@"' \
+  'fi' \
+  'exec "$(dirname "$0")/docker-compose-fake" "$@"' \
+  >"$fake_bin/docker"
+chmod 0755 "$fake_bin/docker"
 
 common_env=(
   "PATH=$fake_bin:$PATH"
@@ -62,6 +97,9 @@ common_env=(
   "PALIMPSEST_STATE_ROOT=$state_root"
   "PALIMPSEST_BACKUP_RETENTION_DAYS=14"
   "PALIMPSEST_BACKUP_MIN_FREE_MB=64"
+  "FAKE_CONTAINER_ID=$fake_container"
+  "FAKE_IMAGE_ID=$fake_image"
+  "FAKE_STATE_ROOT=$state_root"
 )
 
 env "${common_env[@]}" \
@@ -92,4 +130,15 @@ fi
 [[ -z "$(find "$failed_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
   fail "failed validation left a published or incomplete directory"
 
-printf 'PASS: backup publication, off-host verification, and failure cleanup\n'
+wrong_mount_root="$fixture_root/wrong-mount-backups"
+mkdir -p "$wrong_mount_root" "$fixture_root/wrong-data"
+if env "${common_env[@]}" \
+  PALIMPSEST_BACKUP_DIR="$wrong_mount_root" \
+  FAKE_DATA_SOURCE="$fixture_root/wrong-data" \
+  "$backup_script"; then
+  fail "mismatched data bind mount unexpectedly published"
+fi
+[[ -z "$(find "$wrong_mount_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "mount mismatch left a published or incomplete directory"
+
+printf 'PASS: backup publication, mount binding, off-host verification, and failure cleanup\n'

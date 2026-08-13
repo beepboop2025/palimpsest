@@ -40,6 +40,18 @@ sudo systemctl status palimpsest-backup.service --no-pager
 systemctl list-timers palimpsest-backup.timer
 ```
 
+The backup verifies that the always-on `worker` Compose service's `/app/readings`
+and `/app/data` are bind-mounted from the exact configured state root. It then
+streams the archive from a one-shot container using the worker's exact image
+digest, no network, a read-only root and source mounts, and only
+`CAP_DAC_READ_SEARCH`. This reads producer-owned mode-0600 artifacts without any
+ownership, mode, or ACL mutation. A missing service, named volume, mismatched
+host source, or unpinned image identity fails the backup before publication.
+Container logging is disabled so the private archive stream is not duplicated
+into Docker's root-disk JSON logs.
+`PALIMPSEST_BACKUP_ARTIFACT_SERVICE` can select another reviewed service with
+the same image and exact bind mounts.
+
 For an existing node under `/home/palimpsest/palimpsest`, also install
 `ops/systemd/palimpsest-backup.override.example.conf` as
 `/etc/systemd/system/palimpsest-backup.service.d/override.conf`, and set the
@@ -56,32 +68,11 @@ absolute executable path, not a shell command.
 
 The job intentionally fails when any included evidence file is unreadable. Do
 not work around that by changing ownership or widening a private subtree to its
-ordinary group or to everyone. For an isolated mode-0600 artifact that belongs
-in the backup, derive the effective service principal rather than assuming the
-generic `deploy` layout or the Palimpsest-specific `palimpsest` override:
-
-```bash
-BACKUP_USER="$(systemctl show --property=User --value palimpsest-backup.service)"
-test -n "$BACKUP_USER"
-getent passwd "$BACKUP_USER" >/dev/null
-
-# Replace this placeholder with one reviewed, absolute regular-file path.
-EVIDENCE_FILE=/absolute/path/to/the/exact-unreadable-artifact
-test -f "$EVIDENCE_FILE" && test ! -L "$EVIDENCE_FILE"
-BEFORE_HASH="$(sudo sha256sum -- "$EVIDENCE_FILE")"
-BEFORE_OWNER_SIZE="$(sudo stat -c '%u:%g:%s' -- "$EVIDENCE_FILE")"
-sudo setfacl -m "u:${BACKUP_USER}:r--" -- "$EVIDENCE_FILE"
-sudo -u "$BACKUP_USER" test -r "$EVIDENCE_FILE"
-test "$BEFORE_HASH" = "$(sudo sha256sum -- "$EVIDENCE_FILE")"
-test "$BEFORE_OWNER_SIZE" = "$(sudo stat -c '%u:%g:%s' -- "$EVIDENCE_FILE")"
-sudo getfacl -cp -- "$EVIDENCE_FILE"
-```
-
-If the final read check reports a traversal error, use `namei -l` to identify
-the exact inaccessible parent and grant that principal execute-only access on
-only that parent. POSIX `stat` group bits reflect the ACL mask; the final
-`getfacl` output must retain `group::---` and `other::---`, with only the named
-backup identity receiving read access.
+ordinary group or to everyone. Files under the backed-up `readings/` and `data/`
+trees must be readable through the reviewed, capability-bounded archive
+container. Repair a producer that creates unsupported objects or paths at that
+producer's ownership contract; never mutate `data/evidence-documents` modes or
+ACLs because its store validates strict private modes.
 
 For interactive stack operations, use `ops/docker/prod-compose`. It supplies
 the same `.env` to both Compose interpolation and the running containers; a
@@ -118,6 +109,16 @@ over the live repository:
 ```bash
 mkdir -p /home/deploy/restore-check
 tar -xzf "$B/artifacts.tar.gz" -C /home/deploy/restore-check
+```
+
+Inspection as an unprivileged user intentionally does not restore ownership.
+For the final, reviewed recovery into an empty replacement state root, preserve
+the archive's numeric producer identities and do not resolve container account
+names through the host's different passwd database:
+
+```bash
+sudo tar --extract --gzip --numeric-owner --same-owner \
+  --file "$B/artifacts.tar.gz" --directory /absolute/replacement-state-root
 ```
 
 Only after inspecting both restores should an operator schedule downtime and

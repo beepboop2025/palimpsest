@@ -293,15 +293,15 @@ def test_analysis_operations_document_fixed_capacity_and_trust_boundaries() -> N
         assert "--chown=10001" not in instructions
     assert "prod-compose port api 8000" in deploy_guide
     assert "127.0.0.1:8000/healthz" not in deploy_guide
-    assert "group::---" in deploy_guide
-    assert "systemctl show --property=User --value" in backup_documentation
-    assert "EVIDENCE_FILE=/absolute/path/to/the/exact-unreadable-artifact" in (
-        backup_documentation
-    )
-    assert 'setfacl -m "u:${BACKUP_USER}:r--"' in backup_documentation
-    assert 'sudo -u "$BACKUP_USER" test -r' in backup_documentation
-    assert "BEFORE_HASH" in backup_documentation
-    assert "BEFORE_OWNER_SIZE" in backup_documentation
+    for instructions in (deploy_guide, backup_documentation):
+        normalized = " ".join(instructions.split())
+        assert "CAP_DAC_READ_SEARCH" in normalized
+        assert "no network" in normalized or "networkless" in normalized
+        assert "read-only" in normalized
+        assert "exact image digest" in normalized
+        assert "Do not change evidence ownership, modes, or ACLs" in normalized or (
+            "never mutate `data/evidence-documents` modes or ACLs" in normalized
+        )
 
 
 def test_app_image_carries_the_compose_supplied_revision_label() -> None:

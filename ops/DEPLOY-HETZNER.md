@@ -715,6 +715,14 @@ coordination work across a host restart.
   sudo systemctl start palimpsest-backup.service
   ```
 
+  The backup proves the always-on `worker` Compose service maps `/app/readings`
+  and `/app/data` to the exact configured state root. It then streams those
+  trees from a one-shot, networkless, read-only container using the worker's
+  exact image digest and only `CAP_DAC_READ_SEARCH`. This preserves private
+  modes and ownership while including artifacts from multiple producer UIDs.
+  Missing containers, named volumes, mismatched binds, and unpinned images fail
+  closed.
+
   Each timestamped snapshot contains a PostgreSQL custom archive validated by
   `pg_restore --list`, the `readings/` + `data/` trees validated by tar, and
   SHA-256 checksums. It is published by atomic rename only after all checks
@@ -723,15 +731,11 @@ coordination work across a host restart.
   checksum verification, and a non-destructive restore drill are in
   [`ops/backup/README.md`](backup/README.md).
 
-  The backup service fails closed when any included evidence file is unreadable.
-  Do not solve that by changing evidence ownership or making a private tree
-  group/world-readable. For isolated mode-0600 artifacts, record their hashes,
-  derive the actual backup principal from the unit's effective `User`, grant it
-  a named read ACL on the exact files plus traverse on only the required parents,
-  and confirm hashes/owners/sizes are unchanged before retrying. With POSIX ACLs,
-  `stat` group bits display the ACL mask; use `getfacl` to confirm `group::---`,
-  `other::---`, and the one named read grant. The exact fail-closed procedure is
-  in [`ops/backup/README.md`](backup/README.md).
+  The backup service fails closed when the bounded archive container cannot read
+  any included evidence file. Do not change evidence ownership, modes, or ACLs;
+  repair the producer's path/type contract instead. In particular, the evidence
+  document store enforces strict private modes. The exact fail-closed procedure
+  is in [`ops/backup/README.md`](backup/README.md).
 
 - **Hetzner snapshots / backups** — enable the server's automatic backup option
   (~20% surcharge) for whole-box rollback. Cheap insurance for a single node.
