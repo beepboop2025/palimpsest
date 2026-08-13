@@ -39,6 +39,7 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 # falling outside this protection boundary.
 INCLUDED_DIRECTORIES = frozenset(
     {
+        ".filter-receipts",
         "decisions",
         "derived",
         "inbox",

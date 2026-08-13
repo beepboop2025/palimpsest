@@ -3,9 +3,9 @@
 This lane protects the private Common Crawl evidence that cannot be recreated
 from the public URL Index: selected WARC records, future editorial decisions or
 labels, and the SQLite mappings that bind them together. It also carries the
-small inbox export and derived context needed to audit the point-in-time join.
-The multi-hundred-gigabyte public Parquet mirror remains excluded and
-reconstructible.
+small inbox export, local-filter receipts, and derived context needed to audit
+the point-in-time join. The multi-hundred-gigabyte public Parquet mirror remains
+excluded and reconstructible.
 
 ## Recovery boundary
 
@@ -60,10 +60,12 @@ The timer runs weekly with deterministic jitter. A manual start is safe: the
 snapshot lock prevents two backups from overlapping, and the warehouse lock
 waits for an active import or selected-record write instead of racing it.
 
-The fail-closed top-level allowlist is intentional. Adding a future durable
-warehouse directory requires adding it to `INCLUDED_DIRECTORIES` with a test.
-Otherwise the backup fails visibly rather than continuing while omitting new
-editorial state.
+The fail-closed top-level allowlist is intentional. The `.filter-receipts`
+directory is durable audit state and is included in the manifest, checksums, and
+isolated restore verification. Adding any other future durable warehouse
+directory requires adding it to `INCLUDED_DIRECTORIES` with a test. Otherwise
+the backup fails visibly rather than continuing while omitting new editorial or
+operational evidence.
 
 ## Isolated recovery drill
 

@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import json
 import shutil
 import sqlite3
 import sys
@@ -37,6 +38,21 @@ def _warehouse(root: Path, *, with_record: bool = True) -> Path:
     )
     (warehouse / "inbox").mkdir()
     (warehouse / "inbox" / "CC-MAIN-2026-30.jsonl.gz").write_bytes(b"public-export")
+    (warehouse / ".filter-receipts").mkdir()
+    (warehouse / ".filter-receipts" / "CC-MAIN-2026-30-fixture.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "palimpsest-common-crawl-local-filter/v1",
+                "status": "hidden-staging-ready-for-review",
+                "publication_eligible": False,
+                "crawl": "CC-MAIN-2026-30",
+                "scope_sha256": "f" * 64,
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     # The full public mirror is reconstructible and intentionally excluded.
     (warehouse / "parquet").mkdir()
     (warehouse / "parquet" / "part-00000.parquet").write_bytes(b"public-mirror")
@@ -152,10 +168,20 @@ def test_snapshot_is_consistent_bounded_and_fully_verifiable(tmp_path):
     assert result["distinct_urls"] == 1
     assert result["record_objects"] == 1
     assert (snapshot / backup.DATABASE_NAME).is_file()
+    assert (snapshot / ".filter-receipts" / "CC-MAIN-2026-30-fixture.json").is_file()
     assert (snapshot / "derived" / "story-ranking-features.jsonl").is_file()
     assert (snapshot / "inbox" / "CC-MAIN-2026-30.jsonl.gz").is_file()
     assert not (snapshot / "parquet").exists()
     assert backup.verify_snapshot(snapshot) == result
+
+
+def test_filter_receipt_is_restore_verified(tmp_path):
+    snapshot, _ = _create(tmp_path)
+    receipt = snapshot / ".filter-receipts" / "CC-MAIN-2026-30-fixture.json"
+    receipt.write_text("tampered\n", encoding="utf-8")
+
+    with pytest.raises(backup.BackupError, match="fails identity"):
+        backup.verify_snapshot(snapshot)
 
 
 def test_snapshot_consolidates_wal_without_writing_to_source(tmp_path):
