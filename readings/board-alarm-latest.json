@@ -1,38 +1,40 @@
 {
-  "generated_at": "2026-08-12T14:08:36.230547+00:00",
-  "board_e_value": 14.431,
+  "generated_at": "2026-08-13T03:17:37.307735+00:00",
+  "board_e_value": 17.051,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
-    "selected": [],
+    "selected": [
+      "ooni_gfw"
+    ],
     "alpha": 0.1,
-    "k": 0,
+    "k": 1,
     "n_tested": 10,
-    "threshold": null
+    "threshold": 100.0
   },
   "layers": {
     "network": {
-      "e": 31.855,
+      "e": 38.345,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 41.831,
         "ioda_outages": 1.0,
-        "ooni_gfw": 81.781,
+        "ooni_gfw": 107.74,
         "tor_bridge_cn": 2.809
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 3.378,
+      "e": 3.427,
       "n_signals": 5,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 8.79,
-        "ddti_threat": 2.163,
-        "gdelt_containment": 3.242,
-        "github_refuge": 1.697,
+        "ddti_threat": 1.992,
+        "gdelt_containment": 2.767,
+        "github_refuge": 2.586,
         "weibo_suppression": 1.0
       },
       "recent_alarms": [
@@ -61,34 +63,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 81.7812,
-      "n": 139,
+      "e": 107.7398,
+      "n": 142,
       "direction": "down",
-      "robust_z": -1.35,
+      "robust_z": -1.42,
       "driver_side": "down",
-      "readings_since_alarm": 88,
+      "readings_since_alarm": 91,
       "n_alarms_in_history": 1,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 2.1634,
-      "n": 260,
+      "e": 1.9924,
+      "n": 264,
       "direction": "down",
-      "robust_z": -0.67,
-      "driver_side": "up",
-      "readings_since_alarm": 21,
+      "robust_z": -0.83,
+      "driver_side": "down",
+      "readings_since_alarm": 25,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "warming_up",
       "e": 0.0,
-      "n": 260,
+      "n": 264,
       "direction": "down",
       "robust_z": -9.44,
       "driver_side": null,
-      "readings_since_alarm": 2,
+      "readings_since_alarm": 6,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -105,21 +107,21 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 3.2419,
-      "n": 147,
-      "direction": "down",
-      "robust_z": -0.67,
-      "driver_side": "down",
+      "e": 2.7665,
+      "n": 149,
+      "direction": "up",
+      "robust_z": 0.67,
+      "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
       "state": "calm",
-      "e": 1.6966,
-      "n": 73,
-      "direction": "flat",
-      "robust_z": 0.0,
+      "e": 2.5857,
+      "n": 74,
+      "direction": "down",
+      "robust_z": -0.67,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -139,7 +141,7 @@
     "bleedthrough_capacity": {
       "state": "warming_up",
       "e": 0.0,
-      "n": 1,
+      "n": 3,
       "direction": "flat",
       "robust_z": null,
       "driver_side": null,
@@ -161,7 +163,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 96,
+      "n": 98,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -172,7 +174,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 97,
+      "n": 99,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -198,52 +200,52 @@
     },
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
-      "e": 0.0003,
+      "e": 0.0002,
       "n_models": 4,
       "models": {
         "anthropic/claude-3-haiku": {
           "state": "quiet",
           "evalue": 0.0,
           "p0": 0.004663,
-          "pairs_seen": 33,
+          "pairs_seen": 34,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 533
+          "monitored_comparisons": 574
         },
         "meta-llama/llama-3.3-70b-instruct": {
           "state": "quiet",
-          "evalue": 0.001,
+          "evalue": 0.0007,
           "p0": 0.008849,
-          "pairs_seen": 33,
+          "pairs_seen": 34,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.008849,
-          "monitored_comparisons": 533
+          "monitored_comparisons": 574
         },
         "mistralai/mistral-nemo": {
           "state": "quiet",
           "evalue": 0.0001,
           "p0": 0.114619,
-          "pairs_seen": 33,
+          "pairs_seen": 34,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.114619,
-          "monitored_comparisons": 512
+          "monitored_comparisons": 552
         },
         "openai/gpt-4o-mini": {
           "state": "quiet",
-          "evalue": 0.0,
+          "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 33,
+          "pairs_seen": 34,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 533
+          "monitored_comparisons": 574
         }
       },
-      "n_rows": 132,
+      "n_rows": 136,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
       },
-      "age_hours": 6.3,
+      "age_hours": 7.8,
       "bound_hours": 30.0,
       "state": "quiet",
       "thresholds": {

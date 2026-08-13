@@ -1,19 +1,19 @@
 {
   "ok": true,
-  "generated_at": "2026-08-12T14:08:08.479336+00:00",
-  "fused_index": 28.4,
+  "generated_at": "2026-08-13T03:15:57.868862+00:00",
+  "fused_index": 28.3,
   "interval": [
     4.4,
-    57.6
+    57.4
   ],
-  "interval_width_pp": 53.2,
+  "interval_width_pp": 53.0,
   "single_rate_quotable": false,
   "confidence": "CONTESTED",
-  "agreement": 0.114,
-  "divergence_pp": 53.2,
+  "agreement": 0.117,
+  "divergence_pp": 53.0,
   "vantages": {
     "censored_planet": 4.4,
-    "ooni": 57.6
+    "ooni": 57.4
   },
   "weights_used": {
     "ooni": 0.45,
@@ -23,11 +23,11 @@
   "net4people": {
     "present": true,
     "n_blocking": 1,
-    "n_recent": 6,
-    "blocking_share": 0.167
+    "n_recent": 5,
+    "blocking_share": 0.2
   },
   "qualitative_flag": null,
-  "verdict": "NO SINGLE RATE IS DEFENSIBLE: OONI reads 58 and Censored Planet 4, 53pp apart. The honest answer is the range 4–58, not its midpoint — censorship is vantage-dependent and these two methods are measuring different things about the same wall.",
+  "verdict": "NO SINGLE RATE IS DEFENSIBLE: OONI reads 57 and Censored Planet 4, 53pp apart. The honest answer is the range 4–57, not its midpoint — censorship is vantage-dependent and these two methods are measuring different things about the same wall.",
   "caveats": [
     "when single_rate_quotable is false the fused_index is NOT a defensible estimate — it is the weighted midpoint of methods that disagree, kept only for continuity of the series; quote the interval instead",
     "censorship is VANTAGE-DEPENDENT (arXiv:2406.19304): independent methods can legitimately disagree because of routing, partial deployment, or probe location — divergence is reported, never smoothed away",

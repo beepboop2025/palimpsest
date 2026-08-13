@@ -722,12 +722,24 @@
     });
   }
 
+  /* Privacy-first portfolio measurement. Cloudflare's beacon is loaded from
+     the shared shell so the site's hundreds of static pages stay in sync. */
+  function initWebAnalytics() {
+    if (document.querySelector("script[data-cf-beacon]")) return;
+    var beacon = document.createElement("script");
+    beacon.type = "module";
+    beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
+    beacon.setAttribute("data-cf-beacon", '{"token":"99a9c5f167624ed488a68a34b5513371"}');
+    document.head.appendChild(beacon);
+  }
+
   function init() {
     initNav();
     initStagger();
     initReveal();
     initPageShare();
     initCardShare();
+    initWebAnalytics();
   }
 
   if (document.readyState === "loading") {
