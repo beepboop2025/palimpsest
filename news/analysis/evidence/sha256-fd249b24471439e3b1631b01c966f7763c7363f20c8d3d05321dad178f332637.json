@@ -1,0 +1,88 @@
+{
+  "schema_version": "palimpsest-machine-evidence-capsule.v1",
+  "capsule_type": "redacted-aggregate-evidence",
+  "content_address": {
+    "algorithm": "sha256",
+    "scope": "original-input-bytes",
+    "sha256": "fd249b24471439e3b1631b01c966f7763c7363f20c8d3d05321dad178f332637"
+  },
+  "original_input": {
+    "artifact_id": "china-economic-pulse-latest.json",
+    "generated_at": "2026-08-13T19:41:57Z",
+    "sha256": "fd249b24471439e3b1631b01c966f7763c7363f20c8d3d05321dad178f332637",
+    "integrity": "exact-input-bytes-verified"
+  },
+  "citations": [
+    {
+      "evidence_id": "evidence-economic-readiness",
+      "title": "Economic pulse publication gates",
+      "role": "support",
+      "source_class": "DERIVED_ANALYSIS",
+      "source_id": "china-economic-pulse",
+      "selector": "readiness",
+      "source_timestamp": "2026-08-13T19:41:57Z",
+      "independence_group": "pipeline:economic-pulse",
+      "upstream_groups": [
+        "cfets_benchmarks",
+        "external_fx_reference",
+        "hkex_market_flows"
+      ],
+      "value": {
+        "type": "publication-readiness-state",
+        "value": "warming_up"
+      },
+      "denominator": {
+        "type": "aggregate-count",
+        "label": "publication gates",
+        "value": 4
+      },
+      "interpretation_limit": "A readiness receipt evaluates whether a synthesis can publish; it is not itself an economic observation.",
+      "freshness": "current",
+      "rights": {
+        "redistribution": "ATTRIBUTION_REQUIRED",
+        "reuse": "derived_only",
+        "training": "prohibited"
+      },
+      "attribution": {
+        "attribution_required": true,
+        "providers": [
+          {
+            "name": "Palimpsest aggregate economic readings",
+            "source_url": null,
+            "terms_url": null
+          },
+          {
+            "name": "config/china_econ_sources.json",
+            "source_url": null,
+            "terms_url": null
+          }
+        ],
+        "upstream_groups": [
+          "publisher:bank-of-canada",
+          "publisher:cfets",
+          "publisher:ecb",
+          "publisher:hkex",
+          "publisher:nbs",
+          "publisher:nra",
+          "publisher:official-statistical-publications",
+          "publisher:pboc",
+          "publisher:safe"
+        ],
+        "public_source_url": "https://palimpsest.info/readings/china-economic-pulse-latest.json",
+        "upstream_source_urls": [],
+        "source_statement": "Palimpsest public aggregate economic readings and bitemporal observation ledger",
+        "license": {
+          "name": "MIT for Palimpsest synthesis; mixed upstream rights retained",
+          "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "aggregate_only": true,
+    "raw_input_included": false,
+    "person_level_data_included": false,
+    "contact_data_included": false,
+    "ip_addresses_included": false
+  }
+}
