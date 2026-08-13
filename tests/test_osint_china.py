@@ -125,6 +125,8 @@ def test_manifest_has_stable_unique_ids_files_layers_and_freshness(mod):
     nemesis = next(spec for spec in mod.SIGNALS if spec.id == "nemesis")
     assert nemesis.optional is True
     assert nemesis.layer == "nemesis"
+    baike = next(spec for spec in mod.SIGNALS if spec.id == "baike-redaction")
+    assert baike.optional is True
 
     future = {spec.id: spec for spec in mod.SIGNALS
               if spec.id in {"believability", "bleedthrough"}}
@@ -312,6 +314,26 @@ def test_disabled_baike_collector_is_explicit_on_rollup_surface(mod, tmp_path):
     assert "disabled pending authorized access" in signal["summary"]
 
 
+def test_disabled_optional_baike_is_not_misreported_as_a_stale_scheduler(mod, tmp_path):
+    _write_json(tmp_path / "baike-redaction-latest.json", {
+        "generated_at": "2026-07-01T00:00:00Z",
+        "pipeline_checked_at": "2026-08-04T11:55:00Z",
+        "source": "fixture",
+        "status": "disabled",
+        "collector_status": "disabled_no_authorized_access",
+        "collector_reason": "Baike collection is disabled pending authorized access",
+        "rewrite_index": None,
+        "valid_for_series": False,
+        "n_comparable": 0,
+        "n_forked": 0,
+    })
+    signal = _signal(mod.build_document(tmp_path, NOW), "baike-redaction")
+    assert signal["optional"] is True
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert "disabled pending authorized access" in signal["health"]["reason"]
+
+
 @pytest.mark.parametrize("payload", [
     {
         "generated_at": "2026-08-04T11:00:00Z",
@@ -342,7 +364,8 @@ def test_baike_metric_requires_explicit_series_and_collector_eligibility(
     assert "Baike series eligibility failed" in signal["summary"]
 
 
-def test_believability_warmup_is_reporting_but_not_promoted_to_live(mod, tmp_path):
+def test_complete_believability_warmup_is_operationally_live_without_a_drift_claim(
+        mod, tmp_path):
     _write_json(tmp_path / "believability-latest.json", {
         "generated_at": "2026-08-04T11:00:00Z",
         "source": "fixture",
@@ -350,13 +373,39 @@ def test_believability_warmup_is_reporting_but_not_promoted_to_live(mod, tmp_pat
         "status": "not_ready",
         "label": "warming_up",
         "drift": None,
+        "gap": 1.2,
+        "n_history": 3,
+        "n_components_present": 3,
         "n_components_required": 3,
+        "components_missing": [],
+    })
+    signal = _signal(mod.build_document(tmp_path, NOW), "believability")
+    assert signal["status"] == "live"
+    assert signal["live"] is True
+    assert signal["health"]["upstream_status"] == "not_ready"
+    assert signal["payload"]["label"] == "warming_up"
+    assert signal["metric"] is None
+    assert "collector is current" in signal["summary"]
+    assert "3/8 prior months" in signal["summary"]
+
+
+def test_incomplete_believability_warmup_remains_degraded(mod, tmp_path):
+    _write_json(tmp_path / "believability-latest.json", {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "source": "fixture",
+        "method_note": "fixture method",
+        "status": "not_ready",
+        "label": "warming_up",
+        "drift": None,
+        "gap": None,
+        "n_history": 3,
+        "n_components_present": 2,
+        "n_components_required": 3,
+        "components_missing": ["rail_freight_yoy"],
     })
     signal = _signal(mod.build_document(tmp_path, NOW), "believability")
     assert signal["status"] == "degraded"
     assert signal["live"] is False
-    assert signal["health"]["upstream_status"] == "not_ready"
-    assert signal["metric"] is None
 
 
 def _valid_anchor_payload(ots_status="stamped") -> dict:

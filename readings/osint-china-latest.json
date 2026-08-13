@@ -27,21 +27,21 @@
     {
       "id": "health-baike-redaction",
       "kind": "health",
-      "severity": "warning",
+      "severity": "notice",
       "source_id": "baike-redaction",
-      "summary": "freshness deadline has passed",
-      "title": "Baike redaction: stale"
+      "summary": "optional collector is disabled pending authorized access; no current Baike measurement is claimed",
+      "title": "Baike redaction: degraded"
     },
     {
-      "id": "health-believability",
+      "id": "health-nemesis",
       "kind": "health",
       "severity": "notice",
-      "source_id": "believability",
-      "summary": "upstream status is not_ready",
-      "title": "Believability read: degraded"
+      "source_id": "nemesis",
+      "summary": "freshness deadline has passed",
+      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-13T16:45:25Z",
+  "generated_at": "2026-08-13T17:33:04Z",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "health": {
     "counts": {
@@ -51,14 +51,14 @@
       "missing": 0,
       "stale": 2
     },
-    "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure",
+    "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
     "required_live": 28,
-    "required_reporting": 30,
-    "required_total": 30,
+    "required_reporting": 29,
+    "required_total": 29,
     "status": "degraded"
   },
-  "input_commit": "903dd8a6a92411fa69e009291c720684a2de5d5a",
+  "input_commit": "2dcc105440c16b42ee6d09913ecc150d6a4517b0",
   "layers": [
     {
       "id": "command",
@@ -131,8 +131,8 @@
     },
     {
       "id": "economy",
-      "n_degraded": 1,
-      "n_live": 4,
+      "n_degraded": 0,
+      "n_live": 5,
       "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
@@ -142,7 +142,7 @@
         "data-darkness",
         "believability"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Economic undertext"
     },
     {
@@ -171,14 +171,14 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Optional intelligence bridge"
     }
   ],
@@ -194,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 2.587,
+        "age_hours": 3.381,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -522,7 +522,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:07:40Z",
       "health": {
-        "age_hours": 2.629,
+        "age_hours": 3.423,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -746,7 +746,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 2.587,
+        "age_hours": 3.381,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -894,7 +894,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 2.587,
+        "age_hours": 3.381,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1433,7 +1433,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:10:12Z",
       "health": {
-        "age_hours": 2.587,
+        "age_hours": 3.381,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1760,7 +1760,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-13T23:10:16Z",
       "health": {
-        "age_hours": 0.586,
+        "age_hours": 1.38,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2493,7 +2493,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:12:13Z",
       "health": {
-        "age_hours": 2.553,
+        "age_hours": 3.347,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2791,7 +2791,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:05:00Z",
       "health": {
-        "age_hours": 2.674,
+        "age_hours": 3.468,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3130,7 +3130,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-12T09:34:59Z",
       "health": {
-        "age_hours": 45.174,
+        "age_hours": 45.968,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -3437,7 +3437,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 82.883,
+        "age_hours": 83.677,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3748,7 +3748,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T16:05:04Z",
       "health": {
-        "age_hours": 2.672,
+        "age_hours": 3.466,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4022,7 +4022,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T03:52:53Z",
       "health": {
-        "age_hours": 2.875,
+        "age_hours": 3.67,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4352,7 +4352,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T03:54:30Z",
       "health": {
-        "age_hours": 2.848,
+        "age_hours": 3.643,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4523,7 +4523,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T09:00:39Z",
       "health": {
-        "age_hours": 9.746,
+        "age_hours": 10.54,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4699,7 +4699,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:03:34Z",
       "health": {
-        "age_hours": 2.697,
+        "age_hours": 3.491,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6533,7 +6533,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T03:53:56Z",
       "health": {
-        "age_hours": 2.858,
+        "age_hours": 3.652,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6583,7 +6583,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:45:26Z",
       "health": {
-        "age_hours": 10.0,
+        "age_hours": 10.794,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6656,7 +6656,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:09:37Z",
       "health": {
-        "age_hours": 2.596,
+        "age_hours": 3.391,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6734,7 +6734,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:23:22Z",
       "health": {
-        "age_hours": 8.367,
+        "age_hours": 9.162,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6855,7 +6855,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:11:19Z",
       "health": {
-        "age_hours": 8.568,
+        "age_hours": 9.362,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6996,7 +6996,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T15:53:42Z",
       "health": {
-        "age_hours": 2.862,
+        "age_hours": 3.656,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7085,12 +7085,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 332.236,
+        "age_hours": 333.03,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
         "pipeline_checked_at": "2026-08-13T07:54:24.728723+00:00",
-        "reason": "freshness deadline has passed",
+        "reason": "optional collector is disabled pending authorized access; no current Baike measurement is claimed",
         "upstream_status": "disabled"
       },
       "id": "baike-redaction",
@@ -7104,7 +7104,7 @@
       "method": "offline fixture analysis; live Baike collection disabled pending authorized access; lexical, auditable judgement with no authenticated revision-history access",
       "method_version": 3,
       "metric": null,
-      "optional": false,
+      "optional": true,
       "payload": {
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
@@ -7231,15 +7231,15 @@
       "scope": "narrative erasure — contested encyclopedia entries silently forked from the open record: sensitive terms excised, sourcing collapsed to state media, or absent",
       "source": "Baidu Baike (subject) vs Chinese Wikipedia (open-record control)",
       "source_timestamp": "2026-07-30T20:31:16Z",
-      "status": "stale",
-      "summary": "Compares Baidu Baike entries with an open-record control and abstains without comparable pairs. The retained payload is stale: source timestamp 2026-07-30T20:31:16Z passed its freshness deadline 2026-07-31T10:31:16Z, so it is not labelled live. Semantic health limitation: Baike series eligibility failed: valid_for_series is not explicitly true; collector_status is 'disabled_no_authorized_access', not 'observed'. Collector operational status is 'disabled_no_authorized_access': Baike collection is disabled pending authorized access; no new observation was made. Upstream reading: Baike collection is disabled pending authorized access; no new observation was made.",
+      "status": "degraded",
+      "summary": "Compares Baidu Baike entries with an open-record control and abstains without comparable pairs. The upstream payload reports status 'disabled'; this roll-up does not convert that abstention or limitation into a finding. Semantic health limitation: Baike series eligibility failed: valid_for_series is not explicitly true; collector_status is 'disabled_no_authorized_access', not 'observed'. Collector operational status is 'disabled_no_authorized_access': Baike collection is disabled pending authorized access; no new observation was made. Upstream reading: Baike collection is disabled pending authorized access; no new observation was made.",
       "title": "Baike redaction"
     },
     {
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-14T16:05:05Z",
       "health": {
-        "age_hours": 2.672,
+        "age_hours": 3.466,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7418,7 +7418,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:14:18Z",
       "health": {
-        "age_hours": 2.519,
+        "age_hours": 3.313,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7594,7 +7594,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T08:58:14Z",
       "health": {
-        "age_hours": 9.786,
+        "age_hours": 10.58,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7698,7 +7698,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-14T04:06:14Z",
       "health": {
-        "age_hours": 2.653,
+        "age_hours": 3.447,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7765,7 +7765,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-14T19:56:10Z",
       "health": {
-        "age_hours": 22.821,
+        "age_hours": 23.615,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7817,7 +7817,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T16:34:46Z",
       "health": {
-        "age_hours": 2.178,
+        "age_hours": 2.972,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7875,7 +7875,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 5.654,
+        "age_hours": 6.448,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8031,12 +8031,12 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 199.582,
+        "age_hours": 200.376,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "upstream status is not_ready",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "not_ready"
       },
       "id": "believability",
@@ -8046,7 +8046,7 @@
         "sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49"
       },
       "layer": "economy",
-      "live": false,
+      "live": true,
       "method": "the Li Keqiang composite (40% loan growth, 40% electricity, 20% rail freight, using the canonical weights) against the state's own headline industrial-production YoY for the same month. The statistic is DRIFT: this month's headline-minus-composite gap against the gap's own rolling median and MAD band, so a services-heavy economy's persistent gap reads as baseline and only a break in the established relationship registers. Electricity is PRODUCTION (the keyless state series), not the original's consumption; this is a stated substitution. A missing component abstains the composite rather than reweighting it; fewer than 8 months of history publishes the gap but claims no drift (warming_up). Full method, origin, critiques and counterpoint: docs/BELIEVABILITY.md. A reading outside the band is evidence the relationship moved; it does not, by itself, establish fabrication",
       "method_version": 1,
       "metric": null,
@@ -8091,15 +8091,15 @@
       "scope": "Optional monthly Li Keqiang composite against the state's headline industrial-production growth, publishing divergence only against the gap's own history.",
       "source": "the state's own releases, keyless: NBS English press releases (Energy Production; Industrial Production Operation), PBC monthly financial statistics report (outstanding RMB loan YoY), NRA monthly rail freight news",
       "source_timestamp": "2026-08-05T09:10:30Z",
-      "status": "degraded",
-      "summary": "Optional monthly Li Keqiang composite against the state's headline industrial-production growth, publishing divergence only against the gap's own history. The upstream payload reports status 'not_ready'; this roll-up does not convert that abstention or limitation into a finding. Upstream reading: physical telemetry is hard to fake because someone pays for the electricity; this read compares the state to the state.",
+      "status": "live",
+      "summary": "Optional monthly Li Keqiang composite against the state's headline industrial-production growth, publishing divergence only against the gap's own history. The monthly collector is current and all three canonical components are present. Divergence analysis is warming up (0/8 prior months), so no drift finding is claimed yet. Upstream reading: physical telemetry is hard to fake because someone pays for the electricity; this read compares the state to the state.",
       "title": "Believability read"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T10:14:10Z",
       "health": {
-        "age_hours": 8.521,
+        "age_hours": 9.315,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13519,7 +13519,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:11:20Z",
       "health": {
-        "age_hours": 8.568,
+        "age_hours": 9.362,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13567,12 +13567,12 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-13T17:29:16Z",
       "health": {
-        "age_hours": 0.269,
+        "age_hours": 1.063,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": "ok"
       },
       "id": "nemesis",
@@ -13582,7 +13582,7 @@
         "sha256": "3914698b8db1183443a2b5640b683a7cddd6220bcbce5f104283f55e390eef5e"
       },
       "layer": "nemesis",
-      "live": true,
+      "live": false,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -18388,8 +18388,8 @@
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
       "source_timestamp": "2026-08-13T16:29:16Z",
-      "status": "live",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 177 count.",
+      "status": "stale",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-13T16:29:16Z passed its freshness deadline 2026-08-13T17:29:16Z, so it is not labelled live. Latest payload reports topics ranked at 177 count.",
       "title": "Private runtime bridge"
     }
   ],

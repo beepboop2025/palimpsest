@@ -408,6 +408,10 @@
   function statusFor(signal) {
     var healthStatus = signal && signal.health && typeof signal.health === "object" ? signal.health.status : null;
     var raw = String(signal && (signal.status || signal.freshness_status || healthStatus) || "unknown").toLowerCase();
+    var collectorStatus = String(signal && signal.health && signal.health.collector_status || "").toLowerCase();
+    /* An explicitly disabled optional collector is an availability limitation, not a
+       scheduler that silently died. Keep it non-live without mislabelling it stale. */
+    if (/disabled/.test(raw) || /disabled/.test(collectorStatus)) return "degraded";
     var deadline = Date.parse(signal && (signal.stale_after || signal.fresh_until || signal.freshness_deadline));
     if (isFinite(deadline) && Date.now() > deadline) return "stale";
     if (/corrupt/.test(raw)) return "corrupt";

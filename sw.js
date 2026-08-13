@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v12";
+const CACHE = "palimpsest-v13";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
@@ -20,6 +20,7 @@ const LIVE_EVIDENCE_READINGS = new Set([
 ]);
 const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
 const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;
+const LIVE_EVENT_ANALYSIS = /^\/news\/wire\/event-[0-9a-f]{24}\/analysis\.json$/;
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
 const SHELL = [
   "/",
@@ -115,6 +116,12 @@ self.addEventListener("fetch", (e) => {
   // revisions remain cacheable, but a correction or a new abstention must not
   // be hidden behind an older offline response.
   if (LIVE_MACHINE_ANALYSIS_REPORT.test(url.pathname)) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // analysis.json is the mutable editorial head for one wire event. Its
+  // content-addressed analysis/revisions/*.json siblings remain cacheable.
+  if (LIVE_EVENT_ANALYSIS.test(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

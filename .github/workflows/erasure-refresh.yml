@@ -9,7 +9,7 @@ name: Refresh Information Erasure Observatory
 
 on:
   schedule:
-    - cron: "17 */6 * * *"      # every 6h, offset from the per-surface signals
+    - cron: "8 */6 * * *"       # every 6h, clear of DDTI/newswire's shared :17 lane
   workflow_dispatch: {}
 
 permissions:
@@ -270,7 +270,7 @@ jobs:
         if: steps.candidate.outputs.changed == 'true'
         id: push_attempt
         continue-on-error: true
-        run: git push origin HEAD:main
+        run: python scripts/push_data_commit.py --base-locked
 
       - name: Recollect, reverify, and retry after a push race
         if: steps.push_attempt.outcome == 'failure'
@@ -278,8 +278,8 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: |
           measurement_commit=$(git rev-parse HEAD)
-          for attempt in 1 2; do
-            echo "publication retry $attempt/2: rebuilding from the current public head"
+          for attempt in 1 2 3 4; do
+            echo "publication retry $attempt/4: rebuilding from the current public head"
             git fetch origin main
             git switch --detach origin/main
 
@@ -336,10 +336,11 @@ jobs:
             fi
             git commit -C "$measurement_commit"
 
-            if git push origin HEAD:main; then
+            if python scripts/push_data_commit.py --base-locked; then
               exit 0
             fi
-            echo "publication retry $attempt/2 lost another race"
+            echo "publication retry $attempt/4 lost another race"
+            sleep $((attempt * 5))
           done
-          echo "FATAL: erasure publication lost both bounded retries"
+          echo "FATAL: erasure publication exhausted four verified rebuild retries"
           exit 1

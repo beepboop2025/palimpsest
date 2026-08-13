@@ -23,6 +23,7 @@ concurrency:
 jobs:
   silence-index:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
@@ -56,6 +57,9 @@ jobs:
           else
             git commit -m "data: silence index refresh ($(date -u +%FT%TZ)) [skip ci]"
             python scripts/push_data_commit.py \
+              --rebuild-module scripts.silence_index_pull \
+              --stage readings/silence-index-latest.json \
+              --stage readings/silence-index-history.jsonl \
               --input-path readings/ddti-latest.json \
               --input-path readings/weibo-hotsearch-latest.json
           fi

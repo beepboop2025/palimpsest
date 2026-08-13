@@ -66,6 +66,27 @@ def test_ooni_story_names_the_arithmetic_denominator(feed: dict) -> None:
     assert story["metric"]["denominator"]["label"] == "completed measurements"
 
 
+def test_live_believability_warmup_reports_collection_without_claiming_drift(
+    feed: dict,
+) -> None:
+    story = _stories_by_id(feed)["believability"]
+
+    assert story["status"] == "live"
+    assert story["claims"] == [{
+        "type": "observation",
+        "statement": (
+            "The current believability collection is complete; divergence remains "
+            "withheld while its baseline has 0 of 8 required prior months."
+        ),
+    }]
+    assert "building its baseline" in story["headline"]
+    assert "enough history" not in story["headline"] + story["dek"]
+    assert story["metric"]["value"] is None
+    assert story["limitations"][0] == (
+        "No drift finding is claimed until 8 prior monthly gaps exist."
+    )
+
+
 def test_transform_is_byte_deterministic_with_stable_ids_slugs_and_order(
     source: dict, config: dict
 ) -> None:

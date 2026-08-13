@@ -942,6 +942,72 @@ body.ps.newsroom-page::before {
 .nw-fact-list time { display: block; color: var(--nw-ink-soft); font-family: var(--nw-mono); font-size: 10px; }
 .nw-method-note { max-width: 880px; padding: 14px 18px; border-left: 4px solid var(--nw-amber); background: rgba(155,92,0,.07); font-size: 13px; }
 
+.nw-assessment {
+  padding: clamp(24px, 4vw, 44px);
+  border-block: 5px solid var(--nw-blue-deep);
+  background: rgba(249, 251, 250, .74);
+}
+
+.nw-assessment[data-disposition="outside-remit"] { border-color: var(--nw-red); }
+.nw-assessment[data-disposition="collector-abstention"] { border-color: var(--nw-amber); }
+.nw-assessment[data-disposition="collector-context"] { border-color: var(--nw-green); }
+.nw-assessment__verdict { max-width: 980px; }
+.nw-assessment__status {
+  margin: 0 0 12px;
+  color: var(--nw-blue-deep);
+  font-family: var(--nw-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.nw-assessment__position {
+  margin: 0 0 14px;
+  color: var(--nw-ink);
+  font-family: var(--nw-display);
+  font-size: clamp(29px, 4vw, 46px);
+  font-weight: 700;
+  line-height: 1.06;
+}
+.nw-assessment__subhead { margin: 30px 0 12px; font-size: 23px; }
+.nw-assessment__rationale { max-width: 920px; margin: 0; padding-left: 24px; }
+.nw-assessment__rationale li { padding: 5px 0; }
+.nw-assessment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.nw-assessment-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--nw-rule);
+  border-top: 4px solid var(--nw-green);
+  background: var(--nw-white);
+}
+.nw-assessment-card:not([data-status="live"]) { border-top-color: var(--nw-amber); }
+.nw-assessment-card__state {
+  color: var(--nw-ink-soft);
+  font-family: var(--nw-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.nw-assessment-card h3 { margin: 8px 0 12px; font-size: 26px; line-height: 1.05; }
+.nw-assessment-card h3 a { color: var(--nw-ink); }
+.nw-assessment-card > p { font-size: 12px; }
+.nw-assessment-card__metric { display: flex; align-items: baseline; gap: 9px; }
+.nw-assessment-card__metric strong { color: var(--nw-blue-deep); font-family: var(--nw-display); font-size: 28px; }
+.nw-assessment-card__metric span { color: var(--nw-ink-soft); font-family: var(--nw-mono); font-size: 9px; }
+.nw-assessment-card__limit { padding-top: 12px; border-top: 1px solid var(--nw-rule); color: var(--nw-ink-soft); }
+.nw-assessment-card details { font-size: 11px; }
+.nw-assessment-card summary { color: var(--nw-blue-deep); cursor: pointer; font-family: var(--nw-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.nw-assessment-card dl { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 10px; }
+.nw-assessment-card dt { color: var(--nw-ink-soft); font-family: var(--nw-mono); font-size: 9px; text-transform: uppercase; }
+.nw-assessment-card dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.nw-assessment__receipt { margin: 24px 0 0; font-family: var(--nw-mono); font-size: 9px; overflow-wrap: anywhere; }
+.nw-assessment__receipt a { color: var(--nw-blue-deep); }
+
 .nw-table-cue {
   display: none;
   margin: -12px 0 10px;
@@ -1562,6 +1628,7 @@ body.ps.newsroom-page::before {
   .nw-tape__head { grid-template-columns: 1fr; }
   .nw-tape ul { grid-template-columns: 1fr; }
   .nw-dossier__summary { grid-template-columns: 1fr; }
+  .nw-assessment-grid { grid-template-columns: 1fr; }
   .nw-surface-links { grid-template-columns: 1fr; }
   .nw-table-cue { display: block; }
   .nw-investigation-register > header,

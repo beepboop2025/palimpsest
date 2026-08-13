@@ -49,6 +49,7 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _FILENAME_RE = re.compile(r"^[a-z0-9][a-z0-9.-]{0,126}\.json$")
+_BELIEVABILITY_MIN_HISTORY = 8
 _UNSAFE_TEXT_RE = re.compile(
     r"(?:<\s*/?\s*(?:script|iframe|object|embed|style|svg)\b|"
     r"javascript\s*:|data\s*:\s*text/html|on(?:error|load|click)\s*=)",
@@ -613,6 +614,24 @@ def _validate_signal(raw_signal: object, path: str, feed_generated_at: str) -> d
     metric = _validate_metric(signal["metric"], f"{path}.metric")
     evidence_url = _validate_url(signal["raw_url"], filename, f"{path}.raw_url")
 
+    analysis_warmup = False
+    analysis_history = None
+    analysis_history_required = None
+    if signal_id == "believability" and status == "live":
+        payload = _expect_object(signal["payload"], f"{path}.payload")
+        if payload.get("label") == "warming_up":
+            analysis_history = _safe_int(
+                payload.get("n_history"), f"{path}.payload.n_history", minimum=0
+            )
+            analysis_history_required = _safe_int(
+                payload.get("n_history_required", _BELIEVABILITY_MIN_HISTORY),
+                f"{path}.payload.n_history_required",
+                minimum=1,
+            )
+            if analysis_history >= analysis_history_required:
+                _fail(f"{path} warm-up history has already reached its declared gate")
+            analysis_warmup = True
+
     return {
         "id": signal_id,
         "layer": layer,
@@ -627,6 +646,9 @@ def _validate_signal(raw_signal: object, path: str, feed_generated_at: str) -> d
         "method": signal["method"],
         "method_version": method_version,
         "metric": metric,
+        "analysis_warmup": analysis_warmup,
+        "analysis_history": analysis_history,
+        "analysis_history_required": analysis_history_required,
     }
 
 
@@ -839,7 +861,25 @@ def _story(
 ) -> dict[str, Any]:
     status = signal["status"]
     values = _template_values(signal, editorial, board_headline, board_story_headline)
-    if status == "live":
+    if status == "live" and signal["analysis_warmup"]:
+        history = signal["analysis_history"]
+        required = signal["analysis_history_required"]
+        headline = "The monthly state-data comparison is live and building its baseline"
+        dek = (
+            "All three physical-activity components are present, but the historical "
+            "uncertainty band is not mature enough for a divergence finding."
+        )
+        claim_type = "observation"
+        statement = (
+            "The current believability collection is complete; divergence remains "
+            f"withheld while its baseline has {history} of {required} required prior months."
+        )
+        metric = _news_metric(signal)
+        limitations = [
+            f"No drift finding is claimed until {required} prior monthly gaps exist.",
+            *editorial["limitations"],
+        ]
+    elif status == "live":
         headline = _render(editorial["headline_template"], values, f"{signal['id']} headline")
         dek = _render(editorial["dek_template"], values, f"{signal['id']} dek")
         claim_type = editorial["claim_type"]

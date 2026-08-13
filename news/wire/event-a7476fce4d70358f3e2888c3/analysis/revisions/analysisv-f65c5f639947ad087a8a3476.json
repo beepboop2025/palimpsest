@@ -1,0 +1,151 @@
+{
+  "schema_version": "palimpsest-event-analysis.v1",
+  "analysis_id": "analysisv-f65c5f639947ad087a8a3476",
+  "event_id": "event-a7476fce4d70358f3e2888c3",
+  "event_version_id": "eventv-3d225188886cf558456f57ee",
+  "event_url": "https://palimpsest.info/news/wire/event-a7476fce4d70358f3e2888c3/",
+  "url": "https://palimpsest.info/news/wire/event-a7476fce4d70358f3e2888c3/analysis.json",
+  "generated_at": "2026-08-13T14:34:46Z",
+  "disposition": "collector-abstention",
+  "scope_status": "in-scope",
+  "position": "Palimpsest withholds a collector-backed conclusion because one or more declared measurement surfaces are not current.",
+  "rationale": [
+    "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
+    "1 of 5 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view."
+  ],
+  "evidence_assessment": {
+    "strength": "single-source",
+    "independent_groups": 1,
+    "source_count": 1,
+    "conclusion": "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration."
+  },
+  "collector_context": [
+    {
+      "signal_id": "believability",
+      "status": "degraded",
+      "headline": "Believability read: no current finding",
+      "finding": "No current finding is published for Believability read because the source status is degraded.",
+      "metric": {
+        "label": null,
+        "value": null,
+        "unit": null,
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "source_timestamp": "2026-08-05T09:10:30Z",
+      "story_url": "https://palimpsest.info/news/believability-read/",
+      "evidence_url": "https://palimpsest.info/readings/believability-latest.json",
+      "input_sha256": "5c7c21907d375d082e9b91dffd8fd80d07797b853e00ecb06c4762b68bf25f49",
+      "claim_fingerprint": "sha256:7adfd5f89d69f6f7aa86f6737ad2e35ed89a810eb2c7f17f3d5373c19e7a8863",
+      "method_summary": "the Li Keqiang composite (40% loan growth, 40% electricity, 20% rail freight, using the canonical weights) against the state's own headline industrial-production YoY for the same month. The statistic is DRIFT: this month's headline-minus-composite gap against the gap's own rolling median and MAD band, so a services-heavy economy's persistent gap reads as baseline and only a break in the established relationship registers. Electricity is PRODUCTION (the keyless state series), not the original's consumption; this is a stated substitution. A missing component abstains the composite rather than reweighting it; fewer than 8 months of history publishes the gap but claims no drift (warming_up). Full method, origin, critiques and counterpoint: docs/BELIEVABILITY.md. A reading outside the band is evidence the relationship moved; it does not, by itself, establish fabrication",
+      "method_version": 1,
+      "relation": "topic-surface-only",
+      "interpretation": "Collector status is degraded; retained values are not treated as a current finding."
+    },
+    {
+      "signal_id": "china-econ",
+      "status": "live",
+      "headline": "3 official money-market benchmark families are reporting",
+      "finding": "The current CFETS reading contains 3 reporting benchmark families.",
+      "metric": {
+        "label": "benchmark families reporting",
+        "value": 3,
+        "unit": "count",
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "source_timestamp": "2026-08-13T14:06:14Z",
+      "story_url": "https://palimpsest.info/news/china-money-market-benchmarks/",
+      "evidence_url": "https://palimpsest.info/readings/china-econ-latest.json",
+      "input_sha256": "58ef46e28b96617511602031872bbfe8ef796fae3600622fea9cd5d2014a5e49",
+      "claim_fingerprint": "sha256:ec0f881c4f5909c7ce1b1422ed24fed5ce90df6f28e8cbff1c7c66cab5ba5743",
+      "method_summary": "See the complete embedded upstream payload and its raw feed",
+      "method_version": 3,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    },
+    {
+      "signal_id": "cny-fix-gap",
+      "status": "live",
+      "headline": "The official yuan fix gap is -0.6632% against the independent reference",
+      "finding": "The current official-fix minus independent-reference gap is -0.6632%.",
+      "metric": {
+        "label": "fix gap",
+        "value": -0.6632,
+        "unit": "percent",
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "source_timestamp": "2026-08-12T17:56:10Z",
+      "story_url": "https://palimpsest.info/news/cny-fix-gap/",
+      "evidence_url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
+      "input_sha256": "c02c6dc6d99e209a47e0cdceb343c33bd07f1b410a07509f51f99e9a022b76c4",
+      "claim_fingerprint": "sha256:89413a47eef462a5a3a01fd3ccdfa30963c082f378132a979d82b5a82f56cd5e",
+      "method_summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
+      "method_version": 1,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    },
+    {
+      "signal_id": "data-darkness",
+      "status": "live",
+      "headline": "The official-data darkness index is 0.5899 across 7 watched series",
+      "finding": "The current publication-cadence darkness index is 0.5899 across 7 watched official series.",
+      "metric": {
+        "label": "darkness index",
+        "value": 0.5899,
+        "unit": "index",
+        "denominator": {
+          "label": "series watched",
+          "value": 7
+        }
+      },
+      "source_timestamp": "2026-08-13T11:06:11Z",
+      "story_url": "https://palimpsest.info/news/official-data-darkness/",
+      "evidence_url": "https://palimpsest.info/readings/data-darkness-latest.json",
+      "input_sha256": "55518ec26c2c20faade1091f09c2c45b168cc43cb7ae755f7e2ff89b06ef896c",
+      "claim_fingerprint": "sha256:40149bc50af87d7b0cd28bfc2173c4e2701bd72322256bbae0ce607946399f10",
+      "method_summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
+      "method_version": 1,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    },
+    {
+      "signal_id": "stock-connect",
+      "status": "live",
+      "headline": "Southbound Stock Connect net flow is 3.668 billion Hong Kong dollars",
+      "finding": "HKEX reports current southbound Stock Connect net flow of 3.668 billion Hong Kong dollars.",
+      "metric": {
+        "label": "southbound net flow",
+        "value": 3.668,
+        "unit": "HKD billions",
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "source_timestamp": "2026-08-13T14:34:46Z",
+      "story_url": "https://palimpsest.info/news/stock-connect/",
+      "evidence_url": "https://palimpsest.info/readings/stock-connect-latest.json",
+      "input_sha256": "ae6098ad21d9ee8971dad259996646987c4614a0e38d1a62b27dbc7639fea2ea",
+      "claim_fingerprint": "sha256:cf03744f42af4e8f375d185b4a1558bea00456afb0d637dd7a9fd281fb567966",
+      "method_summary": "See the complete embedded upstream payload and its raw feed",
+      "method_version": 1,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    }
+  ],
+  "limitations": [
+    "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+    "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+    "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+    "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+  ],
+  "method": "Deterministic assessment of one validated newswire event against its independent-source structure and only the collector stories explicitly declared by that event. Collector joins remain topic-surface-only: no article body is fetched, no generative model is used, and no current measurement is represented as article-specific verification or causation."
+}

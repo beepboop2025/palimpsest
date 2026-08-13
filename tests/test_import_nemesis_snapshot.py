@@ -529,6 +529,7 @@ def test_workflow_scopes_secrets_pins_tools_and_rebuilds_after_each_race():
     assert text.count("NEMESIS_SNAPSHOT_HMAC_KEY:") == 3
     assert text.count("PALIMPSEST_SCRUB_STRINGS:") == 3
     assert text.count("GITHUB_PUSH_TOKEN:") == 2
+    assert text.count("python scripts/push_data_commit.py --base-locked") == 2
     assert text.count("python -m scripts.import_nemesis_snapshot") == 3
     assert text.count("python -m scripts.build_osint_china") == 3
     assert text.count("python scripts/seal_readings.py") == 3
@@ -546,5 +547,5 @@ def test_workflow_scopes_secrets_pins_tools_and_rebuilds_after_each_race():
     race_seal = text.rindex("python scripts/seal_readings.py")
     race_tests = text.rindex("tests/test_import_nemesis_snapshot.py")
     race_scrub = text.rindex("python scripts/verify_public_surface.py")
-    final_push = text.rindex("push origin HEAD:main")
+    final_push = text.rindex("python scripts/push_data_commit.py --base-locked")
     assert race_import < race_build < race_seal < race_tests < race_scrub < final_push

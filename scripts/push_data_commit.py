@@ -3,8 +3,9 @@
 This helper is deliberately narrower than the OSINT/newsroom publisher.  It is
 for workflows whose commit owns a distinct output set and has already run its
 collector and public-surface check. Direct observations retain byte-identical
-candidate blobs; deterministic derived jobs may instead declare exact modules
-and paths to rebuild whenever their parent changes.
+candidate blobs; derived jobs may declare exact modules and paths to rebuild.
+When those jobs also declare guarded inputs, they rebuild only when one of those
+inputs changed and preserve candidate bytes across unrelated-main races.
 """
 
 from __future__ import annotations
@@ -13,13 +14,15 @@ import argparse
 import re
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from pathlib import PurePosixPath
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MAX_PUSH_ATTEMPTS = 3
+MAX_PUSH_ATTEMPTS = 8
+MAX_RETRY_DELAY_SECONDS = 25.0
 MODULE_RE = re.compile(r"scripts\.[a-z][a-z0-9_]*\Z")
 
 
@@ -129,6 +132,15 @@ def _verify_candidate_bytes(
     return ahead
 
 
+def _retry_delay(attempt: int, revision: str) -> float:
+    """Return bounded candidate-specific backoff so concurrent jobs de-synchronize."""
+    base = min(float(2 ** (attempt - 1)), 20.0)
+    # Different candidate commits otherwise wake and collide on exactly the same second.
+    # The hash-derived jitter is deterministic, bounded, and needs no global randomness.
+    jitter = (int(revision[:8], 16) % 1000) / 1000.0 * min(base, 5.0)
+    return round(min(base + jitter, MAX_RETRY_DELAY_SECONDS), 3)
+
+
 def _validate_relative_path(value: str) -> str:
     path = PurePosixPath(value)
     if (
@@ -223,8 +235,15 @@ def publish(
     rebuild_paths: Sequence[str] = (),
     input_paths: Sequence[str] = (),
     candidate_check: Callable[[Path], None] | None = None,
+    base_locked: bool = False,
+    sleeper: Callable[[float], None] = time.sleep,
 ) -> bool:
-    """Rebase and push one verified candidate; return False for an upstream no-op."""
+    """Publish one verified candidate; return False when its bytes already won.
+
+    ``base_locked`` is for derived publication graphs whose bytes are valid only for
+    their exact parent commit.  A remote advance then fails closed so the caller can
+    rebuild and revalidate instead of rebasing stale derived output.
+    """
 
     if attempts < 1 or attempts > MAX_PUSH_ATTEMPTS:
         raise PublishError("push attempt count is outside the reviewed bound")
@@ -237,8 +256,6 @@ def publish(
     guarded_inputs = tuple(_validate_relative_path(path) for path in input_paths)
     if len(guarded_inputs) != len(set(guarded_inputs)):
         raise PublishError("guarded input paths contain duplicates")
-    if rebuild is not None and guarded_inputs:
-        raise PublishError("rebuild mode and guarded-input mode are mutually exclusive")
     declared_rebuild_paths = tuple(
         _validate_relative_path(path) for path in rebuild_paths
     )
@@ -264,18 +281,26 @@ def publish(
             print("candidate bytes are already present on main")
             return False
         if latest_base != candidate_base:
-            if rebuild is not None:
+            if base_locked:
+                raise PublishError(
+                    "main advanced beyond the candidate base; a verified rebuild is required"
+                )
+            changed_inputs = [
+                path
+                for path in guarded_inputs
+                if _tree_entry(repo, candidate_base, path)
+                != _tree_entry(repo, "origin/main", path)
+            ]
+            # Without guarded inputs a rebuild job conservatively depends on
+            # the whole public tree. With guarded inputs, only a dependency
+            # change invalidates the candidate; unrelated races retain the
+            # measured bytes through an ordinary rebase.
+            if rebuild is not None and (not guarded_inputs or changed_inputs):
                 _run(repo, "switch", "--detach", "origin/main")
                 if not rebuild(repo, subject):
                     return False
                 expected = _candidate_entries(repo)
             else:
-                changed_inputs = [
-                    path
-                    for path in guarded_inputs
-                    if _tree_entry(repo, candidate_base, path)
-                    != _tree_entry(repo, "origin/main", path)
-                ]
                 if changed_inputs:
                     raise PublishError(
                         "guarded inputs changed while publishing: "
@@ -297,9 +322,18 @@ def publish(
         if _run(repo, "push", "origin", "HEAD:main", check=False) == 0:
             print(f"published byte-identical candidate on attempt {attempt}")
             return True
-        print(f"main advanced during push attempt {attempt}; retrying", file=sys.stderr)
+        if attempt < attempts:
+            revision = _capture(repo, "rev-parse", "HEAD")
+            delay = _retry_delay(attempt, revision)
+            print(
+                f"push attempt {attempt} failed; reconciling remote state after {delay:g}s",
+                file=sys.stderr,
+            )
+            sleeper(delay)
 
-    raise PublishError("main kept advancing; candidate was not published")
+    raise PublishError(
+        "bounded publication retries were exhausted; candidate was not published"
+    )
 
 
 def _arguments() -> argparse.Namespace:
@@ -308,6 +342,11 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--stage", action="append", default=[])
     parser.add_argument("--input-path", action="append", default=[])
     parser.add_argument("--check-module", action="append", default=[])
+    parser.add_argument(
+        "--base-locked",
+        action="store_true",
+        help="refuse to rebase derived output; require the caller to rebuild it",
+    )
     return parser.parse_args()
 
 
@@ -328,6 +367,7 @@ def main() -> int:
             rebuild_paths=rebuild_paths,
             input_paths=arguments.input_path,
             candidate_check=candidate_check,
+            base_locked=arguments.base_locked,
         )
     except (OSError, PublishError, subprocess.SubprocessError, ValueError) as error:
         print(f"data publication refused: {error}", file=sys.stderr)

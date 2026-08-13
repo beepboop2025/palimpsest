@@ -32,6 +32,7 @@ from xml.sax.saxutils import escape as xml_escape
 from xml.sax.saxutils import quoteattr as xml_quoteattr
 
 from core import economic_pulse as economic_pulse_model
+from core import event_analysis as event_analysis_model
 from core import evidence_mesh as evidence_mesh_model
 from core import investigations as investigations_model
 from core import machine_investigations as machine_investigations_model
@@ -84,6 +85,8 @@ WIRE_PAGE_SIZE = 60
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
 _ANALYSIS_ROOT = Path("news/analysis")
 _MACHINE_REVISION_FILENAME = re.compile(r"machinev-[0-9a-f]{24}\.json")
+_EVENT_ANALYSIS_REVISION_FILENAME = re.compile(r"analysisv-[0-9a-f]{24}\.json")
+_WIRE_EVENT_DIRECTORY = re.compile(r"event-[0-9a-f]{24}")
 _MACHINE_EVIDENCE_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.json")
 _ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _MACHINE_EVIDENCE_CAPSULE_SCHEMA = "palimpsest-machine-evidence-capsule.v1"
@@ -2764,7 +2767,14 @@ def render_story(
     ) + "\n" + body
 
 
-def _event_json_ld(event: Mapping[str, Any]) -> dict[str, Any]:
+def _event_json_ld(
+    event: Mapping[str, Any], analysis: Mapping[str, Any]
+) -> dict[str, Any]:
+    citations = [ref["url"] for ref in event["evidence_refs"]]
+    citations.extend(row["evidence_url"] for row in analysis["collector_context"])
+    keywords = [*event["topics"], "open source intelligence"]
+    if analysis["scope_status"] == "in-scope":
+        keywords.append("China")
     return {
         "@context": "https://schema.org",
         "@type": "NewsArticle",
@@ -2773,16 +2783,79 @@ def _event_json_ld(event: Mapping[str, Any]) -> dict[str, Any]:
         "headline": event["headline"],
         "description": event["dek"],
         "datePublished": event["published_at"],
-        "dateModified": event["updated_at"],
+        "dateModified": max(event["updated_at"], analysis["generated_at"]),
         "articleSection": EVENT_DESKS[event["desk"]],
         "inLanguage": _event_language(event),
         "isAccessibleForFree": True,
         "author": _organization(),
         "publisher": _organization(),
         "image": [OG_IMAGE],
-        "citation": [ref["url"] for ref in event["evidence_refs"]],
-        "keywords": [*event["topics"], "China", "open source intelligence"],
+        "citation": list(dict.fromkeys(citations)),
+        "keywords": keywords,
     }
+
+
+_ANALYSIS_DISPOSITION_LABELS = {
+    "outside-remit": "Outside declared remit",
+    "source-assessment": "Source-structure assessment",
+    "collector-context": "Current collector context",
+    "collector-abstention": "Collector conclusion withheld",
+}
+
+
+def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
+    """Render the validated assessment without strengthening its claims."""
+
+    rationale = "".join(f"<li>{_h(item)}</li>" for item in analysis["rationale"])
+    collector_cards: list[str] = []
+    for row in analysis["collector_context"]:
+        metric = row["metric"]
+        metric_block = ""
+        if metric["value"] is not None:
+            metric_value = _metric_value({"metric": metric})
+            metric_caption = _metric_caption(
+                {"metric": metric, "status": row["status"]}
+            )
+            metric_block = (
+                '  <p class="nw-assessment-card__metric">'
+                f"<strong>{_h(metric_value)}</strong><span>{_h(metric_caption)}</span></p>\n"
+            )
+        observed = (
+            _human_time(row["source_timestamp"])
+            if row["source_timestamp"] is not None
+            else "No source timestamp"
+        )
+        digest = row["input_sha256"] or "no current evidence hash"
+        collector_cards.append(f"""<article class="nw-assessment-card" data-status="{_h(row['status'])}">
+  <p class="nw-assessment-card__state">{_h(_status_label(row['status']))} · {_h(row['signal_id'])}</p>
+  <h3><a href="{_h(_site_path(row['story_url']))}">{_h(row['headline'])}</a></h3>
+  <p>{_h(row['finding'])}</p>
+{metric_block}  <p class="nw-assessment-card__limit">{_h(row['interpretation'])}</p>
+  <details><summary>Method and receipt</summary><p>{_h(row['method_summary'])}</p><dl><dt>Observed</dt><dd>{_h(observed)}</dd><dt>Evidence</dt><dd><a href="{_h(row['evidence_url'])}">{_h(row['evidence_url'].rsplit('/', 1)[-1])}</a></dd><dt>SHA-256</dt><dd><code>{_h(digest)}</code></dd></dl></details>
+</article>""")
+    collector_context = (
+        '<div class="nw-assessment-grid">' + "".join(collector_cards) + "</div>"
+        if collector_cards
+        else (
+            '<p class="nw-method-note">No collector finding is used here. '
+            "Palimpsest's position is limited to remit, attribution and independent-"
+            "source structure.</p>"
+        )
+    )
+    evidence = analysis["evidence_assessment"]
+    return f"""<section class="nw-dossier__section nw-assessment" data-disposition="{_h(analysis['disposition'])}" aria-labelledby="assessment-title">
+  <p class="nw-section__label">Palimpsest analysis</p><h2 id="assessment-title">What Palimpsest concludes</h2>
+  <div class="nw-assessment__verdict">
+    <p class="nw-assessment__status">{_h(_ANALYSIS_DISPOSITION_LABELS[analysis['disposition']])} · as of <time datetime="{_h(analysis['generated_at'])}">{_h(_human_time(analysis['generated_at']))}</time></p>
+    <p class="nw-assessment__position">{_h(analysis['position'])}</p>
+    <p>{_h(evidence['conclusion'])}</p>
+  </div>
+  <h3 class="nw-assessment__subhead">Why Palimpsest takes this position</h3>
+  <ul class="nw-assessment__rationale">{rationale}</ul>
+  <h3 class="nw-assessment__subhead">Collector findings used</h3>
+  {collector_context}
+  <p class="nw-assessment__receipt">Analysis <code>{_h(analysis['analysis_id'])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis['analysis_id'])}.json">immutable revision</a></p>
+</section>"""
 
 
 def render_event(
@@ -2790,7 +2863,13 @@ def render_event(
     *,
     wire: Mapping[str, Any],
     feed: Mapping[str, Any],
+    analysis: Mapping[str, Any] | None = None,
 ) -> str:
+    if analysis is None:
+        analysis = event_analysis_model.build_event_analysis(
+            event, wire=wire, feed=feed
+        )
+    event_analysis_model.validate_event_analysis(analysis, event=event)
     items = _wire_items(wire)
     stories = {story["signal_id"]: story for story in feed["stories"]}
     facts = "".join(
@@ -2847,6 +2926,7 @@ def render_event(
       <p class="nw-section__label">Reported facts</p><h2 id="reported-title">What the registered sources published</h2>
       <ol class="nw-fact-list">{facts}</ol>
     </section>
+    {_event_analysis_html(analysis)}
     <section class="nw-dossier__section" aria-labelledby="braid-title">
       <p class="nw-section__label">Evidence braid</p><h2 id="braid-title">Order, provenance and declared surfaces</h2>
       {_event_braid(event, wire)}
@@ -2867,7 +2947,7 @@ def render_event(
     </section>
   </article>
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Latest evidence wire</a> · <a href="/readings/newswire-latest.json">Structured wire</a> · <a href="story.json">Current dossier JSON</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Latest evidence wire</a> · <a href="/readings/newswire-latest.json">Structured wire</a> · <a href="story.json">Current dossier JSON</a> · <a href="analysis.json">Palimpsest analysis JSON</a></div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -2878,8 +2958,8 @@ def render_event(
         canonical=event["url"],
         page_type="article",
         published_at=event["published_at"],
-        modified_at=event["updated_at"],
-        json_ld=_event_json_ld(event),
+        modified_at=max(event["updated_at"], analysis["generated_at"]),
+        json_ld=_event_json_ld(event, analysis),
     ) + "\n" + body
 
 
@@ -3333,10 +3413,7 @@ def _read_immutable_analysis_file(
 ) -> bytes:
     """Read a bounded archive file through no-follow directory descriptors."""
 
-    if not _is_managed_analysis_path(relative) or not (
-        "/revisions/" in relative.as_posix()
-        or relative.parts[:3] == ("news", "analysis", "evidence")
-    ):
+    if not _is_immutable_analysis_path(relative):
         raise newsroom.NewsroomError(
             f"refusing to read a non-immutable analysis path: {relative}"
         )
@@ -3445,6 +3522,7 @@ def build_outputs(
         ),
     }
     if wire is not None:
+        event_analyses = event_analysis_model.build_event_analyses(wire, feed)
         outputs[Path("news/instruments/feed.json")] = _pretty_json(build_json_feed(feed))
         outputs[Path("news/instruments/feed.xml")] = build_rss(feed)
         event_pages = [
@@ -3467,11 +3545,16 @@ def build_outputs(
             year, month = event["published_at"][:7].split("-")
             archive.setdefault((year, month), []).append(event)
             base = Path("news/wire") / event["event_id"]
+            analysis = event_analyses[event["event_id"]]
             outputs[base / "index.html"] = render_event(
-                event, wire=wire, feed=feed
+                event, wire=wire, feed=feed, analysis=analysis
             ).encode("utf-8")
             outputs[base / "story.json"] = _pretty_json(event)
             outputs[base / "revisions" / f"{event['version_id']}.json"] = _pretty_json(event)
+            outputs[base / "analysis.json"] = _pretty_json(analysis)
+            outputs[
+                base / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
+            ] = _pretty_json(analysis)
         for (year, month), events in sorted(archive.items()):
             outputs[Path("news/archive") / year / month / "index.json"] = _pretty_json({
                 "schema_version": "palimpsest-news-archive.v1",
@@ -3702,10 +3785,19 @@ def _is_managed_analysis_path(relative: Path) -> bool:
 def _is_immutable_analysis_path(relative: Path) -> bool:
     """Return whether publication must never replace existing unequal bytes."""
 
-    return _is_managed_analysis_path(relative) and (
-        "/revisions/" in relative.as_posix()
-        or relative.parts[:3] == ("news", "analysis", "evidence")
+    parts = relative.parts
+    event_revision = (
+        len(parts) == 6
+        and parts[:2] == ("news", "wire")
+        and _WIRE_EVENT_DIRECTORY.fullmatch(parts[2]) is not None
+        and parts[3:5] == ("analysis", "revisions")
+        and _EVENT_ANALYSIS_REVISION_FILENAME.fullmatch(parts[5]) is not None
     )
+    machine_revision = _is_managed_analysis_path(relative) and (
+        "/revisions/" in relative.as_posix()
+        or parts[:3] == ("news", "analysis", "evidence")
+    )
+    return event_revision or machine_revision
 
 
 def _directory_open_flags() -> int:

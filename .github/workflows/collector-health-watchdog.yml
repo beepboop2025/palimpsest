@@ -1,0 +1,49 @@
+name: Recover stale collector publications
+
+# GitHub schedules are best-effort, so this independent hourly pass checks the
+# evidence deadlines themselves. It dispatches only reviewed producer workflows,
+# never edits timestamps or readings, and never retries semantic abstentions.
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: collector-health-watchdog
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Plan recoveries from evidence deadlines
+        run: |
+          python -m scripts.collector_health_watchdog --format workflows > "$RUNNER_TEMP/recoveries.txt"
+          python -m scripts.collector_health_watchdog --format summary >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch idle producer workflows
+        run: |
+          while IFS= read -r workflow; do
+            [ -n "$workflow" ] || continue
+            active=$(gh run list \
+              --workflow "$workflow" \
+              --limit 20 \
+              --json status \
+              --jq '[.[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending" or .status == "requested")] | length')
+            if [ "$active" -gt 0 ]; then
+              echo "$workflow already has $active active run(s); leaving its concurrency lane alone"
+              continue
+            fi
+            echo "dispatching recovery: $workflow"
+            gh workflow run "$workflow" --ref main
+          done < "$RUNNER_TEMP/recoveries.txt"

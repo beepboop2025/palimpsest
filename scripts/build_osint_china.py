@@ -199,7 +199,12 @@ SIGNALS: tuple[SignalSpec, ...] = (
        "reconstructed deletions", ("n_deletions",), "count", "URLs watched", ("n_watched",)),
     _s("baike-redaction", "Baike redaction", "erasure", "baike-redaction-latest.json", 6, 14,
        "Compares Baidu Baike entries with an open-record control and abstains without comparable pairs.",
-       "forked entities", ("n_forked",), "count", "comparable entities", ("n_comparable",)),
+       "forked entities", ("n_forked",), "count", "comparable entities", ("n_comparable",),
+       optional=True,
+       source_fallback="Authorized Baidu Baike snapshots and Chinese Wikipedia control",
+       method_fallback=(
+           "Offline comparison of authorized snapshots; the public runner remains disabled "
+           "until an authorized Baike source is configured")),
     _s("github-refuge", "GitHub refuge watch", "erasure", "github-refuge-latest.json", 12, 26,
        "Watches public pressure metadata for repositories preserving censored material.",
        "pressure events", ("n_pressure_events",), "count", "repositories watched", ("n_watched",)),
@@ -462,6 +467,54 @@ def _is_degraded_upstream(status: str | None) -> bool:
     }
 
 
+def _believability_operational_warmup(
+    spec: SignalSpec,
+    payload: dict[str, Any],
+    upstream_status: str | None,
+) -> bool:
+    """Separate a complete monthly collection from an immature drift baseline.
+
+    Believability needs eight *prior* monthly gaps before it can estimate whether the
+    current gap is unusual.  During those eight months, a complete three-component
+    observation is operationally healthy even though ``drift`` must remain null.  This
+    narrow compatibility check accepts both the original ``not_ready`` payload and the
+    newer payload's explicit analysis fields; every incomplete collection still degrades.
+    """
+    if spec.id != "believability":
+        return False
+    status_token = (upstream_status or "").casefold().replace("-", "_").replace(" ", "_")
+    analysis_status = _text(payload.get("analysis_status")) or _text(payload.get("label"))
+    if status_token not in {"not_ready", "ok"} or analysis_status != "warming_up":
+        return False
+
+    present = _scalar_metric(payload.get("n_components_present"))
+    required = _scalar_metric(payload.get("n_components_required"))
+    history = _scalar_metric(payload.get("n_history"))
+    gap = _scalar_metric(payload.get("gap"))
+    missing = payload.get("components_missing")
+    if missing is not None and missing != []:
+        return False
+    return (
+        present == required == 3
+        and isinstance(history, int)
+        and 0 <= history < 8
+        and gap is not None
+        and payload.get("drift") is None
+        and payload.get("analysis_ready") is not True
+    )
+
+
+def _intentionally_inactive_optional(
+    spec: SignalSpec, payload: dict[str, Any], upstream_status: str | None
+) -> bool:
+    """Recognize an explicitly disabled optional lane without calling it a dead job."""
+    if not spec.optional:
+        return False
+    upstream = (upstream_status or "").casefold().replace("-", "_").replace(" ", "_")
+    collector = (_text(payload.get("collector_status")) or "").casefold()
+    return upstream == "disabled" and collector == "disabled_no_authorized_access"
+
+
 def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | None:
     """Return a signal-specific trust failure that timestamps cannot establish.
 
@@ -547,6 +600,7 @@ def _summary(
     metric: dict[str, Any] | None,
     error: str | None,
     semantic_reason: str | None = None,
+    operational_warmup: bool = False,
 ) -> str:
     if status == "missing":
         return (f"{spec.description} No payload is present at readings/{spec.filename}; "
@@ -567,6 +621,14 @@ def _summary(
         parts.append(
             f"The upstream payload reports status {upstream_status!r}; this roll-up does "
             "not convert that abstention or limitation into a finding."
+        )
+    if operational_warmup:
+        history = payload.get("n_history")
+        required = payload.get("n_history_required", 8)
+        parts.append(
+            "The monthly collector is current and all three canonical components are "
+            f"present. Divergence analysis is warming up ({history}/{required} prior "
+            "months), so no drift finding is claimed yet."
         )
     if semantic_reason:
         parts.append(f"Semantic health limitation: {semantic_reason}.")
@@ -651,13 +713,24 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     metric = _metric(spec, payload)
     source, method, scope = _provenance(payload, spec)
     upstream_status = _upstream_status(payload)
+    operational_warmup = _believability_operational_warmup(
+        spec, payload, upstream_status
+    )
+    intentionally_inactive = _intentionally_inactive_optional(
+        spec, payload, upstream_status
+    )
+    upstream_degraded = (
+        _is_degraded_upstream(upstream_status)
+        and not operational_warmup
+        and not intentionally_inactive
+    )
     semantic_reasons = [
         reason
         for reason in (
             _semantic_health_reason(spec, payload),
             (
                 _declared_metric_health_reason(spec, payload)
-                if not _is_degraded_upstream(upstream_status)
+                if not upstream_degraded and not operational_warmup
                 else None
             ),
         )
@@ -682,10 +755,16 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         if measured_at > now + timedelta(minutes=5):
             status = "degraded"
             reason = "source timestamp is more than five minutes in the future"
+        elif intentionally_inactive:
+            status = "degraded"
+            reason = (
+                "optional collector is disabled pending authorized access; "
+                "no current Baike measurement is claimed"
+            )
         elif now > freshness_at:
             status = "stale"
             reason = "freshness deadline has passed"
-        elif _is_degraded_upstream(upstream_status):
+        elif upstream_degraded:
             status = "degraded"
             reason = f"upstream status is {upstream_status}"
         elif semantic_reason:
@@ -724,7 +803,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         "scope": scope,
         "summary": _summary(
             spec, payload, status, source_timestamp, deadline, metric, timestamp_error,
-            semantic_reason),
+            semantic_reason, operational_warmup),
         "metric": metric,
         "raw_url": raw_url,
         "input": input_fingerprint,
@@ -934,7 +1013,8 @@ def build_document(
                 "valid JSON object with a valid source timestamp; may be live, degraded or stale"),
             "live_definition": (
                 "valid source timestamp within its deadline, not future-dated, and no explicit "
-                "upstream degraded status or signal-specific semantic health failure"),
+                "upstream degraded status or signal-specific semantic health failure; a complete "
+                "believability collection may be live while its drift analysis warms up"),
             "counts": counts,
         },
         "headline": _headline(signals),

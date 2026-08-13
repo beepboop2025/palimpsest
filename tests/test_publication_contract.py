@@ -348,7 +348,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v12"' in worker
+    assert 'const CACHE = "palimpsest-v13"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
@@ -386,6 +386,15 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "caches.match" not in evidence_branch
     assert "if (LIVE_INVESTIGATION_CASE.test(url.pathname))" in worker
     assert "if (LIVE_MACHINE_ANALYSIS_REPORT.test(url.pathname))" in worker
+    assert "if (LIVE_EVENT_ANALYSIS.test(url.pathname))" in worker
+    event_analysis_branch = worker[
+        worker.index("if (LIVE_EVENT_ANALYSIS.test(url.pathname))"):
+    ]
+    event_analysis_branch = event_analysis_branch[
+        :event_analysis_branch.index("return;")
+    ]
+    assert 'fetch(req, { cache: "no-store" })' in event_analysis_branch
+    assert "caches.match" not in event_analysis_branch
 
 
 def test_openapi_publishes_a_concrete_newsroom_feed_contract():

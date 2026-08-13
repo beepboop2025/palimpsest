@@ -44,12 +44,17 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
     assert spec["servers"] == [{"url": "https://palimpsest.info"}]
     assert len(spec["paths"]) >= 8
     for path, operations in spec["paths"].items():
-        assert (
+        dynamic_event_analysis = path == "/news/wire/{event_id}/analysis.json"
+        assert dynamic_event_analysis or (
             path.startswith("/readings/")
             and path.endswith((".json", ".jsonld"))
         ) or path == "/datapackage.json"
         assert set(operations) == {"get"}
-        assert (ROOT / path.lstrip("/")).is_file(), path
+        if dynamic_event_analysis:
+            assert any((ROOT / "news/wire").glob("event-*/analysis.json"))
+            assert operations["get"]["parameters"][0]["name"] == "event_id"
+        else:
+            assert (ROOT / path.lstrip("/")).is_file(), path
         assert "200" in operations["get"]["responses"]
 
 

@@ -12,7 +12,7 @@ from xml.etree import ElementTree
 
 import pytest
 
-from core import newsroom, newswire
+from core import event_analysis, newsroom, newswire
 from scripts import build_newsroom
 
 
@@ -150,10 +150,23 @@ def test_every_event_has_a_human_page_current_json_and_immutable_revision(public
         text = page.decode("utf-8")
         assert _one_h1(page)
         assert "Evidence matrix" in text
+        assert "Palimpsest analysis" in text
+        assert "What Palimpsest concludes" in text
         assert "What this dossier cannot establish" in text
         assert "cannot establish cause" in text
         assert json.loads(outputs[base / "story.json"]) == event
         assert json.loads(outputs[base / "revisions" / f"{event['version_id']}.json"]) == event
+        analysis = json.loads(outputs[base / "analysis.json"])
+        event_analysis.validate_event_analysis(analysis, event=event)
+        assert json.loads(
+            outputs[
+                base
+                / "analysis"
+                / "revisions"
+                / f"{analysis['analysis_id']}.json"
+            ]
+        ) == analysis
+        assert "Palimpsest analysis JSON" in text
 
     # Existing instrument briefs remain first-class and revision-addressable.
     for story in feed["stories"]:
@@ -163,6 +176,24 @@ def test_every_event_has_a_human_page_current_json_and_immutable_revision(public
             path.parent.parent == base and path.name.endswith(".json")
             for path in outputs if "revisions" in path.parts
         )
+
+
+def test_event_analysis_revision_bytes_cannot_be_overwritten(
+    publication, tmp_path: Path
+) -> None:
+    _feed, _wire, _pulse, outputs = publication
+    revision = next(
+        path
+        for path in outputs
+        if len(path.parts) == 6
+        and path.parts[:2] == ("news", "wire")
+        and path.parts[3:5] == ("analysis", "revisions")
+    )
+    build_newsroom.publish({revision: outputs[revision]}, root=tmp_path)
+
+    with pytest.raises(newsroom.NewsroomError, match="refusing to overwrite immutable"):
+        build_newsroom.publish({revision: b'{"rewritten":true}\n'}, root=tmp_path)
+    assert (tmp_path / revision).read_bytes() == outputs[revision]
 
 
 def test_hostile_feed_text_stays_text_in_html_and_json_ld(publication) -> None:

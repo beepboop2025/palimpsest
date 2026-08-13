@@ -20,10 +20,11 @@ def test_eval_refresh_is_race_safe_and_never_swallows_a_rebase_failure():
     assert "if git rebase origin/main; then" in text
     assert "git rebase --abort || true" in text
     assert "git switch --detach origin/main" in text
-    assert text.count("git push origin HEAD:main") == 2
+    assert text.count("python scripts/push_data_commit.py --base-locked") == 2
     assert "continue-on-error: true" in text
-    assert "for attempt in 1 2; do" in text
-    assert "FATAL: erasure publication lost both bounded retries" in text
+    assert "for attempt in 1 2 3 4; do" in text
+    assert "FATAL: erasure publication exhausted four verified rebuild retries" in text
+    assert "sleep $((attempt * 5))" in text
     assert "--force" not in text
 
 
@@ -47,7 +48,7 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
     verify = text.index("python -m scripts.verify_eval_registry", rebuild)
     anchor = text.index("python -m scripts.anchor_roots", verify)
     scrub = text.index("python scripts/verify_public_surface.py", anchor)
-    final_push = text.rindex("git push origin HEAD:main")
+    final_push = text.rindex("python scripts/push_data_commit.py --base-locked")
     assert (
         race
         < refresh
@@ -81,7 +82,7 @@ def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
         assert derived_path not in preserved
 
     retry = text[race:]
-    loop = retry.index("for attempt in 1 2; do")
+    loop = retry.index("for attempt in 1 2 3 4; do")
     refresh = retry.index("git fetch origin main", loop)
     reset = retry.index("git switch --detach origin/main", refresh)
     rebuild = retry.index("python -m scripts.erasure_pull", reset)
@@ -95,7 +96,9 @@ def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
     anchor = retry.index("python -m scripts.anchor_roots", verify_seal)
     scrub = retry.index("python scripts/verify_public_surface.py", anchor)
     commit = retry.index('git commit -C "$measurement_commit"', scrub)
-    push = retry.index("if git push origin HEAD:main; then", commit)
+    push = retry.index(
+        "if python scripts/push_data_commit.py --base-locked; then", commit
+    )
     assert loop < refresh < reset < rebuild < seal < verify_ledger
     assert verify_ledger < verify_eval < verify_transcripts < verify_seal
     assert verify_seal < anchor < scrub < commit < push
@@ -106,6 +109,7 @@ def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
 
     assert "timeout-minutes: 150" in text
     assert "timeout-minutes: 110" in text
+    assert 'cron: "8 */6 * * *"' in text
     race = text.index("Recollect, reverify, and retry after a push race")
     staging_start = text.index(
         "for p in readings/erasure-observatory-latest.json", race

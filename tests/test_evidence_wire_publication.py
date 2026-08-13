@@ -116,6 +116,9 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
     assert schemas["EvidenceNewswire"] == {
         "$ref": "https://palimpsest.info/protocol/newswire-v1.schema.json"
     }
+    assert schemas["EventAnalysis"] == {
+        "$ref": "https://palimpsest.info/protocol/event-analysis-v1.schema.json"
+    }
     assert schemas["ChinaEconomicPulse"] == {
         "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
     }
@@ -183,6 +186,15 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
         if path != "/readings/machine-investigations-latest.json":
             assert (ROOT / path.lstrip("/")).is_file()
 
+    event_analysis = spec["paths"]["/news/wire/{event_id}/analysis.json"]["get"]
+    assert event_analysis["operationId"] == "getEventAnalysis"
+    assert event_analysis["responses"]["200"] == {
+        "$ref": "#/components/responses/EventAnalysis"
+    }
+    assert responses["EventAnalysis"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/EventAnalysis"
+    }
+
 
 def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
     sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
@@ -224,6 +236,7 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
         "https://palimpsest.info/config/news_sources.json",
         "https://palimpsest.info/config/primary_document_sources.json",
         "https://palimpsest.info/protocol/newswire-v1.schema.json",
+        "https://palimpsest.info/protocol/event-analysis-v1.schema.json",
         "https://palimpsest.info/protocol/economic-pulse-v1.schema.json",
         "https://palimpsest.info/protocol/investigations-v1.schema.json",
         "https://palimpsest.info/protocol/evidence-mesh-v1.schema.json",
@@ -251,7 +264,7 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
 
 def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    assert 'const CACHE = "palimpsest-v12"' in worker
+    assert 'const CACHE = "palimpsest-v13"' in worker
     assert '"/readings/newswire-latest.json"' in worker
     assert '"/readings/china-economic-pulse-latest.json"' in worker
     assert '"/readings/evidence-mesh-latest.json"' in worker

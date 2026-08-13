@@ -32,7 +32,7 @@ HIST = os.path.join(READINGS, "believability-history.jsonl")
 # Bumped when the METHOD changes in a way a reader must see. The reading is
 # rewritten unconditionally, so a method change can never hide behind an
 # unchanged number.
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 _PERIOD_RE = re.compile(r"\d{4}-(?:0[1-9]|1[0-2])")
 
 
@@ -135,6 +135,16 @@ def main() -> None:
             else "abstain" if reading["label"] == "abstain"
             else "ok"
         ),
+        # Collection health and analytic readiness are different axes.  A complete
+        # monthly observation is healthy during the eight-month warm-up even though
+        # the drift statistic must remain null until its prior-history band exists.
+        "collector_status": (
+            "observed" if len(components) == len(LKQ_WEIGHTS) and headline is not None
+            else "partial_observation"
+        ),
+        "analysis_status": reading["label"],
+        "analysis_ready": reading["label"] in {"within_band", "diverging"},
+        "n_history_required": MIN_HISTORY,
         "source": (
             "the state's own releases, keyless: NBS English press releases "
             "(Energy Production; Industrial Production Operation), PBC "

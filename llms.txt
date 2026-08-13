@@ -84,6 +84,13 @@ support it, which Palimpsest scans are relevant, what cannot be tested, and whet
 event changed since its prior version. The wire stores only bounded metadata and links;
 it does not republish article bodies or label a single source as truth.
 
+Every event also publishes a deterministic `analysis.json` companion. Palimpsest states
+whether the item is inside its declared China remit, distinguishes an attributed report
+from structurally corroborated reporting, and includes exact normalized collector
+findings only when the event declares those surfaces. Collector links remain topical
+context rather than article verification; stale or degraded inputs produce an explicit
+abstention. Each mutable analysis head links a content-addressed immutable revision.
+
 The [China Economic Pulse](https://palimpsest.info/news/economy/) joins official releases,
 market prints and physical telemetry without flattening them into a fictional "true GDP."
 It publishes bitemporal as-of state, source independence, release delays, comparisons,
@@ -125,6 +132,7 @@ Machine-readable contracts:
 - [Bounded news source registry](https://palimpsest.info/config/news_sources.json)
 - [Primary document source registry](https://palimpsest.info/config/primary_document_sources.json)
 - [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
+- [Per-event Analysis JSON Schema](https://palimpsest.info/protocol/event-analysis-v1.schema.json)
 - [Economic Pulse JSON Schema](https://palimpsest.info/protocol/economic-pulse-v1.schema.json)
 - [Investigations JSON Schema](https://palimpsest.info/protocol/investigations-v1.schema.json)
 - [Evidence Mesh JSON Schema](https://palimpsest.info/protocol/evidence-mesh-v1.schema.json)

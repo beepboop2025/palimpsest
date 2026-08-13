@@ -69,8 +69,9 @@ hand-wave: un-censorable public infrastructure.
   their mean. First sealed ledger entries are committed with this change.
 - **Narrative layer is disabled pending authorized access:** `baike_redaction.py`
   remains offline-testable, but this repository contains no live Baike route, proxy,
-  or bypass path. Historical readings stay sealed; a null retained reading is rendered
-  **STALE** or **UNAVAILABLE** with its path and age, never refreshed as a live value.
+  or bypass path. Historical readings stay sealed; the lane is optional and rendered as
+  explicitly **DISABLED/DEGRADED** with its path and last-observation age, never refreshed
+  or counted as a live value and never mistaken for a dead required scheduler.
 - **False positives are the enemy.** Content changes for boring reasons (redesigns,
   quality retraining). Every layer must stay conservative and fail-loud; a null
   result is a reportable result.

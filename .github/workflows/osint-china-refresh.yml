@@ -103,6 +103,7 @@ jobs:
             tests/test_source_workflow.py \
             tests/test_editorial_readiness.py \
             tests/test_structured_newsroom.py \
+            tests/test_event_analysis.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
@@ -226,6 +227,7 @@ jobs:
             tests/test_source_workflow.py \
             tests/test_editorial_readiness.py \
             tests/test_structured_newsroom.py \
+            tests/test_event_analysis.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
@@ -288,8 +290,10 @@ jobs:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
-            push origin HEAD:main
+          GIT_CONFIG_COUNT=1 \
+          GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
+            python scripts/push_data_commit.py --base-locked
 
       - name: Synchronize after a push race
         if: steps.push_attempt.outcome == 'failure'
@@ -351,6 +355,7 @@ jobs:
             tests/test_source_workflow.py \
             tests/test_editorial_readiness.py \
             tests/test_structured_newsroom.py \
+            tests/test_event_analysis.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
@@ -411,5 +416,7 @@ jobs:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
-            push origin HEAD:main
+          GIT_CONFIG_COUNT=1 \
+          GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
+          GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
+            python scripts/push_data_commit.py --base-locked

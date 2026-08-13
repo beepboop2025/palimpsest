@@ -70,6 +70,14 @@ roll-up over every China-facing reading, including each source's cadence, freshn
 coverage state and complete machine-readable payload. A failed or stale collector stays on the board as
 a visible gap; it is never replaced by a plausible-looking zero.
 
+An independent hourly recovery watchdog evaluates the published evidence deadlines, not just the
+last saved health labels. It re-dispatches an idle, reviewed producer for stale/missing/corrupt
+active sources, refreshes an old command bundle before trusting its embedded states, and caps each
+recovery wave to prevent a retry storm. Operational health is kept separate from analytic readiness:
+for example, a complete monthly Believability collection is live while its eight-month divergence
+baseline is still warming up. Intentionally disabled optional methods remain visible but are not
+reported as dead required schedulers.
+
 The same page now exposes those retained payloads as a searchable structured ledger and adds an
 **evidence spine** across four deliberately separate lanes: information controls, monetary plumbing,
 aggregate illicit-market observables, and reviewed scam/laundering signals. The versioned
@@ -288,7 +296,7 @@ an upstream limitation. Runs, code, and outputs are public, and no hidden server
 | **Data darkness** | The withholding watch: days-late against their own rhythm for seven official Chinese publication surfaces (PBOC OMO announcements, the monetary-authority balance-sheet block, SAFE settlement data, CFETS benchmarks, the NBS energy and industrial monthlies scored against the state's own release calendar, and rail freight) — the complement to deletion-as-data | Daily | [`readings/data-darkness-latest.json`](readings/data-darkness-latest.json) |
 | **Silence Index** | Pre-emptive silence: DDTI topics loud abroad while absent from the domestic board, with a china-nexus gate and a non-bypassable corroboration guard so local disinterest never reads as blackout | Every 6 hours | [`readings/silence-index-latest.json`](readings/silence-index-latest.json) |
 | **CNY fix gap** | Two prices for one currency: the PBOC's daily USD/CNY fix against an independent same-day reference (ECB, cross-checked via Bank of Canada) — the market agreeing or pulling against the state's price | Daily | [`readings/cny-fix-gap-latest.json`](readings/cny-fix-gap-latest.json) |
-| **Believability read** | The Li Keqiang composite (loans 40% / electricity 40% / rail freight 20%, from the state's own releases) against the headline, published as drift with an uncertainty band — method in [docs/BELIEVABILITY.md](docs/BELIEVABILITY.md) | Monthly | [`readings/believability-latest.json`](readings/believability-latest.json) |
+| **Believability read** | The Li Keqiang composite (loans 40% / electricity 40% / rail freight 20%, from the state's own releases) against the headline, published as drift with an uncertainty band. A complete monthly collection is operationally live during the explicitly labelled eight-month analysis warm-up — method in [docs/BELIEVABILITY.md](docs/BELIEVABILITY.md) | Monthly | [`readings/believability-latest.json`](readings/believability-latest.json) |
 | **Stock Connect** | HKEX Stock Connect daily statistics: the cross-border flow print, a second non-information channel that reacts to the same events | Weekdays, after the HK print | [`readings/stock-connect-latest.json`](readings/stock-connect-latest.json) |
 | **Event flags** | Per-signal conformal e-detector: is a signal outside its *own* history right now, with an anytime-valid false-flag guarantee | Every 6 hours | [`readings/event-flags-latest.json`](readings/event-flags-latest.json) |
 | **Board alarm** | The board-wide merge of those e-detectors, with e-BH selection at alpha 0.1 controlling false discoveries under arbitrary dependence | Every 6 hours | [`readings/board-alarm-latest.json`](readings/board-alarm-latest.json) |

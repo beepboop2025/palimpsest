@@ -62,7 +62,7 @@ def test_expired_sources_cannot_remain_in_headline_kpis_or_active_findings():
     page = PAGE.read_text(encoding="utf-8")
     assert "function withholdKpi" in page
     for field in ("oc-erasure", "oc-target", "oc-network", "oc-darkness"):
-        assert f'withholdKpi(' in page and f'"{field}"' in page
+        assert 'withholdKpi(' in page and f'"{field}"' in page
     assert 'if (statusFor(board) === "fresh")' in page
     assert 'if (!source || statusFor(source) !== "fresh") return' in page
     assert "command.headline || command.summary || d.headline" not in page
@@ -81,6 +81,13 @@ def test_corrupt_is_not_reporting_and_uses_critical_tone():
     assert 'if (/corrupt/.test(raw)) return "corrupt"' in page
     assert 'status === "corrupt" || status === "error"' in page
     assert 'state !== "error" && state !== "corrupt"' in page
+
+
+def test_disabled_optional_collector_is_not_relabelled_as_a_dead_scheduler():
+    page = PAGE.read_text(encoding="utf-8")
+    disabled = page.index('if (/disabled/.test(raw)')
+    deadline = page.index("if (isFinite(deadline) && Date.now() > deadline)")
+    assert disabled < deadline
 
 
 def test_status_is_written_in_words_and_not_only_colour():

@@ -154,6 +154,50 @@ def test_publish_fails_closed_when_a_guarded_input_changes(tmp_path: Path) -> No
     assert _git(remote, "rev-parse", "main") == remote_before
 
 
+def test_publish_rebuilds_when_an_explicit_derived_input_changes(
+    tmp_path: Path,
+) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher, "input-v1\n")
+    (racer / "input.txt").write_text("input-v2\n", encoding="utf-8")
+    _git(racer, "add", "input.txt")
+    _git(racer, "commit", "-qm", "advance explicit derived input")
+    _git(racer, "push", "-q", "origin", "main")
+    rebuild, rebuild_paths = push_data_commit._module_rebuilder(  # noqa: SLF001
+        ("scripts.fake_refresh",), ("source.json",)
+    )
+
+    assert push_data_commit.publish(
+        publisher,
+        rebuild=rebuild,
+        rebuild_paths=rebuild_paths,
+        input_paths=("input.txt",),
+    ) is True
+    assert _git(remote, "show", "main:source.json") == "input-v2"
+
+
+def test_explicit_dependencies_preserve_candidate_across_unrelated_race(
+    tmp_path: Path,
+) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher)
+    (racer / "unrelated.txt").write_text("advanced\n", encoding="utf-8")
+    _git(racer, "add", "unrelated.txt")
+    _git(racer, "commit", "-qm", "advance unrelated input")
+    _git(racer, "push", "-q", "origin", "main")
+    rebuild, rebuild_paths = push_data_commit._module_rebuilder(  # noqa: SLF001
+        ("scripts.fake_refresh",), ("source.json",)
+    )
+
+    assert push_data_commit.publish(
+        publisher,
+        rebuild=rebuild,
+        rebuild_paths=rebuild_paths,
+        input_paths=("input.txt",),
+    ) is True
+    assert _git(remote, "show", "main:source.json") == '{"version":2}'
+
+
 def test_publish_returns_noop_when_candidate_is_already_upstream(
     tmp_path: Path,
 ) -> None:
@@ -186,6 +230,54 @@ def test_publish_retries_one_rejected_push_without_changing_bytes(
 
     assert marker.is_file()
     assert _git(remote, "rev-parse", "main:source.json") == expected_blob
+
+
+def test_publish_survives_several_transient_push_failures_with_bounded_backoff(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, publisher, _ = _repositories(tmp_path)
+    _candidate(publisher)
+    real_run = push_data_commit._run  # noqa: SLF001
+    push_calls = 0
+    delays: list[float] = []
+
+    def reject_four_times(
+        repo: Path,
+        *arguments: str,
+        check: bool = True,
+    ) -> int:
+        nonlocal push_calls
+        if arguments[:2] == ("push", "origin"):
+            push_calls += 1
+            if push_calls <= 4:
+                return 1
+        return real_run(repo, *arguments, check=check)
+
+    monkeypatch.setattr(push_data_commit, "_run", reject_four_times)
+
+    assert push_data_commit.publish(publisher, sleeper=delays.append) is True
+    assert push_calls == 5
+    assert len(delays) == 4
+    assert delays == sorted(delays)
+    assert max(delays) <= push_data_commit.MAX_RETRY_DELAY_SECONDS
+    assert _git(remote, "rev-parse", "main") == _git(publisher, "rev-parse", "HEAD")
+
+
+def test_base_locked_candidate_fails_closed_when_main_advances(tmp_path: Path) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher)
+    (racer / "unrelated.txt").write_text("advanced\n", encoding="utf-8")
+    _git(racer, "add", "unrelated.txt")
+    _git(racer, "commit", "-qm", "advance main")
+    _git(racer, "push", "-q", "origin", "main")
+    candidate = _git(publisher, "rev-parse", "HEAD")
+
+    with pytest.raises(push_data_commit.PublishError, match="verified rebuild"):
+        push_data_commit.publish(publisher, base_locked=True)
+
+    assert _git(publisher, "rev-parse", "HEAD") == candidate
+    assert _git(remote, "show", "main:unrelated.txt") == "advanced"
 
 
 def test_candidate_check_repeats_after_main_advances_and_candidate_rebases(
@@ -523,6 +615,7 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "cny-fix-gap-refresh.yml",
         "ddti-refresh.yml",
         "event-flags-refresh.yml",
+        "erasure-refresh.yml",
         "gdelt-refresh.yml",
         "gfi-refresh.yml",
         "github-refuge-refresh.yml",
@@ -531,6 +624,7 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "ioda-outages-refresh.yml",
         "net4people-refresh.yml",
         "ooni-gfw-refresh.yml",
+        "osint-china-refresh.yml",
         "silence-index-refresh.yml",
         "stock-connect-refresh.yml",
         "vantage-fusion-refresh.yml",
@@ -546,8 +640,14 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     events = (workflow_root / "event-flags-refresh.yml").read_text(encoding="utf-8")
     assert "--rebuild-module scripts.conformal_events_pull" in events
     silence = (workflow_root / "silence-index-refresh.yml").read_text(encoding="utf-8")
+    assert "--rebuild-module scripts.silence_index_pull" in silence
+    assert "--stage readings/silence-index-latest.json" in silence
+    assert "--stage readings/silence-index-history.jsonl" in silence
     assert "--input-path readings/ddti-latest.json" in silence
     assert "--input-path readings/weibo-hotsearch-latest.json" in silence
+    assert "timeout-minutes: 35" in silence
+    osint = (workflow_root / "osint-china-refresh.yml").read_text(encoding="utf-8")
+    assert osint.count("python scripts/push_data_commit.py --base-locked") == 2
     assert "--input-path readings/ddti-latest.json" in (
         workflow_root / "gdelt-refresh.yml"
     ).read_text(encoding="utf-8")

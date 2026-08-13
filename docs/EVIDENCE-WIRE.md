@@ -13,9 +13,13 @@ Palimpsest measurements. It preserves the boundary between:
 - what changed after first publication; and
 - what the available evidence cannot establish.
 
-“Every item is analysed” means every accepted item receives a durable receipt
-and a visible disposition. It does not mean every duplicate, heartbeat, or
-single-source assertion is promoted to a lead story.
+“Every item is analysed” now means every accepted event receives both a durable
+source receipt and a content-addressed Palimpsest assessment. The assessment
+states whether the event is inside the declared remit, evaluates independent
+source structure, quotes only explicitly linked normalized collector findings,
+and publishes an abstention when those collectors are not current. It does not
+mean every duplicate, heartbeat, or single-source assertion is promoted to a
+lead story.
 
 The first release covers public, aggregate evidence about China across economy,
 politics and law, censorship and rights, networks, technology, security, and
@@ -119,6 +123,26 @@ Predeclared topic-to-instrument mappings expose where a report could be tested.
 The braid orders source receipts and labels those mappings as topical pointers.
 Version 1 does not assert a timed statistical match between a report and a
 measurement.
+
+### Per-event Palimpsest assessment — shipped
+
+Every event page and `analysis.json` companion has exactly one of four
+dispositions:
+
+1. `outside-remit` — the global-feed item has no reviewed China source, term, or
+   intake-approved collector link and must not be read as a Palimpsest finding;
+2. `source-assessment` — Palimpsest can judge attribution and independent-source
+   structure, but has no declared collector surface for the event;
+3. `collector-context` — every declared collector surface is live, so its exact
+   aggregate finding, method, timestamp, evidence URL and input hash are shown as
+   context; or
+4. `collector-abstention` — at least one declared surface is non-live, so
+   Palimpsest withholds a collector-backed conclusion while preserving the gap.
+
+The join is deliberately `topic-surface-only`. A current value is not called
+verification, refutation, cause, coordination, or impact unless a future method
+predeclares and validates a timed, claim-specific join. The article body remains
+outside this metadata-only rights boundary.
 
 ### Negative-space divergence — gated
 
@@ -231,6 +255,8 @@ news/wire/page/<page>/index.html
 news/wire/<event-id>/index.html
 news/wire/<event-id>/story.json
 news/wire/<event-id>/revisions/<revision-id>.json
+news/wire/<event-id>/analysis.json
+news/wire/<event-id>/analysis/revisions/<analysis-id>.json
 news/archive/YYYY/MM/index.json
 news/economy/index.html
 news/investigations/index.html
@@ -276,6 +302,8 @@ measurement node cannot silently rewrite the canonical site.
 - Never publish a lead from stale, malformed, or unreachable evidence.
 - Never increase corroboration by adding a same-group mirror.
 - Preserve stable event URLs and prior revision bytes.
+- Publish exactly one schema-valid assessment for every current wire event.
+- Never describe a topic-linked collector as article-specific verification.
 - Keep RSS intake failure independent from scan publication.
 - Surface scheduler, worker, source and evidence freshness independently.
 - Preserve the last-good edition on total intake failure.

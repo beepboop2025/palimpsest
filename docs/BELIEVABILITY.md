@@ -52,6 +52,12 @@ extra telemetry (coal, crude steel) is published beside it, never blended in.
    expected data month is dropped, not reused. Narrative-text parsers return
    None on any rewording, and the miss is published as a missing component.
 
+Collection health and analysis readiness are separate. When all three components and
+the comparator arrive for the correct month, the collector is operationally live. Until
+eight prior monthly gaps exist, `analysis_status=warming_up`, `analysis_ready=false`, and
+`drift=null`: the newsroom may report that the collection completed, but it must not claim
+that a divergence has been measured.
+
 ## Why the naive version would be wrong
 
 A services-heavy economy legitimately uses less electricity and ships less

@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 33 of 33 configured sources report; 30 are live. Health qualifiers: 1 degraded, 2 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-13T16:45:25Z",
+  "generated_at": "2026-08-13T17:33:04Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "903dd8a6a92411fa69e009291c720684a2de5d5a",
+  "source_commit": "2dcc105440c16b42ee6d09913ecc150d6a4517b0",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1174,15 +1174,15 @@
       "url": "https://palimpsest.info/news/baike-redaction/",
       "signal_id": "baike-redaction",
       "headline": "Baike redaction: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 3,
       "type": "measurement",
       "priority": "background",
-      "status": "stale",
+      "status": "degraded",
       "published_at": "2026-07-30T20:31:16Z",
       "modified_at": "2026-07-30T20:31:16Z",
-      "claim_fingerprint": "sha256:3a9e86c2d873e0b7233aab71c604935fd9aff818613df0a8f9c8fa07358268b2",
+      "claim_fingerprint": "sha256:45290c3fc34242b7728a8985ce32e037e068894d6425e1516d0bc01c90d56036",
       "metric": {
         "label": null,
         "value": null,
@@ -1195,7 +1195,7 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for Baike redaction because the source status is stale."
+          "statement": "No current finding is published for Baike redaction because the source status is degraded."
         }
       ],
       "evidence": {
@@ -1212,7 +1212,7 @@
         "version": 3
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
+        "Current finding withheld: optional collector is disabled pending authorized access; no current Baike measurement is claimed",
         "Without authorized live revision history, lexical comparisons cannot identify when or by whom text changed."
       ],
       "related_signal_ids": [
@@ -1587,16 +1587,16 @@
       "slug": "believability-read",
       "url": "https://palimpsest.info/news/believability-read/",
       "signal_id": "believability",
-      "headline": "Believability read: no current finding",
-      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The monthly state-data comparison is live and building its baseline",
+      "dek": "All three physical-activity components are present, but the historical uncertainty band is not mature enough for a divergence finding.",
       "section": "economy",
       "order": 5,
       "type": "analysis",
       "priority": "background",
-      "status": "degraded",
+      "status": "live",
       "published_at": "2026-08-05T09:10:30Z",
       "modified_at": "2026-08-05T09:10:30Z",
-      "claim_fingerprint": "sha256:7adfd5f89d69f6f7aa86f6737ad2e35ed89a810eb2c7f17f3d5373c19e7a8863",
+      "claim_fingerprint": "sha256:e91afb986b2e63361b84a2214ab321e7869ba6138ac238baaa095e748836e910",
       "metric": {
         "label": null,
         "value": null,
@@ -1608,8 +1608,8 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Believability read because the source status is degraded."
+          "type": "observation",
+          "statement": "The current believability collection is complete; divergence remains withheld while its baseline has 0 of 8 required prior months."
         }
       ],
       "evidence": {
@@ -1626,7 +1626,7 @@
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: upstream status is not_ready",
+        "No drift finding is claimed until 8 prior monthly gaps exist.",
         "A divergence outside the historical band shows a relationship moved; it does not by itself establish fabrication."
       ],
       "related_signal_ids": [
@@ -1742,20 +1742,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "The sanitized intelligence bridge ranks 177 aggregate topics",
-      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
+      "headline": "Private runtime bridge: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-13T16:29:16Z",
       "modified_at": "2026-08-13T16:29:16Z",
-      "claim_fingerprint": "sha256:6341aaf3cb70d040e70af55749ada356610b5d2771c411b01a28a6da966f2f07",
+      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "metric": {
-        "label": "topics ranked",
-        "value": 177,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1763,8 +1763,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current sanitized optional export contains 177 ranked aggregate topics."
+          "type": "availability",
+          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
         }
       ],
       "evidence": {
@@ -1781,6 +1781,7 @@
         "version": "nemesis-public-v2"
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [

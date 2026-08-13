@@ -70,7 +70,7 @@ def _history(tmp_path):
     path = tmp_path / "believability-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def _seed_history(tmp_path, months_gaps):
@@ -93,6 +93,10 @@ def test_first_round_warms_up_and_publishes_the_contract_fields(publish):
     assert got["gap"] == pytest.approx(1.0)
     assert got["label"] == "warming_up"
     assert got["status"] == "not_ready"
+    assert got["collector_status"] == "observed"
+    assert got["analysis_status"] == "warming_up"
+    assert got["analysis_ready"] is False
+    assert got["n_history_required"] == pull.MIN_HISTORY
 
 
 def test_a_missing_component_is_named_and_abstains_the_composite(publish):
@@ -105,6 +109,9 @@ def test_a_missing_component_is_named_and_abstains_the_composite(publish):
     assert got["lkq_composite"] is None
     assert got["label"] == "abstain"
     assert got["status"] == "abstain"
+    assert got["collector_status"] == "partial_observation"
+    assert got["analysis_status"] == "abstain"
+    assert got["analysis_ready"] is False
 
 
 def test_nothing_collected_publishes_nothing(publish):
