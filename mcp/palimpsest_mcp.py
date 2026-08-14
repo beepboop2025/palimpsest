@@ -38,7 +38,7 @@ from urllib.parse import urlsplit
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.8.0"
+SERVER_VERSION = "1.8.1"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
