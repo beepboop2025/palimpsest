@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-13T19:15:42.670677+00:00",
+  "generated_at": "2026-08-14T02:39:01.390802+00:00",
   "title": "Verifiable Eval Registry",
   "what": "tamper-evident, pre-registered AI model evaluations — the questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised. Any model, any suite; this is the record.",
   "registry": "readings/eval-registry.jsonl",
   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-  "attestations": 373,
+  "attestations": 381,
   "preregistrations": 5,
-  "runs": 368,
+  "runs": 376,
   "models": [
     "anthropic/claude-3-haiku",
     "deepseek/deepseek-chat",
@@ -17,13 +17,13 @@
   ],
   "verified": true,
   "problems": [],
-  "merkle_root": "6315a70f8dd94eb92c010d052277c3a85bac19a10b692e0ca0a307006391da6f",
-  "head_hash": "ddd6abf19262f0079c20a56ece049174ffa57c619f7910397a6f56da9e5339c5",
+  "merkle_root": "92dd4c7821d092ea13aca856788076a59381f3641fd201fdff3d20238ca4c380",
+  "head_hash": "0917f38451144ae21b3714f5769abd04505ae03ca4aebe9bf6cdae72d1a55fde",
   "first_ts": "2026-07-11T15:43:20.718648+00:00",
-  "head_ts": "2026-08-13T19:15:42.670677+00:00",
+  "head_ts": "2026-08-14T02:39:01.390802+00:00",
   "recent_runs": [
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "openai/gpt-4o-mini",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -39,7 +39,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "openai/gpt-4o-mini",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -49,17 +49,17 @@
         "n_families": 34,
         "n_refused_families": 0,
         "arm_refusal_rate_pct": 0.0,
-        "n_arms": 41,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "0cb65f1c97701810"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "9ba313639a2c25f4"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "anthropic/claude-3-haiku",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -75,7 +75,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "anthropic/claude-3-haiku",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -85,17 +85,17 @@
         "n_families": 34,
         "n_refused_families": 0,
         "arm_refusal_rate_pct": 0.0,
-        "n_arms": 41,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "cf94c1a3d195af60"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "ba06781f31deff84"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "meta-llama/llama-3.3-70b-instruct",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -111,7 +111,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "meta-llama/llama-3.3-70b-instruct",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -121,17 +121,17 @@
         "n_families": 34,
         "n_refused_families": 0,
         "arm_refusal_rate_pct": 0.0,
-        "n_arms": 41,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "ee2d003d76477866"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "08540b9a50c5e77d"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "mistralai/mistral-nemo",
       "suite": "frontier-overrefusal-v1",
       "metrics": {
@@ -147,7 +147,7 @@
       "responses_hash": "8d8f7ada6c0bbcd5"
     },
     {
-      "ts": "2026-08-13T19:15:42.670677+00:00",
+      "ts": "2026-08-14T02:39:01.390802+00:00",
       "model": "mistralai/mistral-nemo",
       "suite": "frontier-overrefusal-v2",
       "metrics": {
@@ -157,14 +157,14 @@
         "n_families": 34,
         "n_refused_families": 0,
         "arm_refusal_rate_pct": 0.0,
-        "n_arms": 41,
+        "n_arms": 144,
         "n_abstained": 0,
-        "paraphrase_consistency": null,
+        "paraphrase_consistency": 1.0,
         "controls_clean": true,
         "method_version": 3
       },
-      "probe_set_hash": "31208cb5a9f13b3a",
-      "responses_hash": "50201c464859e76b"
+      "probe_set_hash": "17f271e4f3b77a45",
+      "responses_hash": "bf458b99de08ebe9"
     }
   ]
 }
