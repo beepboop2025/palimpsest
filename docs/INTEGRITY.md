@@ -36,6 +36,19 @@ Layers 3 to 6 exist for exactly that adversary — including us. If we edited a
 published number, our own verifier would report the break, the anchors would
 date the old root, and any witness would name the rewritten entry.
 
+Digest-only MyQuant evaluation evidence adds a narrower check at layer 1. Its
+preregistration must reach Palimpsest's eval registry strictly before the declared
+run start, and the run commits to the exact canonical public result receipt. The
+verifier resolves every such receipt from its content-addressed store and checks
+the deterministic latest projection. The ordering is local to the registry snapshot:
+it is not proof that an independent party publicly witnessed the preregistration
+before execution, and the run timestamps remain producer declarations. This does not
+expose or validate private
+prompts, labels, reviewer identity, weights, or result preimages, and it grants no
+training, promotion, deployment, evaluation, or publication authority. The exact
+boundary and local single-writer procedure are documented in
+[MYQUANT-MODEL-EVIDENCE.md](MYQUANT-MODEL-EVIDENCE.md).
+
 ## What this does NOT protect against — honestly
 
 - **Lying at capture time.** The chain proves what was sealed, not that the

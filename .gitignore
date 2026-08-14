@@ -45,6 +45,11 @@ data/bleedthrough_baselines/
 .scrub-strings.local
 /ops/docker/.env
 
+# Persistent sidecar locks for atomically replaced public ledgers.  These must not
+# be deleted between writers (doing so can create two lock domains), and are runtime
+# coordination state rather than published evidence.
+/readings/.*.lock
+
 # Runtime evidence intake. Capsules are reviewed/exported through the
 # ScamShield integration scripts and must not dirty the public source tree.
 var/

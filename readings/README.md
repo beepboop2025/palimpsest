@@ -51,6 +51,7 @@ the method is on [`bleedthrough.html`](bleedthrough.html) and the code is open.
 | Signal | Cadence | Latest | Time-series |
 | --- | --- | --- | --- |
 | Verifiable Eval Registry | Every 6h | [`eval-registry-latest.json`](eval-registry-latest.json) | the chain: [`eval-registry.jsonl`](eval-registry.jsonl) |
+| MyQuant model evidence | Operator-gated, two phase | `myquant-model-evidence-latest.json` after the first accepted receipt | content-addressed digest-only receipts; no prompts, labels, reviewer identity, weights, secrets, URLs, or private paths |
 | Frontier refusal drift | Every 6h | [`refusal-drift-latest.json`](refusal-drift-latest.json) | [`refusal-drift-history.jsonl`](refusal-drift-history.jsonl) |
 | External anchors (Internet Archive · OpenTimestamps) | Every 6h | [`anchors-latest.json`](anchors-latest.json) | [`anchors.jsonl`](anchors.jsonl) |
 

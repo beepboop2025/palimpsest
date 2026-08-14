@@ -11,6 +11,8 @@ import os
 import sys
 import tempfile
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import sealed_ledger  # noqa: E402
 
@@ -78,6 +80,73 @@ def test_merkle_root_commits_to_every_entry_hash():
     # and a tamperer cannot both satisfy verify() and preserve the root:
     ok, _ = sealed_ledger.verify(entries)
     assert not ok
+
+
+def test_incomplete_tail_is_rejected_at_the_exact_byte_boundary(tmp_path):
+    path = tmp_path / "ledger.jsonl"
+    sealed_ledger.append_seal(str(path), "demo", {"value": 1})
+    path.write_bytes(path.read_bytes().rstrip(b"\n"))
+
+    with pytest.raises(sealed_ledger.LedgerFormatError, match="incomplete tail"):
+        sealed_ledger.read_ledger(str(path))
+    with pytest.raises(sealed_ledger.LedgerFormatError, match="incomplete tail"):
+        sealed_ledger.append_seal(str(path), "demo", {"value": 2})
+
+
+def test_failed_atomic_replace_keeps_the_previous_complete_snapshot(
+    monkeypatch, tmp_path
+):
+    path = tmp_path / "ledger.jsonl"
+    path.write_bytes(b"old-complete-snapshot\n")
+
+    def fail_replace(source, destination):
+        raise OSError("simulated rename failure")
+
+    monkeypatch.setattr(sealed_ledger.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="simulated rename failure"):
+        sealed_ledger.atomic_replace_bytes(path, b"new-complete-snapshot\n")
+
+    assert path.read_bytes() == b"old-complete-snapshot\n"
+    assert not list(tmp_path.glob(".ledger.jsonl.*.tmp"))
+
+
+def test_exponent_overflow_and_nonfinite_canonical_values_are_rejected(tmp_path):
+    path = tmp_path / "ledger.jsonl"
+    path.write_text('{"seq":0,"note":1e999}\n', encoding="utf-8")
+
+    with pytest.raises(sealed_ledger.LedgerFormatError, match="non-finite"):
+        sealed_ledger.read_ledger(str(path))
+    with pytest.raises(ValueError, match="Out of range float"):
+        sealed_ledger.payload_digest({"unsafe": float("inf")})
+
+
+@pytest.mark.parametrize("seq", [False, 0.0])
+def test_sequence_number_requires_an_exact_integer(seq):
+    core = {
+        "seq": seq,
+        "ts": "2026-08-14T00:00:00+00:00",
+        "source": "typed-sequence",
+        "payload_sha256": "a" * 64,
+        "prev_hash": sealed_ledger.GENESIS_PREV,
+    }
+    entry = {**core, "entry_hash": sealed_ledger._entry_hash(**core)}
+
+    ok, problems = sealed_ledger.verify([entry])
+
+    assert not ok
+    assert any("non-contiguous" in problem for problem in problems)
+
+
+def test_shared_read_only_lock_does_not_create_a_sidecar(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    lock = tmp_path / ".ledger.jsonl.lock"
+
+    with sealed_ledger.ledger_lock(
+        ledger, exclusive=False, create=False
+    ) as acquired:
+        assert acquired is False
+
+    assert not lock.exists()
 
 
 if __name__ == "__main__":

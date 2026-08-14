@@ -94,8 +94,32 @@ a pure stdlib module operating on a JSONL file: clone the repo, point it at a pa
 you have your own chain with the same guarantees. Nothing is uploaded to us, no account
 exists, and no key is involved.
 
+Palimpsest also has one deliberately non-generic external boundary for sanitized
+MyQuant evaluation receipts. It accepts only digest commitments, requires the
+preregistration to be in the local registry snapshot strictly before the producer's
+declared run start,
+and makes `responses_hash` commit to the exact public result receipt rather than
+to a private result artifact or training cut. It has no network transport and is
+usable only by the local publisher. See
+[MYQUANT-MODEL-EVIDENCE.md](MYQUANT-MODEL-EVIDENCE.md) for the exact schemas,
+privacy exclusions, two-phase operator procedure, and replay rules.
+
+That check is deliberately not described as a public timestamp witness. The importer
+cannot prove when a Git commit became visible to an independent observer, nor can it
+verify the private run-start preimage. Publication before execution remains an operator
+procedure; the machine-verifiable claim is the narrower local-chain ordering against
+producer-declared UTC times.
+
 The order is the whole point — **freeze, then run, then submit**. A run whose probe set
 was not pre-registered *earlier in the same chain* fails `verify()`, by design.
+
+Writers verify the complete candidate chain and atomically replace the JSONL snapshot,
+so an interrupted append cannot leave a partial tail. This deliberately makes append
+cost linear in the current ledger size. The deterministic public summary is capped at
+4 MiB and a candidate that would exceed that verifier read bound is rejected before the
+ledger changes. If normal growth approaches that ceiling, the format must move to a
+separately reviewed segmented-ledger version rather than silently weakening atomicity or
+truncating the published model inventory.
 
 ```python
 import core.eval_registry as reg          # PYTHONPATH=. from the repo root
@@ -207,6 +231,9 @@ auditor can later quietly revise.
 - `scripts/eval_registry_ingest.py` — records the Generative Firewall eval as sealed,
   pre-registered attestations. Idempotent.
 - `scripts/verify_eval_registry.py` — the public verification tool.
+- `core/myquant_model_evidence.py` and
+  `scripts/import_myquant_model_evidence.py` — strict, operator-local import of
+  content-addressed MyQuant preregistration/result receipts.
 - `readings/eval-registry.html` — the public page.
 - `readings/eval-registry.jsonl` — the chain. `eval-registry-latest.json` — the summary.
 - `tests/test_eval_registry.py` — tamper detection and the pre-registration rule (6/6).
