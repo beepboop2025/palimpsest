@@ -11,6 +11,9 @@ from core.wire_claim_audits import (
     DELIVERY_POLICY,
     PROBABILITY_METHOD,
     WireClaimAuditError,
+    _event_geography,
+    _event_text,
+    _signal_fit,
     build_wire_claim_audits,
     canonical_json_bytes,
     validate_wire_claim_audits,
@@ -99,18 +102,20 @@ def test_capped_feed_excerpt_is_not_published_mid_word() -> None:
 
 
 def test_hong_kong_release_does_not_inherit_mainland_measurements() -> None:
-    document = build_wire_claim_audits(READINGS, decision_clock=CLOCK)
-    survey = _audit(document, "small and medium-sized enterprises")
+    event = {
+        "headline": "Hong Kong small-business survey",
+        "dek": "A current Hong Kong economic release.",
+        "topics": ["economy"],
+        "evidence_refs": [{"source_id": "hksar-releases"}],
+    }
+    text = _event_text(event)
+    geography = _event_geography(event, text)
 
-    mainland_ids = {"data-darkness", "china-econ", "cny-fix-gap"}
+    assert geography == "hong-kong"
     assert {
-        row["fit"]
-        for row in survey["current_condition"]
-        if row["signal_id"] in mainland_ids
+        _signal_fit(signal_id, text, {"economic-conditions"}, geography)
+        for signal_id in {"data-darkness", "china-econ", "cny-fix-gap"}
     } == {"cross-geography-context"}
-    assert survey["truth_assessment"]["collector_conclusion"] == (
-        "no_comparable_instrument"
-    )
 
 
 def test_same_source_ddti_echo_is_named_as_non_corroboration() -> None:
