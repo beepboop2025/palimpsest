@@ -22,12 +22,15 @@ def test_gfi_publication_carries_full_evidence_and_machine_assurance():
         "python -m scripts.verify_gfi_transcripts",
         "python -m scripts.build_eval_assurance --check",
         "python -m scripts.build_eval_journal --check",
+        "python -m scripts.build_eval_findings --check",
         "readings/gfi-transcripts-latest.json",
         "readings/eval-registry.jsonl",
         "readings/eval-registry-latest.json",
         "readings/eval-assurance-latest.json",
         "readings/eval-journal-latest.json",
+        "readings/eval-articles-latest.json",
         "evals/",
+        "journal/",
     ):
         assert required in text
 
@@ -47,6 +50,8 @@ def test_every_gfi_publication_path_runs_the_universal_semantic_contract():
         "tests/test_publication_contract.py",
         "tests/test_eval_assurance.py",
         "tests/test_eval_journal.py",
+        "tests/test_eval_articles.py",
+        "tests/test_eval_journal_renderer.py",
     ):
         assert text.count(contract) == 2
 
@@ -61,6 +66,8 @@ def test_every_gfi_publication_path_runs_the_universal_semantic_contract():
         "readings/newsroom-latest.json",
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
+        "readings/eval-articles-latest.json",
+        "journal/",
     ):
         assert output in candidate
         assert output in retry

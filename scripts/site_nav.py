@@ -37,9 +37,9 @@ NAV = [
     {"label": "Eval Journal", "href": "/evals/"},
     {"label": "Wire", "href": "/news/"},
     {
-        "label": "China",
-        "lede": "Economic releases, public-source signals and censorship evidence, kept separate and joined by receipts.",
-        "match_prefixes": ["/china/"],
+        "label": "Observatory",
+        "lede": "China-facing economic releases and censorship measurements, separated by method and joined only by receipts.",
+        "match_prefixes": ["/china/", "/dashboards/"],
         "columns": [
             {
                 "head": "Start",
@@ -53,7 +53,7 @@ NAV = [
                 ],
             },
             {
-                "head": "Economic evidence",
+                "head": "Economic record",
                 "links": [
                     ("/china/sources/", "Source ledger",
                      "Access, rights, readiness and limits for every reviewed source"),
@@ -64,7 +64,7 @@ NAV = [
                 ],
             },
             {
-                "head": "Censorship instruments",
+                "head": "Information controls",
                 "links": [
                     ("/dashboards/ddti_observatory.html", "DDTI Observatory",
                      "Full command surface: fear index, topic network, ranked targets"),
@@ -216,8 +216,7 @@ def _within(item: dict, current: str) -> bool:
         return False
     here = current.split("#", 1)[0].rstrip("/")
     for prefix in item.get("match_prefixes", []):
-        normalized = str(prefix).rstrip("/") + "/"
-        if (here + "/").startswith(normalized):
+        if here == prefix.rstrip("/") or here.startswith(prefix.rstrip("/") + "/"):
             return True
     for col in item.get("columns", []):
         for entry in col["links"]:
