@@ -51,7 +51,9 @@ def test_backup_archive_and_restore_preserve_numeric_producer_ownership():
     assert "follow_symlinks=False" in helper
     assert "descriptor_metadata.st_ino != path_metadata.st_ino" in helper
     assert 'raise ArchivePreflightError("fixed artifact archive failed")' in helper
-    assert 'set(root_entries) != {"runs", "private"}' in helper
+    assert 'set(root_entries) != {"runs", "private", "delivery"}' in helper
+    assert 'DELIVERY_FILES = ("wire-claim-audits-latest.json",)' in helper
+    assert "MAX_DELIVERY_BYTES = 16 * 1024 * 1024" in helper
     assert "MAX_ANALYSIS_ENTRIES = 32768" in helper
     assert "MAX_RUNS = 48" in helper
     assert "--extract --gzip --numeric-owner --same-owner" in documentation

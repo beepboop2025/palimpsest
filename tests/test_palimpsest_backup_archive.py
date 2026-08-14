@@ -55,20 +55,24 @@ def _analysis_tree(tmp_path: Path, monkeypatch) -> Path:
     root = tmp_path / "analysis"
     runs = root / "runs"
     private = root / "private"
+    delivery = root / "delivery"
     run = runs / "run-20260813T010203Z-0123456789ab"
     (run / "inputs").mkdir(parents=True)
     (run / "readings").mkdir()
     (run / "private").mkdir()
     (private / "ledger").mkdir(parents=True)
+    delivery.mkdir()
     (run / "readings" / "analysis-run-manifest.json").write_text("{}\n")
     (run / "private" / "analytical-packets-latest.json").write_text("{}\n")
     (private / "cascade.lock").write_text("\n")
     (private / "state.json").write_text("{}\n")
     (private / "ledger" / "candidate-versions.jsonl").write_text("{}\n")
+    (delivery / "wire-claim-audits-latest.json").write_text("{}\n")
 
     root.chmod(0o711)
     runs.chmod(0o710)
     private.chmod(0o700)
+    delivery.chmod(0o711)
     for directory in (run, run / "inputs", run / "readings", run / "private"):
         directory.chmod(0o750)
     (private / "ledger").chmod(0o700)
@@ -78,10 +82,12 @@ def _analysis_tree(tmp_path: Path, monkeypatch) -> Path:
     for path in private.rglob("*"):
         if path.is_file():
             path.chmod(0o600)
+    (delivery / "wire-claim-audits-latest.json").chmod(0o644)
 
     monkeypatch.setattr(archive_helper, "ANALYSIS_ROOT", str(root))
     monkeypatch.setattr(archive_helper, "RUNS_ROOT", str(runs))
     monkeypatch.setattr(archive_helper, "PRIVATE_ROOT", str(private))
+    monkeypatch.setattr(archive_helper, "DELIVERY_ROOT", str(delivery))
     monkeypatch.setattr(archive_helper, "ROOT_UID", os.getuid())
     monkeypatch.setattr(archive_helper, "ROOT_GID", os.getgid())
     monkeypatch.setattr(archive_helper, "RUNTIME_UID", os.getuid())
@@ -141,6 +147,10 @@ def test_analysis_tree_preflight_accepts_exact_immutable_shape(tmp_path, monkeyp
     assert signatures
     assert any(row[0] == "private/state.json" for row in signatures)
     assert any(
+        row[0] == "delivery/wire-claim-audits-latest.json"
+        for row in signatures
+    )
+    assert any(
         row[0]
         == "runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json"
         for row in signatures
@@ -172,6 +182,22 @@ def test_analysis_tree_preflight_is_bounded(tmp_path, monkeypatch):
         archive_helper._validate_analysis_tree()
 
 
+def test_analysis_delivery_preflight_rejects_unapproved_or_oversized_artifacts(
+    tmp_path, monkeypatch
+):
+    root = _analysis_tree(tmp_path, monkeypatch)
+    delivery = root / "delivery"
+    (delivery / "unreviewed.json").write_text("{}\n")
+
+    with pytest.raises(archive_helper.ArchivePreflightError):
+        archive_helper._validate_analysis_tree()
+
+    (delivery / "unreviewed.json").unlink()
+    monkeypatch.setattr(archive_helper, "MAX_DELIVERY_BYTES", 1)
+    with pytest.raises(archive_helper.ArchivePreflightError):
+        archive_helper._validate_analysis_tree()
+
+
 def test_write_archive_streams_only_fixed_roots_with_numeric_ownership(
     tmp_path, monkeypatch
 ):
@@ -191,6 +217,7 @@ def test_write_archive_streams_only_fixed_roots_with_numeric_ownership(
     assert "data/.recovery.lock" in names
     assert "data/observations/index_20260813T010203+0000.json" in names
     assert "analysis/private/state.json" in names
+    assert "analysis/delivery/wire-claim-audits-latest.json" in names
     assert "newswire/newswire-latest.json" in names
     assert all(
         member.name.split("/", 1)[0] in archive_helper.ARCHIVE_ROOTS

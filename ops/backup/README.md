@@ -24,11 +24,13 @@ overlap a manually started backup.
 `data/` directories (normally `/var/lib/palimpsest`). Keeping them separate
 prevents collectors from dirtying the git checkout. The archive still uses the
 portable top-level names `readings/` and `data/` regardless of the host path.
-`PALIMPSEST_ANALYSIS_ROOT` locates the private investigative-analysis tree
+`PALIMPSEST_ANALYSIS_ROOT` locates the investigative-analysis tree
 (normally `/var/lib/palimpsest-analysis`). It must be a real directory with
-real `runs/` and `private/` children. The archive records that tree under the
-portable top-level name `analysis/`; it never writes the host path or private
-payloads into the text manifest.
+real `runs/`, `private/`, and `delivery/` children. The delivery subtree is
+closed to the single bounded `wire-claim-audits-latest.json` projection and
+retains its analysis identity and mode-0644 delivery contract. The archive
+records the complete tree under the portable top-level name `analysis/`; it
+never writes the host path or private payloads into the text manifest.
 `PALIMPSEST_NEWSWIRE_ROOT` locates the exact latest/lineage/status triplet used
 by the analytical freezer (normally `/var/lib/palimpsest/newswire`). It is
 archived under the portable top-level name `newswire/`.
@@ -68,8 +70,9 @@ blocking shared lock while its in-process, fixed archive writer streams
 with blank account names, rejects links and special members, and reports only a
 generic helper failure so a read error cannot leak a private filename. The
 helper runs with the image's exact `/usr/local/bin/python3 -I -B`, requires
-exactly the `runs/` and `private/` top-level analysis directories, and rejects
-staging/malformed run names, symlinks, special files, wrong numeric
+exactly the `runs/`, `private/`, and `delivery/` top-level analysis directories,
+requires the single delivery projection to remain a one-link regular file no
+larger than 16 MiB, and rejects staging/malformed run names, symlinks, special files, wrong numeric
 owners/modes, excess depth, excess entries, or more than 48 run directories. It
 fingerprints the accepted tree and rechecks both that fingerprint and the
 opened lock pathname/inode after the complete stream. The analytical runner
@@ -158,7 +161,8 @@ sudo tar --extract --gzip --numeric-owner --same-owner \
 ```
 
 The result must have exactly the reviewed top-level roots
-`readings/`, `data/`, `newswire/`, and `analysis/`. Verify the restored private modes and
+`readings/`, `data/`, `newswire/`, and `analysis/`. Verify the restored private
+modes, the exact `analysis/delivery/` inventory, and
 numeric owners before using them. Only after inspecting both restores should an
 operator schedule downtime and separately promote those three roots to
 `/var/lib/palimpsest/readings`, `/var/lib/palimpsest/data`,

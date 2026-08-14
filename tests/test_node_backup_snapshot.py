@@ -44,6 +44,12 @@ def _manifest(*, artifact_roots: str = "readings,data,newswire,analysis") -> byt
 def _archive(members: list[tuple[str, str, bytes | None]] | None = None):
     selected = members or [
         ("analysis", "directory", None),
+        ("analysis/delivery", "directory", None),
+        (
+            "analysis/delivery/wire-claim-audits-latest.json",
+            "file",
+            b"{}\n",
+        ),
         ("analysis/private", "directory", None),
         ("analysis/private/state.json", "file", b"{}\n"),
         ("readings", "directory", None),
@@ -131,9 +137,9 @@ def test_good_snapshot_produces_deterministic_restore_proof(tmp_path):
     assert first["status"] == "verified"
     assert first["snapshot"] == SNAPSHOT_ID
     assert first["counts"] == {
-        "artifact_directories": 5,
-        "artifact_files": 4,
-        "artifact_members": 9,
+        "artifact_directories": 6,
+        "artifact_files": 5,
+        "artifact_members": 11,
         "checksum_entries": 5,
         "snapshot_files": 6,
     }
