@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-08-14T03:15:14.968862+00:00",
+  "generated_at": "2026-08-14T08:04:04.578734+00:00",
   "headline": "4 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 4,
   "n_confirmed": 0,
   "pairs": [
     {
       "ok": true,
-      "overlap_days": 35,
+      "overlap_days": 36,
       "lag_days": -4,
-      "correlation": 0.519,
-      "p_value": 0.1429,
-      "n_shifts": 20,
-      "null_median_abs_r": 0.496,
+      "correlation": 0.522,
+      "p_value": 0.3182,
+      "n_shifts": 21,
+      "null_median_abs_r": 0.502,
       "pair": [
         "github_refuge",
         "tor_bridge_cn"
@@ -21,19 +21,19 @@
         "network"
       ],
       "first_day": "2026-07-06",
-      "last_day": "2026-08-10",
+      "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
       "holm_threshold": 0.0125,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 36,
-      "lag_days": 4,
-      "correlation": -0.393,
-      "p_value": 0.4091,
-      "n_shifts": 21,
-      "null_median_abs_r": 0.373,
+      "overlap_days": 37,
+      "lag_days": -3,
+      "correlation": -0.32,
+      "p_value": 0.6957,
+      "n_shifts": 22,
+      "null_median_abs_r": 0.46,
       "pair": [
         "ddti_threat",
         "tor_bridge_cn"
@@ -43,19 +43,19 @@
         "network"
       ],
       "first_day": "2026-07-05",
-      "last_day": "2026-08-10",
-      "reading": "ddti_threat moves 4d BEFORE tor_bridge_cn",
+      "last_day": "2026-08-11",
+      "reading": "tor_bridge_cn moves 3d BEFORE ddti_threat",
       "holm_threshold": 0.01667,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 35,
-      "lag_days": 2,
-      "correlation": 0.379,
-      "p_value": 0.7143,
-      "n_shifts": 20,
-      "null_median_abs_r": 0.403,
+      "overlap_days": 36,
+      "lag_days": -4,
+      "correlation": -0.247,
+      "p_value": 0.9091,
+      "n_shifts": 21,
+      "null_median_abs_r": 0.41,
       "pair": [
         "gdelt_containment",
         "tor_bridge_cn"
@@ -65,18 +65,18 @@
         "network"
       ],
       "first_day": "2026-07-06",
-      "last_day": "2026-08-10",
-      "reading": "gdelt_containment moves 2d BEFORE tor_bridge_cn",
+      "last_day": "2026-08-11",
+      "reading": "tor_bridge_cn moves 4d BEFORE gdelt_containment",
       "holm_threshold": 0.025,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 36,
+      "overlap_days": 37,
       "lag_days": -1,
-      "correlation": 0.173,
+      "correlation": 0.148,
       "p_value": 1.0,
-      "n_shifts": 21,
+      "n_shifts": 22,
       "null_median_abs_r": 0.248,
       "pair": [
         "ddti_novelty",
@@ -87,7 +87,7 @@
         "network"
       ],
       "first_day": "2026-07-05",
-      "last_day": "2026-08-10",
+      "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 1d BEFORE ddti_novelty",
       "holm_threshold": 0.05,
       "survives_multiplicity": false
@@ -99,28 +99,28 @@
         "censored_planet",
         "ddti_novelty"
       ],
-      "reason": "8 admissible shifts: smallest attainable p is 0.111, above alpha=0.05. Needs about 36d of overlapping daily history (has 23d)"
+      "reason": "9 admissible shifts: smallest attainable p is 0.100, above alpha=0.05. Needs about 36d of overlapping daily history (has 24d)"
     },
     {
       "pair": [
         "censored_planet",
         "ddti_threat"
       ],
-      "reason": "8 admissible shifts: smallest attainable p is 0.111, above alpha=0.05. Needs about 36d of overlapping daily history (has 23d)"
+      "reason": "9 admissible shifts: smallest attainable p is 0.100, above alpha=0.05. Needs about 36d of overlapping daily history (has 24d)"
     },
     {
       "pair": [
         "censored_planet",
         "gdelt_containment"
       ],
-      "reason": "8 admissible shifts: smallest attainable p is 0.111, above alpha=0.05. Needs about 36d of overlapping daily history (has 23d)"
+      "reason": "9 admissible shifts: smallest attainable p is 0.100, above alpha=0.05. Needs about 36d of overlapping daily history (has 24d)"
     },
     {
       "pair": [
         "censored_planet",
         "github_refuge"
       ],
-      "reason": "8 admissible shifts: smallest attainable p is 0.111, above alpha=0.05. Needs about 36d of overlapping daily history (has 23d)"
+      "reason": "9 admissible shifts: smallest attainable p is 0.100, above alpha=0.05. Needs about 36d of overlapping daily history (has 24d)"
     },
     {
       "pair": [
@@ -135,8 +135,8 @@
         "censored_planet",
         "weibo_suppression"
       ],
-      "overlap_days": 18,
-      "reason": "overlap 18d — needs about 36d for the shift null to reach alpha=0.05"
+      "overlap_days": 19,
+      "reason": "overlap 19d — needs about 36d for the shift null to reach alpha=0.05"
     },
     {
       "pair": [
@@ -192,7 +192,7 @@
         "gdelt_containment",
         "ooni_gfw"
       ],
-      "reason": "18 admissible shifts: smallest attainable p is 0.053, above alpha=0.05. Needs about 36d of overlapping daily history (has 33d)"
+      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
     },
     {
       "pair": [
