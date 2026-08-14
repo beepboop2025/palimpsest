@@ -68,6 +68,11 @@ CONTRACT = {
                "over that declared checklist, so one top-level denominator would duplicate it."),
     "eval-journal":         _d("generated_at", ["source", "method", "scope"],
                                "n_articles"),
+    "gfi-transcripts":      _d(
+        "generated_at", ["protocol", "evaluation_protocol_sha256", "verify_cmd"],
+        reason="an evidence corpus rather than an aggregate count: every retained model "
+               "response and transport abstention is enumerated under responses, while "
+               "the protocol and verification command bind the complete matrix."),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
