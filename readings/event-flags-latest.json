@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-08-14T14:02:14.717232+00:00",
+  "generated_at": "2026-08-14T19:37:02.676997+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "warming_up",
       "stat": 0.0,
-      "n": 148,
+      "n": 149,
       "n_alarms_in_history": 2,
-      "age_hours": 0.2,
+      "age_hours": 0.3,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 30.6467,
-      "n": 276,
+      "stat": 33.4044,
+      "n": 278,
       "n_alarms_in_history": 4,
-      "age_hours": 0.3,
+      "age_hours": 0.4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 5.8871,
-      "n": 276,
+      "stat": 4.8635,
+      "n": 278,
       "n_alarms_in_history": 2,
-      "age_hours": 0.3,
+      "age_hours": 0.4,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -32,15 +32,15 @@
       "stat": 204.0508,
       "n": 26,
       "n_alarms_in_history": 0,
-      "age_hours": 7.1,
+      "age_hours": 12.7,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 1.8097,
-      "n": 155,
+      "stat": 2.15,
+      "n": 156,
       "n_alarms_in_history": 0,
-      "age_hours": 5.9,
+      "age_hours": 5.5,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 2.1928,
       "n": 77,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 5.6,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -62,7 +62,7 @@
       "stat": 0.0,
       "n": 1,
       "n_alarms_in_history": 0,
-      "age_hours": 35.6,
+      "age_hours": 41.2,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation"
     },
     "bleedthrough_capacity": {
@@ -70,7 +70,7 @@
       "stat": 0.0,
       "n": 5,
       "n_alarms_in_history": 0,
-      "age_hours": 29.6,
+      "age_hours": 35.2,
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
@@ -78,21 +78,21 @@
       "stat": 12.0448,
       "n": 400,
       "n_alarms_in_history": 6,
-      "age_hours": 86.0,
+      "age_hours": 91.6,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 104,
+      "n": 105,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 0.1,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 105,
+      "n": 106,
       "n_alarms_in_history": 0,
       "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
@@ -102,7 +102,7 @@
       "stat": 14.9239,
       "n": 13,
       "n_alarms_in_history": 0,
-      "age_hours": 38.0,
+      "age_hours": 43.6,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -119,40 +119,40 @@
           "state": "quiet",
           "evalue": 0.0,
           "p0": 0.004663,
-          "pairs_seen": 40,
+          "pairs_seen": 41,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 820
+          "monitored_comparisons": 861
         },
         "meta-llama/llama-3.3-70b-instruct": {
           "state": "quiet",
-          "evalue": 0.0001,
+          "evalue": 0.0,
           "p0": 0.008849,
-          "pairs_seen": 40,
+          "pairs_seen": 41,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.008849,
-          "monitored_comparisons": 820
+          "monitored_comparisons": 861
         },
         "mistralai/mistral-nemo": {
           "state": "quiet",
           "evalue": 0.0,
           "p0": 0.114619,
-          "pairs_seen": 40,
+          "pairs_seen": 41,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.114619,
-          "monitored_comparisons": 798
+          "monitored_comparisons": 839
         },
         "openai/gpt-4o-mini": {
           "state": "quiet",
-          "evalue": 0.0,
+          "evalue": 0.0001,
           "p0": 0.004663,
-          "pairs_seen": 40,
+          "pairs_seen": 41,
           "pairs_needed": null,
           "undetectable_at_or_below": 0.004663,
-          "monitored_comparisons": 820
+          "monitored_comparisons": 861
         }
       },
-      "n_rows": 160,
+      "n_rows": 164,
       "instrument": {
         "method_version": 3,
         "judge_fingerprint": "cac7ebdb527330f88bf08e0d9e5e54edea237bd2c652451caeb0ed0466925b19"
