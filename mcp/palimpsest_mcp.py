@@ -1133,8 +1133,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def log_message(self, fmt, *args):  # systemd journal gets one clean line
-        print(f"{self.address_string()} {fmt % args}")
+    def log_message(self, _fmt, *_args):
+        # BaseHTTPRequestHandler includes the full request target here,
+        # including query strings. Product activation telemetry is emitted
+        # separately by _log_mcp_activation and contains no request data.
+        return
 
 
 if __name__ == "__main__":

@@ -566,6 +566,22 @@ def test_http_tool_call_emits_one_privacy_safe_activation(capsys):
     assert marker not in captured.err
 
 
+def test_deployed_handler_disables_raw_request_access_logging(capsys):
+    secret = "credential-shaped-query-must-not-reach-journal"
+    handler = _handler_for()
+
+    handler.log_message(
+        '"%s" %s %s',
+        f"POST /palimpsest/mcp?api_key={secret} HTTP/1.1",
+        "404",
+        "-",
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
 def test_http_discovery_does_not_count_as_activation(capsys):
     body = json.dumps(_rpc("tools/list")).encode()
     handler = _handler_for()
