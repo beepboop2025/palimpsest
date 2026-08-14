@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import ipaddress
+import json
 import logging
 import os
+import re
 import socket
 import time
 from collections.abc import Callable
@@ -14,6 +16,180 @@ from pathlib import Path
 from core.scheduler import app
 
 logger = logging.getLogger(__name__)
+
+_ALERT_STATE_KEY = "palimpsest:alert-conditions:v1"
+_ALERT_STATE_SCHEMA = "palimpsest-alert-conditions.v1"
+_ALERT_PAYLOAD_SCHEMA = "palimpsest-node-alert.v2"
+_ALERT_IDENTIFIER = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+_ALERT_MAX_CONDITIONS = 128
+_ALERT_MAX_TRANSITIONS = 64
+_ALERT_MAX_PAYLOAD_BYTES = 16 * 1024
+
+
+def _alert_identifier(value: object, *, fallback: str) -> str:
+    """Return a bounded public identifier, never arbitrary status text."""
+
+    candidate = str(value or "").strip().casefold()
+    return candidate if _ALERT_IDENTIFIER.fullmatch(candidate) else fallback
+
+
+def _node_alert_conditions(status: dict) -> dict[str, str]:
+    """Flatten unhealthy node details into stable, secret-free condition keys."""
+
+    node_state = _alert_identifier(status.get("status"), fallback="unknown")
+    if node_state == "disabled":
+        return {}
+    conditions: dict[str, str] = {}
+    sections = (
+        ("pipeline", "sources", frozenset({"healthy", "abstained"})),
+        ("evidence", "sources", frozenset({"fresh", "not-applicable"})),
+        ("execution", "queues", frozenset({"fresh"})),
+    )
+    for scope, collection, healthy_states in sections:
+        section = status.get(scope)
+        entries = section.get(collection) if isinstance(section, dict) else None
+        if isinstance(entries, dict):
+            ordered_entries = sorted(entries.items(), key=lambda item: str(item[0]))
+            for index, (raw_subject, raw_detail) in enumerate(ordered_entries):
+                detail = raw_detail if isinstance(raw_detail, dict) else {}
+                state = _alert_identifier(detail.get("state"), fallback="unknown")
+                if state in healthy_states:
+                    continue
+                subject = _alert_identifier(raw_subject, fallback=f"invalid-{index + 1}")
+                conditions[f"{scope}/{subject}"] = state
+
+        if isinstance(section, dict) and section.get("storage_available") is False:
+            conditions[f"{scope}/storage"] = "unavailable"
+
+    # Preserve fail-loud behavior if a future status shape becomes degraded but
+    # contains no source-level detail that this version understands.
+    if node_state not in {"healthy", "disabled"} and not conditions:
+        conditions["node/status"] = node_state
+
+    ordered = dict(sorted(conditions.items()))
+    if len(ordered) <= _ALERT_MAX_CONDITIONS:
+        return ordered
+    kept = dict(list(ordered.items())[: _ALERT_MAX_CONDITIONS - 1])
+    kept["node/condition-overflow"] = "present"
+    return kept
+
+
+def _load_alert_conditions(raw: object) -> dict[str, str]:
+    """Read the v1 Redis latch; old scalar latches intentionally alert once."""
+
+    try:
+        document = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(document, dict) or document.get("schema_version") != _ALERT_STATE_SCHEMA:
+        return {}
+    values = document.get("conditions")
+    if not isinstance(values, dict) or len(values) > _ALERT_MAX_CONDITIONS:
+        return {}
+    conditions: dict[str, str] = {}
+    for raw_key, raw_state in values.items():
+        if not isinstance(raw_key, str) or "/" not in raw_key or len(raw_key) > 140:
+            return {}
+        scope, subject = raw_key.split("/", 1)
+        safe_scope = _alert_identifier(scope, fallback="")
+        safe_subject = _alert_identifier(subject, fallback="")
+        safe_state = _alert_identifier(raw_state, fallback="")
+        if not safe_scope or not safe_subject or not safe_state:
+            return {}
+        conditions[f"{safe_scope}/{safe_subject}"] = safe_state
+    return dict(sorted(conditions.items()))
+
+
+def _dump_alert_conditions(conditions: dict[str, str]) -> str:
+    return json.dumps(
+        {"schema_version": _ALERT_STATE_SCHEMA, "conditions": conditions},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _alert_transition(
+    status: dict, previous: dict[str, str]
+) -> tuple[dict[str, str], list[dict[str, str]], list[str]]:
+    """Return current conditions plus newly opened/changed and resolved keys."""
+
+    current = _node_alert_conditions(status)
+    opened = [
+        {"condition": condition, "state": state}
+        for condition, state in current.items()
+        if previous.get(condition) != state
+    ]
+    resolved = [condition for condition in previous if condition not in current]
+    return current, opened, sorted(resolved)
+
+
+def _bounded_alert_counts(value: object) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+    out: dict[str, int] = {}
+    for index, (raw_name, raw_count) in enumerate(sorted(value.items())):
+        if index == 16:
+            break
+        name = _alert_identifier(raw_name, fallback=f"unknown-{index + 1}")
+        if type(raw_count) is int:
+            out[name] = min(max(raw_count, 0), 1_000_000)
+    return out
+
+
+def _node_alert_payload(
+    status: dict,
+    current: dict[str, str],
+    opened: list[dict[str, str]],
+    resolved: list[str],
+) -> bytes:
+    """Build a size-capped summary containing no exception or observation text."""
+
+    generated_at = status.get("generated_at")
+    try:
+        parsed_generated_at = datetime.fromisoformat(
+            generated_at.replace("Z", "+00:00")
+        )
+    except (AttributeError, TypeError, ValueError):
+        generated_at = None
+    else:
+        if (
+            parsed_generated_at.tzinfo is None
+            or parsed_generated_at.utcoffset() is None
+        ):
+            generated_at = None
+        else:
+            generated_at = (
+                parsed_generated_at.astimezone(timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+    payload = {
+        "schema_version": _ALERT_PAYLOAD_SCHEMA,
+        "service": "palimpsest",
+        "status": _alert_identifier(status.get("status"), fallback="unknown"),
+        "generated_at": generated_at,
+        "active_count": len(current),
+        "opened_count": len(opened),
+        "resolved_count": len(resolved),
+        "opened": opened[:_ALERT_MAX_TRANSITIONS],
+        "resolved": resolved[:_ALERT_MAX_TRANSITIONS],
+        "counts": {
+            scope: _bounded_alert_counts((status.get(scope) or {}).get("counts"))
+            for scope in ("pipeline", "evidence", "execution")
+            if isinstance(status.get(scope), dict)
+        },
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    if len(encoded) > _ALERT_MAX_PAYLOAD_BYTES:
+        # Defensive fallback: the fixed identifiers/counts retain the incident
+        # signal even if a future schema makes a supposedly bounded field grow.
+        payload.pop("counts", None)
+        payload["opened"] = payload["opened"][:16]
+        payload["resolved"] = payload["resolved"][:16]
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    if len(encoded) > _ALERT_MAX_PAYLOAD_BYTES:
+        raise ValueError("node alert payload exceeds its fixed byte ceiling")
+    return encoded
 
 
 def _alert_webhook_is_public_https(url: str) -> bool:
@@ -229,7 +405,6 @@ def queue_heartbeat(queue: str) -> dict:
 def refresh_node_status() -> dict:
     """Materialize bounded node health and optionally alert on bad transitions."""
 
-    import json
     import tempfile
 
     from core.observability import collect_node_status
@@ -257,9 +432,10 @@ def refresh_node_status() -> dict:
         except FileNotFoundError:
             pass
 
-    # Redis holds only the last compact state for transition de-duplication;
+    # Redis holds only a compact condition map for transition de-duplication;
     # PostgreSQL and the artifact archive remain the durable evidence stores.
-    previous_alert = None
+    previous_conditions: dict[str, str] = {}
+    alert_state_available = False
     try:
         import redis
 
@@ -268,26 +444,22 @@ def refresh_node_status() -> dict:
             decode_responses=True,
         )
         try:
-            previous_alert = client.get("palimpsest:last-alert-state")
+            previous_conditions = _load_alert_conditions(client.get(_ALERT_STATE_KEY))
+            alert_state_available = True
             client.set("palimpsest:node-status-state", str(status.get("status", "unknown")))
             client.set("palimpsest:node-status", payload.decode(), ex=15 * 60)
-            if str(status.get("status")) in {"healthy", "disabled"}:
-                # Reset the transition latch so a later regression alerts even
-                # if it returns to the same degraded state as an older incident.
-                client.set("palimpsest:last-alert-state", str(status.get("status")))
         finally:
             client.close()
     except Exception:
         logger.warning("node status could not be cached in Redis")
 
     state = str(status.get("status", "unknown"))
+    current_conditions, opened, resolved = _alert_transition(
+        status, previous_conditions
+    )
     webhook = os.getenv("PALIMPSEST_ALERT_WEBHOOK_URL", "").strip()
-    if (
-        webhook
-        and _alert_webhook_is_public_https(webhook)
-        and state not in {"healthy", "disabled"}
-        and previous_alert != state
-    ):
+    delivered = False
+    if webhook and _alert_webhook_is_public_https(webhook) and opened:
         # Send a deliberately small, secret-free summary.  The detailed source
         # matrix stays on the localhost-only control API.
         import urllib.request
@@ -296,20 +468,12 @@ def refresh_node_status() -> dict:
             def redirect_request(self, *_args, **_kwargs):
                 return None
 
-        alert = {
-            "service": "palimpsest",
-            "status": state,
-            "generated_at": status.get("generated_at"),
-            "pipeline": (status.get("pipeline") or {}).get("counts", {}),
-            "evidence": (status.get("evidence") or {}).get("counts", {}),
-        }
         request = urllib.request.Request(
             webhook,
-            data=json.dumps(alert, separators=(",", ":")).encode(),
+            data=_node_alert_payload(status, current_conditions, opened, resolved),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        delivered = False
         try:
             opener = urllib.request.build_opener(_NoRedirect())
             with opener.open(request, timeout=10) as response:
@@ -319,22 +483,27 @@ def refresh_node_status() -> dict:
             # Never log the exception: request errors can echo a credentialed
             # webhook URL. Operators still see task failure counters/status.
             logger.warning("node alert webhook delivery failed")
-        if delivered:
-            try:
-                import redis
 
-                client = redis.from_url(
-                    os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-                    decode_responses=True,
-                )
-                try:
-                    client.set("palimpsest:last-alert-state", state)
-                finally:
-                    client.close()
-            except Exception:
-                # Delivery succeeded. Losing only the de-duplication latch may
-                # repeat an alert, which is safer than suppressing an incident.
-                logger.warning("node alert de-duplication state could not be stored")
+    # Resolutions update silently. New/changed faults are stored only after a
+    # successful delivery; a broken webhook or missing Redis therefore repeats
+    # an alert instead of suppressing an incident.
+    should_store = alert_state_available and (not opened or delivered)
+    if should_store and current_conditions != previous_conditions:
+        try:
+            import redis
+
+            client = redis.from_url(
+                os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+                decode_responses=True,
+            )
+            try:
+                client.set(_ALERT_STATE_KEY, _dump_alert_conditions(current_conditions))
+            finally:
+                client.close()
+        except Exception:
+            # Losing only the de-duplication latch may repeat an alert, which is
+            # safer than suppressing a new or recurring incident.
+            logger.warning("node alert de-duplication state could not be stored")
 
     return {
         "status": state,

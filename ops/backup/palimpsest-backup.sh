@@ -80,7 +80,7 @@ require_absolute_nonroot_path PALIMPSEST_STATE_ROOT "$state_root"
   die "analysis root is missing or is not a real directory: $analysis_root"
 analysis_root="$(cd "$analysis_root" && pwd -P)"
 require_absolute_nonroot_path PALIMPSEST_ANALYSIS_ROOT "$analysis_root"
-for analysis_subtree in runs private; do
+for analysis_subtree in runs private delivery; do
   [[ -d "$analysis_root/$analysis_subtree" && \
       ! -L "$analysis_root/$analysis_subtree" ]] || \
     die "analysis $analysis_subtree directory is missing or unsafe"

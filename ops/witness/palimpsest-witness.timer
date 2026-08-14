@@ -1,10 +1,13 @@
 [Unit]
-Description=Run the Palimpsest chain witness every 6 hours
+Description=Run the Palimpsest public integrity and freshness witness every 15 minutes
 
 [Timer]
-OnCalendar=*-*-* 01/6:33:00
-RandomizedDelaySec=15m
+OnCalendar=*:0/15
+RandomizedDelaySec=2m
+FixedRandomDelay=true
+AccuracySec=30s
 Persistent=true
+Unit=palimpsest-witness.service
 
 [Install]
 WantedBy=timers.target

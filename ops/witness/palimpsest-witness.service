@@ -1,5 +1,5 @@
 [Unit]
-Description=Palimpsest independent chain witness (split-view / rewrite detector)
+Description=Palimpsest independent chain and served-freshness witness
 After=network-online.target
 Wants=network-online.target
 
@@ -7,10 +7,23 @@ Wants=network-online.target
 Type=oneshot
 # Adjust User and the script path to the box's layout.
 User=palimpsest
+EnvironmentFile=-/etc/palimpsest-witness.env
 ExecStart=/usr/bin/python3 /opt/palimpsest/ops/witness/palimpsest_witness.py
-# Optional Telegram alerting; leave unset to log-only.
-# Environment=TELEGRAM_BOT_TOKEN=...
-# Environment=TELEGRAM_CHAT_ID=...
+TimeoutStartSec=3m
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Optional Telegram alerting stays in the existing root-only environment file;
+# unit refreshes never overwrite it.
 # Success means "consistent". Exit 2 (alert) and 3 (unreachable) surface as
 # unit failure so they show in systemctl --failed and journald.
 SuccessExitStatus=0

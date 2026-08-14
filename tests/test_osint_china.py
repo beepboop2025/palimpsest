@@ -693,6 +693,11 @@ def test_workflow_installs_a_complete_hash_pinned_test_runner_without_credential
     ]
     assert "python -m pip install --quiet --require-hashes" in install
     assert "-r .github/osint-china-ci-requirements.txt" in install
+    setup = workflow[workflow.index("actions/setup-python@"):workflow.index(
+        "- name: Install the pinned offline test runner"
+    )]
+    assert "cache: pip" in setup
+    assert "cache-dependency-path: .github/osint-china-ci-requirements.txt" in setup
     assert "${{" not in install
     assert "env:" not in install
     assert "GITHUB" not in install

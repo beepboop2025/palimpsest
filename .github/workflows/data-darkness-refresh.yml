@@ -35,6 +35,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/osint-china-ci-requirements.txt
 
       - name: Install the pinned offline test runner
         run: >-
@@ -48,8 +50,30 @@ jobs:
           git fetch origin main
           git rebase origin/main
 
-      - name: Read the publication surfaces and publish the data-darkness signal
-        run: python -m scripts.data_darkness_pull
+      - name: Read the publication surfaces and capture the data-darkness signal
+        id: acquisition
+        run: |
+          python -m scripts.data_darkness_pull
+          echo "base-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Screen acquisition before artifact retention
+        id: acquisition_scrub
+        continue-on-error: true
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py --require-rules
+
+      - name: Preserve successful acquisition before materialization
+        if: steps.acquisition_scrub.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: data-darkness-acquisition-${{ steps.acquisition.outputs.base-sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ./readings/data-darkness-latest.json
+            ./readings/data-darkness-history.jsonl
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Rebuild and seal the publication graph that embeds the signal
         run: |

@@ -162,6 +162,11 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
 
     assert "python -m pip install --quiet --require-hashes" in text
     assert "-r .github/osint-china-ci-requirements.txt" in text
+    setup = text[text.index("actions/setup-python@"):text.index(
+        "- name: Install the pinned offline test runner"
+    )]
+    assert "cache: pip" in setup
+    assert "cache-dependency-path: .github/osint-china-ci-requirements.txt" in setup
     assert "git pull --rebase origin main || true" not in text
     assert len(sequence_starts(graph)) == 1
     assert len(sequence_starts(retry_graph)) == 2
@@ -185,7 +190,40 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
     ):
         seal_at = graph_at + len(graph) - 1
         assert seal_at < tests_at < scrub_at < stage_at
-    assert lines.index("run: python -m scripts.data_darkness_pull") < graph_starts[0]
+    pull_at = lines.index("python -m scripts.data_darkness_pull")
+    screen_at = lines.index("- name: Screen acquisition before artifact retention")
+    preserve_at = lines.index(
+        "- name: Preserve successful acquisition before materialization"
+    )
+    assert pull_at < screen_at < preserve_at < graph_starts[0]
+    screening_text = text[
+        text.index("- name: Screen acquisition before artifact retention"):
+        text.index("- name: Preserve successful acquisition before materialization")
+    ]
+    assert "continue-on-error: true" in screening_text
+    assert "PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}" in screening_text
+    assert "python scripts/verify_public_surface.py --require-rules" in screening_text
+    preserve_text = text[
+        text.index("- name: Preserve successful acquisition before materialization"):
+        text.index("- name: Rebuild and seal the publication graph that embeds the signal")
+    ]
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in preserve_text
+    assert "continue-on-error: true" in preserve_text
+    assert "if: steps.acquisition_scrub.outcome == 'success'" in preserve_text
+    assert "${{ steps.acquisition.outputs.base-sha }}" in preserve_text
+    assert "${{ github.run_id }}-${{ github.run_attempt }}" in preserve_text
+    assert "if-no-files-found: error" in preserve_text
+    assert "retention-days: 3" in preserve_text
+    assert {
+        line.strip()
+        for line in preserve_text.splitlines()
+        if line.strip().startswith("./")
+    } == {
+        "./readings/data-darkness-latest.json",
+        "./readings/data-darkness-history.jsonl",
+    }
+    assert "seal_readings" not in preserve_text
+    assert "git add" not in preserve_text
 
     for command in graph[:1] + graph[2:]:
         assert lines.count(command) == 3

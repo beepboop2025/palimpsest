@@ -201,6 +201,12 @@ _ALLOWED = {
         "PERMANENTLY EXEMPT: the independent witness is a deliberate from-scratch "
         "implementation that must be able to check the observatory without sharing the "
         "observatory's code, so it must never import core/.",
+    "ops/watchdog/palimpsest_freshness_watchdog.py":
+        "Host-level monitoring intentionally stays stdlib-only and outside the Celery/app "
+        "dependency graph. Its GET is restricted to loopback HTTP with a 4 MiB cap; its "
+        "optional POST accepts only credential-free public-DNS HTTPS, refuses redirects, "
+        "caps payload/response bytes and suppresses URL-bearing errors. safe_fetch is GET-only "
+        "and rejects the loopback status endpoint, so neither call fits that boundary.",
     "ops/investigative_analysis_runner.py":
         "AF_UNIX client to the fixed /run/palimpsest-investigative-broker.sock path. This is "
         "a local privilege-separation channel, not IP egress: systemd owns the mode-0660 "

@@ -769,6 +769,11 @@ def test_scheduled_workflow_is_bounded_gated_and_race_safe():
     ).read_text(encoding="utf-8")
     assert 'cron: "31 */6 * * *"' in workflow
     assert "group: research-corpus-refresh" in workflow
+    setup = workflow[workflow.index("actions/setup-python@"):workflow.index(
+        "- name: Install the pinned offline test runner"
+    )]
+    assert "cache: pip" in setup
+    assert "cache-dependency-path: .github/osint-china-ci-requirements.txt" in setup
     assert "cancel-in-progress: false" in workflow
     assert "timeout-minutes: 20" in workflow
     assert "persist-credentials: false" in workflow

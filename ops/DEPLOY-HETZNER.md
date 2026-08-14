@@ -271,7 +271,7 @@ PALIMPSEST_OBSERVATION_DIR=/app/data/observations
 PALIMPSEST_EVIDENCE_DOCUMENT_STORE=/app/data/evidence-documents
 PALIMPSEST_SOURCE_WORKFLOW_STORE=/app/data/source-workflow
 PALIMPSEST_STATUS_PATH=/app/data/node-status.json
-PALIMPSEST_API_PORT=8000
+PALIMPSEST_API_PORT=8010
 PALIMPSEST_ACTIVE_PROBES_ENABLED=0
 PALIMPSEST_LIVE=0
 ```
@@ -734,9 +734,11 @@ review-gated analytical runs and must be restored as a separate root.
   then releases the lease before streaming the other three approved roots.
   The writer records numeric UID/GID values with blank account names and emits
   only a generic failure, so a read error cannot expose a private filename. The
-  isolated image interpreter rejects noncanonical run names, links, special
-  files, wrong owners/modes, and an over-bound tree, then rechecks the full tree
-  fingerprint and lock pathname/inode after the complete stream. The runner
+  isolated image interpreter requires the exact `runs/`, `private/`, and
+  bounded single-file `delivery/` analysis inventory. It rejects noncanonical
+  run names, links, special files, wrong owners/modes, and an over-bound tree,
+  then rechecks the full tree fingerprint and lock pathname/inode after the
+  complete stream. The runner
   uses an exclusive lock on the same inode, so
   promotion, state/ledger replacement, and pruning cannot interleave with the
   backup. An invalid or missing lock fails closed rather than producing a
@@ -789,6 +791,14 @@ example `collectors,warehouse,api`, adding `velocity` only when intentionally
 enabled). Deploy with this ordered sequence so the image, root-owned analytical
 bundle, and atomic commit receipt cannot describe different revisions:
 
+Before the build, record the current receipt as the rollback revision, inspect
+the last backup failure, and inspect host load. Do not start a Docker build
+while an unrelated process is consuming the node: first identify it and let it
+finish or stop it through that product's own runbook. The first successful
+backup after the image update is a release gate, not a best-effort check. This
+ordering lets a backup-contract fix enter the isolated archive image without
+advancing the deployed receipt or replacing either host bundle first.
+
 The Common Crawl step also requires the audited official `cc-downloader` 1.0.1
 at `/usr/local/bin/cc-downloader` as a real root-owned executable, not a symlink;
 the network-lane runbook gives the release-hash and crawl-plan procedure. The
@@ -798,8 +808,21 @@ root-owned SHA-256 pin, and later drift fails closed; run it only through
 `palimpsest-common-crawl-filter@<crawl>.service`, never a raw login shell.
 
 ```bash
+set -Eeuo pipefail
 cd /home/palimpsest/palimpsest
 test -e .git
+ROLLBACK_SHA="$(sudo cat /etc/palimpsest/deployed-commit)"
+[[ "$ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+sudo systemctl status palimpsest-backup.service --no-pager || true
+sudo journalctl -u palimpsest-backup.service -n 100 --no-pager
+uptime
+ps -eo pid,comm,%cpu,%mem,etime --sort=-%cpu | sed -n '1,15p'
+# Stop here until any unexplained high-load process has been cleared.
+sudo systemctl disable --now palimpsest-freshness-watchdog.timer \
+  2>/dev/null || true
+sudo systemctl stop palimpsest-freshness-watchdog.service 2>/dev/null || true
+sudo systemctl stop palimpsest-witness.timer 2>/dev/null || true
+sudo systemctl stop palimpsest-witness.service 2>/dev/null || true
 sudo systemctl stop palimpsest-investigative-analysis.timer
 sudo systemctl stop palimpsest-common-crawl-import.path 2>/dev/null || true
 sudo systemctl stop palimpsest-common-crawl-context.timer 2>/dev/null || true
@@ -822,11 +845,65 @@ done
 git fetch --prune origin
 git pull --ff-only
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
+DEPLOY_SHA="$(git rev-parse HEAD)"
+[[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 ops/docker/prod-compose up -d --build
+test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
+curl --fail --silent --show-error \
+  http://127.0.0.1:8010/api/v1/node/status \
+  | python3 -m json.tool >/dev/null
+# The updated isolated image must prove a complete recovery snapshot before
+# either revision receipt or immutable host bundle is advanced.
+sudo systemctl reset-failed palimpsest-backup.service
+sudo systemctl start palimpsest-backup.service
+test "$(sudo systemctl show --property=Result --value \
+  palimpsest-backup.service)" = "success"
 sudo bash ops/investigative-analysis/install-host-bundle.sh
 COMMON_CRAWL_WAREHOUSE_SOURCE=/mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
 sudo bash ops/common-crawl/install-host-bundle.sh \
   --warehouse-source "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-analysis/current/REVISION)" \
+  = "$DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-network-lane/current/REVISION)" \
+  = "$DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-common-crawl/current/REVISION)" \
+  = "$DEPLOY_SHA"
+sudo /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+
+# Install the watchdog units from the same clean, receipt-bound checkout. The
+# script remains read-only in that checkout; only its systemd state directory
+# is writable.
+sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.service \
+  /etc/systemd/system/
+sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.timer \
+  /etc/systemd/system/
+sudo install -d -o root -g root -m 0755 /opt/palimpsest/ops/witness
+sudo install -o root -g root -m 0755 \
+  ops/witness/palimpsest_witness.py \
+  /opt/palimpsest/ops/witness/palimpsest_witness.py
+sudo install -o root -g root -m 0644 \
+  ops/witness/palimpsest-witness.service \
+  /etc/systemd/system/palimpsest-witness.service
+sudo install -o root -g root -m 0644 \
+  ops/witness/palimpsest-witness.timer \
+  /etc/systemd/system/palimpsest-witness.timer
+cmp -s ops/systemd/palimpsest-freshness-watchdog.service \
+  /etc/systemd/system/palimpsest-freshness-watchdog.service
+cmp -s ops/systemd/palimpsest-freshness-watchdog.timer \
+  /etc/systemd/system/palimpsest-freshness-watchdog.timer
+cmp -s ops/witness/palimpsest_witness.py \
+  /opt/palimpsest/ops/witness/palimpsest_witness.py
+cmp -s ops/witness/palimpsest-witness.service \
+  /etc/systemd/system/palimpsest-witness.service
+cmp -s ops/witness/palimpsest-witness.timer \
+  /etc/systemd/system/palimpsest-witness.timer
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-freshness-watchdog.service \
+  /etc/systemd/system/palimpsest-freshness-watchdog.timer \
+  /etc/systemd/system/palimpsest-witness.service \
+  /etc/systemd/system/palimpsest-witness.timer
+sudo systemctl daemon-reload
 sudo systemctl enable --now palimpsest-investigative-broker.socket
 sudo systemctl enable --now palimpsest-investigative-analysis.timer
 sudo systemctl start palimpsest-investigative-analysis.service
@@ -834,7 +911,46 @@ sudo systemctl enable --now palimpsest-common-crawl-import.path
 sudo systemctl enable --now palimpsest-common-crawl-context.timer
 sudo systemctl start palimpsest-common-crawl-import.service
 sudo systemctl enable --now palimpsest-bleedthrough.timer
+sudo systemctl enable --now palimpsest-freshness-watchdog.timer
+sudo systemctl enable --now palimpsest-witness.timer
+if ! sudo systemctl start palimpsest-freshness-watchdog.service; then
+  # Exit 2 means the watchdog itself worked and found an existing incident.
+  # Any other status is an installation/runtime failure and stops the release.
+  test "$(sudo systemctl show --property=ExecMainStatus --value \
+    palimpsest-freshness-watchdog.service)" = "2"
+fi
+if ! sudo systemctl start palimpsest-witness.service; then
+  test "$(sudo systemctl show --property=ExecMainStatus --value \
+    palimpsest-witness.service)" = "2"
+fi
+systemctl cat palimpsest-witness.timer \
+  | grep -Fqx 'OnCalendar=*:0/15'
+systemctl list-timers palimpsest-witness.timer --no-pager
 ```
+
+If BLEEDTHROUGH was stale because its old unit was blocked by revision drift,
+start one recovery round only after the load check is clean, then inspect its
+sanitized output and the next `osint-china-refresh.yml` import. The bounded
+round can take close to the unit's three-hour timeout; do not mistake that for
+a hung deploy and do not start a second copy.
+
+```bash
+sudo systemctl start palimpsest-bleedthrough.service
+sudo journalctl -u palimpsest-bleedthrough.service -n 200 --no-pager
+curl --fail --silent --show-error \
+  https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json \
+  | python3 -m json.tool >/dev/null
+```
+
+Keep the captured `ROLLBACK_SHA` in the release record. A rollback repeats the
+same stop/build/backup/install/parity sequence at that reviewed revision; never
+roll back only `/etc/palimpsest/deployed-commit` or only one bundle.
+
+The canonical witness is currently reinstalled on this same host and its
+existing root-only `/etc/palimpsest-witness.env` is deliberately left in place.
+That is scheduling and implementation independence, not host independence; a
+second witness on another provider remains required to close the common-mode
+outage gap.
 
 When a complete URL Index mirror predates the hardened network-lane receipts,
 do not bypass the local-filter guard and do not redownload it merely to create a

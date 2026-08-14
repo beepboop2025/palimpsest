@@ -1,0 +1,13 @@
+[Unit]
+Description=Check Palimpsest node and evidence freshness every five minutes
+
+[Timer]
+OnCalendar=*:0/5
+RandomizedDelaySec=30s
+FixedRandomDelay=true
+AccuracySec=15s
+Persistent=true
+Unit=palimpsest-freshness-watchdog.service
+
+[Install]
+WantedBy=timers.target

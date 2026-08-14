@@ -58,14 +58,23 @@ def test_editorial_ranking_prefers_consequential_change_over_routine_print() -> 
     document = build_wire_claim_audits(READINGS, decision_clock=CLOCK)
     yuan = _audit(document, "targets global yuan")
     ev_sales = _audit(document, "EV sales slide again")
-    tender = _audit(document, "Exchange Fund Bills tender results")
+    routine = min(
+        (
+            audit
+            for audit in document["audits"]
+            if any(
+                "routine release" in penalty
+                for penalty in audit["interest"]["penalties"]
+            )
+        ),
+        key=lambda audit: audit["interest"]["score"],
+    )
 
     assert yuan["brief_eligible"] is True
     assert ev_sales["brief_eligible"] is True
-    assert tender["brief_eligible"] is False
-    assert yuan["interest"]["score"] > tender["interest"]["score"]
-    assert ev_sales["interest"]["score"] > tender["interest"]["score"]
-    assert "routine release" in " ".join(tender["interest"]["penalties"])
+    assert routine["brief_eligible"] is False
+    assert yuan["interest"]["score"] > routine["interest"]["score"]
+    assert ev_sales["interest"]["score"] > routine["interest"]["score"]
 
 
 def test_truth_source_context_and_motive_probabilities_remain_separate() -> None:

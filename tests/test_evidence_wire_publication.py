@@ -334,10 +334,10 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     assert "workflow_dispatch" in workflow
     assert "group: newswire-refresh" in workflow
     assert "cancel-in-progress: false" in workflow
+    assert workflow.count("python -m scripts.newswire_pull") == 3
 
     build_graph = re.findall(
-        r"python -m scripts\.newswire_pull\n"
-        r"\s*python -m scripts\.build_economic_pulse\n"
+        r"python -m scripts\.build_economic_pulse\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"
@@ -381,6 +381,44 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         assert _staged_occurrences(workflow, artifact) == 3, artifact
 
 
+def test_newswire_workflow_preserves_acquisition_before_materialization():
+    workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
+    pull = workflow.index("- name: Pull the evidence wire source receipts")
+    screen = workflow.index("- name: Screen acquisition before artifact retention")
+    preserve = workflow.index(
+        "- name: Preserve successful acquisition before materialization"
+    )
+    build = workflow.index("- name: Correlate, render and seal the evidence wire")
+    first_gate = workflow.index("- name: Verify collection, security and publication contracts")
+
+    assert pull < screen < preserve < build < first_gate
+    initial_path = workflow[pull:build]
+    screening = workflow[screen:preserve]
+    artifact = workflow[preserve:build]
+    assert initial_path.count("python -m scripts.newswire_pull") == 1
+    assert "continue-on-error: true" in screening
+    assert "PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}" in screening
+    assert "python scripts/verify_public_surface.py --require-rules" in screening
+    assert "if: steps.acquisition_scrub.outcome == 'success'" in artifact
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in artifact
+    assert "continue-on-error: true" in artifact
+    assert "${{ steps.acquisition.outputs.base-sha }}" in artifact
+    assert "${{ github.run_id }}-${{ github.run_attempt }}" in artifact
+    assert "if-no-files-found: error" in artifact
+    assert "retention-days: 3" in artifact
+    paths = {
+        line.strip()
+        for line in artifact.splitlines()
+        if line.strip().startswith("./")
+    }
+    assert paths == {
+        "./readings/newswire-latest.json",
+        "./readings/newswire-versions.jsonl",
+    }
+    assert "seal_readings" not in artifact
+    assert "git add" not in artifact
+
+
 def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
     for command in (
@@ -400,9 +438,16 @@ def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner()
         "tests/test_network_rounds.py",
         "tests/test_source_workflow.py",
         "tests/test_editorial_readiness.py",
-        "python scripts/verify_public_surface.py",
     ):
         assert workflow.count(command) == 3, command
+
+    assert sum(
+        line.strip() == "run: python scripts/verify_public_surface.py"
+        for line in workflow.splitlines()
+    ) == 3
+    assert workflow.count(
+        "run: python scripts/verify_public_surface.py --require-rules"
+    ) == 1
 
     install = workflow[
         workflow.index("- name: Install the pinned offline test runner"):
@@ -410,6 +455,11 @@ def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner()
     ]
     assert "python -m pip install --quiet --require-hashes" in install
     assert "-r .github/osint-china-ci-requirements.txt" in install
+    setup = workflow[workflow.index("actions/setup-python@"):workflow.index(
+        "- name: Install the pinned offline test runner"
+    )]
+    assert "cache: pip" in setup
+    assert "cache-dependency-path: .github/osint-china-ci-requirements.txt" in setup
     assert "env:" not in install
     assert "${{" not in install
     assert "persist-credentials: false" in workflow

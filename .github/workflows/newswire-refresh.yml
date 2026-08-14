@@ -30,6 +30,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/osint-china-ci-requirements.txt
 
       - name: Install the pinned offline test runner
         run: >-
@@ -43,9 +45,42 @@ jobs:
           git fetch origin main
           git rebase origin/main
 
-      - name: Pull, correlate and render the evidence wire
+      - name: Pull the evidence wire source receipts
+        id: acquisition
         run: |
           python -m scripts.newswire_pull
+          echo "base-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # A run artifact in a public repository is not a private vault. Screen
+      # the acquired bytes with the explicit identity rules before retention.
+      # Missing rules or a match skips only the recovery artifact; it must not
+      # turn a successful collection into an observatory outage.
+      - name: Screen acquisition before artifact retention
+        id: acquisition_scrub
+        continue-on-error: true
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py --require-rules
+
+      # Preserve the expensive network result before any unrelated derived
+      # graph can fail. The artifact is never uploaded unless the acquisition
+      # scrub above succeeds. The existing seal, full scrub, tests and atomic
+      # publication boundary below remain unchanged. Artifact service trouble
+      # must not turn a previously publishable refresh into an outage.
+      - name: Preserve successful acquisition before materialization
+        if: steps.acquisition_scrub.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: newswire-acquisition-${{ steps.acquisition.outputs.base-sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ./readings/newswire-latest.json
+            ./readings/newswire-versions.jsonl
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Correlate, render and seal the evidence wire
+        run: |
           python -m scripts.build_economic_pulse
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations

@@ -26,7 +26,7 @@ def test_schema_gate_precedes_every_application_service():
         assert dependency["condition"] == "service_completed_successfully"
 
     assert services["api"]["ports"] == [
-        "127.0.0.1:${PALIMPSEST_API_PORT:-8000}:8000"
+        "127.0.0.1:${PALIMPSEST_API_PORT:-8010}:8000"
     ]
 
 

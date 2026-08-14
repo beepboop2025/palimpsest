@@ -326,15 +326,21 @@ def test_the_scrub_runs_before_the_push_that_publishes(wf):
 
 
 def test_the_publish_path_does_not_depend_on_a_secret():
-    """--require-rules turns "the rule list was never configured" into a failing exit code.
-    That is a reasonable thing to ask for by hand and a terrible thing to put in front of a
-    cron: the secret has to exist for the refresh to run at all, and when it does not, every
-    scheduled refresh stops with nothing published to show for it."""
+    """A required rule list may guard retention, but must never gate publication.
+
+    The acquisition recovery artifact is skipped when its explicit rules are
+    absent, while the later publication scrub keeps the established report-only
+    behavior. Any other use of --require-rules would stop a scheduled refresh.
+    """
     for wf in _workflows_that_push():
         text = wf.read_text(encoding="utf-8")
-        for line in text.splitlines():
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
             if "verify_public_surface.py" in line and not line.lstrip().startswith("#"):
-                assert "--require-rules" not in line, (
-                    f"{wf.name} gates its push on a secret being present, so a missing "
-                    "secret stops the refresh instead of reporting on it"
-                )
+                if "--require-rules" not in line:
+                    continue
+                step = "\n".join(lines[max(0, index - 8): index + 1])
+                assert "- name: Screen acquisition before artifact retention" in step
+                assert "id: acquisition_scrub" in step
+                assert "continue-on-error: true" in step
+                assert "if: steps.acquisition_scrub.outcome == 'success'" in text

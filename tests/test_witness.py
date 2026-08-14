@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 import sys
+from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -75,3 +76,148 @@ def test_witness_root_matches_core_root():
     from core import sealed_ledger as led
     entries = _load("eval-registry.jsonl")
     assert witness.merkle_root(entries) == led.merkle_root(entries)
+
+
+class _ChainResponse:
+    def __init__(self, payload: bytes):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+    def read(self, limit: int) -> bytes:
+        return self.payload[:limit]
+
+
+def test_witness_bounds_chain_download_before_decoding(monkeypatch):
+    monkeypatch.setattr(witness, "MAX_CHAIN_BYTES", 8)
+
+    def opener(_request, timeout):
+        assert timeout == 60
+        return _ChainResponse(b"123456789")
+
+    try:
+        witness.fetch_chain("https://palimpsest.info/readings/test.jsonl", opener)
+    except ValueError as exc:
+        assert str(exc) == "published chain exceeds witness byte ceiling"
+    else:
+        raise AssertionError("oversized chain was accepted")
+
+
+def test_public_witness_ages_bleedthrough_bytes_actually_served():
+    problems = witness.verify_public_freshness(
+        "bleedthrough",
+        {
+            "signal": "bleedthrough",
+            "generated_at": "2026-08-13T08:00:00Z",
+        },
+        now=datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc),
+    )
+    assert [(item["condition"], item["state"]) for item in problems] == [
+        ("artifact/bleedthrough", "stale")
+    ]
+
+
+def test_public_witness_checks_embedded_deadlines_without_alerting_disabled_or_absent_optional():
+    document = {
+        "schema_version": "osint-china.v1",
+        "generated_at": "2026-08-14T11:55:00Z",
+        "signals": [
+            {
+                "id": "bleedthrough",
+                "status": "live",
+                "optional": True,
+                "source_timestamp": "2026-08-13T08:00:00Z",
+                "freshness_deadline": "2026-08-13T22:00:00Z",
+                "health": {"collector_status": None},
+            },
+            {
+                "id": "baike-redaction",
+                "status": "stale",
+                "optional": True,
+                "source_timestamp": "2026-07-30T00:00:00Z",
+                "freshness_deadline": "2026-07-31T00:00:00Z",
+                "health": {"collector_status": "disabled_no_authorized_access"},
+            },
+            {
+                "id": "undeployed-optional",
+                "status": "missing",
+                "optional": True,
+                "source_timestamp": None,
+                "freshness_deadline": None,
+                "health": {"collector_status": None},
+            },
+            {
+                "id": "ddti",
+                "status": "live",
+                "optional": False,
+                "source_timestamp": "2026-08-14T11:50:00Z",
+                "freshness_deadline": "2026-08-14T13:00:00Z",
+                "health": {"collector_status": None},
+            },
+        ],
+    }
+    problems = witness.verify_public_freshness(
+        "osint-china",
+        document,
+        now=datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc),
+    )
+    assert [(item["condition"], item["state"]) for item in problems] == [
+        ("osint/bleedthrough", "stale")
+    ]
+
+
+def test_public_witness_rejects_old_bundle_even_if_embedded_signal_is_live():
+    document = {
+        "schema_version": "osint-china.v1",
+        "generated_at": "2026-08-14T08:00:00Z",
+        "signals": [{
+            "id": "ddti",
+            "status": "live",
+            "optional": False,
+            "source_timestamp": "2026-08-14T11:50:00Z",
+            "freshness_deadline": "2026-08-14T13:00:00Z",
+            "health": {"collector_status": None},
+        }],
+    }
+    problems = witness.verify_public_freshness(
+        "osint-china",
+        document,
+        now=datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc),
+    )
+    assert any(
+        item["condition"] == "artifact/osint-china" and item["state"] == "stale"
+        for item in problems
+    )
+
+
+def test_public_witness_timer_meets_bundle_detection_window():
+    root = os.path.join(ROOT, "ops", "witness")
+    timer = open(os.path.join(root, "palimpsest-witness.timer"), encoding="utf-8").read()
+    service = open(os.path.join(root, "palimpsest-witness.service"), encoding="utf-8").read()
+    assert "OnCalendar=*:0/15" in timer
+    assert "Persistent=true" in timer
+    assert "TimeoutStartSec=3m" in service
+    assert "EnvironmentFile=-/etc/palimpsest-witness.env" in service
+
+    readme = open(os.path.join(root, "README.md"), encoding="utf-8").read()
+    assert "systemd-analyze verify" in readme
+    assert "/etc/systemd/system/palimpsest-witness.service" in readme
+    assert "/etc/systemd/system/palimpsest-witness.timer" in readme
+    assert "shared Palimpsest host" in readme
+
+
+def test_public_freshness_latch_retries_configured_delivery_failure():
+    opened = {"osint/bleedthrough"}
+    assert not witness._should_latch_freshness(
+        opened, alerting_configured=True, delivered=False
+    )
+    assert witness._should_latch_freshness(
+        opened, alerting_configured=True, delivered=True
+    )
+    assert witness._should_latch_freshness(
+        opened, alerting_configured=False, delivered=False
+    )

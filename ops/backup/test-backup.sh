@@ -31,6 +31,7 @@ fake_image="sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefa
 mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
   "$state_root/data/evidence-documents" \
   "$analysis_root/private" \
+  "$analysis_root/delivery" \
   "$analysis_root/runs/run-20260813T010203Z-0123456789ab/private" \
   "$newswire_root" \
   "$backup_root" "$failed_root" "$fake_bin"
@@ -50,13 +51,18 @@ printf 'private evidence sample\n' \
 chmod 0600 "$state_root/data/evidence-documents/private.json"
 private_state_payload='private-analysis-state-do-not-log-7f839a'
 immutable_run_payload='immutable-analysis-run-do-not-log-a25c19'
+delivery_payload='delivery-safe-wire-projection-82fb0d'
 printf '%s\n' "$private_state_payload" >"$analysis_root/private/state.json"
 printf '%s\n' "$immutable_run_payload" \
   >"$analysis_root/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json"
 printf 'analysis-lock-fixture\n' >"$analysis_root/private/cascade.lock"
+printf '%s\n' "$delivery_payload" \
+  >"$analysis_root/delivery/wire-claim-audits-latest.json"
 chmod 0600 "$analysis_root/private/cascade.lock" \
   "$analysis_root/private/state.json" \
   "$analysis_root/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json"
+chmod 0711 "$analysis_root/delivery"
+chmod 0644 "$analysis_root/delivery/wire-claim-audits-latest.json"
 printf '{"generated_at":"2026-08-13T01:02:03Z"}\n' \
   >"$newswire_root/newswire-latest.json"
 printf '{"event_id":"fixture"}\n' >"$newswire_root/newswire-versions.jsonl"
@@ -171,6 +177,7 @@ private_payload="$(
 [[ "$private_payload" == "private evidence sample" ]] || \
   fail "private evidence artifact is unreadable"
 for analysis_member in \
+  analysis/delivery/wire-claim-audits-latest.json \
   analysis/private/cascade.lock \
   analysis/private/state.json \
   analysis/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json; do
@@ -189,6 +196,10 @@ for newswire_member in \
 done
 [[ "$(
   tar --extract --gzip --to-stdout --file "$snapshot/artifacts.tar.gz" \
+    analysis/delivery/wire-claim-audits-latest.json
+)" == "$delivery_payload" ]] || fail "analysis delivery projection is unreadable"
+[[ "$(
+  tar --extract --gzip --to-stdout --file "$snapshot/artifacts.tar.gz" \
     analysis/private/state.json
 )" == "$private_state_payload" ]] || fail "private analysis state is unreadable"
 [[ "$(
@@ -203,6 +214,11 @@ find "$restore_check/analysis/private/state.json" -prune -type f -perm 0600 \
   -print -quit | grep -q . || fail "private analysis state mode was not preserved"
 find "$restore_check/analysis/private/cascade.lock" -prune -type f -perm 0600 \
   -print -quit | grep -q . || fail "analysis cascade lock mode was not preserved"
+find "$restore_check/analysis/delivery" -prune -type d -perm 0711 \
+  -print -quit | grep -q . || fail "analysis delivery mode was not preserved"
+find "$restore_check/analysis/delivery/wire-claim-audits-latest.json" \
+  -prune -type f -perm 0644 -print -quit | grep -q . || \
+  fail "analysis delivery artifact mode was not preserved"
 find "$restore_check/analysis/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json" \
   -prune -type f -perm 0600 -print -quit | grep -q . || \
   fail "immutable analysis run mode was not preserved"
@@ -213,6 +229,10 @@ grep -Fq 'artifact_roots=readings,data,newswire,analysis' "$snapshot/MANIFEST.tx
 if grep -Fq "$private_state_payload" \
   "$snapshot/MANIFEST.txt" "$snapshot/artifacts.list"; then
   fail "private analysis payload leaked into backup metadata"
+fi
+if grep -Fq "$delivery_payload" \
+  "$snapshot/MANIFEST.txt" "$snapshot/artifacts.list"; then
+  fail "analysis delivery payload leaked into backup metadata"
 fi
 
 for retired_setting in \

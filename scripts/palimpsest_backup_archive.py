@@ -20,6 +20,7 @@ NEWSWIRE_LOCK_PATH = "/source/newswire/newswire.lock"
 ANALYSIS_ROOT = "/source/analysis"
 RUNS_ROOT = f"{ANALYSIS_ROOT}/runs"
 PRIVATE_ROOT = f"{ANALYSIS_ROOT}/private"
+DELIVERY_ROOT = f"{ANALYSIS_ROOT}/delivery"
 ROOT_UID = 0
 ROOT_GID = 0
 RUNTIME_UID = 10001
@@ -29,6 +30,7 @@ NEWSWIRE_GID = 1001
 MAX_RUNS = 48
 MAX_ANALYSIS_ENTRIES = 32768
 MAX_ANALYSIS_DEPTH = 8
+MAX_DELIVERY_BYTES = 16 * 1024 * 1024
 MAX_ARTIFACT_ENTRIES = 1_000_000
 MAX_ARTIFACT_DEPTH = 64
 _RUN_NAME = re.compile(r"run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}")
@@ -46,6 +48,7 @@ NEWSWIRE_FILES = (
     "newswire-versions.jsonl",
     "newswire.lock",
 )
+DELIVERY_FILES = ("wire-claim-audits-latest.json",)
 NEWSWIRE_STATUS_MAX_BYTES = 16 * 1024
 NEWSWIRE_STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
 
@@ -243,22 +246,53 @@ def _validate_analysis_tree() -> tuple[tuple[object, ...], ...]:
     _validate_directory(
         root_metadata, uid=ROOT_UID, gid=ROOT_GID, mode=0o711
     )
-    if set(root_entries) != {"runs", "private"}:
+    if set(root_entries) != {"runs", "private", "delivery"}:
         raise ArchivePreflightError("analysis root inventory is not exact")
 
     runs_metadata = root_entries["runs"].stat(follow_symlinks=False)
     private_metadata = root_entries["private"].stat(follow_symlinks=False)
+    delivery_metadata = root_entries["delivery"].stat(follow_symlinks=False)
     _validate_directory(
         runs_metadata, uid=ROOT_UID, gid=RUNTIME_GID, mode=0o710
     )
     _validate_directory(
         private_metadata, uid=RUNTIME_UID, gid=RUNTIME_GID, mode=0o700
     )
+    _validate_directory(
+        delivery_metadata, uid=RUNTIME_UID, gid=RUNTIME_GID, mode=0o711
+    )
     signatures = [
         _entry_signature(".", root_metadata),
         _entry_signature("runs", runs_metadata),
         _entry_signature("private", private_metadata),
+        _entry_signature("delivery", delivery_metadata),
     ]
+
+    try:
+        delivery_entries = list(os.scandir(DELIVERY_ROOT))
+    except OSError as exc:
+        raise ArchivePreflightError("analysis delivery cannot be inspected") from exc
+    if tuple(sorted(entry.name for entry in delivery_entries)) != DELIVERY_FILES:
+        raise ArchivePreflightError("analysis delivery inventory is not exact")
+    delivery_file = delivery_entries[0]
+    try:
+        delivery_file_metadata = delivery_file.stat(follow_symlinks=False)
+    except OSError as exc:
+        raise ArchivePreflightError("analysis delivery cannot be inspected") from exc
+    if (
+        not stat.S_ISREG(delivery_file_metadata.st_mode)
+        or delivery_file_metadata.st_nlink != 1
+        or delivery_file_metadata.st_uid != RUNTIME_UID
+        or delivery_file_metadata.st_gid != RUNTIME_GID
+        or stat.S_IMODE(delivery_file_metadata.st_mode) != 0o644
+        or delivery_file_metadata.st_size > MAX_DELIVERY_BYTES
+    ):
+        raise ArchivePreflightError("analysis delivery artifact contract is invalid")
+    signatures.append(
+        _entry_signature(
+            f"delivery/{DELIVERY_FILES[0]}", delivery_file_metadata
+        )
+    )
 
     try:
         run_entries = list(os.scandir(RUNS_ROOT))
@@ -445,6 +479,27 @@ def _validate_analysis_archive_entry(
             mode=0o700,
         )
         return
+    if relative_parts == ("delivery",):
+        _validate_directory(
+            metadata,
+            uid=RUNTIME_UID,
+            gid=RUNTIME_GID,
+            mode=0o711,
+        )
+        return
+    if relative_parts == ("delivery", DELIVERY_FILES[0]):
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_uid != RUNTIME_UID
+            or metadata.st_gid != RUNTIME_GID
+            or stat.S_IMODE(metadata.st_mode) != 0o644
+            or metadata.st_size > MAX_DELIVERY_BYTES
+        ):
+            raise ArchivePreflightError(
+                "analysis delivery artifact contract is invalid"
+            )
+        return
 
     branch = relative_parts[0]
     if branch == "runs" and len(relative_parts) >= 2:
@@ -578,13 +633,18 @@ def _archive_open_tree(
             archive.addfile(member)
             names_before = _safe_directory_names(descriptor, root_name=root_name)
             if root_name == "analysis" and not relative_parts:
-                if set(names_before) != {"runs", "private"}:
+                if set(names_before) != {"runs", "private", "delivery"}:
                     raise ArchivePreflightError("analysis root inventory is not exact")
             if root_name == "analysis" and relative_parts == ("runs",):
                 if len(names_before) > MAX_RUNS or any(
                     not _RUN_NAME.fullmatch(name) for name in names_before
                 ):
                     raise ArchivePreflightError("analysis run inventory is invalid")
+            if root_name == "analysis" and relative_parts == ("delivery",):
+                if tuple(names_before) != DELIVERY_FILES:
+                    raise ArchivePreflightError(
+                        "analysis delivery inventory is not exact"
+                    )
             if root_name == "newswire" and not relative_parts:
                 if tuple(names_before) != NEWSWIRE_FILES:
                     raise ArchivePreflightError(

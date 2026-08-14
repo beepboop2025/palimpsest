@@ -579,8 +579,25 @@ def build_network_rounds(
     for row in rounds:
         _validate_round(row, cfg)
     by_id = {row["round_id"]: row for row in rounds}
-    if current["round_id"] in by_id and by_id[current["round_id"]] != current:
-        raise NetworkRoundError("round identity collision or prior-ledger corruption")
+    prior_current = by_id.get(current["round_id"])
+    if prior_current is not None:
+        # The immutable identity belongs to the primary Inside View reading.
+        # Outage control is a contextual snapshot captured when that round was
+        # first admitted.  A later graph rebuild may see a newer IODA document;
+        # that must neither mutate the receipt nor turn the same measurement
+        # into a second round.  Still fail closed if any primary-derived field
+        # changed under the same identity (for example, code changed without a
+        # method-version bump).
+        contextual_fields = {"outage_control", "comparability_failures", "comparable"}
+        prior_primary = {
+            key: value for key, value in prior_current.items() if key not in contextual_fields
+        }
+        current_primary = {
+            key: value for key, value in current.items() if key not in contextual_fields
+        }
+        if prior_primary != current_primary:
+            raise NetworkRoundError("round identity collision or prior-ledger corruption")
+        current = prior_current
     by_id[current["round_id"]] = current
     rounds = sorted(by_id.values(), key=lambda row: (row["started_at"], row["round_id"]))
     if len(rounds) > 1_024:

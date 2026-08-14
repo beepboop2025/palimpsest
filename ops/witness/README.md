@@ -1,31 +1,64 @@
 # The independent witness
 
-`palimpsest_witness.py` runs on infrastructure separate from the publish
-pipeline and holds the published chains to their own guarantee. It fetches
+`palimpsest_witness.py` runs as an operationally separate process and holds the
+published chains to their own guarantee. It fetches
 what the world actually sees at palimpsest.info, re-verifies both hash chains
 with its own from-scratch implementation (shared code with the publisher:
 none, on purpose), and checks prefix consistency: every chain head it ever
 witnessed must still be present, unchanged, in today's chain. A rewrite,
 reorder, or truncation of published history trips an alert.
 
-This is the piece that turns "trust our append-only file" into "two
+The same independent process also fetches the served OSINT China bundle and
+BLEEDTHROUGH reading. It ages the evidence timestamps in those bytes against
+its own UTC clock and recomputes every declared signal deadline. Explicitly
+disabled sources and optional sources with no deployment are not incidents;
+an optional source that has published a timestamp/deadline is monitored until
+that served evidence is replaced or withdrawn.
+
+This is the piece that can turn "trust our append-only file" into "two
 independent parties would both have to lie." The publish pipeline cannot
 silently rewrite history without this witness noticing, and this witness
 holds its own append-only observation log to prove what it saw and when.
 
+The canonical instance currently runs on the shared Palimpsest host. Its
+separate implementation and timer catch publisher logic and scheduling faults,
+but a host or provider outage can disable both systems. Move a second copy to a
+different provider before claiming failure-independent witnessing.
+
 ## Install (Hetzner box or any always-on machine)
 
 ```bash
-sudo mkdir -p /opt/palimpsest/ops/witness
-sudo cp palimpsest_witness.py /opt/palimpsest/ops/witness/
-sudo cp palimpsest-witness.service palimpsest-witness.timer /etc/systemd/system/
-# edit the service: User=, script path, optional TELEGRAM_* env for alerts
+sudo systemctl stop palimpsest-witness.timer 2>/dev/null || true
+sudo systemctl stop palimpsest-witness.service 2>/dev/null || true
+sudo install -d -o root -g root -m 0755 /opt/palimpsest/ops/witness
+sudo install -o root -g root -m 0755 palimpsest_witness.py \
+  /opt/palimpsest/ops/witness/palimpsest_witness.py
+sudo install -o root -g root -m 0644 palimpsest-witness.service \
+  /etc/systemd/system/palimpsest-witness.service
+sudo install -o root -g root -m 0644 palimpsest-witness.timer \
+  /etc/systemd/system/palimpsest-witness.timer
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-witness.service \
+  /etc/systemd/system/palimpsest-witness.timer
 sudo systemctl daemon-reload
 sudo systemctl enable --now palimpsest-witness.timer
 ```
 
+Do not replace `/etc/palimpsest-witness.env` during an upgrade. It is the
+existing optional root-only location for `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_CHAT_ID`; log-only operation needs neither value. Confirm the
+installed timer still contains `OnCalendar=*:0/15` after every unit refresh.
+
+The supplied timer runs every 15 minutes. Freshness notifications are
+transition-deduplicated per artifact/source, while an active condition keeps
+the unit in a failed state for independent journald/systemd visibility. Chain
+responses are capped at 64 MiB and individual freshness artifacts at 4 MiB, so
+a broken or hostile edge cannot make the more frequent witness consume
+unbounded memory.
+
 One-off run: `python3 palimpsest_witness.py` (exit 0 consistent, 2 ALERT,
-3 unreachable). State lives in `~/.palimpsest-witness/` per chain
+3 unreachable). State lives in `~/.palimpsest-witness/` per chain, plus one
+bounded public-freshness condition latch
 (`PALIMPSEST_WITNESS_DIR` overrides).
 
 Anyone can run this witness — it needs nothing but Python 3 and HTTPS access.

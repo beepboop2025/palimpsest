@@ -158,3 +158,35 @@ def test_public_validator_recomputes_target_interpretation():
 
 def test_output_is_byte_deterministic():
     assert canonical_json_bytes(_build()) == canonical_json_bytes(_build())
+
+
+def test_existing_round_keeps_its_original_outage_context():
+    first = _build()
+    original_round = deepcopy(first["rounds"][0])
+    newer_outage = _json("ioda-outages-latest.json")
+    newer_outage["generated_at"] = "2026-08-14T23:59:59Z"
+    newer_outage["instruments_firing"] = newer_outage["instruments_firing"] + 1
+
+    rebuilt = build_network_rounds(
+        _json("inside-view-latest.json"),
+        outage=newer_outage,
+        config=load_network_panel_config(),
+        prior_rounds=first["rounds"],
+    )
+
+    assert rebuilt["n_rounds"] == 1
+    assert rebuilt["rounds"][0] == original_round
+
+
+def test_existing_round_still_rejects_a_primary_identity_collision():
+    first = _build()
+    corrupted = deepcopy(first["rounds"][0])
+    corrupted["control_state"] = "DARK"
+
+    with pytest.raises(NetworkRoundError, match="identity collision"):
+        build_network_rounds(
+            _json("inside-view-latest.json"),
+            outage=_json("ioda-outages-latest.json"),
+            config=load_network_panel_config(),
+            prior_rounds=[corrupted],
+        )
