@@ -5,7 +5,7 @@
         "all-eval-suites"
       ],
       "dimension": "integrity",
-      "evidence": "All 406 attestations verify with no chain or ordering break.",
+      "evidence": "All 410 attestations verify with no chain or ordering break.",
       "id": "registry-chain-integrity",
       "label": "The public eval chain recomputes and every run follows a preregistration",
       "limitation": "Hash-chain integrity detects revision and ordering violations; it does not establish construct validity or external witnessing by itself.",
@@ -61,30 +61,31 @@
     },
     {
       "applies_to": [
-        "cn-sensitive-generative-firewall-v1"
+        "cn-sensitive-generative-firewall-v2"
       ],
       "dimension": "prompt_precommitment",
-      "evidence": "The v1 registry commitment covers the ten sensitive concept identifiers.",
+      "evidence": "All 44 prompt arms reproduce a prior v2 registry commitment.",
       "id": "gfi-concept-id-commitment",
-      "label": "Legacy GFI freezes concept IDs, not exact prompt text",
-      "limitation": "Prompt templates and exact wording are published in code but are not bound into the v1 preregistration. GFI v2 is the remediation path.",
-      "status": "partial",
-      "verify_cmd": "python -m scripts.verify_eval_registry"
+      "label": "GFI v2 freezes exact prompts, panel, cohorts, k, method, and classifier bytes",
+      "limitation": "The public git commit carrying the protocol is the external before/after witness; the chain itself proves internal ordering.",
+      "status": "pass",
+      "verify_cmd": "python -m scripts.verify_gfi_transcripts"
     },
     {
       "applies_to": [
-        "cn-sensitive-generative-firewall-v1"
+        "cn-sensitive-generative-firewall-v2"
       ],
       "dimension": "response_recomputability",
-      "evidence": "Published concept states reproduce the legacy response-state artifact.",
+      "evidence": "All 3 preregistered panel model matrices reproduce their current registry seals.",
       "id": "gfi-response-recomputation",
-      "label": "Legacy GFI seals derived states without full raw transcripts",
-      "limitation": "Only excerpts, not every full sampled response, are public in v1; substantive labels cannot all be re-derived from the served artifact.",
-      "status": "partial"
+      "label": "Every full GFI v2 sample matrix reproduces its model seal",
+      "limitation": "Seal recomputation establishes the measured bytes, not human agreement with the classifier.",
+      "status": "pass",
+      "verify_cmd": "python -m scripts.verify_gfi_transcripts"
     },
     {
       "applies_to": [
-        "cn-sensitive-generative-firewall-v1"
+        "cn-sensitive-generative-firewall-v2"
       ],
       "dimension": "statistical_design",
       "evidence": "The reading uses k=5 samples across 20 usable cells with a Wilson interval and explicit control/abstention gates.",
@@ -95,14 +96,14 @@
     },
     {
       "applies_to": [
-        "cn-sensitive-generative-firewall-v1"
+        "cn-sensitive-generative-firewall-v2"
       ],
       "dimension": "pipeline_reproducibility",
-      "evidence": "The latest public GFI artifact is method v3; the shipping quote-aware judge is v4.",
+      "evidence": "The latest public GFI artifact is method v4; the shipping quote-aware judge is v4.",
       "id": "gfi-method-boundary",
       "label": "GFI method changes rebaseline the longitudinal series",
-      "limitation": "The next successful run must establish a new v4 baseline; no drift claim may cross this judge boundary.",
-      "status": "partial"
+      "limitation": "Method identity alone does not validate the construct.",
+      "status": "pass"
     },
     {
       "applies_to": [
@@ -129,8 +130,8 @@
     }
   ],
   "claim_ceiling": {
-    "can_claim": "Palimpsest publishes tamper-evident, statistically explicit eval outputs; the frontier suite binds exact prompts and lets readers recompute current seals from full responses.",
-    "cannot_yet_claim": "The lexical construct has not completed independent human validation, the legacy China-focused GFI does not yet publish every full response or bind exact prompt text, and no unaffiliated replication is on record.",
+    "can_claim": "Palimpsest publishes tamper-evident, statistically explicit eval outputs; both the frontier and China-focused suites bind exact protocols and let readers recompute current seals from full responses.",
+    "cannot_yet_claim": "The lexical construct has not completed independent human validation, and no unaffiliated replication is on record.",
     "level": "provisional-measurement",
     "promotion_rule": "Do not promote the evals to human-validated until the preregistered two-coder study passes its frozen falsifiers; do not call them independently replicated until an unaffiliated preregistered run is sealed and published."
   },
@@ -150,7 +151,7 @@
       ],
       "id": "prompt_precommitment",
       "question": "Were the questions fixed before answers?",
-      "status": "partial"
+      "status": "pass"
     },
     {
       "checks": [
@@ -159,7 +160,7 @@
       ],
       "id": "response_recomputability",
       "question": "Can published raw evidence reproduce the seals?",
-      "status": "partial"
+      "status": "pass"
     },
     {
       "checks": [
@@ -196,7 +197,7 @@
       "status": "open"
     }
   ],
-  "generated_at": "2026-08-14T19:08:28.649895+00:00",
+  "generated_at": "2026-08-14T20:41:28.053270+00:00",
   "schema": "palimpsest.eval-assurance.v1",
   "sources": {
     "frontier_reading": "readings/refusal-drift-latest.json",
@@ -209,8 +210,8 @@
     "checks": 11,
     "fail": 0,
     "open": 1,
-    "partial": 4,
-    "pass": 5,
+    "partial": 1,
+    "pass": 8,
     "pending": 1
   },
   "title": "Palimpsest AI Eval Assurance",
