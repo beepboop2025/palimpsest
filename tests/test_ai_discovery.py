@@ -102,6 +102,20 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert card["access"]["evidence_signal_channel"] == "https://t.me/EvidenceSignalDesk"
 
 
+def test_home_exposes_an_attributed_daily_observatory_read():
+    home = (ROOT / "index.html").read_text(encoding="utf-8")
+    hero = home[home.index('<header class="hero'):
+                home.index('</header>', home.index('<header class="hero'))]
+    telegram = (
+        "https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero"
+    )
+
+    assert f'href="{telegram}"' in hero
+    assert "Get the daily observatory read" in hero
+    assert 'target="_blank" rel="noopener noreferrer"' in hero
+    assert hero.index(telegram) < hero.index('href="/data.html"')
+
+
 def test_evidence_atlas_is_discoverable_by_humans_and_agents():
     sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
     llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
