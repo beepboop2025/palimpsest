@@ -9,6 +9,10 @@ const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/newswire-latest.json",
   "/readings/china-economic-pulse-latest.json",
+  "/readings/china-econ-observations-latest.json",
+  "/readings/china-econ-observations.jsonl",
+  "/readings/china-econ-forecast-latest.json",
+  "/readings/china-index-latest.json",
   "/readings/investigations-latest.json",
   "/readings/evidence-mesh-latest.json",
   "/readings/machine-investigations-latest.json",

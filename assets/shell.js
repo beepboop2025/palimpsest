@@ -25,7 +25,8 @@
     var items = [].slice.call(nav.querySelectorAll(".ps-nav__item"));
     var openTimer = null, closeTimer = null;
     var isTouch = matchMedia("(hover: none)").matches;
-    var isCompact = function () { return matchMedia("(max-width: 940px)").matches; };
+    var compactViewport = matchMedia("(max-width: 940px)");
+    var isCompact = function () { return compactViewport.matches; };
 
     function close(item) {
       item.removeAttribute("data-open");
@@ -101,7 +102,7 @@
         return controls;
       }
 
-      function setMobileMenu(openNow) {
+      function setMobileMenu(openNow, restoreFocus) {
         if (openNow) {
           document.body.setAttribute("data-ps-menu", "");
           burger.setAttribute("aria-expanded", "true");
@@ -117,7 +118,7 @@
         document.body.removeAttribute("data-ps-menu");
         burger.setAttribute("aria-expanded", "false");
         closeAll(null);
-        burger.focus();
+        if (restoreFocus !== false) burger.focus();
       }
 
       burger.addEventListener("click", function () {
@@ -125,6 +126,16 @@
       });
       var scrim = nav.querySelector(".ps-nav__scrim");
       if (scrim) scrim.addEventListener("click", function () { setMobileMenu(false); });
+      var resetMobileSheet = function () {
+        if (!compactViewport.matches && document.body.hasAttribute("data-ps-menu")) {
+          setMobileMenu(false, false);
+        }
+      };
+      if (compactViewport.addEventListener) {
+        compactViewport.addEventListener("change", resetMobileSheet);
+      } else if (compactViewport.addListener) {
+        compactViewport.addListener(resetMobileSheet);
+      }
       addEventListener("keydown", function (e) {
         if (!document.body.hasAttribute("data-ps-menu")) return;
         if (e.key === "Escape") {
@@ -400,6 +411,7 @@
     var path = location.pathname;
     var kicker =
       path.indexOf("/readings/") === 0 ? "reading" :
+      path.indexOf("/china/") === 0 ? "china observatory" :
       path.indexOf("/osint-china") === 0 ? "osint china" :
       path.indexOf("/china-brief") === 0 ? "china brief" :
       path.indexOf("/dashboards/") === 0 ? "dashboard" :

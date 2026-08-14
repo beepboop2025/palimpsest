@@ -1,7 +1,8 @@
 # Palimpsest
 
-> Palimpsest is an open-source, public-good observatory that measures how
-> authoritarian states — and now their state-aligned AI models — censor. It
+> Palimpsest is an open-source public good with three observatory applications:
+> authoritarian censorship, revision-safe aggregate evidence about China's
+> economy, and verifiable AI model evaluation. Its censorship application
 > treats deletion as data: it reads the public record of what has already been
 > scrubbed, rewritten or blocked, and ranks what the censor is most focused on
 > right now. It also measures the
@@ -11,9 +12,12 @@
 > evaluations whose internal commitments fail verification if the served history is
 > revised. Public history, anchors and witnesses extend that check beyond the operator.
 
-Palimpsest watches the censor, never the censored. It is free, MIT-licensed, and
-never monetizes the people or topics it observes. Every finding ships its raw
-evidence, so journalists and researchers can verify each claim.
+Palimpsest watches the censor, never the censored. Public access is free, and it
+never monetizes the people or topics it observes. Palimpsest software, schemas and
+original metadata are MIT-licensed; source observations retain their publishers'
+rights, as recorded in the [Evidence Atlas](https://palimpsest.info/data.html#rights).
+Every finding carries a checkable evidence receipt, with source material shipped or
+linked according to those catalogued rights.
 
 ## What Palimpsest measures
 
@@ -31,6 +35,10 @@ evidence, so journalists and researchers can verify each claim.
   baselines so a takedown claim is never fabricated.
 - **Safety as architecture.** Public reads only; no person inside is ever asked to
   act; no state-aligned model is ever the analyst.
+- **China Economic Observatory.** Aggregate official, market and physical-telemetry
+  observations retain separate economic-period, release and collection clocks,
+  revisions, provenance and coverage limits. Missing evidence produces an abstention,
+  not a synthetic national estimate.
 
 - **Wayback Reconstruction.** Deletions and silent redactions of public Chinese URLs,
   recovered from the Internet Archive's capture timeline. The Archive is a retroactive,
@@ -123,6 +131,7 @@ Machine-readable contracts:
 
 - [Evidence Wire latest](https://palimpsest.info/readings/newswire-latest.json)
 - [China Economic Pulse latest](https://palimpsest.info/readings/china-economic-pulse-latest.json)
+- [China named-series forecast and backtest latest](https://palimpsest.info/readings/china-econ-forecast-latest.json)
 - [Investigations Desk latest](https://palimpsest.info/readings/investigations-latest.json)
 - [Evidence Mesh latest](https://palimpsest.info/readings/evidence-mesh-latest.json)
 - [Machine Analysis Desk latest](https://palimpsest.info/readings/machine-investigations-latest.json)
@@ -136,6 +145,8 @@ Machine-readable contracts:
 - [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
 - [Per-event Analysis JSON Schema](https://palimpsest.info/protocol/event-analysis-v1.schema.json)
 - [Economic Pulse JSON Schema](https://palimpsest.info/protocol/economic-pulse-v1.schema.json)
+- [China Observatory Index JSON Schema](https://palimpsest.info/protocol/china-index-v1.schema.json)
+- [China Economic Forecast JSON Schema](https://palimpsest.info/protocol/economic-forecast-v1.schema.json)
 - [Investigations JSON Schema](https://palimpsest.info/protocol/investigations-v1.schema.json)
 - [Evidence Mesh JSON Schema](https://palimpsest.info/protocol/evidence-mesh-v1.schema.json)
 - [Machine Analysis JSON Schema](https://palimpsest.info/protocol/machine-investigations-v1.schema.json)
@@ -305,8 +316,18 @@ one score or imply that temporal co-movement is corroboration.
 - [Erasure Observatory](https://palimpsest.info/readings/erasure-observatory.html): composite erasure index across the network, narrative and model layers
 - [Raw evidence (JSON)](https://palimpsest.info/readings/latest.json): machine-readable latest readings
 - [China censorship data for researchers](https://palimpsest.info/for-researchers.html): direct answers on Great Firewall measurement, deletion evidence and AI refusal evaluation, plus every published feed, its schema, honest scope and citation method
+- [China Observatory](https://palimpsest.info/china/): human-facing index for the China economic evidence surface, its measured series, revision state and provenance
+- [China Observatory sitemap](https://palimpsest.info/china/sitemap.xml): crawlable route inventory for the China evidence surface
+- [China Observatory index](https://palimpsest.info/readings/china-index-latest.json): machine-readable discovery index for the published China routes and datasets
+- [China Observatory index schema](https://palimpsest.info/protocol/china-index-v1.schema.json): strict contract for the discovery index, evidence rails, source registry and release routes
 - [API + MCP quickstart](https://palimpsest.info/developers.html): connect the hosted read-only MCP, run a live tool, use the OpenAI Responses API, or import the public readings through OpenAPI
 - [OpenAPI 3.1 contract](https://palimpsest.info/openapi.json): stable public JSON readings for conventional clients and API importers
+- [China economic observation manifest](https://palimpsest.info/readings/china-econ-observations-latest.json): integrity, coverage and schema receipt for the aggregate append-only observation ledger
+- [China economic observations (JSONL)](https://palimpsest.info/readings/china-econ-observations.jsonl): bitemporal aggregate rows with separate release/collection clocks, revisions, source URLs and hashes; use the MCP query tool for bounded point-in-time filtering
+- [China economic observation schema](https://palimpsest.info/protocol/economic-observation-v1.schema.json): strict aggregate observation-row contract for each JSONL record
+- [China economic observation manifest schema](https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json): strict integrity, coverage and artifact-receipt contract for the JSONL manifest
+- [China named-series economic forecast and backtest](https://palimpsest.info/readings/china-econ-forecast-latest.json): pseudo-real-time evidence, frozen promotion gates and explicit abstention until targets qualify
+- [China economic forecast schema](https://palimpsest.info/protocol/economic-forecast-v1.schema.json): strict contract for target definitions, first-release/latest-revised scoring, promotion gates and forecast status
 - [Machine-readable product card](https://palimpsest.info/product-card.json): identity, use cases, limitations, evidence and public access points for retrieval systems
 - [Evidence Capsules](https://palimpsest.info/evidence-capsules.html): portable JSON claims bound to exact evidence bytes, with a dependency-free offline verifier and frozen downloads
 - [ScamShield intelligence pack](https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json): versioned public typologies, reviewed sources and explicit evidence-support levels; no Telegram messages or exact indicators
@@ -321,17 +342,35 @@ one score or imply that temporal co-movement is corroboration.
 Every signal below is callable directly over the Model Context Protocol, so an
 agent does not have to scrape the pages or guess at a schema:
 
-- MCP server (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
+- MCP server v1.6.0 (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
 - Tools: `list_signals` (discover every published signal and its source URL),
   `get_signal` (one signal's full payload; `max_rows` caps long row arrays and
   any cap applied is reported with the true total), `get_newsroom` (read the
   evidence newsroom, wire, economic pulse, machine-analysis desk,
   investigations desk, or editorial gates with status, citations and
-  limitations attached), `whats_happening` (the
+  limitations attached), `query_economic_observations` (bounded filters over
+  the one fixed China-economic JSONL ledger, with both-clock `as_of`,
+  all/latest-as-of revision views and opaque cursor pagination; rows retain
+  evidence URLs and provenance hashes), `whats_happening` (the
   board's own cross-signal verdict, with multiplicity paid for and coverage
   confounds flagged as artifacts rather than findings), and `gfw_reading`
   (network-layer and model-layer Great Firewall in one call).
-- Every payload carries `generated_at` and its upstream `sources`. Cite both.
+- `list_signals` exposes `china-econ-forecast`; use `get_signal` to read its
+  named-series pseudo-real-time backtests and promotion state. `warming_up` is
+  an explicit abstention, not a forecast claim.
+- `query_economic_observations` never accepts a URL. It first fetches the fixed
+  https://palimpsest.info/readings/china-econ-observations-latest.json manifest,
+  then the fixed https://palimpsest.info/readings/china-econ-observations.jsonl
+  ledger. Exact JSONL bytes, SHA-256 and record count must match before row parsing.
+  The manifest is capped at 256 KiB; the ledger at 8 MiB and 20,000
+  checksum-validated source rows (256 KiB per row); pages default to 25 and cannot
+  exceed 100; the complete serialized MCP response cannot exceed 1 MiB. A fetch,
+  checksum, corruption or response-cap failure returns a typed MCP tool error with
+  `isError: true` and no partial rows. A checksum validates matching bytes, not
+  publisher identity. Successful pages include the manifest URL, scope and limitations.
+- Signal readings carry `generated_at` and upstream `sources`; cite both.
+  Economic observation rows instead carry `released_at`, `collected_at`,
+  `evidence_url`, `raw_sha256` and `observation_id`; preserve those fields when citing.
 - A signal that cannot be fetched is returned as unavailable. Published stale or
   disabled evidence remains inspectable with its status and generated_at; it is
   never silently promoted to current or replaced with an invented value.
@@ -346,12 +385,15 @@ agent does not have to scrape the pages or guess at a schema:
 
 ## Citation
 
-Cite as: Palimpsest — an open observatory of authoritarian censorship,
-palimpsest.info, accessed [date]. Open-source (MIT). Every finding ships raw evidence.
+Cite as: Palimpsest — Censorship Observatory, China Economic Observatory and
+Verifiable AI Evaluation Registry, palimpsest.info, accessed [date]. Palimpsest
+software, schemas and original metadata are open-source (MIT); source observations
+retain their publishers' rights. Cite the specific reading, timestamp, scope and
+limitations.
 
 ## Frequently asked
 
-**What is Palimpsest?** A free, open-source (MIT) public-good observatory that measures how authoritarian states censor by treating deletion as data, and measures how state-aligned AI models refuse or rewrite sensitive answers. It watches the censor, never the censored.
+**What is Palimpsest?** A free public good with three applications: it measures authoritarian censorship by treating deletion as data, publishes a revision-safe China Economic Observatory, and maintains verifiable evaluations of model refusal and behavioral drift. It watches the censor, never the censored, and publishes only bounded aggregate economic evidence.
 
 **What is China censoring right now?** Palimpsest reads China Digital Times' curated record of removed posts and leaked propaganda directives, and ranks the topics drawing the most censor attention as a live censorship index at palimpsest.info, with raw JSON evidence. The index is attention allocation, not a deletion rate: it ranks what the censor touched, and does not claim to know what share of posts on a topic were removed, because that denominator is not observable from outside. Deletion velocity is not published — a CDT item carries an editorial date, not a deletion timestamp, so no latency is derivable from this source.
 
@@ -359,4 +401,4 @@ palimpsest.info, accessed [date]. Open-source (MIT). Every finding ships raw evi
 
 **What is the Generative Firewall Index?** A live measure of how often a named panel of state-aligned large language model endpoints refuses or substitutes state-narrative answers on frozen sensitive prompts, in Chinese and English, reported beside neutral controls. It can expose content- or language-conditioned behavior; it does not by itself prove motive or represent every Chinese model.
 
-**Is Palimpsest free and open source?** Yes. MIT-licensed, fully open source, never commercial, developed in the open at github.com/beepboop2025/palimpsest.
+**Is Palimpsest free and open source?** Yes. Public access is free, and Palimpsest remains non-commercial. Its software, schemas and original metadata are MIT-licensed and developed in the open at github.com/beepboop2025/palimpsest. Source observations retain their publishers' rights; consult each record in the Evidence Atlas before reuse.

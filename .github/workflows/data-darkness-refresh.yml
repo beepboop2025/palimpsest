@@ -78,6 +78,8 @@ jobs:
       - name: Rebuild and seal the publication graph that embeds the signal
         run: |
           python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_site
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -102,6 +104,10 @@ jobs:
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
             tests/test_economic_pulse.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
             tests/test_narcoscope_bridge.py \
@@ -139,6 +145,8 @@ jobs:
             readings/data-darkness-latest.json \
             readings/data-darkness-history.jsonl \
             readings/china-economic-pulse-latest.json \
+            readings/china-econ-observations-latest.json \
+            readings/china-index-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \
@@ -153,6 +161,7 @@ jobs:
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -191,6 +200,8 @@ jobs:
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
           python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_site
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -216,6 +227,10 @@ jobs:
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
             tests/test_economic_pulse.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
             tests/test_narcoscope_bridge.py \
@@ -248,6 +263,8 @@ jobs:
             readings/data-darkness-latest.json \
             readings/data-darkness-history.jsonl \
             readings/china-economic-pulse-latest.json \
+            readings/china-econ-observations-latest.json \
+            readings/china-index-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \
@@ -262,6 +279,7 @@ jobs:
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
           if [ "${{ steps.prepublish_sync.outputs.recreate }}" = "true" ]; then
             if git diff --cached --quiet; then
@@ -296,6 +314,8 @@ jobs:
         if: steps.push_attempt.outcome == 'failure'
         run: |
           python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_site
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -321,6 +341,10 @@ jobs:
             tests/test_osint_china.py \
             tests/test_osint_china_page.py \
             tests/test_economic_pulse.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
             tests/test_investigations.py \
             tests/test_investigations_renderer.py \
             tests/test_narcoscope_bridge.py \
@@ -353,6 +377,8 @@ jobs:
             readings/data-darkness-latest.json \
             readings/data-darkness-history.jsonl \
             readings/china-economic-pulse-latest.json \
+            readings/china-econ-observations-latest.json \
+            readings/china-index-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \
@@ -367,6 +393,7 @@ jobs:
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then

@@ -650,6 +650,56 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "china-economic-observations",
+      "name": "China economic observation ledger",
+      "description": "Aggregate-only, bitemporal economic observations with separate reference-period, source-release and Palimpsest-collection clocks, revision identity and exact evidence hashes. The current public ledger is narrow and mostly CFETS-derived; it is an auditable interchange, not a complete national activity index or an estimate of true GDP.",
+      "url": "https://palimpsest.info/china/",
+      "license": "https://palimpsest.info/data.html#rights",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-14T08:00:17.966002Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "China economic observation ledger — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/china-econ-observations-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "China economic observation ledger — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/china-econ-observations.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "china-economic-forecast",
+      "name": "China named-series forecast and backtest audit",
+      "description": "Deterministic pseudo-real-time backtests over the bitemporal observation ledger, scoring first-release and latest-revised outcomes separately. Every model, failed fold and promotion gate remains public; named-series forecasts stay null until frozen history, independence, revision and calibration gates all pass. This is not an economy-wide activity forecast.",
+      "url": "https://palimpsest.info/china/",
+      "license": "https://palimpsest.info/data.html#rights",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-14T08:00:17.966002Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "China named-series forecast and backtest audit — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/china-econ-forecast-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
       "identifier": "cny-fix-gap",
       "name": "CNY fixing gap",
       "description": "Same-day comparison between China's central parity and independent central-bank reference rates, with explicit abstention when date parity is absent.",

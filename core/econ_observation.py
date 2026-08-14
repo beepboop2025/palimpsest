@@ -45,6 +45,7 @@ METADATA_KEYS = frozenset({
     "source_table_id",
     "source_release_id",
     "source_document_sha256",
+    "source_manifest_sha256",
     "source_document_version",
     "parser_version",
     "schema_version",
@@ -224,6 +225,8 @@ class EconomicObservation:
             raise ValueError("evidence_url must be an absolute http(s) URL") from exc
         if parsed_url.scheme not in {"http", "https"} or not hostname:
             raise ValueError("evidence_url must be an absolute http(s) URL")
+        if parsed_url.username is not None or parsed_url.password is not None:
+            raise ValueError("evidence_url must not contain URL credentials")
 
         if self.raw_sha256 is not None:
             if type(self.raw_sha256) is not str:

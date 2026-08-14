@@ -22,7 +22,13 @@ from collectors.china_econ import (
     FamilyCollection,
     collect,
 )
+from core.econ_ledger import (
+    LedgerIntegrityError,
+    append_vintages,
+    load_observations,
+)
 from core.econ_observation import EconomicObservation
+from scripts.build_china_econ_manifest import publish_manifest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
@@ -43,10 +49,6 @@ REQUIRED_BENCHMARK_KEYS = frozenset(
 
 
 WINDOW_DAYS = 28  # inside the portal's per-request range limit
-
-
-class LedgerIntegrityError(RuntimeError):
-    """Raised when append-only observation history is not structurally intact."""
 
 
 def _family(metric: str) -> str:
@@ -71,46 +73,9 @@ def _observation_path() -> str:
 
 
 def _load_observations(path: str) -> list[EconomicObservation]:
-    """Load a complete JSONL ledger, failing closed on any damaged record."""
-    rows: list[EconomicObservation] = []
-    if not os.path.exists(path):
-        return rows
-    with open(path, "rb") as fh:
-        raw = fh.read()
-    if raw and not raw.endswith(b"\n"):
-        raise LedgerIntegrityError(
-            f"{path}: append-only ledger does not end at a record boundary"
-        )
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise LedgerIntegrityError(f"{path}: ledger is not valid UTF-8") from exc
+    """Compatibility wrapper around the shared fail-closed ledger reader."""
 
-    seen_ids: set[str] = set()
-    for lineno, line in enumerate(text.splitlines(), 1):
-        if not line.strip():
-            raise LedgerIntegrityError(f"{path}:{lineno}: blank JSONL record")
-        try:
-            encoded = json.loads(line)
-            if not isinstance(encoded, dict):
-                raise TypeError("record must be an object")
-            supplied_id = encoded.get("observation_id")
-            row = EconomicObservation.from_dict(encoded)
-        except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-            raise LedgerIntegrityError(
-                f"{path}:{lineno}: invalid economic observation: {exc}"
-            ) from exc
-        if supplied_id != row.observation_id:
-            raise LedgerIntegrityError(
-                f"{path}:{lineno}: observation_id does not match record contents"
-            )
-        if row.observation_id in seen_ids:
-            raise LedgerIntegrityError(
-                f"{path}:{lineno}: duplicate observation_id {row.observation_id}"
-            )
-        seen_ids.add(row.observation_id)
-        rows.append(row)
-    return rows
+    return load_observations(path)
 
 
 def validate_observation_ledger(path: str | None = None) -> int:
@@ -132,21 +97,7 @@ def _append_vintages(
     the data date would leak the value into a replay before Palimpsest knew it.
     """
     path = _observation_path()
-    prior = _load_observations(path)
-    latest = {}
-    seen_ids = set()
-    for row in prior:
-        seen_ids.add(row.observation_id)
-        key = row.vintage_key
-        old = latest.get(key)
-        if old is None or (row.released_at, row.collected_at, row.revision) > (
-            old.released_at,
-            old.collected_at,
-            old.revision,
-        ):
-            latest[key] = row
-
-    pending = []
+    candidates = []
     for period, values in sorted(fresh.items()):
         day = date.fromisoformat(period)
         for metric, value in sorted(values.items()):
@@ -157,7 +108,7 @@ def _append_vintages(
                     f"{family} produced values without response-level provenance"
                 )
             unit = "CNY per USD" if metric == "usdcny_parity" else "%"
-            probe = EconomicObservation(
+            candidates.append(EconomicObservation(
                 series_id=f"cn.cfets.{metric}",
                 value=float(value),
                 unit=unit,
@@ -179,38 +130,9 @@ def _append_vintages(
                         "but no release timestamp"
                     ),
                 },
-            )
-            old = latest.get(probe.vintage_key)
-            if old is not None and old.value == probe.value:
-                continue
-            if old is not None:
-                probe = EconomicObservation.from_dict(
-                    {
-                        **probe.to_dict(),
-                        "revision": old.revision + 1,
-                    }
-                )
-            if probe.observation_id not in seen_ids:
-                pending.append(probe)
-                seen_ids.add(probe.observation_id)
+            ))
 
-    if pending:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        payload = "".join(
-            json.dumps(row.to_dict(), ensure_ascii=False, sort_keys=True) + "\n"
-            for row in pending
-        ).encode("utf-8")
-        descriptor = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o644)
-        try:
-            written = os.write(descriptor, payload)
-            if written != len(payload):
-                raise LedgerIntegrityError(
-                    f"{path}: partial append ({written} of {len(payload)} bytes)"
-                )
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
-    return len(pending)
+    return len(append_vintages(path, candidates))
 
 
 def _load_history() -> dict[str, dict]:
@@ -250,6 +172,10 @@ def main() -> None:
         return
 
     new_observations = _append_vintages(fresh, now, collected.provenance)
+    publish_manifest(
+        _observation_path(),
+        os.path.join(READINGS, "china-econ-observations-latest.json"),
+    )
 
     history = _load_history()
     new_dates = []

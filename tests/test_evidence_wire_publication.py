@@ -267,6 +267,10 @@ def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
     assert 'const CACHE = "palimpsest-v15"' in worker
     assert '"/readings/newswire-latest.json"' in worker
     assert '"/readings/china-economic-pulse-latest.json"' in worker
+    assert '"/readings/china-econ-observations-latest.json"' in worker
+    assert '"/readings/china-econ-observations.jsonl"' in worker
+    assert '"/readings/china-econ-forecast-latest.json"' in worker
+    assert '"/readings/china-index-latest.json"' in worker
     assert '"/readings/evidence-mesh-latest.json"' in worker
     assert '"/readings/machine-investigations-latest.json"' in worker
     for name in (
@@ -338,6 +342,8 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
 
     build_graph = re.findall(
         r"python -m scripts\.build_economic_pulse\n"
+        r"\s*python -m scripts\.build_china_econ_manifest\n"
+        r"\s*python -m scripts\.build_china_site\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"
@@ -361,6 +367,8 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         "readings/newswire-latest.json",
         "readings/newswire-versions.jsonl",
         "readings/china-economic-pulse-latest.json",
+        "readings/china-econ-observations-latest.json",
+        "readings/china-index-latest.json",
         "readings/osint-china-latest.json",
         "readings/investigations-latest.json",
         "readings/evidence-mesh-latest.json",
@@ -375,6 +383,7 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         "readings/catalog.json",
         "readings/catalog.jsonld",
         "datapackage.json",
+        "china/",
         "news/",
     )
     for artifact in staged:
@@ -438,6 +447,10 @@ def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner()
         "tests/test_network_rounds.py",
         "tests/test_source_workflow.py",
         "tests/test_editorial_readiness.py",
+        "tests/test_econ_ledger.py",
+        "tests/test_china_econ_manifest.py",
+        "tests/test_china_site.py",
+        "tests/test_china_renderer.py",
     ):
         assert workflow.count(command) == 3, command
 
@@ -469,6 +482,8 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     workflow = OSINT_WORKFLOW.read_text(encoding="utf-8")
     assert "python -m scripts.newswire_pull" not in workflow
     assert workflow.count("python -m scripts.build_economic_pulse") == 3
+    assert workflow.count("python -m scripts.build_china_econ_manifest") == 3
+    assert workflow.count("python -m scripts.build_china_site") == 3
     assert workflow.count("python -m scripts.build_investigations") == 3
     assert workflow.count("python -m scripts.build_network_rounds") == 3
     assert workflow.count("python -m scripts.build_corroboration") == 3
@@ -481,6 +496,11 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     assert _staged_occurrences(
         workflow, "readings/china-economic-pulse-latest.json"
     ) == 3
+    assert _staged_occurrences(
+        workflow, "readings/china-econ-observations-latest.json"
+    ) == 3
+    assert _staged_occurrences(workflow, "readings/china-index-latest.json") == 3
+    assert _staged_occurrences(workflow, "china/") == 3
     assert _staged_occurrences(
         workflow, "readings/investigations-latest.json"
     ) == 3
@@ -500,6 +520,8 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         assert _staged_occurrences(workflow, artifact) == 3
     for block in re.findall(
         r"python -m scripts\.build_economic_pulse\n"
+        r"\s*python -m scripts\.build_china_econ_manifest\n"
+        r"\s*python -m scripts\.build_china_site\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"
@@ -517,6 +539,8 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         assert "newswire_pull" not in block
     assert len(re.findall(
         r"python -m scripts\.build_economic_pulse\n"
+        r"\s*python -m scripts\.build_china_econ_manifest\n"
+        r"\s*python -m scripts\.build_china_site\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"

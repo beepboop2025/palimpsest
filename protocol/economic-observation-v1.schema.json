@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/economic-observation-v1.schema.json",
+  "title": "Palimpsest aggregate economic observation v1",
+  "description": "One aggregate, bitemporal, provenance-authenticated economic observation. Cross-row revision and append-order invariants are enforced by core/econ_ledger.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "series_id",
+    "value",
+    "unit",
+    "frequency",
+    "period_start",
+    "period_end",
+    "released_at",
+    "collected_at",
+    "source_id",
+    "evidence_url",
+    "revision",
+    "status",
+    "geography",
+    "sector",
+    "firm_size",
+    "ownership",
+    "quality",
+    "raw_sha256",
+    "metadata",
+    "observation_id"
+  ],
+  "properties": {
+    "series_id": {"$ref": "#/$defs/nonblank"},
+    "value": {"type": "number"},
+    "unit": {"$ref": "#/$defs/nonblank"},
+    "frequency": {"enum": ["event", "D", "W", "M", "Q", "A"]},
+    "period_start": {"$ref": "#/$defs/date"},
+    "period_end": {"$ref": "#/$defs/date"},
+    "released_at": {"$ref": "#/$defs/timestamp"},
+    "collected_at": {"$ref": "#/$defs/timestamp"},
+    "source_id": {"$ref": "#/$defs/nonblank"},
+    "evidence_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://[^/@\\s?#]+(?:[/?#]|$)"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "status": {"enum": ["observed", "estimate", "forecast"]},
+    "geography": {"$ref": "#/$defs/nonblank"},
+    "sector": {"$ref": "#/$defs/nonblank"},
+    "firm_size": {"$ref": "#/$defs/nonblank"},
+    "ownership": {"$ref": "#/$defs/nonblank"},
+    "quality": {"type": "number", "minimum": 0, "maximum": 1},
+    "raw_sha256": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        {"type": "null"}
+      ]
+    },
+    "metadata": {"$ref": "#/$defs/metadataObject"},
+    "observation_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "nonblank": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "metadataKey": {
+      "enum": [
+        "family",
+        "method_version",
+        "release_time_semantics",
+        "aggregation_method",
+        "aggregation_level",
+        "aggregation_window",
+        "seasonal_adjustment",
+        "price_basis",
+        "index_base",
+        "source_series_id",
+        "source_table_id",
+        "source_release_id",
+        "source_document_sha256",
+        "source_manifest_sha256",
+        "source_document_version",
+        "parser_version",
+        "schema_version",
+        "transform",
+        "transform_version",
+        "observation_count",
+        "sample_size",
+        "suppression_threshold",
+        "coverage_start",
+        "coverage_end",
+        "provenance",
+        "methodology",
+        "coverage",
+        "frequency",
+        "geography",
+        "sector",
+        "firm_size",
+        "ownership"
+      ]
+    },
+    "metadataObject": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/metadataKey"},
+      "additionalProperties": {"$ref": "#/$defs/metadataValue"}
+    },
+    "metadataValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "string"},
+        {"type": "number"},
+        {
+          "type": "array",
+          "items": {"$ref": "#/$defs/metadataValue"}
+        },
+        {"$ref": "#/$defs/metadataObject"}
+      ]
+    }
+  }
+}

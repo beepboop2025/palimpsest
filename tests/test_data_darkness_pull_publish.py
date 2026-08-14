@@ -117,6 +117,8 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
     lines = [line.strip() for line in text.splitlines()]
     graph = [
         "python -m scripts.build_economic_pulse",
+        "python -m scripts.build_china_econ_manifest",
+        "python -m scripts.build_china_site",
         'python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"',
         "python -m scripts.build_investigations",
         "python -m scripts.build_network_rounds",
@@ -134,7 +136,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "python scripts/seal_readings.py",
     ]
     retry_graph = list(graph)
-    retry_graph[1] = (
+    retry_graph[3] = (
         'python -m scripts.build_osint_china --input-commit '
         '"$(git rev-parse origin/main)"'
     )
@@ -225,10 +227,10 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
     assert "seal_readings" not in preserve_text
     assert "git add" not in preserve_text
 
-    for command in graph[:1] + graph[2:]:
+    for command in graph[:3] + graph[4:]:
         assert lines.count(command) == 3
-    assert lines.count(graph[1]) == 1
-    assert lines.count(retry_graph[1]) == 2
+    assert lines.count(graph[3]) == 1
+    assert lines.count(retry_graph[3]) == 2
 
     required_tests = {
         "tests/test_data_darkness.py",
@@ -236,6 +238,10 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "tests/test_osint_china.py",
         "tests/test_osint_china_page.py",
         "tests/test_economic_pulse.py",
+        "tests/test_econ_ledger.py",
+        "tests/test_china_econ_manifest.py",
+        "tests/test_china_site.py",
+        "tests/test_china_renderer.py",
         "tests/test_investigations.py",
         "tests/test_investigations_renderer.py",
         "tests/test_narcoscope_bridge.py",
@@ -263,6 +269,8 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "readings/data-darkness-latest.json",
         "readings/data-darkness-history.jsonl",
         "readings/china-economic-pulse-latest.json",
+        "readings/china-econ-observations-latest.json",
+        "readings/china-index-latest.json",
         "readings/osint-china-latest.json",
         "readings/investigations-latest.json",
         "readings/evidence-mesh-latest.json",
@@ -277,6 +285,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "readings/catalog.json",
         "readings/catalog.jsonld",
         "datapackage.json",
+        "china/",
         "news/",
     }
     stage_blocks = continued_blocks("git add \\")

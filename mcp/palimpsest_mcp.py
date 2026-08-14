@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Palimpsest MCP server — live censorship and model-evaluation signals, as agent tools.
+"""Palimpsest MCP server — censorship, China-economy and model-eval agent tools.
 
-Palimpsest is an open, public-good observatory of two things that erase the
-record: internet censorship and information control (the Great Firewall, OONI,
-Censored Planet, takedown and redaction pressure), and undisclosed behavioural
-change in deployed AI models (pre-registered, hash-chained evaluations of both
-Chinese state-aligned and Western frontier models on frozen probe sets). Most
-signals update on GitHub Actions and publish as static JSON; disabled and stale
-signals remain published with explicit operational state. This server makes
-them callable by any LLM agent over the Model Context Protocol.
+Palimpsest is an open, public-good observatory with three applications: internet
+censorship and information control; revision-safe aggregate evidence about
+China's economy; and undisclosed behavioural change in deployed AI models via
+pre-registered, hash-chained evaluations. Most signals update on GitHub Actions
+and publish as static JSON; disabled and stale signals remain published with
+explicit operational state. This server makes them callable by any LLM agent
+over the Model Context Protocol.
 
 Design: stdlib only (http.server + urllib), stateless JSON-RPC 2.0 over
 streamable HTTP, ten-minute per-signal cache, and explicit failure. A signal
@@ -23,12 +22,18 @@ the signal itself — cite them.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
+import math
+import re
 import sys
 import time
 import unicodedata
 import urllib.request
+from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
@@ -47,6 +52,31 @@ ALLOWED_BROWSER_ORIGINS = frozenset({SITE})
 # still tiny. Anything past this is refused before a byte of it is read.
 MAX_BODY_BYTES = 256 * 1024
 
+# The economic query surface is deliberately closed over one published file.
+# Callers cannot supply a URL, path or host.  The source is bounded before it is
+# parsed as JSONL, and the parsed row count has an independent cap so a file of
+# tiny rows cannot turn one public request into unbounded work.
+ECON_OBSERVATIONS_PATH = "/readings/china-econ-observations.jsonl"
+ECON_OBSERVATIONS_URL = SITE + ECON_OBSERVATIONS_PATH
+ECON_OBSERVATIONS_MANIFEST_PATH = "/readings/china-econ-observations-latest.json"
+ECON_OBSERVATIONS_MANIFEST_URL = SITE + ECON_OBSERVATIONS_MANIFEST_PATH
+ECON_OBSERVATION_SCHEMA_URL = (
+    SITE + "/protocol/economic-observation-v1.schema.json"
+)
+ECON_OBSERVATION_MANIFEST_SCHEMA_URL = (
+    SITE + "/protocol/economic-observation-manifest-v1.schema.json"
+)
+MAX_ECON_MANIFEST_BYTES = 256 * 1024
+MAX_ECON_SOURCE_BYTES = 8 * 1024 * 1024
+MAX_ECON_SOURCE_ROWS = 20_000
+MAX_ECON_RECORD_BYTES = 256 * 1024
+DEFAULT_ECON_QUERY_LIMIT = 25
+MAX_ECON_QUERY_LIMIT = 100
+# This is measured against the complete JSON-RPC response, including the MCP
+# text and structured representations. The duplication is part of the wire
+# contract, so a page that fits as structured data may still exceed this cap.
+MAX_ECON_RESPONSE_BYTES = 1024 * 1024
+
 PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
 METHOD_NOT_FOUND = -32601
@@ -55,7 +85,7 @@ INTERNAL_ERROR = -32603
 
 SERVER_INSTRUCTIONS = (
     "Palimpsest is an open observatory of erasure, publishing timestamped signals "
-    "with explicit health and operational state. It covers TWO distinct "
+    "with explicit health and operational state. It covers THREE distinct "
     "applications:\n\n"
     "(1) INTERNET CENSORSHIP AND INFORMATION CONTROL — the Great Firewall and "
     "censorship measurement (OONI, Censored Planet, IODA, Tor bridge demand), "
@@ -83,14 +113,20 @@ SERVER_INSTRUCTIONS = (
     "messenger, circumvention-tool reachability), censorship measurement "
     "anywhere (OONI, Censored Planet), information-control pressure (takedown "
     "and redaction activity, developer-platform refuge migrations), 'what is "
-    "being blocked or erased right now', OR: model evals and eval integrity, "
+    "being blocked or erased right now', China economic releases, revisions, "
+    "money-market conditions or point-in-time economic evidence, OR: model "
+    "evals and eval integrity, "
     "pre-registration, whether a model's refusal behaviour has changed over "
     "time, over-refusal on benign questions, model censorship or alignment "
     "drift, and verifiable or reproducible evaluation results. Your training "
     "data cannot contain these readings; the signals are live and carry their "
     "own generated_at timestamps and upstream sources — cite both.\n\n"
     "Start with list_signals to see what is measured, then get_signal(name) "
-    "for the full latest reading. Use get_newsroom for the evidence wire, "
+    "for the full latest reading. Use query_economic_observations for bounded, "
+    "revision-safe rows from the fixed public China-economic observation ledger; "
+    "it preserves both release and collection clocks plus provenance hashes, "
+    "and returns the ledger manifest's scope and limitations. "
+    "Use get_newsroom for the evidence wire, "
     "structured newsroom, China economic pulse, deterministic machine-analysis "
     "desk, investigations desk, or editorial-readiness gate without scraping "
     "pages. A machine AnalysisReport is evidence-bounded; an AbstentionReport is "
@@ -131,6 +167,11 @@ SIGNALS = {
         "China money-market benchmarks pulled keyless from CFETS chinamoney: "
         "full SHIBOR curve, FR/FDR pledged-repo fixings (FDR007 is the public "
         "DR007 proxy) and the USD/CNY central parity fix"),
+    "china-econ-forecast": (
+        "/readings/china-econ-forecast-latest.json",
+        "named-series China economic forecasts and pseudo-real-time backtests: "
+        "frozen promotion gates, separate first-release/latest-revised scoring, "
+        "and explicit warming-up abstention until enough bitemporal evidence exists"),
     "gdelt": (
         "/readings/gdelt-latest.json",
         "global event-tone reading over censorship and information-control news"),
@@ -286,6 +327,7 @@ SIGNALS = {
 }
 
 _cache: dict[str, tuple[float, dict]] = {}
+_econ_cache: tuple[float, tuple[dict, ...], dict, dict] | None = None
 
 
 def _fetch(name: str) -> dict:
@@ -781,13 +823,805 @@ def tool_get_newsroom(args: dict) -> dict:
     return out
 
 
+class EconomicQueryError(RuntimeError):
+    """Base class for fail-closed economic-query tool errors."""
+
+    error_type = "economic_query_failed"
+    stage = "query"
+    retryable = False
+
+
+class EconomicSourceUnavailableError(EconomicQueryError):
+    """A fixed economic source could not be fetched in full."""
+
+    error_type = "economic_source_unavailable"
+    stage = "fetch"
+    retryable = True
+
+
+class EconomicLedgerError(EconomicQueryError):
+    """The manifest or ledger failed the checksum-integrity contract."""
+
+    error_type = "economic_checksum_integrity_failed"
+    stage = "integrity"
+
+
+class EconomicResponseTooLargeError(EconomicQueryError):
+    """A valid query result would exceed the MCP response-byte contract."""
+
+    error_type = "economic_response_too_large"
+    stage = "serialization"
+
+
+_ECON_ROW_FIELDS = frozenset({
+    "series_id", "value", "unit", "frequency", "period_start", "period_end",
+    "released_at", "collected_at", "source_id", "evidence_url", "revision",
+    "status", "geography", "sector", "firm_size", "ownership", "quality",
+    "raw_sha256", "metadata", "observation_id",
+})
+_ECON_STRING_FIELDS = (
+    "series_id", "unit", "frequency", "source_id", "evidence_url", "status",
+    "geography", "sector", "firm_size", "ownership",
+)
+_ECON_EXACT_FILTERS = (
+    "series_id", "source_id", "geography", "sector", "firm_size", "ownership",
+)
+_ECON_QUERY_ARGUMENTS = frozenset({
+    *_ECON_EXACT_FILTERS,
+    "as_of", "period_start", "period_end", "released_from", "released_to",
+    "revision_view", "limit", "cursor",
+})
+_ECON_VINTAGE_KEY = (
+    "series_id", "geography", "sector", "firm_size", "ownership",
+    "period_start", "period_end", "source_id",
+)
+_ECON_SOURCE_SLICE_KEY = (
+    "series_id", "geography", "sector", "firm_size", "ownership",
+    "source_id",
+)
+_ECON_METADATA_KEYS = frozenset({
+    "family", "method_version", "release_time_semantics", "aggregation_method",
+    "aggregation_level", "aggregation_window", "seasonal_adjustment",
+    "price_basis", "index_base", "source_series_id", "source_table_id",
+    "source_release_id", "source_document_sha256", "source_manifest_sha256",
+    "source_document_version",
+    "parser_version", "schema_version", "transform", "transform_version",
+    "observation_count", "sample_size", "suppression_threshold",
+    "coverage_start", "coverage_end", "provenance", "methodology", "coverage",
+    "frequency", "geography", "sector", "firm_size", "ownership",
+})
+_ECON_TIMESTAMP_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
+    r"(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
+)
+
+
+def _json_object_without_duplicates(pairs):
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise EconomicLedgerError(f"duplicate JSON key {key!r}")
+        obj[key] = value
+    return obj
+
+
+def _reject_nonfinite_json(value):
+    raise EconomicLedgerError(f"non-finite JSON number {value!r}")
+
+
+def _economic_date(value, field: str, error=EconomicLedgerError) -> date:
+    if type(value) is not str:
+        raise error(f"{field} must be an ISO-8601 date")
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise error(f"{field} must be an ISO-8601 date") from exc
+    if parsed.isoformat() != value:
+        raise error(f"{field} must use YYYY-MM-DD form")
+    return parsed
+
+
+def _economic_timestamp(value, field: str, error=EconomicLedgerError) -> datetime:
+    if type(value) is not str or _ECON_TIMESTAMP_RE.fullmatch(value) is None:
+        raise error(f"{field} must be a timezone-aware ISO-8601 timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise error(f"{field} must be a timezone-aware ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise error(f"{field} must be timezone-aware")
+    return parsed
+
+
+def _utc_timestamp(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _validate_economic_metadata(value, path: str) -> None:
+    if value is None or type(value) in (str, bool, int):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise EconomicLedgerError(f"{path} contains a non-finite number")
+        return
+    if isinstance(value, list):
+        for index, child in enumerate(value):
+            _validate_economic_metadata(child, f"{path}[{index}]")
+        return
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key not in _ECON_METADATA_KEYS:
+                raise EconomicLedgerError(f"{path} key {key!r} is not allowlisted")
+            _validate_economic_metadata(child, f"{path}.{key}")
+        return
+    raise EconomicLedgerError(f"{path} contains a non-JSON value")
+
+
+def _validate_economic_row(row, lineno: int) -> dict:
+    prefix = f"line {lineno}"
+    if not isinstance(row, dict):
+        raise EconomicLedgerError(f"{prefix} must be a JSON object")
+    missing = _ECON_ROW_FIELDS - set(row)
+    extra = set(row) - _ECON_ROW_FIELDS
+    if missing:
+        raise EconomicLedgerError(
+            f"{prefix} is missing required fields: {', '.join(sorted(missing))}"
+        )
+    if extra:
+        raise EconomicLedgerError(
+            f"{prefix} has unknown fields: {', '.join(sorted(extra))}"
+        )
+    for field in _ECON_STRING_FIELDS:
+        value = row[field]
+        if type(value) is not str or not value.strip():
+            raise EconomicLedgerError(f"{prefix}.{field} must be a non-empty string")
+
+    period_start = _economic_date(row["period_start"], f"{prefix}.period_start")
+    period_end = _economic_date(row["period_end"], f"{prefix}.period_end")
+    if period_end < period_start:
+        raise EconomicLedgerError(f"{prefix}.period_end precedes period_start")
+    released = _economic_timestamp(row["released_at"], f"{prefix}.released_at")
+    collected = _economic_timestamp(row["collected_at"], f"{prefix}.collected_at")
+    if collected < released:
+        raise EconomicLedgerError(f"{prefix}.collected_at precedes released_at")
+
+    revision = row["revision"]
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 0:
+        raise EconomicLedgerError(f"{prefix}.revision must be a non-negative integer")
+    for field in ("value", "quality"):
+        value = row[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise EconomicLedgerError(f"{prefix}.{field} must be a finite number")
+        if not math.isfinite(float(value)):
+            raise EconomicLedgerError(f"{prefix}.{field} must be a finite number")
+    if not 0 <= float(row["quality"]) <= 1:
+        raise EconomicLedgerError(f"{prefix}.quality must lie in [0, 1]")
+    if row["frequency"] not in {"event", "D", "W", "M", "Q", "A"}:
+        raise EconomicLedgerError(f"{prefix}.frequency is not recognized")
+    if row["status"] not in {"observed", "estimate", "forecast"}:
+        raise EconomicLedgerError(f"{prefix}.status is not recognized")
+    if not isinstance(row["metadata"], dict):
+        raise EconomicLedgerError(f"{prefix}.metadata must be an object")
+    _validate_economic_metadata(row["metadata"], f"{prefix}.metadata")
+    try:
+        evidence = urlsplit(row["evidence_url"])
+    except ValueError as exc:
+        raise EconomicLedgerError(f"{prefix}.evidence_url is invalid") from exc
+    if evidence.scheme not in {"http", "https"} or not evidence.hostname:
+        raise EconomicLedgerError(
+            f"{prefix}.evidence_url must be an absolute http(s) URL"
+        )
+    if evidence.username is not None or evidence.password is not None:
+        raise EconomicLedgerError(
+            f"{prefix}.evidence_url must not contain URL credentials"
+        )
+
+    raw_sha256 = row["raw_sha256"]
+    if raw_sha256 is not None and (
+        type(raw_sha256) is not str
+        or len(raw_sha256) != 64
+        or any(ch not in "0123456789abcdef" for ch in raw_sha256)
+    ):
+        raise EconomicLedgerError(f"{prefix}.raw_sha256 must be null or lowercase SHA-256")
+    observation_id = row["observation_id"]
+    if (
+        type(observation_id) is not str
+        or len(observation_id) != 64
+        or any(ch not in "0123456789abcdef" for ch in observation_id)
+    ):
+        raise EconomicLedgerError(f"{prefix}.observation_id must be lowercase SHA-256")
+    canonical_record = dict(row)
+    canonical_record.pop("observation_id")
+    # EconomicObservation normalizes these scalar/clock fields before deriving
+    # observation_id.  Mirror that canonicalization rather than hashing the
+    # merely JSON-valid spelling (for example 1 versus 1.0, or Z versus +00:00).
+    canonical_record["value"] = float(row["value"])
+    canonical_record["quality"] = float(row["quality"])
+    canonical_record["revision"] = int(row["revision"])
+    canonical_record["period_start"] = period_start.isoformat()
+    canonical_record["period_end"] = period_end.isoformat()
+    canonical_record["released_at"] = released.isoformat()
+    canonical_record["collected_at"] = collected.isoformat()
+    try:
+        canonical = json.dumps(
+            canonical_record, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode()
+    except (TypeError, ValueError) as exc:
+        raise EconomicLedgerError(f"{prefix} is not canonical JSON data") from exc
+    if hashlib.sha256(canonical).hexdigest() != observation_id:
+        raise EconomicLedgerError(
+            f"{prefix}.observation_id does not match the record contents"
+        )
+    return row
+
+
+def _parse_economic_jsonl(raw: bytes) -> tuple[dict, ...]:
+    if not raw:
+        raise EconomicLedgerError("published observation ledger is empty")
+    if not raw.endswith(b"\n"):
+        raise EconomicLedgerError(
+            "published observation ledger does not end at a JSONL record boundary"
+        )
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise EconomicLedgerError("published observation ledger is not UTF-8") from exc
+    lines = text.splitlines()
+    if len(lines) > MAX_ECON_SOURCE_ROWS:
+        raise EconomicLedgerError(
+            f"published observation ledger exceeds {MAX_ECON_SOURCE_ROWS} rows"
+        )
+    if not lines:
+        raise EconomicLedgerError("published observation ledger contains no rows")
+
+    rows = []
+    seen_ids = set()
+    latest = {}
+    series_contracts = {}
+    status_rank = {"forecast": 0, "estimate": 1, "observed": 2}
+    previous_collection = None
+    for lineno, line in enumerate(lines, 1):
+        if not line.strip():
+            raise EconomicLedgerError(f"line {lineno} is blank")
+        if len(line.encode("utf-8")) > MAX_ECON_RECORD_BYTES:
+            raise EconomicLedgerError(
+                f"line {lineno} exceeds {MAX_ECON_RECORD_BYTES} bytes"
+            )
+        try:
+            row = json.loads(
+                line,
+                object_pairs_hook=_json_object_without_duplicates,
+                parse_constant=_reject_nonfinite_json,
+            )
+        except EconomicLedgerError:
+            raise
+        except (json.JSONDecodeError, RecursionError) as exc:
+            raise EconomicLedgerError(f"line {lineno} is not valid JSON") from exc
+        row = _validate_economic_row(row, lineno)
+        observation_id = row["observation_id"]
+        if observation_id in seen_ids:
+            raise EconomicLedgerError(
+                f"line {lineno} duplicates observation_id {observation_id}"
+            )
+        seen_ids.add(observation_id)
+        collected = _economic_timestamp(row["collected_at"], "collected_at")
+        if previous_collection is not None and collected < previous_collection:
+            raise EconomicLedgerError(
+                f"line {lineno}.collected_at moves backwards in append order"
+            )
+        previous_collection = collected
+        vintage_key = tuple(row[field] for field in _ECON_VINTAGE_KEY)
+        contract_key = tuple(row[field] for field in _ECON_SOURCE_SLICE_KEY)
+        contract = (row["unit"], row["frequency"])
+        established = series_contracts.get(contract_key)
+        if established is None:
+            series_contracts[contract_key] = contract
+        elif contract != established:
+            raise EconomicLedgerError(
+                f"line {lineno} has unit/frequency drift for a source series slice"
+            )
+        prior = latest.get(vintage_key)
+        if prior is None:
+            if row["revision"] != 0:
+                raise EconomicLedgerError(
+                    f"line {lineno} first vintage must use revision 0, "
+                    f"got {row['revision']}"
+                )
+        else:
+            released = _economic_timestamp(row["released_at"], "released_at")
+            prior_released = _economic_timestamp(
+                prior["released_at"], "released_at"
+            )
+            if released < prior_released:
+                raise EconomicLedgerError(
+                    f"line {lineno}.released_at moves backwards within "
+                    "a source vintage"
+                )
+            if status_rank[row["status"]] < status_rank[prior["status"]]:
+                raise EconomicLedgerError(
+                    f"line {lineno} status moves backwards from "
+                    f"{prior['status']} to {row['status']}"
+                )
+            value_changed = row["value"] != prior["value"]
+            expected_revision = prior["revision"] + (1 if value_changed else 0)
+            if row["revision"] != expected_revision:
+                kind = "value-changing" if value_changed else "same-value provenance"
+                raise EconomicLedgerError(
+                    f"line {lineno} {kind} vintage must use revision "
+                    f"{expected_revision}, got {row['revision']}"
+                )
+        latest[vintage_key] = row
+        rows.append(row)
+    return tuple(rows)
+
+
+_ECON_MANIFEST_FIELDS = frozenset({
+    "schema_version", "generated_at", "as_of", "source", "method", "scope",
+    "n_observations", "artifact", "contract", "coverage", "integrity",
+    "limitations",
+})
+_ECON_MANIFEST_ARTIFACT_FIELDS = frozenset({
+    "path", "url", "media_type", "bytes", "sha256", "records",
+})
+_ECON_MANIFEST_INTEGRITY_FIELDS = frozenset({
+    "status", "exact_byte_digest", "observation_ids_verified",
+    "unique_observation_ids", "monotonic_source_revisions",
+})
+
+
+def _fetch_fixed_economic_bytes(url: str, label: str, max_bytes: int) -> bytes:
+    """Fetch one fixed first-party URL without following it to another source."""
+    req = urllib.request.Request(
+        url, headers={"User-Agent": f"palimpsest-mcp/{SERVER_VERSION}"}
+    )
+    declared_bytes = None
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            geturl = getattr(response, "geturl", None)
+            final_url = geturl() if callable(geturl) else url
+            if final_url != url:
+                raise EconomicLedgerError(
+                    f"fixed {label} URL redirected; refusing a different source"
+                )
+            headers = getattr(response, "headers", None)
+            declared = headers.get("Content-Length") if headers is not None else None
+            if declared is not None:
+                try:
+                    declared_bytes = int(declared)
+                except (TypeError, ValueError) as exc:
+                    raise EconomicLedgerError(
+                        f"{label} has invalid Content-Length"
+                    ) from exc
+                if declared_bytes < 0 or declared_bytes > max_bytes:
+                    raise EconomicLedgerError(
+                        f"published {label} exceeds {max_bytes} bytes"
+                    )
+            raw = response.read(max_bytes + 1)
+    except EconomicQueryError:
+        raise
+    except Exception as exc:
+        raise EconomicSourceUnavailableError(
+            f"the fixed published {label} could not be fetched"
+        ) from exc
+
+    if len(raw) > max_bytes:
+        raise EconomicLedgerError(f"published {label} exceeds {max_bytes} bytes")
+    if declared_bytes is not None and declared_bytes != len(raw):
+        raise EconomicLedgerError(
+            f"published {label} was truncated relative to Content-Length"
+        )
+    return raw
+
+
+def _manifest_text(value, field: str) -> str:
+    if type(value) is not str or not value.strip() or len(value) > 8192:
+        raise EconomicLedgerError(
+            f"observation manifest {field} must be non-empty bounded text"
+        )
+    return value
+
+
+def _parse_economic_manifest(raw: bytes) -> tuple[dict, dict]:
+    """Validate the fixed manifest fields that pin and explain the JSONL file."""
+    if not raw:
+        raise EconomicLedgerError("published observation manifest is empty")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise EconomicLedgerError("published observation manifest is not UTF-8") from exc
+    try:
+        manifest = json.loads(
+            text,
+            object_pairs_hook=_json_object_without_duplicates,
+            parse_constant=_reject_nonfinite_json,
+        )
+    except EconomicLedgerError:
+        raise
+    except (json.JSONDecodeError, RecursionError) as exc:
+        raise EconomicLedgerError(
+            "published observation manifest is not valid JSON"
+        ) from exc
+    if not isinstance(manifest, dict):
+        raise EconomicLedgerError("published observation manifest must be an object")
+    missing = _ECON_MANIFEST_FIELDS - set(manifest)
+    extra = set(manifest) - _ECON_MANIFEST_FIELDS
+    if missing or extra:
+        detail = []
+        if missing:
+            detail.append("missing " + ", ".join(sorted(missing)))
+        if extra:
+            detail.append("unknown " + ", ".join(sorted(extra)))
+        raise EconomicLedgerError(
+            "observation manifest fields do not match the v1 contract: "
+            + "; ".join(detail)
+        )
+    if manifest["schema_version"] != "palimpsest-economic-observation-manifest.v1":
+        raise EconomicLedgerError("observation manifest schema_version is not supported")
+    for field in ("generated_at", "as_of"):
+        value = manifest[field]
+        _economic_timestamp(value, f"observation manifest {field}")
+        if not value.endswith("Z"):
+            raise EconomicLedgerError(
+                f"observation manifest {field} must be normalized to UTC Z"
+            )
+    for field in ("source", "method", "scope"):
+        _manifest_text(manifest[field], field)
+
+    artifact = manifest["artifact"]
+    if not isinstance(artifact, dict) or set(artifact) != _ECON_MANIFEST_ARTIFACT_FIELDS:
+        raise EconomicLedgerError(
+            "observation manifest artifact does not match the v1 contract"
+        )
+    if artifact["path"] != ECON_OBSERVATIONS_PATH.lstrip("/"):
+        raise EconomicLedgerError("observation manifest pins an unexpected artifact path")
+    if artifact["url"] != ECON_OBSERVATIONS_URL:
+        raise EconomicLedgerError("observation manifest pins an unexpected artifact URL")
+    if artifact["media_type"] != "application/x-ndjson":
+        raise EconomicLedgerError("observation manifest pins an unexpected media type")
+    for field, maximum in (
+        ("bytes", MAX_ECON_SOURCE_BYTES), ("records", MAX_ECON_SOURCE_ROWS)
+    ):
+        value = artifact[field]
+        if type(value) is not int or not 1 <= value <= maximum:
+            raise EconomicLedgerError(
+                f"observation manifest artifact.{field} is outside the server bound"
+            )
+    digest = artifact["sha256"]
+    if (
+        type(digest) is not str
+        or len(digest) != 64
+        or any(ch not in "0123456789abcdef" for ch in digest)
+    ):
+        raise EconomicLedgerError(
+            "observation manifest artifact.sha256 is not lowercase SHA-256"
+        )
+    n_observations = manifest["n_observations"]
+    if type(n_observations) is not int or n_observations != artifact["records"]:
+        raise EconomicLedgerError(
+            "observation manifest n_observations does not match artifact.records"
+        )
+
+    contract = manifest["contract"]
+    if not isinstance(contract, dict) or set(contract) != {
+        "manifest_schema", "observation_schema", "aggregate_only", "bitemporal"
+    }:
+        raise EconomicLedgerError("observation manifest contract is malformed")
+    expected_refs = {
+        "manifest_schema": (
+            "protocol/economic-observation-manifest-v1.schema.json",
+            ECON_OBSERVATION_MANIFEST_SCHEMA_URL,
+        ),
+        "observation_schema": (
+            "protocol/economic-observation-v1.schema.json",
+            ECON_OBSERVATION_SCHEMA_URL,
+        ),
+    }
+    for field, (path, url) in expected_refs.items():
+        if contract[field] != {"path": path, "url": url}:
+            raise EconomicLedgerError(
+                f"observation manifest contract.{field} is not the fixed schema"
+            )
+    if contract["aggregate_only"] is not True or contract["bitemporal"] is not True:
+        raise EconomicLedgerError(
+            "observation manifest must declare aggregate-only bitemporal rows"
+        )
+    if not isinstance(manifest["coverage"], dict):
+        raise EconomicLedgerError("observation manifest coverage must be an object")
+
+    integrity = manifest["integrity"]
+    if not isinstance(integrity, dict) or set(integrity) != _ECON_MANIFEST_INTEGRITY_FIELDS:
+        raise EconomicLedgerError("observation manifest integrity receipt is malformed")
+    if integrity != {
+        "status": "verified",
+        "exact_byte_digest": True,
+        "observation_ids_verified": True,
+        "unique_observation_ids": True,
+        "monotonic_source_revisions": True,
+    }:
+        raise EconomicLedgerError("observation manifest integrity receipt is not verified")
+
+    limitations = manifest["limitations"]
+    if (
+        not isinstance(limitations, list)
+        or not 3 <= len(limitations) <= 16
+        or any(type(item) is not str or not item.strip() or len(item) > 8192
+               for item in limitations)
+        or len(set(limitations)) != len(limitations)
+    ):
+        raise EconomicLedgerError("observation manifest limitations are malformed")
+
+    public_manifest = {
+        "url": ECON_OBSERVATIONS_MANIFEST_URL,
+        "schema_url": ECON_OBSERVATION_MANIFEST_SCHEMA_URL,
+        "retrieved_sha256": hashlib.sha256(raw).hexdigest(),
+        "generated_at": manifest["generated_at"],
+        "as_of": manifest["as_of"],
+        "scope": manifest["scope"],
+        "limitations": list(limitations),
+    }
+    return artifact, public_manifest
+
+
+def _verify_economic_manifest_receipt(raw: bytes, artifact: dict) -> None:
+    """Verify exact bytes, digest and record boundaries before parsing a row."""
+    if len(raw) != artifact["bytes"]:
+        raise EconomicLedgerError(
+            "observation ledger byte count does not match the fixed manifest"
+        )
+    if hashlib.sha256(raw).hexdigest() != artifact["sha256"]:
+        raise EconomicLedgerError(
+            "observation ledger SHA-256 does not match the fixed manifest"
+        )
+    if raw.count(b"\n") != artifact["records"]:
+        raise EconomicLedgerError(
+            "observation ledger record count does not match the fixed manifest"
+        )
+
+
+def _fetch_economic_observations() -> tuple[tuple[dict, ...], dict, dict]:
+    """Fetch the fixed manifest and serve only its exact checksum-matched ledger."""
+    global _econ_cache
+    now = time.time()
+    if _econ_cache and now - _econ_cache[0] < CACHE_TTL_S:
+        return (
+            _econ_cache[1],
+            dict(_econ_cache[2]),
+            json.loads(json.dumps(_econ_cache[3])),
+        )
+
+    manifest_raw = _fetch_fixed_economic_bytes(
+        ECON_OBSERVATIONS_MANIFEST_URL,
+        "observation manifest",
+        MAX_ECON_MANIFEST_BYTES,
+    )
+    artifact, manifest = _parse_economic_manifest(manifest_raw)
+    ledger_raw = _fetch_fixed_economic_bytes(
+        ECON_OBSERVATIONS_URL,
+        "observation ledger",
+        MAX_ECON_SOURCE_BYTES,
+    )
+    # The receipt is deliberately checked before JSON decoding. No row is
+    # considered until all exact-file checks in the fixed manifest agree.
+    _verify_economic_manifest_receipt(ledger_raw, artifact)
+    rows = _parse_economic_jsonl(ledger_raw)
+    if len(rows) != artifact["records"]:
+        raise EconomicLedgerError(
+            "validated observation count does not match the fixed manifest"
+        )
+    source = {
+        "bytes": len(ledger_raw),
+        "rows": len(rows),
+        "sha256": hashlib.sha256(ledger_raw).hexdigest(),
+        "checksum_integrity": "verified_against_fixed_manifest",
+    }
+    _econ_cache = (now, rows, source, manifest)
+    return rows, dict(source), json.loads(json.dumps(manifest))
+
+
+def _query_string(args: dict, field: str) -> str | None:
+    if field not in args:
+        return None
+    value = args[field]
+    if type(value) is not str or not value.strip() or len(value) > 256:
+        raise ValueError(f"{field} must be a non-empty string of at most 256 characters")
+    return value.strip()
+
+
+def _cursor_encode(offset: int, query_sha256: str, source_sha256: str) -> str:
+    body = json.dumps(
+        {"v": 1, "o": offset, "q": query_sha256, "s": source_sha256},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return base64.urlsafe_b64encode(body).decode().rstrip("=")
+
+
+def _cursor_decode(cursor: object) -> dict:
+    if type(cursor) is not str or not cursor or len(cursor) > 1024:
+        raise ValueError("cursor must be a non-empty opaque cursor")
+    try:
+        encoded = cursor.encode("ascii")
+        padding = b"=" * (-len(encoded) % 4)
+        raw = base64.b64decode(encoded + padding, altchars=b"-_", validate=True)
+        value = json.loads(raw)
+    except (UnicodeEncodeError, ValueError, json.JSONDecodeError) as exc:
+        raise ValueError("cursor is invalid") from exc
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"v", "o", "q", "s"}
+        or value.get("v") != 1
+        or isinstance(value.get("o"), bool)
+        or not isinstance(value.get("o"), int)
+        or value["o"] < 0
+        or type(value.get("q")) is not str
+        or type(value.get("s")) is not str
+    ):
+        raise ValueError("cursor is invalid")
+    return value
+
+
+def tool_query_economic_observations(args: dict) -> dict:
+    """Bounded point-in-time reads over the fixed public observation ledger."""
+    unknown = set(args) - _ECON_QUERY_ARGUMENTS
+    if unknown:
+        raise ValueError("unknown argument(s): " + ", ".join(sorted(unknown)))
+
+    exact = {field: _query_string(args, field) for field in _ECON_EXACT_FILTERS}
+    revision_view = _query_string(args, "revision_view") or "latest-as-of"
+    if revision_view not in {"all", "latest-as-of"}:
+        raise ValueError("revision_view must be 'all' or 'latest-as-of'")
+
+    as_of = (
+        _economic_timestamp(args["as_of"], "as_of", ValueError)
+        if "as_of" in args else None
+    )
+    period_start = (
+        _economic_date(args["period_start"], "period_start", ValueError)
+        if "period_start" in args else None
+    )
+    period_end = (
+        _economic_date(args["period_end"], "period_end", ValueError)
+        if "period_end" in args else None
+    )
+    released_from = (
+        _economic_timestamp(args["released_from"], "released_from", ValueError)
+        if "released_from" in args else None
+    )
+    released_to = (
+        _economic_timestamp(args["released_to"], "released_to", ValueError)
+        if "released_to" in args else None
+    )
+    if period_start and period_end and period_end < period_start:
+        raise ValueError("period_end cannot precede period_start")
+    if released_from and released_to and released_to < released_from:
+        raise ValueError("released_to cannot precede released_from")
+
+    limit = args.get("limit", DEFAULT_ECON_QUERY_LIMIT)
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("limit must be an integer")
+    if not 1 <= limit <= MAX_ECON_QUERY_LIMIT:
+        raise ValueError(f"limit must lie between 1 and {MAX_ECON_QUERY_LIMIT}")
+
+    normalized_query = {
+        **exact,
+        "as_of": _utc_timestamp(as_of) if as_of else None,
+        "period_start": period_start.isoformat() if period_start else None,
+        "period_end": period_end.isoformat() if period_end else None,
+        "released_from": _utc_timestamp(released_from) if released_from else None,
+        "released_to": _utc_timestamp(released_to) if released_to else None,
+        "revision_view": revision_view,
+    }
+    query_sha256 = hashlib.sha256(json.dumps(
+        normalized_query, sort_keys=True, separators=(",", ":")
+    ).encode()).hexdigest()
+
+    rows, source, manifest = _fetch_economic_observations()
+
+    selected = []
+    for row in rows:
+        if any(exact[field] is not None and row[field] != exact[field]
+               for field in _ECON_EXACT_FILTERS):
+            continue
+        row_period_start = _economic_date(row["period_start"], "period_start")
+        row_period_end = _economic_date(row["period_end"], "period_end")
+        released = _economic_timestamp(row["released_at"], "released_at")
+        collected = _economic_timestamp(row["collected_at"], "collected_at")
+        if period_start and row_period_start < period_start:
+            continue
+        if period_end and row_period_end > period_end:
+            continue
+        if released_from and released < released_from:
+            continue
+        if released_to and released > released_to:
+            continue
+        # A point-in-time query must enforce both clocks: publication before
+        # collection is not enough if Palimpsest had not observed the row yet.
+        if as_of and (released > as_of or collected > as_of):
+            continue
+        selected.append(row)
+
+    if revision_view == "latest-as-of":
+        latest = {}
+        for position, row in enumerate(selected):
+            key = tuple(row[field] for field in _ECON_VINTAGE_KEY)
+            ordering = (
+                _economic_timestamp(row["released_at"], "released_at"),
+                _economic_timestamp(row["collected_at"], "collected_at"),
+                row["revision"],
+                row["observation_id"],
+            )
+            prior = latest.get(key)
+            if prior is None or ordering > prior[0]:
+                latest[key] = (ordering, position)
+        keep = {entry[1] for entry in latest.values()}
+        selected = [row for position, row in enumerate(selected) if position in keep]
+
+    offset = 0
+    if "cursor" in args:
+        cursor = _cursor_decode(args["cursor"])
+        if cursor["q"] != query_sha256:
+            raise ValueError("cursor does not match these filters or revision_view")
+        if cursor["s"] != source["sha256"]:
+            raise ValueError("published ledger changed; restart pagination without a cursor")
+        offset = cursor["o"]
+        if offset > len(selected):
+            raise ValueError("cursor is past the end of this result set")
+
+    page = selected[offset:offset + limit]
+    next_offset = offset + len(page)
+    next_cursor = (
+        _cursor_encode(next_offset, query_sha256, source["sha256"])
+        if next_offset < len(selected) else None
+    )
+    filters = {key: value for key, value in normalized_query.items()
+               if value is not None and key != "revision_view"}
+    # Copy through JSON so neither a direct in-process caller nor later response
+    # handling can mutate the cached, checksum-validated ledger rows.
+    observations = json.loads(json.dumps(page))
+    return {
+        "source_url": ECON_OBSERVATIONS_URL,
+        "manifest_url": ECON_OBSERVATIONS_MANIFEST_URL,
+        "source": source,
+        "manifest": manifest,
+        "scope": manifest["scope"],
+        "limitations": json.loads(json.dumps(manifest["limitations"])),
+        "revision_view": revision_view,
+        "filters": filters,
+        "observations": observations,
+        "selection": {
+            "returned": len(observations),
+            "matched": len(selected),
+            "offset": offset,
+            "limit": limit,
+            "next_cursor": next_cursor,
+        },
+        "next_cursor": next_cursor,
+        "bounds": {
+            "max_source_bytes": MAX_ECON_SOURCE_BYTES,
+            "max_source_rows": MAX_ECON_SOURCE_ROWS,
+            "max_record_bytes": MAX_ECON_RECORD_BYTES,
+            "max_page_rows": MAX_ECON_QUERY_LIMIT,
+            "max_serialized_response_bytes": MAX_ECON_RESPONSE_BYTES,
+        },
+        "how_to_read_this": (
+            "Rows are returned whole: released_at and collected_at are separate "
+            "knowledge clocks, while evidence_url, raw_sha256, observation_id and "
+            "metadata preserve provenance. An as_of cutoff applies to both clocks. "
+            "The source checksum matches the separately fetched fixed manifest; "
+            "this validates file integrity, not publisher identity."
+        ),
+    }
+
+
 TOOLS = {
     "list_signals": (
-        "List every published signal Palimpsest exposes, across both of its "
+        "List every published signal Palimpsest exposes across its three "
         "applications: name, one-line description and source URL for each. "
         "Censorship and information control — OONI Great Firewall probes, "
         "Censored Planet, IODA outages, circumvention demand, takedown and "
-        "redaction pressure, and the board's own verdict. AI model evaluation — "
+        "redaction pressure, and the board's own verdict. China economics — "
+        "revision-safe observations, release clocks, pulse state and gated "
+        "forecast backtests. AI model evaluation — "
         "the tamper-evident, pre-registered eval registry (hash-chained and "
         "Merkle-rooted), its claim-by-claim assurance ceiling, evidence-bound Eval "
         "Journal, deterministic live findings, and frontier-model "
@@ -853,6 +1687,64 @@ TOOLS = {
                  "description": "optional exact priority filter for the newsroom view"}},
          "additionalProperties": False},
         tool_get_newsroom),
+    "query_economic_observations": (
+        "Query the append-only China-economic observation ledger without "
+        "downloading it whole. The source is fixed to Palimpsest's published "
+        "manifest and china-econ-observations.jsonl file: no caller-supplied URL "
+        "is accepted. Exact JSONL bytes, SHA-256 and record count must match the "
+        "manifest before any row is parsed. This is checksum-integrity validation, "
+        "not publisher authentication. "
+        "Exact dimension filters, inclusive period/release ranges, both-clock "
+        "as-of visibility, revision-safe latest-as-of selection and opaque cursor "
+        "pagination are applied under hard source-byte, source-row, page and final "
+        "serialized-response caps. The manifest URL, scope and limitations are "
+        "returned with every successful page. "
+        "Every selected row is returned whole with release/collection clocks, "
+        "evidence URL, raw hash, observation hash and method metadata intact.",
+        {"type": "object",
+         "properties": {
+             "series_id": {"type": "string", "minLength": 1, "maxLength": 256,
+                           "description": "exact series_id filter"},
+             "source_id": {"type": "string", "minLength": 1, "maxLength": 256,
+                           "description": "exact source_id filter"},
+             "geography": {"type": "string", "minLength": 1, "maxLength": 256,
+                           "description": "exact geography filter"},
+             "sector": {"type": "string", "minLength": 1, "maxLength": 256,
+                        "description": "exact sector filter"},
+             "firm_size": {"type": "string", "minLength": 1, "maxLength": 256,
+                           "description": "exact firm_size filter"},
+             "ownership": {"type": "string", "minLength": 1, "maxLength": 256,
+                           "description": "exact ownership filter"},
+             "as_of": {
+                 "type": "string", "format": "date-time",
+                 "description": "point-in-time cutoff applied to BOTH released_at "
+                                "and collected_at; omitted means the full published ledger"},
+             "period_start": {
+                 "type": "string", "format": "date",
+                 "description": "inclusive lower bound on observation period_start"},
+             "period_end": {
+                 "type": "string", "format": "date",
+                 "description": "inclusive upper bound on observation period_end"},
+             "released_from": {
+                 "type": "string", "format": "date-time",
+                 "description": "inclusive lower bound on released_at"},
+             "released_to": {
+                 "type": "string", "format": "date-time",
+                 "description": "inclusive upper bound on released_at"},
+             "revision_view": {
+                 "type": "string", "enum": ["all", "latest-as-of"],
+                 "default": "latest-as-of",
+                 "description": "all visible vintages, or the newest knowable "
+                                "revision per source/series/slice/period"},
+             "limit": {
+                 "type": "integer", "minimum": 1, "maximum": MAX_ECON_QUERY_LIMIT,
+                 "default": DEFAULT_ECON_QUERY_LIMIT},
+             "cursor": {
+                 "type": "string", "minLength": 1, "maxLength": 1024,
+                 "description": "opaque next_cursor from the preceding page"},
+         },
+         "additionalProperties": False},
+        tool_query_economic_observations),
     "whats_happening": (
         "Judge whether anything is happening in Chinese censorship right now, "
         "across every signal at once: the board's own cross-signal verdict with "
@@ -881,6 +1773,7 @@ TOOL_TITLES = {
     "list_signals": "List published signals",
     "get_signal": "One signal's full reading",
     "get_newsroom": "Evidence and reporting desks",
+    "query_economic_observations": "Query China economic observations",
     "whats_happening": "Cross-signal board verdict",
     "gfw_reading": "Great Firewall: both layers",
 }
@@ -974,6 +1867,47 @@ def _error(msg_id, code, message):
     return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}
 
 
+def _economic_tool_error(exc: EconomicQueryError) -> dict:
+    checksum_state = (
+        "failed" if isinstance(exc, EconomicLedgerError) else "not_completed"
+    )
+    message = str(exc)
+    if len(message) > 2000:
+        message = message[:1997] + "..."
+    body = {
+        "error": {
+            "type": exc.error_type,
+            "stage": exc.stage,
+            "message": message,
+            "retryable": exc.retryable,
+        },
+        "source_url": ECON_OBSERVATIONS_URL,
+        "manifest_url": ECON_OBSERVATIONS_MANIFEST_URL,
+        "checksum_integrity": checksum_state,
+        "no_partial_rows": True,
+        "note": (
+            "The fixed manifest and ledger were not validated into a complete "
+            "bounded response; no source rows or replacement values are served. "
+            "Checksum validation detects byte mismatch but does not authenticate "
+            "publisher identity."
+        ),
+    }
+    return {
+        "content": [{
+            "type": "text",
+            "text": json.dumps(body, ensure_ascii=False, separators=(",", ":")),
+        }],
+        "structuredContent": body,
+        "isError": True,
+    }
+
+
+def _serialized_json_size(value) -> int:
+    # Match Handler._send byte-for-byte so this bounds the response actually
+    # written to the socket, including ASCII escaping and default separators.
+    return len(json.dumps(value).encode("utf-8"))
+
+
 def dispatch(msg):
     if (not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0"
             or not isinstance(msg.get("method"), str)):
@@ -991,7 +1925,7 @@ def dispatch(msg):
             "capabilities": {"tools": {"listChanged": False},
                              "prompts": {"listChanged": False}},
             "serverInfo": {"name": SERVER_NAME,
-                           "title": "Palimpsest — censorship and model-eval observatory",
+                           "title": "Palimpsest — censorship, China economy and model evals",
                            "version": SERVER_VERSION,
                            "websiteUrl": "https://palimpsest.info"},
             "instructions": SERVER_INSTRUCTIONS,
@@ -1015,15 +1949,27 @@ def dispatch(msg):
             args = {}
         try:
             out = TOOLS[name][2](args)
+        except EconomicQueryError as exc:
+            return _result(msg_id, _economic_tool_error(exc))
         except ValueError as exc:
             return _error(msg_id, INVALID_PARAMS, str(exc))
         except Exception as exc:
             return _result(msg_id, {"content": [{"type": "text",
                                                  "text": f"tool failed: {exc}"}],
                                     "isError": True})
-        return _result(msg_id, {
+        response = _result(msg_id, {
             "content": [{"type": "text", "text": json.dumps(out, ensure_ascii=False)}],
             "structuredContent": out, "isError": False})
+        if (
+            name == "query_economic_observations"
+            and _serialized_json_size(response) > MAX_ECON_RESPONSE_BYTES
+        ):
+            exc = EconomicResponseTooLargeError(
+                "the complete MCP query response exceeds the serialized-byte cap; "
+                "request a smaller page or narrower filters"
+            )
+            return _result(msg_id, _economic_tool_error(exc))
+        return response
     if method in ("resources/list",):
         return _result(msg_id, {"resources": []})
     if method == "prompts/list":

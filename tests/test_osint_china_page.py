@@ -123,7 +123,14 @@ def test_service_worker_caches_only_successful_expected_content_types():
     shell_start = worker.index("const SHELL = [")
     shell = worker[shell_start:worker.index("];", shell_start)]
     assert '"/readings/osint-china-latest.json"' not in shell
+    assert '"/readings/china-index-latest.json"' not in shell
+    assert '"/readings/china-econ-observations.jsonl"' not in shell
+    assert '"/china/"' in shell
+    assert '"/assets/china.css"' in shell
+    assert '"/assets/china.js"' in shell
     assert 'if (url.pathname === LIVE_ROLLUP)' in worker
+    assert '"/readings/china-econ-observations.jsonl"' in worker
+    assert '"/readings/china-econ-forecast-latest.json"' in worker
     assert 'e.respondWith(fetch(req, { cache: "no-store" }))' in worker
 
 
