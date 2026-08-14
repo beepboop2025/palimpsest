@@ -252,7 +252,7 @@ def test_mobile_menu_resets_when_the_viewport_becomes_desktop():
 
 
 def test_china_flyout_is_active_for_every_generated_china_route():
-    china = next(item for item in site_nav.NAV if item["label"] == "Observatory")
+    china = next(item for item in site_nav.NAV if item["label"] == "China")
 
     assert site_nav._within(china, "/china/")
     assert site_nav._within(china, "/china/sources/nbs-national-data/")

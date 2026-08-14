@@ -96,3 +96,42 @@ def test_runtime_state_mounts_can_live_outside_the_git_checkout():
             "PALIMPSEST_READINGS_HOST_PATH" in item
             for item in services[name]["volumes"]
         )
+
+
+def test_every_app_container_sees_the_atomic_root_owned_osint_directory():
+    document = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+    services = document["services"]
+    release_mode = (
+        ROOT / "ops" / "osint-sync" / "release-mode"
+    ).read_text(encoding="utf-8").strip()
+    assert release_mode in {"legacy-mirror", "protected-only"}
+    authority_mount = (
+        "${PALIMPSEST_OSINT_AUTHORITY_HOST_PATH:-"
+        "/var/lib/palimpsest-public-osint-sync/authoritative}:"
+        "/app/osint-authority:ro"
+    )
+
+    for name in (
+        "migrate",
+        "worker",
+        "beat",
+        "worker-collectors",
+        "worker-warehouse",
+        "worker-velocity",
+        "api",
+    ):
+        if release_mode == "protected-only":
+            assert authority_mount in services[name]["volumes"]
+            assert services[name]["environment"]["PALIMPSEST_OSINT_PATH"] == (
+                "/app/osint-authority/osint-china-latest.json"
+            )
+            assert services[name]["environment"][
+                "PALIMPSEST_READINGS_LEDGER_PATH"
+            ] == "/app/osint-authority/readings-ledger.jsonl"
+        else:
+            assert authority_mount not in services[name]["volumes"]
+            assert "PALIMPSEST_OSINT_PATH" not in services[name]["environment"]
+            assert (
+                "PALIMPSEST_READINGS_LEDGER_PATH"
+                not in services[name]["environment"]
+            )

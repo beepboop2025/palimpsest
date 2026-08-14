@@ -68,12 +68,11 @@ CONTRACT = {
                "over that declared checklist, so one top-level denominator would duplicate it."),
     "eval-journal":         _d("generated_at", ["source", "method", "scope"],
                                "n_articles"),
-    "eval-articles":        _d(
-        "generated_at", ["source", "scope", "publication_policy"], "n_articles"
-    ),
     "gfi-transcripts":      _d(
-        "generated_at", ["protocol", "probe_commitment", "verify_cmd"], "n_samples"
-    ),
+        "generated_at", ["protocol", "evaluation_protocol_sha256", "verify_cmd"],
+        reason="an evidence corpus rather than an aggregate count: every retained model "
+               "response and transport abstention is enumerated under responses, while "
+               "the protocol and verification command bind the complete matrix."),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
@@ -391,7 +390,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v15"' in worker
+    assert 'const CACHE = "palimpsest-v14"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
     assert (

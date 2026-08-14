@@ -114,7 +114,11 @@ jobs:
             tests/test_cadence_matches_crons.py \
             tests/test_method_version_guard.py \
             tests/test_eval_assurance.py \
-            tests/test_eval_journal.py
+            tests/test_eval_journal.py \
+            tests/test_econ_ledger.py::test_published_schema_accepts_every_current_ledger_row \
+            tests/test_china_econ_manifest.py::test_manifest_schema_accepts_generated_public_and_fixture_documents \
+            tests/test_china_econ_forecast_publish.py::test_strict_schema_accepts_the_public_artifact \
+            tests/test_china_site.py::test_json_schema_is_valid_and_validates_the_index
 
       - name: Check the committed deterministic machine-newsroom graph
         run: |

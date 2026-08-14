@@ -22,25 +22,71 @@ timer_name="palimpsest-node-offsite-backup.timer"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
   GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 
-for command_name in chmod chown cmp find git install ln mktemp mv readlink rm \
+for command_name in cat chmod chown cmp find grep install ln mktemp mv readlink rm \
   docker sha256sum sort stat sync systemctl systemd-analyze; do
   command -v "$command_name" >/dev/null 2>&1 \
     || die "required command is missing: $command_name"
 done
 
-if ! revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    rev-parse --verify HEAD 2>/dev/null
-)"; then
-  die "cannot resolve the checked-out Git revision"
+[[ -x /usr/bin/git && ! -L /usr/bin/git ]] \
+  || die "the pinned Git executable is missing or unsafe"
+[[ -d "$repo_root/.git" && ! -L "$repo_root/.git" \
+    && -d "$repo_root/.git/objects" && ! -L "$repo_root/.git/objects" \
+    && -f "$repo_root/.git/index" && ! -L "$repo_root/.git/index" ]] \
+  || die "the deployment checkout Git metadata is unsafe"
+for forbidden_path in \
+    "$repo_root/.git/info/grafts" \
+    "$repo_root/.git/objects/info/alternates"; do
+  [[ ! -e "$forbidden_path" && ! -L "$forbidden_path" ]] \
+    || die "Git grafts or object alternates are forbidden"
+done
+if [[ -e "$repo_root/.git/refs/replace" \
+    || -L "$repo_root/.git/refs/replace" ]]; then
+  [[ -d "$repo_root/.git/refs/replace" \
+      && ! -L "$repo_root/.git/refs/replace" ]] \
+    || die "Git replacement refs path is unsafe"
+  [[ -z "$(find "$repo_root/.git/refs/replace" \
+      -mindepth 1 -print -quit)" ]] \
+    || die "Git replacement refs are forbidden"
 fi
-if ! checkout_status="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    status --porcelain=v1 --untracked-files=all 2>/dev/null
-)"; then
-  die "cannot verify that the Git checkout is clean"
+[[ ! -L "$repo_root/.git/packed-refs" ]] \
+  || die "packed Git refs path is unsafe"
+if [[ -f "$repo_root/.git/packed-refs" ]] \
+    && grep -Eq '[[:space:]]refs/replace/' "$repo_root/.git/packed-refs"; then
+  die "packed Git replacement refs are forbidden"
 fi
+
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
+export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+audit_git="$(mktemp -d /run/palimpsest-node-offsite-git.XXXXXX)"
+chmod 0700 "$audit_git"
+cleanup_audit_git() {
+  if [[ -n "${audit_git:-}" && -d "$audit_git" ]]; then
+    rm -rf -- "$audit_git"
+  fi
+}
+trap cleanup_audit_git EXIT
+/usr/bin/git --no-replace-objects init --bare --quiet "$audit_git" \
+  || die "cannot initialize the isolated Git audit view"
+install -o root -g root -m 0600 "$repo_root/.git/index" "$audit_git/index"
+export GIT_ALTERNATE_OBJECT_DIRECTORIES="$repo_root/.git/objects"
+safe_git() {
+  /usr/bin/git --no-replace-objects --git-dir="$audit_git" \
+    --work-tree="$repo_root" -c core.bare=false -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c credential.helper= -c protocol.file.allow=never "$@"
+}
+
+revision="$(cat "$repo_root/.git/HEAD")" \
+  || die "cannot read the detached Git revision"
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || die "Git returned a malformed revision"
+printf '%s\n' "$revision" >"$audit_git/HEAD"
+if ! checkout_status="$(
+  safe_git status --porcelain=v1 --untracked-files=all 2>/dev/null
+)"; then
+  die "cannot verify the Git checkout through the isolated audit view"
+fi
 [[ -z "$checkout_status" ]] || die "checkout has modified or untracked files"
 
 [[ -f "$receipt_path" && ! -L "$receipt_path" ]] \
@@ -58,11 +104,16 @@ cmp -s "$receipt_path" <(printf '%s\n' "$revision") \
 # A stopped recurring job makes the current symlink switch atomic from the
 # runner's point of view. Unknown systemd states fail closed.
 for unit_name in "$timer_name" "$service_name"; do
-  if ! unit_state="$(
-    systemctl show --property=ActiveState --value "$unit_name" 2>/dev/null
-  )"; then
-    die "cannot verify systemd state for $unit_name"
-  fi
+  unit_enablement="$(systemctl is-enabled "$unit_name" 2>/dev/null || true)"
+  case "$unit_enablement" in
+    masked|masked-runtime) die "$unit_name is masked" ;;
+  esac
+  load_state="$(systemctl show --property=LoadState --value \
+    "$unit_name" 2>/dev/null || true)"
+  [[ -z "$load_state" || "$load_state" == "not-found" ]] && continue
+  unit_state="$(systemctl show --property=ActiveState --value \
+    "$unit_name" 2>/dev/null)" \
+    || die "cannot verify systemd state for $unit_name"
   case "$unit_state" in
     inactive|failed) ;;
     active|activating|deactivating|reloading)
@@ -73,7 +124,8 @@ for unit_name in "$timer_name" "$service_name"; do
 done
 timer_enablement="$(systemctl is-enabled "$timer_name" 2>/dev/null || true)"
 case "$timer_enablement" in
-  ""|disabled|masked|not-found) ;;
+  ""|disabled|not-found) ;;
+  masked|masked-runtime) die "$timer_name is masked" ;;
   enabled|enabled-runtime|linked|linked-runtime|alias|indirect|generated|transient)
     die "$timer_name must be disabled before installation"
     ;;
@@ -100,8 +152,7 @@ verify_git_blob() {
   local repository_path="$1"
   local installed_path="$2"
 
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    show "$revision:$repository_path" \
+  safe_git show "$revision:$repository_path" \
     | cmp -s - "$installed_path" \
     || die "installed bytes do not match Git HEAD: $repository_path"
 }
@@ -125,6 +176,7 @@ cleanup() {
   if [[ -L "${link_tmp:-}" ]]; then
     rm -- "$link_tmp"
   fi
+  cleanup_audit_git
 }
 trap cleanup EXIT
 
@@ -166,13 +218,9 @@ sync -f "$bundle_tmp"
 
 # Re-check after copying. A checkout mutation during staging must never become
 # the root-owned version selected by `current`.
-if ! final_revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    rev-parse --verify HEAD 2>/dev/null
-)" \
+if ! final_revision="$(cat "$repo_root/.git/HEAD")" \
   || ! checkout_status="$(
-    git -c "safe.directory=$repo_root" -C "$repo_root" \
-      status --porcelain=v1 --untracked-files=all 2>/dev/null
+    safe_git status --porcelain=v1 --untracked-files=all 2>/dev/null
   )"; then
   die "cannot re-verify the checkout after staging the bundle"
 fi

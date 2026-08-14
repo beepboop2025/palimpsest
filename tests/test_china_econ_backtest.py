@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from core import economic_forecast as forecast_engine
 from core.econ_ledger import append_vintages
 from core.econ_observation import EconomicObservation
 from core.economic_forecast import forecast_values, score_predictions
@@ -160,11 +161,6 @@ def test_simple_baselines_and_scoring_are_transparent():
     assert random_walk["point"] == 4.0
     assert seasonal["point"] == 2.0
     assert mean_delta["point"] == 5.5
-    for prediction in (random_walk, seasonal, mean_delta):
-        for field in ("point", "lower", "upper"):
-            value = prediction[field]
-            if value is not None:
-                assert value == round(value, 12)
     scores = score_predictions([{
         "actual": 6.0,
         "point": 5.0,
@@ -177,6 +173,34 @@ def test_simple_baselines_and_scoring_are_transparent():
     assert scores["directional_accuracy"] == 1.0
     assert scores["intervals"]["empirical_coverage"] == 0.0
     assert scores["intervals"]["mean_wis"] > scores["mae"]
+
+
+def test_interval_bounds_are_stable_across_normal_distribution_implementations(
+    monkeypatch,
+):
+    """ARM64 fused arithmetic and x86_64 must publish identical JSON bytes."""
+
+    spec = _model("rw", "random_walk")
+    payloads = []
+    prediction = None
+    for z_value in (
+        float.fromhex("0x1.4813c36e26d33p+0"),
+        float.fromhex("0x1.4813c36e26d34p+0"),
+    ):
+        monkeypatch.setattr(
+            forecast_engine.NormalDist,
+            "inv_cdf",
+            lambda self, probability, result=z_value: result,
+        )
+        prediction = forecast_values(spec, [0.0, 0.0, 0.0, 0.01])
+        payloads.append(forecast_engine.canonical_json_bytes(prediction))
+
+    assert payloads[0] == payloads[1]
+    assert prediction is not None
+    assert (prediction["lower"], prediction["upper"]) == (
+        0.002600958587,
+        0.017399041413,
+    )
 
 
 def test_fold_enforces_collection_clock_and_scores_outcome_vintages_separately(tmp_path):

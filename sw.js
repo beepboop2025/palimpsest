@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v15";
+const CACHE = "palimpsest-v14";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
@@ -39,8 +39,6 @@ const LIVE_JOURNAL_SYNDICATION = new Set([
 ]);
 const SHELL = [
   "/",
-  "/evals/",
-  "/journal/",
   "/china/",
   "/osint-china.html",
   "/dashboards/ddti_observatory.html",
@@ -52,13 +50,8 @@ const SHELL = [
   "/dashboards/assets/tikto.css",
   "/assets/shell.css",
   "/assets/shell.js",
-  "/assets/eval-journal.css",
-  "/assets/home.css",
-  "/assets/home.js",
-  "/assets/journal.css",
   "/assets/china.css",
   "/assets/china.js",
-  "/assets/network-relay.js",
   "/brand/palimpsest-icon.svg",
   "/brand/palimpsest-icon-512.png",
 ];

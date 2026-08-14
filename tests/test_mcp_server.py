@@ -1109,6 +1109,59 @@ def test_the_served_version_and_the_published_manifest_agree():
     with open(os.path.join(root, "server.json"), encoding="utf-8") as fh:
         manifest = json.load(fh)
     assert manifest["version"] == mcp.SERVER_VERSION
+    assert 1 <= len(manifest["description"]) <= 100
+
+
+def test_economic_query_version_and_discovery_surfaces_agree():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(root, "openapi.json"), encoding="utf-8") as fh:
+        openapi = json.load(fh)
+    with open(os.path.join(root, "product-card.json"), encoding="utf-8") as fh:
+        card = json.load(fh)
+    developers = open(
+        os.path.join(root, "developers.html"), encoding="utf-8"
+    ).read()
+    docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
+    agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
+
+    assert mcp.SERVER_VERSION == "1.8.0"
+    assert openapi["info"]["version"] == mcp.SERVER_VERSION
+    assert "/readings/china-index-latest.json" in openapi["paths"]
+    assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
+    assert "/readings/china-econ-observations-latest.json" in openapi["paths"]
+    assert "/readings/china-econ-observations.jsonl" in openapi["paths"]
+    assert openapi["components"]["schemas"]["ChinaEconomicObservation"] == {
+        "$ref": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"
+    }
+    assert openapi["components"]["schemas"]["ChinaIndex"] == {
+        "$ref": "https://palimpsest.info/protocol/china-index-v1.schema.json"
+    }
+    assert openapi["components"]["schemas"]["ChinaEconomicForecast"] == {
+        "$ref": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    }
+    assert openapi["components"]["schemas"][
+        "ChinaEconomicObservationManifest"
+    ] == {
+        "$ref": (
+            "https://palimpsest.info/protocol/"
+            "economic-observation-manifest-v1.schema.json"
+        )
+    }
+    assert "All six hosted MCP tools" in card["access"]["authentication"]
+    assert card["access"]["mcp_version"] == mcp.SERVER_VERSION
+    assert card["evidence"]["china_observatory_index_schema"] == (
+        "https://palimpsest.info/protocol/china-index-v1.schema.json"
+    )
+    assert card["evidence"]["china_economic_forecast_schema"] == (
+        "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    )
+    for label, text in (
+        ("developer page", developers), ("MCP docs", docs), ("llms", agents)
+    ):
+        assert "query_economic_observations" in text, label
+        assert "china-econ-forecast-latest.json" in text, label
+    assert "The six tools" in developers
+    assert "The six tools" in docs
 
 
 def test_economic_query_version_and_discovery_surfaces_agree():

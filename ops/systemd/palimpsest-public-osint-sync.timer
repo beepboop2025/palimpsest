@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh host-local OSINT before private analysis and context windows
+
+[Timer]
+OnCalendar=*:08,38
+RandomizedDelaySec=90s
+FixedRandomDelay=true
+AccuracySec=30s
+Persistent=true
+Unit=palimpsest-public-osint-sync.service
+
+[Install]
+WantedBy=timers.target

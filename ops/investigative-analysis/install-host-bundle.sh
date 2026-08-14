@@ -9,7 +9,7 @@ die() {
 }
 
 [[ "$EUID" -eq 0 ]] || die "run this installer as root"
-(( $# <= 1 )) || die "usage: $0 [--ensure-identity|image-reference]"
+(( $# <= 1 )) || die "usage: $0 [--ensure-identity|--certify-image|image-reference]"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "$script_dir/../.." && pwd -P)"
@@ -18,6 +18,8 @@ image_ref="palimpsest/app:local"
 if (( $# == 1 )); then
   if [[ "$1" == "--ensure-identity" ]]; then
     mode="identity-only"
+  elif [[ "$1" == "--certify-image" ]]; then
+    mode="certify-only"
   else
     image_ref="$1"
   fi
@@ -48,13 +50,20 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
 unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH
 export DOCKER_HOST="unix:///var/run/docker.sock"
 
-for command_name in getent git groupadd groupdel passwd readlink useradd; do
+for command_name in cat chmod find getent grep groupadd groupdel install mktemp \
+    passwd readlink rm useradd; do
   command -v "$command_name" >/dev/null 2>&1 \
     || die "required command is missing: $command_name"
 done
-if [[ "$mode" == "install" ]]; then
+if [[ "$mode" != "identity-only" ]]; then
   for command_name in chmod chown cmp docker find install ln mktemp mv rm \
-    sha256sum stat sync systemctl systemd-analyze; do
+    sha256sum stat sync; do
+    command -v "$command_name" >/dev/null 2>&1 \
+      || die "required command is missing: $command_name"
+  done
+fi
+if [[ "$mode" == "install" ]]; then
+  for command_name in systemctl systemd-analyze; do
     command -v "$command_name" >/dev/null 2>&1 \
       || die "required command is missing: $command_name"
   done
@@ -62,6 +71,56 @@ fi
 
 nologin_shell="$(command -v nologin)" \
   || die "required command is missing: nologin"
+
+[[ -x /usr/bin/git && ! -L /usr/bin/git ]] \
+  || die "the pinned Git executable is missing or unsafe"
+[[ -d "$repo_root/.git" && ! -L "$repo_root/.git" \
+    && -d "$repo_root/.git/objects" && ! -L "$repo_root/.git/objects" \
+    && -f "$repo_root/.git/index" && ! -L "$repo_root/.git/index" ]] \
+  || die "the deployment checkout Git metadata is unsafe"
+for forbidden_path in \
+    "$repo_root/.git/info/grafts" \
+    "$repo_root/.git/objects/info/alternates"; do
+  [[ ! -e "$forbidden_path" && ! -L "$forbidden_path" ]] \
+    || die "Git grafts or object alternates are forbidden"
+done
+if [[ -e "$repo_root/.git/refs/replace" \
+    || -L "$repo_root/.git/refs/replace" ]]; then
+  [[ -d "$repo_root/.git/refs/replace" \
+      && ! -L "$repo_root/.git/refs/replace" ]] \
+    || die "Git replacement refs path is unsafe"
+  [[ -z "$(find "$repo_root/.git/refs/replace" \
+      -mindepth 1 -print -quit)" ]] \
+    || die "Git replacement refs are forbidden"
+fi
+[[ ! -L "$repo_root/.git/packed-refs" ]] \
+  || die "packed Git refs path is unsafe"
+if [[ -f "$repo_root/.git/packed-refs" ]] \
+    && grep -Eq '[[:space:]]refs/replace/' "$repo_root/.git/packed-refs"; then
+  die "packed Git replacement refs are forbidden"
+fi
+
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
+export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+audit_git="$(mktemp -d /run/palimpsest-analysis-git.XXXXXX)"
+chmod 0700 "$audit_git"
+cleanup_audit_git() {
+  if [[ -n "${audit_git:-}" && -d "$audit_git" ]]; then
+    rm -rf -- "$audit_git"
+  fi
+}
+trap cleanup_audit_git EXIT
+/usr/bin/git --no-replace-objects init --bare --quiet "$audit_git" \
+  || die "cannot initialize the isolated Git audit view"
+install -o root -g root -m 0600 "$repo_root/.git/index" "$audit_git/index"
+export GIT_ALTERNATE_OBJECT_DIRECTORIES="$repo_root/.git/objects"
+safe_git() {
+  /usr/bin/git --no-replace-objects --git-dir="$audit_git" \
+    --work-tree="$repo_root" -c core.bare=false -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c credential.helper= -c protocol.file.allow=never "$@"
+}
 
 enumerate_identity_record() {
   local database="$1"
@@ -233,19 +292,15 @@ normalize_analysis_storage() {
     || die "analysis delivery root ownership or mode is unsafe"
 }
 
-if ! revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    rev-parse --verify HEAD 2>/dev/null
-)"; then
-  die "cannot resolve the checked-out Git revision"
-fi
-if ! checkout_status="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    status --porcelain=v1 --untracked-files=all 2>/dev/null
-)"; then
-  die "cannot verify that the Git checkout is clean"
-fi
+revision="$(cat "$repo_root/.git/HEAD")" \
+  || die "cannot read the detached Git revision"
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || die "Git returned a malformed revision"
+printf '%s\n' "$revision" >"$audit_git/HEAD"
+if ! checkout_status="$(
+  safe_git status --porcelain=v1 --untracked-files=all 2>/dev/null
+)"; then
+  die "cannot verify the Git checkout through the isolated audit view"
+fi
 [[ -z "$checkout_status" ]] || die "checkout has modified or untracked files"
 
 if [[ "$mode" == "identity-only" ]]; then
@@ -258,8 +313,7 @@ fi
 verify_git_blob() {
   local repository_path="$1"
   local installed_path="$2"
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    show "$revision:$repository_path" \
+  safe_git show "$revision:$repository_path" \
     | cmp -s - "$installed_path" \
     || die "installed bytes do not match Git HEAD: $repository_path"
 }
@@ -268,12 +322,18 @@ verify_git_blob() {
 # inactive oneshot prevents the current symlink and receipt changing underneath
 # a run.  Unknown/systemd-error states fail closed instead of being treated as
 # inactive.
+if [[ "$mode" == "install" ]]; then
 for unit_name in "$timer_name" "$service_name" "$broker_socket_name"; do
-  if ! unit_state="$(
-    systemctl show --property=ActiveState --value "$unit_name" 2>/dev/null
-  )"; then
-    die "cannot verify systemd state for $unit_name"
-  fi
+  unit_enablement="$(systemctl is-enabled "$unit_name" 2>/dev/null || true)"
+  case "$unit_enablement" in
+    masked|masked-runtime) die "$unit_name is masked" ;;
+  esac
+  load_state="$(systemctl show --property=LoadState --value \
+    "$unit_name" 2>/dev/null || true)"
+  [[ -z "$load_state" || "$load_state" == "not-found" ]] && continue
+  unit_state="$(systemctl show --property=ActiveState --value \
+    "$unit_name" 2>/dev/null)" \
+    || die "cannot verify systemd state for $unit_name"
   case "$unit_state" in
     inactive|failed) ;;
     active|activating|deactivating|reloading)
@@ -282,12 +342,19 @@ for unit_name in "$timer_name" "$service_name" "$broker_socket_name"; do
     *) die "unexpected systemd state for $unit_name: $unit_state" ;;
   esac
 done
+unit_enablement="$(
+  systemctl is-enabled "$broker_service_name" 2>/dev/null || true
+)"
+case "$unit_enablement" in
+  masked|masked-runtime) die "$broker_service_name is masked" ;;
+esac
 active_broker_instances="$(
   systemctl list-units --no-legend --plain --state=active,activating,deactivating \
     'palimpsest-investigative-broker@*.service' 2>/dev/null || true
 )"
 [[ -z "$active_broker_instances" ]] \
   || die "an investigative broker request is still active"
+fi
 
 if ! image_metadata="$(
   docker image inspect --format \
@@ -304,13 +371,39 @@ read -r image_revision image_id extra <<<"$image_metadata"
   || die "image inspection returned a malformed immutable ID"
 
 ensure_runtime_identity
+if [[ "$mode" == "certify-only" ]]; then
+  install -d -o root -g root -m 0755 "$receipt_dir"
+  receipt_tmp="$(mktemp "$receipt_dir/.deployed-commit.XXXXXX")"
+  # Invoked indirectly by the EXIT trap below.
+  # shellcheck disable=SC2329
+  cleanup_certify() {
+    rm -f -- "${receipt_tmp:-}"
+    cleanup_audit_git
+  }
+  trap cleanup_certify EXIT
+  printf '%s\n' "$revision" >"$receipt_tmp"
+  chown root:root "$receipt_tmp"
+  chmod 0644 "$receipt_tmp"
+  sync -f "$receipt_tmp"
+  mv -Tf "$receipt_tmp" "$receipt_path"
+  receipt_tmp=""
+  [[ -f "$receipt_path" && ! -L "$receipt_path" \
+      && "$(stat -c '%u:%g:%a:%h' "$receipt_path")" == "0:0:644:1" ]] \
+    || die "deployed receipt did not converge safely"
+  [[ "$(cat "$receipt_path")" == "$revision" ]] \
+    || die "deployed receipt does not match the certified image"
+  sync -f "$receipt_dir"
+  printf 'certified Palimpsest image %s (%s)\n' "$revision" "$image_id"
+  exit 0
+fi
 normalize_analysis_storage
 
 systemd-analyze verify \
   "$repo_root/ops/systemd/$service_name" \
   "$repo_root/ops/systemd/$timer_name" \
   "$repo_root/ops/systemd/$broker_socket_name" \
-  "$repo_root/ops/systemd/$broker_service_name"
+  "$repo_root/ops/systemd/$broker_service_name" \
+  "$repo_root/ops/systemd/palimpsest-public-osint-sync.service"
 
 install -d -o root -g root -m 0755 "$bundle_root" "$receipt_dir"
 bundle_tmp="$(mktemp -d "$bundle_root/.bundle-$revision.XXXXXX")"
@@ -329,6 +422,7 @@ cleanup() {
   if [[ -n "${receipt_tmp:-}" && -f "$receipt_tmp" ]]; then
     rm -- "$receipt_tmp"
   fi
+  cleanup_audit_git
 }
 trap cleanup EXIT
 
@@ -395,13 +489,9 @@ chmod 0444 "$bundle_tmp/MANIFEST.sha256"
 sync -f "$bundle_tmp"
 
 # Re-check after copying so a concurrent checkout mutation cannot be certified.
-if ! final_revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    rev-parse --verify HEAD 2>/dev/null
-)" \
+if ! final_revision="$(cat "$repo_root/.git/HEAD")" \
   || ! checkout_status="$(
-    git -c "safe.directory=$repo_root" -C "$repo_root" \
-      status --porcelain=v1 --untracked-files=all 2>/dev/null
+    safe_git status --porcelain=v1 --untracked-files=all 2>/dev/null
   )"; then
   die "cannot re-verify the checkout after staging the bundle"
 fi

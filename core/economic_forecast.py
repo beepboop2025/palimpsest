@@ -95,8 +95,8 @@ def _interval(
     z_value = NormalDist().inv_cdf((1.0 + coverage) / 2.0)
     half_width = z_value * scale
     return (
-        point - half_width,
-        point + half_width,
+        _rounded(point - half_width),
+        _rounded(point + half_width),
         coverage,
         "normal_interval_from_training_residual_standard_deviation",
     )
@@ -197,13 +197,9 @@ def forecast_values(
         point, residuals, interval_coverage, minimum_residuals
     )
     return {
-        # CPython and libm can differ below the meaningful precision of these
-        # baseline calculations. Quantize computed predictions at the public
-        # model boundary so Linux CI, macOS publication, and offline rebuilds
-        # produce the same JSON bytes and hashes.
-        "point": _rounded(point),
-        "lower": _rounded(lower) if lower is not None else None,
-        "upper": _rounded(upper) if upper is not None else None,
+        "point": point,
+        "lower": lower,
+        "upper": upper,
         "interval_coverage": nominal,
         "interval_method": interval_method,
         "origin_value": origin,
