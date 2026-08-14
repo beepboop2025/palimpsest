@@ -567,6 +567,11 @@ a.ps-p3:hover { box-shadow: var(--ps-lift-3); }
   background: transparent; color: var(--tk-text-1, #e2e8f0); border-color: var(--ps-edge-3);
 }
 .ps-btn--ghost:hover { border-color: var(--tk-live, #06d6e0); color: var(--tk-live, #06d6e0); filter: none; }
+.ps-btn--telegram {
+  background: rgba(6, 214, 224, .1); color: var(--tk-live, #06d6e0);
+  border-color: color-mix(in srgb, var(--tk-live, #06d6e0) 44%, transparent);
+}
+.ps-btn--telegram:hover { background: rgba(6, 214, 224, .17); filter: none; }
 
 /* ---- coarse pointers get room, mice keep the density --------------------
    A finger is about 9mm wide and lands on what it covers; a cursor lands on
