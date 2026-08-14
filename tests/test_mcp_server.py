@@ -1094,8 +1094,8 @@ def test_economic_query_version_and_discovery_surfaces_agree():
     docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
     agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
 
-    assert mcp.SERVER_VERSION == "1.6.0"
-    assert openapi["info"]["version"] == "1.5.0"
+    assert mcp.SERVER_VERSION == "1.8.0"
+    assert openapi["info"]["version"] == "1.8.0"
     assert "/readings/china-index-latest.json" in openapi["paths"]
     assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
     assert "/readings/china-econ-observations-latest.json" in openapi["paths"]

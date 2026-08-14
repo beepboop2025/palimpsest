@@ -30,7 +30,7 @@ const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+
 const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;
 const LIVE_EVENT_ANALYSIS = /^\/news\/wire\/event-[0-9a-f]{24}\/analysis\.json$/;
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
-const LIVE_EVAL_SYNDICATION = new Set([
+const LIVE_JOURNAL_SYNDICATION = new Set([
   "/evals/feed.json",
   "/evals/feed.xml",
   "/journal/feed.json",
@@ -40,6 +40,7 @@ const SHELL = [
   "/",
   "/evals/",
   "/journal/",
+  "/china/",
   "/osint-china.html",
   "/dashboards/ddti_observatory.html",
   "/dashboards/ddti_dashboard.html",
@@ -54,6 +55,8 @@ const SHELL = [
   "/assets/home.css",
   "/assets/home.js",
   "/assets/journal.css",
+  "/assets/china.css",
+  "/assets/china.js",
   "/assets/network-relay.js",
   "/brand/palimpsest-icon.svg",
   "/brand/palimpsest-icon-512.png",
@@ -163,7 +166,7 @@ self.addEventListener("fetch", (e) => {
   // Both eval publication planes expose mutable edition heads. Their article
   // revisions may be cached, but feeds must never hide a failed refresh behind
   // an older edition.
-  if (LIVE_EVAL_SYNDICATION.has(url.pathname)) {
+  if (LIVE_JOURNAL_SYNDICATION.has(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }
