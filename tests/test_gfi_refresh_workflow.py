@@ -34,14 +34,36 @@ def test_gfi_publication_carries_full_evidence_and_machine_assurance():
 
 def test_every_gfi_publication_path_runs_the_universal_semantic_contract():
     text = WORKFLOW.read_text(encoding="utf-8")
+    candidate = text[text.index("Create the measured candidate"):]
+    candidate = candidate[:candidate.index("Attempt the base-locked publication")]
+    retry = text[text.index("Reseal the measured bytes after a publication race"):]
 
     assert "python -m pip install --quiet pytest" in text
     for contract in (
+        "tests/test_osint_china.py",
+        "tests/test_evidence_mesh.py",
+        "tests/test_data_catalog.py",
+        "tests/test_seal_readings.py",
         "tests/test_publication_contract.py",
         "tests/test_eval_assurance.py",
         "tests/test_eval_journal.py",
     ):
         assert text.count(contract) == 2
+
+    for output in (
+        "readings/osint-china-latest.json",
+        "readings/investigations-latest.json",
+        "readings/corroboration-latest.json",
+        "readings/network-rounds-latest.json",
+        "readings/editorial-readiness-latest.json",
+        "readings/evidence-mesh-latest.json",
+        "readings/machine-investigations-latest.json",
+        "readings/newsroom-latest.json",
+        "readings/readings-ledger.jsonl",
+        "readings/catalog.json",
+    ):
+        assert output in candidate
+        assert output in retry
 
 
 def test_push_race_reseals_responses_without_requerying_models():

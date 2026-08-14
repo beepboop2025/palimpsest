@@ -104,6 +104,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
             "eval-assurance-latest.json",
             "eval-journal-latest.json",
             "eval-registry-latest.json",
+            "gfi-transcripts-latest.json",
             "investigations-latest.json",
             "machine-investigations-latest.json",
         "network-rounds-latest.json",
