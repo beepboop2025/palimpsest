@@ -57,6 +57,13 @@ def test_catalog_keeps_collection_mode_rights_and_caveats_explicit():
     assert journal["urls"]["latest"].endswith("/readings/eval-journal-latest.json")
     assert journal["landing_page"] == "evals/"
     assert "falsifier" in journal["description"].lower()
+    transcripts = by_id["gfi-transcripts"]
+    assert transcripts["latest"] == "readings/gfi-transcripts-latest.json"
+    assert transcripts["method"] == "readings/gfi-evaluation-protocol-v2.json"
+    assert transcripts["count_fields"] == [
+        "n_models", "n_prompt_arms", "samples_per_cell", "n_cells", "n_samples"
+    ]
+    assert "sealed" in transcripts["description"].lower()
 
 
 def test_ooni_catalog_scope_matches_the_committed_warehouse_allowlist():

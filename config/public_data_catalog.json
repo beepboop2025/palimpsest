@@ -868,6 +868,23 @@
       "license": {"name": "MIT for method and derived scores; provider terms for outputs", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "gfi-transcripts",
+      "name": "GFI v2 full transcript matrix",
+      "description": "Every full model response and null transport abstention behind the current Generative Firewall Index, organized as the exact preregistered model by prompt-arm by sample matrix whose response digests are sealed in the public eval registry.",
+      "layer": "model",
+      "stage": "evidence",
+      "collection_mode": "model-api-sealed",
+      "status": "live",
+      "cadence": "P1D",
+      "geography": ["CN", "GLOBAL"],
+      "sources": ["Hosted model APIs, preregistered GFI v2 protocol and Palimpsest eval registry"],
+      "latest": "readings/gfi-transcripts-latest.json",
+      "landing_page": "readings/generative-firewall-index.html",
+      "method": "readings/gfi-evaluation-protocol-v2.json",
+      "count_fields": ["n_models", "n_prompt_arms", "samples_per_cell", "n_cells", "n_samples"],
+      "license": {"name": "MIT for Palimpsest metadata and method; model-output provider terms remain applicable", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "eval-registry",
       "name": "Verifiable evaluation registry",
       "description": "Append-only, pre-registered model-evaluation runs with hash links, Merkle roots, and independently recomputable verification status.",
@@ -918,6 +935,23 @@
       "method": "protocol/eval-journal-v1.schema.json",
       "count_fields": ["n_articles"],
       "license": {"name": "MIT for Palimpsest text, method and structured records; cited upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
+      "id": "eval-articles",
+      "name": "Live Eval Findings",
+      "description": "Continuously rebuilt analysis of the latest verified refusal-drift panel. Findings retain controls, denominators, Wilson intervals, counterreadings, limitations, falsifiers, sentence-level selectors and content-addressed revision receipts.",
+      "layer": "model",
+      "stage": "publication",
+      "collection_mode": "deterministic-evidence-bound-analysis",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": ["GLOBAL"],
+      "sources": ["Palimpsest refusal-drift reading, transcripts and verified eval registry"],
+      "latest": "readings/eval-articles-latest.json",
+      "landing_page": "journal/",
+      "method": "docs/EVAL-FINDINGS.md",
+      "count_fields": ["n_articles"],
+      "license": {"name": "MIT for Palimpsest text, method and structured records; model-output provider terms remain applicable to cited transcripts", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
       "id": "anchors",

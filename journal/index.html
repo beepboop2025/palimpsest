@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Eval Findings | Palimpsest</title>
+<meta name="description" content="Dated analysis from sealed AI evaluations, with controls, uncertainty, citations, and revision receipts attached.">
+<link rel="canonical" href="https://palimpsest.info/journal/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<meta name="theme-color" content="#08110f">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Live Eval Findings | Palimpsest">
+<meta property="og:description" content="Dated analysis from sealed AI evaluations, with controls, uncertainty, citations, and revision receipts attached.">
+<meta property="og:url" content="https://palimpsest.info/journal/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/journal.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Live Eval Findings","description":"Dated, evidence-bound interpretation of Palimpsest's sealed AI evaluations.","url":"https://palimpsest.info/journal/","dateModified":"2026-08-14T19:08:28.649895+00:00","publisher":{"@type":"Organization","name":"Palimpsest Observatory","url":"https://palimpsest.info"},"hasPart":[{"@type":"Article","headline":"A clean run does not erase a failed one","url":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","datePublished":"2026-08-14T13:34:43.929654+00:00","dateModified":"2026-08-14T19:08:28.649895+00:00"},{"@type":"Article","headline":"Zero observed refusals is not zero uncertainty","url":"https://palimpsest.info/journal/zero-observed-is-not-zero-uncertainty/","datePublished":"2026-08-14T13:34:43.929654+00:00","dateModified":"2026-08-14T19:08:28.649895+00:00"}]}</script>
+</head><body class="ps ej">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-facing economic releases and censorship measurements, separated by method and joined only by receipts.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Start</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>What changed, what is withheld, and the evidence behind both</span></a>
+            <a href="/osint-china.html"><b>OSINT China</b><span>Censorship signals, sources and freshness in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Economic record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
+            <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Information controls</p>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3" data-within="">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Read</p>
+            <a href="/journal/" aria-current="page"><b>Live Eval Findings<span class="ps-tag">new</span></b><span>Current model-panel analysis with uncertainty and sentence receipts</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/refusal-drift-latest.json"><b>Latest panel JSON</b><span>Rates, controls, intervals and model-level labels</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-5">
+        <p class="ps-flyout__lede">Use the public record, reproduce the methods, or help keep the work independent.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use Palimpsest</p>
+            <a href="/data.html"><b>Data</b><span>Every public dataset, format and licence</span></a>
+            <a href="/developers.html"><b>Developers</b><span>REST, MCP and machine-readable contracts</span></a>
+            <a href="/for-researchers.html"><b>For researchers</b><span>Methods, validation and citation guidance</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Carry exact claims and supporting bytes elsewhere</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Public good</p>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall, no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main">
+  <header class="ej-masthead ej-wrap">
+    <div class="ej-masthead__issue">
+      <span>PALIMPSEST / LIVE EVAL FINDINGS</span>
+      <span>Edition 14 Aug 2026, 19:08 UTC</span>
+    </div>
+    <div class="ej-masthead__grid">
+      <div>
+        <p class="ej-eyebrow">Interpretation with receipts attached</p>
+        <h1>The Eval<br><span>Journal</span></h1>
+      </div>
+      <div class="ej-masthead__statement">
+        <p>AI evaluation scores are easy to publish and hard to read honestly. This desk starts with the controls, carries uncertainty into the headline, and binds every analytical sentence to a sealed run.</p>
+        <div class="ej-undertext" aria-hidden="true">
+          <span>one score, one ranking, one easy answer</span>
+          <strong>dated finding, visible limits, reproducible record</strong>
+        </div>
+      </div>
+    </div>
+    <div class="ej-masthead__rule"><span></span><b>02</b><small>current analyses</small></div>
+  </header>
+
+  <section class="ej-ledger ej-wrap" aria-labelledby="latest-analysis">
+    <div class="ej-section-head">
+      <p>Latest from the desk</p>
+      <h2 id="latest-analysis">Read the finding. Then inspect the instrument.</h2>
+      <a href="/readings/eval-articles-latest.json">Structured edition</a>
+    </div>
+    <div class="ej-card-stack"><article class="ej-card ej-card--feature" data-finding-state="bounded-finding">
+  <div class="ej-card__spine" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="ej-card__copy">
+    <p class="ej-kicker">Eval integrity / control failure</p>
+    <h2><a href="/journal/before-reading-the-score-read-the-controls/">A clean run does not erase a failed one</a></h2>
+    <p class="ej-card__dek">Mistral Nemo passed all 41 prompt arms in the latest canonical run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.</p>
+    <ul class="ej-card__numbers" aria-label="Key figures"><li><strong>0%</strong><span>family refusal rate</span></li><li><strong>0</strong><span>control prompt refusals</span></li><li><strong>4/4</strong><span>panel runs with clean controls</span></li></ul>
+    <p class="ej-card__meta"><span>Palimpsest Eval Desk</span><time datetime="2026-08-14T19:08:28.649895+00:00">Updated 14 Aug 2026, 19:08 UTC</time></p>
+    <a class="ej-read" href="/journal/before-reading-the-score-read-the-controls/">Read the analysis <span aria-hidden="true">→</span></a>
+  </div>
+</article><article class="ej-card" data-finding-state="bounded-finding">
+  <div class="ej-card__spine" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="ej-card__copy">
+    <p class="ej-kicker">Eval method / uncertainty</p>
+    <h2><a href="/journal/zero-observed-is-not-zero-uncertainty/">Zero observed refusals is not zero uncertainty</a></h2>
+    <p class="ej-card__dek">3 control-clean model runs observed 0 refused families out of 34, yet each zero result still carries a Wilson 95% upper bound of 10.2%. That interval is part of the finding, not fine print.</p>
+    <ul class="ej-card__numbers" aria-label="Key figures"><li><strong>0</strong><span>refused families</span></li><li><strong>34</strong><span>monitored non-control families</span></li><li><strong>10.2%</strong><span>95% upper interval bound</span></li></ul>
+    <p class="ej-card__meta"><span>Palimpsest Eval Desk</span><time datetime="2026-08-14T19:08:28.649895+00:00">Updated 14 Aug 2026, 19:08 UTC</time></p>
+    <a class="ej-read" href="/journal/zero-observed-is-not-zero-uncertainty/">Read the analysis <span aria-hidden="true">→</span></a>
+  </div>
+</article></div>
+  </section>
+
+  <section class="ej-principles ej-wrap" aria-labelledby="journal-standard">
+    <div class="ej-section-head">
+      <p>Publication standard</p>
+      <h2 id="journal-standard">The eval does not get the last word.</h2>
+    </div>
+    <ol>
+      <li><span>01</span><div><h3>Seal first</h3><p>The prompt commitment and result are verified against the append-only registry before a sentence is written.</p></div></li>
+      <li><span>02</span><div><h3>Controls before score</h3><p>A failed ordinary control turns the article into an instrument warning. It cannot become a suppression claim.</p></div></li>
+      <li><span>03</span><div><h3>Uncertainty in the headline</h3><p>Rates keep their denominator, interval, model label, and timestamp. Nothing becomes a standing leaderboard.</p></div></li>
+      <li><span>04</span><div><h3>Show the counterread</h3><p>Every piece carries the strongest alternative reading, limitations, and the command needed to verify the chain.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="ej-source-strip" aria-label="Journal source surfaces">
+    <div class="ej-wrap">
+      <p><span>Follow the record</span> The prose is a route into the evidence, never a replacement for it.</p>
+      <nav aria-label="Eval source links">
+        <a href="/readings/eval-registry.html">Eval Registry</a>
+        <a href="/readings/refusal-drift-latest.json">Latest panel JSON</a>
+        <a href="/readings/refusal-drift-history.jsonl">History JSONL</a>
+        <a href="/journal/feed.xml">Findings RSS</a>
+      </nav>
+    </div>
+  </section>
+</main>
+<footer class="ej-footer"><div class="ej-wrap"><span>Palimpsest Observatory</span><p>Public evidence. Visible limits. Offline verification.</p><a href="/fund.html">Fund the public good</a></div></footer>
+<script src="/assets/shell.js" defer></script>
+</body></html>

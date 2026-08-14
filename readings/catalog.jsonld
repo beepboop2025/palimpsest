@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-14T21:26:43.972447Z",
+  "dateModified": "2026-08-14T21:32:26.363554Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -999,7 +999,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T21:26:37Z",
+      "dateModified": "2026-08-14T21:32:24Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1074,7 +1074,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T21:26:37Z",
+      "dateModified": "2026-08-14T21:32:24Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1097,7 +1097,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T21:26:39Z",
+      "dateModified": "2026-08-14T21:32:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1120,7 +1120,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T21:26:39Z",
+      "dateModified": "2026-08-14T21:32:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1238,7 +1238,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T21:26:37Z",
+      "dateModified": "2026-08-14T21:32:24Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1303,6 +1303,29 @@
           "name": "Frontier refusal churn — history",
           "encodingFormat": "application/x-ndjson",
           "contentUrl": "https://palimpsest.info/readings/refusal-drift-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "gfi-transcripts",
+      "name": "GFI v2 full transcript matrix",
+      "description": "Every full model response and null transport abstention behind the current Generative Firewall Index, organized as the exact preregistered model by prompt-arm by sample matrix whose response digests are sealed in the public eval registry.",
+      "url": "https://palimpsest.info/readings/generative-firewall-index.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "P1D",
+      "dateModified": "2026-08-14T20:41:17.529651Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "GFI v2 full transcript matrix — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/gfi-transcripts-latest.json"
         }
       ]
     },
@@ -1376,6 +1399,28 @@
           "name": "AI Eval Journal — latest",
           "encodingFormat": "application/json",
           "contentUrl": "https://palimpsest.info/readings/eval-journal-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "eval-articles",
+      "name": "Live Eval Findings",
+      "description": "Continuously rebuilt analysis of the latest verified refusal-drift panel. Findings retain controls, denominators, Wilson intervals, counterreadings, limitations, falsifiers, sentence-level selectors and content-addressed revision receipts.",
+      "url": "https://palimpsest.info/journal/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-14T19:08:28.649895Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Live Eval Findings — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/eval-articles-latest.json"
         }
       ]
     },

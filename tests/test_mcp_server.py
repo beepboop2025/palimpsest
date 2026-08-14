@@ -1047,10 +1047,16 @@ def test_evidence_desk_prompt_routes_machine_analysis_and_preserves_abstention()
 
 # ------------------------------------------------------- both applications --
 def test_registry_signals_are_published_and_described_truthfully():
-    for name in ("eval-registry", "eval-assurance", "eval-journal", "refusal-drift"):
+    for name in (
+        "eval-registry", "eval-assurance", "eval-journal", "gfi-transcripts",
+        "refusal-drift",
+    ):
         path, desc = mcp.SIGNALS[name]
         assert path == f"/readings/{name}-latest.json"
         assert desc
+    findings_path, findings_desc = mcp.SIGNALS["eval-findings"]
+    assert findings_path == "/readings/eval-articles-latest.json"
+    assert "sentence-level" in findings_desc and "uncertainty" in findings_desc
     reg = mcp.SIGNALS["eval-registry"][1].lower()
     assert "cn-sensitive-generative-firewall-v1" in reg
     assert "frontier-overrefusal-v2" in reg
@@ -1059,6 +1065,32 @@ def test_registry_signals_are_published_and_described_truthfully():
     assert "claim" in assurance and "human" in assurance and "replication" in assurance
     journal = mcp.SIGNALS["eval-journal"][1].lower()
     assert "falsifier" in journal and "receipts" in journal
+    transcripts = mcp.SIGNALS["gfi-transcripts"][1].lower()
+    assert "complete" in transcripts and "denominator" in transcripts and "seal" in transcripts
+
+
+def test_gfi_transcript_signal_caps_object_keyed_cells_and_reports_the_denominator(monkeypatch):
+    responses = {
+        model: {
+            f"arm-{arm:02d}": [f"{model} response {arm}"]
+            for arm in range(4)
+        }
+        for model in ("model-a", "model-b", "model-c")
+    }
+    monkeypatch.setattr(mcp, "_fetch", lambda _name: {
+        "generated_at": "2026-08-14T20:41:17Z",
+        "n_cells": 12,
+        "responses": responses,
+    })
+
+    body = mcp.tool_get_signal({"name": "gfi-transcripts", "max_rows": 5})
+
+    assert sum(len(arms) for arms in body["data"]["responses"].values()) == 5
+    assert body["truncated"]["responses.*"] == {
+        "returned": 5, "total": 12, "objects": 3,
+    }
+    assert body["data"]["n_cells"] == 12
+    assert "source_url" in body["how_to_see_everything"]
 
 
 def test_every_signal_has_a_published_reading_on_disk():
@@ -1094,6 +1126,58 @@ def test_economic_query_version_and_discovery_surfaces_agree():
 
     assert mcp.SERVER_VERSION == "1.8.0"
     assert openapi["info"]["version"] == mcp.SERVER_VERSION
+    assert "/readings/china-index-latest.json" in openapi["paths"]
+    assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
+    assert "/readings/china-econ-observations-latest.json" in openapi["paths"]
+    assert "/readings/china-econ-observations.jsonl" in openapi["paths"]
+    assert openapi["components"]["schemas"]["ChinaEconomicObservation"] == {
+        "$ref": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"
+    }
+    assert openapi["components"]["schemas"]["ChinaIndex"] == {
+        "$ref": "https://palimpsest.info/protocol/china-index-v1.schema.json"
+    }
+    assert openapi["components"]["schemas"]["ChinaEconomicForecast"] == {
+        "$ref": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    }
+    assert openapi["components"]["schemas"][
+        "ChinaEconomicObservationManifest"
+    ] == {
+        "$ref": (
+            "https://palimpsest.info/protocol/"
+            "economic-observation-manifest-v1.schema.json"
+        )
+    }
+    assert "All six hosted MCP tools" in card["access"]["authentication"]
+    assert card["access"]["mcp_version"] == mcp.SERVER_VERSION
+    assert card["evidence"]["china_observatory_index_schema"] == (
+        "https://palimpsest.info/protocol/china-index-v1.schema.json"
+    )
+    assert card["evidence"]["china_economic_forecast_schema"] == (
+        "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    )
+    for label, text in (
+        ("developer page", developers), ("MCP docs", docs), ("llms", agents)
+    ):
+        assert "query_economic_observations" in text, label
+        assert "china-econ-forecast-latest.json" in text, label
+    assert "The six tools" in developers
+    assert "The six tools" in docs
+
+
+def test_economic_query_version_and_discovery_surfaces_agree():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(root, "openapi.json"), encoding="utf-8") as fh:
+        openapi = json.load(fh)
+    with open(os.path.join(root, "product-card.json"), encoding="utf-8") as fh:
+        card = json.load(fh)
+    developers = open(
+        os.path.join(root, "developers.html"), encoding="utf-8"
+    ).read()
+    docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
+    agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
+
+    assert mcp.SERVER_VERSION == "1.8.0"
+    assert openapi["info"]["version"] == "1.8.0"
     assert "/readings/china-index-latest.json" in openapi["paths"]
     assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
     assert "/readings/china-econ-observations-latest.json" in openapi["paths"]

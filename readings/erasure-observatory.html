@@ -174,11 +174,12 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1" data-within="">China<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
-        <p class="ps-flyout__lede">Economic releases, public-source signals and censorship evidence, kept separate and joined by receipts.</p>
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2" data-within="">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-facing economic releases and censorship measurements, separated by method and joined only by receipts.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
             <p class="ps-flyout__head">Start</p>
@@ -187,13 +188,13 @@
             <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
           </div>
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Economic evidence</p>
+            <p class="ps-flyout__head">Economic record</p>
             <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
             <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
             <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
           </div>
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Censorship instruments</p>
+            <p class="ps-flyout__head">Information controls</p>
             <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
             <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
             <a href="/readings/erasure-observatory.html" aria-current="page"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
@@ -211,12 +212,13 @@
       </div>
     </div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
         <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Measure</p>
+            <p class="ps-flyout__head">Read</p>
+            <a href="/journal/"><b>Live Eval Findings<span class="ps-tag">new</span></b><span>Current model-panel analysis with uncertainty and sentence receipts</span></a>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
           </div>
@@ -224,12 +226,12 @@
             <p class="ps-flyout__head">Verify</p>
             <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
             <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/refusal-drift-latest.json"><b>Latest panel JSON</b><span>Rates, controls, intervals and model-level labels</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout" id="ps-fly-4">
@@ -247,9 +249,26 @@
         </div>
       </div>
     </div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html">Data</a></div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-5">
+        <p class="ps-flyout__lede">Use the public record, reproduce the methods, or help keep the work independent.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use Palimpsest</p>
+            <a href="/data.html"><b>Data</b><span>Every public dataset, format and licence</span></a>
+            <a href="/developers.html"><b>Developers</b><span>REST, MCP and machine-readable contracts</span></a>
+            <a href="/for-researchers.html"><b>For researchers</b><span>Methods, validation and citation guidance</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Carry exact claims and supporting bytes elsewhere</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Public good</p>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall, no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
   <div class="ps-nav__scrim" aria-hidden="true"></div>

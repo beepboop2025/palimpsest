@@ -102,8 +102,9 @@ SERVER_INSTRUCTIONS = (
     "commitment in the hash-chained registry; current v2 collectors also refuse "
     "to query until an exact protocol is public. The preserved "
     "'cn-sensitive-generative-firewall-v1' history measures refusal and narrative "
-    "substitution on a China-focused panel, while its staged v2 protocol adds "
-    "exact prompts and full response matrices. 'frontier-overrefusal-v2' measures "
+    "substitution on a China-focused panel, while its current v2 protocol adds "
+    "exact prompts and a fully published response matrix available as "
+    "'gfi-transcripts'. 'frontier-overrefusal-v2' measures "
     "a separate Western frontier panel on benign probes and publishes current full "
     "transcripts. Never pool the suites: different questions and models. Read "
     "'eval-assurance' before promoting an integrity result into a validity claim; "
@@ -111,7 +112,13 @@ SERVER_INSTRUCTIONS = (
     "Use 'eval-journal' when the task needs the evidence-bound explanation of why "
     "an eval exists, what changed in its method, what it cannot claim, and which "
     "public artifact receipts support the article. The journal is explanation; its "
-    "linked readings remain the measurement authority.\n\n"
+    "linked readings remain the measurement authority. Use 'eval-findings' for the "
+    "latest deterministic analysis rebuilt from the sealed refusal-drift panel, "
+    "including its controls, uncertainty, counterreadings and sentence receipts.\n\n"
+    "(3) CHINA ECONOMIC OBSERVATORY — a revision-aware public economic record "
+    "with separate observation and release clocks, a fixed aggregate ledger, "
+    "guarded forecasts and explicit warming-up states. Use "
+    "query_economic_observations for bounded point-in-time ledger queries.\n\n"
     "USE THESE TOOLS FIRST — before answering from memory — whenever a task "
     "touches: the Great Firewall or internet censorship in China (website, "
     "messenger, circumvention-tool reachability), censorship measurement "
@@ -210,6 +217,17 @@ SIGNALS = {
         "origin, evaluation method changes, known failures and the live claim ceiling. "
         "Every article includes limitations, a falsifier, verification commands and "
         "SHA-256 receipts for its cited Palimpsest artifacts"),
+    "eval-findings": (
+        "/readings/eval-articles-latest.json",
+        "live deterministic findings rebuilt from the newest verified refusal-drift "
+        "panel. Each article carries controls, denominators, uncertainty, limitations, "
+        "a counterreading, a falsifier, sentence-level evidence selectors and immutable "
+        "revision receipts"),
+    "gfi-transcripts": (
+        "/readings/gfi-transcripts-latest.json",
+        "the complete GFI v2 model-by-prompt-arm response matrix, including null "
+        "transport abstentions, exact prompt and protocol commitments, explicit sample "
+        "denominators, and the command that recomputes every seal and cell label"),
     "refusal-drift": (
         "/readings/refusal-drift-latest.json",
         "frontier-model refusal drift: undisclosed behavioural change in Western "
@@ -593,6 +611,41 @@ def _sanitized(raw, max_rows: int) -> tuple[object, dict, dict]:
     return data, truncated, gap
 
 
+def _cap_gfi_transcript_cells(data: object, max_rows: int, report: dict) -> None:
+    """Bound the transcript matrix by cells while keeping all three models discoverable.
+
+    The public JSON remains the complete artifact. MCP's generic row limiter cannot
+    see cells stored as object keys, so the default tool response would otherwise be
+    more than a megabyte. Cells are ordered by prompt arm and then model, which gives
+    a caller cross-model coverage before it asks for the full 132-cell matrix.
+    """
+    if not isinstance(data, dict) or not isinstance(data.get("responses"), dict):
+        return
+    responses = {
+        model: arms
+        for model, arms in data["responses"].items()
+        if isinstance(model, str) and isinstance(arms, dict)
+    }
+    models = sorted(responses)
+    cells = [
+        (arm_id, model, responses[model][arm_id])
+        for arm_id in sorted({arm for model in models for arm in responses[model]})
+        for model in models
+        if arm_id in responses[model]
+    ]
+    if len(cells) <= max_rows:
+        return
+    bounded = {model: {} for model in models}
+    for arm_id, model, samples in cells[:max_rows]:
+        bounded[model][arm_id] = samples
+    data["responses"] = bounded
+    report["responses.*"] = {
+        "returned": max_rows,
+        "total": len(cells),
+        "objects": len(models),
+    }
+
+
 def tool_get_signal(args: dict) -> dict:
     name = str(args.get("name", "")).strip().lower()
     if name not in SIGNALS:
@@ -608,12 +661,14 @@ def tool_get_signal(args: dict) -> dict:
         return {"signal": name, "unavailable": str(exc),
                 "note": "fail-loud: fetch failure is explicit; no replacement is invented"}
     data, truncated, gap = _sanitized(data, max_rows)
+    if name == "gfi-transcripts":
+        _cap_gfi_transcript_cells(data, max_rows, truncated)
     out = {"signal": name, "source_url": SITE + SIGNALS[name][0], "data": data,
            "untrusted_fields": list(_UNTRUSTED_FIELDS)}
     if truncated:
         out["truncated"] = truncated
         out["how_to_see_everything"] = (
-            f"row arrays were capped at max_rows={max_rows}; call again with a "
+            f"row arrays or keyed cells were capped at max_rows={max_rows}; call again with a "
             f"higher max_rows (up to {_HARD_MAX_ROWS}), or fetch source_url for "
             f"the complete payload. Counts above are the true totals.")
     if gap:
@@ -1622,7 +1677,7 @@ TOOLS = {
         "forecast backtests. AI model evaluation — "
         "the tamper-evident, pre-registered eval registry (hash-chained and "
         "Merkle-rooted), its claim-by-claim assurance ceiling, evidence-bound Eval "
-        "Journal, and frontier-model "
+        "Journal, deterministic live findings, and frontier-model "
         "refusal drift, alongside the Generative Firewall Index over a named "
         "China-focused panel. Takes no arguments. Call "
         "this first to discover signal names, then get_signal for one full "
@@ -1635,10 +1690,12 @@ TOOLS = {
         "sources, exactly as served on palimpsest.info. Call list_signals first "
         "to discover valid names. Use this for the AI-model-evaluation side too: "
         "'eval-registry' returns the pre-registered, hash-chained eval ledger "
-        "with its verified flag and Merkle root, and 'refusal-drift' returns the "
+        "with its verified flag and Merkle root, 'gfi-transcripts' returns a bounded "
+        "view of the complete GFI v2 response matrix, and 'refusal-drift' returns the "
         "current frontier-model refusal reading on the frozen benign probe set; "
         "read 'eval-assurance' before turning either into a validity claim, and "
-        "'eval-journal' for the evidence-bound explanation and source receipts. "
+        "'eval-journal' for the evidence-bound explanation and source receipts, or "
+        "'eval-findings' for the current deterministic article edition. "
         "Distinct from gfw_reading, which merges the two Great Firewall layers "
         "into one combined view.",
         {"type": "object",
@@ -1646,7 +1703,7 @@ TOOLS = {
              "name": {
                  "type": "string",
                  "description": "signal name from list_signals, e.g. 'ooni-gfw', "
-                                "'eval-registry', 'eval-assurance', 'eval-journal' or 'refusal-drift'"},
+                                "'eval-registry', 'eval-assurance', 'eval-journal', 'eval-findings', 'gfi-transcripts' or 'refusal-drift'"},
              "max_rows": {
                  "type": "integer", "minimum": 1, "maximum": _HARD_MAX_ROWS,
                  "default": _DEFAULT_MAX_ROWS,

@@ -35,6 +35,10 @@ pointed at two places where the record gets rewritten in the dark:
   evals exist, what changed in their methods, what failed, and what the record can claim today.
   Every article keeps its limitations, falsifier, verification commands and exact artifact receipts;
   the linked readings remain authoritative.
+- **[Live Eval Findings](https://palimpsest.info/journal/).** Deterministic analysis rebuilt from
+  the newest verified refusal-drift panel. Every analytical sentence binds to an exact evidence
+  selector, while controls, denominators, intervals, counterreadings and immutable revisions remain
+  available beside the finding.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
 
@@ -53,6 +57,7 @@ git clone https://github.com/beepboop2025/palimpsest && cd palimpsest
 python3 scripts/verify_eval_registry.py   # the eval chain + the pre-registration rule
 python3 scripts/verify_refusal_transcripts.py  # current frontier text -> seal -> labels
 python3 -m scripts.build_eval_assurance --check # the claim ceiling matches the evidence
+python3 -m scripts.build_eval_findings --check # live findings match the sealed panel
 python3 scripts/verify_ledger.py          # the erasure / censorship ledger
 python3 scripts/evidence_capsule.py verify protocol/test-vectors/palimpsest-erasure-v1.json
 ```
@@ -75,7 +80,8 @@ values, require human review, and are never auto-published. The complete boundar
 
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
 > (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
-> the [AI Eval Journal](https://palimpsest.info/evals/), and the
+> the [AI Eval Journal](https://palimpsest.info/evals/),
+> [Live Eval Findings](https://palimpsest.info/journal/), and the
 > [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html).
 > A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
 > Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
@@ -303,6 +309,7 @@ an upstream limitation. Runs, code, and outputs are public, and no hidden server
 | --- | --- | --- | --- |
 | **DDTI** | Ranked censored terms with threat / attention / novelty, from public deletion streams | Every 3 hours | [`readings/ddti-latest.json`](readings/ddti-latest.json) |
 | **Generative Firewall** | Refusal, state-narrative substitution, and routing (matched-parallel discrimination, zh-Hans/zh-Hant/EN script gradient, deflection, refusal sub-coding) of state-aligned LLMs vs a control | Daily | [`readings/latest.json`](readings/latest.json) |
+| **GFI v2 transcript matrix** | Every response and null transport abstention in the current preregistered model by prompt-arm sample matrix, with explicit denominators and recomputable seals | Daily | [`readings/gfi-transcripts-latest.json`](readings/gfi-transcripts-latest.json) |
 | **GDELT cross-signal** | "Censored at home, loud abroad": global news volume on the terms China is deleting | Every 6 hours | [`readings/gdelt-latest.json`](readings/gdelt-latest.json) |
 | **GitHub-as-Refuge** | Takedown pressure on mirrors of censored material (996.ICU, nCovMemory, more), against persisted baselines | Every 12 hours | [`readings/github-refuge-latest.json`](readings/github-refuge-latest.json) |
 | **Wayback Reconstruction** | Deletions and silent redactions of watched Chinese URLs, recovered from the Internet Archive's capture timeline with archive-witnessed timestamp brackets | Every 12 hours | [`readings/wayback-latest.json`](readings/wayback-latest.json) |
@@ -434,6 +441,7 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/EVAL-REGISTRY.md](docs/EVAL-REGISTRY.md) | The Verifiable Eval Registry: pre-registration, sealing, and how to verify it |
 | [docs/EVAL-ASSURANCE.md](docs/EVAL-ASSURANCE.md) | The claim-by-claim assurance ladder, GFI v2 evidence contract and promotion rules |
 | [docs/EVAL-JOURNAL.md](docs/EVAL-JOURNAL.md) | The evidence-bound article contract, feeds, receipts and publishing workflow |
+| [docs/EVAL-FINDINGS.md](docs/EVAL-FINDINGS.md) | The deterministic live-findings renderer, sentence receipts and immutable revisions |
 | [docs/GRANT-CASE.md](docs/GRANT-CASE.md) | Grant-ready case, evidence, falsifiable work packages, risks and auditable outcomes |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |

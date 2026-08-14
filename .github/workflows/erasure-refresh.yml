@@ -93,8 +93,10 @@ jobs:
           unset rc
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
+          python -m scripts.build_eval_findings
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
+          python -m scripts.build_eval_findings --check
 
       - name: Seal every published reading into the readings record
         # The other twenty-seven readings are regenerated in place by their own
@@ -160,7 +162,9 @@ jobs:
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
+                   readings/eval-articles-latest.json \
                    evals/ \
+                   journal/ \
                    readings/refusal-drift-latest.json \
                    readings/refusal-drift-history.jsonl \
                    readings/refusal-drift-transcripts.json \
@@ -224,6 +228,7 @@ jobs:
           python -m scripts.erasure_pull
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
+          python -m scripts.build_eval_findings
           python3 scripts/seal_readings.py || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
@@ -239,6 +244,7 @@ jobs:
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
+          python -m scripts.build_eval_findings --check
           python3 scripts/seal_readings.py --check
 
       - name: Anchor only the reconciled roots
@@ -271,7 +277,9 @@ jobs:
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
+                   readings/eval-articles-latest.json \
                    evals/ \
+                   journal/ \
                    readings/refusal-drift-latest.json \
                    readings/refusal-drift-history.jsonl \
                    readings/refusal-drift-transcripts.json \
@@ -324,6 +332,7 @@ jobs:
             python -m scripts.erasure_pull
             python -m scripts.build_eval_assurance
             python -m scripts.build_eval_journal
+            python -m scripts.build_eval_findings
             python3 scripts/seal_readings.py || rc=$?
             if [ "${rc:-0}" = "1" ]; then exit 1; fi
             unset rc
@@ -337,6 +346,7 @@ jobs:
             unset verify_rc
             python -m scripts.build_eval_assurance --check
             python -m scripts.build_eval_journal --check
+            python -m scripts.build_eval_findings --check
             python3 scripts/seal_readings.py --check
             python -m scripts.anchor_roots
             python scripts/verify_public_surface.py
@@ -351,7 +361,9 @@ jobs:
                      readings/eval-registry-latest.json \
                      readings/eval-assurance-latest.json \
                      readings/eval-journal-latest.json \
+                     readings/eval-articles-latest.json \
                      evals/ \
+                     journal/ \
                      readings/refusal-drift-latest.json \
                      readings/refusal-drift-history.jsonl \
                      readings/refusal-drift-transcripts.json \

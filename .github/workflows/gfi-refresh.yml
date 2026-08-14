@@ -71,6 +71,7 @@ jobs:
           python -m scripts.verify_gfi_transcripts
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
+          python -m scripts.build_eval_findings
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -83,6 +84,7 @@ jobs:
           python scripts/seal_readings.py
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
+          python -m scripts.build_eval_findings --check
           python -m core.evidence_mesh --check
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom --check
@@ -108,7 +110,9 @@ jobs:
             tests/test_cadence_matches_crons.py \
             tests/test_method_version_guard.py \
             tests/test_eval_assurance.py \
-            tests/test_eval_journal.py
+            tests/test_eval_journal.py \
+            tests/test_eval_articles.py \
+            tests/test_eval_journal_renderer.py
 
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
@@ -132,6 +136,7 @@ jobs:
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
+                   readings/eval-articles-latest.json \
                    readings/osint-china-latest.json \
                    readings/investigations-latest.json \
                    readings/corroboration-latest.json \
@@ -146,7 +151,8 @@ jobs:
                    readings/catalog.jsonld \
                    datapackage.json \
                    news/ \
-                   evals/ ; do
+                   evals/ \
+                   journal/ ; do
             test -e "$p" || { echo "FATAL: expected GFI artifact is missing: $p"; exit 1; }
             git add "$p"
           done
@@ -184,6 +190,7 @@ jobs:
             python -m scripts.ingest_gfi_v2
             python -m scripts.build_eval_assurance
             python -m scripts.build_eval_journal
+            python -m scripts.build_eval_findings
             python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
             python -m scripts.build_investigations
             python -m scripts.build_network_rounds
@@ -198,6 +205,7 @@ jobs:
             python -m scripts.verify_gfi_transcripts
             python -m scripts.build_eval_assurance --check
             python -m scripts.build_eval_journal --check
+            python -m scripts.build_eval_findings --check
             python -m core.evidence_mesh --check
             python -m core.machine_investigations --check
             python -m scripts.build_newsroom --check
@@ -223,7 +231,9 @@ jobs:
               tests/test_cadence_matches_crons.py \
               tests/test_method_version_guard.py \
               tests/test_eval_assurance.py \
-              tests/test_eval_journal.py
+              tests/test_eval_journal.py \
+              tests/test_eval_articles.py \
+              tests/test_eval_journal_renderer.py
             python scripts/verify_public_surface.py
 
             for p in readings/latest.json \
@@ -234,6 +244,7 @@ jobs:
                      readings/eval-registry-latest.json \
                      readings/eval-assurance-latest.json \
                      readings/eval-journal-latest.json \
+                     readings/eval-articles-latest.json \
                      readings/osint-china-latest.json \
                      readings/investigations-latest.json \
                      readings/corroboration-latest.json \
@@ -248,7 +259,8 @@ jobs:
                      readings/catalog.jsonld \
                      datapackage.json \
                      news/ \
-                     evals/ ; do
+                     evals/ \
+                     journal/ ; do
               git add "$p"
             done
             if git diff --cached --quiet; then

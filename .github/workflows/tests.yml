@@ -190,3 +190,4 @@ jobs:
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
+          python -m scripts.build_eval_findings --check

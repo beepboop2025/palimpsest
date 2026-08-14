@@ -68,11 +68,12 @@ CONTRACT = {
                "over that declared checklist, so one top-level denominator would duplicate it."),
     "eval-journal":         _d("generated_at", ["source", "method", "scope"],
                                "n_articles"),
+    "eval-articles":        _d(
+        "generated_at", ["source", "scope", "publication_policy"], "n_articles"
+    ),
     "gfi-transcripts":      _d(
-        "generated_at", ["protocol", "evaluation_protocol_sha256", "verify_cmd"],
-        reason="an evidence corpus rather than an aggregate count: every retained model "
-               "response and transport abstention is enumerated under responses, while "
-               "the protocol and verification command bind the complete matrix."),
+        "generated_at", ["protocol", "probe_commitment", "verify_cmd"], "n_samples"
+    ),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
@@ -245,6 +246,7 @@ SCHEDULED_PUBLICATIONS = {
     "network-rounds",
     "source-workflow",
     "editorial-readiness",
+    "eval-articles",
     "research-corpus",
 }
 
@@ -298,6 +300,15 @@ def test_newsroom_contract_keeps_provenance_and_story_denominator_explicit():
         "reason": None,
     }
     assert "newsroom" in SCHEDULED_PUBLICATIONS
+
+
+def test_gfi_transcript_contract_exposes_the_complete_sample_denominator():
+    assert CONTRACT["gfi-transcripts"] == {
+        "timestamp": "generated_at",
+        "provenance": ["protocol", "probe_commitment", "verify_cmd"],
+        "denominator": "n_samples",
+        "reason": None,
+    }
 
 
 def test_investigations_contract_keeps_cases_and_review_boundary_explicit():
@@ -380,8 +391,9 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v14"' in worker
+    assert 'const CACHE = "palimpsest-v15"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
+    assert '"/readings/gfi-transcripts-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
         '"/news/feed.xml"])'

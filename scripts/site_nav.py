@@ -4,10 +4,11 @@
 Palimpsest is a publication plus three evidence surfaces, and the navigation
 has to say so on every page rather than making readers reverse-engineer it:
 
-  1. an evidence-linked newsroom          (readers, journalists, researchers)
-  2. a China censorship observatory       (researchers, journalists, OSINT)
-  3. a verifiable AI evaluation registry  (labs, eval and safety researchers)
-  4. a funded public good                 (grantmakers and individual donors)
+  1. a journal for evidence-bound evaluation writing
+  2. an evidence wire for fast public-source dossiers
+  3. a China censorship and economic observatory
+  4. a verifiable AI evaluation registry
+  5. a funded public good
 
 Before this module there were five different hand-maintained navs across twelve
 pages and four pages with no nav at all, because every page carried its own copy.
@@ -33,11 +34,12 @@ END = "<!--/PS_NAV-->"
 # It is a hand-maintained editorial claim, not a timestamp — clear it when it
 # stops being true rather than letting it rot into furniture.
 NAV = [
+    {"label": "Eval Journal", "href": "/evals/"},
     {"label": "Wire", "href": "/news/"},
     {
-        "label": "China",
-        "lede": "Economic releases, public-source signals and censorship evidence, kept separate and joined by receipts.",
-        "match_prefixes": ["/china/"],
+        "label": "Observatory",
+        "lede": "China-facing economic releases and censorship measurements, separated by method and joined only by receipts.",
+        "match_prefixes": ["/china/", "/dashboards/"],
         "columns": [
             {
                 "head": "Start",
@@ -51,7 +53,7 @@ NAV = [
                 ],
             },
             {
-                "head": "Economic evidence",
+                "head": "Economic record",
                 "links": [
                     ("/china/sources/", "Source ledger",
                      "Access, rights, readiness and limits for every reviewed source"),
@@ -62,7 +64,7 @@ NAV = [
                 ],
             },
             {
-                "head": "Censorship instruments",
+                "head": "Information controls",
                 "links": [
                     ("/dashboards/ddti_observatory.html", "DDTI Observatory",
                      "Full command surface: fear index, topic network, ranked targets"),
@@ -96,8 +98,10 @@ NAV = [
         "lede": "China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.",
         "columns": [
             {
-                "head": "Measure",
+                "head": "Read",
                 "links": [
+                    ("/journal/", "Live Eval Findings",
+                     "Current model-panel analysis with uncertainty and sentence receipts", "new"),
                     ("/readings/generative-firewall-index.html", "Generative Firewall Index",
                      "What state-aligned models refuse or rewrite"),
                     ("/readings/eval-registry.html#drift", "Refusal Drift",
@@ -111,13 +115,14 @@ NAV = [
                      "Preregistrations, runs, response seals and chain receipts"),
                     ("/readings/eval-registry.html#assurance", "Eval Assurance",
                      "What passes, what is partial, and what is still unproven", "new"),
+                    ("/readings/refusal-drift-latest.json", "Latest panel JSON",
+                     "Rates, controls, intervals and model-level labels"),
                     ("/readings/eval-registry.html#anchors", "External Anchors",
                      "Chain roots deposited outside our own infrastructure"),
                 ],
             },
         ],
     },
-    {"label": "Eval Journal", "href": "/evals/"},
     {
         "label": "Method",
         "lede": "Every number on this site is meant to be attacked. Here is what it would take.",
@@ -141,9 +146,28 @@ NAV = [
             },
         ],
     },
-    {"label": "Data", "href": "/data.html"},
-    {"label": "Developers", "href": "/developers.html"},
-    {"label": "Fund", "href": "/fund.html"},
+    {
+        "label": "About",
+        "lede": "Use the public record, reproduce the methods, or help keep the work independent.",
+        "columns": [
+            {
+                "head": "Use Palimpsest",
+                "links": [
+                    ("/data.html", "Data", "Every public dataset, format and licence"),
+                    ("/developers.html", "Developers", "REST, MCP and machine-readable contracts"),
+                    ("/for-researchers.html", "For researchers", "Methods, validation and citation guidance"),
+                    ("/evidence-capsules.html", "Evidence Capsules", "Carry exact claims and supporting bytes elsewhere"),
+                ],
+            },
+            {
+                "head": "Public good",
+                "links": [
+                    ("/fund.html", "Fund the work", "No paywall, no supporter-only evidence"),
+                    ("https://github.com/beepboop2025/palimpsest", "Source repository", "Clone, verify and inspect the complete record"),
+                ],
+            },
+        ],
+    },
 ]
 
 
@@ -192,8 +216,7 @@ def _within(item: dict, current: str) -> bool:
         return False
     here = current.split("#", 1)[0].rstrip("/")
     for prefix in item.get("match_prefixes", []):
-        normalized = str(prefix).rstrip("/") + "/"
-        if (here + "/").startswith(normalized):
+        if here == prefix.rstrip("/") or here.startswith(prefix.rstrip("/") + "/"):
             return True
     for col in item.get("columns", []):
         for entry in col["links"]:

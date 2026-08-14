@@ -963,6 +963,15 @@ def _write_gfi_transcripts(protocol: dict, raw: dict, summary: dict) -> None:
             "current run at the stable URL; prior versions remain in git history and retain "
             "their registry seals"
         ),
+        "n_models": len(raw),
+        "n_prompt_arms": len(protocol["arms"]),
+        "samples_per_cell": protocol["samples_per_cell"],
+        "n_cells": sum(len(arms) for arms in raw.values()),
+        "n_samples": sum(
+            len(samples)
+            for arms in raw.values()
+            for samples in arms.values()
+        ),
         "responses": {
             model: {arm_id: samples for arm_id, samples in sorted(arms.items())}
             for model, arms in sorted(raw.items())
