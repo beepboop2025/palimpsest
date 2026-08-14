@@ -3,12 +3,16 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v13";
+const CACHE = "palimpsest-v14";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/newswire-latest.json",
   "/readings/china-economic-pulse-latest.json",
+  "/readings/china-econ-observations-latest.json",
+  "/readings/china-econ-observations.jsonl",
+  "/readings/china-econ-forecast-latest.json",
+  "/readings/china-index-latest.json",
   "/readings/investigations-latest.json",
   "/readings/evidence-mesh-latest.json",
   "/readings/machine-investigations-latest.json",
@@ -26,6 +30,7 @@ const LIVE_EVENT_ANALYSIS = /^\/news\/wire\/event-[0-9a-f]{24}\/analysis\.json$/
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
 const SHELL = [
   "/",
+  "/china/",
   "/osint-china.html",
   "/dashboards/ddti_observatory.html",
   "/dashboards/ddti_dashboard.html",
@@ -36,6 +41,8 @@ const SHELL = [
   "/dashboards/assets/tikto.css",
   "/assets/shell.css",
   "/assets/shell.js",
+  "/assets/china.css",
+  "/assets/china.js",
   "/brand/palimpsest-icon.svg",
   "/brand/palimpsest-icon-512.png",
 ];

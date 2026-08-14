@@ -97,15 +97,18 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert declared == published
     assert {spec.filename for spec in mod.SIGNALS} >= {"latest.json", "anchors-latest.json"}
     assert mod.EXCLUDED_LATEST_FILES == {
+        "china-econ-forecast-latest.json",
+        "china-econ-observations-latest.json",
         "china-economic-pulse-latest.json",
-            "corroboration-latest.json",
-            "editorial-readiness-latest.json",
-            "evidence-mesh-latest.json",
-            "eval-assurance-latest.json",
-            "eval-journal-latest.json",
-            "eval-registry-latest.json",
-            "investigations-latest.json",
-            "machine-investigations-latest.json",
+        "china-index-latest.json",
+        "corroboration-latest.json",
+        "editorial-readiness-latest.json",
+        "evidence-mesh-latest.json",
+        "eval-assurance-latest.json",
+        "eval-journal-latest.json",
+        "eval-registry-latest.json",
+        "investigations-latest.json",
+        "machine-investigations-latest.json",
         "network-rounds-latest.json",
         "newswire-latest.json",
         "newsroom-latest.json",
@@ -707,11 +710,20 @@ def test_workflow_installs_a_complete_hash_pinned_test_runner_without_credential
     assert "pytest==" not in workflow
 
     expected = {
+        "attrs": "26.1.0",
         "iniconfig": "2.3.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
         "packaging": "26.2",
         "pluggy": "1.6.0",
         "pygments": "2.20.0",
         "pytest": "9.1.1",
+        "referencing": "0.37.0",
+        "rfc3339-validator": "0.1.4",
+        "rfc3986-validator": "0.1.1",
+        "rpds-py": "2026.6.3",
+        "six": "1.17.0",
+        "typing-extensions": "4.15.0",
     }
     requirements = CI_REQUIREMENTS.read_text(encoding="utf-8")
     lines = [

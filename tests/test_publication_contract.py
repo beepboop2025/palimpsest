@@ -75,6 +75,14 @@ CONTRACT = {
                                "n_items"),
     "china-economic-pulse": _d("generated_at", ["source", "method", "scope"],
                                "n_metrics"),
+    "china-econ-observations": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "china-index": _d("generated_at", ["source", "method", "scope"], "n_sources"),
+    "china-econ-forecast": _d(
+        "generated_at", ["source", "method", "scope", "snapshot", "configuration"],
+        "n_targets",
+    ),
     "investigations":       _d("generated_at", ["source", "method", "scope"],
                                "n_cases"),
     "machine-investigations": _d(
@@ -220,6 +228,8 @@ OPTIONAL_EXTERNAL = {
 SCHEDULED_PUBLICATIONS = {
     "bleedthrough",
     "china-economic-pulse",
+    "china-econ-observations",
+    "china-index",
     "evidence-mesh",
     "investigations",
     "machine-investigations",
@@ -350,12 +360,22 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "https://palimpsest.info/readings/machine-investigations-latest.json" in llms
     assert "https://palimpsest.info/news/standards/" in sitemap
     assert "https://palimpsest.info/news/standards/" in llms
+    assert "https://palimpsest.info/china/" in sitemap
+    assert "https://palimpsest.info/china/" in llms
+    assert "https://palimpsest.info/readings/china-index-latest.json" in llms
+    assert "https://palimpsest.info/protocol/china-index-v1.schema.json" in llms
+    assert "https://palimpsest.info/readings/china-econ-observations.jsonl" in llms
+    assert "https://palimpsest.info/readings/china-econ-forecast-latest.json" in llms
+    assert "https://palimpsest.info/protocol/economic-forecast-v1.schema.json" in llms
     assert robots.splitlines().count("Sitemap: https://palimpsest.info/sitemap.xml") == 1
     assert robots.splitlines().count(
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
+    assert robots.splitlines().count(
+        "Sitemap: https://palimpsest.info/china/sitemap.xml"
+    ) == 1
 
-    assert 'const CACHE = "palimpsest-v13"' in worker
+    assert 'const CACHE = "palimpsest-v14"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
@@ -377,6 +397,10 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert '"/readings/investigations-latest.json"' in worker
     assert '"/readings/evidence-mesh-latest.json"' in worker
     assert '"/readings/machine-investigations-latest.json"' in worker
+    assert '"/readings/china-econ-observations-latest.json"' in worker
+    assert '"/readings/china-econ-observations.jsonl"' in worker
+    assert '"/readings/china-econ-forecast-latest.json"' in worker
+    assert '"/readings/china-index-latest.json"' in worker
     for name in (
         "primary-documents",
         "corroboration",

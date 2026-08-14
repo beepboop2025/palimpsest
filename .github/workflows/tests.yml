@@ -7,8 +7,8 @@ name: Tests
 # documentation, not a guard.
 #
 # Two suites, one command:
-#   tests/            — the observatory's own suite (stdlib-only by design, so it
-#                       also runs on a bare interpreter with no install step).
+#   tests/            — the observatory's own suite, including strict JSON Schema
+#                       publication contracts.
 #   censorwatch/tests — the velocity leg's suite, which DOES need the installed
 #                       dependencies (pandas et al.); it is only meaningful after
 #                       `pip install -r requirements.txt`, which is why this
@@ -81,9 +81,10 @@ jobs:
 
   contract:
     # THE READING VALIDATORS. This job has NO [skip ci] guard, on purpose: it is the only
-    # thing that ever inspects what a refresh actually published. Every one of these tests
-    # is stdlib-only and offline, so it costs seconds rather than the full suite's minutes,
-    # which is what makes running it on every data commit affordable.
+    # thing that ever inspects what a refresh actually published. These tests are offline
+    # and use the small hash-pinned contract environment, so they cost seconds rather than
+    # the full suite's minutes. JSON Schema is deliberately mandatory here: a missing
+    # validator must fail the publication gate, not skip it.
     #
     # It also runs the three integrity verifiers. Those live inside erasure-refresh today,
     # so a change that breaks the ledger verifier is caught only if it happens to touch that
@@ -99,11 +100,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install pytest only
-        # NOT -r requirements.txt. These tests are stdlib-only by design — verified against a
-        # venv containing nothing but pytest — so the full install would cost more than the
-        # tests do and would couple this job to dependencies it does not use.
-        run: pip install --quiet pytest
+      - name: Install the hash-pinned contract environment
+        # NOT -r requirements.txt. The contract job needs pytest plus JSON Schema and its
+        # format validators, all pinned to reviewed Python 3.12 Linux wheel hashes.
+        run: pip install --quiet --require-hashes -r .github/osint-china-ci-requirements.txt
 
       - name: Validate what is actually published
         run: |
@@ -114,7 +114,11 @@ jobs:
             tests/test_cadence_matches_crons.py \
             tests/test_method_version_guard.py \
             tests/test_eval_assurance.py \
-            tests/test_eval_journal.py
+            tests/test_eval_journal.py \
+            tests/test_econ_ledger.py::test_published_schema_accepts_every_current_ledger_row \
+            tests/test_china_econ_manifest.py::test_manifest_schema_accepts_generated_public_and_fixture_documents \
+            tests/test_china_econ_forecast_publish.py::test_strict_schema_accepts_the_public_artifact \
+            tests/test_china_site.py::test_json_schema_is_valid_and_validates_the_index
 
       - name: Check the committed deterministic machine-newsroom graph
         run: |
@@ -129,6 +133,9 @@ jobs:
           python -m core.evidence_mesh --check
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom --check
+          python -m scripts.build_china_econ_manifest --check
+          python -m scripts.build_china_econ_forecast --check
+          python -m scripts.build_china_site --check
           python -m scripts.build_data_catalog --check
           python scripts/seal_readings.py --check
 
@@ -142,14 +149,21 @@ jobs:
           python -m core.evidence_mesh --now "$mesh_clock"
           python -m core.machine_investigations
           python -m scripts.build_newsroom
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_econ_forecast
+          python -m scripts.build_china_site
           python -m scripts.build_data_catalog --now "$catalog_clock"
           git diff --exit-code -- \
+            readings/china-econ-observations-latest.json \
+            readings/china-econ-forecast-latest.json \
+            readings/china-index-latest.json \
             readings/evidence-mesh-latest.json \
             readings/machine-investigations-latest.json \
             readings/newsroom-latest.json \
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
 
       - name: Read the public surface

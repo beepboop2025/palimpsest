@@ -82,6 +82,8 @@ jobs:
       - name: Correlate, render and seal the evidence wire
         run: |
           python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_site
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -104,6 +106,10 @@ jobs:
             tests/test_newswire.py \
             tests/test_newswire_service.py \
             tests/test_economic_pulse.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
             tests/test_egress_policy.py \
             tests/test_no_dangerous_sinks.py \
             tests/test_safe_fetch.py \
@@ -144,6 +150,8 @@ jobs:
             readings/newswire-latest.json \
             readings/newswire-versions.jsonl \
             readings/china-economic-pulse-latest.json \
+            readings/china-econ-observations-latest.json \
+            readings/china-index-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \
@@ -158,6 +166,7 @@ jobs:
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -193,6 +202,8 @@ jobs:
         run: |
           python -m scripts.newswire_pull
           python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_site
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -216,6 +227,10 @@ jobs:
             tests/test_newswire.py \
             tests/test_newswire_service.py \
             tests/test_economic_pulse.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
             tests/test_egress_policy.py \
             tests/test_no_dangerous_sinks.py \
             tests/test_safe_fetch.py \
@@ -257,6 +272,8 @@ jobs:
             readings/newswire-latest.json \
             readings/newswire-versions.jsonl \
             readings/china-economic-pulse-latest.json \
+            readings/china-econ-observations-latest.json \
+            readings/china-index-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \
@@ -271,6 +288,7 @@ jobs:
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet origin/main; then
@@ -307,6 +325,8 @@ jobs:
         run: |
           python -m scripts.newswire_pull
           python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_site
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -330,6 +350,10 @@ jobs:
             tests/test_newswire.py \
             tests/test_newswire_service.py \
             tests/test_economic_pulse.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
             tests/test_egress_policy.py \
             tests/test_no_dangerous_sinks.py \
             tests/test_safe_fetch.py \
@@ -371,6 +395,8 @@ jobs:
             readings/newswire-latest.json \
             readings/newswire-versions.jsonl \
             readings/china-economic-pulse-latest.json \
+            readings/china-econ-observations-latest.json \
+            readings/china-index-latest.json \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \
@@ -385,6 +411,7 @@ jobs:
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            china/ \
             news/
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then

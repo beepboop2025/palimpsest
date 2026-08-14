@@ -32,11 +32,80 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the pinned offline test runner
+        run: >-
+          python -m pip install --quiet --require-hashes
+          -r .github/osint-china-ci-requirements.txt
+
+      - name: Synchronize inputs before collection
+        run: |
+          git config user.name "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git fetch origin main
+          git rebase origin/main
+
       - name: Pull CFETS benchmarks and publish the china-econ signal
         run: python -m scripts.china_econ_pull
 
       - name: Validate the append-only economic observation ledger
-        run: python -m scripts.china_econ_pull --validate-only
+        run: |
+          python -m scripts.china_econ_pull --validate-only
+          python -m scripts.build_china_econ_manifest --check
+
+      - name: Rebuild and seal every dependent public surface
+        run: |
+          python -m scripts.build_economic_pulse
+          python -m scripts.build_china_econ_forecast
+          python -m scripts.build_china_econ_forecast --check
+          python -m scripts.build_china_site
+          python -m scripts.build_china_site --check
+          python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
+          python -m scripts.build_investigations
+          python -m scripts.build_network_rounds
+          python -m scripts.build_corroboration
+          python -m scripts.build_editorial_readiness
+          python -m scripts.sync_narcoscope --check
+          python -m scripts.sync_narcoscope --remote-check
+          python -m core.evidence_mesh
+          python -m core.evidence_mesh --check
+          python -m core.machine_investigations
+          python -m core.machine_investigations --check
+          python -m scripts.build_newsroom
+          python -m scripts.build_newsroom --check
+          python -m scripts.build_data_catalog
+          python scripts/seal_readings.py
+
+      - name: Verify the observation, synthesis and publication contracts
+        run: |
+          python -m pytest -q \
+            tests/test_china_econ_observatory.py \
+            tests/test_china_econ_pull_publish.py \
+            tests/test_econ_ledger.py \
+            tests/test_china_econ_manifest.py \
+            tests/test_china_econ_backtest.py \
+            tests/test_china_econ_forecast_publish.py \
+            tests/test_economic_pulse.py \
+            tests/test_china_site.py \
+            tests/test_china_renderer.py \
+            tests/test_osint_china.py \
+            tests/test_osint_china_page.py \
+            tests/test_investigations.py \
+            tests/test_investigations_renderer.py \
+            tests/test_evidence_mesh.py \
+            tests/test_machine_investigations.py \
+            tests/test_machine_investigations_renderer.py \
+            tests/test_primary_documents.py \
+            tests/test_corroboration.py \
+            tests/test_network_rounds.py \
+            tests/test_source_workflow.py \
+            tests/test_editorial_readiness.py \
+            tests/test_structured_newsroom.py \
+            tests/test_evidence_wire_publication.py \
+            tests/test_ai_discovery.py \
+            tests/test_data_catalog.py \
+            tests/test_seal_readings.py \
+            tests/test_publication_contract.py \
+            tests/test_public_surface_scrub.py
 
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
@@ -49,15 +118,42 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit & push if the signal changed
+      - name: Commit and publish one guarded graph if the signal changed
         run: |
-          git config user.name  "palimpsest-bot"
-          git config user.email "bot@palimpsest.info"
-          git add readings/china-econ-latest.json readings/china-econ-history.jsonl \
-            readings/china-econ-observations.jsonl 2>/dev/null || true
+          git add \
+            readings/china-econ-latest.json \
+            readings/china-econ-history.jsonl \
+            readings/china-econ-observations.jsonl \
+            readings/china-econ-observations-latest.json \
+            readings/china-econ-forecast-latest.json \
+            readings/china-economic-pulse-latest.json \
+            readings/china-index-latest.json \
+            readings/osint-china-latest.json \
+            readings/investigations-latest.json \
+            readings/evidence-mesh-latest.json \
+            readings/machine-investigations-latest.json \
+            readings/primary-documents-latest.json \
+            readings/corroboration-latest.json \
+            readings/network-rounds-latest.json \
+            readings/source-workflow-latest.json \
+            readings/editorial-readiness-latest.json \
+            readings/newsroom-latest.json \
+            readings/readings-ledger.jsonl \
+            readings/catalog.json \
+            readings/catalog.jsonld \
+            datapackage.json \
+            china/ \
+            news/
           if git diff --cached --quiet; then
             echo "no change"
           else
             git commit -m "data: china econ telemetry refresh ($(date -u +%FT%TZ)) [skip ci]"
-            python scripts/push_data_commit.py
+            # The direct observations stay byte-identical on a race. Refuse the
+            # candidate if any transitive generator/input tree changed on main;
+            # the next scheduled run will rebuild from that newer graph.
+            guarded=()
+            for path in scripts core processors config protocol assets dashboards/assets readings; do
+              guarded+=(--input-path "$path")
+            done
+            python scripts/push_data_commit.py "${guarded[@]}"
           fi

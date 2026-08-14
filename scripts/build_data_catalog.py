@@ -163,6 +163,12 @@ def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]
     observed = max(_walk_timestamps(document), default=None) if document else None
     age_seconds = max(0, int((now - observed).total_seconds())) if observed else None
     cadence_seconds = _duration_seconds(str(spec["cadence"]))
+    explicit_budget = spec.get("freshness_budget")
+    freshness_budget_seconds = (
+        _duration_seconds(str(explicit_budget))
+        if explicit_budget is not None
+        else (cadence_seconds * 2.5 if cadence_seconds is not None else None)
+    )
     configured = str(spec["status"])
     if configured in _TERMINAL_STATES:
         evidence_state = configured
@@ -172,7 +178,11 @@ def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]
         evidence_state = "invalid"
     elif observed is None:
         evidence_state = "undated"
-    elif cadence_seconds is not None and age_seconds is not None and age_seconds > cadence_seconds * 2.5:
+    elif (
+        freshness_budget_seconds is not None
+        and age_seconds is not None
+        and age_seconds > freshness_budget_seconds
+    ):
         evidence_state = "stale"
     else:
         evidence_state = "fresh"
@@ -221,8 +231,28 @@ def _validate(config: dict[str, Any]) -> None:
         seen.add(slug)
         _safe_repo_path(str(item["latest"]))
         _safe_repo_path(str(item["history"])) if item.get("history") else None
-        if _duration_seconds(str(item["cadence"])) is None:
+        cadence_seconds = _duration_seconds(str(item["cadence"]))
+        if cadence_seconds is None or cadence_seconds <= 0:
             raise ValueError(f"unsupported cadence for {slug}: {item['cadence']!r}")
+        if item.get("freshness_budget") is not None:
+            budget_seconds = _duration_seconds(str(item["freshness_budget"]))
+            if budget_seconds is None or budget_seconds <= 0:
+                raise ValueError(
+                    f"unsupported freshness_budget for {slug}: "
+                    f"{item['freshness_budget']!r}"
+                )
+        has_budget = "freshness_budget" in item
+        has_semantics = "freshness_semantics" in item
+        if has_budget != has_semantics:
+            raise ValueError(
+                f"dataset {slug} must declare freshness_budget and freshness_semantics together"
+            )
+        if has_semantics and (
+            not isinstance(item["freshness_semantics"], str)
+            or not item["freshness_semantics"].strip()
+            or len(item["freshness_semantics"]) > 1024
+        ):
+            raise ValueError(f"dataset {slug} has invalid freshness_semantics")
         license_doc = item.get("license")
         if not isinstance(license_doc, dict) or not license_doc.get("name") or not license_doc.get("url"):
             raise ValueError(f"dataset {slug} needs an explicit license name and URL")

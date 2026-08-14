@@ -1,0 +1,96 @@
+{
+ "artifact": {
+  "bytes": 382089,
+  "media_type": "application/x-ndjson",
+  "path": "readings/china-econ-observations.jsonl",
+  "records": 435,
+  "sha256": "86c5630727f81b80d49c95a8695394aafdee5e9acc8a4a291b5d10752303db58",
+  "url": "https://palimpsest.info/readings/china-econ-observations.jsonl"
+ },
+ "as_of": "2026-08-14T08:00:17.966002Z",
+ "contract": {
+  "aggregate_only": true,
+  "bitemporal": true,
+  "manifest_schema": {
+   "path": "protocol/economic-observation-manifest-v1.schema.json",
+   "url": "https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json"
+  },
+  "observation_schema": {
+   "path": "protocol/economic-observation-v1.schema.json",
+   "url": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"
+  }
+ },
+ "coverage": {
+  "firm_size_count": 1,
+  "firm_sizes": [
+   "all"
+  ],
+  "first_collected_at": "2026-08-04T10:19:26.966884Z",
+  "first_released_at": "2026-08-04T10:19:26.966884Z",
+  "frequencies": [
+   "D"
+  ],
+  "geographies": [
+   "CN"
+  ],
+  "geography_count": 1,
+  "last_collected_at": "2026-08-14T08:00:17.966002Z",
+  "last_released_at": "2026-08-14T08:00:17.966002Z",
+  "ownership_count": 1,
+  "ownerships": [
+   "all"
+  ],
+  "period_end": "2026-08-14",
+  "period_start": "2026-07-06",
+  "provenance_only_vintages": 0,
+  "sector_count": 1,
+  "sectors": [
+   "all"
+  ],
+  "series_count": 15,
+  "series_ids": [
+   "cn.cfets.fdr001",
+   "cn.cfets.fdr007",
+   "cn.cfets.fdr014",
+   "cn.cfets.fr001",
+   "cn.cfets.fr007",
+   "cn.cfets.fr014",
+   "cn.cfets.shibor_1m",
+   "cn.cfets.shibor_1w",
+   "cn.cfets.shibor_1y",
+   "cn.cfets.shibor_2w",
+   "cn.cfets.shibor_3m",
+   "cn.cfets.shibor_6m",
+   "cn.cfets.shibor_9m",
+   "cn.cfets.shibor_on",
+   "cn.cfets.usdcny_parity"
+  ],
+  "source_count": 1,
+  "source_ids": [
+   "cfets_benchmarks"
+  ],
+  "units": [
+   "%",
+   "CNY per USD"
+  ],
+  "value_revision_events": 0
+ },
+ "generated_at": "2026-08-14T08:00:17.966002Z",
+ "integrity": {
+  "exact_byte_digest": true,
+  "monotonic_source_revisions": true,
+  "observation_ids_verified": true,
+  "status": "verified",
+  "unique_observation_ids": true
+ },
+ "limitations": [
+  "Coverage arrays describe rows present in this artifact, not the full source registry.",
+  "A collected_at clock records when Palimpsest knew a vintage; it is not the economic period.",
+  "Where a source omits a release timestamp, released_at may be a conservative first-observed upper bound declared in row metadata."
+ ],
+ "method": "Validate every aggregate observation and observation_id, enforce append order and source revision invariants, then hash the exact published JSONL bytes.",
+ "n_observations": 435,
+ "schema_version": "palimpsest-economic-observation-manifest.v1",
+ "scope": "Aggregate China economic observations actually collected by Palimpsest; this is a bitemporal evidence ledger, not a GDP estimate or a claim of complete source coverage.",
+ "source": "Palimpsest aggregate collectors; each observation retains its own source_id, evidence_url, and raw response digest"
+}

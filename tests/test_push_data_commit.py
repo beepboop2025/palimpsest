@@ -657,6 +657,15 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "--input-path readings/china-econ-history.jsonl" in (
         workflow_root / "cny-fix-gap-refresh.yml"
     ).read_text(encoding="utf-8")
+    china_econ = (workflow_root / "china-econ-refresh.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "python -m scripts.build_china_econ_forecast --check" in china_econ
+    assert "readings/china-econ-forecast-latest.json" in china_econ
+    assert (
+        "for path in scripts core processors config protocol assets "
+        "dashboards/assets readings"
+    ) in china_econ
     assert "--input-path readings/wayback-latest.json" in (
         workflow_root / "ddti-refresh.yml"
     ).read_text(encoding="utf-8")

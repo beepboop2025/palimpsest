@@ -327,3 +327,19 @@ def test_a_first_ever_round_writes_both_the_reading_and_the_history(publish):
     assert first["generated_at"] == "2026-07-17T09:41:00Z"
     assert first["method_version"] == pull.METHOD_VERSION
     assert _history(tmp_path) == [{"date": DAY, **BENCHMARKS}]
+
+
+def test_a_publish_also_refreshes_the_exact_byte_observation_manifest(publish):
+    run, tmp_path = publish
+    run({DAY: dict(BENCHMARKS)})
+
+    ledger = tmp_path / "china-econ-observations.jsonl"
+    manifest_path = tmp_path / "china-econ-observations-latest.json"
+    document = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert document["n_observations"] == len(BENCHMARKS)
+    assert document["artifact"]["records"] == len(BENCHMARKS)
+    assert document["artifact"]["bytes"] == ledger.stat().st_size
+    assert document["artifact"]["sha256"] == hashlib.sha256(
+        ledger.read_bytes()
+    ).hexdigest()
+    assert document["generated_at"] == "2026-07-17T09:41:00Z"
