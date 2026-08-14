@@ -216,12 +216,29 @@ def test_mobile_menu_owns_focus_until_it_closes():
     """Pin the focus-entry, Tab containment and focus-return modal contract."""
     script = (ROOT / "assets/shell.js").read_text(encoding="utf-8")
 
-    assert "function setMobileMenu(openNow)" in script
+    assert "function setMobileMenu(openNow, restoreFocus)" in script
     assert "if (firstLink) firstLink.focus();" in script
     assert 'if (e.key !== "Tab") return;' in script
     assert "last.focus();" in script
     assert "first.focus();" in script
     assert "burger.focus();" in script
+
+
+def test_mobile_menu_resets_when_the_viewport_becomes_desktop():
+    script = (ROOT / "assets/shell.js").read_text(encoding="utf-8")
+
+    assert 'matchMedia("(max-width: 940px)")' in script
+    assert "function () {\n        if (!compactViewport.matches" in script
+    assert "setMobileMenu(false, false);" in script
+
+
+def test_china_flyout_is_active_for_every_generated_china_route():
+    china = next(item for item in site_nav.NAV if item["label"] == "China")
+
+    assert site_nav._within(china, "/china/")
+    assert site_nav._within(china, "/china/sources/nbs-national-data/")
+    assert site_nav._within(china, "/china/releases/nbs-energy-output/")
+    assert not site_nav._within(china, "/data.html")
 
 
 def test_newsroom_focus_and_status_colours_clear_a_contrast_floor():

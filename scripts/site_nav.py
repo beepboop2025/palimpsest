@@ -35,16 +35,35 @@ END = "<!--/PS_NAV-->"
 NAV = [
     {"label": "Wire", "href": "/news/"},
     {
-        "label": "Censorship",
-        "lede": "What the apparatus removed, measured at the network, content and model layers.",
+        "label": "China",
+        "lede": "Economic releases, public-source signals and censorship evidence, kept separate and joined by receipts.",
+        "match_prefixes": ["/china/"],
         "columns": [
             {
-                "head": "Boards",
+                "head": "Start",
                 "links": [
+                    ("/china/", "China Observatory",
+                     "What changed, what is withheld, and the evidence behind both", "new"),
                     ("/osint-china.html", "OSINT China",
-                     "Every signal, source and freshness state in one public roll-up", "new"),
+                     "Censorship signals, sources and freshness in one public roll-up"),
                     ("/china-brief.html", "China Brief",
                      "The six-hourly read: what moved and what it means"),
+                ],
+            },
+            {
+                "head": "Economic evidence",
+                "links": [
+                    ("/china/sources/", "Source ledger",
+                     "Access, rights, readiness and limits for every reviewed source"),
+                    ("/china/releases/", "Release monitors",
+                     "Publication clocks, revisions and evidence receipts"),
+                    ("/china/domains/", "Coverage domains",
+                     "Where independent evidence exists, and where it does not"),
+                ],
+            },
+            {
+                "head": "Censorship instruments",
+                "links": [
                     ("/dashboards/ddti_observatory.html", "DDTI Observatory",
                      "Full command surface: fear index, topic network, ranked targets"),
                     ("/dashboards/ddti_dashboard.html", "Live Monitor",
@@ -172,6 +191,10 @@ def _within(item: dict, current: str) -> bool:
     if not current:
         return False
     here = current.split("#", 1)[0].rstrip("/")
+    for prefix in item.get("match_prefixes", []):
+        normalized = str(prefix).rstrip("/") + "/"
+        if (here + "/").startswith(normalized):
+            return True
     for col in item.get("columns", []):
         for entry in col["links"]:
             href = entry[0]

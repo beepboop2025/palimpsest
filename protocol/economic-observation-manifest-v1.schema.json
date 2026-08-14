@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json",
+  "title": "Palimpsest economic observation manifest v1",
+  "description": "A sealable summary and exact-byte receipt for the public aggregate economic-observation JSONL ledger.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "as_of",
+    "source",
+    "method",
+    "scope",
+    "n_observations",
+    "artifact",
+    "contract",
+    "coverage",
+    "integrity",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-economic-observation-manifest.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "as_of": {"$ref": "#/$defs/timestamp"},
+    "source": {"$ref": "#/$defs/text"},
+    "method": {"$ref": "#/$defs/text"},
+    "scope": {"$ref": "#/$defs/text"},
+    "n_observations": {"$ref": "#/$defs/count"},
+    "artifact": {"$ref": "#/$defs/artifact"},
+    "contract": {"$ref": "#/$defs/contract"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "integrity": {"$ref": "#/$defs/integrity"},
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/text"}
+    }
+  },
+  "$defs": {
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "positiveCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "identifierSet": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 240}
+    },
+    "schemaReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "url"],
+      "properties": {
+        "path": {"type": "string"},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "url", "media_type", "bytes", "sha256", "records"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^readings/[A-Za-z0-9._/-]+\\.jsonl$"
+        },
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "media_type": {"const": "application/x-ndjson"},
+        "bytes": {"$ref": "#/$defs/positiveCount"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "records": {"$ref": "#/$defs/positiveCount"}
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_schema", "observation_schema", "aggregate_only", "bitemporal"],
+      "properties": {
+        "manifest_schema": {
+          "allOf": [
+            {"$ref": "#/$defs/schemaReference"},
+            {
+              "properties": {
+                "path": {"const": "protocol/economic-observation-manifest-v1.schema.json"},
+                "url": {"const": "https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json"}
+              }
+            }
+          ]
+        },
+        "observation_schema": {
+          "allOf": [
+            {"$ref": "#/$defs/schemaReference"},
+            {
+              "properties": {
+                "path": {"const": "protocol/economic-observation-v1.schema.json"},
+                "url": {"const": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"}
+              }
+            }
+          ]
+        },
+        "aggregate_only": {"const": true},
+        "bitemporal": {"const": true}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "series_count",
+        "series_ids",
+        "source_count",
+        "source_ids",
+        "geography_count",
+        "geographies",
+        "sector_count",
+        "sectors",
+        "firm_size_count",
+        "firm_sizes",
+        "ownership_count",
+        "ownerships",
+        "frequencies",
+        "units",
+        "period_start",
+        "period_end",
+        "first_released_at",
+        "last_released_at",
+        "first_collected_at",
+        "last_collected_at",
+        "value_revision_events",
+        "provenance_only_vintages"
+      ],
+      "properties": {
+        "series_count": {"$ref": "#/$defs/positiveCount"},
+        "series_ids": {"$ref": "#/$defs/identifierSet"},
+        "source_count": {"$ref": "#/$defs/positiveCount"},
+        "source_ids": {"$ref": "#/$defs/identifierSet"},
+        "geography_count": {"$ref": "#/$defs/positiveCount"},
+        "geographies": {"$ref": "#/$defs/identifierSet"},
+        "sector_count": {"$ref": "#/$defs/positiveCount"},
+        "sectors": {"$ref": "#/$defs/identifierSet"},
+        "firm_size_count": {"$ref": "#/$defs/positiveCount"},
+        "firm_sizes": {"$ref": "#/$defs/identifierSet"},
+        "ownership_count": {"$ref": "#/$defs/positiveCount"},
+        "ownerships": {"$ref": "#/$defs/identifierSet"},
+        "frequencies": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {"enum": ["event", "D", "W", "M", "Q", "A"]}
+        },
+        "units": {"$ref": "#/$defs/identifierSet"},
+        "period_start": {"$ref": "#/$defs/date"},
+        "period_end": {"$ref": "#/$defs/date"},
+        "first_released_at": {"$ref": "#/$defs/timestamp"},
+        "last_released_at": {"$ref": "#/$defs/timestamp"},
+        "first_collected_at": {"$ref": "#/$defs/timestamp"},
+        "last_collected_at": {"$ref": "#/$defs/timestamp"},
+        "value_revision_events": {"$ref": "#/$defs/count"},
+        "provenance_only_vintages": {"$ref": "#/$defs/count"}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "exact_byte_digest",
+        "observation_ids_verified",
+        "unique_observation_ids",
+        "monotonic_source_revisions"
+      ],
+      "properties": {
+        "status": {"const": "verified"},
+        "exact_byte_digest": {"const": true},
+        "observation_ids_verified": {"const": true},
+        "unique_observation_ids": {"const": true},
+        "monotonic_source_revisions": {"const": true}
+      }
+    }
+  }
+}

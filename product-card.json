@@ -4,9 +4,18 @@
   "product": {
     "name": "Palimpsest",
     "canonical_url": "https://palimpsest.info/",
-    "category": "Censorship observatory, verifiable AI evaluation registry, evidence-bound Eval Journal and structured evidence commons",
-    "description": "A free, MIT-licensed public-good observatory that measures information control, publishes pre-registered hash-chained AI evaluations and evidence-bound eval essays, and keeps China signals, monetary context, aggregate illicit-market observables and reviewed scam typologies legible through explicit evidence boundaries.",
+    "category": "Censorship observatory, revision-safe China Economic Observatory, verifiable AI evaluation registry, evidence-bound Eval Journal and structured evidence commons",
+    "description": "A free public good that measures information control, publishes a revision-safe China Economic Observatory, maintains pre-registered hash-chained AI evaluations, and explains them through an evidence-bound Eval Journal. Palimpsest software, schemas and original metadata are MIT-licensed; source observations retain their publishers' rights.",
     "license": "MIT",
+    "license_scope": [
+      "Palimpsest software",
+      "Palimpsest schemas",
+      "Palimpsest original metadata"
+    ],
+    "source_observation_rights": {
+      "status": "publisher_rights_retained",
+      "catalog": "https://palimpsest.info/data.html#rights"
+    },
     "price": "Free",
     "geography": "China-facing measurements plus aggregate transnational reference contexts and model-evaluation research",
     "topics": [
@@ -27,6 +36,7 @@
     "An AI safety or evaluation team needs a pre-registered, hash-chained model-evaluation record or refusal-drift evidence.",
     "An agent needs a read-only MCP server that reconciles multiple censorship signals without inventing a finding from a coverage gap.",
     "A researcher needs raw JSON readings whose freshness, vantage and limitations remain attached.",
+    "A researcher or agent needs bounded, point-in-time queries over aggregate China economic observations with release and collection clocks, revisions and provenance hashes intact.",
     "A threat researcher or ScamShield operator needs a reviewed typology and source map whose support level stays separate from an allegation.",
     "A researcher needs to search and inspect every field retained by the China roll-up rather than only its headline cards."
   ],
@@ -46,12 +56,21 @@
     "data_catalog_json": "https://palimpsest.info/readings/catalog.json",
     "data_catalog_jsonld": "https://palimpsest.info/readings/catalog.jsonld",
     "frictionless_data_package": "https://palimpsest.info/datapackage.json",
+    "china_observatory": "https://palimpsest.info/china/",
+    "china_observatory_index": "https://palimpsest.info/readings/china-index-latest.json",
+    "china_observatory_index_schema": "https://palimpsest.info/protocol/china-index-v1.schema.json",
     "researcher_guide": "https://palimpsest.info/for-researchers.html",
     "eval_registry": "https://palimpsest.info/readings/eval-registry.html",
     "eval_assurance": "https://palimpsest.info/readings/eval-assurance-latest.json",
     "eval_journal": "https://palimpsest.info/evals/",
     "eval_journal_json": "https://palimpsest.info/readings/eval-journal-latest.json",
     "erasure_observatory": "https://palimpsest.info/readings/erasure-observatory.html",
+    "china_economic_observation_manifest": "https://palimpsest.info/readings/china-econ-observations-latest.json",
+    "china_economic_observations_jsonl": "https://palimpsest.info/readings/china-econ-observations.jsonl",
+    "china_economic_observation_schema": "https://palimpsest.info/protocol/economic-observation-v1.schema.json",
+    "china_economic_observation_manifest_schema": "https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json",
+    "china_economic_forecast": "https://palimpsest.info/readings/china-econ-forecast-latest.json",
+    "china_economic_forecast_schema": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json",
     "evidence_capsules": "https://palimpsest.info/evidence-capsules.html",
     "scamshield_intelligence_pack": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
     "scamshield_bridge_docs": "https://github.com/beepboop2025/palimpsest/blob/main/integrations/scamshield/README.md",
@@ -111,10 +130,15 @@
     "website": "https://palimpsest.info/",
     "dataset_catalog": "https://palimpsest.info/data.html",
     "eval_journal": "https://palimpsest.info/evals/",
+    "china_observatory": "https://palimpsest.info/china/",
+    "china_observatory_index": "https://palimpsest.info/readings/china-index-latest.json",
     "quickstart": "https://palimpsest.info/developers.html",
     "openapi": "https://palimpsest.info/openapi.json",
     "rest_example": "https://palimpsest.info/readings/board-alarm-latest.json",
     "mcp": "https://api.seiche.info/palimpsest/mcp",
+    "mcp_version": "1.8.0",
+    "economic_observations": "https://palimpsest.info/readings/china-econ-observations.jsonl",
+    "economic_forecast": "https://palimpsest.info/readings/china-econ-forecast-latest.json",
     "intelligence_commons": "https://palimpsest.info/osint-china.html#commons",
     "scamshield_bot": "https://t.me/Scamshield_2_bot",
     "scamshield_public_guide": "https://palimpsest.info/guides/telegram-scam-message-checker/",
@@ -122,7 +146,7 @@
     "narcoscope_website": "https://narcoscope.com/",
     "narcoscope_bot": "https://t.me/NarcoScopeEvidenceBot",
     "evidence_signal_channel": "https://t.me/EvidenceSignalDesk",
-    "authentication": "All five hosted MCP tools and all published readings are read-only and require no token."
+    "authentication": "All six hosted MCP tools and all published readings are read-only and require no token."
   },
-  "citation": "Palimpsest. Censorship observatory and verifiable AI evaluation registry. https://palimpsest.info/ (cite the specific reading, generated_at timestamp, measurement vantage and stated limitations)."
+  "citation": "Palimpsest. Censorship Observatory, China Economic Observatory and Verifiable AI Evaluation Registry. https://palimpsest.info/ (cite the specific reading, generated_at timestamp, measurement vantage and stated limitations)."
 }

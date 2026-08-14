@@ -1,0 +1,1315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/china-index-v1.schema.json",
+  "title": "Palimpsest China Observatory index v1",
+  "description": "A closed, compact publication contract for the China Observatory evidence, source, ledger, and forecast summaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source",
+    "method",
+    "scope",
+    "n_sources",
+    "head",
+    "counts",
+    "economic_state",
+    "readiness",
+    "evidence_rails",
+    "desks",
+    "domains",
+    "releases",
+    "sources",
+    "observation_ledger",
+    "forecast",
+    "input_integrity",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-china-index.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "source": {"$ref": "#/$defs/nonblank"},
+    "method": {"$ref": "#/$defs/nonblank"},
+    "scope": {"$ref": "#/$defs/nonblank"},
+    "n_sources": {"$ref": "#/$defs/positiveInteger"},
+    "head": {"$ref": "#/$defs/head"},
+    "counts": {"$ref": "#/$defs/counts"},
+    "economic_state": {"$ref": "#/$defs/economicState"},
+    "readiness": {"$ref": "#/$defs/readiness"},
+    "evidence_rails": {"$ref": "#/$defs/evidenceRails"},
+    "desks": {"$ref": "#/$defs/desks"},
+    "domains": {"$ref": "#/$defs/domains"},
+    "releases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/release"}
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "observation_ledger": {"$ref": "#/$defs/ledger"},
+    "forecast": {"$ref": "#/$defs/forecast"},
+    "input_integrity": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/integrityCheck"}
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonblank"}
+    }
+  },
+  "$defs": {
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "finiteNumber": {
+      "type": "number",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "nonblank": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": ".*\\S.*"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "registryIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "seriesIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": ".*\\S.*"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "httpUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://[^/@\\s?#]+(?:[/?#]|$)"
+    },
+    "nullableNumber": {
+      "oneOf": [
+        {"$ref": "#/$defs/finiteNumber"},
+        {"type": "null"}
+      ]
+    },
+    "nullableInteger": {
+      "oneOf": [
+        {"$ref": "#/$defs/nonnegativeInteger"},
+        {"type": "null"}
+      ]
+    },
+    "nullableTimestamp": {
+      "oneOf": [
+        {"$ref": "#/$defs/timestamp"},
+        {"type": "null"}
+      ]
+    },
+    "nullableSha256": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonblank"}
+    },
+    "registryIdSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/registryIdentifier"}
+    },
+    "head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index_id",
+        "as_of",
+        "generated_at",
+        "pulse_schema_version",
+        "source_registry_version",
+        "input_sha256"
+      ],
+      "properties": {
+        "index_id": {"const": "palimpsest-china-observatory"},
+        "as_of": {"$ref": "#/$defs/timestamp"},
+        "generated_at": {"$ref": "#/$defs/timestamp"},
+        "pulse_schema_version": {"const": "palimpsest-economic-pulse.v1"},
+        "source_registry_version": {"$ref": "#/$defs/positiveInteger"},
+        "input_sha256": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_registry",
+            "presentation_config",
+            "economic_pulse",
+            "observation_ledger",
+            "economic_forecast"
+          ],
+          "properties": {
+            "source_registry": {"$ref": "#/$defs/sha256"},
+            "presentation_config": {"$ref": "#/$defs/sha256"},
+            "economic_pulse": {"$ref": "#/$defs/sha256"},
+            "observation_ledger": {"$ref": "#/$defs/sha256"},
+            "economic_forecast": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "sourceImplementations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_ready",
+        "blocked",
+        "licensed_adapter",
+        "live",
+        "out_of_scope",
+        "planned"
+      ],
+      "properties": {
+        "adapter_ready": {"$ref": "#/$defs/nonnegativeInteger"},
+        "blocked": {"$ref": "#/$defs/nonnegativeInteger"},
+        "licensed_adapter": {"$ref": "#/$defs/nonnegativeInteger"},
+        "live": {"$ref": "#/$defs/nonnegativeInteger"},
+        "out_of_scope": {"$ref": "#/$defs/nonnegativeInteger"},
+        "planned": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sources",
+        "source_implementations",
+        "domains",
+        "desks",
+        "metrics",
+        "release_monitors",
+        "observations",
+        "series",
+        "forecast_targets",
+        "forecast_ready_targets"
+      ],
+      "properties": {
+        "sources": {"$ref": "#/$defs/positiveInteger"},
+        "source_implementations": {"$ref": "#/$defs/sourceImplementations"},
+        "domains": {"const": 12},
+        "desks": {"const": 6},
+        "metrics": {"$ref": "#/$defs/nonnegativeInteger"},
+        "release_monitors": {"$ref": "#/$defs/positiveInteger"},
+        "observations": {"$ref": "#/$defs/positiveInteger"},
+        "series": {"$ref": "#/$defs/positiveInteger"},
+        "forecast_targets": {"$ref": "#/$defs/positiveInteger"},
+        "forecast_ready_targets": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "economicState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "direction",
+        "composite",
+        "claim",
+        "prohibited_interpretations"
+      ],
+      "properties": {
+        "status": {"const": "warming_up"},
+        "direction": {"type": "null"},
+        "composite": {"type": "null"},
+        "claim": {"$ref": "#/$defs/nonblank"},
+        "prohibited_interpretations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "label", "minimum", "observed", "passed"],
+      "properties": {
+        "gate_id": {
+          "enum": [
+            "substantive-desks",
+            "independent-groups",
+            "source-classes",
+            "baseline-months"
+          ]
+        },
+        "label": {"$ref": "#/$defs/nonblank"},
+        "minimum": {"$ref": "#/$defs/nonnegativeInteger"},
+        "observed": {"$ref": "#/$defs/nonnegativeInteger"},
+        "passed": {"type": "boolean"}
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "gates", "failed_gate_ids", "abstention_reason"],
+      "properties": {
+        "status": {"enum": ["warming_up", "coverage_ready"]},
+        "gates": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {
+              "allOf": [
+                {"$ref": "#/$defs/gate"},
+                {"properties": {"gate_id": {"const": "substantive-desks"}}}
+              ]
+            },
+            {
+              "allOf": [
+                {"$ref": "#/$defs/gate"},
+                {"properties": {"gate_id": {"const": "independent-groups"}}}
+              ]
+            },
+            {
+              "allOf": [
+                {"$ref": "#/$defs/gate"},
+                {"properties": {"gate_id": {"const": "source-classes"}}}
+              ]
+            },
+            {
+              "allOf": [
+                {"$ref": "#/$defs/gate"},
+                {"properties": {"gate_id": {"const": "baseline-months"}}}
+              ]
+            }
+          ],
+          "items": false
+        },
+        "failed_gate_ids": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "substantive-desks",
+              "independent-groups",
+              "source-classes",
+              "baseline-months"
+            ]
+          }
+        },
+        "abstention_reason": {"$ref": "#/$defs/nonblank"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "warming_up"}}},
+          "then": {
+            "properties": {
+              "failed_gate_ids": {"minItems": 1}
+            }
+          },
+          "else": {
+            "properties": {
+              "failed_gate_ids": {"maxItems": 0}
+            }
+          }
+        }
+      ]
+    },
+    "rail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rail_id", "label", "observed_metrics", "desk_cells"],
+      "properties": {
+        "rail_id": {"enum": ["official", "market", "physical", "integrity"]},
+        "label": {"$ref": "#/$defs/nonblank"},
+        "observed_metrics": {"$ref": "#/$defs/nonnegativeInteger"},
+        "desk_cells": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"type": "boolean"}
+        }
+      }
+    },
+    "evidenceRails": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {
+          "allOf": [
+            {"$ref": "#/$defs/rail"},
+            {"properties": {"rail_id": {"const": "official"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/rail"},
+            {"properties": {"rail_id": {"const": "market"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/rail"},
+            {"properties": {"rail_id": {"const": "physical"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/rail"},
+            {"properties": {"rail_id": {"const": "integrity"}}}
+          ]
+        }
+      ],
+      "items": false
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "age_hours", "budget_hours"],
+      "properties": {
+        "status": {"enum": ["current", "stale"]},
+        "age_hours": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "budget_hours": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "comparability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept_id", "concept", "basis"],
+      "properties": {
+        "concept_id": {"$ref": "#/$defs/identifier"},
+        "concept": {"$ref": "#/$defs/nonblank"},
+        "basis": {"$ref": "#/$defs/nonblank"}
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "number", "previous_value", "delta"],
+      "properties": {
+        "status": {"enum": ["original", "revised", "not_available"]},
+        "number": {"$ref": "#/$defs/nullableInteger"},
+        "previous_value": {"$ref": "#/$defs/nullableNumber"},
+        "delta": {"$ref": "#/$defs/nullableNumber"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "not_available"}}},
+          "then": {
+            "properties": {
+              "number": {"type": "null"},
+              "previous_value": {"type": "null"},
+              "delta": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "original"}}},
+          "then": {
+            "properties": {
+              "number": {"const": 0},
+              "previous_value": {"type": "null"},
+              "delta": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "revised"}}},
+          "then": {
+            "properties": {
+              "number": {"$ref": "#/$defs/positiveInteger"},
+              "previous_value": {"$ref": "#/$defs/finiteNumber"},
+              "delta": {"$ref": "#/$defs/finiteNumber"}
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "sha256"],
+      "properties": {
+        "url": {
+          "oneOf": [
+            {"$ref": "#/$defs/httpUrl"},
+            {"type": "null"}
+          ]
+        },
+        "sha256": {"$ref": "#/$defs/nullableSha256"}
+      }
+    },
+    "baseMetric": {
+      "type": "object",
+      "required": [
+        "metric_id",
+        "label",
+        "value",
+        "unit",
+        "frequency",
+        "period_start",
+        "period_end",
+        "released_at",
+        "collected_at",
+        "source_id",
+        "independence_group",
+        "source_class",
+        "status",
+        "freshness",
+        "comparability",
+        "revision",
+        "evidence",
+        "limitation"
+      ],
+      "properties": {
+        "metric_id": {"$ref": "#/$defs/identifier"},
+        "label": {"$ref": "#/$defs/nonblank"},
+        "value": {"$ref": "#/$defs/finiteNumber"},
+        "unit": {"$ref": "#/$defs/nonblank"},
+        "frequency": {"enum": ["event", "D", "W", "M", "Q", "A"]},
+        "period_start": {"$ref": "#/$defs/date"},
+        "period_end": {"$ref": "#/$defs/date"},
+        "released_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "source_id": {"$ref": "#/$defs/nonblank"},
+        "independence_group": {"$ref": "#/$defs/nonblank"},
+        "source_class": {"enum": ["official", "market", "physical", "news"]},
+        "status": {"enum": ["observed", "estimate", "forecast", "derived"]},
+        "freshness": {"$ref": "#/$defs/freshness"},
+        "comparability": {"$ref": "#/$defs/comparability"},
+        "revision": {"$ref": "#/$defs/revision"},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "limitation": {"$ref": "#/$defs/nonblank"}
+      }
+    },
+    "metric": {
+      "allOf": [{"$ref": "#/$defs/baseMetric"}],
+      "unevaluatedProperties": false
+    },
+    "desk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "status",
+        "n_metrics",
+        "independent_group_ids",
+        "source_classes",
+        "metrics",
+        "limitations"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "activity",
+            "money-credit-fx",
+            "markets-capital",
+            "trade-logistics-physical",
+            "property-labor-demand",
+            "data-integrity"
+          ]
+        },
+        "title": {"$ref": "#/$defs/nonblank"},
+        "status": {"enum": ["observed", "not_collected"]},
+        "n_metrics": {"$ref": "#/$defs/nonnegativeInteger"},
+        "independent_group_ids": {"$ref": "#/$defs/stringSet"},
+        "source_classes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["official", "market", "physical", "news"]}
+        },
+        "metrics": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {"$ref": "#/$defs/metric"}
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "not_collected"}}},
+          "then": {
+            "properties": {
+              "n_metrics": {"const": 0},
+              "independent_group_ids": {"maxItems": 0},
+              "source_classes": {"maxItems": 0},
+              "metrics": {"maxItems": 0}
+            }
+          },
+          "else": {
+            "properties": {
+              "n_metrics": {"minimum": 1},
+              "metrics": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    },
+    "desks": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {
+          "allOf": [
+            {"$ref": "#/$defs/desk"},
+            {"properties": {"id": {"const": "activity"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/desk"},
+            {"properties": {"id": {"const": "money-credit-fx"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/desk"},
+            {"properties": {"id": {"const": "markets-capital"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/desk"},
+            {"properties": {"id": {"const": "trade-logistics-physical"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/desk"},
+            {"properties": {"id": {"const": "property-labor-demand"}}}
+          ]
+        },
+        {
+          "allOf": [
+            {"$ref": "#/$defs/desk"},
+            {"properties": {"id": {"const": "data-integrity"}}}
+          ]
+        }
+      ],
+      "items": false
+    },
+    "domainId": {
+      "enum": [
+        "activity",
+        "firm_health",
+        "investment",
+        "credit",
+        "inflation",
+        "labor",
+        "property",
+        "trade",
+        "consumer_digital",
+        "commodities",
+        "agriculture",
+        "logistics"
+      ]
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain",
+        "label",
+        "description",
+        "status",
+        "source_ids",
+        "registered_live_groups",
+        "observed_groups",
+        "adapter_ready_groups",
+        "pulse_metric_ids"
+      ],
+      "properties": {
+        "domain": {"$ref": "#/$defs/domainId"},
+        "label": {"$ref": "#/$defs/nonblank"},
+        "description": {"$ref": "#/$defs/nonblank"},
+        "status": {"enum": ["observed", "adapter_ready", "gap"]},
+        "source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/registryIdentifier"}
+        },
+        "registered_live_groups": {"$ref": "#/$defs/stringSet"},
+        "observed_groups": {"$ref": "#/$defs/stringSet"},
+        "adapter_ready_groups": {"$ref": "#/$defs/stringSet"},
+        "pulse_metric_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "observed"}}},
+          "then": {
+            "properties": {
+              "observed_groups": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "adapter_ready"}}},
+          "then": {
+            "properties": {
+              "observed_groups": {"maxItems": 0},
+              "adapter_ready_groups": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "gap"}}},
+          "then": {
+            "properties": {
+              "observed_groups": {"maxItems": 0},
+              "adapter_ready_groups": {"maxItems": 0}
+            }
+          }
+        }
+      ]
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/domain"},
+      "allOf": [
+        {"contains": {"properties": {"domain": {"const": "activity"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "firm_health"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "investment"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "credit"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "inflation"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "labor"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "property"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "trade"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "consumer_digital"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "commodities"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "agriculture"}}, "required": ["domain"]}},
+        {"contains": {"properties": {"domain": {"const": "logistics"}}, "required": ["domain"]}}
+      ]
+    },
+    "release": {
+      "allOf": [
+        {"$ref": "#/$defs/baseMetric"},
+        {
+          "type": "object",
+          "required": [
+            "watch_id",
+            "latest_publication_date",
+            "latest_period",
+            "nominal_interval_days",
+            "basis",
+            "days_past_promise",
+            "periods_behind",
+            "registry_source_id",
+            "registry_relationship",
+            "registry_relationship_note"
+          ],
+          "properties": {
+            "metric_id": {
+              "type": "string",
+              "pattern": "^cn-release-lag-[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "source_class": {"const": "official"},
+            "status": {"const": "observed"},
+            "unit": {"const": "days"},
+            "watch_id": {"$ref": "#/$defs/registryIdentifier"},
+            "latest_publication_date": {"$ref": "#/$defs/date"},
+            "latest_period": {
+              "oneOf": [
+                {"type": "string", "pattern": "^\\d{4}-\\d{2}$"},
+                {"type": "null"}
+              ]
+            },
+            "nominal_interval_days": {"$ref": "#/$defs/positiveInteger"},
+            "basis": {"enum": ["business", "calendar"]},
+            "days_past_promise": {"$ref": "#/$defs/nullableInteger"},
+            "periods_behind": {"$ref": "#/$defs/nullableInteger"},
+            "registry_source_id": {
+              "oneOf": [
+                {"$ref": "#/$defs/registryIdentifier"},
+                {"type": "null"}
+              ]
+            },
+            "registry_relationship": {
+              "enum": [
+                "exact_dataset",
+                "publisher_family",
+                "unregistered_release_surface"
+              ]
+            },
+            "registry_relationship_note": {"$ref": "#/$defs/nonblank"}
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "registry_relationship": {"const": "unregistered_release_surface"}
+            },
+            "required": ["registry_relationship"]
+          },
+          "then": {
+            "properties": {
+              "registry_source_id": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "registry_source_id": {"$ref": "#/$defs/registryIdentifier"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "name",
+        "publisher",
+        "implementation",
+        "collector",
+        "access_mode",
+        "cadence",
+        "domains",
+        "dimensions",
+        "independence_group",
+        "home_url",
+        "evidence_url",
+        "license_note",
+        "safety_class",
+        "vintage_support",
+        "pulse_metric_ids",
+        "release_monitor_ids",
+        "observation_count"
+      ],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/registryIdentifier"},
+        "name": {"$ref": "#/$defs/nonblank"},
+        "publisher": {"$ref": "#/$defs/nonblank"},
+        "implementation": {
+          "enum": [
+            "live",
+            "adapter_ready",
+            "planned",
+            "licensed_adapter",
+            "blocked",
+            "out_of_scope"
+          ]
+        },
+        "collector": {
+          "type": "string",
+          "pattern": "^(?:none|[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+)$",
+          "maxLength": 256
+        },
+        "access_mode": {
+          "enum": [
+            "licensed",
+            "restricted",
+            "open_keyless",
+            "public_manual",
+            "open_bulk"
+          ]
+        },
+        "cadence": {
+          "enum": ["event", "daily", "weekly", "monthly", "quarterly", "annual"]
+        },
+        "domains": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/domainId"}
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        },
+        "independence_group": {"$ref": "#/$defs/nonblank"},
+        "home_url": {"$ref": "#/$defs/httpUrl"},
+        "evidence_url": {"$ref": "#/$defs/httpUrl"},
+        "license_note": {"$ref": "#/$defs/nonblank"},
+        "safety_class": {
+          "enum": [
+            "licensed_aggregate",
+            "restricted_nonpublic",
+            "public_aggregate",
+            "public_entity_aggregate"
+          ]
+        },
+        "vintage_support": {"type": "boolean"},
+        "pulse_metric_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "release_monitor_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^cn-release-lag-[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
+        "observation_count": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "media_type", "bytes", "sha256"],
+      "properties": {
+        "path": {"const": "readings/china-econ-observations.jsonl"},
+        "media_type": {"const": "application/x-ndjson"},
+        "bytes": {"$ref": "#/$defs/positiveInteger"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "timestampRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first", "last"],
+      "properties": {
+        "first": {"$ref": "#/$defs/timestamp"},
+        "last": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "dateRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first", "last"],
+      "properties": {
+        "first": {"$ref": "#/$defs/date"},
+        "last": {"$ref": "#/$defs/date"}
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["geography", "sector", "firm_size", "ownership"],
+      "properties": {
+        "geography": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        },
+        "sector": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        },
+        "firm_size": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        },
+        "ownership": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        }
+      }
+    },
+    "latestObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "series_id",
+        "value",
+        "unit",
+        "frequency",
+        "period_start",
+        "period_end",
+        "released_at",
+        "collected_at",
+        "source_id",
+        "evidence_url",
+        "revision",
+        "status",
+        "observation_id",
+        "geography",
+        "sector",
+        "firm_size",
+        "ownership",
+        "quality",
+        "raw_sha256"
+      ],
+      "properties": {
+        "series_id": {"$ref": "#/$defs/seriesIdentifier"},
+        "value": {"$ref": "#/$defs/finiteNumber"},
+        "unit": {"$ref": "#/$defs/nonblank"},
+        "frequency": {"enum": ["event", "D", "W", "M", "Q", "A"]},
+        "period_start": {"$ref": "#/$defs/date"},
+        "period_end": {"$ref": "#/$defs/date"},
+        "released_at": {"$ref": "#/$defs/timestamp"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "source_id": {"$ref": "#/$defs/registryIdentifier"},
+        "evidence_url": {"$ref": "#/$defs/httpUrl"},
+        "revision": {"$ref": "#/$defs/nonnegativeInteger"},
+        "status": {"enum": ["observed", "estimate", "forecast"]},
+        "observation_id": {"$ref": "#/$defs/sha256"},
+        "geography": {"$ref": "#/$defs/nonblank"},
+        "sector": {"$ref": "#/$defs/nonblank"},
+        "firm_size": {"$ref": "#/$defs/nonblank"},
+        "ownership": {"$ref": "#/$defs/nonblank"},
+        "quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "raw_sha256": {"$ref": "#/$defs/nullableSha256"}
+      }
+    },
+    "ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "record_count",
+        "unique_observation_count",
+        "source_ids",
+        "series_ids",
+        "release_clock",
+        "collection_clock",
+        "period_coverage",
+        "dimensions",
+        "latest_by_source_slice"
+      ],
+      "properties": {
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "record_count": {"$ref": "#/$defs/positiveInteger"},
+        "unique_observation_count": {"$ref": "#/$defs/positiveInteger"},
+        "source_ids": {
+          "allOf": [
+            {"$ref": "#/$defs/registryIdSet"},
+            {"minItems": 1}
+          ]
+        },
+        "series_ids": {
+          "allOf": [
+            {"$ref": "#/$defs/stringSet"},
+            {"minItems": 1}
+          ]
+        },
+        "release_clock": {"$ref": "#/$defs/timestampRange"},
+        "collection_clock": {"$ref": "#/$defs/timestampRange"},
+        "period_coverage": {"$ref": "#/$defs/dateRange"},
+        "dimensions": {"$ref": "#/$defs/dimensions"},
+        "latest_by_source_slice": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100000,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/latestObservation"}
+        }
+      }
+    },
+    "forecastArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "schema", "bytes", "sha256"],
+      "properties": {
+        "path": {"const": "readings/china-econ-forecast-latest.json"},
+        "schema": {"const": "protocol/economic-forecast-v1.schema.json"},
+        "bytes": {"$ref": "#/$defs/positiveInteger"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "forecastSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targets",
+        "ready_targets",
+        "abstaining_targets",
+        "champion_target_ids"
+      ],
+      "properties": {
+        "targets": {"$ref": "#/$defs/positiveInteger"},
+        "ready_targets": {"$ref": "#/$defs/nonnegativeInteger"},
+        "abstaining_targets": {"$ref": "#/$defs/nonnegativeInteger"},
+        "champion_target_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        }
+      }
+    },
+    "gateInterval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {
+        "minimum": {"$ref": "#/$defs/finiteNumber"},
+        "maximum": {"$ref": "#/$defs/finiteNumber"}
+      }
+    },
+    "gateValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"$ref": "#/$defs/finiteNumber"},
+        {"$ref": "#/$defs/gateInterval"}
+      ]
+    },
+    "forecastGateCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "required", "passed"],
+      "properties": {
+        "observed": {"$ref": "#/$defs/gateValue"},
+        "required": {"$ref": "#/$defs/gateValue"},
+        "passed": {"type": "boolean"}
+      }
+    },
+    "nowcast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "as_of",
+        "target_period",
+        "model_id",
+        "point",
+        "lower",
+        "upper",
+        "interval_coverage",
+        "unit",
+        "contributor_series_ids",
+        "source_ids",
+        "independence_groups",
+        "feature_snapshot_sha256"
+      ],
+      "properties": {
+        "as_of": {"$ref": "#/$defs/timestamp"},
+        "target_period": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "after"],
+          "properties": {
+            "kind": {"const": "next_observed_period"},
+            "after": {"$ref": "#/$defs/date"}
+          }
+        },
+        "model_id": {"$ref": "#/$defs/nonblank"},
+        "point": {"$ref": "#/$defs/finiteNumber"},
+        "lower": {"$ref": "#/$defs/nullableNumber"},
+        "upper": {"$ref": "#/$defs/nullableNumber"},
+        "interval_coverage": {"$ref": "#/$defs/nullableNumber"},
+        "unit": {"$ref": "#/$defs/nonblank"},
+        "contributor_series_ids": {"$ref": "#/$defs/stringSet"},
+        "source_ids": {"$ref": "#/$defs/registryIdSet"},
+        "independence_groups": {"$ref": "#/$defs/stringSet"},
+        "feature_snapshot_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "forecastTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_id",
+        "label",
+        "series_id",
+        "status",
+        "outcome_periods",
+        "observed_source_ids",
+        "observed_independence_groups",
+        "champion_model_id",
+        "nowcast",
+        "gate_checks"
+      ],
+      "properties": {
+        "target_id": {"$ref": "#/$defs/nonblank"},
+        "label": {"$ref": "#/$defs/nonblank"},
+        "series_id": {"$ref": "#/$defs/seriesIdentifier"},
+        "status": {"enum": ["warming_up", "ready"]},
+        "outcome_periods": {"$ref": "#/$defs/nonnegativeInteger"},
+        "observed_source_ids": {"$ref": "#/$defs/registryIdSet"},
+        "observed_independence_groups": {"$ref": "#/$defs/stringSet"},
+        "champion_model_id": {
+          "oneOf": [
+            {"$ref": "#/$defs/nonblank"},
+            {"type": "null"}
+          ]
+        },
+        "nowcast": {
+          "oneOf": [
+            {"$ref": "#/$defs/nowcast"},
+            {"type": "null"}
+          ]
+        },
+        "gate_checks": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 32,
+          "propertyNames": {"$ref": "#/$defs/identifier"},
+          "additionalProperties": {"$ref": "#/$defs/forecastGateCheck"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "warming_up"}}},
+          "then": {
+            "properties": {
+              "champion_model_id": {"type": "null"},
+              "nowcast": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "champion_model_id": {"$ref": "#/$defs/nonblank"},
+              "nowcast": {"$ref": "#/$defs/nowcast"}
+            }
+          }
+        }
+      ]
+    },
+    "forecast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "generated_at",
+        "as_of",
+        "status",
+        "scope",
+        "claim",
+        "summary",
+        "targets",
+        "limitations"
+      ],
+      "properties": {
+        "artifact": {"$ref": "#/$defs/forecastArtifact"},
+        "generated_at": {"$ref": "#/$defs/timestamp"},
+        "as_of": {"$ref": "#/$defs/timestamp"},
+        "status": {"enum": ["warming_up", "ready"]},
+        "scope": {"$ref": "#/$defs/nonblank"},
+        "claim": {"$ref": "#/$defs/nonblank"},
+        "summary": {"$ref": "#/$defs/forecastSummary"},
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/forecastTarget"}
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonblank"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "ready"}}},
+          "then": {
+            "properties": {
+              "summary": {
+                "properties": {
+                  "ready_targets": {"minimum": 1},
+                  "abstaining_targets": {"const": 0},
+                  "champion_target_ids": {"minItems": 1}
+                }
+              },
+              "targets": {
+                "items": {
+                  "properties": {"status": {"const": "ready"}},
+                  "required": ["status"]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "targets": {
+                "contains": {
+                  "properties": {"status": {"const": "warming_up"}},
+                  "required": ["status"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "integrityCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "status", "detail"],
+      "properties": {
+        "check_id": {"$ref": "#/$defs/identifier"},
+        "status": {"enum": ["pass", "warning", "not_tested"]},
+        "detail": {"$ref": "#/$defs/nonblank"}
+      }
+    }
+  }
+}
