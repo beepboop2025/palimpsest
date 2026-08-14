@@ -3,44 +3,38 @@
   "distinct_pools_basis": "union of forged IPs per region, not per-target samples",
   "events": [
     {
-      "detail": "injector-process floor changed from 1 to 2",
-      "kind": "capacity_shift",
-      "severity": "medium",
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
       "vantage": "CN-BJ/AS4808"
     },
     {
-      "detail": "injector-process floor changed from 1 to 2",
-      "kind": "capacity_shift",
-      "severity": "medium",
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
       "vantage": "CN-GD/AS17623"
     },
     {
-      "detail": "injector-process floor changed from 1 to 2",
-      "kind": "capacity_shift",
-      "severity": "medium",
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
       "vantage": "CN-SH/AS4812"
     },
     {
-      "detail": "injector-process floor changed from 1 to 2",
-      "kind": "capacity_shift",
-      "severity": "medium",
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
       "vantage": "CN/AS4134"
     },
     {
-      "detail": "injector-process floor changed from 1 to 2",
-      "kind": "capacity_shift",
-      "severity": "medium",
+      "detail": "forged-IP pool rotated",
+      "kind": "pool_rotation",
+      "severity": "low",
       "vantage": "CN/AS4837"
-    },
-    {
-      "detail": "injector-process floor changed from 1 to 2",
-      "kind": "capacity_shift",
-      "severity": "medium",
-      "vantage": "CN/AS9808"
     }
   ],
-  "generated_at": "2026-08-13T08:23:22.295960Z",
-  "last_changed_at": "2026-08-13T08:23:22.295960Z",
+  "generated_at": "2026-08-14T22:08:02.518929Z",
+  "last_changed_at": "2026-08-14T22:08:02.518929Z",
   "max_process_count": 2,
   "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
   "method_version": 2,
@@ -54,7 +48,7 @@
     },
     "burst": 24,
     "caveat": "single-vantage round: observed censorship varies with network path, so cross-region comparisons from one prober are not identifiable (cf. arXiv:2406.19304).",
-    "code_version": "aa31d794bb4289c3e6c6a6186c66b8b88e9cf177",
+    "code_version": "355326b7eb444c4f24a275fa7a8752ba09c148fc",
     "flow_id_policy": "ephemeral source port per query (paths not pinned)",
     "queries_attempted": 5184,
     "rate_per_sec": 5.0,

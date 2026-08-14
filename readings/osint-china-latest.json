@@ -17,14 +17,6 @@
       "title": "Coverage qualifier"
     },
     {
-      "id": "health-bleedthrough",
-      "kind": "health",
-      "severity": "notice",
-      "source_id": "bleedthrough",
-      "summary": "freshness deadline has passed",
-      "title": "Bleedthrough injector tomography: stale"
-    },
-    {
       "id": "health-baike-redaction",
       "kind": "health",
       "severity": "notice",
@@ -33,15 +25,15 @@
       "title": "Baike redaction: degraded"
     }
   ],
-  "generated_at": "2026-08-14T22:01:16Z",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "generated_at": "2026-08-14T22:13:17Z",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 31,
+      "live": 32,
       "missing": 0,
-      "stale": 1
+      "stale": 0
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -50,7 +42,7 @@
     "required_total": 29,
     "status": "healthy"
   },
-  "input_commit": "7d8e95363cda93f4258aa622e3cbab4a8d844247",
+  "input_commit": "525920113aeefd30fb63dd2739dc5d55c3ed2932",
   "layers": [
     {
       "id": "command",
@@ -87,8 +79,8 @@
     },
     {
       "id": "network",
-      "n_degraded": 1,
-      "n_live": 7,
+      "n_degraded": 0,
+      "n_live": 8,
       "n_reporting": 8,
       "n_total": 8,
       "signal_ids": [
@@ -101,7 +93,7 @@
         "vantage-fusion",
         "bleedthrough"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Network and circumvention"
     },
     {
@@ -176,7 +168,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 31,
+  "n_signals_live": 32,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -186,7 +178,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:27Z",
       "health": {
-        "age_hours": 2.363,
+        "age_hours": 2.564,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -511,7 +503,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:37:02Z",
       "health": {
-        "age_hours": 2.404,
+        "age_hours": 2.604,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -735,7 +727,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:27Z",
       "health": {
-        "age_hours": 2.363,
+        "age_hours": 2.564,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -883,7 +875,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:27Z",
       "health": {
-        "age_hours": 2.363,
+        "age_hours": 2.564,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1432,7 +1424,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:28Z",
       "health": {
-        "age_hours": 2.363,
+        "age_hours": 2.564,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1759,7 +1751,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-15T04:41:59Z",
       "health": {
-        "age_hours": 0.321,
+        "age_hours": 0.521,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2524,7 +2516,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:41:22Z",
       "health": {
-        "age_hours": 2.331,
+        "age_hours": 2.532,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2820,7 +2812,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:33:52Z",
       "health": {
-        "age_hours": 2.457,
+        "age_hours": 2.657,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3110,7 +3102,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:40:06Z",
       "health": {
-        "age_hours": 2.353,
+        "age_hours": 2.553,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3417,7 +3409,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 112.147,
+        "age_hours": 112.347,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3728,7 +3720,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:59:59Z",
       "health": {
-        "age_hours": 8.021,
+        "age_hours": 8.222,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4009,7 +4001,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:21:46Z",
       "health": {
-        "age_hours": 2.658,
+        "age_hours": 2.858,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4339,7 +4331,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:25:32Z",
       "health": {
-        "age_hours": 2.596,
+        "age_hours": 2.796,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4510,7 +4502,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T08:56:23Z",
       "health": {
-        "age_hours": 15.081,
+        "age_hours": 15.282,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4686,7 +4678,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:33:00Z",
       "health": {
-        "age_hours": 2.471,
+        "age_hours": 2.671,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7111,7 +7103,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:24:12Z",
       "health": {
-        "age_hours": 2.618,
+        "age_hours": 2.818,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7161,7 +7153,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T08:42:40Z",
       "health": {
-        "age_hours": 15.31,
+        "age_hours": 15.51,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7234,7 +7226,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:38:54Z",
       "health": {
-        "age_hours": 2.373,
+        "age_hours": 2.573,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7310,24 +7302,24 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-13T22:23:22Z",
+      "freshness_deadline": "2026-08-15T12:08:02Z",
       "health": {
-        "age_hours": 37.632,
+        "age_hours": 0.087,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "bleedthrough",
       "input": {
-        "bytes": 2837,
+        "bytes": 2553,
         "filename": "bleedthrough-latest.json",
-        "sha256": "4f0654619ed7d90010682e89cd08b846ddd3972220e91e258603c37cba13a366"
+        "sha256": "90f14226b304701d5f8d04d7aaa3ccda65aa905df9eeced5ac0fad0e6f9ee945"
       },
       "layer": "network",
-      "live": false,
+      "live": true,
       "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
       "method_version": 2,
       "metric": {
@@ -7345,44 +7337,38 @@
         "distinct_pools_basis": "union of forged IPs per region, not per-target samples",
         "events": [
           {
-            "detail": "injector-process floor changed from 1 to 2",
-            "kind": "capacity_shift",
-            "severity": "medium",
+            "detail": "forged-IP pool rotated",
+            "kind": "pool_rotation",
+            "severity": "low",
             "vantage": "CN-BJ/AS4808"
           },
           {
-            "detail": "injector-process floor changed from 1 to 2",
-            "kind": "capacity_shift",
-            "severity": "medium",
+            "detail": "forged-IP pool rotated",
+            "kind": "pool_rotation",
+            "severity": "low",
             "vantage": "CN-GD/AS17623"
           },
           {
-            "detail": "injector-process floor changed from 1 to 2",
-            "kind": "capacity_shift",
-            "severity": "medium",
+            "detail": "forged-IP pool rotated",
+            "kind": "pool_rotation",
+            "severity": "low",
             "vantage": "CN-SH/AS4812"
           },
           {
-            "detail": "injector-process floor changed from 1 to 2",
-            "kind": "capacity_shift",
-            "severity": "medium",
+            "detail": "forged-IP pool rotated",
+            "kind": "pool_rotation",
+            "severity": "low",
             "vantage": "CN/AS4134"
           },
           {
-            "detail": "injector-process floor changed from 1 to 2",
-            "kind": "capacity_shift",
-            "severity": "medium",
+            "detail": "forged-IP pool rotated",
+            "kind": "pool_rotation",
+            "severity": "low",
             "vantage": "CN/AS4837"
-          },
-          {
-            "detail": "injector-process floor changed from 1 to 2",
-            "kind": "capacity_shift",
-            "severity": "medium",
-            "vantage": "CN/AS9808"
           }
         ],
-        "generated_at": "2026-08-13T08:23:22.295960Z",
-        "last_changed_at": "2026-08-13T08:23:22.295960Z",
+        "generated_at": "2026-08-14T22:08:02.518929Z",
+        "last_changed_at": "2026-08-14T22:08:02.518929Z",
         "max_process_count": 2,
         "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
         "method_version": 2,
@@ -7396,7 +7382,7 @@
           },
           "burst": 24,
           "caveat": "single-vantage round: observed censorship varies with network path, so cross-region comparisons from one prober are not identifiable (cf. arXiv:2406.19304).",
-          "code_version": "aa31d794bb4289c3e6c6a6186c66b8b88e9cf177",
+          "code_version": "355326b7eb444c4f24a275fa7a8752ba09c148fc",
           "flow_id_policy": "ephemeral source port per query (paths not pinned)",
           "queries_attempted": 5184,
           "rate_per_sec": 5.0,
@@ -7424,16 +7410,16 @@
       "raw_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
       "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
       "source": "Optional deployment-controlled prober outside China",
-      "source_timestamp": "2026-08-13T08:23:22Z",
-      "status": "stale",
-      "summary": "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; absence means no controlled deployment has published a current round. The retained payload is stale: source timestamp 2026-08-13T08:23:22Z passed its freshness deadline 2026-08-13T22:23:22Z, so it is not labelled live. Latest payload reports injector response-process floor at 2 count across 216 injecting target IPs.",
+      "source_timestamp": "2026-08-14T22:08:02Z",
+      "status": "live",
+      "summary": "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; absence means no controlled deployment has published a current round. Latest payload reports injector response-process floor at 2 count across 216 injecting target IPs.",
       "title": "Bleedthrough injector tomography"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:26:48Z",
       "health": {
-        "age_hours": 2.574,
+        "age_hours": 2.775,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7564,7 +7550,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:50:24Z",
       "health": {
-        "age_hours": 8.181,
+        "age_hours": 8.381,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7653,7 +7639,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 361.5,
+        "age_hours": 361.7,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7807,7 +7793,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:59:29Z",
       "health": {
-        "age_hours": 8.03,
+        "age_hours": 8.23,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7986,7 +7972,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:40:50Z",
       "health": {
-        "age_hours": 2.34,
+        "age_hours": 2.541,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8162,7 +8148,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T08:55:04Z",
       "health": {
-        "age_hours": 15.103,
+        "age_hours": 15.304,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8266,7 +8252,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:34:47Z",
       "health": {
-        "age_hours": 2.441,
+        "age_hours": 2.642,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8333,7 +8319,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T19:51:31Z",
       "health": {
-        "age_hours": 4.162,
+        "age_hours": 4.363,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8385,7 +8371,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 7.539,
+        "age_hours": 7.739,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8443,7 +8429,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 34.918,
+        "age_hours": 35.118,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8599,7 +8585,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 228.846,
+        "age_hours": 229.046,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8667,7 +8653,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T22:41:17Z",
       "health": {
-        "age_hours": 1.333,
+        "age_hours": 1.533,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14087,7 +14073,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:26:53Z",
       "health": {
-        "age_hours": 2.573,
+        "age_hours": 2.773,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14131,9 +14117,9 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-14T22:29:16Z",
+      "freshness_deadline": "2026-08-14T22:59:16Z",
       "health": {
-        "age_hours": 0.533,
+        "age_hours": 0.234,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14143,9 +14129,9 @@
       },
       "id": "nemesis",
       "input": {
-        "bytes": 155050,
+        "bytes": 155042,
         "filename": "nemesis-latest.json",
-        "sha256": "5e42f26cb2e13382fb35c79e5c99aa3322359e7af657daa7112abc244e6c6333"
+        "sha256": "35c92b663863d61945910e2c901987963787b72da01d1438bf9403001f909d89"
       },
       "layer": "nemesis",
       "live": true,
@@ -14203,7 +14189,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786742956.272,
+        "data_timestamp": 1786744756.271,
         "ddti": {
           "by_domain": {
             "ECONOMY": 5,
@@ -14215,7 +14201,7 @@
             "SOCIETY": 7,
             "UNREST": 7
           },
-          "generated_at": 1786742956.272,
+          "generated_at": 1786744756.271,
           "n_posts": 15,
           "n_posts_scored": 15,
           "n_terms": 179,
@@ -14256,11 +14242,11 @@
               "tag_observations": 4,
               "term": "social media",
               "text_observations": 0,
-              "threat": 3.43,
+              "threat": 3.42,
               "total": 4
             },
             {
-              "attention": 3.12,
+              "attention": 3.11,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14295,11 +14281,11 @@
               "tag_observations": 9,
               "term": "social media censorship",
               "text_observations": 0,
-              "threat": 3.12,
+              "threat": 3.11,
               "total": 9
             },
             {
-              "attention": 2.99,
+              "attention": 2.98,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14334,7 +14320,7 @@
               "tag_observations": 8,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 2.99,
+              "threat": 2.98,
               "total": 8
             },
             {
@@ -14442,7 +14428,7 @@
               "tag_observations": 1,
               "term": "caixin",
               "text_observations": 0,
-              "threat": 1.83,
+              "threat": 1.82,
               "total": 1
             },
             {
@@ -14465,7 +14451,7 @@
               "tag_observations": 1,
               "term": "defending rights",
               "text_observations": 0,
-              "threat": 1.83,
+              "threat": 1.82,
               "total": 1
             },
             {
@@ -14488,7 +14474,7 @@
               "tag_observations": 1,
               "term": "gansu",
               "text_observations": 0,
-              "threat": 1.83,
+              "threat": 1.82,
               "total": 1
             },
             {
@@ -14511,7 +14497,7 @@
               "tag_observations": 1,
               "term": "lanzhou",
               "text_observations": 0,
-              "threat": 1.83,
+              "threat": 1.82,
               "total": 1
             },
             {
@@ -14534,7 +14520,7 @@
               "tag_observations": 1,
               "term": "trials",
               "text_observations": 0,
-              "threat": 1.83,
+              "threat": 1.82,
               "total": 1
             },
             {
@@ -14557,7 +14543,7 @@
               "tag_observations": 1,
               "term": "unpaid wages",
               "text_observations": 0,
-              "threat": 1.83,
+              "threat": 1.82,
               "total": 1
             },
             {
@@ -14619,7 +14605,7 @@
               "tag_observations": 2,
               "term": "investigative journalism",
               "text_observations": 0,
-              "threat": 1.6,
+              "threat": 1.59,
               "total": 2
             },
             {
@@ -14642,7 +14628,7 @@
               "tag_observations": 1,
               "term": "china youth daily",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14665,7 +14651,7 @@
               "tag_observations": 1,
               "term": "humor",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14688,7 +14674,7 @@
               "tag_observations": 1,
               "term": "information technology",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14711,7 +14697,7 @@
               "tag_observations": 1,
               "term": "journalism",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14734,7 +14720,7 @@
               "tag_observations": 1,
               "term": "journalists",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14757,7 +14743,7 @@
               "tag_observations": 1,
               "term": "literacy",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14780,7 +14766,7 @@
               "tag_observations": 1,
               "term": "media",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14803,7 +14789,7 @@
               "tag_observations": 1,
               "term": "online media",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14826,7 +14812,7 @@
               "tag_observations": 1,
               "term": "press accreditation",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14849,7 +14835,7 @@
               "tag_observations": 1,
               "term": "reputation",
               "text_observations": 0,
-              "threat": 1.41,
+              "threat": 1.4,
               "total": 1
             },
             {
@@ -14880,7 +14866,7 @@
               "tag_observations": 2,
               "term": "artificial intelligence",
               "text_observations": 0,
-              "threat": 1.3,
+              "threat": 1.29,
               "total": 2
             },
             {
@@ -16105,75 +16091,6 @@
             {
               "attention": 0.46,
               "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "changsha",
-              "text_observations": 0,
-              "threat": 0.46,
-              "total": 1
-            },
-            {
-              "attention": 0.46,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "cybersecurity",
-              "text_observations": 0,
-              "threat": 0.46,
-              "total": 1
-            },
-            {
-              "attention": 0.46,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 0,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "great firewall",
-              "text_observations": 0,
-              "threat": 0.46,
-              "total": 1
-            },
-            {
-              "attention": 0.46,
-              "direct_signal_observations": 0,
               "domain": "FOREIGN",
               "is_new": false,
               "novelty": 0.0,
@@ -16204,7 +16121,76 @@
               "total": 2
             },
             {
-              "attention": 0.46,
+              "attention": 0.45,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "changsha",
+              "text_observations": 0,
+              "threat": 0.45,
+              "total": 1
+            },
+            {
+              "attention": 0.45,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "cybersecurity",
+              "text_observations": 0,
+              "threat": 0.45,
+              "total": 1
+            },
+            {
+              "attention": 0.45,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 0,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: No Scaling the Great Firewall in the Library",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "great firewall",
+              "text_observations": 0,
+              "threat": 0.45,
+              "total": 1
+            },
+            {
+              "attention": 0.45,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16223,11 +16209,11 @@
               "tag_observations": 1,
               "term": "hunan",
               "text_observations": 0,
-              "threat": 0.46,
+              "threat": 0.45,
               "total": 1
             },
             {
-              "attention": 0.46,
+              "attention": 0.45,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16246,11 +16232,11 @@
               "tag_observations": 1,
               "term": "internet",
               "text_observations": 0,
-              "threat": 0.46,
+              "threat": 0.45,
               "total": 1
             },
             {
-              "attention": 0.46,
+              "attention": 0.45,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16269,11 +16255,11 @@
               "tag_observations": 1,
               "term": "internet access",
               "text_observations": 0,
-              "threat": 0.46,
+              "threat": 0.45,
               "total": 1
             },
             {
-              "attention": 0.46,
+              "attention": 0.45,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16292,11 +16278,11 @@
               "tag_observations": 1,
               "term": "real name registration",
               "text_observations": 0,
-              "threat": 0.46,
+              "threat": 0.45,
               "total": 1
             },
             {
-              "attention": 0.46,
+              "attention": 0.45,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16315,7 +16301,7 @@
               "tag_observations": 1,
               "term": "wi-fi",
               "text_observations": 0,
-              "threat": 0.46,
+              "threat": 0.45,
               "total": 1
             },
             {
@@ -18645,7 +18631,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786742956.292,
+          "generated_at": 1786744756.281,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 26,
@@ -18693,33 +18679,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786742956.303,
+        "generated_at": 1786744756.289,
         "health": {
           "freshness": {
-            "age_seconds": 0.031,
-            "core_data_at": 1786742956.272,
+            "age_seconds": 0.018,
+            "core_data_at": 1786744756.271,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1786742956.302,
+            "duration_s": 0.22,
+            "finished_at": 1786744756.289,
             "healthy": true,
-            "id": 972,
-            "started_at": 1786742956.066,
+            "id": 974,
+            "started_at": 1786744756.066,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1786742956.302,
+            "duration_s": 0.22,
+            "finished_at": 1786744756.289,
             "healthy": true,
-            "id": 972,
-            "started_at": 1786742956.066,
+            "id": 974,
+            "started_at": 1786744756.066,
             "status": "ok"
           },
-          "last_successful_run_at": 1786742956.302,
+          "last_successful_run_at": 1786744756.289,
           "live": true,
           "posts": 29,
           "ready": true,
@@ -18761,7 +18747,7 @@
             ],
             "score": 5.9,
             "term": "social media censorship",
-            "threat": 3.12
+            "threat": 3.11
           },
           {
             "domain": "INFORMATION",
@@ -18794,9 +18780,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
               }
             ],
-            "score": 5.8,
+            "score": 5.7,
             "term": "social media",
-            "threat": 3.43
+            "threat": 3.42
           },
           {
             "domain": "INFORMATION",
@@ -18831,7 +18817,7 @@
             ],
             "score": 5.4,
             "term": "internet censorship",
-            "threat": 2.99
+            "threat": 2.98
           },
           {
             "domain": "INFORMATION",
@@ -18923,7 +18909,7 @@
             ],
             "score": 2.8,
             "term": "caixin",
-            "threat": 1.83
+            "threat": 1.82
           },
           {
             "domain": "OTHER",
@@ -18942,7 +18928,7 @@
             ],
             "score": 2.8,
             "term": "defending rights",
-            "threat": 1.83
+            "threat": 1.82
           },
           {
             "domain": "OTHER",
@@ -18961,7 +18947,7 @@
             ],
             "score": 2.8,
             "term": "gansu",
-            "threat": 1.83
+            "threat": 1.82
           },
           {
             "domain": "OTHER",
@@ -18980,7 +18966,7 @@
             ],
             "score": 2.8,
             "term": "lanzhou",
-            "threat": 1.83
+            "threat": 1.82
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -18996,10 +18982,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786742956.302,
-          "ddti_generated_at": 1786742956.272,
-          "economic_generated_at": 1786742956.292,
-          "last_successful_run_at": 1786742956.302,
+          "data_updated_at": 1786744756.289,
+          "ddti_generated_at": 1786744756.271,
+          "economic_generated_at": 1786744756.281,
+          "last_successful_run_at": 1786744756.289,
           "latest_fetched_at": 1786671856.146,
           "latest_published_at": 1786668683.0
         }
@@ -19007,7 +18993,7 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-14T21:29:16Z",
+      "source_timestamp": "2026-08-14T21:59:16Z",
       "status": "live",
       "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 179 count.",
       "title": "Private runtime bridge"
