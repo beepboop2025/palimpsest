@@ -175,19 +175,36 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
     assert "core/analytical_pieces.py" in source
     assert "core/wire_claim_audits.py" in source
     assert 'show "$revision:$repository_path"' in source
-    assert "safe.directory=$repo_root" in source
+    assert "/usr/bin/git --no-replace-objects --git-dir=\"$audit_git\"" in source
+    assert "GIT_CONFIG_GLOBAL=/dev/null" in source
+    assert "GIT_NO_REPLACE_OBJECTS=1" in source
+    assert "core.fsmonitor=false" in source
+    assert "Git grafts or object alternates are forbidden" in source
     assert "MANIFEST.sha256" in source
     assert "verify-host-bundle.sh" in source
     assert source.count("status --porcelain=v1 --untracked-files=all") == 2
-    assert source.index('mv -Tf "$link_tmp" "$bundle_root/current"') < source.index(
+    assert source.index('mv -Tf "$link_tmp" "$bundle_root/current"') < source.rindex(
         'mv -Tf "$receipt_tmp" "$receipt_path"'
     )
-    assert source.index("systemctl daemon-reload") < source.index(
+    assert source.index("systemctl daemon-reload") < source.rindex(
         'mv -Tf "$receipt_tmp" "$receipt_path"'
     )
     assert 'runtime_name="palimpsest-analysis"' in source
     assert 'runtime_id="10001"' in source
     assert "--ensure-identity" in source
+    assert "--certify-image" in source
+    certify_start = source.index('if [[ "$mode" == "certify-only" ]]')
+    certify = source[certify_start:]
+    assert source.index("docker image inspect") < certify_start
+    assert 'mv -Tf "$receipt_tmp" "$receipt_path"' in certify
+    assert certify.index('mv -Tf "$receipt_tmp" "$receipt_path"') < certify.index(
+        "normalize_analysis_storage"
+    )
+    assert "palimpsest-public-osint-sync.service" in source[
+        source.index("systemd-analyze verify") : source.index(
+            'install -d -o root -g root -m 0755 "$bundle_root"'
+        )
+    ]
     assert 'mode="identity-only"' in source
     assert "groupadd --system --gid" in source
     assert "groupdel" in source
@@ -203,7 +220,13 @@ def test_host_bundle_installer_makes_the_receipt_the_final_commit_point() -> Non
         "docker image inspect"
     )
     assert source.index("docker image inspect") < source.index(
-        "\nensure_runtime_identity\nnormalize_analysis_storage\n\nsystemd-analyze"
+        "\nensure_runtime_identity\n"
+    )
+    assert source.index("\nensure_runtime_identity\n") < source.index(
+        "\nnormalize_analysis_storage\n"
+    )
+    assert source.index("\nnormalize_analysis_storage\n") < source.index(
+        "\nsystemd-analyze verify"
     )
     assert 'broker_socket_name="palimpsest-investigative-broker.socket"' in source
     assert "core/investigative_container_contract.py" in source
