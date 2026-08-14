@@ -86,6 +86,24 @@
   }
   </script>
 
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": "https://palimpsest.info/#faq",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Why did Palimpsest's founder start doing AI evaluations?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. A screenshot could capture one response but could not prove the questions were fixed first, show whether the pattern persisted, or expose a later edit. That gap became the Generative Firewall and then the eval registry. The claim stays scoped to named models, prompts and dates; it is not a claim about every Chinese model and does not prove motive."
+        }
+      }
+    ]
+  }
+  </script>
+
   <link rel="stylesheet" href="/dashboards/assets/tikto.css">
   <link rel="stylesheet" href="/assets/shell.css">
   <link rel="stylesheet" href="/assets/home.css">
@@ -347,6 +365,7 @@
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener">Full integrity model</a>
       </header>
       <ol class="hm-method__steps">
+        <li><span>00</span><div><h3>Why the founder started this work</h3><p>Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. A screenshot could capture one response, but it could not show whether the questions were fixed first, whether the pattern persisted, or whether the record was later edited. That observation became a repeatable eval and then a registry. It does not prove motive or describe every Chinese model. <a href="/evals/a-censored-answer-is-not-evidence/">Read the full account</a>, then inspect the current <a href="/readings/eval-assurance-latest.json">machine-readable assurance report</a>.</p></div></li>
         <li><span>01</span><div><h3>Freeze the test</h3><p>The probe set is hashed before any model response exists. A result without a prior registration does not enter the publication path.</p></div></li>
         <li><span>02</span><div><h3>Recompute the record</h3><p>Published transcripts must reproduce the sealed response hash, labels, controls, and reported metrics.</p></div></li>
         <li><span>03</span><div><h3>Write from receipts</h3><p>Article sentences are assembled from typed findings. Every analytical sentence points to an exact selector and value.</p></div></li>
