@@ -27,7 +27,7 @@ def test_seed_is_executable_and_valid_shell() -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_seed_pins_main_line_c0_and_rejects_changed_legacy_consumers() -> None:
+def test_seed_pins_main_line_c0_and_rejects_authority_cutover() -> None:
     seed = _seed()
     mutation = seed.index("mutation_started=1")
 
@@ -40,12 +40,19 @@ def test_seed_pins_main_line_c0_and_rejects_changed_legacy_consumers() -> None:
         '"$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA"',
         "ops/osint-sync/release-mode",
         "== legacy-mirror",
-        "legacy_consumer_paths=(",
+        "legacy_authority_paths=(",
         "ops/docker/docker-compose.prod.yml",
         "ops/systemd/palimpsest-investigative-analysis.service",
         "ops/systemd/palimpsest-common-crawl-context.service",
+        "authority_boundary() {",
+        "PALIMPSEST_READINGS_HOST_PATH",
+        "/app/readings",
+        "/var/lib/palimpsest/readings",
+        'authority_boundary "$EXPECTED_PREVIOUS_DEPLOY_SHA"',
+        'authority_boundary "$C0_DEPLOY_SHA"',
+        "C0 changes the OSINT authority boundary",
         "ops/systemd/palimpsest-freshness-watchdog.service",
-        'release_git diff --quiet "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA"',
+        "C0 watchdog does not use the legacy OSINT path",
     ):
         assert marker in seed[:mutation]
     assert "git pull" not in seed
@@ -75,7 +82,7 @@ def test_seed_records_state_and_verifies_backups_on_both_sides() -> None:
     assert pre_backup < prepared < checkout < post_backup < restore < complete
 
 
-def test_seed_installs_provider_before_byte_identical_legacy_consumers() -> None:
+def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
     seed = _seed()
     checkout = seed.index('release_git switch --detach "$C0_DEPLOY_SHA"')
     build = seed.index("ops/docker/prod-compose build", checkout)
@@ -94,7 +101,11 @@ def test_seed_installs_provider_before_byte_identical_legacy_consumers() -> None
     )
     common_crawl = seed.index("ops/common-crawl/install-host-bundle.sh", analysis)
     node_offsite = seed.index("ops/node-offsite/install-host-bundle.sh", common_crawl)
-    start = seed.index("ops/docker/prod-compose up -d", node_offsite)
+    observer = seed.index(
+        "ops/systemd/palimpsest-freshness-watchdog.service", node_offsite
+    )
+    observer_verify = seed.index("sudo systemd-analyze verify", observer)
+    start = seed.index("ops/docker/prod-compose up -d", observer_verify)
     exercise = seed.index("legacy consumer failed against C0 mirror", start)
 
     assert (
@@ -109,9 +120,25 @@ def test_seed_installs_provider_before_byte_identical_legacy_consumers() -> None
         < analysis
         < common_crawl
         < node_offsite
+        < observer
+        < observer_verify
         < start
         < exercise
     )
+
+
+def test_seed_enables_new_provider_and_watchdog_timers_only_after_proofs() -> None:
+    seed = _seed()
+    post_backup = seed.index(
+        'create_and_verify_snapshot "$post_seed_before" post_seed_snapshot'
+    )
+    restore = seed.index("restore_enablement() {", post_backup)
+    complete = seed.index('write_seed_state complete "$post_seed_snapshot"')
+
+    restore_block = seed[restore:complete]
+    assert "palimpsest-public-osint-sync.timer" in restore_block
+    assert "palimpsest-freshness-watchdog.timer" in restore_block
+    assert seed.index('sudo systemctl start "$unit"', restore) < complete
 
 
 def test_seed_failure_stays_quiesced_until_exact_state_restoration() -> None:

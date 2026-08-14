@@ -855,10 +855,12 @@ The first rollout has two independently reviewed commits:
 
 - C0 sets `ops/osint-sync/release-mode` to `legacy-mirror`. It adds the
   provider, release quiesce, hardened installers, and seed transaction, while
-  leaving the three consumer units and Compose authority mounts byte-identical
-  to the already deployed commit. The provider writes the protected authority
-  and atomically mirrors the same ledger-first pair into the legacy reading
-  paths without changing their owner, group, or mode.
+  leaving the OSINT authority boundary of every existing consumer unchanged
+  from the already deployed commit. It may carry unrelated reviewed reliability
+  changes and adds the freshness watchdog in explicit legacy-path mode. The
+  provider writes the protected authority and atomically mirrors the same
+  ledger-first pair into the legacy reading paths without changing their owner,
+  group, or mode.
 - C1 changes `release-mode` to `protected-only`, changes the consumers and
   Compose mounts to the protected authority, and removes only the exact C0
   compatibility drop-in. An unknown local drop-in blocks installation.
@@ -925,11 +927,12 @@ The executable seed transaction performs both backup proofs, records the exact
 pre-seed snapshot and captured activator state under the root-only
 `/var/lib/palimpsest-release` directory, installs and runs the C0 provider,
 proves the protected and legacy bytes match, proves legacy file identity did
-not change, reinstalls every C0 bundle, and runs both still-legacy consumers
-against the later mirrored ledger. It restores timers only after a second
-snapshot passes the C0 verifier. A failure leaves every activator disabled,
-retains the backup quiesce, and preserves the recovery receipt. Do not guess at
-the old timer state or delete that receipt.
+not change, reinstalls every C0 bundle, installs the independent freshness
+watchdog in legacy-path mode, and runs both still-legacy consumers against the
+later mirrored ledger. It enables the new provider and watchdog timers only
+after a second snapshot passes the C0 verifier. A failure leaves every
+activator disabled, retains the backup quiesce, and preserves the recovery
+receipt. Do not guess at the old timer state or delete that receipt.
 
 Only after the C0 receipt says `complete` may C1 be merged. C1 must contain
 `protected-only`, and its parent or main-line ancestry must include the exact C0
@@ -945,8 +948,8 @@ export TRANSACTION_DIRECTION=forward
 A later C1-to-C0 rollback uses the complete three-phase transaction. Checking
 out C0 makes its installer restore the reviewed compatibility drop-in, so its
 provider republishes the exact protected bytes into the legacy paths before
-the byte-identical C0 consumers start. This is why the C0 target is operational
-rollback code rather than an arbitrary ancestor.
+the C0 consumers using that unchanged authority boundary start. This is why the
+C0 target is operational rollback code rather than an arbitrary ancestor.
 
 The transaction preflights the Common Crawl Volume and both host tools before
 anything can replace `/etc/palimpsest/deployed-commit`. The official

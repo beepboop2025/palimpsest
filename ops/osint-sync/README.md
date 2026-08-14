@@ -45,7 +45,11 @@ reinstalls the same bridge before its legacy consumers start.
 
 The executable and recovery receipt contract for this transition is in
 `deploy-compatibility-seed.sh` and the "First protected rollout" section of the
-Hetzner runbook.
+Hetzner runbook. C0 proves the existing consumers retain their deployed OSINT
+authority boundary, rather than requiring unrelated unit or Compose content to
+remain byte-identical. It also installs the freshness watchdog in explicit
+legacy-path mode; C1 moves that observer to the protected authority with the
+other consumers.
 
 Install from a clean exact-SHA checkout only after the analysis installer has
 certified the matching image and deployed receipt. On first installation, the

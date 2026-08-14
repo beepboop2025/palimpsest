@@ -90,6 +90,8 @@ c0_contract_paths=(
   ops/systemd/palimpsest-public-osint-sync.compatibility.conf
   ops/systemd/palimpsest-public-osint-sync.service
   ops/systemd/palimpsest-public-osint-sync.timer
+  ops/systemd/palimpsest-freshness-watchdog.service
+  ops/systemd/palimpsest-freshness-watchdog.timer
 )
 for path in "${c0_contract_paths[@]}"; do
   release_git cat-file -e "${C0_DEPLOY_SHA}:${path}"
@@ -98,17 +100,38 @@ done
     == legacy-mirror ]] \
   || die "reviewed C0 is not the legacy-mirror release mode"
 
-# C0 may add the provider and hardened installers, but it must not change the
-# consumers or Compose mounts. Those changes belong only to C1.
-legacy_consumer_paths=(
+# C0 may carry unrelated reviewed changes since the deployed revision, including
+# a new legacy-path watchdog, but it must not change any OSINT authority edge.
+# Provider dependencies, protected bind mounts, and container authority values
+# belong only to C1.
+legacy_authority_paths=(
   ops/docker/docker-compose.prod.yml
   ops/systemd/palimpsest-investigative-analysis.service
   ops/systemd/palimpsest-common-crawl-context.service
-  ops/systemd/palimpsest-freshness-watchdog.service
 )
-release_git diff --quiet "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA" \
-  -- "${legacy_consumer_paths[@]}" \
-  || die "C0 changes a legacy consumer or Compose authority boundary"
+authority_boundary() {
+  local commit="$1" repository_path="$2"
+  if release_git cat-file -e "${commit}:${repository_path}" 2>/dev/null; then
+    release_git show "${commit}:${repository_path}" \
+      | LC_ALL=C grep -E \
+        'palimpsest-public-osint-sync|PALIMPSEST_OSINT_AUTHORITY|PALIMPSEST_OSINT_PATH|PALIMPSEST_READINGS_HOST_PATH|PALIMPSEST_READINGS_LEDGER_PATH|/app/readings|/app/osint-authority|/var/lib/palimpsest/readings' \
+      || true
+  fi
+}
+for repository_path in "${legacy_authority_paths[@]}"; do
+  previous_boundary="$(
+    authority_boundary "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$repository_path"
+  )"
+  c0_boundary="$(authority_boundary "$C0_DEPLOY_SHA" "$repository_path")"
+  [[ "$c0_boundary" == "$previous_boundary" ]] \
+    || die "C0 changes the OSINT authority boundary: $repository_path"
+done
+watchdog_c0="$(release_git show \
+  "$C0_DEPLOY_SHA:ops/systemd/palimpsest-freshness-watchdog.service")"
+grep -Fqx \
+  'Environment=PALIMPSEST_LOCAL_OSINT_PATH=/var/lib/palimpsest/readings/osint-china-latest.json' \
+  <<<"$watchdog_c0" \
+  || die "C0 watchdog does not use the legacy OSINT path"
 
 [[ -d "$COMMON_CRAWL_WAREHOUSE_SOURCE" \
     && ! -L "$COMMON_CRAWL_WAREHOUSE_SOURCE" ]] \
@@ -437,12 +460,29 @@ sudo cmp -s "$authority/readings-ledger.jsonl" "$shared_ledger"
       == "$ledger_identity_before" ]] \
   || die "C0 changed legacy reading ownership or mode"
 
-# These are the old, byte-identical consumer units proved above. Reinstalling
-# their C0 bundles advances every revision receipt without activating C1 mounts.
+# These consumers retain the deployed OSINT authority boundary proved above.
+# Reinstalling their C0 bundles may carry unrelated reviewed reliability changes
+# while advancing every revision receipt without activating C1 mounts.
 sudo bash ops/investigative-analysis/install-host-bundle.sh
 sudo bash ops/common-crawl/install-host-bundle.sh \
   --warehouse-source "$COMMON_CRAWL_WAREHOUSE_SOURCE"
 sudo bash ops/node-offsite/install-host-bundle.sh
+for observer_source in \
+    ops/systemd/palimpsest-freshness-watchdog.service \
+    ops/systemd/palimpsest-freshness-watchdog.timer; do
+  observer_target="/etc/systemd/system/${observer_source##*/}"
+  sudo test ! -L "$observer_target" \
+    || die "freshness observer target is a symlink: $observer_target"
+  sudo install -o root -g root -m 0644 "$observer_source" "$observer_target"
+  sudo cmp -s "$observer_source" "$observer_target" \
+    || die "freshness observer did not install exactly: $observer_target"
+  [[ "$(sudo stat -c '%u:%g:%a:%h' "$observer_target")" == '0:0:644:1' ]] \
+    || die "freshness observer metadata is unsafe: $observer_target"
+done
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-freshness-watchdog.service \
+  /etc/systemd/system/palimpsest-freshness-watchdog.timer
+sudo systemctl daemon-reload
 for revision_path in \
     /etc/palimpsest/deployed-commit \
     /usr/local/libexec/palimpsest-analysis/current/REVISION \
@@ -496,7 +536,8 @@ fi
 
 restore_enablement() {
   local unit="$1" previous="${enablement[$1]}" first_install='disable'
-  [[ "$unit" == palimpsest-public-osint-sync.timer ]] \
+  [[ "$unit" == palimpsest-public-osint-sync.timer \
+      || "$unit" == palimpsest-freshness-watchdog.timer ]] \
     && first_install='enable'
   case "$previous" in
     enabled) sudo systemctl enable "$unit" ;;
@@ -523,7 +564,8 @@ done
 for unit in "${release_activators[@]}"; do
   if [[ "${was_active[$unit]}" == 1 ]] \
       || { [[ "${enablement[$unit]}" == not-found ]] \
-        && [[ "$unit" == palimpsest-public-osint-sync.timer ]]; }; then
+        && { [[ "$unit" == palimpsest-public-osint-sync.timer ]] \
+          || [[ "$unit" == palimpsest-freshness-watchdog.timer ]]; }; }; then
     sudo systemctl start "$unit"
   else
     stop_loaded_unit "$unit"
