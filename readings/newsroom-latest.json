@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-14T17:44:58Z",
+  "generated_at": "2026-08-14T17:54:43Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "ab965c38546eebe26cdb9a403648892d2bc0f0d4",
+  "source_commit": "8b36f60d6ccab0c81f3fffb2f6c6ba3e16d638e8",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1432,19 +1432,19 @@
       "slug": "cny-fix-gap",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
       "signal_id": "cny-fix-gap",
-      "headline": "The official yuan fix gap is -0.6743% against the independent reference",
+      "headline": "The official yuan fix gap is -0.6846% against the independent reference",
       "dek": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
       "section": "economy",
       "order": 2,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-13T17:55:55Z",
-      "modified_at": "2026-08-13T17:55:55Z",
-      "claim_fingerprint": "sha256:78a0a82a2517302daf78d0f6da5bc09772c7470c1a1326cc3db1c3042b6c1de5",
+      "published_at": "2026-08-14T17:51:31Z",
+      "modified_at": "2026-08-14T17:51:31Z",
+      "claim_fingerprint": "sha256:4b7244e10cdf17a59b1d8f98170dfacde6845b5383ebc4a5ddf5e1f3e6a950cf",
       "metric": {
         "label": "fix gap",
-        "value": -0.6743,
+        "value": -0.6846,
         "unit": "percent",
         "denominator": {
           "label": null,
@@ -1454,17 +1454,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current official-fix minus independent-reference gap is -0.6743%."
+          "statement": "The current official-fix minus independent-reference gap is -0.6846%."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
         "input": {
           "filename": "cny-fix-gap-latest.json",
-          "sha256": "721c467d01130b5e5367527c888e5f7c0cf7c62bc613f491bd71a5e41216b7e6",
-          "bytes": 1429
+          "sha256": "25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021",
+          "bytes": 1430
         },
-        "source_timestamp": "2026-08-13T17:55:55Z"
+        "source_timestamp": "2026-08-14T17:51:31Z"
       },
       "method": {
         "summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
