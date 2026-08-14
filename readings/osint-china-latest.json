@@ -33,7 +33,7 @@
       "title": "Baike redaction: degraded"
     }
   ],
-  "generated_at": "2026-08-14T19:42:32Z",
+  "generated_at": "2026-08-14T19:50:23Z",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "health": {
     "counts": {
@@ -50,7 +50,7 @@
     "required_total": 29,
     "status": "healthy"
   },
-  "input_commit": "078e5a12723b46ec40febe4c314fa5381f11eaf0",
+  "input_commit": "2679ea9bda6f0660dade600e64a2ef705fe7d0d4",
   "layers": [
     {
       "id": "command",
@@ -186,7 +186,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:27Z",
       "health": {
-        "age_hours": 0.051,
+        "age_hours": 0.182,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -511,7 +511,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:37:02Z",
       "health": {
-        "age_hours": 0.091,
+        "age_hours": 0.222,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -735,7 +735,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:27Z",
       "health": {
-        "age_hours": 0.051,
+        "age_hours": 0.182,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -883,7 +883,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:27Z",
       "health": {
-        "age_hours": 0.051,
+        "age_hours": 0.182,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1432,7 +1432,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:39:28Z",
       "health": {
-        "age_hours": 0.051,
+        "age_hours": 0.182,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1759,7 +1759,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-15T02:14:49Z",
       "health": {
-        "age_hours": 0.462,
+        "age_hours": 0.593,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2524,7 +2524,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:41:22Z",
       "health": {
-        "age_hours": 0.019,
+        "age_hours": 0.15,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2820,7 +2820,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:33:52Z",
       "health": {
-        "age_hours": 0.144,
+        "age_hours": 0.275,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3108,9 +3108,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T04:04:23Z",
+      "freshness_deadline": "2026-08-15T09:40:06Z",
       "health": {
-        "age_hours": 5.636,
+        "age_hours": 0.171,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3120,9 +3120,9 @@
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6646,
+        "bytes": 6643,
         "filename": "silence-index-latest.json",
-        "sha256": "6f581213f5d8155720d597be76b243046d57b9ae699e31aaf25648eea22f373c"
+        "sha256": "6ca1c916ca29249c2f01edf045d88904a938eda1af3a1d9342b6c02e206b4039"
       },
       "layer": "attention",
       "live": true,
@@ -3140,7 +3140,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-14T14:04:23Z",
+        "generated_at": "2026-08-14T19:40:06Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -3157,41 +3157,31 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.1601,
+            "global_norm": 0.0284,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "reputation"
+            "topic": "censorship"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0024,
+            "global_norm": 0.012,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "unpaid wages"
+            "topic": "Gansu"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0062,
+            "global_norm": 0.0578,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "online media"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0023,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "china youth daily"
+            "topic": "information technology"
           },
           {
             "abstained": true,
@@ -3201,7 +3191,7 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "defending rights"
+            "topic": "Caixin"
           },
           {
             "abstained": true,
@@ -3232,16 +3222,6 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "tech companies"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "censorship"
           },
           {
             "abstained": true,
@@ -3301,26 +3281,6 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "Caixin"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "Gansu"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
             "topic": "Lanzhou"
           },
           {
@@ -3331,7 +3291,27 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
+            "topic": "defending rights"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
             "topic": "migrant workers"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "unpaid wages"
           },
           {
             "abstained": true,
@@ -3371,7 +3351,7 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "information technology"
+            "topic": "china youth daily"
           },
           {
             "abstained": true,
@@ -3402,13 +3382,33 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "press accreditation"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "reputation"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "online media"
           }
         ]
       },
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-14T14:04:23Z",
+      "source_timestamp": "2026-08-14T19:40:06Z",
       "status": "live",
       "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously. Latest payload reports blackout topics at 0 count across 25 topics considered.",
       "title": "Silence index"
@@ -3417,7 +3417,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 109.835,
+        "age_hours": 109.966,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3728,7 +3728,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:59:59Z",
       "health": {
-        "age_hours": 5.709,
+        "age_hours": 5.84,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4009,7 +4009,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:21:46Z",
       "health": {
-        "age_hours": 0.346,
+        "age_hours": 0.477,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4339,7 +4339,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:25:32Z",
       "health": {
-        "age_hours": 0.283,
+        "age_hours": 0.414,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4510,7 +4510,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T08:56:23Z",
       "health": {
-        "age_hours": 12.769,
+        "age_hours": 12.9,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4686,7 +4686,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:33:00Z",
       "health": {
-        "age_hours": 0.159,
+        "age_hours": 0.29,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7111,7 +7111,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:24:12Z",
       "health": {
-        "age_hours": 0.306,
+        "age_hours": 0.436,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7161,7 +7161,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T08:42:40Z",
       "health": {
-        "age_hours": 12.998,
+        "age_hours": 13.129,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7234,7 +7234,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:38:54Z",
       "health": {
-        "age_hours": 0.06,
+        "age_hours": 0.191,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7312,7 +7312,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-13T22:23:22Z",
       "health": {
-        "age_hours": 35.319,
+        "age_hours": 35.45,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -7433,7 +7433,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:26:48Z",
       "health": {
-        "age_hours": 0.262,
+        "age_hours": 0.393,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7564,7 +7564,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:50:24Z",
       "health": {
-        "age_hours": 5.869,
+        "age_hours": 6.0,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7653,7 +7653,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 359.188,
+        "age_hours": 359.318,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7807,7 +7807,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:59:29Z",
       "health": {
-        "age_hours": 5.717,
+        "age_hours": 5.848,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7986,7 +7986,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:40:50Z",
       "health": {
-        "age_hours": 0.028,
+        "age_hours": 0.159,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8162,7 +8162,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T08:55:04Z",
       "health": {
-        "age_hours": 12.791,
+        "age_hours": 12.922,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8266,7 +8266,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:34:47Z",
       "health": {
-        "age_hours": 0.129,
+        "age_hours": 0.26,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8333,7 +8333,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T19:51:31Z",
       "health": {
-        "age_hours": 1.85,
+        "age_hours": 1.981,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8385,7 +8385,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 5.227,
+        "age_hours": 5.358,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8443,7 +8443,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 32.606,
+        "age_hours": 32.737,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8599,7 +8599,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 226.534,
+        "age_hours": 226.665,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8667,7 +8667,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T10:12:01Z",
       "health": {
-        "age_hours": 11.509,
+        "age_hours": 11.639,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14063,7 +14063,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:26:53Z",
       "health": {
-        "age_hours": 0.261,
+        "age_hours": 0.392,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14107,9 +14107,9 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-14T20:29:16Z",
+      "freshness_deadline": "2026-08-14T20:44:16Z",
       "health": {
-        "age_hours": 0.221,
+        "age_hours": 0.102,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14119,9 +14119,9 @@
       },
       "id": "nemesis",
       "input": {
-        "bytes": 155043,
+        "bytes": 155045,
         "filename": "nemesis-latest.json",
-        "sha256": "f8383aae140450c283ef180a423315b4ecc1798d5da7ddcdefc7320516700efc"
+        "sha256": "e52aa5283a2327b841e54361721c87fbbc1e1078474ac4364e0a1aff6fa16fc9"
       },
       "layer": "nemesis",
       "live": true,
@@ -14179,7 +14179,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786735756.284,
+        "data_timestamp": 1786736656.447,
         "ddti": {
           "by_domain": {
             "ECONOMY": 5,
@@ -14191,7 +14191,7 @@
             "SOCIETY": 7,
             "UNREST": 7
           },
-          "generated_at": 1786735756.284,
+          "generated_at": 1786736656.447,
           "n_posts": 15,
           "n_posts_scored": 15,
           "n_terms": 179,
@@ -14537,7 +14537,7 @@
               "total": 1
             },
             {
-              "attention": 1.12,
+              "attention": 1.11,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -18621,7 +18621,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786735756.3,
+          "generated_at": 1786736656.456,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 26,
@@ -18669,33 +18669,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786735756.309,
+        "generated_at": 1786736656.462,
         "health": {
           "freshness": {
-            "age_seconds": 0.025,
-            "core_data_at": 1786735756.284,
+            "age_seconds": 0.015,
+            "core_data_at": 1786736656.447,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1786735756.309,
+            "duration_s": 0.4,
+            "finished_at": 1786736656.461,
             "healthy": true,
-            "id": 964,
-            "started_at": 1786735756.064,
+            "id": 965,
+            "started_at": 1786736656.065,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1786735756.309,
+            "duration_s": 0.4,
+            "finished_at": 1786736656.461,
             "healthy": true,
-            "id": 964,
-            "started_at": 1786735756.064,
+            "id": 965,
+            "started_at": 1786736656.065,
             "status": "ok"
           },
-          "last_successful_run_at": 1786735756.309,
+          "last_successful_run_at": 1786736656.461,
           "live": true,
           "posts": 29,
           "ready": true,
@@ -18972,10 +18972,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786735756.309,
-          "ddti_generated_at": 1786735756.284,
-          "economic_generated_at": 1786735756.3,
-          "last_successful_run_at": 1786735756.309,
+          "data_updated_at": 1786736656.461,
+          "ddti_generated_at": 1786736656.447,
+          "economic_generated_at": 1786736656.456,
+          "last_successful_run_at": 1786736656.461,
           "latest_fetched_at": 1786671856.146,
           "latest_published_at": 1786668683.0
         }
@@ -18983,7 +18983,7 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-14T19:29:16Z",
+      "source_timestamp": "2026-08-14T19:44:16Z",
       "status": "live",
       "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 179 count.",
       "title": "Private runtime bridge"
