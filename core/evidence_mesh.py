@@ -132,7 +132,9 @@ _CATALOG_DATASET_REQUIRED = frozenset({
     "cadence", "geography", "sources", "latest", "landing_page", "method",
     "count_fields", "license",
 })
-_CATALOG_DATASET_ALLOWED = _CATALOG_DATASET_REQUIRED | {"history"}
+_CATALOG_DATASET_ALLOWED = _CATALOG_DATASET_REQUIRED | {
+    "history", "freshness_budget", "freshness_semantics",
+}
 
 _OSINT_TOP_FIELDS = frozenset({
     "alerts", "generated_at", "headline", "health", "input_commit", "layers",
@@ -335,7 +337,10 @@ def _safe_count(value: Any, path: str) -> int:
     return value
 
 
-def _url(value: Any, path: str, *, nullable: bool = False) -> str | None:
+def _url(
+    value: Any, path: str, *, nullable: bool = False,
+    allow_fragment: bool = False,
+) -> str | None:
     if value is None and nullable:
         return None
     text = _text(value, path, 2048)
@@ -346,7 +351,13 @@ def _url(value: Any, path: str, *, nullable: bool = False) -> str | None:
         raise EvidenceMeshError(f"{path} has an invalid port") from exc
     if (
         parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
-        or parsed.password is not None or port is not None or parsed.fragment
+        or parsed.password is not None or port is not None
+        or (parsed.fragment and not allow_fragment)
+        or (
+            parsed.fragment
+            and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._~-]{0,127}", parsed.fragment)
+            is None
+        )
     ):
         raise EvidenceMeshError(f"{path} must be a plain HTTPS URL")
     return text
@@ -561,6 +572,15 @@ def _validate_catalog(value: Any) -> dict[str, Any]:
         for key in ("name", "description", "layer", "stage", "collection_mode", "status", "cadence", "latest", "landing_page", "method"):
             _text(dataset[key], f"{path}.{key}")
         _duration(dataset["cadence"], f"{path}.cadence")
+        has_budget = "freshness_budget" in dataset
+        has_semantics = "freshness_semantics" in dataset
+        if has_budget != has_semantics:
+            raise EvidenceMeshError(
+                f"{path}.freshness_budget and freshness_semantics must be declared together"
+            )
+        if has_budget:
+            _duration(dataset["freshness_budget"], f"{path}.freshness_budget")
+            _text(dataset["freshness_semantics"], f"{path}.freshness_semantics", 1024)
         for field in ("geography", "sources", "count_fields"):
             items = dataset[field]
             if type(items) is not list or len(items) > 64 or len(items) != len(set(items)):
@@ -573,7 +593,9 @@ def _validate_catalog(value: Any) -> dict[str, Any]:
             dataset["license"], frozenset({"name", "url"}), f"{path}.license"
         )
         _text(license_value["name"], f"{path}.license.name", 512)
-        _url(license_value["url"], f"{path}.license.url")
+        _url(
+            license_value["url"], f"{path}.license.url", allow_fragment=True
+        )
     return value
 
 
@@ -868,7 +890,7 @@ def _available_from_osint(signal: Mapping[str, Any]) -> tuple[str, str]:
 
 def _freshness(
     observed: datetime | None, deadline: datetime | None, now: datetime,
-    cadence: str | None, availability: str,
+    cadence: str | None, availability: str, freshness_budget: str | None = None,
 ) -> dict[str, Any]:
     if availability == "unavailable":
         return {
@@ -883,7 +905,11 @@ def _freshness(
     if observed > now:
         raise EvidenceMeshError("freshness observation cannot be after the build time")
     computed_deadline = deadline
-    if computed_deadline is None and cadence is not None:
+    if computed_deadline is None and freshness_budget is not None:
+        computed_deadline = observed + _duration(
+            freshness_budget, "resource.freshness_budget"
+        )
+    elif computed_deadline is None and cadence is not None:
         computed_deadline = observed + 2 * _duration(cadence, "resource.cadence")
     state = "stale" if computed_deadline is not None and now > computed_deadline else "fresh"
     return {
@@ -1100,7 +1126,10 @@ def build_evidence_mesh(
                 "knowledge_time": _iso_z(observed) if observed else None,
                 "publication_time": _iso_z(catalog_publication),
             }
-            fresh = _freshness(observed, deadline, moment, dataset["cadence"], availability)
+            fresh = _freshness(
+                observed, deadline, moment, dataset["cadence"], availability,
+                dataset.get("freshness_budget"),
+            )
             fresh["status"] = freshness_state
         else:
             if publication_plane:
@@ -1128,7 +1157,10 @@ def build_evidence_mesh(
             )
             observed_value = clocks["knowledge_time"] or clocks["publication_time"] or clocks["event_time"]
             observed = _parse_timestamp(observed_value, f"catalog.{dataset_id}.clock") if observed_value else None
-            fresh = _freshness(observed, None, moment, dataset["cadence"], availability)
+            fresh = _freshness(
+                observed, None, moment, dataset["cadence"], availability,
+                dataset.get("freshness_budget"),
+            )
             if fresh["status"] == "stale":
                 availability = "stale"
         role = _catalog_role(dataset)
@@ -1148,6 +1180,8 @@ def build_evidence_mesh(
         ]
         public_url = "https://palimpsest.info/" + dataset["latest"]
         limitations = [dataset["description"]]
+        if dataset.get("freshness_semantics") is not None:
+            limitations.append(dataset["freshness_semantics"])
         if availability != "available":
             limitations.append("The current resource is unavailable or stale; absence is not a zero observation.")
         resources.append(_resource(

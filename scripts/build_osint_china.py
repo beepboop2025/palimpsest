@@ -275,10 +275,14 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # but they are not independent China OSINT inputs: the newsroom, investigations desk,
 # evidence wire, primary archive, corroboration, network-round normalization and editorial
 # gates are parallel/derived publication planes (including them would recurse or double
-# count); the research corpus is mixed-scope; and the remaining files are generic model
-# evaluation surfaces.
+# count); the compact China index, forecast audit and observation manifest are derived
+# publication/query heads over economic evidence already represented here; the research
+# corpus is mixed-scope; and the remaining files are generic model evaluation surfaces.
 EXCLUDED_LATEST_FILES = frozenset({
+    "china-econ-forecast-latest.json",
+    "china-econ-observations-latest.json",
     "china-economic-pulse-latest.json",
+    "china-index-latest.json",
     "corroboration-latest.json",
     "editorial-readiness-latest.json",
     "evidence-mesh-latest.json",

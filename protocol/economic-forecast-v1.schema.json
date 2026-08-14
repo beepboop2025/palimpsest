@@ -1,0 +1,552 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json",
+  "title": "Palimpsest named-series economic forecast and backtest v1",
+  "description": "A deterministic, bitemporal, pseudo-real-time backtest that abstains unless frozen promotion gates pass.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "as_of",
+    "source",
+    "method",
+    "n_targets",
+    "status",
+    "scope",
+    "claim",
+    "configuration",
+    "snapshot",
+    "source_registry",
+    "summary",
+    "integrity",
+    "targets",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-economic-forecast.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "as_of": {"$ref": "#/$defs/timestamp"},
+    "source": {"$ref": "#/$defs/nonblank"},
+    "method": {"$ref": "#/$defs/nonblank"},
+    "n_targets": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["warming_up", "ready"]},
+    "scope": {"$ref": "#/$defs/nonblank"},
+    "claim": {"$ref": "#/$defs/nonblank"},
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "snapshot": {"$ref": "#/$defs/snapshot"},
+    "source_registry": {"$ref": "#/$defs/sourceRegistry"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "integrity": {"$ref": "#/$defs/integrity"},
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/target"}
+    },
+    "limitations": {"$ref": "#/$defs/stringArray"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {"status": {"const": "ready"}}
+      },
+      "then": {
+        "properties": {
+          "summary": {
+            "properties": {
+              "ready_targets": {"type": "integer", "minimum": 1},
+              "abstaining_targets": {"const": 0}
+            }
+          },
+          "targets": {
+            "items": {
+              "properties": {"status": {"const": "ready"}}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "summary": {
+            "properties": {
+              "abstaining_targets": {"type": "integer", "minimum": 1}
+            }
+          },
+          "targets": {
+            "contains": {
+              "required": ["status"],
+              "properties": {"status": {"const": "warming_up"}}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonblank": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableNumber": {"type": ["number", "null"]},
+    "nullableString": {"type": ["string", "null"]},
+    "stringArray": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/nonblank"},
+      "uniqueItems": true
+    },
+    "promotionGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_first_release_folds",
+        "min_latest_revised_folds",
+        "min_history_span_days",
+        "min_source_groups",
+        "min_independence_groups",
+        "min_revised_outcomes",
+        "min_challenger_relative_mae_improvement",
+        "min_interval_folds",
+        "min_interval_coverage",
+        "max_interval_coverage"
+      ],
+      "properties": {
+        "min_first_release_folds": {"type": "integer", "minimum": 0},
+        "min_latest_revised_folds": {"type": "integer", "minimum": 0},
+        "min_history_span_days": {"type": "integer", "minimum": 0},
+        "min_source_groups": {"type": "integer", "minimum": 0},
+        "min_independence_groups": {"type": "integer", "minimum": 0},
+        "min_revised_outcomes": {"type": "integer", "minimum": 0},
+        "min_challenger_relative_mae_improvement": {"type": "number", "minimum": 0, "maximum": 1},
+        "min_interval_folds": {"type": "integer", "minimum": 0},
+        "min_interval_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "max_interval_coverage": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "config_version", "engine_version", "baseline_model_id", "promotion_gates"],
+      "properties": {
+        "path": {"const": "config/china_econ_targets.json"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "config_version": {"type": "integer", "minimum": 1},
+        "engine_version": {"const": "palimpsest-economic-forecast-engine.v1"},
+        "baseline_model_id": {"$ref": "#/$defs/nonblank"},
+        "promotion_gates": {"$ref": "#/$defs/promotionGates"}
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "records", "bytes", "sha256", "as_of"],
+      "properties": {
+        "path": {"$ref": "#/$defs/nonblank"},
+        "records": {"type": "integer", "minimum": 1},
+        "bytes": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "as_of": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "sourceRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"const": "config/china_econ_sources.json"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targets", "ready_targets", "abstaining_targets", "champion_target_ids"],
+      "properties": {
+        "targets": {"type": "integer", "minimum": 1},
+        "ready_targets": {"type": "integer", "minimum": 0},
+        "abstaining_targets": {"type": "integer", "minimum": 0},
+        "champion_target_ids": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aggregate_only",
+        "release_clock_enforced",
+        "collection_clock_enforced",
+        "target_period_lookahead_blocked",
+        "first_and_latest_outcomes_scored_separately",
+        "failed_model_specs_retained"
+      ],
+      "properties": {
+        "aggregate_only": {"const": true},
+        "release_clock_enforced": {"const": true},
+        "collection_clock_enforced": {"const": true},
+        "target_period_lookahead_blocked": {"const": true},
+        "first_and_latest_outcomes_scored_separately": {"const": true},
+        "failed_model_specs_retained": {"const": true}
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_id", "label", "series_id", "source_id", "unit", "frequency",
+        "geography", "sector", "firm_size", "ownership", "horizon", "status",
+        "outcome_periods", "observed_source_ids", "observed_independence_groups",
+        "models", "promotion", "nowcast", "folds"
+      ],
+      "properties": {
+        "target_id": {"$ref": "#/$defs/nonblank"},
+        "label": {"$ref": "#/$defs/nonblank"},
+        "series_id": {"$ref": "#/$defs/nonblank"},
+        "source_id": {"$ref": "#/$defs/nonblank"},
+        "unit": {"$ref": "#/$defs/nonblank"},
+        "frequency": {"enum": ["event", "D", "W", "M", "Q", "A"]},
+        "geography": {"$ref": "#/$defs/nonblank"},
+        "sector": {"$ref": "#/$defs/nonblank"},
+        "firm_size": {"$ref": "#/$defs/nonblank"},
+        "ownership": {"$ref": "#/$defs/nonblank"},
+        "horizon": {"const": "next_observed_period"},
+        "status": {"enum": ["warming_up", "ready"]},
+        "outcome_periods": {"type": "integer", "minimum": 0},
+        "observed_source_ids": {"$ref": "#/$defs/stringArray"},
+        "observed_independence_groups": {"$ref": "#/$defs/stringArray"},
+        "models": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/modelSummary"}},
+        "promotion": {"$ref": "#/$defs/promotion"},
+        "nowcast": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/nowcast"}]},
+        "folds": {"type": "array", "items": {"$ref": "#/$defs/fold"}}
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {"status": {"const": "warming_up"}}
+          },
+          "then": {
+            "properties": {
+              "nowcast": {"type": "null"},
+              "promotion": {
+                "properties": {
+                  "status": {"const": "failed"},
+                  "champion_model_id": {"type": "null"}
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "nowcast": {"$ref": "#/$defs/nowcast"},
+              "promotion": {
+                "properties": {
+                  "status": {"const": "passed"},
+                  "champion_model_id": {"$ref": "#/$defs/nonblank"}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "modelSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id", "kind", "description", "min_train_observations",
+        "min_scored_folds", "seasonal_lag", "delta_lookback", "interval_coverage",
+        "min_interval_residuals", "min_bridge_contributors"
+      ],
+      "properties": {
+        "model_id": {"$ref": "#/$defs/nonblank"},
+        "kind": {"enum": ["random_walk", "seasonal_naive", "mean_delta", "equal_delta_bridge"]},
+        "description": {"$ref": "#/$defs/nonblank"},
+        "min_train_observations": {"type": "integer", "minimum": 1},
+        "min_scored_folds": {"type": "integer", "minimum": 1},
+        "seasonal_lag": {"type": ["integer", "null"], "minimum": 1},
+        "delta_lookback": {"type": ["integer", "null"], "minimum": 1},
+        "interval_coverage": {"type": ["number", "null"], "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+        "min_interval_residuals": {"type": "integer", "minimum": 1},
+        "min_bridge_contributors": {"type": "integer", "minimum": 1}
+      }
+    },
+    "intervalScores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n_scored", "nominal_coverage", "empirical_coverage", "mean_wis"],
+      "properties": {
+        "n_scored": {"type": "integer", "minimum": 0},
+        "nominal_coverage": {"$ref": "#/$defs/nullableNumber"},
+        "empirical_coverage": {"$ref": "#/$defs/nullableNumber"},
+        "mean_wis": {"$ref": "#/$defs/nullableNumber"}
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n_scored", "mae", "median_absolute_error", "rmse", "directional_accuracy", "n_directional", "intervals"],
+      "properties": {
+        "n_scored": {"type": "integer", "minimum": 0},
+        "mae": {"$ref": "#/$defs/nullableNumber"},
+        "median_absolute_error": {"$ref": "#/$defs/nullableNumber"},
+        "rmse": {"$ref": "#/$defs/nullableNumber"},
+        "directional_accuracy": {"$ref": "#/$defs/nullableNumber"},
+        "n_directional": {"type": "integer", "minimum": 0},
+        "intervals": {"$ref": "#/$defs/intervalScores"}
+      }
+    },
+    "failureCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "count"],
+      "properties": {
+        "code": {"$ref": "#/$defs/nonblank"},
+        "count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "modelSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id", "model_hash", "status", "status_reason", "spec",
+        "configured_contributor_series_ids", "observed_source_ids",
+        "observed_independence_groups", "folds_attempted", "folds_failed",
+        "failure_counts", "first_release_scores", "latest_revised_scores"
+      ],
+      "properties": {
+        "model_id": {"$ref": "#/$defs/nonblank"},
+        "model_hash": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["failed", "insufficient_history", "eligible"]},
+        "status_reason": {"$ref": "#/$defs/nullableString"},
+        "spec": {"$ref": "#/$defs/modelSpec"},
+        "configured_contributor_series_ids": {"$ref": "#/$defs/stringArray"},
+        "observed_source_ids": {"$ref": "#/$defs/stringArray"},
+        "observed_independence_groups": {"$ref": "#/$defs/stringArray"},
+        "folds_attempted": {"type": "integer", "minimum": 0},
+        "folds_failed": {"type": "integer", "minimum": 0},
+        "failure_counts": {"type": "array", "items": {"$ref": "#/$defs/failureCount"}},
+        "first_release_scores": {"$ref": "#/$defs/scores"},
+        "latest_revised_scores": {"$ref": "#/$defs/scores"}
+      }
+    },
+    "coverageWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {
+        "minimum": {"type": "number"},
+        "maximum": {"type": "number"}
+      }
+    },
+    "coverageObserved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_release", "latest_revised"],
+      "properties": {
+        "first_release": {"type": "number"},
+        "latest_revised": {"type": "number"}
+      }
+    },
+    "gateValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "number"},
+        {"$ref": "#/$defs/coverageWindow"},
+        {"$ref": "#/$defs/coverageObserved"}
+      ]
+    },
+    "gateCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "required", "observed", "passed", "detail"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/nonblank"},
+        "required": {"$ref": "#/$defs/gateValue"},
+        "observed": {"$ref": "#/$defs/gateValue"},
+        "passed": {"type": "boolean"},
+        "detail": {"$ref": "#/$defs/nonblank"}
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status", "baseline_model_id", "candidate_model_id", "champion_model_id",
+        "first_release_relative_mae_improvement", "latest_revised_relative_mae_improvement",
+        "checks", "abstention_reasons"
+      ],
+      "properties": {
+        "status": {"enum": ["failed", "passed"]},
+        "baseline_model_id": {"$ref": "#/$defs/nonblank"},
+        "candidate_model_id": {"$ref": "#/$defs/nullableString"},
+        "champion_model_id": {"$ref": "#/$defs/nullableString"},
+        "first_release_relative_mae_improvement": {"$ref": "#/$defs/nullableNumber"},
+        "latest_revised_relative_mae_improvement": {"$ref": "#/$defs/nullableNumber"},
+        "checks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/gateCheck"}},
+        "abstention_reasons": {"type": "array", "items": {"$ref": "#/$defs/nonblank"}}
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {"status": {"const": "failed"}}
+          },
+          "then": {
+            "properties": {
+              "champion_model_id": {"type": "null"},
+              "abstention_reasons": {"minItems": 1},
+              "checks": {
+                "contains": {
+                  "required": ["passed"],
+                  "properties": {"passed": {"const": false}}
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "candidate_model_id": {"$ref": "#/$defs/nonblank"},
+              "champion_model_id": {"$ref": "#/$defs/nonblank"},
+              "abstention_reasons": {"maxItems": 0},
+              "checks": {
+                "not": {
+                  "contains": {
+                    "required": ["passed"],
+                    "properties": {"passed": {"const": false}}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "revision", "released_at", "collected_at", "observation_id"],
+      "properties": {
+        "value": {"type": "number"},
+        "revision": {"type": "integer", "minimum": 0},
+        "released_at": {"$ref": "#/$defs/timestamp"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "observation_id": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {"$ref": "#/$defs/nonblank"},
+        "message": {"$ref": "#/$defs/nonblank"}
+      }
+    },
+    "prediction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id", "status", "point", "lower", "upper", "interval_coverage",
+        "interval_method", "origin_value", "training_observations", "training_residuals",
+        "method", "contributor_series_ids", "source_ids", "independence_groups", "failure"
+      ],
+      "properties": {
+        "model_id": {"$ref": "#/$defs/nonblank"},
+        "status": {"enum": ["ok", "failed"]},
+        "point": {"$ref": "#/$defs/nullableNumber"},
+        "lower": {"$ref": "#/$defs/nullableNumber"},
+        "upper": {"$ref": "#/$defs/nullableNumber"},
+        "interval_coverage": {"$ref": "#/$defs/nullableNumber"},
+        "interval_method": {"$ref": "#/$defs/nullableString"},
+        "origin_value": {"$ref": "#/$defs/nullableNumber"},
+        "training_observations": {"type": "integer", "minimum": 0},
+        "training_residuals": {"type": "integer", "minimum": 0},
+        "method": {"$ref": "#/$defs/nullableString"},
+        "contributor_series_ids": {"$ref": "#/$defs/stringArray"},
+        "source_ids": {"$ref": "#/$defs/stringArray"},
+        "independence_groups": {"$ref": "#/$defs/stringArray"},
+        "failure": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/failure"}]}
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_rows", "selected_rows", "excluded_by_release_clock",
+        "excluded_by_collection_clock", "same_or_future_period_rows_excluded"
+      ],
+      "properties": {
+        "candidate_rows": {"type": "integer", "minimum": 0},
+        "selected_rows": {"type": "integer", "minimum": 0},
+        "excluded_by_release_clock": {"type": "integer", "minimum": 0},
+        "excluded_by_collection_clock": {"type": "integer", "minimum": 0},
+        "same_or_future_period_rows_excluded": {"type": "integer", "minimum": 0}
+      }
+    },
+    "fold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fold_id", "target_period_start", "target_period_end", "decision_time",
+        "first_release_outcome", "latest_revised_outcome", "outcome_changed",
+        "feature_snapshot_sha256", "selection", "predictions"
+      ],
+      "properties": {
+        "fold_id": {"$ref": "#/$defs/sha256"},
+        "target_period_start": {"$ref": "#/$defs/date"},
+        "target_period_end": {"$ref": "#/$defs/date"},
+        "decision_time": {"$ref": "#/$defs/timestamp"},
+        "first_release_outcome": {"$ref": "#/$defs/outcome"},
+        "latest_revised_outcome": {"$ref": "#/$defs/outcome"},
+        "outcome_changed": {"type": "boolean"},
+        "feature_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+        "selection": {"$ref": "#/$defs/selection"},
+        "predictions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/prediction"}}
+      }
+    },
+    "nowcast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "as_of", "target_period", "model_id", "point", "lower", "upper",
+        "interval_coverage", "unit", "contributor_series_ids", "source_ids",
+        "independence_groups", "feature_snapshot_sha256"
+      ],
+      "properties": {
+        "as_of": {"$ref": "#/$defs/timestamp"},
+        "target_period": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "after"],
+          "properties": {
+            "kind": {"const": "next_observed_period"},
+            "after": {"$ref": "#/$defs/date"}
+          }
+        },
+        "model_id": {"$ref": "#/$defs/nonblank"},
+        "point": {"type": "number"},
+        "lower": {"$ref": "#/$defs/nullableNumber"},
+        "upper": {"$ref": "#/$defs/nullableNumber"},
+        "interval_coverage": {"$ref": "#/$defs/nullableNumber"},
+        "unit": {"$ref": "#/$defs/nonblank"},
+        "contributor_series_ids": {"$ref": "#/$defs/stringArray"},
+        "source_ids": {"$ref": "#/$defs/stringArray"},
+        "independence_groups": {"$ref": "#/$defs/stringArray"},
+        "feature_snapshot_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

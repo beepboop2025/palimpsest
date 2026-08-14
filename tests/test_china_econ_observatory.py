@@ -159,6 +159,8 @@ def test_observation_metadata_is_allowlisted_aggregate_json():
         "family": "repo",
         "method_version": 2,
         "release_time_semantics": "first_observed_upper_bound",
+        "source_document_sha256": "a" * 64,
+        "source_manifest_sha256": "b" * 64,
         "provenance": {"parser_version": 3, "coverage": [True, None, 1.5]},
     })
     assert json.loads(json.dumps(row.to_dict(), allow_nan=False))["metadata"] == row.metadata

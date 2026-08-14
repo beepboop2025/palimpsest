@@ -6,9 +6,10 @@ Palimpsest can become the public-source, provenance and vintage layer for a much
 deeper China economic system. It cannot become a public clone of China Beige
 Book (CBB). CBB's differentiator is a proprietary in-country respondent network,
 not a formula that can be reconstructed from public time series. CBB says its
-platform tracks thousands of firms, 34 industries and more than 100,000 series;
-the public site does not grant access to its respondent records or shadow-finance
-microdata.
+independent network covers more than 4,000 firms and 34 industries, while its
+analytics platform advertises more than 4 million rows, 100+ indicators and 60
+filter dimensions; the public site does not grant access to its respondent records
+or shadow-finance microdata.
 
 The defensible target is therefore a **CBB-shaped observatory**, not “CBB data”:
 
@@ -29,6 +30,46 @@ requires a licensed Chinese foreign-related-survey institution and legal review;
 that operation belongs outside this public OSINT repository. Palimpsest may ingest
 approved **aggregate outputs** from such a partner.
 
+## Where the competing data can be obtained
+
+ChinaData.Live exposes a documented public distribution API at
+`https://chinadata.live/api/v2`. Its `GET /datasets` endpoint lists the current
+catalogue; `GET /data/:id` returns one dataset as JSON, and the same endpoint with
+`?format=csv` returns a spreadsheet-friendly export. Separate trade routes cover
+country and HS-code views. This is the quickest legitimate way to inspect the
+public product, but it is not permission to mirror the service: the published
+[terms](https://chinadata.live/terms/) limit anonymous use to 100 requests per IP
+per UTC day, retain original-provider restrictions, and reserve bulk or recurring
+delivery for a written agreement. Palimpsest should use the catalogue for gap
+analysis and collect from the named original source wherever practical; a
+ChinaData.Live transport is not independent confirmation of the NBS, PBOC, GACC or
+other official series it republishes.
+
+China Beige Book does not offer its underlying panel as an open public dataset.
+Its [analytics platform](https://www.chinabeigebook.com/analytics-platform/) is a
+licensed product with interactive views and client delivery through Azure SQL,
+AWS S3, SFTP and Excel. The current public description says it contains more than
+4 million rows, 100+ indicators and 60 filter dimensions; its
+[methodological advantage](https://www.chinabeigebook.com/cbb-advantage/) is an
+independently collected network covering more than 4,000 firms and 34 industries.
+Access therefore means buying a licence directly from CBB and negotiating derived-
+output and retention rights. There is no lawful public route to “get all” of the
+respondent-level data, and Palimpsest must not imply otherwise.
+
+| Product | Strongest public claim | Access | What Palimpsest should learn from it | Boundary |
+|---|---|---|---|---|
+| ChinaData.Live | Broad, searchable official statistics and trade tables | Public JSON/CSV for light use; custom bulk delivery by agreement | Breadth, simple discovery, stable developer ergonomics | Mostly redistributed official information; source rights and rate limits still apply |
+| China Beige Book | Early, cross-sectional private firm, labor, credit and commodity signals | Paid platform/database/files | Firm-size, ownership, region and sector cuts; decision-oriented releases | Proprietary respondent network cannot be reconstructed from public data |
+| Palimpsest | Open evidence graph with separate period, release and collection clocks | Public files, static pages, OpenAPI and MCP | Make every claim replayable, revision-aware and falsifiable | Current economic history is narrow, so the system must abstain from a national composite |
+
+The product opportunity is an **evidence and vintage layer**, not a third generic
+data portal. Palimpsest can exceed both competitors on properties a reader can
+independently verify: exact source receipts, as-of queries, revision diffs,
+independence-group accounting, stale/missing states, source-rights metadata,
+pseudo-real-time backtests and a public record of model misses. It cannot exceed a
+private panel on information it does not lawfully observe, and should say so on
+every relevant surface.
+
 ## What exists now
 
 The repository's live economic layer is narrow: CFETS SHIBOR/repo/CNY benchmarks,
@@ -45,7 +86,7 @@ As of 2026-08-04 it records 33 sources, partitioned by implementation state:
 | State | Count | Meaning |
 |---|---|---|
 | `live` | 3 | collecting today |
-| `adapter_ready` | 12 | public specification written, adapter not yet built |
+| `adapter_ready` | 12 | adapter specified or implemented, but not admitted to the public ledger |
 | `planned` | 4 | further public sources, specification still open |
 | `licensed_adapter` | 8 | reachable only under a commercial licence |
 | `blocked` | 4 | access controlled, or terms prohibit automation |
@@ -61,6 +102,33 @@ commodities, agriculture, logistics and digital-consumption data.
 Every number in that table is generated by the coverage planner rather than
 maintained by hand. `tests/test_china_econ_observatory.py::test_doc_counts_match_the_registry`
 parses this file and fails if the table drifts from the registry.
+
+## What ships in the current implementation
+
+The first public product layer is now complete without overstating coverage:
+
+- `/china/` is a server-rendered observatory with crawlable source, release-monitor
+  and economic-domain directories. Its current headline remains an abstention.
+- `readings/china-econ-observations.jsonl` is the append-only aggregate ledger;
+  its manifest and row schemas publish exact byte/row/checksum receipts.
+- the read-only MCP `query_economic_observations` tool filters the fixed ledger by
+  series, source, slice, period, release clock and both-clock `as_of`, with
+  manifest pinning and revision-aware pagination;
+- `readings/china-econ-forecast-latest.json` publishes every pseudo-real-time fold,
+  miss, failed model and frozen promotion gate while keeping unqualified forecasts
+  null; and
+- MOT, State Post Bureau, NEA and NBS 70-city parsers now exist behind explicit
+  primary-document-to-economic-source aliases and a reviewed 20-series registry.
+  They write only to `data/review/` unless an operator explicitly chooses another
+  ledger; no workflow or source state was activated.
+
+That last tranche remains deliberately quarantined. The retained SPB and NEA
+document manifests have publication-clock discrepancies against their visible
+official pages, the current MOT HTML is image/XLSX-only, and the captured documents
+predate rows already present in the public append order. Activation requires new
+immutable corrected capture lineages and a chronology-safe merge policy, not an edit
+to old receipts. NBS 70-city parsing succeeds across all 70 reviewed cities, but it
+stays `adapter_ready` until the same source-level review is complete.
 
 Run the coverage planner with:
 
@@ -203,6 +271,17 @@ Quarantine shape changes; never coerce them to zero.
 
 They are audit baselines, not claims of optimal forecasting performance.
 
+`readings/china-econ-forecast-latest.json` now publishes a second, stricter
+baseline layer: deterministic random-walk, seasonal-naive, mean-delta and
+equal-delta bridge models evaluated in pseudo-real time. Every fold enforces both
+the source-release and Palimpsest-collection clocks, scores first-release and
+latest-revised outcomes separately, retains failed specifications, and binds the
+result to exact ledger/config/registry hashes. Its frozen promotion gates currently
+leave all three named CFETS targets in `warming_up`: there are only 6–7 usable
+folds, 37 days of history, one source family and no revised outcomes. Champion and
+forecast fields therefore remain null. This is published backtest evidence, not a
+China-wide nowcast.
+
 ### Production champion/challenger system
 
 The primary nowcaster should be a mixed-frequency dynamic factor model using
@@ -316,7 +395,10 @@ revision effect, model version and a link to the exact training snapshot.
 
 ## Primary references
 
+- [ChinaData.Live public API documentation](https://chinadata.live/api/docs/)
+- [ChinaData.Live terms and source-rights boundary](https://chinadata.live/terms/)
 - [China Beige Book, proprietary network and scope](https://www.chinabeigebook.com/cbb-advantage/)
+- [China Beige Book analytics platform and licensed delivery](https://www.chinabeigebook.com/analytics-platform/)
 - [NBS enterprise-climate survey](https://www.stats.gov.cn/zs/tjws/tjfx/202301/t20230101_1903945.html)
 - [PBOC 5,000-enterprise survey system](https://www.stats.gov.cn/fw/bmdcxmsp/bmzd/202501/t20250126_1958478.html)
 - [NBS National Data](https://data.stats.gov.cn/staticreq.htm?eqid=8342caf1001611ab0000000464568341&m=aboutctryinfo)

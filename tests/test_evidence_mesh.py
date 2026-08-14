@@ -143,12 +143,12 @@ def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(mesh: d
         if row["project_id"] == "palimpsest" and row["namespace"] == "osint"
     }
 
-    assert len(catalog_ids) == 48
+    assert len(catalog_ids) == 50
     assert len(signal_ids) == 33
     assert mesh_catalog_ids == catalog_ids
     assert mesh_signal_ids == signal_ids
     assert mesh["summary"]["palimpsest_catalog"] == {
-        "expected": 48, "accounted": 48, "complete": True,
+        "expected": 50, "accounted": 50, "complete": True,
     }
     assert mesh["summary"]["palimpsest_osint"] == {
         "expected": 33, "accounted": 33, "complete": True,
@@ -191,6 +191,43 @@ def test_missing_optional_snapshots_are_explicit_and_never_zero(mesh: dict) -> N
         assert set(placeholder["clocks"].values()) == {None}
         assert placeholder["freshness"]["status"] == "unavailable"
         assert "value" not in placeholder
+
+
+def test_catalog_freshness_policy_is_strict_and_drives_resource_deadlines(
+    mesh: dict, tmp_path: Path,
+) -> None:
+    observations = _resource(
+        mesh, "palimpsest:catalog:china-economic-observations"
+    )
+    observed = datetime.fromisoformat(
+        observations["freshness"]["observed_at"].replace("Z", "+00:00")
+    )
+    deadline = datetime.fromisoformat(
+        observations["freshness"]["deadline"].replace("Z", "+00:00")
+    )
+    assert deadline - observed == timedelta(days=10)
+    assert any(
+        "collector" in limitation
+        for limitation in observations["limitations"]
+    )
+
+    root = _isolated_root(tmp_path)
+    catalog_path = root / "config/public_data_catalog.json"
+    catalog = json.loads(catalog_path.read_text())
+    target = next(
+        row for row in catalog["datasets"]
+        if row["id"] == "china-economic-observations"
+    )
+    target["freshness_budget"] = "P0D"
+    _write_json(catalog_path, catalog)
+    with pytest.raises(EvidenceMeshError, match="cadence must be positive"):
+        build_evidence_mesh(root, now=NOW)
+
+    target["freshness_budget"] = "P10D"
+    target.pop("freshness_semantics")
+    _write_json(catalog_path, catalog)
+    with pytest.raises(EvidenceMeshError, match="must be declared together"):
+        build_evidence_mesh(root, now=NOW)
 
 
 def test_unverified_partner_public_endpoints_fail_config_validation(tmp_path: Path) -> None:

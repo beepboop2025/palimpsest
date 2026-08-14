@@ -39,6 +39,30 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     ]
 
 
+def test_discovery_copy_separates_free_access_from_source_data_rights():
+    card = _json("product-card.json")
+    product = card["product"]
+    assert product["price"] == "Free"
+    assert product["license"] == "MIT"
+    assert product["license_scope"] == [
+        "Palimpsest software",
+        "Palimpsest schemas",
+        "Palimpsest original metadata",
+    ]
+    assert product["source_observation_rights"] == {
+        "status": "publisher_rights_retained",
+        "catalog": "https://palimpsest.info/data.html#rights",
+    }
+
+    developers = (ROOT / "developers.html").read_text(encoding="utf-8")
+    llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+    for surface in (developers, llms):
+        normalized = " ".join(surface.split())
+        assert "Public access is free" in normalized
+        assert "source observations retain their publishers' rights" in normalized
+        assert "data.html#rights" in normalized
+
+
 def test_openapi_only_advertises_public_files_that_are_actually_published():
     spec = _json("openapi.json")
     assert spec["openapi"] == "3.1.0"
@@ -48,7 +72,7 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
         dynamic_event_analysis = path == "/news/wire/{event_id}/analysis.json"
         assert dynamic_event_analysis or (
             path.startswith("/readings/")
-            and path.endswith((".json", ".jsonld"))
+            and path.endswith((".json", ".jsonld", ".jsonl"))
         ) or path == "/datapackage.json"
         assert set(operations) == {"get"}
         if dynamic_event_analysis:
@@ -57,6 +81,14 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
         else:
             assert (ROOT / path.lstrip("/")).is_file(), path
         assert "200" in operations["get"]["responses"]
+    assert "/readings/china-index-latest.json" in spec["paths"]
+    assert "/readings/china-econ-forecast-latest.json" in spec["paths"]
+    assert spec["components"]["schemas"]["ChinaIndex"] == {
+        "$ref": "https://palimpsest.info/protocol/china-index-v1.schema.json"
+    }
+    assert spec["components"]["schemas"]["ChinaEconomicForecast"] == {
+        "$ref": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    }
 
 
 def test_developer_page_exposes_every_activation_path():
@@ -68,7 +100,7 @@ def test_developer_page_exposes_every_activation_path():
     assert "claude mcp add --transport http" in page
     assert '"type": "mcp"' in page and '"require_approval": "never"' in page
     assert "Settings → Apps → Create" in page
-    assert "five discovered read-only tools" in page
+    assert "six discovered read-only tools" in page
     assert 'id="run-verdict"' in page and "whats_happening" in page
     assert "/assets/developers.js" in page
     assert 'id="scamshield"' in page
@@ -155,6 +187,30 @@ def test_stable_public_surfaces_have_exact_sitemap_and_canonical_urls():
     for relative_path, canonical_url in surfaces.items():
         page = (ROOT / relative_path).read_text(encoding="utf-8")
         assert f'<link rel="canonical" href="{canonical_url}">' in page
+
+
+def test_china_observatory_is_discoverable_by_humans_and_agents():
+    sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    robots = (ROOT / "robots.txt").read_text(encoding="utf-8")
+    llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+    home = (ROOT / "index.html").read_text(encoding="utf-8")
+
+    assert "https://palimpsest.info/china/" in sitemap
+    assert "https://palimpsest.info/china/" in llms
+    assert "Sitemap: https://palimpsest.info/china/sitemap.xml" in robots
+    assert 'href="/china/">Open China Observatory' in home
+    assert "https://palimpsest.info/readings/china-index-latest.json" in llms
+    assert "https://palimpsest.info/protocol/china-index-v1.schema.json" in llms
+    assert "https://palimpsest.info/readings/china-econ-observations.jsonl" in llms
+    assert "https://palimpsest.info/readings/china-econ-forecast-latest.json" in llms
+    assert "https://palimpsest.info/protocol/economic-forecast-v1.schema.json" in llms
+    card = _json("product-card.json")
+    assert card["evidence"]["china_observatory_index_schema"] == (
+        "https://palimpsest.info/protocol/china-index-v1.schema.json"
+    )
+    assert card["evidence"]["china_economic_forecast_schema"] == (
+        "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    )
 
 
 def test_scamshield_public_surfaces_share_one_bounded_contract():

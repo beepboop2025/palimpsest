@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Palimpsest API + MCP — live censorship evidence for agents</title>
-<meta name="description" content="Connect Palimpsest's free, read-only MCP server or import its OpenAPI document. Give agents current, timestamped censorship and model-evaluation evidence instead of stale guesses.">
+<title>Palimpsest API + MCP — censorship, China economy and model-eval evidence</title>
+<meta name="description" content="Connect Palimpsest's free, read-only MCP server or import its OpenAPI document. Give agents current, timestamped evidence from its censorship, China Economic Observatory and model-evaluation applications.">
 <link rel="canonical" href="https://palimpsest.info/developers.html">
 <link rel="service-desc" type="application/vnd.oai.openapi+json" href="https://palimpsest.info/openapi.json" title="Palimpsest Public Readings API">
 <link rel="alternate" type="application/json" href="https://palimpsest.info/product-card.json" title="Palimpsest product card">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
 <meta property="og:title" content="Palimpsest API + MCP — current evidence for agents">
-<meta property="og:description" content="Four read-only tools, a machine-readable Evidence Atlas, no key, and timestamps and limitations attached.">
+<meta property="og:description" content="Six read-only tools, a machine-readable Evidence Atlas, no key, and timestamps and limitations attached.">
 <meta property="og:url" content="https://palimpsest.info/developers.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -24,13 +24,14 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "Connect Palimpsest's public API and MCP server",
-  "description": "A quickstart for Palimpsest's read-only censorship-observatory and model-evaluation data interfaces.",
-  "dateModified": "2026-08-06",
+  "description": "A quickstart for Palimpsest's three read-only applications: censorship measurement, the China Economic Observatory and verifiable model evaluation.",
+  "dateModified": "2026-08-14",
   "mainEntityOfPage": "https://palimpsest.info/developers.html",
   "author": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
   "publisher": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
   "isAccessibleForFree": true,
-  "license": "https://opensource.org/license/mit"
+  "license": "https://opensource.org/license/mit",
+  "usageInfo": "https://palimpsest.info/data.html#rights"
 }
 </script>
 <style>
@@ -111,14 +112,24 @@
   <div class="ps-nav__items">
     <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">China<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
-        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <p class="ps-flyout__lede">Economic releases, public-source signals and censorship evidence, kept separate and joined by receipts.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Boards</p>
-            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <p class="ps-flyout__head">Start</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>What changed, what is withheld, and the evidence behind both</span></a>
+            <a href="/osint-china.html"><b>OSINT China</b><span>Censorship signals, sources and freshness in one public roll-up</span></a>
             <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Economic evidence</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
+            <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Censorship instruments</p>
             <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
             <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
             <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
@@ -180,8 +191,8 @@
   <header class="dev-head ps-recede">
     <p class="ps-kicker">Public API · remote MCP · no key</p>
     <h1 class="ps-h1">Give your agent evidence that can still be checked</h1>
-    <p class="ps-lede">Palimpsest exposes current censorship measurements, tamper-evident
-    model evaluations, and its evidence-first newsroom through a read-only MCP server and stable
+    <p class="ps-lede">Palimpsest exposes three public applications—current censorship measurements,
+    a revision-safe China Economic Observatory, and tamper-evident model evaluations—plus its evidence-first newsroom through a read-only MCP server and stable
     JSON readings. A separate reviewed ScamShield pack shares inert typologies and source links
     without making private message evidence public. Every result keeps its timestamp, source,
     publication state, counterevidence and limitations attached.</p>
@@ -193,7 +204,7 @@
       <a class="ps-btn ps-btn--ghost" href="/product-card.json">Product card</a>
     </div>
     <div class="proof ps-stagger" aria-label="Service facts">
-      <div class="ps-p1 ps-reveal"><b>5 tools</b><span>measurements + newsroom evidence</span></div>
+      <div class="ps-p1 ps-reveal"><b>6 tools</b><span>measurements + newsroom evidence</span></div>
       <div class="ps-p1 ps-reveal"><b>No auth</b><span>public data, no account or token</span></div>
       <div class="ps-p1 ps-reveal"><b>Read-only</b><span>timestamps and gaps stay visible</span></div>
     </div>
@@ -201,7 +212,7 @@
 
   <section id="connect" class="ps-defer">
     <h2 class="ps-section-head">Connect in under a minute</h2>
-    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all five tools
+    <p class="dev-copy">Use the remote streamable-HTTP endpoint. Clients discover all six tools
     from the server, so no schema needs to be copied by hand.</p>
     <div class="connect-grid">
       <article class="connect ps-p2 ps-reveal">
@@ -231,11 +242,12 @@
   </section>
 
   <section class="ps-defer">
-    <h2 class="ps-section-head">The five tools</h2>
+    <h2 class="ps-section-head">The six tools</h2>
     <div class="tool-grid ps-stagger">
       <article class="tool ps-p1 ps-reveal"><h3><code>list_signals</code></h3><p>Discover every published instrument, its scope, current source URL and independent status.</p><p class="args">arguments: none · call this first</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_signal</code></h3><p>Fetch one full reading, with timestamp, provenance, caps and any untrusted third-party text labelled.</p><p class="args">arguments: name · max_rows (optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>get_newsroom</code></h3><p>Read the evidence newsroom, wire, economic pulse, machine analysis and abstentions, investigations, or editorial gates without losing publication state or citations.</p><p class="args">arguments: view · limit · status/priority (optional)</p></article>
+      <article class="tool ps-p1 ps-reveal"><h3><code>query_economic_observations</code></h3><p>Filter the fixed aggregate China economic ledger point-in-time. Before parsing rows, the tool fetches its fixed manifest and checks the exact JSONL bytes, SHA-256 and record count. Responses retain the manifest scope and limitations under source, page and serialized-byte caps.</p><p class="args">arguments: slice filters · as_of · period/release ranges · revision_view · limit · cursor (all optional)</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>whats_happening</code></h3><p>Ask the board for its multiplicity-aware verdict, with coverage failures separated from findings.</p><p class="args">arguments: none · best first answer</p></article>
       <article class="tool ps-p1 ps-reveal"><h3><code>gfw_reading</code></h3><p>Read Great Firewall network blocking beside model-layer censorship without collapsing the two.</p><p class="args">arguments: none</p></article>
     </div>
@@ -265,7 +277,15 @@
     <h2 class="ps-section-head">Use the JSON API directly</h2>
     <p class="dev-copy">For deterministic pipelines and notebooks, import the
     <a href="/openapi.json">OpenAPI 3.1 document</a> or fetch a reading as ordinary JSON.
-    The files are cacheable, versionable and easy to archive.</p>
+    Start with the <a href="/readings/china-index-latest.json">China Observatory index</a>
+    and its <a href="/protocol/china-index-v1.schema.json">JSON Schema</a>. The economic observation <a href="/readings/china-econ-observations-latest.json">manifest</a>
+    and <a href="/readings/china-econ-observations.jsonl">append-only JSONL ledger</a> are
+    published there too. The manifest checksum detects a byte mismatch; it does not authenticate
+    publisher identity. Named-series forecasting publishes a separate
+    <a href="/readings/china-econ-forecast-latest.json">backtest and forecast-status artifact</a>
+    under its <a href="/protocol/economic-forecast-v1.schema.json">forecast schema</a>; its
+    <code>warming_up</code> state is an abstention, not a forecast claim. The files are cacheable,
+    versionable and easy to archive.</p>
     <div class="codebox ps-p2" style="padding:18px">
       <pre id="rest-command"><code>curl -sS https://palimpsest.info/readings/board-alarm-latest.json \
   | python3 -m json.tool</code></pre>
@@ -305,7 +325,7 @@
 
   <section class="ps-defer">
     <h2 class="ps-section-head">OpenAI Responses API</h2>
-    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all five tools are
+    <p class="dev-copy">Pass the hosted endpoint as an MCP tool. Because all six tools are
     read-only, the example runs without per-call approval.</p>
     <div class="codebox ps-p2" style="padding:18px">
       <pre id="openai-example"><code>curl https://api.openai.com/v1/responses \
@@ -331,7 +351,7 @@
       <li class="ps-p1 ps-reveal"><b>Enable Developer mode</b> in an eligible ChatGPT workspace.</li>
       <li class="ps-p1 ps-reveal">Open <b>Settings → Apps → Create</b> and name the app “Palimpsest”.</li>
       <li class="ps-p1 ps-reveal">Paste <b>https://api.seiche.info/palimpsest/mcp</b> as the MCP endpoint. No OAuth details are required.</li>
-      <li class="ps-p1 ps-reveal"><b>Review the five discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
+      <li class="ps-p1 ps-reveal"><b>Review the six discovered read-only tools</b>, create the app, then enable it in a conversation.</li>
     </ol>
   </section>
 
@@ -340,12 +360,15 @@
     <div class="note ps-p1">
       <strong>Cite the specific reading and its generated timestamp.</strong> A single vantage does
       not represent every user or all of China. A missing or stale measurement is not evidence of
-      calm. Model-evaluation suites with different probe banks or model rosters must not be pooled.
+      calm. Economic point-in-time claims must retain both release and collection clocks.
+      Model-evaluation suites with different probe banks or model rosters must not be pooled.
       The API keeps these limits attached; downstream prose should keep them too.
     </div>
   </section>
 
-  <p class="foot">Free, MIT-licensed, and developed in the open. Read the
+  <p class="foot">Public access is free. Palimpsest software, schemas and original metadata are
+  MIT-licensed and developed in the open; source observations retain their publishers' rights,
+  recorded in the <a href="/data.html#rights">Evidence Atlas</a>. Read the
   <a href="/for-researchers.html">researcher guide</a>, inspect the
   <a href="https://github.com/beepboop2025/palimpsest">source</a>, or use the exact
   <a href="/product-card.json">product-card guidance</a> to decide when Palimpsest belongs in an agent workflow.</p>

@@ -1,0 +1,102 @@
+{
+  "schema_version": "palimpsest-china-site-config.v1",
+  "domain_order": [
+    "activity",
+    "firm_health",
+    "investment",
+    "credit",
+    "inflation",
+    "labor",
+    "property",
+    "trade",
+    "consumer_digital",
+    "commodities",
+    "agriculture",
+    "logistics"
+  ],
+  "domain_labels": {
+    "activity": "Activity",
+    "firm_health": "Firm health",
+    "investment": "Investment",
+    "credit": "Credit",
+    "inflation": "Inflation",
+    "labor": "Labor",
+    "property": "Property",
+    "trade": "Trade",
+    "consumer_digital": "Consumer & digital",
+    "commodities": "Commodities",
+    "agriculture": "Agriculture",
+    "logistics": "Logistics"
+  },
+  "domain_descriptions": {
+    "activity": "Production, enterprise conditions and physical throughput that bear on current activity.",
+    "firm_health": "Sales, margins, financing conditions and enterprise-survey aggregates without respondent records.",
+    "investment": "Capital formation, market flows, transport investment and property-linked expenditure.",
+    "credit": "Money-market prices, bank credit, social financing and external-account aggregates.",
+    "inflation": "Prices, housing indices, funding rates and independently observed currency references.",
+    "labor": "Published employment and hiring aggregates; household and applicant microdata remain out of scope.",
+    "property": "Official city indices and licensed aggregate substitutes, never parcel or household dossiers.",
+    "trade": "Customs, settlement, port and currency evidence with explicit release clocks.",
+    "consumer_digital": "Aggregate consumption, parcel, mobility and search-demand signals where lawful access exists.",
+    "commodities": "Energy, industrial materials, atmospheric telemetry and trade-linked physical evidence.",
+    "agriculture": "Published agricultural trade and production aggregates; no farm-level respondent collection.",
+    "logistics": "Rail, port, parcel, mobility and transport throughput with source-specific cadence limits."
+  },
+  "evidence_rails": [
+    {"rail_id": "official", "label": "Official releases", "metric_source_class": "official"},
+    {"rail_id": "market", "label": "Market telemetry", "metric_source_class": "market"},
+    {"rail_id": "physical", "label": "Physical economy", "metric_source_class": "physical"},
+    {"rail_id": "integrity", "label": "Publication integrity", "desk_id": "data-integrity"}
+  ],
+  "release_source_aliases": [
+    {
+      "watch_id": "cfets_benchmarks",
+      "release_source_id": "cfets_benchmarks",
+      "registry_source_id": "cfets_benchmarks",
+      "relationship": "exact_dataset",
+      "note": "The release monitor and registry entry describe the same CFETS benchmark family."
+    },
+    {
+      "watch_id": "nbs_energy",
+      "release_source_id": "nbs-energy-release",
+      "registry_source_id": "nbs_national_data",
+      "relationship": "publisher_family",
+      "note": "The monitored NBS energy bulletin belongs to the NBS official-statistics family; it is not evidence that the planned National Data adapter is live."
+    },
+    {
+      "watch_id": "nbs_industrial",
+      "release_source_id": "nbs-industrial-release",
+      "registry_source_id": "nbs_national_data",
+      "relationship": "publisher_family",
+      "note": "The monitored industrial bulletin belongs to the NBS official-statistics family; it does not activate the planned National Data adapter."
+    },
+    {
+      "watch_id": "nra_rail",
+      "release_source_id": "nra-rail-release",
+      "registry_source_id": null,
+      "relationship": "unregistered_release_surface",
+      "note": "The monitored National Railway Administration release has no matching source-registry entry. It remains explicit and is not joined to the distinct Ministry of Transport adapter target."
+    },
+    {
+      "watch_id": "pboc_mb_stats",
+      "release_source_id": "pboc-money-banking-release",
+      "registry_source_id": "pboc_credit_tsf",
+      "relationship": "publisher_family",
+      "note": "Both are PBOC statistical releases, but this monitor does not by itself make the credit/TSF adapter live."
+    },
+    {
+      "watch_id": "pboc_omo",
+      "release_source_id": "pboc-omo-release",
+      "registry_source_id": "pboc_credit_tsf",
+      "relationship": "publisher_family",
+      "note": "Open-market-operation notices share a publisher with the credit/TSF family but are a different release surface."
+    },
+    {
+      "watch_id": "safe_settlement",
+      "release_source_id": "safe-settlement-release",
+      "registry_source_id": "safe_external_accounts",
+      "relationship": "publisher_family",
+      "note": "The settlement monitor is one SAFE publication family; it does not imply every external-account series is collected."
+    }
+  ]
+}
