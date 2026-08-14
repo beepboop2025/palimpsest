@@ -52,7 +52,7 @@ and a request carrying any other web origin is rejected before JSON-RPC dispatch
 | Tool | What it answers |
 | --- | --- |
 | `list_signals` | What is measured at all — every signal's name, one-line description, and source URL. Call this first. |
-| `get_signal(name, max_rows=25)` | One signal's full latest reading, exactly as served on the site, with its `generated_at` and upstream sources. This is also the door to the model-evaluation side: `eval-registry` and `refusal-drift`. |
+| `get_signal(name, max_rows=25)` | One signal's full latest reading, exactly as served on the site, with its `generated_at` and upstream sources. This is also the door to the model-evaluation side: `eval-registry`, `eval-assurance` and `refusal-drift`. Read assurance before promoting chain integrity into a validity claim. |
 | `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, deterministic machine-analysis desk, investigations desk, or editorial-readiness gate. Analysis, abstention and draft states remain distinct; citations, counterevidence, limitations and right-to-reply metadata stay attached. |
 | `whats_happening` | The censorship board's own cross-signal verdict: is anything actually happening right now, with multiplicity paid for and coverage confounds flagged as artifacts rather than findings. |
 | `gfw_reading` | The Great Firewall at both layers in one call — network blocking measured inside China (OONI) beside model-layer censorship (the Generative Firewall Index). |

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GFI v2: the answer comes after the protocol · Palimpsest AI Eval Journal</title>
+<meta name="description" content="The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.">
+<meta name="author" content="Palimpsest Eval Lab">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/evals/gfi-v2-answer-after-protocol/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="alternate" type="application/feed+json" title="Palimpsest AI Eval Journal JSON Feed" href="/evals/feed.json">
+<link rel="alternate" type="application/rss+xml" title="Palimpsest AI Eval Journal RSS" href="/evals/feed.xml">
+<meta name="theme-color" content="#0a1018">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Palimpsest AI Eval Journal">
+<meta property="og:title" content="GFI v2: the answer comes after the protocol · Palimpsest AI Eval Journal">
+<meta property="og:description" content="The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.">
+<meta property="og:url" content="https://palimpsest.info/evals/gfi-v2-answer-after-protocol/">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GFI v2: the answer comes after the protocol · Palimpsest AI Eval Journal">
+<meta name="twitter:description" content="The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.">
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta property="article:published_time" content="2026-08-14T17:45:00Z">
+<meta property="article:modified_time" content="2026-08-14T19:08:28.649895Z">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@id":"https://palimpsest.info/#organization","@type":"Organization","logo":{"@type":"ImageObject","height":512,"url":"https://palimpsest.info/brand/palimpsest-icon-512.png","width":512},"name":"Palimpsest","url":"https://palimpsest.info/"},{"@id":"https://palimpsest.info/evals/gfi-v2-answer-after-protocol/","@type":"Article","articleSection":"AI evaluation","author":{"@type":"Organization","name":"Palimpsest Eval Lab"},"citation":["https://palimpsest.info/core/gfi_protocol.py","https://palimpsest.info/scripts/preregister_gfi_v2.py","https://palimpsest.info/scripts/generative_firewall_reading.py","https://palimpsest.info/scripts/verify_gfi_transcripts.py","https://palimpsest.info/.github/workflows/gfi-refresh.yml","https://palimpsest.info/readings/eval-assurance-latest.json","https://www.nist.gov/news-events/news/2026/01/towards-best-practices-automated-benchmark-evaluations"],"dateModified":"2026-08-14T19:08:28.649895Z","datePublished":"2026-08-14T17:45:00Z","description":"The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.","headline":"GFI v2: the answer comes after the protocol","isPartOf":{"@id":"https://palimpsest.info/evals/"},"keywords":["AI evaluations","LLM censorship","China censorship","evaluation integrity","reproducibility"],"mainEntityOfPage":"https://palimpsest.info/evals/gfi-v2-answer-after-protocol/","publisher":{"@id":"https://palimpsest.info/#organization"},"url":"https://palimpsest.info/evals/gfi-v2-answer-after-protocol/"}]}</script>
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/eval-journal.css">
+</head>
+<body class="ps eval-journal-page eval-article-page">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Measure</p>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/" aria-current="page">Eval Journal</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main" class="ej-shell">
+  <article class="ej-article">
+    <header class="ej-article__header">
+      <p class="ej-breadcrumb"><a href="/evals/">AI Eval Journal</a> / Protocol note</p>
+      <p class="ej-kicker">Shipped guard; first sealed run pending</p>
+      <h1>GFI v2: the answer comes after the protocol</h1>
+      <p class="ej-article__dek">The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.</p>
+      <div class="ej-article__meta"><span>By Palimpsest Eval Lab</span><time datetime="2026-08-14T17:45:00Z">14 August 2026 · 17:45 UTC</time><span>6 evidence receipts</span><a href="article.json">Article JSON</a></div>
+    </header>
+
+    <aside class="ej-claim" aria-label="Claim boundary"><span>Claim boundary</span><p>GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.</p></aside>
+
+    <div class="ej-article__layout">
+      <div class="ej-prose">
+        <section class="ej-prose__section"><h2>The legacy record was checkable, but not complete</h2><p>GFI v1 froze ten sensitive concept identifiers and sealed derived response states in the eval chain. That made later revision detectable inside the registry, but it left too much outside the commitment. The exact prompt wording, language variants, sampling count, model panel, and classifier bytes were visible in code without all being bound into the preregistration. Only excerpts—not every full sampled response—were served publicly.</p><p>Those are not cosmetic omissions. Language-model behavior is prompt-sensitive. A concept commitment cannot prove which sentence was asked, and a derived-state seal cannot let a reader re-run every substantive label from the served evidence. The public assurance report therefore marks both guarantees partial for the legacy series.</p></section>
+<section class="ej-prose__section"><h2>What v2 freezes before the first API call</h2><p>The v2 protocol is a canonical JSON object. It binds every exact prompt arm, Simplified and Traditional Chinese variants, the sensitive and control cohorts, the model endpoint identifiers, the repeated-sample count, the method version, and the SHA-256 digest of the deterministic classifier. Its commitment is appended to the eval registry and pushed in a dedicated public commit before model access begins.</p><p>The runner contains a hard guard: if the protocol file is absent, malformed, or not matched by an earlier preregistration, collection stops before the first paid request. That ordering turns ‘we planned this first’ from an assertion into a condition the code can enforce.</p><ul class="ej-points"><li>Exact question text, not only topic names.</li><li>Declared model panel and endpoint identifiers.</li><li>Language, cohort, control, and sampling assignments.</li><li>Method version plus the classifier&#x27;s exact file digest.</li><li>A commitment that must already exist in the public eval chain.</li></ul></section>
+<section class="ej-prose__section"><h2>What v2 keeps after the answer</h2><p>Every model gets a complete response matrix over the frozen arms and sample indices. A transport failure is represented as an explicit null abstention; it cannot disappear from the denominator or be relabeled as refusal. Each matrix is content-addressed and sealed as a run against the earlier protocol commitment.</p><p>The verifier rebuilds every response artifact, recomputes its registry seal, re-runs the deterministic labels, and checks the published reading. A hash mismatch, missing arm, undeclared model, extra model, or method discrepancy is fatal.</p></section>
+<section class="ej-prose__section"><h2>Publishing safely when two jobs race</h2><p>A scheduled data job can lose a push race after spending model quota. Re-querying would create a different sample and quietly detach the answers from the attempted run. The upgraded workflow instead carries forward the measured transcript bytes, rebases onto the winning public chain, rebuilds the run seals against that chain, verifies the entire protocol again, and only then retries publication.</p><p>The protocol commit itself is never reconstructed after the answers. If its pre-query push loses a race, the job stops without calling a model. That asymmetry is intentional: measurements can be resealed against a newer chain, but preregistration cannot be manufactured after observation.</p></section>
+<section class="ej-prose__section"><h2>What has shipped, and what has not</h2><p>The protocol builder, pre-query guard, transcript capture, verifier, race recovery, and CI contracts are now in the repository. The currently served Generative Firewall artifact is still v1. Until the next successful scheduled collection publishes the v2 protocol first and then the complete response matrix, the assurance report correctly keeps the legacy prompt and transcript guarantees partial.</p><p>This distinction matters for grant and research claims. Code that could produce strong evidence is infrastructure. A successful, sealed run is evidence. Palimpsest will not describe the former as the latter.</p></section>
+        <section class="ej-limits" aria-labelledby="limits-title">
+          <p class="ej-kicker">Limits carried with the claim</p><h2 id="limits-title">What this does not establish</h2><ul><li>The first public GFI v2 protocol and transcript do not exist until a successful guarded collection; the current reading remains legacy v1.</li><li>Complete response publication enables recomputation but does not by itself validate the refusal or party-line construct.</li><li>The panel is a declared sample of model endpoints, not a population estimate for all Chinese language models.</li><li>API providers can change routing or model weights behind an endpoint; Palimpsest records the endpoint and time but cannot independently prove the provider&#x27;s hidden serving stack.</li></ul>
+        </section>
+        <section class="ej-falsifier" aria-labelledby="falsifier-title">
+          <p class="ej-kicker ej-kicker--light">Exit condition</p><h2 id="falsifier-title">What would change the claim</h2><p>A v2 run is invalid if its exact protocol was not publicly committed before the first API call, if any expected arm or sample is missing without an explicit null abstention, if any undeclared model appears, if a response matrix does not reproduce its registry seal, or if published labels do not re-derive under the committed classifier. The workflow must fail closed in every one of those cases.</p>
+        </section>
+        <section class="ej-sources" aria-labelledby="external-title">
+  <p class="ej-kicker">Related research</p><h2 id="external-title">Context, not borrowed proof</h2><ul><li><a href="https://www.nist.gov/news-events/news/2026/01/towards-best-practices-automated-benchmark-evaluations" rel="external noopener">NIST: Towards best practices for automated benchmark evaluations</a><span>Independent benchmark-governance context; Palimpsest&#x27;s protocol is a project-specific implementation</span></li></ul>
+</section>
+        <section class="ej-verify" aria-labelledby="verify-title"><p class="ej-kicker">Reproduce it locally</p><h2 id="verify-title">Verification commands</h2><ol><li><code>python -m scripts.preregister_gfi_v2 --check</code></li><li><code>python -m scripts.verify_eval_registry</code></li><li><code>python -m scripts.verify_gfi_transcripts</code></li><li><code>python -m scripts.build_eval_assurance --check</code></li></ol></section>
+      </div>
+      <aside class="ej-rail" aria-label="Evidence receipts">
+        <aside class="ej-context ej-context--compact" aria-label="Current evidence state">
+  <p>Protocol state</p>
+  <strong>staged for next collection</strong>
+  <span>The guard and workflow are shipped; the current public GFI remains legacy v1 until the next successful model run.</span>
+  <a href="/docs/EVAL-REGISTRY.md">Inspect the live artifact →</a>
+</aside>
+        <div class="ej-receipts"><p class="ej-kicker">Bound evidence</p><ol><li>
+  <a href="/core/gfi_protocol.py">Canonical GFI v2 protocol</a>
+  <span>Builds and verifies the exact prompt, panel, cohort, sample, method, and classifier commitment</span>
+  <code>4,979 bytes · sha256:af85421c535550c0</code>
+</li>
+<li>
+  <a href="/scripts/preregister_gfi_v2.py">Pre-query preregistration command</a>
+  <span>Writes the protocol and prior registry commitment</span>
+  <code>3,788 bytes · sha256:0f0659dbb115ba54</code>
+</li>
+<li>
+  <a href="/scripts/generative_firewall_reading.py">Guarded GFI collector</a>
+  <span>Refuses the first model call without a matching public protocol receipt and captures complete responses</span>
+  <code>57,943 bytes · sha256:66dfc5ee71b14dcc</code>
+</li>
+<li>
+  <a href="/scripts/verify_gfi_transcripts.py">Full-evidence verifier</a>
+  <span>Recomputes matrices, seals, labels, and reading bindings</span>
+  <code>8,347 bytes · sha256:a4e6e0b6b2786f80</code>
+</li>
+<li>
+  <a href="/.github/workflows/gfi-refresh.yml">Two-stage publication workflow</a>
+  <span>Publishes the protocol before collection and preserves measured bytes across push races</span>
+  <code>6,898 bytes · sha256:40f938c921bbf6fb</code>
+</li>
+<li>
+  <a href="/readings/eval-assurance-latest.json">Current assurance state</a>
+  <span>Keeps GFI at legacy partial evidence until the v2 artifacts actually exist</span>
+  <code>9,385 bytes · sha256:b2ebad89a7a14397</code>
+</li></ol><p class="ej-receipts__digest">Article record<br><code>sha256:341c7df5fa0a0a5192260331c3db40d59f883d3a114b113802b37567d9155e1f</code></p></div>
+      </aside>
+    </div>
+  </article>
+</main>
+<footer class="ej-footer"><div class="ej-shell"><a href="/evals/">← AI Eval Journal</a> · <a href="/readings/eval-registry.html">Eval Registry</a> · <a href="/readings/eval-assurance-latest.json">Live assurance</a> · <a href="/fund.html">Fund the next evidence gate</a></div></footer>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

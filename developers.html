@@ -109,7 +109,7 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
@@ -137,22 +137,27 @@
     </div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-2">
-        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">The record</p>
-            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <p class="ps-flyout__head">Measure</p>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-3">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
         <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -271,6 +276,22 @@
   | python3 -m json.tool</code></pre>
       <button class="copy-btn" type="button" data-copy="rest-command">Copy request</button>
     </div>
+    <p class="dev-copy" style="margin-top:16px">For AI-evaluation due diligence, start with the
+    claim ceiling rather than the headline. It separates integrity, recomputability, statistics,
+    human validation and unaffiliated replication.</p>
+    <div class="codebox ps-p2" style="padding:18px">
+      <pre id="eval-assurance-command"><code>curl -sS https://palimpsest.info/readings/eval-assurance-latest.json \
+  | python3 -m json.tool</code></pre>
+      <button class="copy-btn" type="button" data-copy="eval-assurance-command">Copy request</button>
+    </div>
+    <p class="dev-copy" style="margin-top:16px">For evidence-bound explanations of the origin,
+    method changes and known failures, fetch the Eval Journal edition. Each article carries its
+    falsifier and exact artifact receipts; the linked readings remain the measurement authority.</p>
+    <div class="codebox ps-p2" style="padding:18px">
+      <pre id="eval-journal-command"><code>curl -sS https://palimpsest.info/readings/eval-journal-latest.json \
+  | python3 -m json.tool</code></pre>
+      <button class="copy-btn" type="button" data-copy="eval-journal-command">Copy request</button>
+    </div>
   </section>
 
   <section class="ps-defer" id="scamshield">
@@ -341,7 +362,9 @@
       <strong>Cite the specific reading and its generated timestamp.</strong> A single vantage does
       not represent every user or all of China. A missing or stale measurement is not evidence of
       calm. Model-evaluation suites with different probe banks or model rosters must not be pooled.
-      The API keeps these limits attached; downstream prose should keep them too.
+      Chain integrity is not human construct validation: read <code>eval-assurance</code> before
+      describing an eval as validated or replicated. The API keeps these limits attached;
+      downstream prose should keep them too.
     </div>
   </section>
 

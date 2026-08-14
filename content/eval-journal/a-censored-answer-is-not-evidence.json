@@ -1,0 +1,101 @@
+{
+  "schema": "palimpsest.eval-journal-source.v1",
+  "slug": "a-censored-answer-is-not-evidence",
+  "title": "A censored answer is not yet evidence",
+  "dek": "Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.",
+  "kind": "Founder's note",
+  "status": "Origin and research question",
+  "author": "Palimpsest's founder",
+  "published_at": "2026-08-14T17:40:00Z",
+  "updated_at": "2026-08-14T19:00:00Z",
+  "claim": "The initial observation justified a controlled research question—not a verdict about every Chinese model, every political topic, or the motive behind any one output.",
+  "sections": [
+    {
+      "heading": "The answer that changed the project",
+      "paragraphs": [
+        "I started testing language models built in China and models aligned with Chinese state narratives because I wanted to know whether the information controls I had been measuring on networks and platforms had moved into the answer itself. When a prompt directly criticised the Chinese Communist Party or asked about a documented political event, some answers became thinner. Some withheld the requested account. Some substituted an official frame for the premise of the question.",
+        "That was the beginning of Palimpsest's AI-evaluation work. It was not the conclusion. A model response can be striking and still be weak evidence: the prompt may have been selected after seeing the answer; an unlucky sample may look systematic; a safety refusal may be misread as political censorship; a model endpoint may change without notice; or the publisher may later revise the record. The project exists because a screenshot cannot resolve any of those possibilities."
+      ],
+      "points": []
+    },
+    {
+      "heading": "What the screenshot could not tell me",
+      "paragraphs": [
+        "The dramatic artifact is usually the answer. The scientific object is the comparison around it. Palimpsest therefore asks the same concepts across declared models, languages, prompt families, and neutral controls. It records unreachable calls as abstentions instead of refusals. It publishes denominators and uncertainty. Most importantly, it freezes a probe commitment before the result and preserves the response evidence needed to recompute the seal.",
+        "Those choices turn a personal observation into a test another person can attack. They do not make the test infallible. They make selection, omission, method changes, and later revision easier to see."
+      ],
+      "points": [
+        "Prompt: freeze the question, language, model panel, sampling plan, and judge before collection.",
+        "Discrepancy: compare refusal, narrative substitution, language asymmetry, prompt sensitivity, and controls without treating one model as ground truth for another.",
+        "Proof: publish the response bytes, hashes, denominators, method version, verification commands, and the limits on the claim."
+      ]
+    },
+    {
+      "heading": "Why this belongs inside a censorship observatory",
+      "paragraphs": [
+        "People increasingly encounter public history and political facts through generated answers. If access to an event now depends on which model is asked, in which language, and with what framing, that behavior belongs beside DNS interference, content deletion, search suppression, and storefront removal as a separate measurement layer.",
+        "Separate matters. A model answer is not averaged into a national censorship score, and a refusal does not establish a government instruction. Palimpsest measures named endpoints on named dates under a declared prompt bank. The surrounding observatory supplies context and possible comparisons, not automatic causation."
+      ],
+      "points": []
+    },
+    {
+      "heading": "The standard I want the work held to",
+      "paragraphs": [
+        "The point is not to produce the harshest possible number. It is to produce a record that remains useful when the number is inconvenient. If controls fail, the reading should abstain. If a classifier change moves the result, the series should rebaseline. If two human coders do not support the labels, that failure should be published. If another team cannot reproduce the pattern, the claim should shrink.",
+        "Palimpsest started with an answer that felt censored. It became an evaluation project when the question changed from ‘How bad does this look?’ to ‘What evidence would let someone who disagrees with me check it?’"
+      ],
+      "points": []
+    }
+  ],
+  "evidence": [
+    {
+      "path": "readings/eval-registry.html",
+      "label": "Verifiable Eval Registry",
+      "role": "Public origin account, current assurance surface, and suite-level evidence"
+    },
+    {
+      "path": "readings/eval-registry.jsonl",
+      "label": "Evaluation registry chain",
+      "role": "Preregistrations and run attestations in publication order"
+    },
+    {
+      "path": "docs/EVAL-REGISTRY.md",
+      "label": "Registry method",
+      "role": "Exact guarantees, limits, and local verification procedure"
+    },
+    {
+      "path": "readings/eval-assurance-latest.json",
+      "label": "AI Eval Assurance",
+      "role": "Machine-readable ceiling on what the current evidence can support"
+    },
+    {
+      "path": "scripts/generative_firewall_reading.py",
+      "label": "Generative Firewall runner",
+      "role": "Declared concepts, controls, model panel, sampling, and publication behavior"
+    }
+  ],
+  "external_sources": [
+    {
+      "title": "Refusal and reframing in China-origin vision-language models",
+      "url": "https://arxiv.org/abs/2608.11816",
+      "relationship": "Adjacent independent research; not evidence for any Palimpsest measurement"
+    },
+    {
+      "title": "Bilingual political-bias evaluation around Taiwan",
+      "url": "https://arxiv.org/abs/2602.06371",
+      "relationship": "Related evidence that language and political topic can interact; not a replication of Palimpsest"
+    }
+  ],
+  "limitations": [
+    "The origin account reports the founder's observation; it is not itself an experimental result.",
+    "Palimpsest evaluates named model endpoints, prompts, and dates. It does not estimate all Chinese models or all political knowledge.",
+    "Observed refusal or narrative substitution does not identify who caused the behavior or prove a government instruction.",
+    "The current lexical labels remain provisional until the preregistered two-human study completes."
+  ],
+  "falsifier": "If preregistered comparisons with clean controls, repeated samples, prompt families, and language pairs do not show a stable discrepancy on the named model endpoints, the founding observation does not generalize and Palimpsest must say so. If human coders reject the labels or an unaffiliated replication fails, the corresponding claim must shrink rather than the test being redrawn after the result.",
+  "verification": [
+    "python -m scripts.verify_eval_registry",
+    "python -m scripts.verify_refusal_transcripts",
+    "python -m scripts.build_eval_assurance --check"
+  ]
+}

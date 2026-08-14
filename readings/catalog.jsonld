@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-14T20:00:01.765903Z",
+  "dateModified": "2026-08-14T20:06:01Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -1047,7 +1047,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T19:59:57Z",
+      "dateModified": "2026-08-14T20:06:01Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1070,7 +1070,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-14T19:59:57Z",
+      "dateModified": "2026-08-14T20:06:01Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1281,6 +1281,51 @@
           "name": "Verifiable evaluation registry — history",
           "encodingFormat": "application/x-ndjson",
           "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "eval-assurance",
+      "name": "AI eval claim assurance",
+      "description": "Deterministic claim-by-claim audit of integrity, exact-prompt precommitment, raw-response recomputation, pipeline reproducibility, statistical design, independent human construct validation and unaffiliated replication. Publishes a claim ceiling instead of one composite quality score.",
+      "url": "https://palimpsest.info/readings/eval-registry.html#assurance",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-14T19:08:28.649895Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "AI eval claim assurance — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/eval-assurance-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "eval-journal",
+      "name": "AI Eval Journal",
+      "description": "Evidence-bound articles about Palimpsest's AI-evaluation origins, method changes, failures and current claim ceiling. Every article carries limitations, a falsifier, verification commands and fresh SHA-256 receipts for its local evidence.",
+      "url": "https://palimpsest.info/evals/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-14T19:15:00Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "AI Eval Journal — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/eval-journal-latest.json"
         }
       ]
     },

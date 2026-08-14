@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/eval-journal-v1.schema.json",
+  "title": "Palimpsest AI Eval Journal edition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "generated_at", "title", "description", "source", "method", "scope",
+    "home_page_url", "feed_url", "n_articles", "articles"
+  ],
+  "properties": {
+    "schema": {"const": "palimpsest.eval-journal.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "method": {"type": "string", "minLength": 1},
+    "scope": {"type": "string", "minLength": 1},
+    "home_page_url": {"type": "string", "format": "uri"},
+    "feed_url": {"type": "string", "format": "uri"},
+    "n_articles": {"type": "integer", "minimum": 1},
+    "articles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/article"}
+    }
+  },
+  "$defs": {
+    "article": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "slug", "title", "dek", "kind", "status", "author",
+        "published_at", "updated_at", "modified_at", "url", "json_url", "claim",
+        "sections", "evidence", "external_sources", "limitations", "falsifier",
+        "verification", "live_context", "content_sha256"
+      ],
+      "properties": {
+        "schema": {"const": "palimpsest.eval-journal-article.v1"},
+        "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "title": {"type": "string", "minLength": 1},
+        "dek": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "author": {"type": "string", "minLength": 1},
+        "published_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "modified_at": {"type": "string", "format": "date-time"},
+        "url": {"type": "string", "format": "uri"},
+        "json_url": {"type": "string", "format": "uri"},
+        "claim": {"type": "string", "minLength": 1},
+        "sections": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/section"}
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/evidence"}
+        },
+        "external_sources": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/external"}
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "falsifier": {"type": "string", "minLength": 1},
+        "verification": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "live_context": {"$ref": "#/$defs/liveContext"},
+        "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["heading", "paragraphs", "points"],
+      "properties": {
+        "heading": {"type": "string", "minLength": 1},
+        "paragraphs": {
+          "type": "array", "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "points": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "label", "role", "url", "sha256", "bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "role": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "pattern": "^/"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "external": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "url", "relationship"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "relationship": {"type": "string", "minLength": 1}
+      }
+    },
+    "liveContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value", "detail", "url"],
+      "properties": {
+        "label": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "minLength": 1},
+        "detail": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "pattern": "^/"}
+      }
+    }
+  }
+}

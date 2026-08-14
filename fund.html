@@ -88,6 +88,13 @@
   .f-quote { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--tk-text-1, #e2e8f0); }
   .f-quote cite { display: block; margin-top: 7px; font-style: normal;
     font-family: var(--tk-font-mono), ui-monospace, monospace; font-size: 10.5px; letter-spacing: .06em; color: var(--tk-text-4, #6f8098); }
+  .f-origin { position: relative; overflow: hidden; }
+  .f-origin::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(180deg, var(--tk-live, #06d6e0), var(--tk-warning, #ffb020)); }
+  .f-origin .f-path { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .f-origin .f-path span { padding-top: 8px; border-top: 1px solid var(--ps-edge-1); font-family: var(--tk-font-mono);
+    font-size: 10.5px; line-height: 1.5; color: var(--tk-text-3, #7d8ca3); }
+  @media (max-width: 560px) { .f-origin .f-path { grid-template-columns: 1fr; } }
 
   .f-warn { color: var(--tk-warning, #ffb020); }
   .f-bad  { color: var(--tk-critical, #ff5b52); }
@@ -114,7 +121,7 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
@@ -142,22 +149,27 @@
     </div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-2">
-        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">The record</p>
-            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <p class="ps-flyout__head">Measure</p>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-3">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
         <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -187,18 +199,22 @@
   <header class="f-hero">
     <p class="ps-kicker">For grantmakers and technical funders</p>
     <h1 class="ps-h1">What a grant to Palimpsest pays for</h1>
-    <p class="ps-lede">Palimpsest measures censorship. It watches what governments and their
+    <p class="ps-lede">Palimpsest measures censorship. Its founder began the AI eval work after
+    seeing Chinese and state-aligned language models change, withhold or replace answers when
+    prompts criticised the Chinese Communist Party. Today it watches what governments and their
     AI models quietly remove from the public record, publishes each measurement as an open
-    JSON file within hours of taking it, and seals its own record so that nobody, including
-    the person who runs it, can revise a published number afterwards. It is MIT licensed and
+    JSON file within hours of taking it, and seals the exact served bytes so that a later
+    change breaks local verification and can be compared with external witnesses. It is MIT licensed and
     fully open source. It has no sponsor, no paywall and no advertising, and it never
     monetizes the people or the topics it observes. Everything below is that same claim
     broken into parts, each one sitting directly above the file you can check it against.</p>
 
     <p class="f-cta">
       <a class="ps-btn" href="https://github.com/beepboop2025/palimpsest/issues">Open a funding conversation</a>
+      <a class="ps-btn ps-btn--ghost" href="/evals/">Read the AI Eval Journal</a>
       <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest">Read the source</a>
       <a class="ps-btn ps-btn--ghost" href="/readings/index.html">Browse the live readings</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/eval-assurance-latest.json">Read the eval assurance</a>
     </p>
 
     <div class="f-tiles ps-stagger">
@@ -244,7 +260,7 @@
 
     <div class="ps-p1 f-jump">
       <ol>
-        <li><a href="#what">01 What this is</a></li>
+        <li><a href="#what">01 Why this exists</a></li>
         <li><a href="#real">02 Is it real</a></li>
         <li><a href="#public-good">03 Is it a public good</a></li>
         <li><a href="#rigour">04 Is it rigorous</a></li>
@@ -259,6 +275,7 @@
       live from a JSON file at page load, so with scripting disabled the numbers stay unread
       rather than showing you a stale copy. The files themselves are plain and public:
       <a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a>,
+      <a href="/readings/eval-assurance-latest.json">eval-assurance-latest.json</a>,
       <a href="/readings/erasure-observatory-latest.json">erasure-observatory-latest.json</a>,
       <a href="/readings/forecast-ledger-latest.json">forecast-ledger-latest.json</a>,
       <a href="/readings/vantage-fusion-latest.json">vantage-fusion-latest.json</a>,
@@ -269,13 +286,35 @@
   <!-- ============================================================== 01 WHAT -->
   <section class="f-sec ps-band ps-reveal" id="what" aria-labelledby="h-what">
     <div class="ps-pin f-claim">
-      <p class="ps-label">01 &middot; What this is</p>
-      <h2 class="ps-h2" id="h-what">One instrument, pointed at two places the record gets rewritten</h2>
+      <p class="ps-label">01 &middot; Why this exists</p>
+      <h2 class="ps-h2" id="h-what">She saw a censored answer. Then she built the proof a screenshot could not provide.</h2>
       <p>Stated without jargon, in one paragraph, because a funder should not need the
       vocabulary of the field to decide whether this matters.</p>
     </div>
 
     <div class="f-ev">
+      <div class="ps-p3 f-card f-origin">
+        <h3>The founding observation</h3>
+        <p>The author tested Chinese and state-aligned LLMs on documented political events and
+        direct criticism of CCP policy. Responses did not merely become shorter: across models and
+        languages, some refused, omitted the disputed facts, or substituted official framing.</p>
+        <p><strong>That observation is why the censorship observatory and the AI eval registry are
+        one project.</strong> A single screenshot is easy to dismiss and easy to select after the
+        fact. Palimpsest instead freezes the question first, repeats it against controls and matched
+        languages, publishes the answer, the denominator and the limitation, then seals the run.</p>
+        <p class="f-note">This is not a claim that every Chinese model behaves identically, and it
+        does not infer a provider's motive. It is a testable account of observed output differences.
+        Independent studies have likewise reported <a href="https://arxiv.org/abs/2602.06371">bilingual political bias</a>
+        and <a href="https://arxiv.org/abs/2608.11816">refusal-to-reframing patterns</a>.
+        <a href="/evals/a-censored-answer-is-not-evidence/">The founder's full account</a> now
+        publishes beside its evidence receipts, limitations and falsifier.</p>
+        <div class="f-path" aria-label="From observation to evidence">
+          <span>01 · observe a discrepancy</span>
+          <span>02 · freeze the test</span>
+          <span>03 · publish and seal the evidence</span>
+        </div>
+      </div>
+
       <div class="ps-p2 f-card">
         <p>When a government censors, the evidence is an absence: a post that was there
         yesterday and is gone today, a website that stops resolving, an answer a chatbot
@@ -285,8 +324,9 @@
         with the same frozen set of questions week after week to see what they quietly stop
         answering, and publishes each reading as a dated, openly licensed file with the raw
         evidence attached. Because a record of erasure is itself worth erasing, every entry
-        is hashed into an append only chain whose root is stamped outside this project, so
-        a reader can prove offline that nothing published was later edited.</p>
+        is hashed into an append-only chain whose roots are stamped outside this project on a
+        schedule. A reader can recompute the served chain offline and compare it with those witnesses;
+        a conflicting rewrite becomes detectable instead of resting on the operator's word.</p>
       </div>
 
       <ul class="ps-p1 f-card f-list">
@@ -297,10 +337,11 @@
         <a href="/readings/erasure-observatory.html">erasure observatory</a>,
         <a href="/china-brief.html">the brief</a>.</li>
         <li><b>The verifiable eval registry</b>
-        AI evaluations sealed at publication. The questions are frozen and hash committed
-        before any model is queried, so a suite cannot be quietly reshaped to flatter a
-        result, and Chinese state aligned models and Western frontier models are held to
-        the same machinery. Two frozen suites run with no model in common.
+        AI evaluations sealed at publication. Every matching run must follow a declared
+        commitment in the registry; current collectors additionally require an exact protocol
+        in a separate public commit before any model query. The legacy GFI v1 boundary remains
+        visibly partial rather than being retroactively upgraded. Chinese state-aligned models
+        and Western frontier models use the same integrity machinery but separate, scoped suites.
         <a href="/readings/eval-registry.html">The registry</a>,
         <a href="/readings/generative-firewall-index.html">the Generative Firewall Index</a>.</li>
         <li><b>Both are free to everyone, forever</b>
@@ -342,6 +383,24 @@
           </dl>
           <p id="reg-fresh" class="f-pend" style="margin-top:6px">measured: not loaded</p>
           <div class="f-err" id="err-registry-2" hidden></div>
+        </div>
+      </div>
+
+      <div class="ps-p3 f-card" id="card-assurance">
+        <h3>The claim ceiling—not a vanity grade</h3>
+        <p><span class="f-big f-range" id="ass-level">not loaded</span></p>
+        <p class="f-cap" id="ass-can">The machine-readable assurance report has not loaded.</p>
+        <div class="ps-p1 f-receipt">
+          <dl class="f-kv">
+            <dt>checks passing</dt><dd id="ass-pass" class="f-pend">not loaded</dd>
+            <dt>partial</dt><dd id="ass-partial" class="f-pend">not loaded</dd>
+            <dt>pending / open</dt><dd id="ass-pending" class="f-pend">not loaded</dd>
+            <dt>failed</dt><dd id="ass-fail" class="f-pend">not loaded</dd>
+          </dl>
+          <p id="ass-cannot" class="f-warn" style="margin-top:7px">limits: not loaded</p>
+          <p id="ass-fresh" class="f-pend">assessed: not loaded</p>
+          <p><a href="/readings/eval-assurance-latest.json">eval-assurance-latest.json</a></p>
+          <div class="f-err" id="err-assurance" hidden></div>
         </div>
       </div>
 
@@ -557,6 +616,8 @@
         published sheet every run. The two coder pass has not been run, so no inter rater
         agreement figure is published and none is claimed. Funding that study is one of
         the things this page is asking for.
+        The <a href="/readings/eval-assurance-latest.json">live assurance report</a> is required
+        to keep this dimension pending until a coded result actually exists.
         <a href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">The frozen study</a>,
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">the codebook</a>,
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/gfi_validation_agreement.py">the agreement script that is waiting on coders</a>.</li>
@@ -928,6 +989,33 @@
       bail("err-registry-2", REG, e, ["reg-attest", "reg-runs", "reg-prereg", "reg-verified",
         "reg-models", "reg-root", "reg-head", "reg-first", "reg-cmd", "reg-fresh", "buy-probe"]);
       reconcile();
+    });
+
+    /* ---------------------------------------------- eval claim assurance ---- */
+    var ASSURANCE = "/readings/eval-assurance-latest.json";
+    S.loadReading(ASSURANCE, function (d) {
+      var ceiling = d.claim_ceiling || {};
+      var summary = d.summary || {};
+      set("ass-level", ceiling.level ? String(ceiling.level).replace(/-/g, " ") : "not reported",
+        ceiling.level ? null : "f-warn");
+      set("ass-can", ceiling.can_claim || "what the evidence supports was not reported",
+        ceiling.can_claim ? null : "f-warn");
+      set("ass-cannot", "limits: " + (ceiling.cannot_yet_claim || "not reported"),
+        ceiling.cannot_yet_claim ? "f-warn" : "f-bad");
+      set("ass-pass", isFinite(Number(summary.pass)) ? String(summary.pass) : "not reported",
+        isFinite(Number(summary.pass)) ? "f-ok" : "f-warn");
+      set("ass-partial", isFinite(Number(summary.partial)) ? String(summary.partial) : "not reported",
+        isFinite(Number(summary.partial)) ? "f-warn" : "f-bad");
+      var unfinished = Number(summary.pending) + Number(summary.open);
+      set("ass-pending", isFinite(unfinished) ? String(unfinished) : "not reported",
+        isFinite(unfinished) ? "f-warn" : "f-bad");
+      set("ass-fail", isFinite(Number(summary.fail)) ? String(summary.fail) : "not reported",
+        Number(summary.fail) === 0 ? "f-ok" : "f-bad");
+      stamp("ass-fresh", d.generated_at);
+    }, function (e) {
+      bail("err-assurance", ASSURANCE, e,
+        ["ass-level", "ass-can", "ass-pass", "ass-partial", "ass-pending", "ass-fail",
+         "ass-cannot", "ass-fresh"]);
     });
 
     /* ------------------------------------------------- erasure integrity ---- */

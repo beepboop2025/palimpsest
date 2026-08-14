@@ -282,6 +282,8 @@ EXCLUDED_LATEST_FILES = frozenset({
     "corroboration-latest.json",
     "editorial-readiness-latest.json",
     "evidence-mesh-latest.json",
+    "eval-assurance-latest.json",
+    "eval-journal-latest.json",
     "eval-registry-latest.json",
     "investigations-latest.json",
     "machine-investigations-latest.json",

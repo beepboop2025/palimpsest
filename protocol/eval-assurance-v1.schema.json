@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/eval-assurance-v1.schema.json",
+  "title": "Palimpsest AI Eval Assurance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "generated_at", "title", "what", "claim_ceiling", "summary", "dimensions", "checks", "sources", "verify"],
+  "properties": {
+    "schema": {"const": "palimpsest.eval-assurance.v1"},
+    "generated_at": {"type": ["string", "null"], "format": "date-time"},
+    "title": {"type": "string", "minLength": 1},
+    "what": {"type": "string", "minLength": 1},
+    "claim_ceiling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "can_claim", "cannot_yet_claim", "promotion_rule"],
+      "properties": {
+        "level": {"enum": ["provisional-measurement", "human-validated", "independently-replicated"]},
+        "can_claim": {"type": "string"},
+        "cannot_yet_claim": {"type": "string"},
+        "promotion_rule": {"type": "string"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checks", "pass", "partial", "pending", "open", "fail"],
+      "properties": {
+        "checks": {"type": "integer", "minimum": 1},
+        "pass": {"type": "integer", "minimum": 0},
+        "partial": {"type": "integer", "minimum": 0},
+        "pending": {"type": "integer", "minimum": 0},
+        "open": {"type": "integer", "minimum": 0},
+        "fail": {"type": "integer", "minimum": 0}
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "status", "checks"],
+        "properties": {
+          "id": {"type": "string"},
+          "question": {"type": "string"},
+          "status": {"enum": ["pass", "partial", "pending", "open", "fail"]},
+          "checks": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "dimension", "label", "status", "evidence", "limitation", "applies_to"],
+        "properties": {
+          "id": {"type": "string"},
+          "dimension": {"type": "string"},
+          "label": {"type": "string"},
+          "status": {"enum": ["pass", "partial", "pending", "open", "fail"]},
+          "evidence": {"type": "string"},
+          "limitation": {"type": "string"},
+          "applies_to": {"type": "array", "items": {"type": "string"}},
+          "verify_cmd": {"type": "string"}
+        }
+      }
+    },
+    "sources": {"type": "object", "additionalProperties": {"type": "string"}},
+    "verify": {"type": "array", "items": {"type": "string"}}
+  }
+}

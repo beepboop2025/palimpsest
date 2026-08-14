@@ -1,11 +1,16 @@
 # The Verifiable Eval Registry
 
 **One line:** open infrastructure for tamper-evident, pre-registered AI model
-evaluations. The questions are frozen before the model is queried, and every
-result is hash-chained so it cannot be quietly re-run, cherry-picked, or revised.
-Any model, any suite. Not "evals you can trust" — evals whose *questions were provably
-frozen first* and whose *results provably never changed*, which is a narrower and
-checkable thing.
+evaluations. The questions are frozen before the model is queried, every result is
+bound to a named suite and hash-chained, and the public assurance report states which
+stronger claims the evidence does—and does not—support.
+
+This is not “evals you can trust.” It is a set of narrower checks: whether a declared
+probe commitment came earlier in the same chain, whether the served artifact still
+reproduces its seal, whether the statistics disclose their denominators and
+uncertainty, and which validity work remains unfinished. Public git history, external
+anchors and independent witnesses are what add a wall-clock and make a later whole-chain
+rewrite observable outside the operator's own infrastructure.
 
 This is the AI-safety-shaped generalization of Palimpsest's sealed ledger. Where
 `core/sealed_ledger.py` seals our own erasure readings, `core/eval_registry.py`
@@ -22,39 +27,75 @@ primary interface to human knowledge, the ability to audit them, and to *prove t
 audit was not rewritten*, is missing infrastructure. This is a governance problem,
 not only a censorship one.
 
+## Why Palimpsest started doing AI evals
+
+The project began from a concrete observation: its founder tested Chinese and
+state-aligned language models on documented events and criticism of the Chinese
+Communist Party and saw answers change, disappear, or shift into official framing. A
+screenshot preserved one interaction, but it could not answer the questions a serious
+reviewer should ask: Were the prompts selected after seeing the outputs? Did the pattern
+survive a repeated sample? Did language or neutral controls change the result? Could the
+published record be revised later?
+
+That observation became the Generative Firewall, and the weaknesses of a one-off audit
+became the requirements for the registry. The origin is intentionally scoped. It does
+not claim that every Chinese model behaves alike, infer a model maker's private motive,
+or turn one refusal into proof of a national policy. Recent independent work gives the
+question external research context—for example, bilingual evaluations of political
+bias around Taiwan ([arXiv:2602.06371](https://arxiv.org/abs/2602.06371)) and audits of
+refusal and ideological reframing in China-origin vision-language models
+([arXiv:2608.11816](https://arxiv.org/abs/2608.11816))—but Palimpsest's public claims
+remain bounded by its own frozen panel, prompts, timestamps and artifacts.
+
 ## What it guarantees
 
-- **Pre-registration.** A probe set is hashed (order-independent) and sealed as a
-  `preregistration` attestation before any model is queried. This is the
-  anti-p-hacking property: you cannot have chosen the questions to fit the answers.
+- **Ordered pre-registration.** A probe set is hashed (order-independent) and sealed
+  as a `preregistration` attestation before its run may enter the same chain. The live
+  collectors add the stronger operational guard: they refuse to query until the
+  matching protocol is already public. The frontier v2 and GFI v2 commitments include
+  exact prompt digests; legacy GFI v1 committed only concept identifiers.
 - **Tamper-evidence.** Every attestation is hash-chained to the previous one, and a
   Merkle root fingerprints the whole registry in one value. Alter a metric, a
   responses hash, a timestamp, or the order, and the chain fails to recompute.
 - **Independent verification.** `verify()` reports every break, including a run
   whose questions were never frozen first. Anyone who clones the repo can run
-  `scripts/verify_eval_registry.py` against any past commit. Exit 0 = intact.
-- **Reproducibility, to the limit of what is published.** A run commits a
-  `responses_hash` over the results object it was given. For the two suites anchored
-  here that object is the **derived label map** — `{probe_id: answered|refused}`, or
-  `{concept: aligned_state}` — not the raw model text, and the raw text is not
-  published, so the hash cannot be recomputed from what the model actually said. A
-  submitter who *does* publish raw responses gets full recomputation for free, because
-  `responses_hash` will hash whatever object you hand it. What the chain proves either
-  way is that the sealed object never changed; whether the label was the *right* label
-  is a separate question, and the human coder study that would answer it **has not been
-  completed** — the sample is drawn, the sheets are unlabelled, and no agreement
-  coefficient exists. Until one does, every rate here reads correctly as "as classified by
-  a published lexical rule", not "as a human would classify it". A frozen judge anchor set
-  narrows the gap by proving the classifier has not moved between runs, and names one case
-  where it is provably wrong, but it is author-labelled and is not that study. See
-  [INTEGRITY.md](INTEGRITY.md) for the full statement of that boundary.
+  `scripts/verify_eval_registry.py` against any past commit. Exit 0 means the file is
+  internally intact and every run follows a matching earlier preregistration; it is not
+  a certificate of label validity.
+- **Closed records and honest denominators.** Unknown fields, malformed SHA-256 values,
+  suite mismatches, non-monotonic timestamps, impossible completion counts and runs
+  that exceed their preregistered arm count fail verification. Partial completion is
+  allowed only as an explicit abstention-aware count, never by silently shrinking the
+  plan.
+- **Reproducibility, to the limit of what is published.** Frontier v2 publishes complete
+  current transcripts, binds response digests into each run and re-derives every label.
+  GFI v1 still seals derived states and only publishes excerpts; GFI v2 is the remediation
+  path and will publish the exact full sample matrix, including null abstentions, after
+  its first separately committed protocol run. Re-running Palimpsest's deterministic
+  classifier proves pipeline consistency, not that the classifier captures the human
+  construct correctly.
+- **A claim ceiling, not an aggregate badge.**
+  `readings/eval-assurance-latest.json` reports integrity, prompt precommitment,
+  response recomputability, pipeline reproducibility, statistical design, human
+  construct validation and independent replication separately. A strong hash chain
+  cannot average away a pending human study.
+
+The two-human blind classifier study **has not been completed**: the sample, codebook,
+thresholds and falsifier are preregistered, but the sheets remain unlabelled and there is
+no agreement coefficient. Until that changes, every rate reads correctly as “as
+classified by a published lexical rule,” not “as a human would classify it.” See
+[INTEGRITY.md](INTEGRITY.md) and the live
+[`eval-assurance-latest.json`](../readings/eval-assurance-latest.json).
 
 ## What is anchored in it now
 
-Two real audits, sealed and pre-registered:
+Two real audit families, sealed and pre-registered:
 
-1. **Chinese-aligned model suppression** (the Generative Firewall): a 10-concept
-   sensitive probe set, one sealed run per model (DeepSeek, Qwen), ~40% suppression.
+1. **Chinese/state-aligned model suppression** (the Generative Firewall): a
+   China-focused, multilingual sensitive suite with neutral and matched-parallel
+   controls. Its v1 history is preserved. The v2 protocol freezes exact prompts, panel,
+   cohorts, sample count, method version and classifier bytes before any query and will
+   publish every full sampled response after the first successful v2 run.
 2. **Frontier refusal drift** (`scripts/refusal_drift_pull.py`): a benign,
    informational probe bank run against a **cross-lab panel of Western frontier
    models** (OpenAI gpt-4o-mini, Anthropic claude-3-haiku, Meta llama-3.3-70b,
@@ -82,10 +123,34 @@ Two real audits, sealed and pre-registered:
 > `readings/eval-registry.jsonl`.
 
 The contrast is the point: the same tamper-evident, pre-registered machinery audits
-a state-aligned model and a Western frontier model side by side, and will surface an
-undisclosed behavioral change in either. This is what makes it universal AI-
+a state-aligned model and a Western frontier model side by side, and preserves any
+behavioral change the bounded suites detect. It cannot promise to detect changes outside
+their prompt banks. This is what makes it universal AI-
 transparency infrastructure rather than a regional censorship tool. `core/refusal_drift.py`
 computes the drift (answered -> refused = the erasure events) and is pure and offline-tested.
+
+## Read the assurance before quoting a result
+
+Run:
+
+```bash
+python -m scripts.verify_eval_registry
+python -m scripts.verify_refusal_transcripts
+python -m scripts.build_eval_assurance --check
+```
+
+The first command verifies chain structure and preregistration ordering. The second
+recomputes the current frontier response seals and lexical labels from published text.
+The third proves the served assurance document is the deterministic projection of the
+current public evidence. After GFI v2's first public run,
+`python -m scripts.verify_gfi_transcripts` will additionally recompute its entire sample
+matrix, cell labels, majority states, denominators and model seals.
+
+The present claim ceiling is **provisional measurement**. That is stronger than an
+unsealed screenshot and deliberately weaker than “human-validated” or “independently
+replicated.” Promotion rules are machine-readable: the two-coder preregistered study
+must pass its frozen falsifiers before the former term is used, and an unaffiliated
+preregistered run must be sealed and published before the latter is used.
 
 ## Register your own eval
 
@@ -122,6 +187,7 @@ separately reviewed segmented-ledger version rather than silently weakening atom
 truncating the published model inventory.
 
 ```python
+import hashlib
 import core.eval_registry as reg          # PYTHONPATH=. from the repo root
 
 REGISTRY = "my-registry.jsonl"            # your chain; created on first append
@@ -131,32 +197,37 @@ PROBES = {                                # stable ids -> the prompt text
 }
 
 # 1. FREEZE the questions, before any model is queried.
-#    probe_set_hash() hashes the canonicalised, de-duplicated, SORTED set of whatever
-#    you pass, so listing order never changes the hash. Pass the stable ids.
+#    Include the prompt digest—not only the stable id—so a wording edit necessarily
+#    creates a new commitment. probe_set_hash() canonicalises and sorts the set.
 probes = sorted(PROBES)
-psh = reg.probe_set_hash(probes)
+commitments = [
+    f"{pid}\t{hashlib.sha256(PROBES[pid].encode('utf-8')).hexdigest()}"
+    for pid in probes
+]
+psh = reg.probe_set_hash(commitments)
 already = any(e.get("kind") == reg.PREREGISTRATION and e.get("probe_set_hash") == psh
               for e in reg.read_ledger(REGISTRY))
 if not already:
-    reg.preregister(REGISTRY, probes, suite="my-suite-v1",
-                    note="benign informational probes; a refusal is the signal")
+    reg.preregister(REGISTRY, commitments, suite="my-suite-v1",
+                    note="exact-prompt digests; benign informational probes")
 
 # 2. Run YOUR model, YOUR way. The registry never calls a model — that is your code.
 responses = {pid: your_model(PROBES[pid]) for pid in probes}
 labels = {pid: ("refused" if your_refusal_check(r) else "answered")
           for pid, r in responses.items()}
+artifact = {"prompts": PROBES, "responses": responses, "labels": labels}
 
 # 3. SUBMIT the run, citing the frozen probe set.
-#    `responses=` is hashed, not stored. Hand it the labels if that is what you
-#    publish; hand it the raw responses if you publish those — then anyone can
-#    recompute responses_hash against your published artifact.
+#    `responses=` is hashed, not stored. Publish the identical artifact beside the
+#    chain so anyone can recompute responses_hash and re-label the original text.
 n_refused = sum(v == "refused" for v in labels.values())
 reg.submit_run(
     REGISTRY,
     probe_set_hash=psh,
     model="yourlab/your-model-v1",
-    responses=labels,
+    responses=artifact,
     metrics={"suppression_rate_pct": round(100.0 * n_refused / len(labels), 1),
+             "n_planned_arms": len(probes), "n_arms": len(responses),
              "n_probes": len(labels), "n_refused": n_refused},
     suite="my-suite-v1",
 )
@@ -177,8 +248,16 @@ Notes that save time:
   same probe set. `submit_run()` is likewise unconditional — check the last run's
   `responses_hash` first if you only want to seal *changes*.
 - **Re-registering a changed probe set is correct, not a problem.** Edit a probe and the
-  hash changes, so the old runs stay bound to the old questions and the new ones need a
-  fresh pre-registration. That is the anti-p-hacking property doing its job.
+  prompt digest changes, so the old runs stay bound to the old questions and the new
+  ones need a fresh pre-registration. Passing only stable ids would *not* provide this
+  guarantee; the registry hashes exactly what the caller gives it.
+- **The suite name is part of the contract.** New entries always carry an explicit suite
+  (`legacy-unspecified` exists only for the historical convenience API), and a run may
+  not relabel a probe commitment into a different suite.
+- **Completion is allowed to be smaller than the plan, never larger.** Record planned
+  arms in the preregistration and completed arms in run metrics. Transport failures
+  remain abstentions; they are not converted to answered/refused or removed from the
+  declared denominator.
 - **`now=` takes a `datetime`** for deterministic tests; leave it off in production and
   it stamps UTC.
 - **`scripts/verify_eval_registry.py` verifies *our* chain** at a hard-coded path. For
@@ -210,15 +289,20 @@ epistemic environment and a path toward value and information lock-in. Detecting
 undisclosed behavioral change in frontier models, and recording it in a way that
 cannot be retroactively edited, is a building block for AI transparency, for
 model-release accountability, and for defending the epistemic commons against
-AI-mediated manipulation. The registry is that building block: verifiable evidence
-that a specific model behaved a specific way at a specific time, that no lab or
-auditor can later quietly revise.
+AI-mediated manipulation. The registry is that building block: internally verifiable
+evidence that a named endpoint returned a sealed artifact under a declared protocol,
+with external publication and anchors bounding when that record existed. It makes quiet
+revision detectable; it does not identify hidden weights, training data, provider-side
+routing, or the private motive behind an output.
 
 ## Honest scope
 
-- This is infrastructure, not a benchmark. Its value is the guarantee, not any one
-  number. The suppression rates shown are from an existing small audit; the point
-  is that they are sealed and pre-registered, not that they are comprehensive.
+- This is infrastructure plus bounded audit suites, not a population benchmark. A
+  panel estimate describes the endpoints, prompts and dates it names; it is not a rate
+  for all Chinese models, all frontier models, or all politically sensitive questions.
+- The current claim ceiling is provisional measurement. Human construct validation is
+  pending, GFI v1's raw-response evidence is incomplete, and independent replication is
+  open. Those are grant-worthy work packages, not footnotes to conceal.
 - Interoperability with the wider eval ecosystem (independent audit teams) is a
   design goal; anchoring an external audit into the chain is a few lines.
 - Overclaiming to a technical reviewer is fatal. The correct claim is precise:
@@ -228,15 +312,23 @@ auditor can later quietly revise.
 ## Files
 
 - `core/eval_registry.py` — the registry (preregister, submit_run, verify, summary).
-- `scripts/eval_registry_ingest.py` — records the Generative Firewall eval as sealed,
-  pre-registered attestations. Idempotent.
+- `core/eval_assurance.py` and `scripts/build_eval_assurance.py` — deterministic
+  claim-by-claim evidence audit and claim ceiling.
+- `core/gfi_protocol.py` — GFI v2's closed exact-prompt and response-artifact contract.
+- `scripts/preregister_gfi_v2.py` — publishes and registers that protocol before query.
+- `scripts/verify_gfi_transcripts.py` — recomputes GFI v2 matrices, cell labels,
+  denominators and model seals after a v2 run exists.
+- `scripts/eval_registry_ingest.py` — preserves the legacy GFI v1 derived-state seals.
 - `scripts/verify_eval_registry.py` — the public verification tool.
 - `core/myquant_model_evidence.py` and
   `scripts/import_myquant_model_evidence.py` — strict, operator-local import of
   content-addressed MyQuant preregistration/result receipts.
 - `readings/eval-registry.html` — the public page.
-- `readings/eval-registry.jsonl` — the chain. `eval-registry-latest.json` — the summary.
-- `tests/test_eval_registry.py` — tamper detection and the pre-registration rule (6/6).
+- `readings/eval-registry.jsonl` — the chain. `eval-registry-latest.json` — its summary.
+- `readings/eval-assurance-latest.json` — the live assurance dimensions and promotion
+  rules; `protocol/eval-assurance-v1.schema.json` — its closed public schema.
+- `tests/test_eval_registry.py`, `tests/test_eval_assurance.py`,
+  `tests/test_gfi_reading.py` — tamper, ordering, evidence and protocol tests.
 
 ## Beyond self-verification: the anchor and witness layers
 

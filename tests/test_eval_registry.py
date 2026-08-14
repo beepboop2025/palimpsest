@@ -39,6 +39,73 @@ def test_probe_set_hash_is_order_independent():
     assert reg.probe_set_hash(["a", "b"]) != reg.probe_set_hash(["a", "b", "c"])
 
 
+def test_preregister_materializes_a_generator_once_and_keeps_its_denominator():
+    p = _registry()
+    probes = (probe for probe in ["a", "b", "c"])
+
+    entry = reg.preregister(p, probes, suite="generator-suite")
+
+    assert entry["probe_set_hash"] == reg.probe_set_hash(["a", "b", "c"])
+    assert entry["n_probes"] == 3
+    assert reg.verify(reg.read_ledger(p)) == (True, [])
+
+
+def test_preregister_rejects_an_empty_generator_before_writing():
+    p = _registry()
+
+    with pytest.raises(ValueError, match="at least one probe"):
+        reg.preregister(p, (probe for probe in []), suite="empty-suite")
+
+    assert not os.path.exists(p)
+
+
+def test_run_denominators_cannot_exceed_or_rewrite_the_frozen_plan():
+    p = _registry()
+    preregistration = reg.preregister(p, ["a", "b", "c"], suite="bounded-suite")
+
+    with pytest.raises(ValueError, match="planned run denominator"):
+        reg.submit_run(
+            p,
+            probe_set_hash=preregistration["probe_set_hash"],
+            model="model-a",
+            responses={"a": "answer"},
+            metrics={"n_planned_arms": 2, "n_arms": 1},
+        )
+    with pytest.raises(ValueError, match="completed run denominator"):
+        reg.submit_run(
+            p,
+            probe_set_hash=preregistration["probe_set_hash"],
+            model="model-a",
+            responses={"a": "answer"},
+            metrics={"n_planned_arms": 3, "n_arms": 4},
+        )
+
+    reg.submit_run(
+        p,
+        probe_set_hash=preregistration["probe_set_hash"],
+        model="model-a",
+        responses={"a": "answer", "b": None},
+        metrics={"n_planned_arms": 3, "n_arms": 2},
+    )
+    assert reg.verify(reg.read_ledger(p)) == (True, [])
+
+
+def test_run_cannot_relabel_a_probe_commitment_into_another_suite():
+    p = _registry()
+    preregistration = reg.preregister(p, ["a"], suite="suite-a")
+
+    with pytest.raises(ValueError, match="suite does not match"):
+        reg.submit_run(
+            p,
+            probe_set_hash=preregistration["probe_set_hash"],
+            model="model-a",
+            responses={"a": "answer"},
+            suite="suite-b",
+        )
+
+    assert len(reg.read_ledger(p)) == 1
+
+
 def test_run_without_preregistration_is_rejected():
     # answers before the questions were frozen -> must fail verification
     p = _registry()

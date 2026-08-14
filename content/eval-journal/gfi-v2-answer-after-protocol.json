@@ -1,0 +1,112 @@
+{
+  "schema": "palimpsest.eval-journal-source.v1",
+  "slug": "gfi-v2-answer-after-protocol",
+  "title": "GFI v2: the answer comes after the protocol",
+  "dek": "The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.",
+  "kind": "Protocol note",
+  "status": "Shipped guard; first sealed run pending",
+  "author": "Palimpsest Eval Lab",
+  "published_at": "2026-08-14T17:45:00Z",
+  "updated_at": "2026-08-14T19:05:00Z",
+  "claim": "GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.",
+  "sections": [
+    {
+      "heading": "The legacy record was checkable, but not complete",
+      "paragraphs": [
+        "GFI v1 froze ten sensitive concept identifiers and sealed derived response states in the eval chain. That made later revision detectable inside the registry, but it left too much outside the commitment. The exact prompt wording, language variants, sampling count, model panel, and classifier bytes were visible in code without all being bound into the preregistration. Only excerpts—not every full sampled response—were served publicly.",
+        "Those are not cosmetic omissions. Language-model behavior is prompt-sensitive. A concept commitment cannot prove which sentence was asked, and a derived-state seal cannot let a reader re-run every substantive label from the served evidence. The public assurance report therefore marks both guarantees partial for the legacy series."
+      ],
+      "points": []
+    },
+    {
+      "heading": "What v2 freezes before the first API call",
+      "paragraphs": [
+        "The v2 protocol is a canonical JSON object. It binds every exact prompt arm, Simplified and Traditional Chinese variants, the sensitive and control cohorts, the model endpoint identifiers, the repeated-sample count, the method version, and the SHA-256 digest of the deterministic classifier. Its commitment is appended to the eval registry and pushed in a dedicated public commit before model access begins.",
+        "The runner contains a hard guard: if the protocol file is absent, malformed, or not matched by an earlier preregistration, collection stops before the first paid request. That ordering turns ‘we planned this first’ from an assertion into a condition the code can enforce."
+      ],
+      "points": [
+        "Exact question text, not only topic names.",
+        "Declared model panel and endpoint identifiers.",
+        "Language, cohort, control, and sampling assignments.",
+        "Method version plus the classifier's exact file digest.",
+        "A commitment that must already exist in the public eval chain."
+      ]
+    },
+    {
+      "heading": "What v2 keeps after the answer",
+      "paragraphs": [
+        "Every model gets a complete response matrix over the frozen arms and sample indices. A transport failure is represented as an explicit null abstention; it cannot disappear from the denominator or be relabeled as refusal. Each matrix is content-addressed and sealed as a run against the earlier protocol commitment.",
+        "The verifier rebuilds every response artifact, recomputes its registry seal, re-runs the deterministic labels, and checks the published reading. A hash mismatch, missing arm, undeclared model, extra model, or method discrepancy is fatal."
+      ],
+      "points": []
+    },
+    {
+      "heading": "Publishing safely when two jobs race",
+      "paragraphs": [
+        "A scheduled data job can lose a push race after spending model quota. Re-querying would create a different sample and quietly detach the answers from the attempted run. The upgraded workflow instead carries forward the measured transcript bytes, rebases onto the winning public chain, rebuilds the run seals against that chain, verifies the entire protocol again, and only then retries publication.",
+        "The protocol commit itself is never reconstructed after the answers. If its pre-query push loses a race, the job stops without calling a model. That asymmetry is intentional: measurements can be resealed against a newer chain, but preregistration cannot be manufactured after observation."
+      ],
+      "points": []
+    },
+    {
+      "heading": "What has shipped, and what has not",
+      "paragraphs": [
+        "The protocol builder, pre-query guard, transcript capture, verifier, race recovery, and CI contracts are now in the repository. The currently served Generative Firewall artifact is still v1. Until the next successful scheduled collection publishes the v2 protocol first and then the complete response matrix, the assurance report correctly keeps the legacy prompt and transcript guarantees partial.",
+        "This distinction matters for grant and research claims. Code that could produce strong evidence is infrastructure. A successful, sealed run is evidence. Palimpsest will not describe the former as the latter."
+      ],
+      "points": []
+    }
+  ],
+  "evidence": [
+    {
+      "path": "core/gfi_protocol.py",
+      "label": "Canonical GFI v2 protocol",
+      "role": "Builds and verifies the exact prompt, panel, cohort, sample, method, and classifier commitment"
+    },
+    {
+      "path": "scripts/preregister_gfi_v2.py",
+      "label": "Pre-query preregistration command",
+      "role": "Writes the protocol and prior registry commitment"
+    },
+    {
+      "path": "scripts/generative_firewall_reading.py",
+      "label": "Guarded GFI collector",
+      "role": "Refuses the first model call without a matching public protocol receipt and captures complete responses"
+    },
+    {
+      "path": "scripts/verify_gfi_transcripts.py",
+      "label": "Full-evidence verifier",
+      "role": "Recomputes matrices, seals, labels, and reading bindings"
+    },
+    {
+      "path": ".github/workflows/gfi-refresh.yml",
+      "label": "Two-stage publication workflow",
+      "role": "Publishes the protocol before collection and preserves measured bytes across push races"
+    },
+    {
+      "path": "readings/eval-assurance-latest.json",
+      "label": "Current assurance state",
+      "role": "Keeps GFI at legacy partial evidence until the v2 artifacts actually exist"
+    }
+  ],
+  "external_sources": [
+    {
+      "title": "NIST: Towards best practices for automated benchmark evaluations",
+      "url": "https://www.nist.gov/news-events/news/2026/01/towards-best-practices-automated-benchmark-evaluations",
+      "relationship": "Independent benchmark-governance context; Palimpsest's protocol is a project-specific implementation"
+    }
+  ],
+  "limitations": [
+    "The first public GFI v2 protocol and transcript do not exist until a successful guarded collection; the current reading remains legacy v1.",
+    "Complete response publication enables recomputation but does not by itself validate the refusal or party-line construct.",
+    "The panel is a declared sample of model endpoints, not a population estimate for all Chinese language models.",
+    "API providers can change routing or model weights behind an endpoint; Palimpsest records the endpoint and time but cannot independently prove the provider's hidden serving stack."
+  ],
+  "falsifier": "A v2 run is invalid if its exact protocol was not publicly committed before the first API call, if any expected arm or sample is missing without an explicit null abstention, if any undeclared model appears, if a response matrix does not reproduce its registry seal, or if published labels do not re-derive under the committed classifier. The workflow must fail closed in every one of those cases.",
+  "verification": [
+    "python -m scripts.preregister_gfi_v2 --check",
+    "python -m scripts.verify_eval_registry",
+    "python -m scripts.verify_gfi_transcripts",
+    "python -m scripts.build_eval_assurance --check"
+  ]
+}

@@ -2,10 +2,12 @@
 
 > AI evaluation has a trust problem: labs grade their own homework, and an eval can be
 > quietly re-run, cherry-picked, or revised after the fact until the number looks right.
-> This registry makes that impossible to hide. You FREEZE the probe set first (a
+> This registry makes those manipulations detectable within the served record. You FREEZE the probe set first (a
 > pre-registration sealed into a hash chain), and only then submit the run. Anyone can
-> recompute the chain and prove (a) the questions were fixed before the answers existed,
-> and (b) no past result was altered, reordered, or dropped.
+> recompute the chain and check (a) that a declared commitment precedes its run in this
+> record, and (b) whether any past result was altered, reordered, or dropped from this
+> served chain. Public protocol publication and external witnesses add the wall-clock and
+> whole-chain guarantees the local file alone cannot provide.
 
 It generalizes `core.sealed_ledger` from "Palimpsest's own erasure readings" to "any
 model evaluation, by anyone". The unit is an *attestation*, of two kinds:
@@ -58,14 +60,42 @@ MYQUANT_DIGEST_SUITE = "myquant-digest-evaluation-v1"
 REGISTRY_TITLE = "Verifiable Eval Registry"
 REGISTRY_WHAT = (
     "tamper-evident, pre-registered AI model evaluations — the questions are "
-    "frozen before the model is queried, and every result is hash-chained so "
-    "it cannot be quietly revised. Any model, any suite; this is the record."
+    "registered before its run, and every result is hash-chained so revision of "
+    "the served record is detectable. Any model, any suite; this is the record."
 )
 REGISTRY_PUBLIC_PATH = "readings/eval-registry.jsonl"
 REGISTRY_VERIFY_COMMAND = "python3 scripts/verify_eval_registry.py"
 MAX_REGISTRY_SUMMARY_BYTES = 4 * 1024 * 1024
+UNSPECIFIED_SUITE = "legacy-unspecified"
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_LEGACY_PREREGISTRATION_KEYS = frozenset(
+    {
+        "seq",
+        "prev_hash",
+        "ts",
+        "kind",
+        "probe_set_hash",
+        "n_probes",
+        "suite",
+        "note",
+        "entry_hash",
+    }
+)
+_LEGACY_RUN_KEYS = frozenset(
+    {
+        "seq",
+        "prev_hash",
+        "ts",
+        "kind",
+        "probe_set_hash",
+        "model",
+        "responses_hash",
+        "metrics",
+        "suite",
+        "entry_hash",
+    }
+)
 _DIGEST_PREREGISTRATION_KEYS = frozenset(
     {
         "seq",
@@ -427,12 +457,27 @@ def preregister(path: str, probes, *, suite: str = "", note: str = "",
     (its `probe_set_hash` is what a later run must reference)."""
     if suite == MYQUANT_DIGEST_SUITE:
         raise ValueError("suite is reserved for digest receipt preregistrations")
-    ph = probe_set_hash(probes)
+    # Materialise once.  A generator used to be consumed by probe_set_hash and then
+    # appear empty when n_probes was computed, sealing a correct digest beside a false
+    # denominator.  The snapshot also lets us reject an empty evaluation before it
+    # enters an append-only record.
+    frozen = sorted({str(probe) for probe in probes})
+    if not frozen:
+        raise ValueError("probe set must contain at least one probe")
+    if not isinstance(suite, str):
+        raise ValueError("suite must be a string")
+    # Keep the historical convenience API while ensuring every new ledger entry has
+    # an explicit suite identity.  New production callers should always name a suite;
+    # the fallback exists for legacy integrations and local experiments only.
+    suite = suite.strip() or UNSPECIFIED_SUITE
+    if not isinstance(note, str):
+        raise ValueError("note must be a string")
+    ph = probe_set_hash(frozen)
     with registry_lock(path):
         ts = (now or datetime.now(timezone.utc)).isoformat()
         return _append(path, {
             "ts": ts, "kind": PREREGISTRATION, "probe_set_hash": ph,
-            "n_probes": len(sorted({str(p) for p in probes})),
+            "n_probes": len(frozen),
             "suite": suite, "note": note,
         }, _lock_held=True)
 
@@ -444,8 +489,34 @@ def submit_run(path: str, *, probe_set_hash: str, model: str, responses,
     publish it alongside so anyone can recompute `responses_hash`."""
     if suite == MYQUANT_DIGEST_SUITE:
         raise ValueError("suite is reserved for digest receipt runs")
-    digest = responses_hash(responses)
+    _require_sha256(probe_set_hash, "probe_set_hash")
+    if not isinstance(model, str) or not model.strip():
+        raise ValueError("model must be a non-empty string")
+    if not isinstance(suite, str):
+        raise ValueError("suite must be a string")
+    if metrics is not None and type(metrics) is not dict:
+        raise ValueError("metrics must be an object")
     with registry_lock(path):
+        entries, _ = _verified_snapshot(path)
+        preregistration = next(
+            (
+                entry
+                for entry in reversed(entries)
+                if entry.get("kind") == PREREGISTRATION
+                and entry.get("probe_set_hash") == probe_set_hash
+            ),
+            None,
+        )
+        if preregistration is None:
+            raise ValueError(
+                "RUN references a probe set never pre-registered earlier — "
+                "result cannot be trusted (answers before frozen questions)"
+            )
+        # A blank suite means "use the identity frozen with these probes".  This
+        # preserves the original API without permitting a blank or mismatched suite
+        # in the public record.
+        suite = suite.strip() or preregistration["suite"]
+        digest = responses_hash(responses)
         ts = (now or datetime.now(timezone.utc)).isoformat()
         return _append(path, {
             "ts": ts, "kind": RUN, "probe_set_hash": probe_set_hash, "model": model,
@@ -460,13 +531,14 @@ def verify(entries: list[dict]) -> tuple[bool, list[str]]:
     never frozen earlier (answers before the questions)."""
     problems: list[str] = []
     prev = GENESIS_PREV
-    registered: set[str] = set()
+    registered: dict[str, dict] = {}
     receipt_preregistrations: dict[str, dict] = {}
     receipt_evaluations: set[str] = set()
     result_evaluations: set[str] = set()
     receipt_runs: set[str] = set()
     result_receipts: set[str] = set()
     result_artifacts: set[str] = set()
+    previous_ts: datetime | None = None
     for i, e in enumerate(entries):
         if type(e) is not dict:
             problems.append(f"position {i}: malformed attestation (expected an object)")
@@ -481,14 +553,23 @@ def verify(entries: list[dict]) -> tuple[bool, list[str]]:
             if type(e.get("kind")) is not str:
                 problems.append(f"seq {e.get('seq')}: kind is not a string")
             try:
-                _parse_aware_timestamp(e.get("ts"), "ts")
+                parsed_ts = _parse_aware_timestamp(e.get("ts"), "ts")
+                if previous_ts is not None and parsed_ts < previous_ts:
+                    problems.append(
+                        f"seq {e.get('seq')}: timestamp predates the previous entry"
+                    )
+                previous_ts = parsed_ts
             except ValueError as exc:
                 problems.append(f"seq {e.get('seq')}: {exc}")
+            for field in ("prev_hash", "entry_hash"):
+                if type(e.get(field)) is not str or not _SHA256.fullmatch(e[field]):
+                    problems.append(
+                        f"seq {e.get('seq')}: {field} is not a lowercase sha256"
+                    )
             core = {k: e[k] for k in e if k != "entry_hash"}
             if _entry_hash(core) != e["entry_hash"]:
                 problems.append(f"seq {e.get('seq')}: entry_hash does not recompute — altered after sealing")
             if e["kind"] == PREREGISTRATION:
-                registered.add(e["probe_set_hash"])
                 commitment = e.get("commitment")
                 reserved = _uses_reserved_digest_namespace(e)
                 if reserved and commitment != DIGEST_RECEIPT_COMMITMENT:
@@ -557,10 +638,44 @@ def verify(entries: list[dict]) -> tuple[bool, list[str]]:
                         receipt_preregistrations[receipt] = e
                     if type(evaluation) is str:
                         receipt_evaluations.add(evaluation)
+                else:
+                    if frozenset(e) != _LEGACY_PREREGISTRATION_KEYS:
+                        problems.append(
+                            f"seq {e.get('seq')}: preregistration fields do not match "
+                            "the closed schema"
+                        )
+                    if type(e.get("probe_set_hash")) is not str or not _SHA256.fullmatch(
+                        e["probe_set_hash"]
+                    ):
+                        problems.append(
+                            f"seq {e.get('seq')}: probe_set_hash is not a lowercase sha256"
+                        )
+                    if type(e.get("n_probes")) is not int or e["n_probes"] <= 0:
+                        problems.append(
+                            f"seq {e.get('seq')}: preregistration probe count is invalid"
+                        )
+                    if not isinstance(e.get("suite"), str) or not e["suite"].strip():
+                        problems.append(f"seq {e.get('seq')}: suite is empty or invalid")
+                    if type(e.get("note")) is not str:
+                        problems.append(f"seq {e.get('seq')}: note is not a string")
+                probe_hash = e.get("probe_set_hash")
+                if type(probe_hash) is str and _SHA256.fullmatch(probe_hash):
+                    prior = registered.get(probe_hash)
+                    if prior is not None and prior.get("suite") != e.get("suite"):
+                        problems.append(
+                            f"seq {e.get('seq')}: probe_set_hash was already registered "
+                            "to a different suite"
+                        )
+                    registered[probe_hash] = e
             elif e["kind"] == RUN:
-                if e["probe_set_hash"] not in registered:
+                preregistration = registered.get(e.get("probe_set_hash"))
+                if preregistration is None:
                     problems.append(f"seq {e.get('seq')}: RUN references a probe set never pre-registered "
                                     f"earlier — result cannot be trusted (answers before frozen questions)")
+                elif e.get("suite") != preregistration.get("suite"):
+                    problems.append(
+                        f"seq {e.get('seq')}: run suite does not match its preregistration"
+                    )
                 commitment = e.get("commitment")
                 reserved = _uses_reserved_digest_namespace(e)
                 if reserved and commitment != DIGEST_RECEIPT_COMMITMENT:
@@ -683,6 +798,50 @@ def verify(entries: list[dict]) -> tuple[bool, list[str]]:
                             )
                         if type(value) is str:
                             seen.add(value)
+                else:
+                    if frozenset(e) != _LEGACY_RUN_KEYS:
+                        problems.append(
+                            f"seq {e.get('seq')}: run fields do not match the closed schema"
+                        )
+                    for field in ("probe_set_hash", "responses_hash"):
+                        if type(e.get(field)) is not str or not _SHA256.fullmatch(e[field]):
+                            problems.append(
+                                f"seq {e.get('seq')}: {field} is not a lowercase sha256"
+                            )
+                    if not isinstance(e.get("model"), str) or not e["model"].strip():
+                        problems.append(f"seq {e.get('seq')}: model is empty or invalid")
+                    if not isinstance(e.get("suite"), str) or not e["suite"].strip():
+                        problems.append(f"seq {e.get('seq')}: suite is empty or invalid")
+                    if type(e.get("metrics")) is not dict:
+                        problems.append(f"seq {e.get('seq')}: metrics is not an object")
+                    elif preregistration is not None:
+                        planned_n = e["metrics"].get("n_planned_arms")
+                        if planned_n is not None and (
+                            type(planned_n) is not int
+                            or planned_n != preregistration.get("n_probes")
+                        ):
+                            problems.append(
+                                f"seq {e.get('seq')}: planned run denominator {planned_n!r} "
+                                "does not match the preregistered probe count "
+                                f"{preregistration.get('n_probes')!r}"
+                            )
+                        # Historical n_probes/n_arms values are completed, usable
+                        # observations; provider abstentions can make them smaller than
+                        # the frozen plan.  They may never be negative or exceed it.
+                        observed_n = e["metrics"].get(
+                            "n_arms", e["metrics"].get("n_probes")
+                        )
+                        if observed_n is not None and (
+                            type(observed_n) is not int
+                            or observed_n < 0
+                            or observed_n > preregistration.get("n_probes")
+                        ):
+                            problems.append(
+                                f"seq {e.get('seq')}: completed run denominator "
+                                f"{observed_n!r} exceeds or is incompatible with the "
+                                "preregistered probe count "
+                                f"{preregistration.get('n_probes')!r}"
+                            )
             else:
                 problems.append(f"seq {e.get('seq')}: unknown kind {e.get('kind')!r}")
             prev = e["entry_hash"]

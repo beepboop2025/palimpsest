@@ -1,0 +1,117 @@
+{
+  "schema": "palimpsest.eval-journal-source.v1",
+  "slug": "what-the-evidence-can-claim",
+  "title": "A green hash is not a validity result",
+  "dek": "Palimpsest now publishes a machine-readable assurance ladder that keeps chain integrity, exact-prompt commitment, response recomputation, statistical design, human validation, and independent replication on separate axes.",
+  "kind": "Assurance note",
+  "status": "Live claim ceiling",
+  "author": "Palimpsest Eval Lab",
+  "published_at": "2026-08-14T17:54:00Z",
+  "updated_at": "2026-08-14T19:15:00Z",
+  "claim": "The current eval record supports a provisional measurement claim; it does not yet support calling the lexical construct human-validated or the findings independently replicated.",
+  "sections": [
+    {
+      "heading": "The most dangerous badge was the easiest one to earn",
+      "paragraphs": [
+        "Hash chains answer a valuable, narrow question: do the served records reproduce their commitments and publication order? They do not answer whether a prompt measures the intended construct, whether a classifier agrees with people, whether a panel represents a larger model population, or whether another team can reproduce the finding.",
+        "Collapsing those questions into one ‘verified’ badge rewards the easiest engineering property and launders the hardest scientific gaps. Palimpsest's assurance report refuses that composite. It exposes seven dimensions and assigns each check a status, evidence statement, limitation, affected suite, and—where possible—a local verification command."
+      ],
+      "points": []
+    },
+    {
+      "heading": "Seven questions, no average",
+      "paragraphs": [
+        "Integrity asks whether the registry recomputes and whether every run follows a preregistration. Prompt precommitment asks whether the exact questions were fixed before answers. Response recomputability asks whether full public text can reproduce the current seals. Pipeline reproducibility asks whether labels can be regenerated under an identified method. Statistical design asks for denominators, uncertainty, controls, power, and correction for repeated looks. Construct validation asks whether independent humans support what the labels mean. Replication asks whether an unaffiliated team reproduced the result.",
+        "A failure in one dimension is not averaged away by passes elsewhere. The dimension inherits its weakest applicable check, and the public claim ceiling follows the unresolved scientific gates."
+      ],
+      "points": [
+        "Pass: the served evidence satisfies the declared machine check.",
+        "Partial: a real guarantee exists, but a named part of it is absent or belongs to a legacy method.",
+        "Pending: a preregistered study or evidence-producing step is not complete.",
+        "Open: the invitation exists, but no qualifying independent result is on record.",
+        "Fail: published evidence exists and violates the declared contract or frozen threshold."
+      ]
+    },
+    {
+      "heading": "The human-validation gate cannot be faked by a filename",
+      "paragraphs": [
+        "The two-coder study is already frozen at 145 rows with a codebook, sample commitment, weighting plan, and three rejection thresholds. Assurance stays pending until one exact result artifact identifies that commitment, accounts for every row from both coders, carries both attestations, and supplies digests that match the released coder sheets, answer key, manifest, and protocol.",
+        "Once complete, the check independently recomputes whether Krippendorff's alpha reaches 0.667 and whether weighted precision reaches 0.80 for both refused and party-line labels. A malformed result is fail, not pending. A threshold miss is a published failure, not permission to redraw the sample."
+      ],
+      "points": []
+    },
+    {
+      "heading": "What can be said today",
+      "paragraphs": [
+        "Today Palimpsest can say that its public eval chain is tamper-evident under the declared hash construction; the frontier suite binds exact prompts and exposes full current responses for seal recomputation; and both suites publish explicit denominators, uncertainty, controls, and method versions. The live JSON beside this article reports the exact current count of pass, partial, pending, open, and fail checks.",
+        "It cannot yet say that the lexical classifier has completed independent human validation. The legacy China-focused GFI still lacks exact-prompt preregistration and the complete served response matrix that v2 will require. No unaffiliated team has published a preregistered replication against the registry. Those gaps are not footnotes to a strong score. They are the ceiling on the claim."
+      ],
+      "points": []
+    },
+    {
+      "heading": "Why this makes a stronger grant case",
+      "paragraphs": [
+        "A grant should fund a specific reduction in uncertainty, not reward a polished claim that cannot fail. The assurance ladder converts open work into auditable milestones: complete the frozen human study; land the first full-evidence GFI v2 run; recruit and support an unaffiliated replication; extend prompts and coder validation across languages; deposit durable external witnesses; and publish every miss.",
+        "That does not guarantee an award. It gives a reviewer something better than ambition: a public baseline, a named gap, a falsifier, a deliverable that changes the claim ceiling only when the evidence earns it, and a verification path that remains after the grant ends."
+      ],
+      "points": []
+    }
+  ],
+  "evidence": [
+    {
+      "path": "readings/eval-assurance-latest.json",
+      "label": "AI Eval Assurance",
+      "role": "Live dimensions, checks, claim ceiling, limitations, and verification commands"
+    },
+    {
+      "path": "core/eval_assurance.py",
+      "label": "Assurance builder",
+      "role": "Deterministic checks and human-validation promotion gate"
+    },
+    {
+      "path": "protocol/eval-assurance-v1.schema.json",
+      "label": "Closed assurance schema",
+      "role": "Machine contract for the served report"
+    },
+    {
+      "path": "validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json",
+      "label": "Frozen validation study",
+      "role": "Sample, analysis, weighting, thresholds, and one-look commitment"
+    },
+    {
+      "path": "docs/GRANT-CASE.md",
+      "label": "Grant evidence case",
+      "role": "Fundable work packages, milestones, risks, and non-negotiable claim boundaries"
+    },
+    {
+      "path": "tests/test_eval_assurance.py",
+      "label": "Assurance regression tests",
+      "role": "Pins chain failure, filename spoofing, malformed-result failure, and current state"
+    }
+  ],
+  "external_sources": [
+    {
+      "title": "NIST: Statistical models expand the AI evaluation toolbox",
+      "url": "https://www.nist.gov/news-events/news/2026/02/new-report-expanding-ai-evaluation-toolbox-statistical-models",
+      "relationship": "Independent context on uncertainty in AI evaluation; not an endorsement of Palimpsest"
+    },
+    {
+      "title": "NIST: Towards best practices for automated benchmark evaluations",
+      "url": "https://www.nist.gov/news-events/news/2026/01/towards-best-practices-automated-benchmark-evaluations",
+      "relationship": "Independent benchmark-governance context; not evidence that Palimpsest satisfies every practice"
+    }
+  ],
+  "limitations": [
+    "The assurance report evaluates Palimpsest's declared contracts; it is not an accreditation or an external audit.",
+    "A pass establishes the named machine check only and must be read with that check's limitation.",
+    "Human validation remains pending and independent replication remains open in the current public state.",
+    "The claim ceiling can regress if later evidence fails; promotion is not permanent."
+  ],
+  "falsifier": "Any broken registry link, prompt commitment mismatch, unrecomputable response seal, label disagreement under the committed method, missing statistical field, malformed human-study result, frozen-threshold miss, or failed qualifying replication must appear as a non-pass state and lower the affected dimension. If the public page and machine-readable report disagree, the machine-readable check is authoritative and publication should fail.",
+  "verification": [
+    "python -m scripts.verify_eval_registry",
+    "python -m scripts.verify_refusal_transcripts",
+    "python -m scripts.build_eval_assurance --check",
+    "python -m pytest -q tests/test_eval_assurance.py"
+  ]
+}

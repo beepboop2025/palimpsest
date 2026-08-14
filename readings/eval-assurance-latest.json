@@ -1,0 +1,223 @@
+{
+  "checks": [
+    {
+      "applies_to": [
+        "all-eval-suites"
+      ],
+      "dimension": "integrity",
+      "evidence": "All 406 attestations verify with no chain or ordering break.",
+      "id": "registry-chain-integrity",
+      "label": "The public eval chain recomputes and every run follows a preregistration",
+      "limitation": "Hash-chain integrity detects revision and ordering violations; it does not establish construct validity or external witnessing by itself.",
+      "status": "pass",
+      "verify_cmd": "python -m scripts.verify_eval_registry"
+    },
+    {
+      "applies_to": [
+        "frontier-overrefusal-v2"
+      ],
+      "dimension": "prompt_precommitment",
+      "evidence": "41 published prompts reproduce the preregistered commitment.",
+      "id": "frontier-exact-prompt-commitment",
+      "label": "Exact frontier prompts were frozen before answers",
+      "limitation": "Git history or an external witness is still needed to assign public wall-clock time to the commit.",
+      "status": "pass",
+      "verify_cmd": "python -m scripts.verify_refusal_transcripts"
+    },
+    {
+      "applies_to": [
+        "frontier-overrefusal-v2"
+      ],
+      "dimension": "response_recomputability",
+      "evidence": "164 full responses reproduce all 4 current model seals.",
+      "id": "frontier-response-recomputation",
+      "label": "Raw frontier responses reproduce every current seal",
+      "limitation": "Recomputation proves which text was measured, not that the project classifier is substantively correct.",
+      "status": "pass",
+      "verify_cmd": "python -m scripts.verify_refusal_transcripts"
+    },
+    {
+      "applies_to": [
+        "frontier-overrefusal-v2"
+      ],
+      "dimension": "pipeline_reproducibility",
+      "evidence": "All 164 labels re-derive; the published artifact is method v3 and the shipping judge is v4.",
+      "id": "frontier-label-recomputation",
+      "label": "Published frontier labels re-derive from raw text",
+      "limitation": "A fresh run must rebaseline under the quote-aware v4 judge before new longitudinal claims are made.",
+      "status": "partial",
+      "verify_cmd": "python -m scripts.verify_refusal_transcripts"
+    },
+    {
+      "applies_to": [
+        "frontier-overrefusal-v2"
+      ],
+      "dimension": "statistical_design",
+      "evidence": "4 model readings carry family-level Wilson intervals, controls, power, and an anytime-valid panel monitor.",
+      "id": "frontier-statistical-design",
+      "label": "Frontier estimates disclose uncertainty, power, controls, and repeated-look correction",
+      "limitation": "A quiet churn alarm cannot establish that a one-time permanent single-question erasure did not occur; the reading states this separately.",
+      "status": "pass"
+    },
+    {
+      "applies_to": [
+        "cn-sensitive-generative-firewall-v1"
+      ],
+      "dimension": "prompt_precommitment",
+      "evidence": "The v1 registry commitment covers the ten sensitive concept identifiers.",
+      "id": "gfi-concept-id-commitment",
+      "label": "Legacy GFI freezes concept IDs, not exact prompt text",
+      "limitation": "Prompt templates and exact wording are published in code but are not bound into the v1 preregistration. GFI v2 is the remediation path.",
+      "status": "partial",
+      "verify_cmd": "python -m scripts.verify_eval_registry"
+    },
+    {
+      "applies_to": [
+        "cn-sensitive-generative-firewall-v1"
+      ],
+      "dimension": "response_recomputability",
+      "evidence": "Published concept states reproduce the legacy response-state artifact.",
+      "id": "gfi-response-recomputation",
+      "label": "Legacy GFI seals derived states without full raw transcripts",
+      "limitation": "Only excerpts, not every full sampled response, are public in v1; substantive labels cannot all be re-derived from the served artifact.",
+      "status": "partial"
+    },
+    {
+      "applies_to": [
+        "cn-sensitive-generative-firewall-v1"
+      ],
+      "dimension": "statistical_design",
+      "evidence": "The reading uses k=5 samples across 20 usable cells with a Wilson interval and explicit control/abstention gates.",
+      "id": "gfi-statistical-design",
+      "label": "GFI samples repeated cells and publishes uncertainty, abstention, and controls",
+      "limitation": "The interval describes sampling variability under this panel and prompt bank; it is not a population estimate for all Chinese models or all censored topics.",
+      "status": "pass"
+    },
+    {
+      "applies_to": [
+        "cn-sensitive-generative-firewall-v1"
+      ],
+      "dimension": "pipeline_reproducibility",
+      "evidence": "The latest public GFI artifact is method v3; the shipping quote-aware judge is v4.",
+      "id": "gfi-method-boundary",
+      "label": "GFI method changes rebaseline the longitudinal series",
+      "limitation": "The next successful run must establish a new v4 baseline; no drift claim may cross this judge boundary.",
+      "status": "partial"
+    },
+    {
+      "applies_to": [
+        "all-lexically-classified-suites"
+      ],
+      "dimension": "construct_validation",
+      "evidence": "The 145-row sample, codebook, thresholds, and falsifier are preregistered; no complete RESULT.json has been published.",
+      "id": "independent-human-coding",
+      "label": "Two-human blind classifier validation",
+      "limitation": "Until two independent humans complete the study, refusal and party-line outputs remain labels from a published lexical rule—not validated human judgements.",
+      "status": "pending",
+      "verify_cmd": "python -m scripts.build_eval_assurance --check"
+    },
+    {
+      "applies_to": [
+        "all-eval-suites"
+      ],
+      "dimension": "independent_replication",
+      "evidence": "The code, prompt banks, registry, transcripts, and verification commands are public and MIT licensed.",
+      "id": "external-replication",
+      "label": "Independent team replication",
+      "limitation": "No unaffiliated team has yet published a preregistered replication against this registry.",
+      "status": "open"
+    }
+  ],
+  "claim_ceiling": {
+    "can_claim": "Palimpsest publishes tamper-evident, statistically explicit eval outputs; the frontier suite binds exact prompts and lets readers recompute current seals from full responses.",
+    "cannot_yet_claim": "The lexical construct has not completed independent human validation, the legacy China-focused GFI does not yet publish every full response or bind exact prompt text, and no unaffiliated replication is on record.",
+    "level": "provisional-measurement",
+    "promotion_rule": "Do not promote the evals to human-validated until the preregistered two-coder study passes its frozen falsifiers; do not call them independently replicated until an unaffiliated preregistered run is sealed and published."
+  },
+  "dimensions": [
+    {
+      "checks": [
+        "registry-chain-integrity"
+      ],
+      "id": "integrity",
+      "question": "Are records internally tamper-evident and ordered?",
+      "status": "pass"
+    },
+    {
+      "checks": [
+        "frontier-exact-prompt-commitment",
+        "gfi-concept-id-commitment"
+      ],
+      "id": "prompt_precommitment",
+      "question": "Were the questions fixed before answers?",
+      "status": "partial"
+    },
+    {
+      "checks": [
+        "frontier-response-recomputation",
+        "gfi-response-recomputation"
+      ],
+      "id": "response_recomputability",
+      "question": "Can published raw evidence reproduce the seals?",
+      "status": "partial"
+    },
+    {
+      "checks": [
+        "frontier-label-recomputation",
+        "gfi-method-boundary"
+      ],
+      "id": "pipeline_reproducibility",
+      "question": "Can labels be regenerated under an identified method?",
+      "status": "partial"
+    },
+    {
+      "checks": [
+        "frontier-statistical-design",
+        "gfi-statistical-design"
+      ],
+      "id": "statistical_design",
+      "question": "Are denominators, uncertainty, controls, and repeated looks handled?",
+      "status": "pass"
+    },
+    {
+      "checks": [
+        "independent-human-coding"
+      ],
+      "id": "construct_validation",
+      "question": "Do independent humans support what the labels mean?",
+      "status": "pending"
+    },
+    {
+      "checks": [
+        "external-replication"
+      ],
+      "id": "independent_replication",
+      "question": "Has an unaffiliated team reproduced the finding?",
+      "status": "open"
+    }
+  ],
+  "generated_at": "2026-08-14T19:08:28.649895+00:00",
+  "schema": "palimpsest.eval-assurance.v1",
+  "sources": {
+    "frontier_reading": "readings/refusal-drift-latest.json",
+    "frontier_transcripts": "readings/refusal-drift-transcripts.json",
+    "gfi_reading": "readings/latest.json",
+    "human_validation": "validation/studies/2026-08-01-gfi-classifier-v1/",
+    "registry": "readings/eval-registry.jsonl"
+  },
+  "summary": {
+    "checks": 11,
+    "fail": 0,
+    "open": 1,
+    "partial": 4,
+    "pass": 5,
+    "pending": 1
+  },
+  "title": "Palimpsest AI Eval Assurance",
+  "verify": [
+    "python -m scripts.verify_eval_registry",
+    "python -m scripts.verify_refusal_transcripts",
+    "python -m scripts.build_eval_assurance --check"
+  ],
+  "what": "A claim-by-claim audit of what the published eval evidence proves, partially supports, and does not yet establish."
+}

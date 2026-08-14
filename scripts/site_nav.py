@@ -33,7 +33,7 @@ END = "<!--/PS_NAV-->"
 # It is a hand-maintained editorial claim, not a timestamp — clear it when it
 # stops being true rather than letting it rot into furniture.
 NAV = [
-    {"label": "News", "href": "/news/"},
+    {"label": "Wire", "href": "/news/"},
     {
         "label": "Censorship",
         "lede": "What the apparatus removed, measured at the network, content and model layers.",
@@ -74,23 +74,31 @@ NAV = [
     },
     {
         "label": "AI Evals",
-        "lede": "Evaluations sealed the moment they publish, so no result can be quietly revised.",
+        "lede": "China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.",
         "columns": [
             {
-                "head": "The record",
+                "head": "Measure",
                 "links": [
-                    ("/readings/eval-registry.html", "Verifiable Eval Registry",
-                     "Pre-registered, hash-chained, independently recomputable"),
                     ("/readings/generative-firewall-index.html", "Generative Firewall Index",
                      "What state-aligned models refuse or rewrite"),
                     ("/readings/eval-registry.html#drift", "Refusal Drift",
                      "Frontier models watched for what they quietly stop answering"),
+                ],
+            },
+            {
+                "head": "Verify",
+                "links": [
+                    ("/readings/eval-registry.html", "Verifiable Eval Registry",
+                     "Preregistrations, runs, response seals and chain receipts"),
+                    ("/readings/eval-registry.html#assurance", "Eval Assurance",
+                     "What passes, what is partial, and what is still unproven", "new"),
                     ("/readings/eval-registry.html#anchors", "External Anchors",
                      "Chain roots deposited outside our own infrastructure"),
                 ],
             },
         ],
     },
+    {"label": "Eval Journal", "href": "/evals/"},
     {
         "label": "Method",
         "lede": "Every number on this site is meant to be attacked. Here is what it would take.",

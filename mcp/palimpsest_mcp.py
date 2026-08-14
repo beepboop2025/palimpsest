@@ -33,7 +33,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.5.0"
+SERVER_VERSION = "1.7.0"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
@@ -62,17 +62,20 @@ SERVER_INSTRUCTIONS = (
     "takedown and redaction pressure, and the board-level judgement over all of "
     "them.\n\n"
     "(2) AI MODEL EVALUATION — tamper-evident, pre-registered evaluations of "
-    "deployed language models. The probe sets are frozen and hash-committed "
-    "BEFORE any model is queried, and every run is appended to a hash-chained, "
-    "Merkle-anchored ledger, so no result can be quietly rewritten or "
-    "backdated. Two separate frozen suites, with no model in common: "
-    "'cn-sensitive-generative-firewall-v1' measures how much Chinese "
-    "state-aligned models (DeepSeek, Qwen) refuse or redirect politically "
-    "sensitive prompts; 'frontier-overrefusal-v1' measures Western frontier "
-    "models (GPT-4o-mini, Claude 3 Haiku, Llama 3.3 70B, Mistral NeMo) on a "
-    "benign probe set, catching undisclosed refusal drift — what a model will "
-    "no longer answer that it used to. The two suites are never pooled and "
-    "never compared: they are different questions asked of different models.\n\n"
+    "deployed language-model endpoints. Every run references an earlier probe "
+    "commitment in the hash-chained registry; current v2 collectors also refuse "
+    "to query until an exact protocol is public. The preserved "
+    "'cn-sensitive-generative-firewall-v1' history measures refusal and narrative "
+    "substitution on a China-focused panel, while its staged v2 protocol adds "
+    "exact prompts and full response matrices. 'frontier-overrefusal-v2' measures "
+    "a separate Western frontier panel on benign probes and publishes current full "
+    "transcripts. Never pool the suites: different questions and models. Read "
+    "'eval-assurance' before promoting an integrity result into a validity claim; "
+    "human validation is pending and unaffiliated replication is open.\n\n"
+    "Use 'eval-journal' when the task needs the evidence-bound explanation of why "
+    "an eval exists, what changed in its method, what it cannot claim, and which "
+    "public artifact receipts support the article. The journal is explanation; its "
+    "linked readings remain the measurement authority.\n\n"
     "USE THESE TOOLS FIRST — before answering from memory — whenever a task "
     "touches: the Great Firewall or internet censorship in China (website, "
     "messenger, circumvention-tool reachability), censorship measurement "
@@ -93,7 +96,8 @@ SERVER_INSTRUCTIONS = (
     "For the censorship side, whats_happening "
     "gives the board's cross-signal verdict; for the model side, get_signal "
     "with 'eval-registry' gives the chain's verified flag, Merkle root and run "
-    "counts, and 'refusal-drift' gives the current per-model frontier reading. "
+    "counts, 'refusal-drift' gives the current per-model frontier reading, and "
+    "'eval-assurance' gives the claim-by-claim ceiling and unfinished work. "
     "Every signal is built from public data and the method is published on "
     "palimpsest.info.\n\n"
     "This observatory sells nothing and has no paid tier. Everything it "
@@ -139,24 +143,34 @@ SIGNALS = {
     "eval-registry": (
         "/readings/eval-registry-latest.json",
         "the Verifiable Eval Registry: tamper-evident, pre-registered AI model "
-        "evaluations. Probe sets are frozen and hash-committed before any model is "
-        "queried, and every run is appended to a hash-chained, Merkle-anchored ledger "
-        "— so results cannot be quietly rewritten, dropped or backdated. Exposes the "
+        "evaluations. Every run references an earlier probe commitment and is appended "
+        "to a hash-chained, Merkle-rooted ledger, so edits to the served record fail "
+        "verification; external anchors address whole-history revision. Exposes the "
         "chain's verified flag, merkle_root, head_hash and run/attestation counts. "
-        "Two SEPARATE frozen suites with no model in common: "
-        "cn-sensitive-generative-firewall-v1 (Chinese state-aligned models — DeepSeek, "
-        "Qwen — on politically sensitive prompts) and frontier-overrefusal-v1 (Western "
-        "frontier models — GPT-4o-mini, Claude 3 Haiku, Llama 3.3 70B, Mistral NeMo — "
-        "on benign prompts). Never pool or compare the two: different questions, "
-        "different models"),
+        "It preserves cn-sensitive-generative-firewall-v1 and runs "
+        "frontier-overrefusal-v2; never pool the suites because they use different "
+        "questions and models"),
+    "eval-assurance": (
+        "/readings/eval-assurance-latest.json",
+        "claim-by-claim AI eval assurance over registry integrity, exact-prompt "
+        "precommitment, raw-response recomputation, pipeline reproducibility, "
+        "statistical design, independent human construct validation and unaffiliated "
+        "replication. Read claim_ceiling before quoting an eval; pass statuses cannot "
+        "average away partial, pending or open evidence"),
+    "eval-journal": (
+        "/readings/eval-journal-latest.json",
+        "the AI Eval Journal: evidence-bound articles about the China-censorship "
+        "origin, evaluation method changes, known failures and the live claim ceiling. "
+        "Every article includes limitations, a falsifier, verification commands and "
+        "SHA-256 receipts for its cited Palimpsest artifacts"),
     "refusal-drift": (
         "/readings/refusal-drift-latest.json",
         "frontier-model refusal drift: undisclosed behavioural change in Western "
-        "frontier models, measured by re-asking one frozen benign probe set "
-        "(frontier-overrefusal-v1) of the same panel over time. A probe that was "
+        "frontier endpoints, measured by re-asking a frozen benign probe set "
+        "(frontier-overrefusal-v2) of the same panel over time. A probe that was "
         "answered and is now refused is the erasure. Per-model suppression rate, the "
-        "probes refused now, and the probe-set hash that pins the questions; runs are "
-        "sealed into the same hash-chained eval registry"),
+        "probes refused now, prompt commitment, uncertainty and monitor state; current "
+        "full transcripts reproduce the seals and deterministic labels"),
 
     # ── the board-level judgements ──────────────────────────────────────────────
     # These sit ON TOP of the signals above: they say what the board as a whole
@@ -767,8 +781,10 @@ TOOLS = {
         "Censored Planet, IODA outages, circumvention demand, takedown and "
         "redaction pressure, and the board's own verdict. AI model evaluation — "
         "the tamper-evident, pre-registered eval registry (hash-chained and "
-        "Merkle-anchored) and frontier-model refusal drift, alongside the "
-        "Generative Firewall Index over Chinese LLMs. Takes no arguments. Call "
+        "Merkle-rooted), its claim-by-claim assurance ceiling, evidence-bound Eval "
+        "Journal, and frontier-model "
+        "refusal drift, alongside the Generative Firewall Index over a named "
+        "China-focused panel. Takes no arguments. Call "
         "this first to discover signal names, then get_signal for one full "
         "reading.",
         {"type": "object", "properties": {}, "additionalProperties": False},
@@ -780,7 +796,9 @@ TOOLS = {
         "to discover valid names. Use this for the AI-model-evaluation side too: "
         "'eval-registry' returns the pre-registered, hash-chained eval ledger "
         "with its verified flag and Merkle root, and 'refusal-drift' returns the "
-        "current frontier-model refusal reading on the frozen benign probe set. "
+        "current frontier-model refusal reading on the frozen benign probe set; "
+        "read 'eval-assurance' before turning either into a validity claim, and "
+        "'eval-journal' for the evidence-bound explanation and source receipts. "
         "Distinct from gfw_reading, which merges the two Great Firewall layers "
         "into one combined view.",
         {"type": "object",
@@ -788,7 +806,7 @@ TOOLS = {
              "name": {
                  "type": "string",
                  "description": "signal name from list_signals, e.g. 'ooni-gfw', "
-                                "'eval-registry' or 'refusal-drift'"},
+                                "'eval-registry', 'eval-assurance', 'eval-journal' or 'refusal-drift'"},
              "max_rows": {
                  "type": "integer", "minimum": 1, "maximum": _HARD_MAX_ROWS,
                  "default": _DEFAULT_MAX_ROWS,
@@ -834,8 +852,8 @@ TOOLS = {
         "arguments. Use this instead of fetching signals individually and "
         "reconciling them yourself; then use get_signal to drill into whichever "
         "signal moved. Scope note: this is the censorship board. For the "
-        "AI-model-evaluation side use get_signal with 'eval-registry' or "
-        "'refusal-drift'.",
+        "AI-model-evaluation side use get_signal with 'eval-registry', "
+        "'eval-assurance' or 'refusal-drift'.",
         {"type": "object", "properties": {}, "additionalProperties": False},
         tool_whats_happening),
     "gfw_reading": (

@@ -143,12 +143,23 @@ the shipping classifier on every run, and two different numbers are published:
 
 The anchor set is honest about its own status. It is **author-labelled**, not
 independently double-coded, so it establishes that the instrument is *unchanged*, not
-that it is *right*. It also pins one case where the classifier is provably wrong:
-anchor `A12` is a substantive answer *about* over-refusal that quotes a refusal clause,
-and `is_refusal` matches decisive markers as substrings and cannot tell a speech act
-from a mention. That is recorded as a documented divergence rather than quietly fixed,
-because fixing it moves three published surfaces and owes each a methodology
-re-baseline. The debt is visible instead of absorbed.
+that it is *right*. Anchor `A12` used to pin a documented failure: a substantive answer
+*about* over-refusal quoted “I cannot help with that,” and the v3 judge confused the
+mention with the model's own speech act.
+
+Method v4 fixes that narrow class explicitly. Before decisive refusal markers are
+matched, balanced same-line spans in straight double quotes, curly double quotes and
+the common Chinese corner-quote pairs are removed from the **speech-act view** of the
+text. Engagement and party-line checks still see the full text; otherwise quoting a
+historical phrase could erase evidence needed by those classifiers. Genuine unquoted
+refusals still fire. This is a method change, not a silent correction: the judge
+fingerprint moves, the v3 longitudinal series closes, and the next public reading starts
+a v4 baseline.
+
+The guard is deliberately finite. An unmatched quote, an indirect paraphrase or an
+unrecognised delimiter can still be misclassified. The public transcripts keep those
+cases inspectable, while the unfinished two-human study remains the test of construct
+validity.
 
 ## What the seal now proves that it did not
 
@@ -175,6 +186,12 @@ and need no trust in us at all. Step three re-runs *our* classifier, so it prove
 pipeline is consistent, not that the labels are correct. The transcripts are published
 for the separate purpose of letting a reader reach their own verdict on a specific
 response, which now costs them a text editor rather than an API key.
+
+The latest served frontier artifact at the time of the v4 code release is still stamped
+method v3. Its response seals remain intact and all current labels happen to re-derive
+under v4, but the assurance report correctly marks pipeline reproducibility **partial**
+until a fresh run establishes the new baseline. No drift comparison is allowed to cross
+that method boundary.
 
 ## Cadence, and why it is split
 
@@ -293,6 +310,8 @@ publish refusal transcripts" would be false, and are not made here.
 - `core/judge_anchors.py` — fingerprint and agreement.
 - `scripts/refusal_drift_pull.py` — the driver.
 - `scripts/verify_refusal_transcripts.py` — transcripts → seal → labels.
+- `tests/test_refusal_needs_more_than_a_function_word.py` — ordinary descriptive uses,
+  quote/mention cases and genuine unquoted refusals that pin the v4 speech-act boundary.
 - `tests/test_eval_stats.py` — the martingale property by exhaustive enumeration,
   Ville's bound by seeded simulation, and the small-n behaviour of every interval.
 - `tests/test_refusal_drift_publish.py` — the driver end to end, offline.
