@@ -63,6 +63,7 @@ REGISTRY_WHAT = (
 )
 REGISTRY_PUBLIC_PATH = "readings/eval-registry.jsonl"
 REGISTRY_VERIFY_COMMAND = "python3 scripts/verify_eval_registry.py"
+MAX_REGISTRY_SUMMARY_BYTES = 4 * 1024 * 1024
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _DIGEST_PREREGISTRATION_KEYS = frozenset(
@@ -181,6 +182,15 @@ def _append_locked(path: str | Path, core: dict) -> dict:
     prev = entries[-1]["entry_hash"] if entries else GENESIS_PREV
     core = {"seq": seq, "prev_hash": prev, **core}
     entry = {**core, "entry_hash": _entry_hash(core)}
+    ok, problems = verify([*entries, entry])
+    if not ok:
+        raise ValueError(
+            "refusing to append an entry that fails verification: "
+            + "; ".join(problems)
+        )
+    # Refuse before the ledger changes if its deterministic public projection
+    # would no longer fit the verifier's bounded read contract.
+    encode_summary_document([*entries, entry])
     encoded = json.dumps(entry, ensure_ascii=False, allow_nan=False).encode("utf-8")
     atomic_replace_bytes(path, raw + encoded + b"\n")
     return entry
@@ -415,6 +425,8 @@ def preregister(path: str, probes, *, suite: str = "", note: str = "",
                 now: datetime | None = None) -> dict:
     """Freeze a probe set BEFORE running any model. Returns the sealed attestation
     (its `probe_set_hash` is what a later run must reference)."""
+    if suite == MYQUANT_DIGEST_SUITE:
+        raise ValueError("suite is reserved for digest receipt preregistrations")
     ph = probe_set_hash(probes)
     with registry_lock(path):
         ts = (now or datetime.now(timezone.utc)).isoformat()
@@ -430,6 +442,8 @@ def submit_run(path: str, *, probe_set_hash: str, model: str, responses,
     """Record an evaluation run. The probe_set_hash MUST already be pre-registered in this
     registry (verify() enforces it). `responses` is hashed, not necessarily stored here —
     publish it alongside so anyone can recompute `responses_hash`."""
+    if suite == MYQUANT_DIGEST_SUITE:
+        raise ValueError("suite is reserved for digest receipt runs")
     digest = responses_hash(responses)
     with registry_lock(path):
         ts = (now or datetime.now(timezone.utc)).isoformat()
@@ -721,12 +735,29 @@ def summary_document(entries: list[dict]) -> dict:
     }
 
 
+def encode_summary_document(entries: list[dict]) -> bytes:
+    """Serialize the public projection within its verifier read bound."""
+    encoded = (
+        json.dumps(
+            summary_document(entries),
+            ensure_ascii=False,
+            indent=2,
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+    if len(encoded) > MAX_REGISTRY_SUMMARY_BYTES:
+        raise ValueError(
+            "eval registry summary exceeds "
+            f"{MAX_REGISTRY_SUMMARY_BYTES} bytes"
+        )
+    return encoded
+
+
 def write_summary(path: str | Path, entries: list[dict]) -> dict:
     """Atomically and durably publish a summary from already-read entries."""
     document = summary_document(entries)
-    encoded = (
-        json.dumps(document, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
-    ).encode("utf-8")
+    encoded = encode_summary_document(entries)
     atomic_replace_bytes(path, encoded)
     return document
 

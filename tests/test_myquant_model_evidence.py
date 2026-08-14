@@ -86,7 +86,7 @@ def _write_envelope(
 
 def _locations(tmp_path: Path) -> tuple[Path, Path, Path]:
     readings = tmp_path / "readings"
-    readings.mkdir()
+    readings.mkdir(exist_ok=True)
     return (
         readings / "eval-registry.jsonl",
         readings / "myquant-model-evidence" / "sha256",
@@ -101,11 +101,7 @@ def _import(
     now: datetime,
     name: str,
 ) -> tuple[evidence.ImportResult, tuple[Path, Path, Path], Path]:
-    locations = _locations(tmp_path) if not (tmp_path / "readings").exists() else (
-        tmp_path / "readings" / "eval-registry.jsonl",
-        tmp_path / "readings" / "myquant-model-evidence" / "sha256",
-        tmp_path / "readings" / "myquant-model-evidence-latest.json",
-    )
+    locations = _locations(tmp_path)
     envelope = _write_envelope(tmp_path / name, receipt)
     result = evidence.import_envelope(
         envelope,
@@ -165,7 +161,7 @@ def test_run_commits_the_exact_result_receipt_not_the_private_result_artifact(
     tmp_path: Path,
 ) -> None:
     preregistration = _preregistration()
-    prereg, locations, _ = _import(
+    prereg, _, _ = _import(
         tmp_path, preregistration, now=BASE, name="prereg.json"
     )
     run_receipt = _run(prereg.receipt_sha256)
@@ -401,7 +397,7 @@ def test_hash_mismatch_duplicate_json_key_and_symlink_input_are_rejected(
 
 @pytest.mark.parametrize("numeric_value", ["1e999", "9" * 5000])
 def test_nonfinite_or_oversized_numbers_are_cleanly_refused(
-    tmp_path: Path, capsys, numeric_value: str
+    monkeypatch, tmp_path: Path, capsys, numeric_value: str
 ) -> None:
     path = tmp_path / "numeric-envelope.json"
     path.write_text(
@@ -413,6 +409,17 @@ def test_nonfinite_or_oversized_numbers_are_cleanly_refused(
 
     with pytest.raises(evidence.EvidenceImportError):
         evidence.load_envelope(path, now=BASE)
+    registry_path, store, latest = _locations(tmp_path)
+    monkeypatch.setattr(
+        import_cli,
+        "import_envelope",
+        lambda envelope: evidence.import_envelope(
+            envelope,
+            registry_path=registry_path,
+            store_dir=store,
+            latest_path=latest,
+        ),
+    )
     assert import_cli.main([str(path)]) == 2
     assert "REFUSING" in capsys.readouterr().err
 

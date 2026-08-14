@@ -113,6 +113,14 @@ producer-declared UTC times.
 The order is the whole point — **freeze, then run, then submit**. A run whose probe set
 was not pre-registered *earlier in the same chain* fails `verify()`, by design.
 
+Writers verify the complete candidate chain and atomically replace the JSONL snapshot,
+so an interrupted append cannot leave a partial tail. This deliberately makes append
+cost linear in the current ledger size. The deterministic public summary is capped at
+4 MiB and a candidate that would exceed that verifier read bound is rejected before the
+ledger changes. If normal growth approaches that ceiling, the format must move to a
+separately reviewed segmented-ledger version rather than silently weakening atomicity or
+truncating the published model inventory.
+
 ```python
 import core.eval_registry as reg          # PYTHONPATH=. from the repo root
 

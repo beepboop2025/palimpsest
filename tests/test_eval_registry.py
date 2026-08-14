@@ -42,10 +42,14 @@ def test_probe_set_hash_is_order_independent():
 def test_run_without_preregistration_is_rejected():
     # answers before the questions were frozen -> must fail verification
     p = _registry()
-    reg.submit_run(p, probe_set_hash="deadbeef" * 8, model="m", responses={"q": "a"})
-    ok, problems = reg.verify(reg.read_ledger(p))
-    assert not ok
-    assert any("never pre-registered" in x for x in problems)
+    with pytest.raises(ValueError, match="never pre-registered"):
+        reg.submit_run(
+            p,
+            probe_set_hash="deadbeef" * 8,
+            model="m",
+            responses={"q": "a"},
+        )
+    assert reg.read_ledger(p) == []
 
 
 def test_metric_tamper_is_caught():
@@ -68,7 +72,7 @@ def test_responses_tamper_is_caught():
                    responses={"q": "refused"}, metrics={})
     entries = reg.read_ledger(p)
     entries[1]["responses_hash"] = "0" * 64
-    ok, problems = reg.verify(entries)
+    ok, _ = reg.verify(entries)
     assert not ok
 
 
@@ -79,10 +83,27 @@ def test_unknown_kind_is_rejected_even_when_its_hash_recomputes():
     # through. Only the kind allowlist stops it, and it must, because an unrecognised kind
     # is by definition an attestation whose rules nobody enforced.
     p = _registry()
-    reg.preregister(p, PROBES)
-    reg._append(p, {"ts": "2026-01-01T00:00:00+00:00", "kind": "result",  # not RUN
-                    "probe_set_hash": "0" * 64, "model": "m", "metrics": {"score": 99.9}})
-    entries = reg.read_ledger(p)
+    preregistration = reg.preregister(p, PROBES)
+    forged_core = {
+        "seq": 1,
+        "prev_hash": preregistration["entry_hash"],
+        "ts": "2026-01-01T00:00:00+00:00",
+        "kind": "result",
+        "probe_set_hash": "0" * 64,
+        "model": "m",
+        "metrics": {"score": 99.9},
+    }
+    forged = {**forged_core, "entry_hash": reg._entry_hash(forged_core)}
+    with pytest.raises(ValueError, match="unknown kind"):
+        reg._append(
+            p,
+            {
+                key: value
+                for key, value in forged_core.items()
+                if key not in {"seq", "prev_hash"}
+            },
+        )
+    entries = [preregistration, forged]
     # the forged line's own hash is genuinely correct — the attacker did their arithmetic
     core = {k: entries[1][k] for k in entries[1] if k != "entry_hash"}
     assert reg._entry_hash(core) == entries[1]["entry_hash"]
@@ -111,7 +132,7 @@ def test_reorder_answers_before_questions_is_caught():
     reg.submit_run(p, probe_set_hash=pr["probe_set_hash"], model="m", responses={"q": "a"})
     entries = reg.read_ledger(p)
     entries[0], entries[1] = entries[1], entries[0]
-    ok, problems = reg.verify(entries)
+    ok, _ = reg.verify(entries)
     assert not ok
 
 
@@ -143,21 +164,45 @@ def test_duplicate_json_keys_are_rejected_before_their_valid_hash_can_hide_them(
 
 def test_reserved_myquant_schema_cannot_downgrade_to_legacy_rules(tmp_path):
     path = str(tmp_path / "registry.jsonl")
-    entry = reg._append(
-        path,
-        {
-            "ts": "2026-08-14T00:00:00+00:00",
-            "kind": reg.PREREGISTRATION,
-            "probe_set_hash": "a" * 64,
-            "n_probes": 1,
-            "suite": reg.MYQUANT_DIGEST_SUITE,
-            "note": "",
-            "receipt_schema": reg.MYQUANT_PREREGISTRATION_RECEIPT_SCHEMA,
-        },
-    )
-    ok, problems = reg.verify([entry])
-    assert not ok
-    assert any("reserved MyQuant fields require" in problem for problem in problems)
+    with pytest.raises(ValueError, match="fails verification"):
+        reg._append(
+            path,
+            {
+                "ts": "2026-08-14T00:00:00+00:00",
+                "kind": reg.PREREGISTRATION,
+                "probe_set_hash": "a" * 64,
+                "n_probes": 1,
+                "suite": reg.MYQUANT_DIGEST_SUITE,
+                "note": "",
+                "receipt_schema": reg.MYQUANT_PREREGISTRATION_RECEIPT_SCHEMA,
+            },
+        )
+    assert not os.path.exists(path)
+
+
+def test_legacy_writers_reject_the_reserved_myquant_suite_before_writing(tmp_path):
+    path = str(tmp_path / "registry.jsonl")
+    with pytest.raises(ValueError, match="reserved for digest receipt preregistrations"):
+        reg.preregister(path, ["probe"], suite=reg.MYQUANT_DIGEST_SUITE)
+    with pytest.raises(ValueError, match="reserved for digest receipt runs"):
+        reg.submit_run(
+            path,
+            probe_set_hash="a" * 64,
+            model="legacy-model",
+            responses={},
+            suite=reg.MYQUANT_DIGEST_SUITE,
+        )
+    assert not os.path.exists(path)
+
+
+def test_append_refuses_before_writing_an_oversized_registry_summary(
+    monkeypatch, tmp_path
+):
+    path = str(tmp_path / "registry.jsonl")
+    monkeypatch.setattr(reg, "MAX_REGISTRY_SUMMARY_BYTES", 1)
+    with pytest.raises(ValueError, match="summary exceeds"):
+        reg.preregister(path, ["probe"], suite="bounded-summary")
+    assert not os.path.exists(path)
 
 
 def test_concurrent_registry_writers_get_unique_contiguous_chain_slots(tmp_path):
@@ -290,14 +335,4 @@ def test_unlocked_read_only_verifier_rejects_a_changed_registry_snapshot(
 
 
 if __name__ == "__main__":
-    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
-    passed = 0
-    for fn in fns:
-        try:
-            fn()
-            print(f"  PASS  {fn.__name__}")
-            passed += 1
-        except AssertionError as e:
-            print(f"  FAIL  {fn.__name__}: {e}")
-    print(f"=== eval_registry: {passed}/{len(fns)} passed ===")
-    sys.exit(0 if passed == len(fns) else 1)
+    raise SystemExit(pytest.main([__file__, "-v"]))

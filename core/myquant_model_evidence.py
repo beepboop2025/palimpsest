@@ -449,12 +449,12 @@ def _ensure_stored(store: Path, digest: str, receipt_bytes: bytes) -> bool:
             os.fsync(handle.fileno())
         try:
             os.link(temporary, target)
-        except FileExistsError:
+        except FileExistsError as exc:
             existing = _read_regular(target, MAX_ENVELOPE_BYTES, "stored evidence receipt")
             if existing != receipt_bytes:
                 raise EvidenceImportError(
                     "content-addressed receipt raced with different bytes"
-                )
+                ) from exc
             return False
         _fsync_directory(target.parent)
         return True
@@ -615,6 +615,13 @@ def _expected_registry_latest(entries: list[dict]) -> dict[str, Any] | None:
     return registry.summary_document(entries)
 
 
+def _registry_summary_bytes(document: dict[str, Any]) -> bytes:
+    encoded = canonical_json_bytes(document) + b"\n"
+    if len(encoded) > registry.MAX_REGISTRY_SUMMARY_BYTES:
+        raise EvidenceImportError("eval registry summary exceeds its read bound")
+    return encoded
+
+
 def _assert_latest_consistent(
     latest: Path, expected: dict[str, Any] | None
 ) -> None:
@@ -637,7 +644,11 @@ def _assert_registry_latest_consistent(
         return
     if expected is None:
         raise EvidenceImportError("eval registry summary exists without registry entries")
-    raw = _read_regular(latest, MAX_ENVELOPE_BYTES, "eval registry summary")
+    raw = _read_regular(
+        latest,
+        registry.MAX_REGISTRY_SUMMARY_BYTES,
+        "eval registry summary",
+    )
     actual = _parse_json(raw, "eval registry summary")
     if canonical_json_bytes(actual) != canonical_json_bytes(expected):
         raise EvidenceImportError(
@@ -727,14 +738,14 @@ def _import_envelope_locked(
         )
         try:
             _assert_latest_consistent(latest, expected)
-        except EvidenceImportError:
+        except EvidenceImportError as exc:
             # The registry append may have landed immediately before a crash.  Only
             # the exact deterministic predecessor projection is safe to supersede.
             if not exact_is_tail:
                 raise EvidenceImportError(
                     "stale latest projection is not the exact predecessor of the "
                     "replayed registry tail"
-                )
+                ) from exc
             predecessor = entries[:-1]
             _assert_latest_consistent(
                 latest, _expected_latest(predecessor, store, current)
@@ -742,12 +753,12 @@ def _import_envelope_locked(
             rewrite_latest = True
         try:
             _assert_registry_latest_consistent(registry_latest, registry_summary)
-        except EvidenceImportError:
+        except EvidenceImportError as exc:
             if not exact_is_tail:
                 raise EvidenceImportError(
                     "stale registry summary is not the exact predecessor of the "
                     "replayed registry tail"
-                )
+                ) from exc
             _assert_registry_latest_consistent(
                 registry_latest,
                 _expected_registry_latest(entries[:-1]),
@@ -757,9 +768,7 @@ def _import_envelope_locked(
             _atomic_write(latest, canonical_json_bytes(expected) + b"\n")
             stored = True
         if rewrite_registry_latest and registry_summary is not None:
-            _atomic_write(
-                registry_latest, canonical_json_bytes(registry_summary) + b"\n"
-            )
+            _atomic_write(registry_latest, _registry_summary_bytes(registry_summary))
             stored = True
         return ImportResult(kind, digest, exact["seq"], stored)
 
@@ -872,9 +881,7 @@ def _import_envelope_locked(
     registry_summary = _expected_registry_latest(updated)
     if registry_summary is None:  # pragma: no cover - impossible after append
         raise EvidenceImportError("eval registry summary cannot be built after append")
-    _atomic_write(
-        registry_latest, canonical_json_bytes(registry_summary) + b"\n"
-    )
+    _atomic_write(registry_latest, _registry_summary_bytes(registry_summary))
     return ImportResult(kind, digest, appended["seq"], True)
 
 
@@ -1026,13 +1033,13 @@ def verify_publication(
 __all__ = [
     "AUTHORITY",
     "ENVELOPE_SCHEMA",
-    "EvidenceImportError",
-    "ImportResult",
     "LATEST_SCHEMA",
     "PREREGISTRATION_KIND",
     "PREREGISTRATION_SCHEMA",
     "RUN_KIND",
     "RUN_SCHEMA",
+    "EvidenceImportError",
+    "ImportResult",
     "canonical_json_bytes",
     "import_envelope",
     "load_envelope",
