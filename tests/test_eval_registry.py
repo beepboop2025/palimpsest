@@ -319,16 +319,55 @@ def test_unlocked_read_only_verifier_rejects_a_changed_registry_snapshot(
         "MYQUANT_LATEST",
         str(tmp_path / "myquant-model-evidence-latest.json"),
     )
-    original_snapshot = reg.read_ledger_snapshot
+    original_snapshot = verify_cli._publication_snapshot
     reads = 0
 
-    def changed_snapshot(path):
+    def changed_snapshot(held_entries):
         nonlocal reads
-        held_entries, raw = original_snapshot(path)
+        snapshots = original_snapshot(held_entries)
         reads += 1
-        return held_entries, raw if reads == 1 else raw + b"changed"
+        if reads == 2:
+            snapshots[str(registry)] += b"changed"
+        return snapshots
 
-    monkeypatch.setattr(reg, "read_ledger_snapshot", changed_snapshot)
+    monkeypatch.setattr(verify_cli, "_publication_snapshot", changed_snapshot)
+
+    assert verify_cli.main() == 1
+    assert "changed during" in capsys.readouterr().out
+
+
+def test_unlocked_read_only_verifier_rejects_a_changed_projection_snapshot(
+    monkeypatch, tmp_path, capsys
+):
+    registry = tmp_path / "eval-registry.jsonl"
+    summary = tmp_path / "eval-registry-latest.json"
+    reg.preregister(str(registry), ["probe"], suite="projection-race")
+    reg.write_summary(summary, reg.read_ledger(str(registry)))
+    (tmp_path / ".eval-registry.jsonl.lock").unlink()
+    monkeypatch.setattr(verify_cli, "REGISTRY", str(registry))
+    monkeypatch.setattr(verify_cli, "REGISTRY_LATEST", str(summary))
+    monkeypatch.setattr(
+        verify_cli,
+        "MYQUANT_STORE",
+        str(tmp_path / "myquant-model-evidence" / "sha256"),
+    )
+    monkeypatch.setattr(
+        verify_cli,
+        "MYQUANT_LATEST",
+        str(tmp_path / "myquant-model-evidence-latest.json"),
+    )
+    original_snapshot = verify_cli._publication_snapshot
+    reads = 0
+
+    def changed_snapshot(held_entries):
+        nonlocal reads
+        snapshots = original_snapshot(held_entries)
+        reads += 1
+        if reads == 2:
+            snapshots[str(summary)] += b"changed"
+        return snapshots
+
+    monkeypatch.setattr(verify_cli, "_publication_snapshot", changed_snapshot)
 
     assert verify_cli.main() == 1
     assert "changed during" in capsys.readouterr().out

@@ -735,17 +735,8 @@ def summary_document(entries: list[dict]) -> dict:
     }
 
 
-def encode_summary_document(entries: list[dict]) -> bytes:
-    """Serialize the public projection within its verifier read bound."""
-    encoded = (
-        json.dumps(
-            summary_document(entries),
-            ensure_ascii=False,
-            indent=2,
-            allow_nan=False,
-        )
-        + "\n"
-    ).encode("utf-8")
+def _encode_summary_document(document: dict) -> bytes:
+    encoded = _canonical(document) + b"\n"
     if len(encoded) > MAX_REGISTRY_SUMMARY_BYTES:
         raise ValueError(
             "eval registry summary exceeds "
@@ -754,10 +745,15 @@ def encode_summary_document(entries: list[dict]) -> bytes:
     return encoded
 
 
+def encode_summary_document(entries: list[dict]) -> bytes:
+    """Serialize the public projection within its verifier read bound."""
+    return _encode_summary_document(summary_document(entries))
+
+
 def write_summary(path: str | Path, entries: list[dict]) -> dict:
     """Atomically and durably publish a summary from already-read entries."""
     document = summary_document(entries)
-    encoded = encode_summary_document(entries)
+    encoded = _encode_summary_document(document)
     atomic_replace_bytes(path, encoded)
     return document
 
