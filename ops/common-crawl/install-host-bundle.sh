@@ -44,12 +44,62 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
   GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 
 for command_name in awk bash chmod chown cmp df dirname find findmnt getent \
-  getfacl git install ln mktemp mountpoint mv pgrep readlink realpath rm sed \
+  getfacl grep install ln mktemp mountpoint mv pgrep readlink realpath rm sed \
   sha256sum sort stat sync systemctl systemd-analyze systemd-escape \
   systemd-tmpfiles; do
   command -v "$command_name" >/dev/null 2>&1 \
     || die "required command is missing: $command_name"
 done
+
+[[ -x /usr/bin/git && ! -L /usr/bin/git ]] \
+  || die "the pinned Git executable is missing or unsafe"
+[[ -d "$repo_root/.git" && ! -L "$repo_root/.git" \
+    && -d "$repo_root/.git/objects" && ! -L "$repo_root/.git/objects" \
+    && -f "$repo_root/.git/index" && ! -L "$repo_root/.git/index" ]] \
+  || die "the deployment checkout Git metadata is unsafe"
+for forbidden_path in \
+    "$repo_root/.git/info/grafts" \
+    "$repo_root/.git/objects/info/alternates"; do
+  [[ ! -e "$forbidden_path" && ! -L "$forbidden_path" ]] \
+    || die "Git grafts or object alternates are forbidden"
+done
+if [[ -e "$repo_root/.git/refs/replace" \
+    || -L "$repo_root/.git/refs/replace" ]]; then
+  [[ -d "$repo_root/.git/refs/replace" \
+      && ! -L "$repo_root/.git/refs/replace" ]] \
+    || die "Git replacement refs path is unsafe"
+  [[ -z "$(find "$repo_root/.git/refs/replace" \
+      -mindepth 1 -print -quit)" ]] \
+    || die "Git replacement refs are forbidden"
+fi
+[[ ! -L "$repo_root/.git/packed-refs" ]] \
+  || die "packed Git refs path is unsafe"
+if [[ -f "$repo_root/.git/packed-refs" ]] \
+    && grep -Eq '[[:space:]]refs/replace/' "$repo_root/.git/packed-refs"; then
+  die "packed Git replacement refs are forbidden"
+fi
+
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
+export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+audit_git="$(mktemp -d /run/palimpsest-common-crawl-git.XXXXXX)"
+chmod 0700 "$audit_git"
+cleanup_audit_git() {
+  if [[ -n "${audit_git:-}" && -d "$audit_git" ]]; then
+    rm -rf -- "$audit_git"
+  fi
+}
+trap cleanup_audit_git EXIT
+/usr/bin/git --no-replace-objects init --bare --quiet "$audit_git" \
+  || die "cannot initialize the isolated Git audit view"
+install -o root -g root -m 0600 "$repo_root/.git/index" "$audit_git/index"
+export GIT_ALTERNATE_OBJECT_DIRECTORIES="$repo_root/.git/objects"
+safe_git() {
+  /usr/bin/git --no-replace-objects --git-dir="$audit_git" \
+    --work-tree="$repo_root" -c core.bare=false -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c credential.helper= -c protocol.file.allow=never "$@"
+}
 
 [[ "$warehouse_source" =~ ^/[A-Za-z0-9._/-]+$ ]] \
   || die "warehouse source contains unsupported characters"
@@ -85,15 +135,13 @@ else
     || die "new warehouse requires at least 256 GiB free on its backing filesystem"
 fi
 
-if ! revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" rev-parse --verify HEAD 2>/dev/null
-)"; then
-  die "cannot resolve the checked-out Git revision"
-fi
+revision="$(cat "$repo_root/.git/HEAD")" \
+  || die "cannot read the detached Git revision"
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || die "Git returned a malformed revision"
+printf '%s\n' "$revision" >"$audit_git/HEAD"
 checkout_status="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    status --porcelain=v1 --untracked-files=all 2>/dev/null
-)" || die "cannot verify that the Git checkout is clean"
+  safe_git status --porcelain=v1 --untracked-files=all 2>/dev/null
+)" || die "cannot verify the Git checkout through the isolated audit view"
 [[ "$revision" =~ ^[0-9a-f]{40}$ && -z "$checkout_status" ]] \
   || die "checkout is dirty or has a malformed revision"
 [[ -r "$receipt_path" ]] || die "deployed commit receipt is missing"
@@ -163,6 +211,16 @@ validate_and_enroll_duckdb() {
   fi
 }
 
+# Installers replace these unit paths and cannot preserve masked state. Refuse
+# before identity, storage, pin, bundle, or unit mutation.
+for unit_name in "${service_units[@]}" "${backup_units[@]}" \
+    "${network_units[@]}"; do
+  unit_enablement="$(systemctl is-enabled "$unit_name" 2>/dev/null || true)"
+  case "$unit_enablement" in
+    masked|masked-runtime) die "$unit_name is masked" ;;
+  esac
+done
+
 bash "$repo_root/ops/investigative-analysis/install-host-bundle.sh" --ensure-identity
 user_record="$(getent passwd palimpsest-analysis || true)"
 group_record="$(getent group palimpsest-analysis || true)"
@@ -209,7 +267,8 @@ bleed_timer_enablement="$(
   systemctl is-enabled palimpsest-bleedthrough.timer 2>/dev/null || true
 )"
 case "$bleed_timer_enablement" in
-  ""|disabled|masked|not-found) ;;
+  ""|disabled|not-found) ;;
+  masked|masked-runtime) die "palimpsest-bleedthrough.timer is masked" ;;
   *) die "palimpsest-bleedthrough.timer must be disabled during installation" ;;
 esac
 active_mirrors="$(
@@ -255,8 +314,7 @@ fi
 verify_git_blob() {
   local repository_path="$1"
   local installed_path="$2"
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    show "$revision:$repository_path" \
+  safe_git show "$revision:$repository_path" \
     | cmp -s - "$installed_path" \
     || die "installed bytes do not match Git HEAD: $repository_path"
 }
@@ -397,6 +455,7 @@ cleanup() {
   if [[ -L "${lane_link_tmp:-}" ]]; then
     rm -- "$lane_link_tmp"
   fi
+  cleanup_audit_git
 }
 trap cleanup EXIT
 
@@ -492,12 +551,9 @@ chmod 0444 "$bundle_tmp/MANIFEST.sha256"
   || die "staged Common Crawl bundle failed validation"
 sync -f "$bundle_tmp"
 
-final_revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" rev-parse --verify HEAD
-)"
+final_revision="$(cat "$repo_root/.git/HEAD")"
 checkout_status="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    status --porcelain=v1 --untracked-files=all
+  safe_git status --porcelain=v1 --untracked-files=all
 )"
 [[ "$final_revision" == "$revision" && -z "$checkout_status" ]] \
   || die "checkout changed while the bundle was staged"
@@ -578,18 +634,19 @@ install -m 0644 "$repo_root/ops/systemd/palimpsest-network-lane.tmpfiles.conf" \
 verify_git_blob \
   "ops/systemd/palimpsest-network-lane.tmpfiles.conf" \
   "$unit_stage/palimpsest-network-lane.tmpfiles.conf"
-unit_paths=("$unit_stage/$mount_unit")
+osint_provider_unit='/etc/systemd/system/palimpsest-public-osint-sync.service'
+[[ -f "$osint_provider_unit" && ! -L "$osint_provider_unit" \
+    && "$(stat -c '%u:%g:%a:%h' "$osint_provider_unit")" == '0:0:644:1' ]] \
+  || die "the required public OSINT provider unit is not safely installed"
+unit_paths=("$osint_provider_unit" "$unit_stage/$mount_unit")
 for unit_name in "${service_units[@]}" "${backup_units[@]}" "${network_units[@]}"; do
   unit_paths+=("$unit_stage/$unit_name")
 done
 systemd-analyze verify "${unit_paths[@]}"
 
-final_revision="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" rev-parse --verify HEAD
-)"
+final_revision="$(cat "$repo_root/.git/HEAD")"
 checkout_status="$(
-  git -c "safe.directory=$repo_root" -C "$repo_root" \
-    status --porcelain=v1 --untracked-files=all
+  safe_git status --porcelain=v1 --untracked-files=all
 )"
 [[ "$final_revision" == "$revision" && -z "$checkout_status" ]] \
   || die "checkout changed while systemd units were validated"

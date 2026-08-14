@@ -52,12 +52,13 @@ sudo systemctl status palimpsest-backup.service --no-pager
 systemctl list-timers palimpsest-backup.timer
 ```
 
-## Required post-build release proof
+## Required pre-change release proof
 
 A node release stops this timer and service before changing the checkout, then
-records the newest complete snapshot name. After the exact-SHA image build, it
-starts this service once while every receipt and immutable host bundle still
-names the old deployment. If the removable node-offsite `OnSuccess` drop-in is
+records the newest complete snapshot name. Before an exact-SHA checkout, image
+build, migration, receipt change, or candidate process, it starts this service
+once while every receipt and immutable host bundle still names the old
+deployment. If the removable node-offsite `OnSuccess` drop-in is
 installed, the release first installs the reviewed lexically-last
 `zz-release-quiesce.conf` drop-in on this local backup service. Its empty
 `OnSuccess=` resets every success trigger while the transaction is in flight.
@@ -73,7 +74,7 @@ checksum and manifest inventories, valid PostgreSQL framing, and an archive
 that exactly matches its listing:
 
 ```bash
-PRE_BUILD_SNAPSHOT="$(latest_node_snapshot)"
+PRE_CHANGE_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
 sudo systemctl reset-failed palimpsest-backup.service
 sudo systemctl start palimpsest-backup.service
 test "$(sudo systemctl show --property=ConditionResult --value \
@@ -82,14 +83,31 @@ test "$(sudo systemctl show --property=Result --value \
   palimpsest-backup.service)" = "success"
 test "$(sudo systemctl show --property=ExecMainStatus --value \
   palimpsest-backup.service)" = "0"
-POST_BUILD_SNAPSHOT="$(latest_node_snapshot)"
-test -n "$POST_BUILD_SNAPSHOT"
-test "$POST_BUILD_SNAPSHOT" != "$PRE_BUILD_SNAPSHOT"
+PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"
+test -n "$PRE_CHANGE_SNAPSHOT"
+test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
 sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
-  _ "$NODE_BACKUP_ROOT/$POST_BUILD_SNAPSHOT"
-sudo python3 ops/backup/node_backup_snapshot.py verify \
-  "$NODE_BACKUP_ROOT/$POST_BUILD_SNAPSHOT" \
-  --snapshot-id "$POST_BUILD_SNAPSHOT"
+  _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
+BACKUP_ACTUAL_INVENTORY="$(sudo find \
+  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" -mindepth 1 -maxdepth 1 \
+  -printf '%f\n' | LC_ALL=C sort)"
+test "$BACKUP_ACTUAL_INVENTORY" = "$BACKUP_EXPECTED_INVENTORY"
+for backup_file in MANIFEST.txt artifacts.list artifacts.tar.gz \
+    postgres.dump postgres.list; do
+  sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
+done
+BACKUP_VERIFICATION_JSON="$(sudo python3 \
+  ops/backup/node_backup_snapshot.py verify \
+  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" \
+  --snapshot-id "$PRE_CHANGE_SNAPSHOT")"
+printf '%s\n' "$BACKUP_VERIFICATION_JSON" | python3 -c '
+import json, sys
+value = json.load(sys.stdin)
+if value.get("schema") != "palimpsest-node-backup-verification.v1" \
+        or value.get("status") != "verified":
+    raise SystemExit("pre-change snapshot receipt is not verified")
+'
 ```
 
 The `latest_node_snapshot` helper and fixed production `NODE_BACKUP_ROOT` are
@@ -214,7 +232,7 @@ The result must have exactly the reviewed top-level roots
 `readings/`, `data/`, `newswire/`, and `analysis/`. Verify the restored private
 modes, the exact `analysis/delivery/` inventory, and
 numeric owners before using them. Only after inspecting both restores should an
-operator schedule downtime and separately promote those three roots to
+operator schedule downtime and separately promote those four roots to
 `/var/lib/palimpsest/readings`, `/var/lib/palimpsest/data`,
 `/var/lib/palimpsest/newswire`, and `/var/lib/palimpsest-analysis`. Dropping the live database or replacing any
 live artifact tree is intentionally not automated by this repository.

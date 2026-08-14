@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import shlex
+import shutil
 import sqlite3
 import stat
 import subprocess
@@ -904,6 +905,7 @@ def _installer_function(source: str, name: str) -> str:
 def test_installer_git_blob_verifier_executes_and_rejects_changed_bytes(tmp_path):
     installer = ROOT / "ops/common-crawl/install-host-bundle.sh"
     source = installer.read_text(encoding="utf-8")
+    safe_git = _installer_function(source, "safe_git")
     verifier = _installer_function(source, "verify_git_blob")
     revision = subprocess.run(
         ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
@@ -920,13 +922,38 @@ def test_installer_git_blob_verifier_executes_and_rejects_changed_bytes(tmp_path
             capture_output=True,
         ).stdout
     )
+    git_dir = Path(
+        subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--absolute-git-dir"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+    common_dir = Path(
+        subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+    audit_git = tmp_path / "audit.git"
+    subprocess.run(["git", "init", "--bare", "--quiet", str(audit_git)], check=True)
+    shutil.copy2(git_dir / "index", audit_git / "index")
+    (audit_git / "HEAD").write_text(f"{revision}\n", encoding="ascii")
     harness = tmp_path / "verify.sh"
     harness.write_text(
         "#!/usr/bin/env bash\n"
         "set -Eeuo pipefail\n"
         "die() { printf '%s\\n' \"$*\" >&2; exit 1; }\n"
         f"repo_root={shlex.quote(str(ROOT))}\n"
+        f"audit_git={shlex.quote(str(audit_git))}\n"
+        f"export GIT_ALTERNATE_OBJECT_DIRECTORIES={shlex.quote(str(common_dir / 'objects'))}\n"
+        "export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null\n"
+        "export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1\n"
         f"revision={shlex.quote(revision)}\n"
+        f"{safe_git}\n"
         f"{verifier}\n"
         f"verify_git_blob {shlex.quote(repository_path)} "
         f"{shlex.quote(str(installed))}\n",

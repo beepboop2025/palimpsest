@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import importlib.util
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
+import stat
 import subprocess
 import sys
+from dataclasses import replace
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -147,7 +149,7 @@ def test_sync_pins_publication_commit_and_installs_ledger_before_artifact(
     original = sync._atomic_replace
 
     def recording_replace(path, raw, **kwargs):
-        if path.parent == fixture["config"].readings_directory:
+        if path.parent == fixture["config"].authority_directory:
             calls.append(path.name)
         return original(path, raw, **kwargs)
 
@@ -162,12 +164,100 @@ def test_sync_pins_publication_commit_and_installs_ledger_before_artifact(
     assert receipt["artifact_sha256"] == sync._sha256(fixture["second_artifact"])
     assert receipt["ledger_sha256"] == sync._sha256(fixture["second_ledger"])
     assert receipt["deployed_commit"] != receipt["publication_commit"]
+    authority = fixture["config"].authority_directory
+    assert (authority / sync.LEDGER_FILENAME).read_bytes() == fixture["second_ledger"]
+    assert (authority / sync.OSINT_FILENAME).read_bytes() == fixture["second_artifact"]
+    assert (authority / sync.LEDGER_FILENAME).stat().st_mode & 0o777 == 0o444
+    assert (authority / sync.OSINT_FILENAME).stat().st_mode & 0o777 == 0o444
+    assert (authority / sync.RECEIPT_FILENAME).stat().st_mode & 0o777 == 0o444
     readings = fixture["config"].readings_directory
-    assert (readings / sync.LEDGER_FILENAME).read_bytes() == fixture["second_ledger"]
-    assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["second_artifact"]
-    assert (readings / sync.LEDGER_FILENAME).stat().st_mode & 0o777 == 0o644
-    assert (readings / sync.OSINT_FILENAME).stat().st_mode & 0o777 == 0o644
+    assert (readings / sync.LEDGER_FILENAME).read_bytes() == fixture["first_ledger"]
+    assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
     assert sync.verify_installed(fixture["config"]) == receipt
+
+
+def test_compatibility_mirror_preserves_legacy_identity_and_exact_bytes(tmp_path):
+    fixture = _fixture(tmp_path)
+    config = replace(fixture["config"], legacy_readings_mirror=True)
+    readings = config.readings_directory
+    artifact_path = readings / sync.OSINT_FILENAME
+    ledger_path = readings / sync.LEDGER_FILENAME
+    artifact_before = artifact_path.stat()
+    ledger_before = ledger_path.stat()
+
+    receipt = sync.synchronize(config, public_fetcher=_candidate_fetch(fixture))
+
+    assert artifact_path.read_bytes() == fixture["second_artifact"]
+    assert ledger_path.read_bytes() == fixture["second_ledger"]
+    artifact_after = artifact_path.stat()
+    ledger_after = ledger_path.stat()
+    assert (
+        stat.S_IMODE(artifact_after.st_mode),
+        artifact_after.st_uid,
+        artifact_after.st_gid,
+    ) == (
+        stat.S_IMODE(artifact_before.st_mode),
+        artifact_before.st_uid,
+        artifact_before.st_gid,
+    )
+    assert (
+        stat.S_IMODE(ledger_after.st_mode),
+        ledger_after.st_uid,
+        ledger_after.st_gid,
+    ) == (
+        stat.S_IMODE(ledger_before.st_mode),
+        ledger_before.st_uid,
+        ledger_before.st_gid,
+    )
+    assert sync.verify_installed(config) == receipt
+
+
+def test_interrupted_compatibility_mirror_is_replayable_and_keeps_old_seal(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path)
+    config = replace(fixture["config"], legacy_readings_mirror=True)
+    original = sync._atomic_replace
+
+    def interrupt_legacy_artifact(path, raw, **kwargs):
+        if (
+            path.parent == config.readings_directory
+            and path.name == sync.OSINT_FILENAME
+            and raw == fixture["second_artifact"]
+        ):
+            raise sync.SyncFailure("fixture-legacy-interruption")
+        return original(path, raw, **kwargs)
+
+    monkeypatch.setattr(sync, "_atomic_replace", interrupt_legacy_artifact)
+    with pytest.raises(sync.SyncFailure, match="fixture-legacy-interruption"):
+        sync.synchronize(config, public_fetcher=_candidate_fetch(fixture))
+
+    readings = config.readings_directory
+    assert (readings / sync.LEDGER_FILENAME).read_bytes() == fixture["second_ledger"]
+    assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
+    old_document = sync._strict_json(
+        fixture["first_artifact"], maximum=sync.MAX_OSINT_BYTES, code="fixture"
+    )
+    old_digest = sync._sha256(sync._canonical(old_document))
+    assert any(
+        entry["payload_sha256"] == old_digest
+        for entry in sync._validate_ledger(fixture["second_ledger"])
+    )
+
+    monkeypatch.setattr(sync, "_atomic_replace", original)
+    receipt = sync.synchronize(config, public_fetcher=_candidate_fetch(fixture))
+    assert sync.verify_installed(config) == receipt
+
+
+def test_compatibility_verifier_detects_legacy_shadow_drift(tmp_path):
+    fixture = _fixture(tmp_path)
+    config = replace(fixture["config"], legacy_readings_mirror=True)
+    sync.synchronize(config, public_fetcher=_candidate_fetch(fixture))
+    artifact = config.readings_directory / sync.OSINT_FILENAME
+    artifact.write_bytes(fixture["first_artifact"])
+
+    with pytest.raises(sync.SyncFailure, match="installed-legacy-mismatch"):
+        sync.verify_installed(config)
 
 
 def test_public_byte_mismatch_preserves_both_last_good_files(tmp_path):
@@ -207,16 +297,16 @@ def test_interrupted_artifact_replace_leaves_old_artifact_sealed_by_new_ledger(
     original = sync._atomic_replace
 
     def interrupt_artifact(path, raw, **kwargs):
-        if path.name == sync.OSINT_FILENAME:
+        if path.name == sync.OSINT_FILENAME and raw == fixture["second_artifact"]:
             raise sync.SyncFailure("fixture-interruption")
         return original(path, raw, **kwargs)
 
     monkeypatch.setattr(sync, "_atomic_replace", interrupt_artifact)
     with pytest.raises(sync.SyncFailure, match="fixture-interruption"):
         sync.synchronize(fixture["config"], public_fetcher=_candidate_fetch(fixture))
-    readings = fixture["config"].readings_directory
-    assert (readings / sync.LEDGER_FILENAME).read_bytes() == fixture["second_ledger"]
-    assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
+    authority = fixture["config"].authority_directory
+    assert (authority / sync.LEDGER_FILENAME).read_bytes() == fixture["second_ledger"]
+    assert (authority / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
     entries = sync._validate_ledger(fixture["second_ledger"])
     old_document = sync._strict_json(
         fixture["first_artifact"], maximum=sync.MAX_OSINT_BYTES, code="fixture"
@@ -228,7 +318,7 @@ def test_interrupted_artifact_replace_leaves_old_artifact_sealed_by_new_ledger(
     receipt = sync.synchronize(
         fixture["config"], public_fetcher=_candidate_fetch(fixture)
     )
-    assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["second_artifact"]
+    assert (authority / sync.OSINT_FILENAME).read_bytes() == fixture["second_artifact"]
     assert sync.verify_installed(fixture["config"]) == receipt
 
 
@@ -329,9 +419,10 @@ def test_stable_lock_refuses_a_concurrent_updater_without_replacing_inode(tmp_pa
     lock_path = state / "sync.lock"
     with sync._lock(state):
         inode = lock_path.stat().st_ino
-        with pytest.raises(sync.SyncFailure, match="sync-already-running"):
-            with sync._lock(state):
-                pass
+        with pytest.raises(sync.SyncFailure, match="sync-already-running"), sync._lock(
+            state
+        ):
+            pass
     assert lock_path.stat().st_ino == inode
 
 
@@ -344,20 +435,143 @@ def test_success_receipt_does_not_erase_historical_failure(tmp_path):
     assert failure_path.read_bytes() == before
 
 
+def test_writable_bootstrap_tree_replacement_cannot_change_authoritative_view(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path)
+    original_validate = sync._validate_authority_pair
+    replaced = False
+
+    def replace_shared_after_validation(*args, **kwargs):
+        nonlocal replaced
+        result = original_validate(*args, **kwargs)
+        if not replaced and kwargs.get("artifact_code") == "bootstrap-osint-invalid":
+            replaced = True
+            shared = fixture["config"].readings_directory
+            attack = shared / "attacker.json"
+            attack.write_bytes(b'{"attacker":true}\n')
+            os.replace(attack, shared / sync.OSINT_FILENAME)
+        return result
+
+    monkeypatch.setattr(sync, "_validate_authority_pair", replace_shared_after_validation)
+    receipt = sync.synchronize(
+        fixture["config"], public_fetcher=_candidate_fetch(fixture)
+    )
+
+    authority = fixture["config"].authority_directory
+    assert (authority / sync.OSINT_FILENAME).read_bytes() == fixture["second_artifact"]
+    assert receipt["artifact_sha256"] == sync._sha256(fixture["second_artifact"])
+    assert (fixture["config"].readings_directory / sync.OSINT_FILENAME).read_bytes() == (
+        b'{"attacker":true}\n'
+    )
+    assert not list(fixture["config"].readings_directory.glob(".*.tmp"))
+    assert sync.verify_installed(fixture["config"]) == receipt
+
+
+def test_byte_identical_authority_converges_metadata_and_ignores_shared_shadow(
+    tmp_path,
+):
+    fixture = _fixture(tmp_path)
+    receipt = sync.synchronize(
+        fixture["config"], public_fetcher=_candidate_fetch(fixture)
+    )
+    authority = fixture["config"].authority_directory
+    artifact = authority / sync.OSINT_FILENAME
+    ledger = authority / sync.LEDGER_FILENAME
+    artifact.chmod(0o666)
+    ledger.chmod(0o600)
+    shared_artifact = fixture["config"].readings_directory / sync.OSINT_FILENAME
+    shared_artifact.write_bytes(b'{"mutable":"shadow"}\n')
+
+    repeated = sync.synchronize(
+        fixture["config"], public_fetcher=_candidate_fetch(fixture)
+    )
+
+    assert repeated == receipt
+    assert stat.S_IMODE(artifact.stat().st_mode) == 0o444
+    assert stat.S_IMODE(ledger.stat().st_mode) == 0o444
+    assert artifact.read_bytes() == fixture["second_artifact"]
+    assert sync.verify_installed(fixture["config"]) == receipt
+
+
+def test_release_proof_pins_repeated_starts_to_exact_publication(tmp_path):
+    fixture = _fixture(tmp_path)
+    proof = {
+        "schema": sync.RELEASE_PROOF_SCHEMA,
+        "resume_token": "a" * 32,
+        "expected_deploy_sha": fixture["config"].deployed_receipt.read_text().strip(),
+        "fetched_main": fixture["main_commit"],
+        "publication_commit": fixture["second_commit"],
+        "artifact_sha256": sync._sha256(fixture["second_artifact"]),
+        "ledger_sha256": sync._sha256(fixture["second_ledger"]),
+    }
+    proof_path = fixture["config"].release_proof_path
+    proof_path.write_bytes(sync._canonical(proof) + b"\n")
+    proof_path.chmod(0o600)
+
+    first = sync.synchronize(
+        fixture["config"], public_fetcher=_candidate_fetch(fixture)
+    )
+    third_document = _document(
+        "2026-08-14T01:15:00Z", fixture["main_commit"], value=3
+    )
+    third_ledger = _append_seal(fixture["second_ledger"], third_document, 2)
+    _write_publication(fixture["source"], third_document, third_ledger, "third")
+
+    repeated = sync.synchronize(
+        fixture["config"], public_fetcher=_candidate_fetch(fixture)
+    )
+
+    assert repeated == first
+    assert repeated["sync_mode"] == "release-pinned"
+    assert repeated["publication_commit"] == fixture["second_commit"]
+    assert repeated["fetched_main"] == fixture["main_commit"]
+    assert repeated["release_proof_sha256"] == sync._sha256(sync._canonical(proof))
+    assert (
+        fixture["config"].authority_directory / sync.OSINT_FILENAME
+    ).read_bytes() == fixture["second_artifact"]
+
+
+def test_release_proof_refuses_wrong_candidate_hash_without_advancing(tmp_path):
+    fixture = _fixture(tmp_path)
+    proof = {
+        "schema": sync.RELEASE_PROOF_SCHEMA,
+        "resume_token": "b" * 32,
+        "expected_deploy_sha": fixture["config"].deployed_receipt.read_text().strip(),
+        "fetched_main": fixture["main_commit"],
+        "publication_commit": fixture["second_commit"],
+        "artifact_sha256": "0" * 64,
+        "ledger_sha256": sync._sha256(fixture["second_ledger"]),
+    }
+    fixture["config"].release_proof_path.write_bytes(sync._canonical(proof) + b"\n")
+    fixture["config"].release_proof_path.chmod(0o600)
+
+    with pytest.raises(sync.SyncFailure, match="release-proof-byte-mismatch"):
+        sync.synchronize(fixture["config"], public_fetcher=_candidate_fetch(fixture))
+
+    authority = fixture["config"].authority_directory
+    assert (authority / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
+    assert (authority / sync.LEDGER_FILENAME).read_bytes() == fixture["first_ledger"]
+
+
 def test_offline_verifier_rejects_artifact_or_receipt_tampering(tmp_path):
     fixture = _fixture(tmp_path)
     sync.synchronize(fixture["config"], public_fetcher=_candidate_fetch(fixture))
-    readings = fixture["config"].readings_directory
-    artifact = readings / sync.OSINT_FILENAME
+    authority = fixture["config"].authority_directory
+    artifact = authority / sync.OSINT_FILENAME
+    artifact.chmod(0o644)
     artifact.write_bytes(artifact.read_bytes() + b" ")
-    with pytest.raises(sync.SyncFailure, match="installed-receipt-mismatch"):
+    with pytest.raises(sync.SyncFailure, match="installed-state-mismatch"):
         sync.verify_installed(fixture["config"])
 
     artifact.write_bytes(fixture["second_artifact"])
-    receipt_path = fixture["config"].state_directory / "receipt.json"
+    artifact.chmod(0o444)
+    receipt_path = fixture["config"].receipt_path
+    receipt_path.chmod(0o644)
     receipt = json.loads(receipt_path.read_text())
     receipt["ledger_head"] = "0" * 64
     receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    receipt_path.chmod(0o444)
     with pytest.raises(sync.SyncFailure, match="installed-receipt-mismatch"):
         sync.verify_installed(fixture["config"])
 
@@ -366,3 +580,4 @@ def test_cli_exposes_no_authority_override():
     parser_source = MODULE_PATH.read_text(encoding="utf-8")
     assert 'parser.add_argument("--repository' not in parser_source
     assert 'parser.add_argument("--public-url' not in parser_source
+    assert 'parser.add_argument("--legacy-readings-mirror"' in parser_source

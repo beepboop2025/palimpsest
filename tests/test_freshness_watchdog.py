@@ -291,12 +291,9 @@ def test_deployment_installs_and_verifies_both_watchdog_units_after_api_probe() 
         "sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.service"
     )
     verify = guide.index("sudo systemd-analyze verify", install_service)
-    restore = guide.index(
-        "start_if_previously_active palimpsest-freshness-watchdog.timer",
-        verify,
-    )
+    restore = guide.index("restore_activator_enablement() {", verify)
 
-    assert probe < install_service < verify < restore
+    assert install_service < verify < probe < restore
     verification = guide[verify:restore]
     assert "/etc/systemd/system/palimpsest-freshness-watchdog.service" in verification
     assert "/etc/systemd/system/palimpsest-freshness-watchdog.timer" in verification

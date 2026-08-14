@@ -52,25 +52,27 @@ def _run_normalizer(source: str, path: Path) -> subprocess.CompletedProcess[str]
 def test_release_checks_out_one_reviewed_sha_without_an_unconstrained_pull() -> None:
     transaction = _transaction()
 
-    fetch = transaction.index(
-        "git fetch --prune origin '+refs/heads/main:refs/remotes/origin/main'"
-    )
-    checkout = transaction.index('git switch --detach "$EXPECTED_DEPLOY_SHA"')
-    build = transaction.index("ops/docker/prod-compose up -d --build")
+    fetch = transaction.index("release_git -c fetch.fsckObjects=true")
+    checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
+    build = transaction.index("ops/docker/prod-compose build")
+    start = transaction.index("ops/docker/prod-compose up -d", build)
 
     assert (
         'COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-'
         'REPLACE_WITH_COMPATIBLE_40_HEX_SHA}"' in transaction
     )
-    assert 'git cat-file -e "${EXPECTED_DEPLOY_SHA}^{commit}"' in transaction
-    assert (
-        'git merge-base --is-ancestor "$EXPECTED_DEPLOY_SHA" '
-        "refs/remotes/origin/main" in transaction
-    )
+    assert 'release_git cat-file -e "${EXPECTED_DEPLOY_SHA}^{commit}"' in transaction
+    expected_ancestry = transaction.index("release_git merge-base --is-ancestor")
+    assert '"$EXPECTED_DEPLOY_SHA" refs/remotes/origin/main' in transaction[
+        expected_ancestry : expected_ancestry + 180
+    ].replace("\\\n  ", " ")
     assert '"$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_DEPLOY_SHA"' in transaction
-    assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"' in transaction
+    assert (
+        'test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"'
+        in transaction
+    )
     assert "git pull" not in transaction
-    assert fetch < checkout < build
+    assert fetch < checkout < build < start
 
 
 def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> None:
@@ -159,11 +161,10 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
     )
     trigger_restored = transaction.index(')" = "$BACKUP_ON_SUCCESS"', remove_quiesce)
 
-    assert "RELEASE_WAS_ACTIVE" in transaction
-    assert "NODE_OFFSITE_TIMER_ENABLEMENT" in transaction
-    assert "BLEED_TIMER_ENABLEMENT" in transaction
-    assert "SYNC_TIMER_ENABLEMENT" in transaction
-    assert "start_if_previously_active palimpsest-evidence-wire.timer" in transaction
+    assert "declare -A RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT" in transaction
+    assert 'RELEASE_ENABLEMENT["$unit"]="$(read_enablement "$unit")"' in transaction
+    assert 'RELEASE_WAS_ACTIVE["$unit"]=1' in transaction
+    assert "restore_activator_enablement() {" in transaction
     assert (
         "'palimpsest-common-crawl-mirror@*.service' \\\n"
         "  'palimpsest-common-crawl-filter@*.service')" in transaction
@@ -194,7 +195,13 @@ def test_release_quiesce_drop_in_only_resets_success_triggers() -> None:
         "palimpsest-backup.service.d/zz-release-quiesce.conf'" in transaction
     )
     assert 'git cat-file -e "HEAD:${BACKUP_RELEASE_QUIESCE_SOURCE}"' in transaction
-    assert 'BACKUP_RELEASE_QUIESCE_SOURCE_REV="$EXPECTED_DEPLOY_SHA"' in transaction
+    assert (
+        'release_git show "HEAD:${BACKUP_RELEASE_QUIESCE_SOURCE}"'
+        in transaction
+    )
+    assert transaction.index(
+        'release_git show "HEAD:${BACKUP_RELEASE_QUIESCE_SOURCE}"'
+    ) < transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
     assert RELEASE_QUIESCE.read_text(encoding="utf-8") == (
         "[Unit]\n"
         "# Installed temporarily as zz-release-quiesce.conf during a release. "
@@ -205,15 +212,16 @@ def test_release_quiesce_drop_in_only_resets_success_triggers() -> None:
     )
 
 
-def test_post_build_backup_must_run_publish_and_validate_a_new_snapshot() -> None:
+def test_pre_change_backup_must_publish_and_validate_before_candidate_code() -> None:
     transaction = _transaction()
 
-    build = transaction.index("ops/docker/prod-compose up -d --build")
+    checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
+    build = transaction.index("ops/docker/prod-compose build")
     start = transaction.index("sudo systemctl start palimpsest-backup.service")
     condition = transaction.index("--property=ConditionResult --value", start)
     status = transaction.index("--property=ExecMainStatus --value", condition)
     new_snapshot = transaction.index(
-        'test "$POST_BUILD_SNAPSHOT" != "$PRE_BUILD_SNAPSHOT"'
+        'test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"'
     )
     checksum = transaction.index("sha256sum --check SHA256SUMS")
     exact_inventory = transaction.index(
@@ -222,17 +230,16 @@ def test_post_build_backup_must_run_publish_and_validate_a_new_snapshot() -> Non
     nonempty = transaction.index("sudo test -s", exact_inventory)
     verifier = transaction.index("ops/backup/node_backup_snapshot.py verify", nonempty)
     verifier_receipt = transaction.index(
-        'value["schema"] == "palimpsest-node-backup-verification.v1"', verifier
+        'value.get("schema") == "palimpsest-node-backup-verification.v1"', verifier
     )
     receipt_change = transaction.index(
         "sudo bash ops/investigative-analysis/install-host-bundle.sh"
     )
 
-    assert 'PRE_BUILD_SNAPSHOT="$(latest_node_snapshot)"' in transaction
-    assert 'POST_BUILD_SNAPSHOT="$(latest_node_snapshot)"' in transaction
+    assert 'PRE_CHANGE_SNAPSHOT_BEFORE="$(latest_node_snapshot)"' in transaction
+    assert 'PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"' in transaction
     assert (
-        build
-        < start
+        start
         < condition
         < status
         < new_snapshot
@@ -241,6 +248,8 @@ def test_post_build_backup_must_run_publish_and_validate_a_new_snapshot() -> Non
         < nonempty
         < verifier
         < verifier_receipt
+        < checkout
+        < build
         < receipt_change
     )
 
@@ -248,19 +257,19 @@ def test_post_build_backup_must_run_publish_and_validate_a_new_snapshot() -> Non
 def test_bundle_install_order_and_revision_parity_are_exact() -> None:
     transaction = _transaction()
 
+    osint_sync = transaction.index("sudo bash ops/osint-sync/install-host-bundle.sh")
     analysis = transaction.index(
-        "sudo bash ops/investigative-analysis/install-host-bundle.sh"
+        "sudo bash ops/investigative-analysis/install-host-bundle.sh", osint_sync
     )
     common_crawl = transaction.index(
         "sudo bash ops/common-crawl/install-host-bundle.sh"
     )
-    osint_sync = transaction.index("sudo bash ops/osint-sync/install-host-bundle.sh")
     node_offsite = transaction.index(
         "sudo bash ops/node-offsite/install-host-bundle.sh"
     )
     parity = transaction.index("/etc/palimpsest/deployed-commit", node_offsite)
 
-    assert analysis < common_crawl < osint_sync < node_offsite < parity
+    assert osint_sync < analysis < common_crawl < node_offsite < parity
     for revision in (
         "/usr/local/libexec/palimpsest-analysis/current/REVISION",
         "/usr/local/libexec/palimpsest-network-lane/current/REVISION",
@@ -274,20 +283,23 @@ def test_bundle_install_order_and_revision_parity_are_exact() -> None:
 
 def test_unconfigured_node_offsite_can_be_installed_but_not_enabled() -> None:
     transaction = _transaction()
-    restore = transaction.index(
-        "restore_timer_enablement palimpsest-node-offsite-backup.timer"
-    )
+    restore = transaction.index("restore_activator_enablement() {")
 
     assert "node_offsite_config_count" in transaction
     assert "node-offsite configuration is partial" in transaction
     assert "unconfigured node-offsite backup is enabled or triggerable" in transaction
-    assert 'if [[ "$NODE_OFFSITE_TIMER_ENABLEMENT" == enabled* ]]; then' in (
-        transaction
-    )
-    assert "(( NODE_OFFSITE_CONFIGURED == 1 ))" in transaction[:restore]
     assert (
-        "if (( NODE_OFFSITE_CONFIGURED == 1 )); then\n"
-        "  start_if_previously_active palimpsest-node-offsite-backup.timer"
+        '${RELEASE_ENABLEMENT[palimpsest-node-offsite-backup.timer]}'
+        in transaction
+    )
+    assert '${RELEASE_WAS_ACTIVE[palimpsest-node-offsite-backup.timer]}' in transaction
+    assert "NODE_OFFSITE_CONFIGURED=1" in transaction[:restore]
+    assert (
+        'if [[ "$unit" == palimpsest-node-offsite-backup.timer ]]'
+        in transaction
+    )
+    assert (
+        '&& (( NODE_OFFSITE_CONFIGURED == 0 )); then'
         in transaction
     )
 
@@ -301,14 +313,9 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
     import_status = transaction.index(
         'palimpsest-common-crawl-import.service)" = "0"', import_start
     )
-    context_timer = transaction.index(
-        "start_if_previously_active palimpsest-common-crawl-context.timer"
-    )
-    context_restore = transaction.index(
-        "restore_timer_enablement palimpsest-common-crawl-context.timer"
-    )
-    bleed_disable = transaction.index(
-        "temporarily_disable_timer palimpsest-bleedthrough.timer"
+    disable_loop = transaction.index(
+        'for unit in "${RELEASE_ACTIVATORS[@]}"; do\n'
+        '  temporarily_disable_activator "$unit"'
     )
     bleed_start = transaction.index(
         "sudo systemctl start palimpsest-bleedthrough.service"
@@ -334,14 +341,19 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
     watchdog = transaction.index(
         "run_final_observer palimpsest-freshness-watchdog.service"
     )
+    context = transaction.index(
+        "run_final_observer palimpsest-common-crawl-context.service"
+    )
     witness = transaction.index("run_final_observer palimpsest-witness.service")
-    bleed_restore = transaction.index(
-        "restore_timer_enablement palimpsest-bleedthrough.timer"
+    restore_loop = transaction.index(
+        'for unit in "${RELEASE_ACTIVATORS[@]}"; do',
+        transaction.index("restore_activator_enablement() {"),
     )
 
-    assert import_start < import_status < context_restore < context_timer
     assert (
-        bleed_disable
+        disable_loop
+        < import_start
+        < import_status
         < bleed_start
         < bleed_status
         < artifact_advance
@@ -349,9 +361,10 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
         < dispatch
         < publication_success
         < public_match
+        < context
         < watchdog
         < witness
-        < bleed_restore
+        < restore_loop
     )
 
 
@@ -363,24 +376,27 @@ def test_masked_units_abort_before_any_release_mutation() -> None:
     mask_refusal = transaction.index(
         "masked release unit must be reviewed and unmasked first", mask_loop
     )
-    fetch = transaction.index("git fetch --prune origin")
+    fetch = transaction.index("release_git -c fetch.fsckObjects=true")
     stop = transaction.index('stop_loaded_unit "$unit"')
-    checkout = transaction.index('git switch --detach "$EXPECTED_DEPLOY_SHA"')
+    checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
     quiesce = transaction.index(
         '"$BACKUP_RELEASE_QUIESCE_TMP" "$BACKUP_RELEASE_QUIESCE_TARGET"'
     )
 
     assert "masked|masked-runtime)" in transaction[mask_loop : mask_refusal + 200]
     assert mask_loop < mask_refusal < fetch < stop < quiesce < checkout
-    restoration = transaction[transaction.index("restore_timer_enablement() {") :]
+    restoration = transaction[
+        transaction.index("restore_activator_enablement() {") :
+    ]
     assert "systemctl mask" not in restoration
 
 
 def test_public_osint_advances_before_consumers_and_final_observers() -> None:
     transaction = _transaction()
 
-    sync_disable = transaction.index(
-        "temporarily_disable_timer palimpsest-public-osint-sync.timer"
+    disable_loop = transaction.index(
+        'for unit in "${RELEASE_ACTIVATORS[@]}"; do\n'
+        '  temporarily_disable_activator "$unit"'
     )
     sync_install = transaction.index("sudo bash ops/osint-sync/install-host-bundle.sh")
     static_osint = transaction.index(
@@ -399,7 +415,7 @@ def test_public_osint_advances_before_consumers_and_final_observers() -> None:
         artifact_advance,
     )
     receipt_hash = transaction.index(
-        'receipt["artifact_sha256"] == artifact_sha', ledger_advance
+        'receipt.get("artifact_sha256") == artifact_sha', ledger_advance
     )
     analysis = transaction.index(
         "run_final_observer palimpsest-investigative-analysis.service", receipt_hash
@@ -410,12 +426,13 @@ def test_public_osint_advances_before_consumers_and_final_observers() -> None:
     watchdog = transaction.index(
         "run_final_observer palimpsest-freshness-watchdog.service", context
     )
-    sync_restore = transaction.index(
-        "restore_timer_enablement palimpsest-public-osint-sync.timer", watchdog
+    restore_loop = transaction.index(
+        'for unit in "${RELEASE_ACTIVATORS[@]}"; do',
+        transaction.index("restore_activator_enablement() {", watchdog),
     )
 
     assert (
-        sync_disable
+        disable_loop
         < sync_install
         < static_osint
         < sync_start
@@ -426,7 +443,7 @@ def test_public_osint_advances_before_consumers_and_final_observers() -> None:
         < analysis
         < context
         < watchdog
-        < sync_restore
+        < restore_loop
     )
     phase_one = transaction[: transaction.index("### Phase 2:")]
     assert (
@@ -437,17 +454,20 @@ def test_public_osint_advances_before_consumers_and_final_observers() -> None:
 
 def test_first_install_enables_required_sync_and_watchdog_timers() -> None:
     transaction = _transaction()
-    restore = transaction[transaction.index("restore_timer_enablement() {") :]
+    restore = transaction[transaction.index("restore_activator_enablement() {") :]
 
-    for variable, timer in (
-        ("SYNC_TIMER_ENABLEMENT", "palimpsest-public-osint-sync.timer"),
-        ("WATCHDOG_TIMER_ENABLEMENT", "palimpsest-freshness-watchdog.timer"),
+    assert (
+        "palimpsest-public-osint-sync.timer|palimpsest-freshness-watchdog.timer)"
+        in restore
+    )
+    assert "first_install='enable'" in restore
+    assert 'if [[ "$first_install" == enable ]]; then' in restore
+    assert '[[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]]' in restore
+    for timer in (
+        "palimpsest-public-osint-sync.timer",
+        "palimpsest-freshness-watchdog.timer",
     ):
-        assert f'restore_timer_enablement {timer} \\\n  "${variable}" enable' in restore
-        assert (
-            f'if [[ "${variable}" == not-found ]]; then\n  sudo systemctl start {timer}'
-            in restore
-        )
+        assert timer in restore
 
 
 def test_external_publication_is_exact_and_fails_closed_before_finalization() -> None:
@@ -477,10 +497,14 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         '  = "$REPOSITORY_BLEED_NORMALIZED_SHA256"',
         "Workflow success alone is insufficient",
         'RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"',
-        "read -r -p 'Run Phase 2 elsewhere, then re-enter the resume token: '",
-        'test "$RELEASE_RESUME_CONFIRMATION" = "$RELEASE_RESUME_TOKEN"',
+        "read -r -p 'Run Phase 2 elsewhere, then paste its one-line handoff: '",
+        "RELEASE_HANDOFF_B64",
+        '"schema": "palimpsest-public-osint-release-proof.v1"',
+        'RELEASE_HANDOFF_B64="$(printf',
+        "base64.b64decode(encoded, validate=True)",
+        "RELEASE_PROOF_PATH='/var/lib/palimpsest-public-osint-sync/release-proof.json'",
         "if ! declare -p",
-        "RELEASE_WAS_ACTIVE NODE_OFFSITE_TIMER_ENABLEMENT",
+        "RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS",
         '[[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]',
         "Phase 3 must run in the original paused Phase 1 shell",
         'for held_unit in "${RELEASE_ACTIVATORS[@]}"',
@@ -493,7 +517,8 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         '  = "$BLEED_ARTIFACT_NORMALIZED_SHA256"'
     )
     first_restore = transaction.index(
-        "start_if_previously_active palimpsest-investigative-analysis.timer"
+        'for unit in "${RELEASE_ACTIVATORS[@]}"; do',
+        transaction.index("restore_activator_enablement() {"),
     )
     assert public_match < first_restore
 
@@ -564,7 +589,7 @@ def test_final_observers_reject_stored_or_exit_two_statuses() -> None:
     transaction = _transaction()
     observer = transaction[
         transaction.index("run_final_observer() {") : transaction.index(
-            "start_if_previously_active() {"
+            "restore_activator_enablement() {"
         )
     ]
 
@@ -597,10 +622,10 @@ def test_backup_and_node_offsite_guides_repeat_the_release_safety_boundary() -> 
     node_offsite = NODE_OFFSITE_GUIDE.read_text(encoding="utf-8")
 
     for marker in (
-        "Required post-build release proof",
+        "Required pre-change release proof",
         "ConditionResult=yes",
         "ExecMainStatus=0",
-        "POST_BUILD_SNAPSHOT",
+        "PRE_CHANGE_SNAPSHOT",
         "sha256sum --check SHA256SUMS",
         "node_backup_snapshot.py verify",
         "exact six-file inventory",
@@ -626,10 +651,15 @@ def test_rollback_requires_a_compatible_sha_not_only_the_old_receipt() -> None:
     guide = DEPLOY_GUIDE.read_text(encoding="utf-8")
 
     assert "COMPATIBLE_ROLLBACK_SHA" in guide
-    assert "main-line compatible ancestor" in guide
+    assert "reviewed main-line target" in guide
     assert '"$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_DEPLOY_SHA"' in guide
-    assert "a compatible rollback target may predate\n# the drop-in" in guide
-    assert "not automatically a safe rollback" in guide
+    assert "Ancestry alone is not compatibility" in guide
+    assert "two-commit first rollout" in guide
+    assert "First protected rollout: compatibility seed (C0)" in guide
+    assert "C0_DEPLOY_SHA" in guide
+    assert "deploy-compatibility-seed.sh" in guide
+    assert "legacy-mirror" in guide
+    assert "protected-only" in guide
     assert "Never use the raw previous receipt as the rollback decision" in guide
     assert "Executing a compatible rollback" in guide
     assert 'export EXPECTED_DEPLOY_SHA="$ROLLBACK_TARGET_SHA"' in guide

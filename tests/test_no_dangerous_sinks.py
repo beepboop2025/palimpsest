@@ -5,6 +5,7 @@ must never reach a code-execution sink. This test scans the source tree and fail
 dangerous sink is introduced on a collection/processing path. Standard-library only.
 """
 
+import ast
 import pathlib
 import re
 
@@ -156,6 +157,24 @@ def test_public_osint_sync_keeps_fixed_no_shell_git_boundary():
     assert "config.repository_url != REPOSITORY_URL" in sync
     assert '"core.hooksPath=/dev/null"' in sync
     assert '"protocol.file.allow=never"' in sync
+
+    tree = ast.parse(sync)
+    calls: list[tuple[int, str]] = []
+    for function in (node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)):
+        for node in ast.walk(function):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "subprocess"
+            ):
+                calls.append((node.lineno, f"{function.name}:{node.func.attr}"))
+    assert [name for _line, name in sorted(calls)] == [
+        "_run_git:run",
+        "_git_is_ancestor:run",
+        "_prepare_repository:run",
+        "_git_blob:run",
+    ], "every subprocess call site must be individually reviewed and inventoried"
 
 
 def test_analysis_broker_keeps_a_fixed_no_shell_docker_boundary():

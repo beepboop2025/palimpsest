@@ -10,8 +10,6 @@ ConditionPathExists=/usr/local/libexec/palimpsest-common-crawl/current/REVISION
 ConditionPathExists=/usr/local/libexec/palimpsest-common-crawl/current/config/common_crawl_targets.json
 ConditionPathExists=/var/lib/palimpsest/common-crawl/common-crawl.sqlite3
 ConditionPathExists=/var/lib/palimpsest/newswire/newswire-latest.json
-ConditionPathExists=/var/lib/palimpsest/readings/osint-china-latest.json
-ConditionPathExists=/var/lib/palimpsest-public-osint-sync/receipt.json
 
 [Service]
 Type=oneshot
@@ -34,6 +32,8 @@ ProtectSystem=strict
 ProtectHome=true
 ReadOnlyPaths=/usr/local/libexec/palimpsest-common-crawl /etc/palimpsest/deployed-commit /var/lib/palimpsest/newswire /var/lib/palimpsest/readings
 ReadWritePaths=/var/lib/palimpsest/common-crawl
+BindReadOnlyPaths=/var/lib/palimpsest-public-osint-sync/authoritative/osint-china-latest.json:/var/lib/palimpsest/readings/osint-china-latest.json
+BindReadOnlyPaths=/var/lib/palimpsest-public-osint-sync/authoritative/readings-ledger.jsonl:/var/lib/palimpsest/readings/readings-ledger.jsonl
 NoExecPaths=/var/lib/palimpsest/common-crawl
 PrivateTmp=true
 PrivateDevices=true

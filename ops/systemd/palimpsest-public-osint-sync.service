@@ -28,16 +28,17 @@ ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-public-osint-sync/current/ver
 ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-public-osint-sync/current/REVISION /etc/palimpsest/deployed-commit
 ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py
 
-# Git state and the two managed reading files are the only mutable surfaces.
+# Git state and the protected authority are the only mutable surfaces. The
+# legacy shared readings tree is a read-only bootstrap source, never a target.
 ProtectSystem=strict
 ProtectHome=true
-ReadOnlyPaths=/usr/local/libexec/palimpsest-public-osint-sync /etc/palimpsest/deployed-commit
-ReadWritePaths=/var/lib/palimpsest/readings
+ReadOnlyPaths=/usr/local/libexec/palimpsest-public-osint-sync /etc/palimpsest/deployed-commit /var/lib/palimpsest/readings
+ReadWritePaths=/var/lib/palimpsest-public-osint-sync
 PrivateTmp=true
 PrivateDevices=true
 PrivateMounts=true
 NoNewPrivileges=true
-CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_READ_SEARCH CAP_FOWNER
 AmbientCapabilities=
 ProtectKernelTunables=true
 ProtectKernelModules=true
