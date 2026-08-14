@@ -252,12 +252,12 @@ def test_mobile_menu_resets_when_the_viewport_becomes_desktop():
 
 
 def test_china_flyout_is_active_for_every_generated_china_route():
-    china = next(item for item in site_nav.NAV if item["label"] == "China")
+    observatory = next(item for item in site_nav.NAV if item["label"] == "Observatory")
 
-    assert site_nav._within(china, "/china/")
-    assert site_nav._within(china, "/china/sources/nbs-national-data/")
-    assert site_nav._within(china, "/china/releases/nbs-energy-output/")
-    assert not site_nav._within(china, "/data.html")
+    assert site_nav._within(observatory, "/china/")
+    assert site_nav._within(observatory, "/china/sources/nbs-national-data/")
+    assert site_nav._within(observatory, "/china/releases/nbs-energy-output/")
+    assert not site_nav._within(observatory, "/data.html")
 
 
 def test_newsroom_focus_and_status_colours_clear_a_contrast_floor():
