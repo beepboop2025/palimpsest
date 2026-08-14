@@ -1077,6 +1077,7 @@ def test_the_served_version_and_the_published_manifest_agree():
     with open(os.path.join(root, "server.json"), encoding="utf-8") as fh:
         manifest = json.load(fh)
     assert manifest["version"] == mcp.SERVER_VERSION
+    assert 1 <= len(manifest["description"]) <= 100
 
 
 def test_economic_query_version_and_discovery_surfaces_agree():
