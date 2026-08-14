@@ -18,7 +18,7 @@ already public — no private data, no extra measurement, no privileged view.
 | Endpoint | `https://api.seiche.info/palimpsest/mcp` |
 | Transport | streamable HTTP, stateless JSON-RPC 2.0 |
 | Auth | none — everything it serves is already public |
-| Server contract | `1.8.0` |
+| Server contract | `1.8.1` |
 | Source | [`mcp/palimpsest_mcp.py`](../mcp/palimpsest_mcp.py) (stdlib only, one file) |
 | Manifest | [`server.json`](../server.json) |
 
