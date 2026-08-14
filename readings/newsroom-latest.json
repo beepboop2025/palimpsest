@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-14T06:44:27Z",
+  "generated_at": "2026-08-14T07:10:25Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "8434bbb6f403bca91a7c3a56b8dfb4c5ed37cb50",
+  "source_commit": "0636abaf8e842984d732e2a91b7ecd71430264ea",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -754,19 +754,19 @@
       "slug": "censored-planet-china-interference",
       "url": "https://palimpsest.info/news/censored-planet-china-interference/",
       "signal_id": "censored-planet",
-      "headline": "Independent remote scans put China's interference rate at 4.41%",
+      "headline": "Independent remote scans put China's interference rate at 4.38%",
       "dek": "Censored Planet supplies an outside-in method that is independent of OONI's in-country volunteer probes.",
       "section": "network",
       "order": 3,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-13T07:00:39Z",
-      "modified_at": "2026-08-13T07:00:39Z",
-      "claim_fingerprint": "sha256:96e95f342873996eabc66bd4fd61979c3510418d2adbeb257db3493718fdbfa0",
+      "published_at": "2026-08-14T06:56:23Z",
+      "modified_at": "2026-08-14T06:56:23Z",
+      "claim_fingerprint": "sha256:3b713000ac3326ccd24b2e8c07db1fdf9d3d18cfa2c1010ed4d6648f99872782",
       "metric": {
         "label": "CN interference rate",
-        "value": 4.41,
+        "value": 4.38,
         "unit": "percent",
         "denominator": {
           "label": null,
@@ -776,17 +776,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "Censored Planet's current remote side-channel measurement reports a 4.41% China interference rate."
+          "statement": "Censored Planet's current remote side-channel measurement reports a 4.38% China interference rate."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/censored-planet-latest.json",
         "input": {
           "filename": "censored-planet-latest.json",
-          "sha256": "b2a7458fc268896e1466cc96ab9690d8db45b683b5ee678ef141397b904d1806",
-          "bytes": 3377
+          "sha256": "b1d3ff1f675f0f21d681afc6231bcfc0d61c8e1d818c206d514c88aadc631ab6",
+          "bytes": 3376
         },
-        "source_timestamp": "2026-08-13T07:00:39Z"
+        "source_timestamp": "2026-08-14T06:56:23Z"
       },
       "method": {
         "summary": "ingests Censored Planet's public aggregated data; probes nothing (vantage-insensitive)",
@@ -1328,39 +1328,39 @@
       "slug": "apple-censorship-corpus",
       "url": "https://palimpsest.info/news/apple-censorship-corpus/",
       "signal_id": "apple-censorship",
-      "headline": "28.15% of 108,993 tested apps are unavailable in mainland China",
+      "headline": "28.14% of 109,120 tested apps are unavailable in mainland China",
       "dek": "The corpus-scale storefront comparison complements the smaller fixed panel with a much broader catalogue.",
       "section": "erasure",
       "order": 6,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-13T06:58:14Z",
-      "modified_at": "2026-08-13T06:58:14Z",
-      "claim_fingerprint": "sha256:fb760eb82d924bda821c0f9f28a7c40db9346ce2fb242ae769852ea3ee138038",
+      "published_at": "2026-08-14T06:55:04Z",
+      "modified_at": "2026-08-14T06:55:04Z",
+      "claim_fingerprint": "sha256:d8b569bae1a3ee9f8cdfa227f834cf9640931954a18472970e36ff866a670dd5",
       "metric": {
         "label": "apps unavailable",
-        "value": 28.15,
+        "value": 28.14,
         "unit": "percent",
         "denominator": {
           "label": "apps tested",
-          "value": 108993
+          "value": 109120
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current AppleCensorship corpus reports 28.15% unavailable among 108,993 tested apps for mainland China."
+          "statement": "The current AppleCensorship corpus reports 28.14% unavailable among 109,120 tested apps for mainland China."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/apple-censorship-latest.json",
         "input": {
           "filename": "apple-censorship-latest.json",
-          "sha256": "b8ca70e499fae4f09a68ff6c397f347cf80d78e98436659b1e14a2c64719f4e7",
+          "sha256": "ddeda60064e7a3b3f9044ee1ddb931879618209e72e5f014d1041462d4dd3893",
           "bytes": 1909
         },
-        "source_timestamp": "2026-08-13T06:58:14Z"
+        "source_timestamp": "2026-08-14T06:55:04Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1749,8 +1749,8 @@
       "type": "intelligence",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-14T06:14:16Z",
-      "modified_at": "2026-08-14T06:14:16Z",
+      "published_at": "2026-08-14T06:59:16Z",
+      "modified_at": "2026-08-14T06:59:16Z",
       "claim_fingerprint": "sha256:fd2de426487c3bb9d125e3cc22b96417eee072f6d2b7476ba9e95b8071b91d46",
       "metric": {
         "label": "topics ranked",
@@ -1771,10 +1771,10 @@
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "ca59967e91eb9abba1f34349fcf09a6d808b933a2800bec30e19fb110deac05c",
-          "bytes": 155083
+          "sha256": "ab97bb84eaa21d88cd05912df231ec22a37cb85b10614660bb01e88058be956f",
+          "bytes": 155081
         },
-        "source_timestamp": "2026-08-14T06:14:16Z"
+        "source_timestamp": "2026-08-14T06:59:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
