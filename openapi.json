@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.7.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, AI Eval Journal, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom, deterministic machine-analysis desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.8.0",
+    "description": "Stable public readings from Palimpsest's censorship observatory, revision-safe China Economic Observatory, evidence-bound AI Eval Journal and verifiable AI evaluation registry. The API also exposes the evidence wire, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated newsroom and deterministic machine-analysis desk. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -29,8 +29,20 @@
       "EventAnalysis": {
         "$ref": "https://palimpsest.info/protocol/event-analysis-v1.schema.json"
       },
+      "ChinaIndex": {
+        "$ref": "https://palimpsest.info/protocol/china-index-v1.schema.json"
+      },
       "ChinaEconomicPulse": {
         "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
+      },
+      "ChinaEconomicObservation": {
+        "$ref": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"
+      },
+      "ChinaEconomicObservationManifest": {
+        "$ref": "https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json"
+      },
+      "ChinaEconomicForecast": {
+        "$ref": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
       },
       "Investigations": {
         "$ref": "https://palimpsest.info/protocol/investigations-v1.schema.json"
@@ -228,9 +240,25 @@
         "description": "Content-addressed Palimpsest assessment of one event using source structure and declared collector context",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventAnalysis"}}}
       },
+      "ChinaIndex": {
+        "description": "Published machine-readable index of China Observatory sources, releases, datasets, readiness and evidence rails",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaIndex"}}}
+      },
       "ChinaEconomicPulse": {
         "description": "Published revision-safe China economic state dossier",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaEconomicPulse"}}}
+      },
+      "ChinaEconomicObservationManifest": {
+        "description": "Published manifest for the aggregate append-only China economic observation ledger",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaEconomicObservationManifest"}}}
+      },
+      "ChinaEconomicObservationLedger": {
+        "description": "Append-only JSON Lines ledger; every non-empty line is one aggregate economic observation with separate release and collection clocks, revision and provenance hashes",
+        "content": {"application/x-ndjson": {"schema": {"type": "string", "contentMediaType": "application/x-ndjson"}, "x-jsonl-item-schema": {"$ref": "#/components/schemas/ChinaEconomicObservation"}}}
+      },
+      "ChinaEconomicForecast": {
+        "description": "Named-series pseudo-real-time economic forecast backtests with frozen promotion gates and explicit abstention",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaEconomicForecast"}}}
       },
       "Investigations": {
       "description": "Review-gated research leads and reviewed investigations with evidence receipts, counterevidence and falsifiers",
@@ -310,10 +338,30 @@
       }],
       "responses": {"200": {"$ref": "#/components/responses/EventAnalysis"}}
     }},
+    "/readings/china-index-latest.json": {"get": {
+      "operationId": "getChinaObservatoryIndex",
+      "summary": "Discover China Observatory sources, releases, economic state, readiness and machine-readable datasets",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaIndex"}}
+    }},
     "/readings/china-economic-pulse-latest.json": {"get": {
       "operationId": "getChinaEconomicPulse",
       "summary": "Read the revision-safe economic pulse, coverage gates, divergences and abstentions",
       "responses": {"200": {"$ref": "#/components/responses/ChinaEconomicPulse"}}
+    }},
+    "/readings/china-econ-observations-latest.json": {"get": {
+      "operationId": "getChinaEconomicObservationManifest",
+      "summary": "Read the integrity, coverage and query contract for the China economic observation ledger",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaEconomicObservationManifest"}}
+    }},
+    "/readings/china-econ-observations.jsonl": {"get": {
+      "operationId": "getChinaEconomicObservationLedger",
+      "summary": "Download the append-only bitemporal aggregate China economic observation ledger",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaEconomicObservationLedger"}}
+    }},
+    "/readings/china-econ-forecast-latest.json": {"get": {
+      "operationId": "getChinaEconomicForecast",
+      "summary": "Read named-series pseudo-real-time backtests, promotion gates, forecast status and abstentions",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaEconomicForecast"}}
     }},
     "/readings/investigations-latest.json": {"get": {
       "operationId": "getInvestigations",

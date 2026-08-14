@@ -134,6 +134,45 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
     assert "coverage gates" in pulse["description"]
 
 
+def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+
+    telemetry = by_id["china-econ"]
+    assert telemetry["cadence"] == "PT6H"
+
+    ledger = by_id["china-economic-observations"]
+    assert (ledger["layer"], ledger["stage"], ledger["collection_mode"]) == (
+        "economy",
+        "observation",
+        "passive-bitemporal-aggregate",
+    )
+    assert ledger["latest"] == "readings/china-econ-observations-latest.json"
+    assert ledger["history"] == "readings/china-econ-observations.jsonl"
+    assert ledger["landing_page"] == "china/"
+    assert ledger["cadence"] == "P1D"
+    assert ledger["freshness_budget"] == "P10D"
+    assert "collector" in ledger["freshness_semantics"]
+    assert ledger["sources"] == ["CFETS/ChinaMoney"]
+    assert ledger["license"]["url"] == "https://palimpsest.info/data.html#rights"
+    caveat = ledger["description"].lower()
+    assert "aggregate-only" in caveat
+    assert "narrow" in caveat
+    assert "true gdp" in caveat
+
+    forecast = by_id["china-economic-forecast"]
+    assert forecast["latest"] == "readings/china-econ-forecast-latest.json"
+    assert forecast["landing_page"] == "china/"
+    assert forecast["cadence"] == "P1D"
+    assert forecast["freshness_budget"] == "P10D"
+    assert forecast["count_fields"] == [
+        "n_targets",
+        "summary.ready_targets",
+        "summary.abstaining_targets",
+    ]
+    assert "stay null" in forecast["description"]
+
+
 def test_bleedthrough_catalog_exposes_only_the_sanitized_relay() -> None:
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     entry = next(item for item in source["datasets"] if item["id"] == "bleedthrough")
@@ -263,6 +302,26 @@ def test_duration_parser_matches_catalog_subset():
     assert catalog._duration_seconds("P1W") == 7 * 86400
     assert catalog._duration_seconds("P1M") == 31 * 86400
     assert catalog._duration_seconds("every minute") is None
+
+
+def test_explicit_freshness_budget_requires_bounded_semantics():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    target = next(
+        item for item in source["datasets"]
+        if item["id"] == "china-economic-observations"
+    )
+    target.pop("freshness_semantics")
+    with pytest.raises(ValueError, match="must declare .* together"):
+        catalog._validate(source)
+
+    target["freshness_semantics"] = " "
+    with pytest.raises(ValueError, match="invalid freshness_semantics"):
+        catalog._validate(source)
+
+    target["freshness_semantics"] = "Event-time policy."
+    target["freshness_budget"] = "P0D"
+    with pytest.raises(ValueError, match="unsupported freshness_budget"):
+        catalog._validate(source)
 
 
 def test_count_extraction_is_explicit_and_does_not_walk_evidence_payloads():

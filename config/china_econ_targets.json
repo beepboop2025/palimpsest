@@ -1,0 +1,142 @@
+{
+  "schema_version": "palimpsest-china-econ-targets.v1",
+  "config_version": 1,
+  "scope": "One-step forecasts for explicitly named CFETS benchmark series; this configuration does not define an economy-wide activity measure.",
+  "engine_version": "palimpsest-economic-forecast-engine.v1",
+  "baseline_model_id": "random-walk",
+  "promotion_gates": {
+    "min_first_release_folds": 60,
+    "min_latest_revised_folds": 60,
+    "min_history_span_days": 365,
+    "min_source_groups": 2,
+    "min_independence_groups": 2,
+    "min_revised_outcomes": 5,
+    "min_challenger_relative_mae_improvement": 0.05,
+    "min_interval_folds": 30,
+    "min_interval_coverage": 0.65,
+    "max_interval_coverage": 0.95
+  },
+  "models": [
+    {
+      "model_id": "random-walk",
+      "kind": "random_walk",
+      "description": "Repeat the last target value knowable at the fold cutoff.",
+      "min_train_observations": 2,
+      "min_scored_folds": 20,
+      "seasonal_lag": null,
+      "delta_lookback": null,
+      "interval_coverage": 0.8,
+      "min_interval_residuals": 10,
+      "min_bridge_contributors": 1
+    },
+    {
+      "model_id": "seasonal-naive-five",
+      "kind": "seasonal_naive",
+      "description": "Repeat the target value five observed periods earlier; no calendar gap is silently filled.",
+      "min_train_observations": 10,
+      "min_scored_folds": 20,
+      "seasonal_lag": 5,
+      "delta_lookback": null,
+      "interval_coverage": 0.8,
+      "min_interval_residuals": 10,
+      "min_bridge_contributors": 1
+    },
+    {
+      "model_id": "mean-delta-five",
+      "kind": "mean_delta",
+      "description": "Add the arithmetic mean of up to five prior target changes to the latest knowable value.",
+      "min_train_observations": 6,
+      "min_scored_folds": 20,
+      "seasonal_lag": null,
+      "delta_lookback": 5,
+      "interval_coverage": 0.8,
+      "min_interval_residuals": 10,
+      "min_bridge_contributors": 1
+    },
+    {
+      "model_id": "equal-delta-bridge",
+      "kind": "equal_delta_bridge",
+      "description": "Add the equal-weight mean latest change of declared same-unit contributor series to the last target value.",
+      "min_train_observations": 2,
+      "min_scored_folds": 20,
+      "seasonal_lag": null,
+      "delta_lookback": null,
+      "interval_coverage": null,
+      "min_interval_residuals": 10,
+      "min_bridge_contributors": 2
+    }
+  ],
+  "targets": [
+    {
+      "target_id": "cfets-shibor-overnight-next-observation",
+      "label": "SHIBOR overnight — next observed fixing",
+      "series_id": "cn.cfets.shibor_on",
+      "source_id": "cfets_benchmarks",
+      "unit": "%",
+      "frequency": "D",
+      "geography": "CN",
+      "sector": "all",
+      "firm_size": "all",
+      "ownership": "all",
+      "enabled": true,
+      "horizon": "next_observed_period",
+      "model_ids": [
+        "random-walk",
+        "seasonal-naive-five",
+        "mean-delta-five",
+        "equal-delta-bridge"
+      ],
+      "bridge_contributor_series_ids": [
+        "cn.cfets.fdr001",
+        "cn.cfets.fr001",
+        "cn.cfets.shibor_1w"
+      ]
+    },
+    {
+      "target_id": "cfets-fdr001-next-observation",
+      "label": "FDR001 — next observed fixing",
+      "series_id": "cn.cfets.fdr001",
+      "source_id": "cfets_benchmarks",
+      "unit": "%",
+      "frequency": "D",
+      "geography": "CN",
+      "sector": "all",
+      "firm_size": "all",
+      "ownership": "all",
+      "enabled": true,
+      "horizon": "next_observed_period",
+      "model_ids": [
+        "random-walk",
+        "seasonal-naive-five",
+        "mean-delta-five",
+        "equal-delta-bridge"
+      ],
+      "bridge_contributor_series_ids": [
+        "cn.cfets.fr001",
+        "cn.cfets.shibor_on",
+        "cn.cfets.shibor_1w"
+      ]
+    },
+    {
+      "target_id": "cfets-usdcny-parity-next-observation",
+      "label": "USD/CNY central parity — next observed fixing",
+      "series_id": "cn.cfets.usdcny_parity",
+      "source_id": "cfets_benchmarks",
+      "unit": "CNY per USD",
+      "frequency": "D",
+      "geography": "CN",
+      "sector": "all",
+      "firm_size": "all",
+      "ownership": "all",
+      "enabled": true,
+      "horizon": "next_observed_period",
+      "model_ids": [
+        "random-walk",
+        "seasonal-naive-five",
+        "mean-delta-five",
+        "equal-delta-bridge"
+      ],
+      "bridge_contributor_series_ids": []
+    }
+  ]
+}
