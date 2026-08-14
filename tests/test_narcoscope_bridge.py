@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -26,6 +26,12 @@ from scripts import sync_narcoscope
 
 def _current():
     return load_artifact()[0]
+
+
+def _receipt_instant(receipt: dict) -> datetime:
+    return datetime.fromisoformat(
+        receipt["current"]["admitted_at"].replace("Z", "+00:00")
+    )
 
 
 def _final_candidate_from_local_bytes():
@@ -60,16 +66,16 @@ def test_current_pin_is_fresh_hash_bound_and_preserves_supersession() -> None:
     document, raw = load_artifact()
     receipt = load_receipt(artifact=raw)
 
-    assert document["dataAsOf"] == "2026-08-12"
+    assert document["dataAsOf"] == "2026-08-14"
     assert artifact_sha256(raw) == (
-        "2e8be3a3657fd339d78836cb1cef7a2e6a057e28a3238122072d0051a982dbbd"
+        "211bd6f1cafbbdff64c5ad8562484b5b8d65f2cf8fc22b9838dad7f16142ba62"
     )
     assert receipt["current"]["sha256"] == artifact_sha256(raw)
     assert receipt["current"]["data_as_of"] == document["dataAsOf"]
     assert receipt["superseded"][-1] == {
-        "admitted_at": "2026-08-12T14:00:00Z",
+        "admitted_at": "2026-08-12T15:27:25Z",
         "data_as_of": "2026-08-12",
-        "sha256": "112f172ccdf894fb61a58c5e4c58c5d7310b140fdf2b4f4285ac95975dbf11d2",
+        "sha256": "2e8be3a3657fd339d78836cb1cef7a2e6a057e28a3238122072d0051a982dbbd",
         "superseded_at": receipt["current"]["admitted_at"],
     }
 
@@ -129,7 +135,7 @@ def test_changing_quantity_qualification_requires_a_new_explicit_pin() -> None:
     changed = admission_receipt(
         document,
         raw,
-        admitted_at=datetime(2026, 8, 12, 16, tzinfo=timezone.utc),
+        admitted_at=_receipt_instant(current_receipt) + timedelta(seconds=1),
         previous_receipt=current_receipt,
     )
     assert changed["current"]["sha256"] != current_receipt["current"]["sha256"]
@@ -328,11 +334,13 @@ def test_receipt_rejects_byte_mismatch_regression_and_duplicate_history() -> Non
         "2026-08-11"
     )
     regressed_raw = canonical_json_bytes(regressed)
-    with pytest.raises(NarcoScopeBridgeError, match="regresses"):
+    with pytest.raises(
+        NarcoScopeBridgeError, match="candidate dataAsOf regresses"
+    ):
         admission_receipt(
             regressed,
             regressed_raw,
-            admitted_at=datetime(2026, 8, 13, tzinfo=timezone.utc),
+            admitted_at=_receipt_instant(receipt) + timedelta(seconds=1),
             previous_receipt=receipt,
         )
 
@@ -354,7 +362,7 @@ def test_idempotent_admission_preserves_clock_and_clock_regression_fails() -> No
     same = admission_receipt(
         document,
         raw,
-        admitted_at=datetime(2026, 8, 13, tzinfo=timezone.utc),
+        admitted_at=_receipt_instant(receipt) + timedelta(days=1),
         previous_receipt=receipt,
     )
     assert same == receipt
@@ -363,7 +371,7 @@ def test_idempotent_admission_preserves_clock_and_clock_regression_fails() -> No
         admission_receipt(
             document,
             raw,
-            admitted_at=datetime(2026, 8, 11, tzinfo=timezone.utc),
+            admitted_at=_receipt_instant(receipt) - timedelta(seconds=1),
             previous_receipt=receipt,
         )
 
@@ -394,25 +402,29 @@ def test_offline_cli_check_and_monotonic_candidate_update(tmp_path: Path) -> Non
     ]) == 0
 
     candidate = _current()
-    candidate["dataAsOf"] = "2026-08-13"
+    next_data_day = date.fromisoformat(candidate["dataAsOf"]) + timedelta(days=1)
+    next_data_as_of = next_data_day.isoformat()
+    candidate["dataAsOf"] = next_data_as_of
     candidate["datasets"]["retailDrugPrices"]["provenance"]["localDataDate"] = (
-        "2026-08-13"
+        next_data_as_of
     )
+    current_receipt = load_receipt(receipt_path, artifact=artifact_path.read_bytes())
+    next_admission = _receipt_instant(current_receipt) + timedelta(days=1)
     candidate_path = tmp_path / "candidate.json"
     candidate_path.write_bytes(canonical_json_bytes(candidate))
     assert sync_narcoscope.main([
         "--artifact", str(artifact_path),
         "--receipt", str(receipt_path),
         "--source-file", str(candidate_path),
-        "--retrieved-at", "2026-08-13T00:00:00Z",
+        "--retrieved-at", next_admission.isoformat(),
     ]) == 0
     updated_raw = artifact_path.read_bytes()
     updated = strict_json_loads(updated_raw)
     updated_receipt = load_receipt(receipt_path, artifact=updated_raw)
-    assert updated["dataAsOf"] == "2026-08-13"
+    assert updated["dataAsOf"] == next_data_as_of
     assert updated_receipt["current"]["sha256"] == hashlib.sha256(updated_raw).hexdigest()
     assert updated_receipt["superseded"][-1]["sha256"] == (
-        "2e8be3a3657fd339d78836cb1cef7a2e6a057e28a3238122072d0051a982dbbd"
+        current_receipt["current"]["sha256"]
     )
 
 
