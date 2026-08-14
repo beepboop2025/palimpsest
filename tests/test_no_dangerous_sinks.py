@@ -65,10 +65,15 @@ _SINKS = re.compile(
 #   root-owned bundle; command, mounts, entrypoint, and every option come from the
 #   shared fixed contract. The strict request parser supplies only a validated
 #   staging token, deployed commit, and decision clock, and no shell is involved.
+#   public_osint_sync.py: invokes only the absolute /usr/bin/git executable against
+#   its dedicated root-owned bare repository. Production refuses repository/public
+#   authority overrides; every ref, blob path, timeout, environment, and Git option
+#   is constructed by the module, subprocess stdin is closed, and no shell is used.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
     ("ops/network-lane/network_lane.py", "subprocess."),
+    ("ops/osint-sync/public_osint_sync.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
@@ -132,23 +137,34 @@ def test_network_lane_keeps_fixed_no_shell_process_boundaries():
 
     assert "shell=True" not in lane and "shell=True" not in local_filter
     assert '[str(path), "--version"]' in lane
-    assert (
-        'command = [\n        str(downloader_path),\n        "download",'
-        in lane
-    )
+    assert 'command = [\n        str(downloader_path),\n        "download",' in lane
     assert "command=[str(prober_path)]" in lane
     assert '[str(path), "--version"]' in local_filter
     assert "[str(duckdb_path)]" in local_filter
-    assert "input=sql.encode(\"utf-8\")" in local_filter
+    assert 'input=sql.encode("utf-8")' in local_filter
+
+
+def test_public_osint_sync_keeps_fixed_no_shell_git_boundary():
+    sync = (ROOT / "ops" / "osint-sync" / "public_osint_sync.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "shell=True" not in sync
+    assert '"/usr/bin/git"' in sync
+    assert "stdin=subprocess.DEVNULL" in sync
+    assert "env=_git_environment(" in sync
+    assert "config.repository_url != REPOSITORY_URL" in sync
+    assert '"core.hooksPath=/dev/null"' in sync
+    assert '"protocol.file.allow=never"' in sync
 
 
 def test_analysis_broker_keeps_a_fixed_no_shell_docker_boundary():
     broker = (ROOT / "ops" / "investigative_analysis_broker.py").read_text(
         encoding="utf-8"
     )
-    contract = (
-        ROOT / "core" / "investigative_container_contract.py"
-    ).read_text(encoding="utf-8")
+    contract = (ROOT / "core" / "investigative_container_contract.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "shell=True" not in broker and "shell=True" not in contract
     assert 'Path("/usr/bin/docker")' in broker
