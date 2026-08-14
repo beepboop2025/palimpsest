@@ -1,0 +1,549 @@
+{
+  "articles": [
+    {
+      "author": "Palimpsest Eval Lab",
+      "claim": "The current eval record supports a provisional measurement claim; it does not yet support calling the lexical construct human-validated or the findings independently replicated.",
+      "content_sha256": "ceee7cf77e9996f37b21029beef2c2b7d4f1e53cab20c4cece1b8e66414f70d8",
+      "dek": "Palimpsest now publishes a machine-readable assurance ladder that keeps chain integrity, exact-prompt commitment, response recomputation, statistical design, human validation, and independent replication on separate axes.",
+      "evidence": [
+        {
+          "bytes": 9385,
+          "label": "AI Eval Assurance",
+          "path": "readings/eval-assurance-latest.json",
+          "role": "Live dimensions, checks, claim ceiling, limitations, and verification commands",
+          "sha256": "b2ebad89a7a14397c3fad1997f71d8ce77f234c23d8522d4b717ac0d3ac688c6",
+          "url": "/readings/eval-assurance-latest.json"
+        },
+        {
+          "bytes": 29615,
+          "label": "Assurance builder",
+          "path": "core/eval_assurance.py",
+          "role": "Deterministic checks and human-validation promotion gate",
+          "sha256": "a3bad38968408bae2028d921210fe1397c09b2c5b00b6c2e309aac0828f26b1d",
+          "url": "/core/eval_assurance.py"
+        },
+        {
+          "bytes": 2868,
+          "label": "Closed assurance schema",
+          "path": "protocol/eval-assurance-v1.schema.json",
+          "role": "Machine contract for the served report",
+          "sha256": "aeb8f49e3e8aba2c570085224c84b50e8af72c39c4845139f3fa303443d61b25",
+          "url": "/protocol/eval-assurance-v1.schema.json"
+        },
+        {
+          "bytes": 4768,
+          "label": "Frozen validation study",
+          "path": "validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json",
+          "role": "Sample, analysis, weighting, thresholds, and one-look commitment",
+          "sha256": "1cd6b00594a8a737c0604ec4e86f7a25d3c5ddeb72a909c2c0b7a74576db8cbd",
+          "url": "/validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json"
+        },
+        {
+          "bytes": 10617,
+          "label": "Grant evidence case",
+          "path": "docs/GRANT-CASE.md",
+          "role": "Fundable work packages, milestones, risks, and non-negotiable claim boundaries",
+          "sha256": "dc81b6a3c44d8b6c90fbecb4ade9dc394e3d406409411791e0cf9a0d4f152a4e",
+          "url": "/docs/GRANT-CASE.md"
+        },
+        {
+          "bytes": 3208,
+          "label": "Assurance regression tests",
+          "path": "tests/test_eval_assurance.py",
+          "role": "Pins chain failure, filename spoofing, malformed-result failure, and current state",
+          "sha256": "59d980e4a164aeecdca9ebc43993f5af47c89b9a19d074d9b385e1d276029819",
+          "url": "/tests/test_eval_assurance.py"
+        }
+      ],
+      "external_sources": [
+        {
+          "relationship": "Independent context on uncertainty in AI evaluation; not an endorsement of Palimpsest",
+          "title": "NIST: Statistical models expand the AI evaluation toolbox",
+          "url": "https://www.nist.gov/news-events/news/2026/02/new-report-expanding-ai-evaluation-toolbox-statistical-models"
+        },
+        {
+          "relationship": "Independent benchmark-governance context; not evidence that Palimpsest satisfies every practice",
+          "title": "NIST: Towards best practices for automated benchmark evaluations",
+          "url": "https://www.nist.gov/news-events/news/2026/01/towards-best-practices-automated-benchmark-evaluations"
+        }
+      ],
+      "falsifier": "Any broken registry link, prompt commitment mismatch, unrecomputable response seal, label disagreement under the committed method, missing statistical field, malformed human-study result, frozen-threshold miss, or failed qualifying replication must appear as a non-pass state and lower the affected dimension. If the public page and machine-readable report disagree, the machine-readable check is authoritative and publication should fail.",
+      "json_url": "https://palimpsest.info/evals/what-the-evidence-can-claim/article.json",
+      "kind": "Assurance note",
+      "limitations": [
+        "The assurance report evaluates Palimpsest's declared contracts; it is not an accreditation or an external audit.",
+        "A pass establishes the named machine check only and must be read with that check's limitation.",
+        "Human validation remains pending and independent replication remains open in the current public state.",
+        "The claim ceiling can regress if later evidence fails; promotion is not permanent."
+      ],
+      "live_context": {
+        "detail": "5 pass · 4 partial · 1 pending · 1 open · 0 fail",
+        "label": "Live assurance ceiling",
+        "url": "/readings/eval-assurance-latest.json",
+        "value": "provisional measurement"
+      },
+      "modified_at": "2026-08-14T19:15:00Z",
+      "published_at": "2026-08-14T17:54:00Z",
+      "schema": "palimpsest.eval-journal-article.v1",
+      "sections": [
+        {
+          "heading": "The most dangerous badge was the easiest one to earn",
+          "paragraphs": [
+            "Hash chains answer a valuable, narrow question: do the served records reproduce their commitments and publication order? They do not answer whether a prompt measures the intended construct, whether a classifier agrees with people, whether a panel represents a larger model population, or whether another team can reproduce the finding.",
+            "Collapsing those questions into one ‘verified’ badge rewards the easiest engineering property and launders the hardest scientific gaps. Palimpsest's assurance report refuses that composite. It exposes seven dimensions and assigns each check a status, evidence statement, limitation, affected suite, and—where possible—a local verification command."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Seven questions, no average",
+          "paragraphs": [
+            "Integrity asks whether the registry recomputes and whether every run follows a preregistration. Prompt precommitment asks whether the exact questions were fixed before answers. Response recomputability asks whether full public text can reproduce the current seals. Pipeline reproducibility asks whether labels can be regenerated under an identified method. Statistical design asks for denominators, uncertainty, controls, power, and correction for repeated looks. Construct validation asks whether independent humans support what the labels mean. Replication asks whether an unaffiliated team reproduced the result.",
+            "A failure in one dimension is not averaged away by passes elsewhere. The dimension inherits its weakest applicable check, and the public claim ceiling follows the unresolved scientific gates."
+          ],
+          "points": [
+            "Pass: the served evidence satisfies the declared machine check.",
+            "Partial: a real guarantee exists, but a named part of it is absent or belongs to a legacy method.",
+            "Pending: a preregistered study or evidence-producing step is not complete.",
+            "Open: the invitation exists, but no qualifying independent result is on record.",
+            "Fail: published evidence exists and violates the declared contract or frozen threshold."
+          ]
+        },
+        {
+          "heading": "The human-validation gate cannot be faked by a filename",
+          "paragraphs": [
+            "The two-coder study is already frozen at 145 rows with a codebook, sample commitment, weighting plan, and three rejection thresholds. Assurance stays pending until one exact result artifact identifies that commitment, accounts for every row from both coders, carries both attestations, and supplies digests that match the released coder sheets, answer key, manifest, and protocol.",
+            "Once complete, the check independently recomputes whether Krippendorff's alpha reaches 0.667 and whether weighted precision reaches 0.80 for both refused and party-line labels. A malformed result is fail, not pending. A threshold miss is a published failure, not permission to redraw the sample."
+          ],
+          "points": []
+        },
+        {
+          "heading": "What can be said today",
+          "paragraphs": [
+            "Today Palimpsest can say that its public eval chain is tamper-evident under the declared hash construction; the frontier suite binds exact prompts and exposes full current responses for seal recomputation; and both suites publish explicit denominators, uncertainty, controls, and method versions. The live JSON beside this article reports the exact current count of pass, partial, pending, open, and fail checks.",
+            "It cannot yet say that the lexical classifier has completed independent human validation. The legacy China-focused GFI still lacks exact-prompt preregistration and the complete served response matrix that v2 will require. No unaffiliated team has published a preregistered replication against the registry. Those gaps are not footnotes to a strong score. They are the ceiling on the claim."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Why this makes a stronger grant case",
+          "paragraphs": [
+            "A grant should fund a specific reduction in uncertainty, not reward a polished claim that cannot fail. The assurance ladder converts open work into auditable milestones: complete the frozen human study; land the first full-evidence GFI v2 run; recruit and support an unaffiliated replication; extend prompts and coder validation across languages; deposit durable external witnesses; and publish every miss.",
+            "That does not guarantee an award. It gives a reviewer something better than ambition: a public baseline, a named gap, a falsifier, a deliverable that changes the claim ceiling only when the evidence earns it, and a verification path that remains after the grant ends."
+          ],
+          "points": []
+        }
+      ],
+      "slug": "what-the-evidence-can-claim",
+      "status": "Live claim ceiling",
+      "title": "A green hash is not a validity result",
+      "updated_at": "2026-08-14T19:15:00Z",
+      "url": "https://palimpsest.info/evals/what-the-evidence-can-claim/",
+      "verification": [
+        "python -m scripts.verify_eval_registry",
+        "python -m scripts.verify_refusal_transcripts",
+        "python -m scripts.build_eval_assurance --check",
+        "python -m pytest -q tests/test_eval_assurance.py"
+      ]
+    },
+    {
+      "author": "Palimpsest Eval Lab",
+      "claim": "The v4 judge removes a demonstrated quote-and-mention false positive while preserving a deterministic, inspectable rule; it does not replace the pending human-validation study.",
+      "content_sha256": "30402d2e10dfafa910af60018472d9835df7b72722a594834ea2ab74ff311de9",
+      "dek": "A transparent lexical judge can still make a basic category error: finding refusal words inside a quotation and calling the whole response a refusal. Method v4 narrows the decision to the model's own speech act and forces a new baseline.",
+      "evidence": [
+        {
+          "bytes": 67838,
+          "label": "Quote-aware deterministic judge",
+          "path": "collectors/generative_firewall.py",
+          "role": "Production speech-act extraction and refusal classification",
+          "sha256": "d51c6ed3bf864addd4114fad44b4d03966d013f4ac74ab07d7aa40ebcf7ff47b",
+          "url": "/collectors/generative_firewall.py"
+        },
+        {
+          "bytes": 6645,
+          "label": "Frozen judge anchors",
+          "path": "config/refusal_judge_anchors.json",
+          "role": "Expected decisions, including the quoted-refusal counterexample",
+          "sha256": "2efb0a278147ce82f029df857755ec92ee4f48f36d9cf09ee76abb4f6bf4e302",
+          "url": "/config/refusal_judge_anchors.json"
+        },
+        {
+          "bytes": 7310,
+          "label": "Regression tests",
+          "path": "tests/test_refusal_needs_more_than_a_function_word.py",
+          "role": "Pins quotation, engagement, and true-refusal behavior",
+          "sha256": "cfc230aeb66293ba0d8f63ea3a2957d7edb5e39cda60096980f3f0d7c3d8f7c6",
+          "url": "/tests/test_refusal_needs_more_than_a_function_word.py"
+        },
+        {
+          "bytes": 20623,
+          "label": "Refusal Drift method",
+          "path": "docs/FRONTIER-DRIFT.md",
+          "role": "Method v4 boundary and rebaseline rule",
+          "sha256": "82707f95bdea06e3b8f70324abee338ea5dff99def0234bc097ed19de24ec928",
+          "url": "/docs/FRONTIER-DRIFT.md"
+        },
+        {
+          "bytes": 4768,
+          "label": "Human-validation preregistration",
+          "path": "validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json",
+          "role": "Frozen two-coder design and rejection thresholds",
+          "sha256": "1cd6b00594a8a737c0604ec4e86f7a25d3c5ddeb72a909c2c0b7a74576db8cbd",
+          "url": "/validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json"
+        },
+        {
+          "bytes": 9385,
+          "label": "Current assurance report",
+          "path": "readings/eval-assurance-latest.json",
+          "role": "Prevents a code fix from being presented as completed construct validation",
+          "sha256": "b2ebad89a7a14397c3fad1997f71d8ce77f234c23d8522d4b717ac0d3ac688c6",
+          "url": "/readings/eval-assurance-latest.json"
+        }
+      ],
+      "external_sources": [],
+      "falsifier": "The v4 construct must not be promoted if the preregistered study reports Krippendorff's alpha below 0.667, weighted refused precision below 0.80, or weighted party-line precision below 0.80. Independently, any regression where a balanced quoted refusal is again classified as the speaker's refusal invalidates the v4 implementation claim.",
+      "json_url": "https://palimpsest.info/evals/when-refusal-phrase-is-an-answer/article.json",
+      "kind": "Method autopsy",
+      "limitations": [
+        "Balanced same-line quote masking does not solve every quotation form, nested quotation, or discourse structure.",
+        "The judge remains lexical and may miss indirect evasion, multilingual paraphrase, or polished non-answers.",
+        "A corrected false positive changes the measurement definition; historical v3 and new v4 rates are not one continuous series.",
+        "The preregistered human study was drawn from the earlier response population and cannot validate every future model or language."
+      ],
+      "live_context": {
+        "detail": "No longitudinal claim crosses the method boundary; the next successful sweep starts the v4 baseline.",
+        "label": "Public baseline",
+        "url": "/readings/refusal-drift-latest.json",
+        "value": "method v3; v4 code shipped"
+      },
+      "modified_at": "2026-08-14T19:10:00Z",
+      "published_at": "2026-08-14T17:50:00Z",
+      "schema": "palimpsest.eval-journal-article.v1",
+      "sections": [
+        {
+          "heading": "The sentence that breaks a naive judge",
+          "paragraphs": [
+            "Consider an answer that says: ‘The phrase “I cannot help with that” is a refusal, but here is the historical account you requested.’ A substring classifier sees ‘I cannot help’ and may stop. A reader sees the model discussing a refusal while directly answering the question.",
+            "This is a small example with large consequences. Political and safety questions often ask a model to explain rhetoric, quote a policy, compare another model's answer, or describe how censorship sounds. Refusal language can therefore be evidence inside an answer rather than the answer's speech act. Counting every mention as self-refusal inflates the very quantity the eval is supposed to measure."
+          ],
+          "points": []
+        },
+        {
+          "heading": "The v4 decision boundary",
+          "paragraphs": [
+            "Method v4 first masks balanced same-line quotation spans across straight double quotes, curly English quotes, and common Chinese corner brackets. The refusal rule runs on the remaining speech-act text. Engagement and party-line checks still inspect the full response because quoted evidence can be part of a substantive answer or narrative substitution.",
+            "The change is intentionally narrow. It does not ask another model to infer intent, and it does not add an opaque score. The exact patterns remain local and deterministic, which means every public response can be reclassified by anyone with the source file."
+          ],
+          "points": [
+            "Quoted refusal wording no longer proves that the current speaker refused.",
+            "Unquoted first-person refusal wording still triggers the declared rule.",
+            "Engagement and state-narrative markers retain access to the complete text.",
+            "Unbalanced or cross-line quotation edge cases remain visible limitations rather than silently guessed structure."
+          ]
+        },
+        {
+          "heading": "Why the longitudinal line must break",
+          "paragraphs": [
+            "A better judge can move a rate even when model behavior did not change. Comparing a v4 point directly with a v3 point would confound classifier repair with model drift. Both the frontier Refusal Drift suite and the Generative Firewall therefore declare method v4 and start a new baseline on their next successful collection.",
+            "Old artifacts remain public under their original method version. They are not rewritten to make the history look continuous, and no alarm is allowed to cross the judge boundary. The machine-readable assurance report marks the shipping-code versus public-baseline gap partial until a fresh run lands."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Transparent is not the same as validated",
+          "paragraphs": [
+            "A deterministic judge is easy to audit, but inspectability does not establish construct validity. Multilingual refusals, indirect evasions, polished non-answers, and narrative substitution can all escape a lexical pattern. Conversely, new phrasing can create false positives. The frozen two-coder study exists to estimate whether independent human judgments support the labels on the sampled response population.",
+            "The right result of a classifier autopsy is not confidence theater. It is a narrower rule, an explicit method break, a regression test that preserves the discovered failure, and an assurance ceiling that stays provisional until people and independent teams test the construct."
+          ],
+          "points": []
+        }
+      ],
+      "slug": "when-refusal-phrase-is-an-answer",
+      "status": "Judge v4 shipped; rebaseline pending",
+      "title": "When ‘I cannot help’ is evidence of an answer",
+      "updated_at": "2026-08-14T19:10:00Z",
+      "url": "https://palimpsest.info/evals/when-refusal-phrase-is-an-answer/",
+      "verification": [
+        "python -m pytest -q tests/test_refusal_needs_more_than_a_function_word.py",
+        "python -m scripts.verify_refusal_transcripts",
+        "python -m scripts.build_eval_assurance --check"
+      ]
+    },
+    {
+      "author": "Palimpsest Eval Lab",
+      "claim": "GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.",
+      "content_sha256": "341c7df5fa0a0a5192260331c3db40d59f883d3a114b113802b37567d9155e1f",
+      "dek": "The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.",
+      "evidence": [
+        {
+          "bytes": 4979,
+          "label": "Canonical GFI v2 protocol",
+          "path": "core/gfi_protocol.py",
+          "role": "Builds and verifies the exact prompt, panel, cohort, sample, method, and classifier commitment",
+          "sha256": "af85421c535550c0dda695505c5d7799a0ca38f6e4dc101b0380cc4558b74795",
+          "url": "/core/gfi_protocol.py"
+        },
+        {
+          "bytes": 3788,
+          "label": "Pre-query preregistration command",
+          "path": "scripts/preregister_gfi_v2.py",
+          "role": "Writes the protocol and prior registry commitment",
+          "sha256": "0f0659dbb115ba54fadfe3282156b392ecb34ce15fabbb1f69fe6229d1079d2a",
+          "url": "/scripts/preregister_gfi_v2.py"
+        },
+        {
+          "bytes": 57943,
+          "label": "Guarded GFI collector",
+          "path": "scripts/generative_firewall_reading.py",
+          "role": "Refuses the first model call without a matching public protocol receipt and captures complete responses",
+          "sha256": "66dfc5ee71b14dcc97084bc221d0f4861e7e271f546d25dbd32429f02783f549",
+          "url": "/scripts/generative_firewall_reading.py"
+        },
+        {
+          "bytes": 8347,
+          "label": "Full-evidence verifier",
+          "path": "scripts/verify_gfi_transcripts.py",
+          "role": "Recomputes matrices, seals, labels, and reading bindings",
+          "sha256": "a4e6e0b6b2786f80841f7186c66219b59d55710c45f9583b5b5e44805f140347",
+          "url": "/scripts/verify_gfi_transcripts.py"
+        },
+        {
+          "bytes": 6898,
+          "label": "Two-stage publication workflow",
+          "path": ".github/workflows/gfi-refresh.yml",
+          "role": "Publishes the protocol before collection and preserves measured bytes across push races",
+          "sha256": "40f938c921bbf6fb7993ec6ed8a701bfdd8cf92766830b6832df55af1f353957",
+          "url": "/.github/workflows/gfi-refresh.yml"
+        },
+        {
+          "bytes": 9385,
+          "label": "Current assurance state",
+          "path": "readings/eval-assurance-latest.json",
+          "role": "Keeps GFI at legacy partial evidence until the v2 artifacts actually exist",
+          "sha256": "b2ebad89a7a14397c3fad1997f71d8ce77f234c23d8522d4b717ac0d3ac688c6",
+          "url": "/readings/eval-assurance-latest.json"
+        }
+      ],
+      "external_sources": [
+        {
+          "relationship": "Independent benchmark-governance context; Palimpsest's protocol is a project-specific implementation",
+          "title": "NIST: Towards best practices for automated benchmark evaluations",
+          "url": "https://www.nist.gov/news-events/news/2026/01/towards-best-practices-automated-benchmark-evaluations"
+        }
+      ],
+      "falsifier": "A v2 run is invalid if its exact protocol was not publicly committed before the first API call, if any expected arm or sample is missing without an explicit null abstention, if any undeclared model appears, if a response matrix does not reproduce its registry seal, or if published labels do not re-derive under the committed classifier. The workflow must fail closed in every one of those cases.",
+      "json_url": "https://palimpsest.info/evals/gfi-v2-answer-after-protocol/article.json",
+      "kind": "Protocol note",
+      "limitations": [
+        "The first public GFI v2 protocol and transcript do not exist until a successful guarded collection; the current reading remains legacy v1.",
+        "Complete response publication enables recomputation but does not by itself validate the refusal or party-line construct.",
+        "The panel is a declared sample of model endpoints, not a population estimate for all Chinese language models.",
+        "API providers can change routing or model weights behind an endpoint; Palimpsest records the endpoint and time but cannot independently prove the provider's hidden serving stack."
+      ],
+      "live_context": {
+        "detail": "The guard and workflow are shipped; the current public GFI remains legacy v1 until the next successful model run.",
+        "label": "Protocol state",
+        "url": "/docs/EVAL-REGISTRY.md",
+        "value": "staged for next collection"
+      },
+      "modified_at": "2026-08-14T19:08:28.649895Z",
+      "published_at": "2026-08-14T17:45:00Z",
+      "schema": "palimpsest.eval-journal-article.v1",
+      "sections": [
+        {
+          "heading": "The legacy record was checkable, but not complete",
+          "paragraphs": [
+            "GFI v1 froze ten sensitive concept identifiers and sealed derived response states in the eval chain. That made later revision detectable inside the registry, but it left too much outside the commitment. The exact prompt wording, language variants, sampling count, model panel, and classifier bytes were visible in code without all being bound into the preregistration. Only excerpts—not every full sampled response—were served publicly.",
+            "Those are not cosmetic omissions. Language-model behavior is prompt-sensitive. A concept commitment cannot prove which sentence was asked, and a derived-state seal cannot let a reader re-run every substantive label from the served evidence. The public assurance report therefore marks both guarantees partial for the legacy series."
+          ],
+          "points": []
+        },
+        {
+          "heading": "What v2 freezes before the first API call",
+          "paragraphs": [
+            "The v2 protocol is a canonical JSON object. It binds every exact prompt arm, Simplified and Traditional Chinese variants, the sensitive and control cohorts, the model endpoint identifiers, the repeated-sample count, the method version, and the SHA-256 digest of the deterministic classifier. Its commitment is appended to the eval registry and pushed in a dedicated public commit before model access begins.",
+            "The runner contains a hard guard: if the protocol file is absent, malformed, or not matched by an earlier preregistration, collection stops before the first paid request. That ordering turns ‘we planned this first’ from an assertion into a condition the code can enforce."
+          ],
+          "points": [
+            "Exact question text, not only topic names.",
+            "Declared model panel and endpoint identifiers.",
+            "Language, cohort, control, and sampling assignments.",
+            "Method version plus the classifier's exact file digest.",
+            "A commitment that must already exist in the public eval chain."
+          ]
+        },
+        {
+          "heading": "What v2 keeps after the answer",
+          "paragraphs": [
+            "Every model gets a complete response matrix over the frozen arms and sample indices. A transport failure is represented as an explicit null abstention; it cannot disappear from the denominator or be relabeled as refusal. Each matrix is content-addressed and sealed as a run against the earlier protocol commitment.",
+            "The verifier rebuilds every response artifact, recomputes its registry seal, re-runs the deterministic labels, and checks the published reading. A hash mismatch, missing arm, undeclared model, extra model, or method discrepancy is fatal."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Publishing safely when two jobs race",
+          "paragraphs": [
+            "A scheduled data job can lose a push race after spending model quota. Re-querying would create a different sample and quietly detach the answers from the attempted run. The upgraded workflow instead carries forward the measured transcript bytes, rebases onto the winning public chain, rebuilds the run seals against that chain, verifies the entire protocol again, and only then retries publication.",
+            "The protocol commit itself is never reconstructed after the answers. If its pre-query push loses a race, the job stops without calling a model. That asymmetry is intentional: measurements can be resealed against a newer chain, but preregistration cannot be manufactured after observation."
+          ],
+          "points": []
+        },
+        {
+          "heading": "What has shipped, and what has not",
+          "paragraphs": [
+            "The protocol builder, pre-query guard, transcript capture, verifier, race recovery, and CI contracts are now in the repository. The currently served Generative Firewall artifact is still v1. Until the next successful scheduled collection publishes the v2 protocol first and then the complete response matrix, the assurance report correctly keeps the legacy prompt and transcript guarantees partial.",
+            "This distinction matters for grant and research claims. Code that could produce strong evidence is infrastructure. A successful, sealed run is evidence. Palimpsest will not describe the former as the latter."
+          ],
+          "points": []
+        }
+      ],
+      "slug": "gfi-v2-answer-after-protocol",
+      "status": "Shipped guard; first sealed run pending",
+      "title": "GFI v2: the answer comes after the protocol",
+      "updated_at": "2026-08-14T19:05:00Z",
+      "url": "https://palimpsest.info/evals/gfi-v2-answer-after-protocol/",
+      "verification": [
+        "python -m scripts.preregister_gfi_v2 --check",
+        "python -m scripts.verify_eval_registry",
+        "python -m scripts.verify_gfi_transcripts",
+        "python -m scripts.build_eval_assurance --check"
+      ]
+    },
+    {
+      "author": "Palimpsest's founder",
+      "claim": "The initial observation justified a controlled research question—not a verdict about every Chinese model, every political topic, or the motive behind any one output.",
+      "content_sha256": "06a37e826e5e62e2f86e0adb0cc9fe3b5907dc75710ac677b5e93347f9b1fc81",
+      "dek": "Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.",
+      "evidence": [
+        {
+          "bytes": 82684,
+          "label": "Verifiable Eval Registry",
+          "path": "readings/eval-registry.html",
+          "role": "Public origin account, current assurance surface, and suite-level evidence",
+          "sha256": "607c67e1ab8e2585c2f3e602a87b03ff8a94e64f5a48b8fdbd782f75e673e78a",
+          "url": "/readings/eval-registry.html"
+        },
+        {
+          "bytes": 273881,
+          "label": "Evaluation registry chain",
+          "path": "readings/eval-registry.jsonl",
+          "role": "Preregistrations and run attestations in publication order",
+          "sha256": "12a07c803a7ada50fd2b0377a7b20787a3e14f0b46fda755b0682e2cc384bd01",
+          "url": "/readings/eval-registry.jsonl"
+        },
+        {
+          "bytes": 20852,
+          "label": "Registry method",
+          "path": "docs/EVAL-REGISTRY.md",
+          "role": "Exact guarantees, limits, and local verification procedure",
+          "sha256": "9d620b89d8d0bef54ec1dbda4b0c3e7bd9a3a8b50a36991b5f64bdee56a4eea7",
+          "url": "/docs/EVAL-REGISTRY.md"
+        },
+        {
+          "bytes": 9385,
+          "label": "AI Eval Assurance",
+          "path": "readings/eval-assurance-latest.json",
+          "role": "Machine-readable ceiling on what the current evidence can support",
+          "sha256": "b2ebad89a7a14397c3fad1997f71d8ce77f234c23d8522d4b717ac0d3ac688c6",
+          "url": "/readings/eval-assurance-latest.json"
+        },
+        {
+          "bytes": 57943,
+          "label": "Generative Firewall runner",
+          "path": "scripts/generative_firewall_reading.py",
+          "role": "Declared concepts, controls, model panel, sampling, and publication behavior",
+          "sha256": "66dfc5ee71b14dcc97084bc221d0f4861e7e271f546d25dbd32429f02783f549",
+          "url": "/scripts/generative_firewall_reading.py"
+        }
+      ],
+      "external_sources": [
+        {
+          "relationship": "Adjacent independent research; not evidence for any Palimpsest measurement",
+          "title": "Refusal and reframing in China-origin vision-language models",
+          "url": "https://arxiv.org/abs/2608.11816"
+        },
+        {
+          "relationship": "Related evidence that language and political topic can interact; not a replication of Palimpsest",
+          "title": "Bilingual political-bias evaluation around Taiwan",
+          "url": "https://arxiv.org/abs/2602.06371"
+        }
+      ],
+      "falsifier": "If preregistered comparisons with clean controls, repeated samples, prompt families, and language pairs do not show a stable discrepancy on the named model endpoints, the founding observation does not generalize and Palimpsest must say so. If human coders reject the labels or an unaffiliated replication fails, the corresponding claim must shrink rather than the test being redrawn after the result.",
+      "json_url": "https://palimpsest.info/evals/a-censored-answer-is-not-evidence/article.json",
+      "kind": "Founder's note",
+      "limitations": [
+        "The origin account reports the founder's observation; it is not itself an experimental result.",
+        "Palimpsest evaluates named model endpoints, prompts, and dates. It does not estimate all Chinese models or all political knowledge.",
+        "Observed refusal or narrative substitution does not identify who caused the behavior or prove a government instruction.",
+        "The current lexical labels remain provisional until the preregistered two-human study completes."
+      ],
+      "live_context": {
+        "detail": "The origin explains why the instrument exists; the registry and assurance report determine what its results may claim.",
+        "label": "Evidence posture",
+        "url": "/readings/eval-assurance-latest.json",
+        "value": "provisional measurement"
+      },
+      "modified_at": "2026-08-14T19:08:28.649895Z",
+      "published_at": "2026-08-14T17:40:00Z",
+      "schema": "palimpsest.eval-journal-article.v1",
+      "sections": [
+        {
+          "heading": "The answer that changed the project",
+          "paragraphs": [
+            "I started testing language models built in China and models aligned with Chinese state narratives because I wanted to know whether the information controls I had been measuring on networks and platforms had moved into the answer itself. When a prompt directly criticised the Chinese Communist Party or asked about a documented political event, some answers became thinner. Some withheld the requested account. Some substituted an official frame for the premise of the question.",
+            "That was the beginning of Palimpsest's AI-evaluation work. It was not the conclusion. A model response can be striking and still be weak evidence: the prompt may have been selected after seeing the answer; an unlucky sample may look systematic; a safety refusal may be misread as political censorship; a model endpoint may change without notice; or the publisher may later revise the record. The project exists because a screenshot cannot resolve any of those possibilities."
+          ],
+          "points": []
+        },
+        {
+          "heading": "What the screenshot could not tell me",
+          "paragraphs": [
+            "The dramatic artifact is usually the answer. The scientific object is the comparison around it. Palimpsest therefore asks the same concepts across declared models, languages, prompt families, and neutral controls. It records unreachable calls as abstentions instead of refusals. It publishes denominators and uncertainty. Most importantly, it freezes a probe commitment before the result and preserves the response evidence needed to recompute the seal.",
+            "Those choices turn a personal observation into a test another person can attack. They do not make the test infallible. They make selection, omission, method changes, and later revision easier to see."
+          ],
+          "points": [
+            "Prompt: freeze the question, language, model panel, sampling plan, and judge before collection.",
+            "Discrepancy: compare refusal, narrative substitution, language asymmetry, prompt sensitivity, and controls without treating one model as ground truth for another.",
+            "Proof: publish the response bytes, hashes, denominators, method version, verification commands, and the limits on the claim."
+          ]
+        },
+        {
+          "heading": "Why this belongs inside a censorship observatory",
+          "paragraphs": [
+            "People increasingly encounter public history and political facts through generated answers. If access to an event now depends on which model is asked, in which language, and with what framing, that behavior belongs beside DNS interference, content deletion, search suppression, and storefront removal as a separate measurement layer.",
+            "Separate matters. A model answer is not averaged into a national censorship score, and a refusal does not establish a government instruction. Palimpsest measures named endpoints on named dates under a declared prompt bank. The surrounding observatory supplies context and possible comparisons, not automatic causation."
+          ],
+          "points": []
+        },
+        {
+          "heading": "The standard I want the work held to",
+          "paragraphs": [
+            "The point is not to produce the harshest possible number. It is to produce a record that remains useful when the number is inconvenient. If controls fail, the reading should abstain. If a classifier change moves the result, the series should rebaseline. If two human coders do not support the labels, that failure should be published. If another team cannot reproduce the pattern, the claim should shrink.",
+            "Palimpsest started with an answer that felt censored. It became an evaluation project when the question changed from ‘How bad does this look?’ to ‘What evidence would let someone who disagrees with me check it?’"
+          ],
+          "points": []
+        }
+      ],
+      "slug": "a-censored-answer-is-not-evidence",
+      "status": "Origin and research question",
+      "title": "A censored answer is not yet evidence",
+      "updated_at": "2026-08-14T19:00:00Z",
+      "url": "https://palimpsest.info/evals/a-censored-answer-is-not-evidence/",
+      "verification": [
+        "python -m scripts.verify_eval_registry",
+        "python -m scripts.verify_refusal_transcripts",
+        "python -m scripts.build_eval_assurance --check"
+      ]
+    }
+  ],
+  "description": "Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.",
+  "feed_url": "https://palimpsest.info/evals/feed.json",
+  "generated_at": "2026-08-14T19:15:00Z",
+  "home_page_url": "https://palimpsest.info/evals/",
+  "method": "Deterministic rendering with a closed editorial contract and fresh SHA-256 receipts for every local evidence citation.",
+  "n_articles": 4,
+  "schema": "palimpsest.eval-journal.v1",
+  "scope": "Editorial explanation of Palimpsest AI-evaluation origins, methods, failures, assurance, and findings; live measurement artifacts remain authoritative.",
+  "source": "Closed article records in content/eval-journal, joined only to explicitly cited public Palimpsest artifacts.",
+  "title": "Palimpsest AI Eval Journal"
+}

@@ -14,7 +14,7 @@
 [![Wayback reconstruction](https://github.com/beepboop2025/palimpsest/actions/workflows/wayback-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/wayback-refresh.yml)
 
 **A public, tamper-evident record of what powerful actors quietly erase, and a way for anyone
-to prove, offline, that not one entry was changed after it was published.**
+to detect, offline, whether the served record still reproduces its published commitments.**
 
 Palimpsest is one primitive, a sealed append-only ledger you can verify without trusting us,
 pointed at two places where the record gets rewritten in the dark:
@@ -31,14 +31,28 @@ pointed at two places where the record gets rewritten in the dark:
   the model — and turns what a state is burying into a live, openly licensed early-warning signal
   for journalists, researchers, and human rights defenders.
   Twenty-six signals refresh on their own, unattended, every number tracing back to public evidence.
+- **The [AI Eval Journal](https://palimpsest.info/evals/).** Evidence-bound essays about why the
+  evals exist, what changed in their methods, what failed, and what the record can claim today.
+  Every article keeps its limitations, falsifier, verification commands and exact artifact receipts;
+  the linked readings remain authoritative.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
+
+The AI-evaluation work began with a specific observation. Palimpsest's founder tested Chinese
+and state-aligned language models on documented events and criticism of the Chinese Communist
+Party and saw answers change, disappear, or shift into official framing. A screenshot could
+capture one response but not a durable pattern. That gap became the Generative Firewall and then
+the registry: freeze the questions, retain the complete evidence, expose uncertainty, and make
+later revision detectable. This origin does not imply that all Chinese models behave alike or
+prove a model maker's motive; every claim stays scoped to its named panel, suite and timestamp.
 
 ## Prove it yourself, in one command
 
 ```bash
 git clone https://github.com/beepboop2025/palimpsest && cd palimpsest
 python3 scripts/verify_eval_registry.py   # the eval chain + the pre-registration rule
+python3 scripts/verify_refusal_transcripts.py  # current frontier text -> seal -> labels
+python3 -m scripts.build_eval_assurance --check # the claim ceiling matches the evidence
 python3 scripts/verify_ledger.py          # the erasure / censorship ledger
 python3 scripts/evidence_capsule.py verify protocol/test-vectors/palimpsest-erasure-v1.json
 ```
@@ -61,7 +75,8 @@ values, require human review, and are never auto-published. The complete boundar
 
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
 > (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
-> and the [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html).
+> the [AI Eval Journal](https://palimpsest.info/evals/), and the
+> [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html).
 > A ten-second, zero-dependency taste: `python3 demo/palimpsest_demo.py` pulls the live China
 > Digital Times feed and ranks what the censor is focused on right now (`--source sample` runs offline).
 
@@ -149,14 +164,16 @@ count. Today it usually does not: a post simply stops existing, with no notice a
 behind. For the people it hurts most, that silence is the point. What a state rushes to delete is
 also one of the clearest readings of what it actually fears. Every deletion is a kind of confession.
 
-Both problems have the same shape: the *before* state is unprovable. Palimpsest makes it provable.
-Seal the record when it is published, and any later edit, deletion, reorder, or cherry-pick becomes
-detectable by anyone, forever, without trusting the person who sealed it.
+Both problems have the same shape: without a commitment, the *before* state is unprovable.
+Palimpsest freezes that state. Hashes make an edit, deletion, reorder or cherry-pick detectable
+within the served record; public history, external anchors and witnesses make whole-record rewrites
+observable outside the operator's infrastructure. The trust boundary is explicit rather than
+compressed into the word “immutable.”
 
 ## The integrity architecture
 
-The central claim is that the published record cannot be revised after the fact. Here is exactly
-what enforces that, who each layer defends against, and, crucially, what none of it can do. A trust
+The central claim is that revision of the published record is detectable under the stated threat
+model. Here is exactly what enforces that, who each layer defends against, and, crucially, what none of it can do. A trust
 claim without a threat model is marketing; the full model is in **[docs/INTEGRITY.md](docs/INTEGRITY.md)**.
 
 | # | Layer | What it proves | Who must be defeated to fake it |
@@ -188,8 +205,9 @@ tripping layers 3–6). The honest limits are the point, and they live in
 A public, tamper-evident record of AI-model evaluations. See **[docs/EVAL-REGISTRY.md](docs/EVAL-REGISTRY.md)**.
 
 - **Pre-registration by construction.** The probe set is frozen and hash-committed into the chain
-  *before* any model is queried. A run whose questions were not frozen first is rejected by the
-  verifier, so results cannot be cherry-picked or p-hacked after the answers exist.
+  before a run can be accepted. Frontier v2 binds exact prompt text. GFI v2 additionally refuses
+  the first model query until its exact protocol has been committed and pushed publicly; legacy
+  GFI v1 committed concept identifiers and remains labelled as partial assurance.
 - **Sealed at publication.** Each result is hash-chained to its predecessor and fingerprinted by a
   Merkle root. Edit a published number and `scripts/verify_eval_registry.py` reports the break.
 - **The first live audit: cross-lab refusal drift.** The registry runs separate frozen suites
@@ -212,10 +230,16 @@ A public, tamper-evident record of AI-model evaluations. See **[docs/EVAL-REGIST
   text sealed, re-derive every label, and disagree with ours on the record. That closes most of the
   gap [docs/INTEGRITY.md](docs/INTEGRITY.md) previously had to concede, where a mislabelled
   response would be sealed perfectly and verify clean forever.
+- **No vanity assurance score.** The generated
+  [`eval-assurance-latest.json`](readings/eval-assurance-latest.json) reports integrity, prompt
+  precommitment, raw-response recomputation, pipeline reproducibility, statistical design, human
+  construct validation and independent replication separately. Its current ceiling is
+  `provisional-measurement`; human coding and unaffiliated replication remain unfinished.
 
 ```bash
 python3 scripts/verify_eval_registry.py        # chain integrity + the pre-registration rule
 python3 scripts/verify_refusal_transcripts.py  # published text -> sealed hash -> labels
+python3 -m scripts.build_eval_assurance --check # evidence -> public claim ceiling
 python3 scripts/prove_inclusion.py 5           # inclusion proof for a single sealed result
 ```
 
@@ -408,6 +432,9 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/INTEGRITY.md](docs/INTEGRITY.md) | The layered trust model, what each layer defends against, and what none of them can do |
 | [docs/DETECTIONS.md](docs/DETECTIONS.md) | What the instrument has actually caught, dated, with what each finding does not establish |
 | [docs/EVAL-REGISTRY.md](docs/EVAL-REGISTRY.md) | The Verifiable Eval Registry: pre-registration, sealing, and how to verify it |
+| [docs/EVAL-ASSURANCE.md](docs/EVAL-ASSURANCE.md) | The claim-by-claim assurance ladder, GFI v2 evidence contract and promotion rules |
+| [docs/EVAL-JOURNAL.md](docs/EVAL-JOURNAL.md) | The evidence-bound article contract, feeds, receipts and publishing workflow |
+| [docs/GRANT-CASE.md](docs/GRANT-CASE.md) | Grant-ready case, evidence, falsifiable work packages, risks and auditable outcomes |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |
 | [docs/NEW-METHODS.md](docs/NEW-METHODS.md) | The observation surfaces (Generative Firewall, CDN-edge, Blocklist, Silence, GitHub-refuge, Baike, Wayback Reconstruction) |

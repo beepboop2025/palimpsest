@@ -23,6 +23,12 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     assert card["access"]["openapi"] == "https://palimpsest.info/openapi.json"
     assert card["access"]["mcp"] == "https://api.seiche.info/palimpsest/mcp"
     assert card["access"]["scamshield_bot"] == "https://t.me/Scamshield_2_bot"
+    assert card["evidence"]["eval_assurance"].endswith(
+        "/readings/eval-assurance-latest.json"
+    )
+    assert card["evidence"]["eval_journal_json"].endswith(
+        "/readings/eval-journal-latest.json"
+    )
     bridge = card["integrations"]["scamshield"]
     assert bridge["schema"] == "scamshield-intelligence-pack/v1"
     assert bridge["version"] == "2026-08-08.2"
@@ -59,6 +65,30 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
         assert "200" in operations["get"]["responses"]
 
 
+def test_openapi_publishes_the_closed_eval_assurance_contract():
+    spec = _json("openapi.json")
+    assert spec["components"]["schemas"]["EvalAssurance"] == {
+        "$ref": "https://palimpsest.info/protocol/eval-assurance-v1.schema.json"
+    }
+    operation = spec["paths"]["/readings/eval-assurance-latest.json"]["get"]
+    assert operation["operationId"] == "getEvalAssurance"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/EvalAssurance"
+    }
+
+
+def test_openapi_publishes_the_closed_eval_journal_contract():
+    spec = _json("openapi.json")
+    assert spec["components"]["schemas"]["EvalJournal"] == {
+        "$ref": "https://palimpsest.info/protocol/eval-journal-v1.schema.json"
+    }
+    operation = spec["paths"]["/readings/eval-journal-latest.json"]["get"]
+    assert operation["operationId"] == "getEvalJournal"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/EvalJournal"
+    }
+
+
 def test_developer_page_exposes_every_activation_path():
     page = (ROOT / "developers.html").read_text(encoding="utf-8")
     assert '<link rel="canonical" href="https://palimpsest.info/developers.html">' in page
@@ -82,9 +112,13 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     home = (ROOT / "index.html").read_text(encoding="utf-8")
     nav = (ROOT / "scripts" / "site_nav.py").read_text(encoding="utf-8")
     assert "https://palimpsest.info/developers.html" in sitemap
+    assert "https://palimpsest.info/evals/" in sitemap
+    assert "https://palimpsest.info/evals/" in llms
+    assert "https://palimpsest.info/evals/feed.json" in llms
     assert "https://palimpsest.info/developers.html" in llms
     assert "https://palimpsest.info/openapi.json" in llms
     assert 'href="/developers.html"' in home
+    assert 'href="/evals/"' in home
     assert 'href="#scamshield"' in home
     assert 'href="/osint-china.html#commons"' in home
     assert "structured evidence commons" in home.lower()
@@ -94,6 +128,7 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert "https://t.me/palimpsest_watch_bot" in home
     assert "https://t.me/EvidenceSignalDesk" in home
     assert '"Developers", "href": "/developers.html"' in nav
+    assert '"Eval Journal", "href": "/evals/"' in nav
 
     card = _json("product-card.json")
     assert card["access"]["narcoscope_website"] == "https://narcoscope.com/"

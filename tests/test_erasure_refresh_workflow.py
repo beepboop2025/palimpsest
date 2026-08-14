@@ -119,6 +119,9 @@ def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
     for path in (
         "readings/eval-registry.jsonl",
         "readings/eval-registry-latest.json",
+        "readings/eval-assurance-latest.json",
+        "readings/eval-journal-latest.json",
+        "evals/",
         "readings/refusal-drift-latest.json",
         "readings/refusal-drift-history.jsonl",
         "readings/refusal-drift-transcripts.json",
@@ -128,3 +131,15 @@ def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
         "readings/anchors-latest.json",
     ):
         assert path in retry_staging, path
+
+
+def test_eval_assurance_is_rebuilt_after_every_chain_reconciliation():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert text.count("python -m scripts.build_eval_assurance") >= 6
+    assert "python -m scripts.build_eval_assurance --check" in text
+    assert "python -m scripts.verify_gfi_transcripts" in text
+    assert "readings/eval-assurance-latest.json" in text
+    assert text.count("python -m scripts.build_eval_journal") >= 6
+    assert "python -m scripts.build_eval_journal --check" in text
+    assert "readings/eval-journal-latest.json" in text

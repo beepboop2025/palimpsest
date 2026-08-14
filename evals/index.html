@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palimpsest AI Eval Journal · censorship evals with receipts</title>
+<meta name="description" content="Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.">
+<meta name="author" content="Palimpsest Eval Lab">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/evals/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="alternate" type="application/feed+json" title="Palimpsest AI Eval Journal JSON Feed" href="/evals/feed.json">
+<link rel="alternate" type="application/rss+xml" title="Palimpsest AI Eval Journal RSS" href="/evals/feed.xml">
+<meta name="theme-color" content="#0a1018">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest AI Eval Journal">
+<meta property="og:title" content="Palimpsest AI Eval Journal · censorship evals with receipts">
+<meta property="og:description" content="Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.">
+<meta property="og:url" content="https://palimpsest.info/evals/">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Palimpsest AI Eval Journal · censorship evals with receipts">
+<meta name="twitter:description" content="Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.">
+<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta property="article:modified_time" content="2026-08-14T19:15:00Z">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@id":"https://palimpsest.info/#organization","@type":"Organization","logo":{"@type":"ImageObject","height":512,"url":"https://palimpsest.info/brand/palimpsest-icon-512.png","width":512},"name":"Palimpsest","url":"https://palimpsest.info/"},{"@id":"https://palimpsest.info/evals/","@type":"CollectionPage","dateModified":"2026-08-14T19:15:00Z","description":"Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.","mainEntity":{"@type":"ItemList","itemListElement":[{"@type":"ListItem","name":"A green hash is not a validity result","position":1,"url":"https://palimpsest.info/evals/what-the-evidence-can-claim/"},{"@type":"ListItem","name":"When ‘I cannot help’ is evidence of an answer","position":2,"url":"https://palimpsest.info/evals/when-refusal-phrase-is-an-answer/"},{"@type":"ListItem","name":"GFI v2: the answer comes after the protocol","position":3,"url":"https://palimpsest.info/evals/gfi-v2-answer-after-protocol/"},{"@type":"ListItem","name":"A censored answer is not yet evidence","position":4,"url":"https://palimpsest.info/evals/a-censored-answer-is-not-evidence/"}],"numberOfItems":4},"name":"Palimpsest AI Eval Journal","publisher":{"@id":"https://palimpsest.info/#organization"},"url":"https://palimpsest.info/evals/"}]}</script>
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/eval-journal.css">
+</head>
+<body class="ps eval-journal-page">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
+        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Boards</p>
+            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Measure</p>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/" aria-current="page">Eval Journal</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html">Data</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main">
+  <header class="ej-mast ej-shell">
+    <div class="ej-mast__line">
+      <p class="ej-mark">Palimpsest <span>/ AI Eval Journal</span></p>
+      <p class="ej-edition">Edition 001<br>4 evidence-bound essays<br>Updated 14 August 2026 · 19:15 UTC</p>
+    </div>
+    <p class="ej-mast__dek">Methods, failures, and findings from the lab measuring how language models refuse, erase, or reframe contested information.</p>
+  </header>
+
+  <section class="ej-trace" aria-label="Palimpsest evaluation trace">
+    <div class="ej-shell ej-trace__grid">
+      <div><span>01</span><strong>Prompt</strong><p>Freeze the exact question and comparison before the answer exists.</p></div>
+      <div><span>02</span><strong>Discrepancy</strong><p>Measure refusal, substitution, asymmetry, controls, and uncertainty.</p></div>
+      <div><span>03</span><strong>Proof</strong><p>Publish the response bytes, seals, limits, and the test that could fail.</p></div>
+    </div>
+  </section>
+
+  <section class="ej-lead ej-shell" aria-labelledby="lead-title">
+    <div class="ej-lead__copy">
+      <p class="ej-kicker">Founder&#x27;s note · Origin and research question</p>
+      <h1 id="lead-title"><a href="/evals/a-censored-answer-is-not-evidence/">A censored answer is not yet evidence</a></h1>
+      <p class="ej-lead__dek">Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.</p>
+      <p class="ej-lead__claim"><strong>Claim boundary</strong>The initial observation justified a controlled research question—not a verdict about every Chinese model, every political topic, or the motive behind any one output.</p>
+      <a class="ej-open" href="/evals/a-censored-answer-is-not-evidence/">Read the founder's note <span>→</span></a>
+    </div>
+    <aside class="ej-context" aria-label="Current evidence state">
+  <p>Evidence posture</p>
+  <strong>provisional measurement</strong>
+  <span>The origin explains why the instrument exists; the registry and assurance report determine what its results may claim.</span>
+  <a href="/readings/eval-assurance-latest.json">Inspect the live artifact →</a>
+</aside>
+  </section>
+
+  <section class="ej-articles ej-shell" aria-labelledby="articles-title">
+    <div class="ej-section-head">
+      <div><p class="ej-kicker">Launch file</p><h2 id="articles-title">What changed in the eval engine</h2></div>
+      <p>Each article is built from a closed source record and refuses publication if a cited local artifact is missing. The receipts update when the evidence bytes change.</p>
+    </div>
+    <div class="ej-grid"><article class="ej-card">
+  <p class="ej-card__meta">Assurance note <span>·</span> Live claim ceiling</p>
+  <h2><a href="/evals/what-the-evidence-can-claim/">A green hash is not a validity result</a></h2>
+  <p class="ej-card__dek">Palimpsest now publishes a machine-readable assurance ladder that keeps chain integrity, exact-prompt commitment, response recomputation, statistical design, human validation, and independent replication on separate axes.</p>
+  <div class="ej-card__foot">
+    <span>6 evidence receipts</span>
+    <code>sha256:ceee7cf77e99</code>
+  </div>
+</article>
+<article class="ej-card">
+  <p class="ej-card__meta">Method autopsy <span>·</span> Judge v4 shipped; rebaseline pending</p>
+  <h2><a href="/evals/when-refusal-phrase-is-an-answer/">When ‘I cannot help’ is evidence of an answer</a></h2>
+  <p class="ej-card__dek">A transparent lexical judge can still make a basic category error: finding refusal words inside a quotation and calling the whole response a refusal. Method v4 narrows the decision to the model&#x27;s own speech act and forces a new baseline.</p>
+  <div class="ej-card__foot">
+    <span>6 evidence receipts</span>
+    <code>sha256:30402d2e10df</code>
+  </div>
+</article>
+<article class="ej-card">
+  <p class="ej-card__meta">Protocol note <span>·</span> Shipped guard; first sealed run pending</p>
+  <h2><a href="/evals/gfi-v2-answer-after-protocol/">GFI v2: the answer comes after the protocol</a></h2>
+  <p class="ej-card__dek">The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.</p>
+  <div class="ej-card__foot">
+    <span>6 evidence receipts</span>
+    <code>sha256:341c7df5fa0a</code>
+  </div>
+</article></div>
+  </section>
+
+  <section class="ej-contract" aria-labelledby="contract-title">
+    <div class="ej-shell ej-contract__grid">
+      <div><p class="ej-kicker ej-kicker--light">Publication contract</p><h2 id="contract-title">No essay without an exit condition.</h2></div>
+      <ol>
+        <li><strong>Scoped claim</strong><span>What this article says—and the broader claim it refuses to make.</span></li>
+        <li><strong>Exact evidence</strong><span>Current file path, byte count, and SHA-256 receipt for every local source.</span></li>
+        <li><strong>Visible limits</strong><span>Known measurement and interpretation boundaries stay next to the conclusion.</span></li>
+        <li><strong>Falsifier</strong><span>The condition that would lower, reverse, or retire the claim.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="ej-feed ej-shell"><span>Follow the methods desk</span><a href="/evals/feed.xml">RSS</a><a href="/evals/feed.json">JSON Feed</a><a href="/readings/eval-journal-latest.json">Structured edition</a></div>
+</main>
+<footer class="ej-footer"><div class="ej-shell">Palimpsest AI Eval Journal separates editorial explanation from measurement evidence. The live artifacts remain authoritative. <a href="/readings/eval-registry.html">Eval Registry</a> · <a href="/readings/eval-assurance-latest.json">Assurance JSON</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

@@ -125,3 +125,28 @@ def test_the_length_floor_is_script_aware():
 def test_the_canonical_refusal_fixture_still_registers():
     """The module's own shipped example must not have been broken by any of this."""
     assert is_refusal("抱歉，我还没学会回答这个问题，我们聊点别的吧。") is True
+
+
+def test_a_quoted_refusal_clause_is_a_mention_not_a_speech_act():
+    text = (
+        'Models sometimes answer with "I cannot help with that" even when a request is '
+        "benign. Researchers describe this as over-refusal: the system has matched a "
+        "surface cue instead of distinguishing the underlying intent."
+    )
+    assert is_refusal(text) is False
+
+
+def test_chinese_quoted_refusal_is_not_mistaken_for_the_models_own_answer():
+    text = (
+        "研究人员把模型回答“我无法回答这个问题”的现象称为过度拒答。"
+        "这通常说明安全训练把表面词汇误当成了实际风险，而不是模型真正分析了问题。"
+    )
+    assert is_refusal(text) is False
+
+
+def test_unquoted_refusal_still_wins_when_the_response_also_mentions_research():
+    text = (
+        "Researchers sometimes study over-refusal, but I cannot help with that request. "
+        "Please choose another subject and I will try to assist."
+    )
+    assert is_refusal(text) is True

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verifiable Eval Registry · Palimpsest</title>
-<meta name="description" content="Tamper-evident, pre-registered AI model evaluations. The questions are frozen before the model is queried, and every result is hash-chained so it cannot be quietly revised or cherry-picked. Any model, any suite. The questions were provably frozen first and the results provably never changed.">
+<meta name="description" content="Tamper-evident, pre-registered AI model evaluations with exact-prompt commitments, published response evidence, explicit uncertainty, and a machine-readable claim ceiling. Recompute the served record offline and see what remains unvalidated.">
 <link rel="canonical" href="https://palimpsest.info/readings/eval-registry.html">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 
@@ -38,7 +38,7 @@
   "@type": "Dataset",
   "@id": "https://palimpsest.info/readings/eval-registry.html#dataset",
   "name": "Palimpsest Verifiable Eval Registry",
-  "description": "Pre-registered, hash-chained AI model evaluations. Each probe set is hashed and sealed into an append-only chain before any model is queried; each run records the model, a hash of its full responses and its metrics, and must reference a probe set frozen earlier. Anyone can recompute the chain offline with the standard library alone. Roots are anchored outside the project's own infrastructure via Internet Archive snapshots and OpenTimestamps.",
+  "description": "Pre-registered, hash-chained AI model evaluations. Each run must reference an earlier probe commitment in the same chain; current v2 collectors additionally guard model calls on an already-public exact protocol. Frontier v2 publishes full current responses, while the assurance report labels legacy GFI v1's evidence limits and the pending human study. Anyone can recompute the served chain offline with the standard library alone. External anchors make whole-history revision observable outside the operator's infrastructure.",
   "url": "https://palimpsest.info/readings/eval-registry.html",
   "keywords": ["AI evaluation", "pre-registration", "tamper-evident log", "hash chain", "refusal drift", "LLM censorship", "model audit"],
   "creator": { "@id": "https://palimpsest.info/#org" },
@@ -55,6 +55,11 @@
       "@type": "DataDownload",
       "encodingFormat": "application/x-ndjson",
       "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl"
+    },
+    {
+      "@type": "DataDownload",
+      "encodingFormat": "application/json",
+      "contentUrl": "https://palimpsest.info/readings/eval-assurance-latest.json"
     }
   ]
 }
@@ -190,6 +195,47 @@
   .er-prose strong { color: var(--tk-text-0, #fff); font-weight: 600; }
   .er-prose a { color: var(--tk-live, #06d6e0); }
 
+  /* ---- origin trace: the observation that became the instrument ---- */
+  .er-origin { margin: clamp(30px, 5vw, 54px) 0 0; padding: clamp(20px, 3vw, 30px); }
+  .er-origin__grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(320px, 1.1fr);
+                     gap: clamp(24px, 5vw, 64px); align-items: start; }
+  .er-origin__copy h2 { font-size: clamp(22px, 3.1vw, 34px); margin: 5px 0 12px; }
+  .er-origin__copy p { margin: 0 0 13px; font-size: 14.5px; line-height: 1.68;
+                       color: var(--tk-text-2, #94a3b8); text-wrap: pretty; }
+  .er-origin__copy strong { color: var(--tk-text-0, #fff); font-weight: 650; }
+  .er-origin__copy a { color: var(--tk-live, #06d6e0); }
+  .er-trace { list-style: none; padding: 0; margin: 0; counter-reset: origin; }
+  .er-trace li { position: relative; counter-increment: origin; padding: 0 0 22px 52px;
+                 min-height: 54px; }
+  .er-trace li:last-child { padding-bottom: 0; }
+  .er-trace li::before { content: "0" counter(origin); position: absolute; left: 0; top: 0;
+                         font: 11px/30px var(--tk-font-mono); text-align: center; width: 30px;
+                         height: 30px; border-radius: 50%; color: var(--tk-live, #06d6e0);
+                         border: 1px solid rgba(6,214,224,.34); background: rgba(6,214,224,.08); }
+  .er-trace li:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 32px;
+                                         bottom: 2px; border-left: 1px solid rgba(6,214,224,.22); }
+  .er-trace b { display: block; margin: 0 0 4px; color: var(--tk-text-0, #fff); font-size: 14px; }
+  .er-trace span { display: block; color: var(--tk-text-3, #7d8ca3); font-size: 12.5px;
+                   line-height: 1.55; }
+  @media (max-width: 760px) { .er-origin__grid { grid-template-columns: 1fr; } }
+
+  /* ---- machine-generated claim ceiling ---- */
+  .er-assurance { padding: clamp(20px, 3.2vw, 32px); }
+  .er-assurance__head { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+                        gap: 18px; align-items: start; }
+  .er-assurance__head h3 { margin: 5px 0 8px; font-size: clamp(21px, 3vw, 30px); }
+  .er-assurance__claim { margin: 0; max-width: var(--ps-measure); font-size: 14px;
+                         line-height: 1.65; color: var(--tk-text-2, #94a3b8); }
+  .er-assurance__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+                        gap: 10px; margin-top: 22px; }
+  .er-assurance__item { padding: 14px 15px; border-top: 1px solid var(--ps-edge-1); }
+  .er-assurance__item p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.55;
+                          color: var(--tk-text-3, #7d8ca3); }
+  .er-assurance__limit { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid var(--ps-edge-1);
+                         font-size: 13px; line-height: 1.65; color: var(--tk-text-2, #94a3b8); }
+  .er-assurance__limit strong { color: var(--tk-warning, #ffb020); }
+  @media (max-width: 620px) { .er-assurance__head { grid-template-columns: 1fr; } }
+
   .er-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
   .er-hero-meta { font-size: 13px; line-height: 1.65; color: var(--tk-text-3, #7d8ca3);
                   max-width: var(--ps-measure); margin: 18px 0 0; }
@@ -207,7 +253,7 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
@@ -235,22 +281,27 @@
     </div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2" data-within="">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-2">
-        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">The record</p>
-            <a href="/readings/eval-registry.html" aria-current="page"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <p class="ps-flyout__head">Measure</p>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html" aria-current="page"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-3">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
         <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -283,11 +334,12 @@
     <p class="ps-lede">
       AI systems increasingly decide what a person can and cannot learn, and the audits that check
       them can be re-run, quietly cherry-picked, or revised until the number reads well. This
-      registry removes that move. Every probe set is hashed and sealed into an append-only chain
-      <strong style="color:var(--tk-text-0,#fff);font-weight:600">before any model is asked</strong>,
-      every result seals the moment it publishes, and the chain roots are deposited with parties this
-      project does not control. After that nobody can revise a result. Not a lab, not a government,
-      not us.
+      registry makes those moves testable. Every declared probe commitment is sealed before its
+      matching run can enter the chain; current collectors additionally refuse to query until their
+      exact protocol is public. Every result seals when it publishes, and roots are deposited with
+      parties this project does not control. Edit the served chain and local verification fails;
+      rewrite the whole chain and external copies or witnesses can expose the conflict—including
+      if the operator is the one attempting it.
     </p>
 
     <div class="er-vs">
@@ -303,16 +355,20 @@
       <section class="er-vs--proved">
         <h2>An eval you can recompute</h2>
         <p>
-          The probe set was hashed and frozen before the model was queried, the full responses are
-          hashed, and each entry chains to the one before it. Clone the repository and run the
-          verifier with the standard library alone. If one value moved, or a run cites a probe set
-          that was not frozen first, verification fails on your machine rather than on ours.
+          Every declared commitment precedes its matching run in the served chain, full responses or
+          their declared artifacts are hashed, and each entry chains to the one before it. Current
+          collectors additionally require an exact protocol in a separate public commit before their
+          first query. Clone the repository and run the verifier with the standard library alone. If one
+          value moved, or a run cites a commitment absent earlier in the chain, verification fails on
+          your machine rather than on ours.
         </p>
       </section>
     </div>
 
     <div class="er-actions">
+      <a class="ps-btn" href="/evals/">Read the Eval Journal</a>
       <a class="ps-btn" href="/readings/eval-registry-latest.json">Raw reading</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/eval-assurance-latest.json">Assurance report</a>
       <a class="ps-btn ps-btn--ghost" href="/readings/eval-registry.jsonl">The chain</a>
       <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/verify_eval_registry.py">Verifier source</a>
       <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md">Threat model</a>
@@ -326,6 +382,43 @@
       <a href="/fund.html">What it costs to run</a>.
     </p>
   </header>
+
+  <!-- ============================ ORIGIN ============================ -->
+  <section class="ps-p2 er-origin ps-reveal" id="origin" aria-labelledby="origin-title">
+    <div class="er-origin__grid">
+      <div class="er-origin__copy">
+        <p class="ps-label">Why she built it</p>
+        <h2 class="ps-h2" id="origin-title">A censored answer became an eval</h2>
+        <p>
+          Palimpsest began when its founder and author tested Chinese and state-aligned language
+          models on documented political events and criticism of the Chinese Communist Party. She
+          saw answers <strong>change, disappear, or shift into official framing</strong> depending
+          on the model and the language of the prompt.
+        </p>
+        <p>
+          A screenshot could show one disturbing answer. It could not show whether the question was
+          selected after the result, whether failures were dropped, whether wording caused the
+          effect, or whether the record changed later. So she turned the observation into a repeated
+          measurement, then built the registry needed to make that measurement auditable.
+        </p>
+        <p>
+          This is an origin, not a universal claim about every model made in China and not proof of
+          any provider's motive. The claim is narrower: these are observable response differences,
+          tested against frozen prompts and controls. Independent work has also documented
+          <a href="https://arxiv.org/abs/2602.06371">bilingual political bias</a> and
+          <a href="https://arxiv.org/abs/2608.11816">refusal-to-reframing patterns</a>; Palimpsest's
+          contribution is a continuous public record that can be challenged from the raw evidence.
+          <a href="/evals/a-censored-answer-is-not-evidence/">Read the founder's full account, with
+          evidence receipts and the claim's falsifier.</a>
+        </p>
+      </div>
+      <ol class="er-trace" aria-label="From initial observation to verifiable evaluation">
+        <li><b>Prompt</b><span>Ask about a documented event or a criticism of CCP policy, in matched languages and scripts.</span></li>
+        <li><b>Discrepancy</b><span>Record refusal, omission, narrative substitution, and differences against unaligned controls—without using another model as judge.</span></li>
+        <li><b>Proof</b><span>Freeze the exact protocol first; publish full responses, denominators and uncertainty; seal the result so a weak run cannot quietly vanish.</span></li>
+      </ol>
+    </div>
+  </section>
 
   <!-- ============================ READING (plane 3) ============================ -->
   <h2 class="ps-section-head" id="reading">The reading</h2>
@@ -358,6 +451,30 @@
   </section>
 
   <div class="er-tiles er-live ps-stagger" id="er-tiles"></div>
+
+  <!-- ============================ ASSURANCE ============================ -->
+  <h2 class="ps-section-head" id="assurance">What the evidence can claim today</h2>
+  <p class="er-status" id="er-assurance-status" role="status">
+    Read from <a href="/readings/eval-assurance-latest.json">eval-assurance-latest.json</a> at load.
+    This is a claim ceiling, not a self-awarded score.
+  </p>
+  <section class="ps-p3 er-assurance ps-reveal" id="er-assurance" hidden aria-labelledby="assurance">
+    <div class="er-assurance__head">
+      <div>
+        <p class="ps-label">Machine-checked assurance</p>
+        <h3 class="ps-h2" id="er-assurance-level"></h3>
+        <p class="er-assurance__claim" id="er-assurance-claim"></p>
+      </div>
+      <span id="er-assurance-chip"></span>
+    </div>
+    <div class="er-assurance__grid" id="er-assurance-grid"></div>
+    <p class="er-assurance__limit"><strong>Not established yet.</strong> <span id="er-assurance-limit"></span></p>
+    <div class="er-links">
+      <a href="/readings/eval-assurance-latest.json">Raw assurance JSON</a>
+      <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/build_eval_assurance.py">Builder</a>
+      <a href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">Preregistered human study</a>
+    </div>
+  </section>
 
   <!-- ============================ HOW ============================ -->
   <h2 class="ps-section-head" id="how">How a result becomes unrevisable</h2>
@@ -636,6 +753,7 @@
     <div class="er-links">
       <a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a>
       <a href="/readings/eval-registry.jsonl">eval-registry.jsonl</a>
+      <a href="/readings/eval-assurance-latest.json">eval-assurance-latest.json</a>
       <a href="/readings/refusal-drift-latest.json">refusal-drift-latest.json</a>
       <a href="/readings/anchors-latest.json">anchors-latest.json</a>
     </div>
@@ -730,6 +848,7 @@
   var REGISTRY = "/readings/eval-registry-latest.json";
   var DRIFT = "/readings/refusal-drift-latest.json";
   var ANCHORS = "/readings/anchors-latest.json";
+  var ASSURANCE = "/readings/eval-assurance-latest.json";
   var CADENCE_H = 6;               /* the sealing workflow runs roughly 4x a day */
   var STALE_H = CADENCE_H * 2;     /* past 2x cadence, freshness is a finding */
 
@@ -1346,6 +1465,60 @@
     st.appendChild(document.createTextNode("."));
   }
 
+  /* ------------------------------------------------------------- assurance -- */
+  function assuranceTone(status) {
+    if (status === "pass") return "ok";
+    if (status === "fail") return "crit";
+    if (status === "partial" || status === "pending") return "warn";
+    return "live";
+  }
+
+  function renderAssurance(d) {
+    var st = document.getElementById("er-assurance-status");
+    var box = document.getElementById("er-assurance");
+    if (!d || typeof d !== "object" || !d.claim_ceiling || !Array.isArray(d.dimensions)) {
+      return assuranceFail("the feed did not carry a claim ceiling and dimension list");
+    }
+    st.style.display = "none";
+    box.hidden = false;
+    var level = String(d.claim_ceiling.level || "not reported").replace(/-/g, " ");
+    put("er-assurance-level", "Claim ceiling · " + level);
+    put("er-assurance-claim", d.claim_ceiling.can_claim || GAP);
+    put("er-assurance-limit", d.claim_ceiling.cannot_yet_claim || GAP);
+
+    var chipBox = clear(document.getElementById("er-assurance-chip"));
+    var summary = d.summary || {};
+    var failures = typeof summary.fail === "number" ? summary.fail : null;
+    var passes = typeof summary.pass === "number" ? summary.pass : null;
+    chipBox.appendChild(chip(
+      failures === 0 && passes != null ? passes + " checks pass · 0 fail" : "assurance incomplete",
+      failures === 0 ? "ok" : "crit"
+    ));
+
+    var grid = clear(document.getElementById("er-assurance-grid"));
+    d.dimensions.forEach(function (dimension, i) {
+      var item = staggered(el("article", "er-assurance__item"), i);
+      item.appendChild(chip(dimension.status || "open", assuranceTone(dimension.status)));
+      var title = el("p", null, dimension.question || dimension.id || GAP);
+      item.appendChild(title);
+      grid.appendChild(item);
+    });
+  }
+
+  function assuranceFail(why) {
+    var st = document.getElementById("er-assurance-status");
+    clear(st);
+    st.className = "er-status er-status--err";
+    st.appendChild(el("strong", null, "The assurance report did not load. "));
+    st.appendChild(document.createTextNode(
+      why + ". No assurance state is inferred. The published file is "
+    ));
+    var a = el("a", null, "eval-assurance-latest.json");
+    a.href = ASSURANCE;
+    st.appendChild(a);
+    st.appendChild(document.createTextNode("."));
+  }
+
   /* ----------------------------------------------------------------- boot -- */
   function boot() {
     if (!root) return;
@@ -1370,6 +1543,10 @@
       else driftFail("the feed was empty");
     }, function (err) {
       driftFail(String((err && err.message) || err || "unknown error"));
+    });
+
+    load(ASSURANCE, renderAssurance, function (err) {
+      assuranceFail(String((err && err.message) || err || "unknown error"));
     });
   }
 

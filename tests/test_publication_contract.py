@@ -61,6 +61,13 @@ CONTRACT = {
     "weibo-hotsearch":      _d("generated_at", ["source", "method_note"], "board_entries"),
     "censored-planet":      _d("generated_at", ["source", "method"], "n_events"),
     "eval-registry":        _d("generated_at", ["registry", "verify_cmd"], "runs"),
+    "eval-assurance":       _d(
+        "generated_at", ["sources", "verify"],
+        reason="a closed claim checklist rather than a sampled population: every check "
+               "is enumerated in checks and the status counts are a complete projection "
+               "over that declared checklist, so one top-level denominator would duplicate it."),
+    "eval-journal":         _d("generated_at", ["source", "method", "scope"],
+                               "n_articles"),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),

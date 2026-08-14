@@ -27,6 +27,7 @@ governed collector unchanged. Intended to be invoked by scripts/run_gfi.sh under
 import concurrent.futures as cf
 import json, math, os, sys, time, html, urllib.request, urllib.error
 from datetime import datetime, timezone
+from pathlib import Path
 
 sys.stdout.reconfigure(line_buffering=True)
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,12 +49,19 @@ from processors.semantic_entropy import semantic_entropy, suspicion
 from processors.routing_differential import (
     PARALLEL_PAIRS, assess_deflection, discrimination_summary,
     pair_differential, refusal_subtype, script_profile)
+from core import eval_registry as eval_reg
+from core import gfi_protocol as gfi_proto
+from core.sealed_ledger import _sha256
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
 READINGS = os.path.join(REPO, "readings")
 HISTORY = os.path.join(READINGS, "history.jsonl")
 LATEST = os.path.join(READINGS, "latest.json")
 DASHBOARD = os.path.join(READINGS, "generative-firewall-index.html")
+GFI_PROTOCOL = os.path.join(READINGS, "gfi-evaluation-protocol-v2.json")
+GFI_TRANSCRIPTS = os.path.join(READINGS, "gfi-transcripts-latest.json")
+EVAL_REGISTRY = os.path.join(READINGS, "eval-registry.jsonl")
+EVAL_REGISTRY_SUMMARY = os.path.join(READINGS, "eval-registry-latest.json")
 ABSTAIN_MAX = 0.40   # if more than this share of SAMPLES abstain, the run is unreliable -> skip
 K_SAMPLES = max(1, int(os.environ.get("GFI_SAMPLES", "5")))
 WILSON_Z = 1.96      # 95% — the drift gate; lower it and you trade credibility for sensitivity
@@ -78,7 +86,11 @@ METHODOLOGY = f"k{K_SAMPLES}-wilson95"
 #      closes with a canned no-comment clause is no longer scored as declining to
 #      engage. Measured over the frozen 145-row draw: refused 17 to 12, party_line
 #      38 to 42, answered 90 to 91. The refused and party_line series close here.
-METHOD_VERSION = 3
+#   4: quote/mention discrimination. A response explaining over-refusal and quoting
+#      "I cannot help with that" is an answer, not the model itself refusing. Balanced
+#      quoted spans no longer fire decisive refusal markers. The shared judge fingerprint
+#      moves and every longitudinal surface re-baselines at this boundary.
+METHOD_VERSION = 4
 
 PANEL = [
     Model("deepseek", "deepseek/deepseek-chat", aligned=True),
@@ -162,6 +174,59 @@ def build_probes():
     return out
 
 
+def gfi_arm_id(spec: GazetteerProbe) -> str:
+    """Stable cell identity: one concept asked through one language/script cohort."""
+    return f"{spec.concept}#{spec.cohort}"
+
+
+def build_gfi_protocol(probes=None, *, k: int | None = None) -> dict:
+    """Build the exact protocol that must be public before a v2 model call.
+
+    The classifier source digest is included because a frozen question scored by a
+    silently changed judge is still a changed experiment.  Comments count too: this
+    deliberately prefers an occasional conservative re-preregistration to permitting
+    source bytes to move without a visible boundary.
+    """
+    probes = list(probes if probes is not None else build_probes())
+    k = K_SAMPLES if k is None else k
+    arms = {}
+    for spec in sorted(probes, key=gfi_arm_id):
+        arm_id = gfi_arm_id(spec)
+        if arm_id in arms:
+            raise gfi_proto.ProtocolError(f"duplicate GFI arm id: {arm_id}")
+        prompt = ModelVantagePoint(PANEL[0], cohort=spec.cohort)._prompt(spec.probe)
+        arms[arm_id] = {
+            "concept": spec.concept,
+            "cohort": spec.cohort,
+            "domain": spec.domain,
+            "query": spec.probe.query,
+            "lang": spec.probe.lang,
+            "anchor_terms": sorted(spec.anchor_terms),
+            "prompt": prompt,
+            "prompt_sha256": _sha256(prompt.encode("utf-8")),
+        }
+    classifier = Path(REPO) / "collectors" / "generative_firewall.py"
+    core = {
+        "schema": gfi_proto.SCHEMA,
+        "suite": gfi_proto.SUITE,
+        "method_version": METHOD_VERSION,
+        "samples_per_cell": k,
+        "panel": [
+            {
+                "provider": model.provider,
+                "model": model.model_id,
+                "aligned": model.aligned,
+                "build": model.build or None,
+            }
+            for model in PANEL
+        ],
+        "cohorts": [COHORT_ZH, COHORT_ZHT, COHORT_EN],
+        "classifier_sha256": _sha256(classifier.read_bytes()),
+        "arms": arms,
+    }
+    return gfi_proto.seal_protocol(core)
+
+
 # Why a read failed, counted across the run. The abstain gate below can only say
 # HOW MANY reads failed; without this it cannot say WHY, so a dead API key, an
 # exhausted balance, a retired model slug and a network outage all produce the
@@ -209,7 +274,7 @@ def fetch_one(key, model_id, prompt):
     return None
 
 
-def run_panel(key, probes, k=K_SAMPLES):
+def run_panel(key, probes, k=K_SAMPLES, *, capture_transcripts=False):
     """Fetch k independent samples per (model, prompt) cell, then run the governed collector
     once per sample index. The collector is unchanged; sampling lives entirely in this runner."""
     jobs, order = {}, []
@@ -233,7 +298,20 @@ def run_panel(key, probes, k=K_SAMPLES):
             generate=lambda mid, pr, _i=i: jobs.get((mid, pr, _i)),
             cohorts=(COHORT_ZH, COHORT_EN, COHORT_ZHT))
         rounds.append(coll.run_round(probes))
-    return rounds
+    if not capture_transcripts:
+        return rounds
+    protocol = build_gfi_protocol(probes, k=k)
+    raw = {
+        model.model_id: {
+            arm_id: [
+                jobs.get((model.model_id, arm["prompt"], sample))
+                for sample in range(k)
+            ]
+            for arm_id, arm in sorted(protocol["arms"].items())
+        }
+        for model in PANEL
+    }
+    return rounds, protocol, raw
 
 
 def aggregate_cells(rounds):
@@ -775,6 +853,127 @@ def build_dashboard(summ, per_concept, rows, drift, history):
 </body></html>"""
 
 
+def require_gfi_preregistration(protocol: dict) -> dict:
+    """Refuse the first API call until the exact v2 protocol has a public receipt."""
+    try:
+        published = json.loads(Path(GFI_PROTOCOL).read_text(encoding="utf-8"))
+        entries = eval_reg.read_ledger(EVAL_REGISTRY)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            "GFI v2 protocol is not published; run python -m scripts.preregister_gfi_v2 "
+            "and publish that commit before collecting"
+        ) from exc
+    protocol_ok, problems = gfi_proto.verify_protocol(published)
+    if not protocol_ok:
+        raise RuntimeError("published GFI v2 protocol is invalid: " + "; ".join(problems))
+    for field in ("probe_commitment", "evaluation_protocol_sha256"):
+        if published.get(field) != protocol.get(field):
+            raise RuntimeError(
+                f"shipping GFI {field} differs from the public preregistration; "
+                "publish a new preregistration before collecting"
+            )
+    chain_ok, chain_problems = eval_reg.verify(entries)
+    if not chain_ok:
+        raise RuntimeError("eval registry is broken: " + "; ".join(chain_problems))
+    hit = next(
+        (
+            entry
+            for entry in entries
+            if entry.get("kind") == eval_reg.PREREGISTRATION
+            and entry.get("probe_set_hash") == protocol["probe_commitment"]
+            and entry.get("suite") == gfi_proto.SUITE
+        ),
+        None,
+    )
+    if hit is None:
+        raise RuntimeError(
+            "exact GFI v2 protocol has not been preregistered; run and publish "
+            "python -m scripts.preregister_gfi_v2 before collecting"
+        )
+    registration = published.get("registration") or {}
+    if registration.get("seq") != hit.get("seq") or registration.get("entry_hash") != hit.get(
+        "entry_hash"
+    ):
+        raise RuntimeError("GFI protocol registration receipt does not match the eval registry")
+    return hit
+
+
+def _seal_gfi_v2(protocol: dict, raw: dict, summary: dict, now: datetime) -> int:
+    """Seal each panel model's complete sample matrix, including null abstentions."""
+    appended = 0
+    for model in PANEL:
+        responses = raw.get(model.model_id)
+        artifact = gfi_proto.response_artifact(protocol, model.model_id, responses)
+        response_hash = eval_reg.responses_hash(artifact)
+        existing = [
+            entry
+            for entry in eval_reg.read_ledger(EVAL_REGISTRY)
+            if entry.get("kind") == eval_reg.RUN
+            and entry.get("probe_set_hash") == protocol["probe_commitment"]
+            and entry.get("model") == model.model_id
+        ]
+        if existing and existing[-1].get("responses_hash") == response_hash:
+            continue
+        valid_samples = sum(
+            sample is not None for samples in responses.values() for sample in samples
+        )
+        planned_samples = protocol["n_arms"] * protocol["samples_per_cell"]
+        observed_arms = sum(
+            any(sample is not None for sample in samples) for samples in responses.values()
+        )
+        eval_reg.submit_run(
+            EVAL_REGISTRY,
+            probe_set_hash=protocol["probe_commitment"],
+            model=model.model_id,
+            responses=artifact,
+            metrics={
+                "n_planned_arms": protocol["n_arms"],
+                "n_arms": observed_arms,
+                "n_samples": valid_samples,
+                "n_abstained": planned_samples - valid_samples,
+                "samples_per_cell": protocol["samples_per_cell"],
+                "method_version": METHOD_VERSION,
+                "evaluation_protocol_sha256": protocol["evaluation_protocol_sha256"],
+                "reading_as_of": summary["generated_at"],
+                "gfi": summary["gfi"] if model.aligned else None,
+                "role": "state-aligned subject" if model.aligned else "unaligned control",
+            },
+            suite=gfi_proto.SUITE,
+            now=now,
+        )
+        appended += 1
+    eval_reg.refresh_summary(EVAL_REGISTRY, EVAL_REGISTRY_SUMMARY)
+    return appended
+
+
+def _write_gfi_transcripts(protocol: dict, raw: dict, summary: dict) -> None:
+    payload = {
+        "schema": gfi_proto.TRANSCRIPT_SCHEMA,
+        "generated_at": summary["generated_at"],
+        "method_version": METHOD_VERSION,
+        "suite": gfi_proto.SUITE,
+        "probe_commitment": protocol["probe_commitment"],
+        "evaluation_protocol_sha256": protocol["evaluation_protocol_sha256"],
+        "protocol": "readings/gfi-evaluation-protocol-v2.json",
+        "what": (
+            "every full model response and null transport abstention behind the current GFI "
+            "reading; these exact sample matrices are hashed into the eval registry"
+        ),
+        "retention": (
+            "current run at the stable URL; prior versions remain in git history and retain "
+            "their registry seals"
+        ),
+        "responses": {
+            model: {arm_id: samples for arm_id, samples in sorted(arms.items())}
+            for model, arms in sorted(raw.items())
+        },
+        "verify_cmd": "python -m scripts.verify_gfi_transcripts",
+    }
+    Path(GFI_TRANSCRIPTS).write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def main():
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
@@ -782,7 +981,16 @@ def main():
         return 2
     os.makedirs(READINGS, exist_ok=True)
     t0 = time.time()
-    rounds = run_panel(key, build_probes())
+    probes = build_probes()
+    protocol = build_gfi_protocol(probes)
+    try:
+        preregistration = require_gfi_preregistration(protocol)
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        return 4
+    rounds, protocol, raw = run_panel(
+        key, probes, capture_transcripts=True
+    )
     rows = aggregate_cells(rounds)
     rp_forks, co_forks = consensus_forks(rows)
     summ, per_concept, forks = summarize(rows, rp_forks, co_forks)
@@ -796,6 +1004,17 @@ def main():
         "discrimination": {m.split("/")[-1]: s["verdict"]
                            for m, s in routing["discrimination"].items()},
     }
+    summ.update({
+        "suite": gfi_proto.SUITE,
+        "probe_commitment": protocol["probe_commitment"],
+        "evaluation_protocol_sha256": protocol["evaluation_protocol_sha256"],
+        "preregistered_at": preregistration["ts"],
+        "commits_to": protocol["commits_to"],
+        "transcripts": "readings/gfi-transcripts-latest.json",
+        "protocol": "readings/gfi-evaluation-protocol-v2.json",
+        "registry": "readings/eval-registry.jsonl",
+        "recompute_cmd": "python -m scripts.verify_gfi_transcripts",
+    })
     if summ["abstain_rate"] > ABSTAIN_MAX:
         print(f"FATAL: abstain_rate {summ['abstain_rate']} > {ABSTAIN_MAX} — unreliable run, "
               f"NOT appending (fail loud)", file=sys.stderr)
@@ -822,6 +1041,12 @@ def main():
     drift = compute_drift(prev, summ)
     history = upsert_history(summ, drift)
     dataset = [{k2: v for k2, v in r.items() if not k2.startswith("_")} for r in rows]
+    # Registry ts is the append time; reading_as_of inside the metrics is the model
+    # observation time. Keeping those clocks distinct lets a race-recovery job reseal
+    # an expensive observation on a newer public chain without pretending it was
+    # appended before entries that already exist.
+    sealed_runs = _seal_gfi_v2(protocol, raw, summ, datetime.now(timezone.utc))
+    _write_gfi_transcripts(protocol, raw, summ)
     with open(LATEST, "w", encoding="utf-8") as f:
         json.dump({"summary": summ, "index_by_concept": per_concept, "forks": forks,
                    "drift": drift, "routing": routing, "dataset": dataset},
@@ -831,7 +1056,8 @@ def main():
     print(f"GFI={summ['gfi']} band=[{summ['gfi_lo']},{summ['gfi_hi']}] k={summ['samples_per_cell']} "
           f"controls_clean={summ['controls_clean']} cohort_forks={summ['cohort_forks']} "
           f"newly_censored={len(drift['newly_censored'])} relaxed={len(drift['relaxed'])} "
-          f"abstain={summ['abstain_rate']} runs={len(history)} in {time.time()-t0:.0f}s", flush=True)
+          f"abstain={summ['abstain_rate']} runs={len(history)} sealed={sealed_runs} "
+          f"in {time.time()-t0:.0f}s", flush=True)
     return 0
 
 

@@ -86,6 +86,16 @@ jobs:
           python -m scripts.verify_refusal_transcripts || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
+      - name: Verify any published GFI v2 transcripts and rebuild eval assurance
+        run: |
+          python -m scripts.verify_gfi_transcripts || rc=$?
+          if [ "${rc:-0}" = "1" ]; then exit 1; fi
+          unset rc
+          python -m scripts.build_eval_assurance
+          python -m scripts.build_eval_journal
+          python -m scripts.build_eval_assurance --check
+          python -m scripts.build_eval_journal --check
+
       - name: Seal every published reading into the readings record
         # The other twenty-seven readings are regenerated in place by their own
         # workflows, so each file is a live view and yesterday's numbers are
@@ -148,6 +158,9 @@ jobs:
                    readings/baike-redaction-history.jsonl \
                    readings/eval-registry.jsonl \
                    readings/eval-registry-latest.json \
+                   readings/eval-assurance-latest.json \
+                   readings/eval-journal-latest.json \
+                   evals/ \
                    readings/refusal-drift-latest.json \
                    readings/refusal-drift-history.jsonl \
                    readings/refusal-drift-transcripts.json \
@@ -209,6 +222,8 @@ jobs:
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
           python -m scripts.erasure_pull
+          python -m scripts.build_eval_assurance
+          python -m scripts.build_eval_journal
           python3 scripts/seal_readings.py || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
@@ -219,6 +234,11 @@ jobs:
           python -m scripts.verify_eval_registry
           python -m scripts.verify_refusal_transcripts || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
+          unset rc
+          python -m scripts.verify_gfi_transcripts || rc=$?
+          if [ "${rc:-0}" = "1" ]; then exit 1; fi
+          python -m scripts.build_eval_assurance --check
+          python -m scripts.build_eval_journal --check
           python3 scripts/seal_readings.py --check
 
       - name: Anchor only the reconciled roots
@@ -249,6 +269,9 @@ jobs:
                    readings/baike-redaction-history.jsonl \
                    readings/eval-registry.jsonl \
                    readings/eval-registry-latest.json \
+                   readings/eval-assurance-latest.json \
+                   readings/eval-journal-latest.json \
+                   evals/ \
                    readings/refusal-drift-latest.json \
                    readings/refusal-drift-history.jsonl \
                    readings/refusal-drift-transcripts.json \
@@ -299,6 +322,8 @@ jobs:
             done
 
             python -m scripts.erasure_pull
+            python -m scripts.build_eval_assurance
+            python -m scripts.build_eval_journal
             python3 scripts/seal_readings.py || rc=$?
             if [ "${rc:-0}" = "1" ]; then exit 1; fi
             unset rc
@@ -307,6 +332,11 @@ jobs:
             python -m scripts.verify_refusal_transcripts || verify_rc=$?
             if [ "${verify_rc:-0}" = "1" ]; then exit 1; fi
             unset verify_rc
+            python -m scripts.verify_gfi_transcripts || verify_rc=$?
+            if [ "${verify_rc:-0}" = "1" ]; then exit 1; fi
+            unset verify_rc
+            python -m scripts.build_eval_assurance --check
+            python -m scripts.build_eval_journal --check
             python3 scripts/seal_readings.py --check
             python -m scripts.anchor_roots
             python scripts/verify_public_surface.py
@@ -319,6 +349,9 @@ jobs:
                      readings/baike-redaction-history.jsonl \
                      readings/eval-registry.jsonl \
                      readings/eval-registry-latest.json \
+                     readings/eval-assurance-latest.json \
+                     readings/eval-journal-latest.json \
+                     evals/ \
                      readings/refusal-drift-latest.json \
                      readings/refusal-drift-history.jsonl \
                      readings/refusal-drift-transcripts.json \

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.5.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom, deterministic machine-analysis desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.7.0",
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, AI Eval Journal, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom, deterministic machine-analysis desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -55,6 +55,12 @@
       },
       "EditorialReadiness": {
         "$ref": "https://palimpsest.info/protocol/editorial-readiness-v1.schema.json"
+      },
+      "EvalAssurance": {
+        "$ref": "https://palimpsest.info/protocol/eval-assurance-v1.schema.json"
+      },
+      "EvalJournal": {
+        "$ref": "https://palimpsest.info/protocol/eval-journal-v1.schema.json"
       },
       "NewsroomDenominator": {
         "type": "object",
@@ -258,6 +264,14 @@
         "description": "Recomputed wire, explainer and investigation publication gates",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EditorialReadiness"}}}
       },
+      "EvalAssurance": {
+        "description": "Machine-recomputed claim ceiling over the public AI-evaluation evidence",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvalAssurance"}}}
+      },
+      "EvalJournal": {
+        "description": "Evidence-bound AI-evaluation essays with limitations, falsifiers and source receipts",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvalJournal"}}}
+      },
       "NewsroomFeed": {
         "description": "Published structured newsroom edition",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
@@ -365,6 +379,16 @@
       "operationId": "getVerifiableEvalRegistry",
       "summary": "Read the latest verified evaluation-registry head and Merkle root",
       "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/eval-assurance-latest.json": {"get": {
+      "operationId": "getEvalAssurance",
+      "summary": "Read what the public AI-evaluation evidence can and cannot claim",
+      "responses": {"200": {"$ref": "#/components/responses/EvalAssurance"}}
+    }},
+    "/readings/eval-journal-latest.json": {"get": {
+      "operationId": "getEvalJournal",
+      "summary": "Read evidence-bound AI-evaluation articles and their exact source receipts",
+      "responses": {"200": {"$ref": "#/components/responses/EvalJournal"}}
     }},
     "/readings/refusal-drift-latest.json": {"get": {
       "operationId": "getRefusalDrift",

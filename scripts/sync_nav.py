@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAGES = {
     "index.html": "/",
     "news/index.html": "/news/",
+    "evals/index.html": "/evals/",
     "data.html": "/data.html",
     "osint-china.html": "/osint-china.html",
     "china-brief.html": "/china-brief.html",

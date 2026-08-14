@@ -112,7 +112,10 @@ CHURN = os.path.join(READINGS, "refusal-drift-churn.jsonl")
 #      series would seal the instrument's level shift as the models' drift.
 #      Precedent: the v1 conformal series closed the same way at the v2 break
 #      (processors/conformal_events.py).
-METHOD_VERSION = 3
+# v4 distinguishes a model USING a refusal clause from discussing one inside balanced
+# quotation marks. The judge fingerprint changes at the same boundary and this driver
+# re-baselines instead of reporting the instrument correction as model drift.
+METHOD_VERSION = 4
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
 ABSTAIN_MAX = 0.34  # skip a model if more than this share of its arms could not be reached

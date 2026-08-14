@@ -49,6 +49,14 @@ def test_catalog_keeps_collection_mode_rights_and_caveats_explicit():
     assert "CC BY-NC-SA" in by_id["ooni-bulk"]["license"]["name"]
     assert "upstream" in by_id["ddti"]["license"]["name"].lower()
     assert "caus" in by_id["cross-layer"]["description"].lower()
+    assurance = by_id["eval-assurance"]
+    assert assurance["urls"]["latest"].endswith("/readings/eval-assurance-latest.json")
+    assert assurance["method"] == "docs/EVAL-ASSURANCE.md"
+    assert "claim ceiling" in assurance["description"].lower()
+    journal = by_id["eval-journal"]
+    assert journal["urls"]["latest"].endswith("/readings/eval-journal-latest.json")
+    assert journal["landing_page"] == "evals/"
+    assert "falsifier" in journal["description"].lower()
 
 
 def test_ooni_catalog_scope_matches_the_committed_warehouse_allowlist():

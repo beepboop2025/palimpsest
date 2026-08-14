@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Palimpsest: AI evaluations, sealed the moment they are published. Nobody can revise the record. Not a lab, not a government, not us.">
+<meta property="og:image:alt" content="Palimpsest: AI evaluations with public commitments, sealed results and external witnesses. Rewrite the served record and the verification path exposes the conflict.">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Palimpsest · verifiable public evidence + reviewed intelligence">
@@ -89,7 +89,7 @@
       "@type": "Dataset",
       "@id": "https://palimpsest.info/#eval-registry",
       "name": "Palimpsest Verifiable Eval Registry",
-      "description": "A tamper-evident, pre-registered public record of AI model evaluations. The probe set is frozen and its hash sealed before any model is queried, every result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root whose roots are deposited outside our own infrastructure at the Internet Archive and OpenTimestamps. It runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1, covering Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1, covering Western frontier models (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Both families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and refusal drift is the diff against that model's own previous sealed run. Anyone can recompute the chain offline from the public repository.",
+      "description": "A tamper-evident, pre-registered public record of AI model evaluations. Declared probe commitments precede their runs, every result is hash-chained, and a Merkle root fingerprints the registry. The preserved cn-sensitive-generative-firewall-v1 history covers Chinese state-aligned endpoints; a staged v2 protocol binds exact prompts and full response matrices. frontier-overrefusal-v2 covers a separate Western frontier panel with exact-prompt commitments and published current transcripts. A machine-readable assurance report keeps chain integrity, response recomputation, statistical design, human validation and independent replication separate. Anyone can recompute the chain offline from the public repository.",
       "url": "https://palimpsest.info/readings/eval-registry.html",
       "keywords": ["AI evaluation registry", "verifiable evals", "tamper-evident", "pre-registration", "hash chain", "Merkle root", "refusal drift", "over-refusal", "AI transparency", "frontier model evaluation", "LLM refusal measurement"],
       "creator": { "@id": "https://palimpsest.info/#org" },
@@ -99,7 +99,8 @@
       "temporalCoverage": "2026-07/..",
       "distribution": [
         { "@type": "DataDownload", "name": "Sealed registry, append-only", "encodingFormat": "application/x-ndjson", "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl" },
-        { "@type": "DataDownload", "name": "Registry head state", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json" }
+        { "@type": "DataDownload", "name": "Registry head state", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json" },
+        { "@type": "DataDownload", "name": "AI eval claim assurance", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-assurance-latest.json" }
       ]
     },
     {
@@ -135,7 +136,7 @@
       "name": "What is Palimpsest?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Palimpsest is three things built on one instrument. It is a free, open-source observatory that measures how authoritarian states censor, at the network, content and model layers. It is a verifiable AI eval registry, where evaluation results are sealed the moment they publish so nobody can revise them afterwards. And it is a public good: MIT licensed, free to read, funded by grants and individuals rather than by customers. It watches the censor, never the censored, and ships raw evidence with every finding."
+        "text": "Palimpsest is three things built on one instrument. It is a free, open-source observatory that measures how authoritarian states censor, at the network, content and model layers. It is a verifiable AI eval registry, where published commitments make a later revision detectable and external anchors keep the history from resting only on the operator's word. And it is a public good: MIT licensed, free to read, funded by grants and individuals rather than by customers. It watches the censor, never the censored, and ships raw evidence with every finding."
       }
     },
     {
@@ -167,7 +168,15 @@
       "name": "What is the Generative Firewall Index?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It records how often state-aligned large language models refuse or substitute state-narrative answers on sensitive prompts, in Chinese and English, against neutral control models. A high index means the model is selectively suppressing truthful answers by design, not by accident."
+        "text": "The Generative Firewall Index measures how often a named panel of state-aligned language-model endpoints refuses or substitutes state-narrative answers on frozen sensitive prompts in Chinese and English, reported beside neutral and matched controls. Contrasts can expose content- or language-conditioned behavior on that panel. They do not prove a model maker's motive or represent every Chinese model."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why did Palimpsest's founder start doing AI evaluations?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. A screenshot could capture one response but could not prove the questions were fixed first, show whether the pattern persisted, or expose a later edit. That gap became the Generative Firewall and then the eval registry. The claim stays scoped to named models, prompts and dates; it is not a claim about every Chinese model and does not prove motive."
       }
     },
     {
@@ -175,7 +184,7 @@
       "name": "What is the Verifiable Eval Registry?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The questions are frozen and sealed before any model is queried, each result is hash-chained to the one before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not frozen first, or a number edited after publication, fails verification. It currently runs two separate frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the Chinese state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1 for the Western frontier panel (openai/gpt-4o-mini, anthropic/claude-3-haiku, meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese state-aligned models and Western frontier models are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite, and anyone can recompute the chain from the public repository. Chain roots are also deposited outside our own infrastructure, at the Internet Archive and via OpenTimestamps onto Bitcoin, so the record does not rest on our word."
+        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. Declared probe commitments precede their runs, each result is hash-chained, and a Merkle root fingerprints the registry. GFI v1's China-focused history is preserved while its staged v2 protocol adds exact-prompt and full-matrix evidence; frontier-overrefusal-v2 publishes exact prompt commitments and current full transcripts for a separate Western panel. Anyone can recompute the chain offline. External anchors make whole-history revision observable beyond the operator, while a separate assurance report says that human construct validation and unaffiliated replication remain unfinished."
       }
     },
     {
@@ -223,9 +232,11 @@
   .hero__note { font-family: var(--tk-font-mono); font-size: 11px; line-height: 1.6;
                 color: var(--tk-text-4); margin: 18px 0 0; max-width: 62ch; }
 
-  /* ---- the wire: the latest edition comes before the product map ---- */
-  .wire-door { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(220px,.6fr);
-               gap: 16px 30px; align-items: end; margin: 28px 0 0; padding: 22px 24px;
+  /* ---- the publications come before the product map ---- */
+  .publication-doors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+                       gap: 14px; margin: 28px 0 0; }
+  .wire-door { display: grid; grid-template-columns: 1fr;
+               gap: 16px 30px; align-items: end; margin: 0; padding: 22px 24px;
                color: inherit; text-decoration: none; background: #edf2f1;
                border: 1px solid #aab8ba; box-shadow: 9px 10px 0 rgba(25,87,210,.16);
                transition: transform var(--ps-t-fast) var(--ps-ease),
@@ -240,7 +251,14 @@
   .wire-door__go { display: block; margin-top: 12px; color: #103d9f;
                    font-family: var(--tk-font-mono); font-size: 10.5px; font-weight: 700;
                    letter-spacing: .07em; text-transform: uppercase; }
-  @media (max-width: 680px) { .wire-door { grid-template-columns: 1fr; } }
+  .wire-door--eval { grid-template-columns: 1fr; background: #0a1018;
+                     border-color: rgba(53,211,220,.62); box-shadow: 9px 10px 0 rgba(53,211,220,.14); }
+  .wire-door--eval:hover { box-shadow: 12px 13px 0 rgba(53,211,220,.2); }
+  .wire-door--eval .wire-door__eyebrow { color: #35d3dc; }
+  .wire-door--eval .wire-door__title { color: #f7faf9; }
+  .wire-door--eval .wire-door__body { color: #aebbc2; }
+  .wire-door--eval .wire-door__go { color: #35d3dc; }
+  @media (max-width: 920px) { .publication-doors { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { .wire-door:hover { transform: none; } }
 
   /* ---- the four public surfaces ---- */
@@ -343,7 +361,7 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
@@ -371,22 +389,27 @@
     </div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-2">
-        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">The record</p>
-            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <p class="ps-flyout__head">Measure</p>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-3">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
         <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -424,20 +447,33 @@
     the censor, never the censored.</p>
     <div class="btn-row">
       <a class="ps-btn" href="/news/">Read the latest edition</a>
+      <a class="ps-btn ps-btn--ghost" href="/evals/">Read the AI Eval Journal</a>
       <a class="ps-btn ps-btn--telegram" href="https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero" target="_blank" rel="noopener noreferrer">Get the daily observatory read ↗</a>
       <a class="ps-btn ps-btn--ghost" href="/data.html">Browse structured data</a>
       <a class="ps-btn ps-btn--ghost" href="/developers.html">Connect the API + MCP</a>
     </div>
 
-    <a class="wire-door ps-reveal" href="/news/">
-      <span>
-        <span class="wire-door__eyebrow">Palimpsest Wire · latest verified edition</span>
-        <span class="wire-door__title">The evidence desk now reads like a publication.</span>
-      </span>
-      <span class="wire-door__body">Thirty-three normalized instruments become dated, citable
-      dispatches with per-story JSON, RSS, NewsArticle metadata and visible coverage gaps.
-      <span class="wire-door__go">Open the newsroom →</span></span>
-    </a>
+    <div class="publication-doors ps-stagger">
+      <a class="wire-door ps-reveal" href="/news/">
+        <span>
+          <span class="wire-door__eyebrow">Palimpsest Wire · latest verified edition</span>
+          <span class="wire-door__title">China evidence, reported without hiding the gaps.</span>
+        </span>
+        <span class="wire-door__body">Normalized instruments and attributed reporting become dated,
+        citable dossiers with per-story JSON, RSS and visible coverage failures.
+        <span class="wire-door__go">Open the evidence wire →</span></span>
+      </a>
+
+      <a class="wire-door wire-door--eval ps-reveal" href="/evals/">
+        <span>
+          <span class="wire-door__eyebrow">New · Palimpsest AI Eval Journal</span>
+          <span class="wire-door__title">The methods, failures and findings now publish with receipts.</span>
+        </span>
+        <span class="wire-door__body">Four launch essays bind every claim to exact evidence files,
+        visible limits, a falsifier, verification commands and machine-readable feeds.
+        <span class="wire-door__go">Read edition 001 →</span></span>
+      </a>
+    </div>
 
     <div class="doors ps-stagger">
 
@@ -456,7 +492,7 @@
 
       <a class="door ps-p3 ps-reveal" href="#evals">
         <p class="door__k"><span class="ps-dot ps-dot--live" style="color:var(--tk-ok)" aria-hidden="true"></span>Verifiable AI eval registry</p>
-        <h2 class="door__t">Evaluations nobody can revise</h2>
+        <h2 class="door__t">Evaluations with a checkable history</h2>
         <p class="door__b">Questions frozen and hashed before any model is asked. Every result
         hash-chained, the whole record fingerprinted, the roots deposited outside our own infrastructure.</p>
         <p class="stat" data-stat="hero-evals">
@@ -823,13 +859,16 @@
       <div class="ps-pin">
         <h2 class="ps-h2">A result that cannot be quietly revised</h2>
         <p class="claim__lede">An evaluation you can edit after the fact is a press release. Here the
-        probe set is frozen and its hash sealed before any model is queried, every result is chained to
-        the one before it, and the whole record is fingerprinted by a Merkle root. A number changed after
-        publication breaks the chain, and anyone can recompute the chain offline to find out. That
-        applies to us as much as to anyone we measure.</p>
+        declared commitment is sealed before its matching run can enter the record, every result is
+        chained to the one before it, and the whole record is fingerprinted by a Merkle root. Current
+        collectors also require an exact public protocol before querying. A number changed after
+        publication breaks local verification, and anyone can recompute the served chain offline to find
+        out. That applies to us as much as to anyone we measure.</p>
         <div class="btn-row">
+          <a class="ps-btn" href="/evals/">Read the Eval Journal</a>
           <a class="ps-btn" href="/readings/eval-registry.html">Open the registry</a>
           <a class="ps-btn ps-btn--ghost" href="/readings/generative-firewall-index.html">Firewall Index</a>
+          <a class="ps-btn ps-btn--ghost" href="/readings/eval-assurance-latest.json">Assurance report</a>
         </div>
       </div>
 
@@ -849,17 +888,19 @@
         <div class="sig-grid ps-stagger ps-reveal">
 
           <a class="sig ps-p2" href="/readings/generative-firewall-index.html">
-            <p class="sig__k">Frozen suite</p>
-            <h3 class="sig__t">cn-sensitive-generative-firewall-v1</h3>
+            <p class="sig__k">China-focused suite</p>
+            <h3 class="sig__t">Generative Firewall</h3>
             <p class="sig__b">What a state-aligned model refuses or rewrites on sensitive prompts, in
             Chinese and English, against neutral controls.</p>
-            <p class="sig__b">Panel: deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct.</p>
-            <p class="sig__f"><span class="fresh">sealed on every run</span></p>
+            <p class="sig__b">The v1 record remains public. Its v2 protocol freezes exact prompt text,
+            panel, sampling plan and classifier bytes before the first paid query, then seals the complete
+            response matrix.</p>
+            <p class="sig__f"><span class="fresh">legacy preserved · stronger protocol staged</span></p>
           </a>
 
           <a class="sig ps-p2" href="/readings/eval-registry.html#drift">
             <p class="sig__k">Frozen suite</p>
-            <h3 class="sig__t">frontier-overrefusal-v1</h3>
+            <h3 class="sig__t">frontier-overrefusal-v2</h3>
             <p class="sig__b">What a Western frontier model quietly stops answering. Drift is the diff
             against that model's own previous sealed run, on the same frozen benign probes.</p>
             <p class="sig__b">Panel: openai/gpt-4o-mini, anthropic/claude-3-haiku,
@@ -876,6 +917,28 @@
             <p class="sig__f"><span class="fresh">anchored on a schedule</span></p>
           </a>
 
+          <a class="sig ps-p2" href="/readings/eval-registry.html#assurance">
+            <p class="sig__k">Claim-by-claim assurance</p>
+            <h3 class="sig__t">No single score hides the weak joint</h3>
+            <p class="sig__b">Integrity, exact-prompt precommitment, raw-response recomputation,
+            statistical design, human validation and independent replication are reported separately.</p>
+            <p class="sig__b">The machine-readable report states both what the evidence supports today
+            and what Palimpsest may not yet claim.</p>
+            <p class="sig__f"><span class="fresh">generated and checked on publish</span></p>
+          </a>
+
+        </div>
+
+        <div class="ps-p1 note ps-reveal">
+          <p class="note__h">Why the author started this</p>
+          <p>Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned
+          models change, withhold or replace answers when a prompt criticised the Chinese Communist
+          Party or asked about documented events. A screenshot could show one answer; it could not show
+          whether the questions were fixed first, whether the behavior persisted, or whether the record
+          was later edited. That observation became a repeatable eval, then a registry designed to bind
+          each claim to inspectable evidence. <a href="/readings/eval-registry.html#origin">Read the scoped
+          origin and research context.</a> The full account now opens the
+          <a href="/evals/a-censored-answer-is-not-evidence/">AI Eval Journal</a>.</p>
         </div>
 
         <div class="ps-p1 note ps-reveal">
@@ -883,11 +946,16 @@
           <p>Clone the repository and run <code>python3 scripts/verify_eval_registry.py</code>. It
           recomputes every hash link and the Merkle root from the raw
           <a href="/readings/eval-registry.jsonl">eval-registry.jsonl</a> without touching the network.
-          The two suites share no model, so neither family can be graded on a rubric built for the other,
-          and the pre-registration hash proves the questions were fixed before the answers existed.</p>
-          <p>The registry does not prove a model is good or bad. It proves the questions were frozen
-          first and the answers were not edited afterwards. Everything beyond that is interpretation, and
-          the interpretation is published with the evidence attached.</p>
+          The two suites share no model, so neither family can be graded on a rubric built for the other.
+          The verifier proves that each declared commitment precedes its matching run in the served chain;
+          the current collectors add a separately published protocol receipt and refuse their first query
+          without it.</p>
+          <p>The registry does not prove a model is good or bad. It makes the ordering and integrity of the
+          served record checkable, while external witnesses make conflicting rewrites visible. Everything
+          beyond that is interpretation, and the interpretation is published with the evidence attached. The
+          <a href="/readings/eval-assurance-latest.json">assurance report</a> keeps integrity,
+          reproducibility, construct validation and independent replication from being collapsed into
+          one flattering badge.</p>
         </div>
 
       </div>
@@ -1137,8 +1205,8 @@
     <h3>What is Palimpsest?</h3>
     <p>Palimpsest is three things built on one instrument. It is a free, open-source observatory that
     measures how authoritarian states censor, at the network, content and model layers. It is a verifiable
-    AI eval registry, where evaluation results are sealed the moment they publish so nobody can revise
-    them afterwards. And it is a public good: MIT licensed, free to read, funded by grants and individuals
+    AI eval registry, where published commitments make a later revision detectable and external anchors
+    keep the history from resting only on the operator's word. And it is a public good: MIT licensed, free to read, funded by grants and individuals
     rather than by customers. It watches the censor, never the censored, and ships raw evidence with every
     finding.</p>
 
@@ -1172,25 +1240,29 @@
     readings and raw JSON evidence are published here at palimpsest.info, updated continuously.</p>
 
     <h3>What is the Generative Firewall Index?</h3>
-    <p>The Generative Firewall Index is a live measure of what a state's AI is engineered to hide. It
-    records how often state-aligned large language models refuse or substitute state-narrative answers on
-    sensitive prompts, in Chinese and English, against neutral control models. A high index means the
-    model is selectively suppressing truthful answers by design, not by accident.</p>
+    <p>The Generative Firewall Index measures how often a named panel of state-aligned language-model
+    endpoints refuses or substitutes state-narrative answers on frozen sensitive prompts in Chinese and
+    English, reported beside neutral and matched controls. Contrasts can expose content- or
+    language-conditioned behavior on that panel. They do not prove a model maker's motive or represent
+    every Chinese model.</p>
+
+    <h3>Why did Palimpsest's founder start doing AI evaluations?</h3>
+    <p>Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language
+    models change, withhold or replace answers when prompts criticised the Chinese Communist Party or
+    asked about documented events. A screenshot could capture one response but could not prove the
+    questions were fixed first, show whether the pattern persisted, or expose a later edit. That gap
+    became the Generative Firewall and then the eval registry. The claim stays scoped to named models,
+    prompts and dates; it is not a claim about every Chinese model and does not prove motive.</p>
 
     <h3>What is the Verifiable Eval Registry?</h3>
-    <p>The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. The
-    questions are frozen and sealed before any model is queried, each result is hash-chained to the one
-    before it, and the whole registry is fingerprinted by a Merkle root. A result whose questions were not
-    frozen first, or a number edited after publication, fails verification. It currently runs two separate
-    frozen suites with no model in common: cn-sensitive-generative-firewall-v1 for the Chinese
-    state-aligned models (deepseek/deepseek-chat, qwen/qwen-2.5-7b-instruct), and frontier-overrefusal-v1
-    for the Western frontier panel (openai/gpt-4o-mini, anthropic/claude-3-haiku,
-    meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo). Chinese state-aligned models and Western
-    frontier models are held to the same tamper-evident, pre-registered machinery, each on its own frozen
-    suite, and anyone can recompute the chain from the
-    <a href="https://github.com/beepboop2025/palimpsest">public repository</a>. Chain roots are also
-    deposited outside our own infrastructure, at the Internet Archive and via OpenTimestamps onto Bitcoin,
-    so the record does not rest on our word.</p>
+    <p>The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. Declared
+    probe commitments precede their runs, each result is hash-chained, and a Merkle root fingerprints the
+    registry. GFI v1's China-focused history is preserved while its staged v2 protocol adds exact-prompt
+    and full-matrix evidence; frontier-overrefusal-v2 publishes exact prompt commitments and current full
+    transcripts for a separate Western panel. Anyone can recompute the chain offline. External anchors
+    make whole-history revision observable beyond the operator, while a separate
+    <a href="/readings/eval-assurance-latest.json">assurance report</a> says that human construct validation
+    and unaffiliated replication remain unfinished.</p>
 
     <h3>What is the ScamShield reviewed bridge?</h3>
     <p>The ScamShield reviewed bridge lets ScamShield load a public, inert map of reviewed sources and typologies while keeping message-level evidence private. The current scamshield-intelligence-pack/v1 release is 2026-08-08.2, with 18 sources, 8 typologies and 3 dimensions. Raw Telegram text is hashed and not sent by default; the public pack excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values. Privacy-minimized publication candidates require human review and are never auto-published. TYPOLOGY_MATCH, CORROBORATED_LEAD and DIRECT_LINK describe evidence relationships, not guilt or risk.</p>

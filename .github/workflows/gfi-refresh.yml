@@ -31,8 +31,45 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Synchronize before publishing the measurement protocol
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git fetch origin main
+          git rebase origin/main
+
+      - name: Publish the exact GFI v2 protocol before querying any model
+        # This is a separate public commit, not merely an earlier line in the same
+        # process. It freezes prompt text, panel, cohorts, k, method version and the
+        # classifier bytes before the paid answers exist. If this push loses a race,
+        # the job stops here and spends no model quota.
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: |
+          python -m scripts.preregister_gfi_v2
+          python -m scripts.verify_eval_registry
+          python scripts/verify_public_surface.py
+          git add readings/gfi-evaluation-protocol-v2.json \
+                  readings/eval-registry.jsonl \
+                  readings/eval-registry-latest.json
+          if git diff --cached --quiet; then
+            echo "current protocol was already public"
+          else
+            git commit -m "eval: preregister GFI v2 protocol ($(date -u +%FT%TZ)) [skip ci]"
+            python scripts/push_data_commit.py --base-locked
+          fi
+
       - name: Run the generative-firewall reading
         run: python scripts/generative_firewall_reading.py
+
+      - name: Recompute the protocol, full transcripts, seals, and labels
+        run: |
+          python -m scripts.verify_eval_registry
+          python -m scripts.verify_gfi_transcripts
+          python -m scripts.build_eval_assurance
+          python -m scripts.build_eval_journal
+          python -m scripts.build_eval_assurance --check
+          python -m scripts.build_eval_journal --check
 
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
@@ -45,15 +82,81 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit & push if the reading changed
+      - name: Create the measured candidate
+        id: candidate
         run: |
-          git config user.name  "palimpsest-bot"
-          git config user.email "bot@palimpsest.info"
-          git add readings/latest.json readings/history.jsonl \
-                  readings/generative-firewall-index.html 2>/dev/null || true
+          for p in readings/latest.json \
+                   readings/history.jsonl \
+                   readings/generative-firewall-index.html \
+                   readings/gfi-transcripts-latest.json \
+                   readings/eval-registry.jsonl \
+                   readings/eval-registry-latest.json \
+                   readings/eval-assurance-latest.json \
+                   readings/eval-journal-latest.json \
+                   evals/ ; do
+            test -e "$p" || { echo "FATAL: expected GFI artifact is missing: $p"; exit 1; }
+            git add "$p"
+          done
           if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
           else
             git commit -m "data: generative firewall refresh ($(date -u +%FT%TZ)) [skip ci]"
-            python scripts/push_data_commit.py
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Attempt the base-locked publication
+        if: steps.candidate.outputs.changed == 'true'
+        id: push_attempt
+        continue-on-error: true
+        run: python scripts/push_data_commit.py --base-locked
+
+      - name: Reseal the measured bytes after a publication race
+        if: steps.push_attempt.outcome == 'failure'
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: |
+          measurement_commit=$(git rev-parse HEAD)
+          for attempt in 1 2 3 4; do
+            echo "GFI publication retry $attempt/4: retaining responses, rebuilding seals"
+            git fetch origin main
+            git switch --detach origin/main
+            for p in readings/latest.json \
+                     readings/history.jsonl \
+                     readings/generative-firewall-index.html \
+                     readings/gfi-transcripts-latest.json ; do
+              git checkout "$measurement_commit" -- "$p"
+            done
+
+            python -m scripts.ingest_gfi_v2
+            python -m scripts.build_eval_assurance
+            python -m scripts.build_eval_journal
+            python -m scripts.verify_eval_registry
+            python -m scripts.verify_gfi_transcripts
+            python -m scripts.build_eval_assurance --check
+            python -m scripts.build_eval_journal --check
+            python scripts/verify_public_surface.py
+
+            for p in readings/latest.json \
+                     readings/history.jsonl \
+                     readings/generative-firewall-index.html \
+                     readings/gfi-transcripts-latest.json \
+                     readings/eval-registry.jsonl \
+                     readings/eval-registry-latest.json \
+                     readings/eval-assurance-latest.json \
+                     readings/eval-journal-latest.json \
+                     evals/ ; do
+              git add "$p"
+            done
+            if git diff --cached --quiet; then
+              echo "the current public head already contains these measured bytes"
+              exit 0
+            fi
+            git commit -C "$measurement_commit"
+            if python scripts/push_data_commit.py --base-locked; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "FATAL: GFI publication exhausted four verified reseal retries"
+          exit 1

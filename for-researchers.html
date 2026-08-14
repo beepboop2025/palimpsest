@@ -197,7 +197,7 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">News</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
@@ -225,22 +225,27 @@
     </div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-2">
-        <p class="ps-flyout__lede">Evaluations sealed the moment they publish, so no result can be quietly revised.</p>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">The record</p>
-            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Pre-registered, hash-chained, independently recomputable</span></a>
+            <p class="ps-flyout__head">Measure</p>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3" data-within="">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-3">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4" data-within="">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
         <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
@@ -275,6 +280,7 @@
     <a class="ps-btn" href="/osint-china.html">Open OSINT China</a>
     <a class="ps-btn ps-btn--ghost" href="/dashboards/ddti_observatory.html">Open the observatory</a>
     <a class="ps-btn ps-btn--ghost" href="/readings/">Browse all data</a>
+    <a class="ps-btn ps-btn--ghost" href="/readings/eval-assurance-latest.json">Eval assurance</a>
     <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
   </div>
 
@@ -293,7 +299,7 @@
     </article>
     <article class="ps-p1 ps-reveal">
       <h3>What does an AI model refusal rate prove?</h3>
-      <p>It describes behavior on a frozen prompt suite at a stated time. It does not prove motive or universal behavior. The <a href="/readings/eval-registry.html">Eval Registry</a> seals prompts, outputs and labels so others can verify the record and avoid comparing incompatible suites.</p>
+      <p>It describes behavior on a frozen prompt suite at a stated time. It does not prove motive or universal behavior. The <a href="/readings/eval-registry.html">Eval Registry</a> seals prompts, outputs and labels so others can verify the record and avoid comparing incompatible suites; the <a href="/readings/eval-assurance-latest.json">assurance report</a> states which stronger validity claims remain open.</p>
     </article>
   </div>
   </section>
@@ -334,7 +340,7 @@
     </tr>
     <tr>
       <td><b>Eval Registry</b><br>sealed model evaluations</td>
-      <td>Pre-registered, hash-chained audits of Chinese state-aligned and Western frontier models, including refusal drift over time. The registry runs separate frozen suites and no model has ever been run under both — <code>cn-sensitive-generative-firewall-v1</code> covers the state-aligned models, <code>frontier-overrefusal-v1</code> and <code>-v2</code> cover the Western frontier panel. The two families are held to the same tamper-evident, pre-registered machinery, each on its own frozen suite; they are not scored against a shared question set. Results cannot be revised after sealing; anyone can recompute the chain. The v2 frontier suite asks every question in three meaning-preserving wordings, publishes a Wilson interval on every rate, and seals a digest of the raw responses rather than of the derived labels, so a reader can recompute the seal from the published transcripts and re-derive each label independently.</td>
+      <td>Pre-registered, hash-chained audits of Chinese state-aligned and Western frontier models, including refusal drift over time. The registry keeps separate suites: the preserved <code>cn-sensitive-generative-firewall-v1</code> history covers the state-aligned panel, its staged v2 protocol adds exact-prompt and full-matrix evidence, and <code>frontier-overrefusal-v2</code> covers the Western frontier panel. They share evidence machinery, not a rubric. A served edit breaks the chain; public history, anchors and witnesses address whole-chain rewriting. The v2 frontier suite asks questions through paraphrase families, publishes Wilson intervals, and seals raw-response digests so a reader can reproduce the current seals and labels. The assurance report separately shows that the human study and unaffiliated replication are unfinished.</td>
       <td>Public model APIs</td>
       <td>every 6 hours</td>
       <td><span class="pill live">LIVE</span></td>
@@ -380,6 +386,7 @@
     <div class="file ps-p1 ps-reveal"><a href="readings/github-refuge-history.jsonl">github-refuge-history.jsonl</a><div class="d">GitHub-refuge time series: repos watched, present, and pressure events per run.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/eval-registry.jsonl">eval-registry.jsonl</a><div class="d">The registry chain itself: every pre-registration and sealed run, hash-chained in order. This file is the tamper-evident record; verify it with <code>scripts/verify_eval_registry.py</code>.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/eval-registry-latest.json">eval-registry-latest.json</a><div class="d">Registry summary: attestation counts, models audited, recent runs, Merkle root, head hash, verified flag.</div></div>
+    <div class="file ps-p1 ps-reveal"><a href="readings/eval-assurance-latest.json">eval-assurance-latest.json</a><div class="d">Claim-by-claim assurance: integrity, prompt precommitment, raw-response recomputation, pipeline reproducibility, statistics, human construct validation and independent replication. It publishes a claim ceiling rather than blending unlike guarantees into one score.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/refusal-drift-latest.json">refusal-drift-latest.json</a><div class="d">Frontier refusal drift: per-model refusal rate over question families with a Wilson 95% interval, wording invariance across three phrasings per family, matched English/Chinese asymmetry, drift versus the prior comparable run, and the anytime-valid churn alarm. Method and honest limits in <code>docs/FRONTIER-DRIFT.md</code>.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/refusal-drift-transcripts.json">refusal-drift-transcripts.json</a><div class="d">The raw model responses behind the current refusal-drift reading, with the prompt that drew each. Their digests are what the sealed run commits to, so <code>scripts/verify_refusal_transcripts.py</code> can prove the served text is the sealed text and re-derive every label. Current run only; prior runs live in git history and still verify against their seals.</div></div>
     <div class="file ps-p1 ps-reveal"><a href="readings/refusal-drift-churn.jsonl">refusal-drift-churn.jsonl</a><div class="d">One line per model per comparable run: how many probes changed label and how many were compared. This is the evidence the standing alarm accumulates, kept separate from the findings history because a null calibrated only on runs where something moved would be estimated from a sample selected on having moved.</div></div>
@@ -463,7 +470,8 @@
 
   <ul>
     <li><b>Deletion as data.</b> Palimpsest reads public censorship records, ranks what is being scrubbed by a recency-weighted attention score, and flags terms that are newly sensitive against their own baseline. The DDTI method and its selectivity and novelty maths are documented in full.</li>
-    <li><b>The generation layer.</b> The Generative Firewall probes state-aligned models on sensitive prompts in Chinese and English, and compares them to neutral Western control models, so a refusal reads as deliberate policy rather than a generic safety filter.</li>
+    <li><b>The generation layer.</b> The Generative Firewall probes state-aligned models on sensitive prompts in Chinese and English and includes neutral controls. The contrasts expose content- and language-conditioned behavior; they do not, by themselves, prove a model maker's motive or represent every Chinese model.</li>
+    <li><b>Why this instrument exists.</b> The founder began this work after observing Chinese and state-aligned models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. One screenshot could not establish a pattern, so the project moved from an observation to frozen suites, complete evidence artifacts and a registry that can reveal later revision. <a href="/readings/eval-registry.html#origin">Read the scoped account.</a></li>
     <li><b>Validation.</b> The deletion signal has been checked against six documented censorship events. Where a claim cannot be validated, it is labelled as such and not published as fact.</li>
   </ul>
   <p class="links" style="margin-top:6px">

@@ -1,7 +1,7 @@
 # Integrity architecture and threat model
 
-Palimpsest's central claim is that its published record cannot be revised
-after the fact. This document says exactly what enforces that, layer by
+Palimpsest's central claim is that revision of its published record is detectable
+under the threat model below. This document says exactly what enforces that, layer by
 layer, who each layer defends against, and what none of them can do. A trust
 claim without a threat model is marketing; this is the threat model.
 
@@ -68,14 +68,22 @@ boundary and local single-writer procedure are documented in
     And step three re-runs *our* classifier, which proves the pipeline is
     consistent, not that the classifier is right — that is still the coder
     study's job, below.
-  - **Everything else** — the Generative Firewall suite
+  - **The current public Generative Firewall v1 history**
     (`scripts/eval_registry_ingest.py`, sealing `{concept: aligned_state}`) and
-    the canonical v1 arm sealed under `frontier-overrefusal-v1` — still commits
-    to *derived labels* with no published text. For those, the original
+    the canonical v1 arm sealed under `frontier-overrefusal-v1` commit to
+    *derived labels* without complete published text. For those, the original
     concession stands unchanged: **a systematically mislabelled response is not
     caught by the chain.** If the lexical classifier calls a hedged answer a
-    refusal, the chain seals that mistake perfectly and verifies clean forever
-    after.
+    refusal, the chain preserves that mistake faithfully.
+  - **GFI v2 is the remediation path, not yet a historical claim.**
+    `core/gfi_protocol.py` defines a closed protocol over exact prompts, panel,
+    cohorts, samples per cell, method version and classifier bytes.
+    `scripts/preregister_gfi_v2.py` must publish it in a separate registry/git
+    event before `scripts/generative_firewall_reading.py` will make a model call.
+    The resulting `gfi-transcripts-latest.json` will carry every full sample or
+    explicit null abstention, and `scripts/verify_gfi_transcripts.py` recomputes
+    model seals, cell states and denominators. Until those artifacts actually
+    exist and verify, the public assurance report keeps GFI at partial—not pass.
   There is one more asymmetry worth naming rather than leaving to be found. v2's
   pre-registration commits to `id + sha256(prompt text)` per arm, so a silently
   reworded question moves the registry hash. The v1 pre-registration committed to
@@ -83,7 +91,8 @@ boundary and local single-writer procedure are documented in
   what they are *called*, not what they *say*. The v1 series is kept running
   because severing 47 sealed runs would cost more than the weakness does, and the
   weakness is bounded: the v2 commitment covers the same twelve questions' text,
-  in the same chain, from 2026-08-01 onward.
+  in the same chain, from 2026-08-01 onward. GFI v1 has the analogous concept-id
+  weakness; its v2 protocol binds the full text rather than rewriting v1 history.
   What audits the label lives outside the chain in every case: probes are
   pre-registered so results cannot be cherry-picked after the answers exist; the
   classifier is a transparent lexical rule anyone can read and re-run; a frozen
@@ -95,9 +104,16 @@ boundary and local single-writer procedure are documented in
   **That study has not been completed.** The sheets are drawn and unlabelled, no
   agreement coefficient exists, and until one does, the correct reading of every
   refusal rate in this repository is "as classified by a published lexical rule",
-  not "as a human would classify it". The anchor set narrows the gap — it proves
-  the instrument is unchanged and names one case where it is provably wrong — but
-  it is author-labelled, so it is not that study and is not offered as it.
+  not "as a human would classify it". The anchor set narrows the gap—it proves
+  the instrument is unchanged, and method v4 now pins the former quote/mention
+  false positive as a regression test—but it is author-labelled, so it is not
+  that study and is not offered as it.
+- **An integrity pass is not a validity pass.**
+  `readings/eval-assurance-latest.json` keeps chain integrity, exact-prompt
+  precommitment, response recomputation, pipeline reproducibility, statistical
+  design, human construct validation and unaffiliated replication separate. The
+  artifact is rebuilt from public evidence in CI; it cannot convert a pending
+  coder study into a green badge by averaging it with cryptographic checks.
 - **The window between seal and first anchor.** History could in principle be
   rewritten in the gap before any external party has seen it, at most one
   anchor cadence (currently 6 hours) after sealing. Older history is

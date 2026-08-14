@@ -137,6 +137,22 @@ def test_wilson_sane_at_edges():
     assert gfr.wilson(0, 0) == (None, None)                # no valid samples -> no interval
 
 
+def test_v2_protocol_binds_prompts_panel_samples_method_and_classifier():
+    protocol = gfr.build_gfi_protocol(k=5)
+    ok, problems = gfr.gfi_proto.verify_protocol(protocol)
+    assert ok and not problems
+    assert protocol["n_arms"] == len(gfr.build_probes())
+    assert protocol["samples_per_cell"] == 5
+
+    changed = gfr.build_gfi_protocol(k=4)
+    assert changed["probe_commitment"] != protocol["probe_commitment"]
+    tampered = json.loads(json.dumps(protocol))
+    first = next(iter(tampered["arms"].values()))
+    first["prompt"] += " silently changed"
+    ok, problems = gfr.gfi_proto.verify_protocol(tampered)
+    assert not ok and any("prompt_sha256" in problem for problem in problems)
+
+
 # ── transport-failure accounting ────────────────────────────────────────────────
 # Added after 2026-07-27, when the flagship GFI run failed with only
 # "abstain_rate 1.0" in the log. A dead key, an exhausted balance, a retired model

@@ -25,6 +25,7 @@ Offline: the hosted API is stubbed at fetch_one and only the runner executes.
 import json
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -32,6 +33,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "scripts"))
 
 import generative_firewall_reading as gfr
+from scripts import verify_gfi_transcripts as verify_gfi
 
 REFUSAL_ZH = "对不起，我无法回答这个问题。让我们聊聊别的话题吧。"
 ANSWER = ("On the night in question, a large number of people gathered in the square in Beijing. "
@@ -54,6 +56,28 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(gfr, "LATEST", str(tmp_path / "latest.json"))
     monkeypatch.setattr(gfr, "HISTORY", str(tmp_path / "history.jsonl"))
     monkeypatch.setattr(gfr, "DASHBOARD", str(tmp_path / "generative-firewall-index.html"))
+    monkeypatch.setattr(gfr, "GFI_PROTOCOL", str(tmp_path / "gfi-evaluation-protocol-v2.json"))
+    monkeypatch.setattr(gfr, "GFI_TRANSCRIPTS", str(tmp_path / "gfi-transcripts-latest.json"))
+    monkeypatch.setattr(gfr, "EVAL_REGISTRY", str(tmp_path / "eval-registry.jsonl"))
+    monkeypatch.setattr(gfr, "EVAL_REGISTRY_SUMMARY", str(tmp_path / "eval-registry-latest.json"))
+
+    protocol = gfr.build_gfi_protocol()
+    lines = [
+        f"{arm_id}\t{arm['prompt_sha256']}\t{protocol['evaluation_protocol_sha256']}"
+        for arm_id, arm in sorted(protocol["arms"].items())
+    ]
+    entry = gfr.eval_reg.preregister(
+        gfr.EVAL_REGISTRY, lines, suite=gfr.gfi_proto.SUITE, note="offline test protocol"
+    )
+    protocol["registration"] = {
+        "registry": "readings/eval-registry.jsonl",
+        "seq": entry["seq"],
+        "ts": entry["ts"],
+        "entry_hash": entry["entry_hash"],
+    }
+    (tmp_path / "gfi-evaluation-protocol-v2.json").write_text(
+        json.dumps(protocol, ensure_ascii=False), encoding="utf-8"
+    )
 
     def run(sensitive="refused"):
         # sensitive="refused" is a fully censored panel, "answered" is a fully
@@ -178,3 +202,35 @@ def test_an_unreliable_round_leaves_the_previous_reading_alone(publish):
     assert after["generated_at"] == good["generated_at"]
     assert after["gfi"] == good["gfi"]
     assert len(_history(tmp_path)) == 1
+
+
+def test_successful_round_publishes_full_v2_evidence_and_seals_each_model(publish):
+    run, tmp_path = publish
+    assert run("answered") == 0
+
+    reading = _reading(tmp_path)
+    transcripts = json.loads((tmp_path / "gfi-transcripts-latest.json").read_text())
+    entries = gfr.eval_reg.read_ledger(tmp_path / "eval-registry.jsonl")
+    runs = [entry for entry in entries if entry.get("kind") == gfr.eval_reg.RUN]
+
+    assert reading["summary"]["suite"] == gfr.gfi_proto.SUITE
+    assert reading["summary"]["probe_commitment"] == transcripts["probe_commitment"]
+    assert set(transcripts["responses"]) == {model.model_id for model in gfr.PANEL}
+    assert len(runs) == len(gfr.PANEL)
+    assert all(run["metrics"]["n_planned_arms"] == len(gfr.build_probes()) for run in runs)
+
+
+def test_v2_verifier_recomputes_full_sample_matrix_and_cell_labels(publish):
+    run, tmp_path = publish
+    assert run("answered") == 0
+
+    ok, problems, facts = verify_gfi.verify_paths(
+        reading_path=Path(tmp_path / "latest.json"),
+        protocol_path=Path(tmp_path / "gfi-evaluation-protocol-v2.json"),
+        transcripts_path=Path(tmp_path / "gfi-transcripts-latest.json"),
+        registry_path=Path(tmp_path / "eval-registry.jsonl"),
+    )
+    assert ok and not problems, problems
+    assert facts["sealed_models"] == len(gfr.PANEL)
+    assert facts["cells_checked"] == len(gfr.PANEL) * len(gfr.build_probes())
+    assert facts["samples_checked"] == facts["cells_checked"] * gfr.K_SAMPLES

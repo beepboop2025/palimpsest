@@ -442,15 +442,18 @@ def test_evidence_desk_prompt_routes_machine_analysis_and_preserves_abstention()
 
 # ------------------------------------------------------- both applications --
 def test_registry_signals_are_published_and_described_truthfully():
-    for name in ("eval-registry", "refusal-drift"):
+    for name in ("eval-registry", "eval-assurance", "eval-journal", "refusal-drift"):
         path, desc = mcp.SIGNALS[name]
         assert path == f"/readings/{name}-latest.json"
         assert desc
     reg = mcp.SIGNALS["eval-registry"][1].lower()
-    # the two suites share no model, so the description must not merge them
     assert "cn-sensitive-generative-firewall-v1" in reg
-    assert "frontier-overrefusal-v1" in reg
+    assert "frontier-overrefusal-v2" in reg
     assert "merkle" in reg
+    assurance = mcp.SIGNALS["eval-assurance"][1].lower()
+    assert "claim" in assurance and "human" in assurance and "replication" in assurance
+    journal = mcp.SIGNALS["eval-journal"][1].lower()
+    assert "falsifier" in journal and "receipts" in journal
 
 
 def test_every_signal_has_a_published_reading_on_disk():
