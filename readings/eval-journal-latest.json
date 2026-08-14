@@ -3,7 +3,7 @@
     {
       "author": "Palimpsest Eval Lab",
       "claim": "The current eval record supports a provisional measurement claim; it does not yet support calling the lexical construct human-validated or the findings independently replicated.",
-      "content_sha256": "5170c52ae3e32e19f37bc60213dc26d3be970884dce44c26e6a7cdd9817c7af2",
+      "content_sha256": "4018216550c2d6d3c0977a95726df34cd5287da9830bf0faefb9700550c6f53e",
       "dek": "Palimpsest now publishes a machine-readable assurance ladder that keeps chain integrity, exact-prompt commitment, response recomputation, statistical design, human validation, and independent replication on separate axes.",
       "evidence": [
         {
@@ -47,11 +47,11 @@
           "url": "/docs/GRANT-CASE.md"
         },
         {
-          "bytes": 3208,
+          "bytes": 3202,
           "label": "Assurance regression tests",
           "path": "tests/test_eval_assurance.py",
           "role": "Pins chain failure, filename spoofing, malformed-result failure, and current state",
-          "sha256": "59d980e4a164aeecdca9ebc43993f5af47c89b9a19d074d9b385e1d276029819",
+          "sha256": "6de4672516b59178dc86a84106774c55c9b48dbe2364ae7fe8e4cdf8e03200a3",
           "url": "/tests/test_eval_assurance.py"
         }
       ],
@@ -272,7 +272,7 @@
     {
       "author": "Palimpsest Eval Lab",
       "claim": "GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.",
-      "content_sha256": "b649cd692171599d912cdc0efe8d07b4a21e4992694af320cdade962e3bfcc87",
+      "content_sha256": "258cce48d66f5b759c5b3bbb6634d02722de3ed7e6c0188b52df9996928b06e5",
       "dek": "The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.",
       "evidence": [
         {
@@ -308,11 +308,11 @@
           "url": "/scripts/verify_gfi_transcripts.py"
         },
         {
-          "bytes": 6898,
+          "bytes": 7761,
           "label": "Two-stage publication workflow",
           "path": ".github/workflows/gfi-refresh.yml",
           "role": "Publishes the protocol before collection and preserves measured bytes across push races",
-          "sha256": "40f938c921bbf6fb7993ec6ed8a701bfdd8cf92766830b6832df55af1f353957",
+          "sha256": "e4aa5cd2fd26448d58ab8a6a57f55cea7cd1ef363958e28112db07dd13c05c8b",
           "url": "/.github/workflows/gfi-refresh.yml"
         },
         {

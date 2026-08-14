@@ -61,6 +61,12 @@ CONTRACT = {
     "weibo-hotsearch":      _d("generated_at", ["source", "method_note"], "board_entries"),
     "censored-planet":      _d("generated_at", ["source", "method"], "n_events"),
     "eval-registry":        _d("generated_at", ["registry", "verify_cmd"], "runs"),
+    "gfi-transcripts":      _d(
+        "generated_at", ["protocol", "evaluation_protocol_sha256", "verify_cmd"],
+        reason="a complete protocol-bound response matrix: models, prompt arms, and "
+               "repeated samples are enumerated under responses and verified against "
+               "the frozen protocol; one top-level denominator would collapse three "
+               "declared axes."),
     "eval-assurance":       _d(
         "generated_at", ["sources", "verify"],
         reason="a closed claim checklist rather than a sampled population: every check "

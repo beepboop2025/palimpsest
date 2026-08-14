@@ -31,6 +31,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the offline publication-contract verifier
+        run: python -m pip install --quiet pytest
+
       - name: Synchronize before publishing the measurement protocol
         run: |
           git config user.name  "palimpsest-bot"
@@ -70,6 +73,14 @@ jobs:
           python -m scripts.build_eval_journal
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
+          python -m pytest -q \
+            tests/test_publication_contract.py \
+            tests/test_erasure_layer_freshness.py \
+            tests/test_board_stale_is_not_calm.py \
+            tests/test_cadence_matches_crons.py \
+            tests/test_method_version_guard.py \
+            tests/test_eval_assurance.py \
+            tests/test_eval_journal.py
 
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
@@ -135,6 +146,14 @@ jobs:
             python -m scripts.verify_gfi_transcripts
             python -m scripts.build_eval_assurance --check
             python -m scripts.build_eval_journal --check
+            python -m pytest -q \
+              tests/test_publication_contract.py \
+              tests/test_erasure_layer_freshness.py \
+              tests/test_board_stale_is_not_calm.py \
+              tests/test_cadence_matches_crons.py \
+              tests/test_method_version_guard.py \
+              tests/test_eval_assurance.py \
+              tests/test_eval_journal.py
             python scripts/verify_public_surface.py
 
             for p in readings/latest.json \
