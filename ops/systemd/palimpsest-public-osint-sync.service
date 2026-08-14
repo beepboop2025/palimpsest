@@ -1,0 +1,57 @@
+[Unit]
+Description=Advance the host-local OSINT snapshot from sealed public Git bytes
+Documentation=file:///usr/local/libexec/palimpsest-public-osint-sync/current/README.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/usr/local/libexec/palimpsest-public-osint-sync/current
+Environment=PYTHONDONTWRITEBYTECODE=1
+TimeoutStartSec=10m
+UMask=0077
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TasksMax=96
+MemoryMax=512M
+StateDirectory=palimpsest-public-osint-sync
+StateDirectoryMode=0700
+ExecStartPre=/usr/bin/test -x /usr/bin/git
+ExecStartPre=/usr/bin/test -x /usr/bin/python3
+ExecStartPre=/usr/bin/test -f /etc/palimpsest/deployed-commit
+ExecStartPre=/usr/bin/test -f /usr/local/libexec/palimpsest-public-osint-sync/current/REVISION
+ExecStartPre=/usr/bin/test -d /var/lib/palimpsest/readings
+ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-public-osint-sync/current/verify-host-bundle.sh
+ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-public-osint-sync/current/REVISION /etc/palimpsest/deployed-commit
+ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py
+
+# Git state and the two managed reading files are the only mutable surfaces.
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/usr/local/libexec/palimpsest-public-osint-sync /etc/palimpsest/deployed-commit
+ReadWritePaths=/var/lib/palimpsest/readings
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

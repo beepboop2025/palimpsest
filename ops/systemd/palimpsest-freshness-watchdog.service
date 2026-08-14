@@ -1,8 +1,8 @@
 [Unit]
 Description=Out-of-band Palimpsest node and evidence freshness watchdog
 Documentation=file:///home/palimpsest/palimpsest/ops/watchdog/README.md
-After=network-online.target
-Wants=network-online.target
+After=network-online.target palimpsest-public-osint-sync.service
+Wants=network-online.target palimpsest-public-osint-sync.service
 ConditionFileIsExecutable=/usr/bin/python3
 ConditionPathExists=/home/palimpsest/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py
 

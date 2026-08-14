@@ -1,12 +1,13 @@
 [Unit]
 Description=Build private Palimpsest investigative leads from a frozen evidence snapshot
 Documentation=file:///usr/local/libexec/palimpsest-analysis/current/README.md
-Requires=palimpsest-investigative-broker.socket
-After=palimpsest-investigative-broker.socket palimpsest-evidence-wire.service
+Requires=palimpsest-investigative-broker.socket palimpsest-public-osint-sync.service
+After=palimpsest-investigative-broker.socket palimpsest-evidence-wire.service palimpsest-public-osint-sync.service
 ConditionPathExists=/etc/palimpsest/deployed-commit
 ConditionPathExists=/usr/local/libexec/palimpsest-analysis/current/REVISION
 ConditionPathIsDirectory=/var/lib/palimpsest/readings
 ConditionPathIsDirectory=/var/lib/palimpsest/newswire
+ConditionPathExists=/var/lib/palimpsest-public-osint-sync/receipt.json
 StartLimitIntervalSec=10m
 StartLimitBurst=3
 
