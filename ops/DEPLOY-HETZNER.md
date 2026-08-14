@@ -233,17 +233,49 @@ you can start direct and add the proxy later without a rebuild.
 
 ## 5. First boot
 
-Build and start the base stack (Postgres, Redis, schema gate, beat, worker):
+Do not start the base stack with an unverified OSINT consumer. Pin an exact
+reviewed commit, build without starting or migrating, certify the image receipt,
+install and run the public OSINT provider, then install its consumers. The
+Common Crawl warehouse must already satisfy Section 7 before this sequence.
+The provider bootstraps its protected authority from the sealed repository
+files already seeded under `/var/lib/palimpsest/readings`.
 
 ```bash
 cd ~/palimpsest
-ops/docker/prod-compose up -d --build
+EXPECTED_DEPLOY_SHA='REPLACE_WITH_REVIEWED_40_HEX_SHA'
+COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+[[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+git fetch --force --prune --no-tags \
+  https://github.com/beepboop2025/palimpsest.git \
+  '+refs/heads/main:refs/remotes/origin/main'
+git merge-base --is-ancestor \
+  "$EXPECTED_DEPLOY_SHA" refs/remotes/origin/main
+git switch --detach "$EXPECTED_DEPLOY_SHA"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+ops/docker/prod-compose build
+sudo bash ops/investigative-analysis/install-host-bundle.sh --certify-image
+sudo bash ops/osint-sync/install-host-bundle.sh
+sudo systemctl start palimpsest-public-osint-sync.service
+sudo /usr/bin/python3 \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
+  --verify-installed >/dev/null
+sudo bash ops/investigative-analysis/install-host-bundle.sh
+sudo bash ops/common-crawl/install-host-bundle.sh \
+  --warehouse-source "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+ops/docker/prod-compose up -d
+sudo bash ops/node-offsite/install-host-bundle.sh
 ```
 
-The one-shot `migrate` service runs `init_db()` first. Every long-running app
-service requires it to exit successfully, so additive tables cannot be skipped
-during an upgrade. Compose leaves the successful migrator in `Exited (0)`;
-that is expected.
+This is the dependency order, not a substitute for the audited first protected
+rollout and three-phase release transaction in Section 9. On a production host,
+use those procedures for pre-change backup, activator capture, publication
+handoff, observer proof, and timer restoration. Do not enable a new consumer
+timer before the provider one-shot and `--verify-installed` both succeed.
+
+The one-shot `migrate` service runs `init_db()` only after the protected OSINT
+authority and consumer units exist. Every long-running app service requires it
+to exit successfully, so additive tables cannot be skipped during an upgrade.
+Compose leaves the successful migrator in `Exited (0)`; that is expected.
 
 Verify:
 
@@ -791,89 +823,620 @@ example `collectors,warehouse,api`, adding `velocity` only when intentionally
 enabled). Deploy with this ordered sequence so the image, root-owned analytical
 bundle, and atomic commit receipt cannot describe different revisions:
 
-Before the build, record the current receipt as the rollback revision, inspect
-the last backup failure, and inspect host load. Do not start a Docker build
-while an unrelated process is consuming the node: first identify it and let it
-finish or stop it through that product's own runbook. The first successful
-backup after the image update is a release gate, not a best-effort check. This
-ordering lets a backup-contract fix enter the isolated archive image without
-advancing the deployed receipt or replacing either host bundle first.
+Choose three exact values before opening the release shell.
+`EXPECTED_PREVIOUS_DEPLOY_SHA` is the independently recorded commit that must
+already be deployed, `EXPECTED_DEPLOY_SHA` is the reviewed commit to install,
+and `TRANSACTION_DIRECTION` is `forward` or `rollback`.
+`COMPATIBLE_ROLLBACK_SHA` is the reviewed recovery commit and must equal the
+expected starting deployment. Both commits must contain every path in
+`ROLLBACK_CONTRACT_PATHS` below and be compatible with the database schema,
+persistent artifacts, immutable installers, protected OSINT store, and current
+restore contract. A forward transaction requires recovery to be an ancestor of
+the target. A rollback transaction requires the target to be an ancestor of
+recovery. Ancestry alone is not compatibility. A branch-only emergency commit
+such as the old `6de3` line is not a generic rollback target. The raw old
+deployment receipt is evidence checked against the reviewed expectation, not a
+rollback decision.
 
-The Common Crawl step also requires the audited official `cc-downloader` 1.0.1
-at `/usr/local/bin/cc-downloader` as a real root-owned executable, not a symlink;
-the network-lane runbook gives the release-hash and crawl-plan procedure. The
-manual local filter likewise requires the audited real root-owned DuckDB 1.5.5
-executable at `/usr/local/bin/duckdb`. Its first reviewed install enrolls a
-root-owned SHA-256 pin, and later drift fails closed; run it only through
-`palimpsest-common-crawl-filter@<crawl>.service`, never a raw login shell.
+This hardening has a deliberate two-commit first rollout. Deploy the
+compatibility/base commit first with the legacy procedure in "First protected
+rollout" below. That commit lands the transitional provider and rollback
+tooling, but does not change or install any consumer that requires the new
+authority. Verify and certify it before the feature commit is merged. Then use
+that exact deployed base SHA as both
+`EXPECTED_PREVIOUS_DEPLOY_SHA` and `COMPATIBLE_ROLLBACK_SHA` for the feature
+commit. No ancestor before that base contains the OSINT installer,
+release-quiesce file, and protected-state contract, so the generic transaction
+must reject it.
+
+### First protected rollout: compatibility seed (C0)
+
+The first rollout has two independently reviewed commits:
+
+- C0 sets `ops/osint-sync/release-mode` to `legacy-mirror`. It adds the
+  provider, release quiesce, hardened installers, and seed transaction, while
+  leaving the three consumer units and Compose authority mounts byte-identical
+  to the already deployed commit. The provider writes the protected authority
+  and atomically mirrors the same ledger-first pair into the legacy reading
+  paths without changing their owner, group, or mode.
+- C1 changes `release-mode` to `protected-only`, changes the consumers and
+  Compose mounts to the protected authority, and removes only the exact C0
+  compatibility drop-in. An unknown local drop-in blocks installation.
+
+Merge C0 to `main`, require its complete exact-SHA CI, and wait for all
+scheduled publishers plus other shared-host workloads to finish. Do not merge
+C1 yet. In a dedicated SSH shell on the host, extract the seed transaction from
+the reviewed C0 Git object and prove its blob identity before executing it:
+
+```bash
+set -Eeuo pipefail
+cd /home/palimpsest/palimpsest
+C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'
+EXPECTED_PREVIOUS_DEPLOY_SHA='REPLACE_WITH_CURRENT_40_HEX_SHA'
+COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+[[ "$C0_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
+export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+release_git() {
+  /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c credential.helper= -c protocol.allow=never \
+    -c protocol.https.allow=always "$@"
+}
+release_git -c fetch.fsckObjects=true -c transfer.fsckObjects=true fetch \
+  --force --prune --no-tags https://github.com/beepboop2025/palimpsest.git \
+  '+refs/heads/main:refs/remotes/origin/main'
+release_git cat-file -e "${C0_DEPLOY_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$C0_DEPLOY_SHA" refs/remotes/origin/main
+test "$(release_git show \
+  "$C0_DEPLOY_SHA:ops/osint-sync/release-mode")" = legacy-mirror
+
+SEED_PATH='ops/osint-sync/deploy-compatibility-seed.sh'
+SEED_TMP="$(mktemp)"
+trap 'rm -f -- "$SEED_TMP"' EXIT
+release_git show "$C0_DEPLOY_SHA:$SEED_PATH" >"$SEED_TMP"
+test "$(release_git hash-object "$SEED_TMP")" \
+  = "$(release_git rev-parse "$C0_DEPLOY_SHA:$SEED_PATH")"
+chmod 0700 "$SEED_TMP"
+C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
+EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
+  bash "$SEED_TMP"
+rm -f -- "$SEED_TMP"
+trap - EXIT
+
+test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$C0_DEPLOY_SHA"
+test "$(sudo cat \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/release-mode)" \
+  = legacy-mirror
+sudo python3 -m json.tool \
+  "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.json"
+test "$(sudo python3 -c \
+  'import json,sys; print(json.load(open(sys.argv[1]))["status"])' \
+  "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.json")" \
+  = complete
+```
+
+The executable seed transaction performs both backup proofs, records the exact
+pre-seed snapshot and captured activator state under the root-only
+`/var/lib/palimpsest-release` directory, installs and runs the C0 provider,
+proves the protected and legacy bytes match, proves legacy file identity did
+not change, reinstalls every C0 bundle, and runs both still-legacy consumers
+against the later mirrored ledger. It restores timers only after a second
+snapshot passes the C0 verifier. A failure leaves every activator disabled,
+retains the backup quiesce, and preserves the recovery receipt. Do not guess at
+the old timer state or delete that receipt.
+
+Only after the C0 receipt says `complete` may C1 be merged. C1 must contain
+`protected-only`, and its parent or main-line ancestry must include the exact C0
+SHA. Use that C0 SHA for both starting and recovery values in Phase 1:
+
+```bash
+export EXPECTED_PREVIOUS_DEPLOY_SHA="$C0_DEPLOY_SHA"
+export COMPATIBLE_ROLLBACK_SHA="$C0_DEPLOY_SHA"
+export EXPECTED_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C1_40_HEX_SHA'
+export TRANSACTION_DIRECTION=forward
+```
+
+A later C1-to-C0 rollback uses the complete three-phase transaction. Checking
+out C0 makes its installer restore the reviewed compatibility drop-in, so its
+provider republishes the exact protected bytes into the legacy paths before
+the byte-identical C0 consumers start. This is why the C0 target is operational
+rollback code rather than an arbitrary ancestor.
+
+The transaction preflights the Common Crawl Volume and both host tools before
+anything can replace `/etc/palimpsest/deployed-commit`. The official
+`cc-downloader` must be the real root-owned 1.0.1 executable described in the
+network-lane runbook. DuckDB must be the real root-owned 1.5.5 executable and
+must already match the immutable root-owned SHA-256 pin. A missing DuckDB pin
+is a separate first-install task, not something to discover after the receipt
+has advanced.
+
+The unit-state capture is deliberate. The release stops local backup, Common
+Crawl backup, node-offsite backup, and every unit whose code or receipt changes.
+It persistently disables every activator, not only four timers, before the first
+candidate mutation. A reboot during the external publication pause therefore
+cannot restart a timer, socket, or path and mutate the receipt. Phase 3 restores
+the exact captured enablement and activity; any failure leaves all activators
+disabled and the release proof in place.
+
+### Phase 1: host transaction and local BLEED recovery
+
+Run this phase in one dedicated SSH shell and keep that shell open. Phase 3 is a
+continuation in the same shell because it uses the captured unit state. If the
+connection is lost, leave the timers stopped and restart the transaction from a
+known state. Do not reconstruct state from guesses.
 
 ```bash
 set -Eeuo pipefail
 cd /home/palimpsest/palimpsest
 test -e .git
-ROLLBACK_SHA="$(sudo cat /etc/palimpsest/deployed-commit)"
-[[ "$ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
+export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+release_git() {
+  /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c credential.helper= -c protocol.allow=never \
+    -c protocol.https.allow=always "$@"
+}
+test -d .git
+test ! -L .git
+test ! -e .git/info/grafts
+test ! -L .git/info/grafts
+test ! -e .git/objects/info/alternates
+test ! -L .git/objects/info/alternates
+if [[ -e .git/refs/replace || -L .git/refs/replace ]]; then
+  test -d .git/refs/replace
+  test ! -L .git/refs/replace
+  test -z "$(find .git/refs/replace -mindepth 1 -print -quit)"
+fi
+test ! -L .git/packed-refs
+! grep -Eq '[[:space:]]refs/replace/' .git/packed-refs 2>/dev/null
+
+EXPECTED_DEPLOY_SHA="${EXPECTED_DEPLOY_SHA:-REPLACE_WITH_REVIEWED_40_HEX_SHA}"
+EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRENT_40_HEX_SHA}"
+COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_COMPATIBLE_40_HEX_SHA}"
+TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward_OR_rollback}"
+COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+NODE_BACKUP_ROOT='/home/palimpsest/backups/node'
+BACKUP_RELEASE_QUIESCE_SOURCE='ops/systemd/palimpsest-backup.release-quiesce.conf'
+BACKUP_RELEASE_QUIESCE_TARGET='/etc/systemd/system/palimpsest-backup.service.d/zz-release-quiesce.conf'
+[[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$COMPATIBLE_ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$TRANSACTION_DIRECTION" == forward \
+  || "$TRANSACTION_DIRECTION" == rollback ]]
+test "$EXPECTED_DEPLOY_SHA" != "$COMPATIBLE_ROLLBACK_SHA"
+test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
+PREVIOUS_DEPLOY_SHA="$(sudo cat /etc/palimpsest/deployed-commit)"
+[[ "$PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+test "$(release_git rev-parse HEAD)" = "$PREVIOUS_DEPLOY_SHA"
+
+read_enablement() {
+  local state
+  state="$(systemctl is-enabled "$1" 2>/dev/null || true)"
+  [[ -n "$state" ]] || state="not-found"
+  case "$state" in
+    enabled|enabled-runtime|disabled|static|indirect|masked|masked-runtime|not-found) ;;
+    *) printf 'unexpected enablement for %s: %s\n' "$1" "$state" >&2; return 1 ;;
+  esac
+  printf '%s\n' "$state"
+}
+
+declare -A RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT
+RELEASE_ACTIVATORS=(
+  palimpsest-backup.timer
+  palimpsest-common-crawl-backup.timer
+  palimpsest-node-offsite-backup.timer
+  palimpsest-evidence-wire.timer
+  palimpsest-investigative-analysis.timer
+  palimpsest-investigative-broker.socket
+  palimpsest-common-crawl-import.path
+  palimpsest-common-crawl-context.timer
+  palimpsest-bleedthrough.timer
+  palimpsest-public-osint-sync.timer
+  palimpsest-freshness-watchdog.timer
+  palimpsest-witness.timer
+)
+RELEASE_SERVICES=(
+  palimpsest-backup.service
+  palimpsest-common-crawl-backup.service
+  palimpsest-node-offsite-backup.service
+  palimpsest-evidence-wire.service
+  palimpsest-investigative-analysis.service
+  palimpsest-common-crawl-import.service
+  palimpsest-common-crawl-context.service
+  palimpsest-bleedthrough.service
+  palimpsest-public-osint-sync.service
+  palimpsest-freshness-watchdog.service
+  palimpsest-witness.service
+)
+
+# Installers replace /etc unit files and cannot preserve a masked load state.
+# Reject every release-controlled unit before fetch, checkout, stop, or write.
+for unit in "${RELEASE_ACTIVATORS[@]}" "${RELEASE_SERVICES[@]}" \
+    palimpsest-common-crawl-mirror@.service \
+    palimpsest-common-crawl-filter@.service \
+    palimpsest-investigative-broker@.service; do
+  unit_enablement="$(systemctl is-enabled "$unit" 2>/dev/null || true)"
+  case "$unit_enablement" in
+    masked|masked-runtime)
+      printf 'masked release unit must be reviewed and unmasked first: %s\n' \
+        "$unit" >&2
+      exit 1
+      ;;
+  esac
+done
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  RELEASE_ENABLEMENT["$unit"]="$(read_enablement "$unit")"
+  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  case "$active_state" in
+    active) RELEASE_WAS_ACTIVE["$unit"]=1 ;;
+    inactive|failed|unknown|"") RELEASE_WAS_ACTIVE["$unit"]=0 ;;
+    *) printf 'unit is changing state: %s (%s)\n' \
+         "$unit" "$active_state" >&2; exit 1 ;;
+  esac
+done
+
+# Fetch only updates refs. The checkout below moves to the operator-pinned SHA;
+# there is no pull of whichever commit happens to be newest at release time.
+release_git -c fetch.fsckObjects=true -c transfer.fsckObjects=true fetch \
+  --force --prune --no-tags https://github.com/beepboop2025/palimpsest.git \
+  '+refs/heads/main:refs/remotes/origin/main'
+release_git cat-file -e "${EXPECTED_DEPLOY_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$EXPECTED_DEPLOY_SHA" refs/remotes/origin/main
+release_git cat-file -e "${COMPATIBLE_ROLLBACK_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$COMPATIBLE_ROLLBACK_SHA" refs/remotes/origin/main
+release_git cat-file -e "${EXPECTED_PREVIOUS_DEPLOY_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$EXPECTED_PREVIOUS_DEPLOY_SHA" refs/remotes/origin/main
+if [[ "$TRANSACTION_DIRECTION" == forward ]]; then
+  release_git merge-base --is-ancestor \
+    "$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_DEPLOY_SHA"
+else
+  release_git merge-base --is-ancestor \
+    "$EXPECTED_DEPLOY_SHA" "$COMPATIBLE_ROLLBACK_SHA"
+fi
+ROLLBACK_CONTRACT_PATHS=(
+  ops/investigative-analysis/install-host-bundle.sh
+  ops/common-crawl/install-host-bundle.sh
+  ops/osint-sync/install-host-bundle.sh
+  ops/osint-sync/public_osint_sync.py
+  ops/node-offsite/install-host-bundle.sh
+  ops/systemd/palimpsest-public-osint-sync.service
+  ops/systemd/palimpsest-backup.release-quiesce.conf
+)
+for contract_sha in "$EXPECTED_DEPLOY_SHA" "$COMPATIBLE_ROLLBACK_SHA"; do
+  for required_path in "${ROLLBACK_CONTRACT_PATHS[@]}"; do
+    release_git cat-file -e "${contract_sha}:${required_path}"
+  done
+done
+
+# Fail before the receipt-changing analysis installer if the Common Crawl
+# storage or either audited host tool has drifted.
+test -d "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+test ! -L "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+test "$(realpath -e -- "$COMMON_CRAWL_WAREHOUSE_SOURCE")" \
+  = "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+COMMON_CRAWL_MOUNT_TARGET="$(findmnt -n -o TARGET \
+  --target "$COMMON_CRAWL_WAREHOUSE_SOURCE")"
+COMMON_CRAWL_MOUNT_OPTIONS="$(findmnt -n -o OPTIONS \
+  --target "$COMMON_CRAWL_WAREHOUSE_SOURCE")"
+test -n "$COMMON_CRAWL_MOUNT_TARGET"
+test "$COMMON_CRAWL_MOUNT_TARGET" != "/"
+[[ ",$COMMON_CRAWL_MOUNT_OPTIONS," == *,rw,* ]]
+df -h "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+
+test -f /usr/local/bin/cc-downloader
+test ! -L /usr/local/bin/cc-downloader
+test -x /usr/local/bin/cc-downloader
+test "$(stat -c '%u:%g' /usr/local/bin/cc-downloader)" = "0:0"
+CC_DOWNLOADER_MODE="$(stat -c '%a' /usr/local/bin/cc-downloader)"
+[[ "$CC_DOWNLOADER_MODE" =~ ^[0-7]{3,4}$ ]]
+(( (8#$CC_DOWNLOADER_MODE & 0022) == 0 ))
+test "$(/usr/local/bin/cc-downloader --version)" = "cc-downloader 1.0.1"
+
+test -f /usr/local/bin/duckdb
+test ! -L /usr/local/bin/duckdb
+test -x /usr/local/bin/duckdb
+test "$(stat -c '%u:%g' /usr/local/bin/duckdb)" = "0:0"
+DUCKDB_MODE="$(stat -c '%a' /usr/local/bin/duckdb)"
+[[ "$DUCKDB_MODE" =~ ^[0-7]{3,4}$ ]]
+(( (8#$DUCKDB_MODE & 0022) == 0 ))
+[[ "$(/usr/local/bin/duckdb --version)" \
+  =~ ^v1\.5\.5([[:space:]].*)?$ ]]
+sudo test -f /etc/palimpsest/duckdb.sha256
+sudo test ! -L /etc/palimpsest/duckdb.sha256
+test "$(sudo stat -c '%u:%g:%a:%h' /etc/palimpsest/duckdb.sha256)" \
+  = "0:0:444:1"
+DUCKDB_SHA256="$(sha256sum /usr/local/bin/duckdb | awk '{print $1}')"
+[[ "$DUCKDB_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test "$(sudo cat /etc/palimpsest/duckdb.sha256)" = "$DUCKDB_SHA256"
+
+latest_node_snapshot() {
+  sudo find "$NODE_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
+    -name '20??????T??????Z' -printf '%f\n' \
+    | LC_ALL=C sort | tail -n 1
+}
+PRE_CHANGE_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
+
+# Stored observer results are diagnostic evidence only. Neither an old success
+# nor the expected stale exit 2 can satisfy the post-publication final gate.
+SYNC_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
+  --property=InvocationID --value \
+  palimpsest-public-osint-sync.service 2>/dev/null || true)"
+WATCHDOG_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
+  --property=InvocationID --value \
+  palimpsest-freshness-watchdog.service 2>/dev/null || true)"
+WATCHDOG_PRE_RELEASE_EXEC_MAIN_STATUS="$(systemctl show \
+  --property=ExecMainStatus --value \
+  palimpsest-freshness-watchdog.service 2>/dev/null || true)"
+WITNESS_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
+  --property=InvocationID --value \
+  palimpsest-witness.service 2>/dev/null || true)"
+WITNESS_PRE_RELEASE_EXEC_MAIN_STATUS="$(systemctl show \
+  --property=ExecMainStatus --value \
+  palimpsest-witness.service 2>/dev/null || true)"
+printf 'Pre-release watchdog invocation/status: %s/%s\n' \
+  "$WATCHDOG_PRE_RELEASE_INVOCATION_ID" \
+  "$WATCHDOG_PRE_RELEASE_EXEC_MAIN_STATUS"
+printf 'Pre-release witness invocation/status: %s/%s\n' \
+  "$WITNESS_PRE_RELEASE_INVOCATION_ID" \
+  "$WITNESS_PRE_RELEASE_EXEC_MAIN_STATUS"
+
+# The three root-only node-offsite files are all-or-none configuration.
+NODE_OFFSITE_CONFIGURED=0
+node_offsite_config_count=0
+for path in \
+  /etc/palimpsest/node-offsite.env \
+  /etc/palimpsest/node-offsite-rclone.conf \
+  /etc/palimpsest/node-offsite.passphrase; do
+  if sudo test -e "$path"; then
+    node_offsite_config_count=$((node_offsite_config_count + 1))
+  fi
+done
+case "$node_offsite_config_count" in
+  0) ;;
+  3)
+    NODE_OFFSITE_CONFIGURED=1
+    for path in \
+      /etc/palimpsest/node-offsite.env \
+      /etc/palimpsest/node-offsite-rclone.conf \
+      /etc/palimpsest/node-offsite.passphrase; do
+      sudo test -f "$path"
+      sudo test ! -L "$path"
+    done
+    test "$(sudo stat -c '%u:%g:%a:%h' \
+      /etc/palimpsest/node-offsite.env)" = "0:0:600:1"
+    test "$(sudo stat -c '%u:%g:%a:%h' \
+      /etc/palimpsest/node-offsite-rclone.conf)" = "0:0:400:1"
+    test "$(sudo stat -c '%u:%g:%a:%h' \
+      /etc/palimpsest/node-offsite.passphrase)" = "0:0:400:1"
+    ;;
+  *) printf 'node-offsite configuration is partial\n' >&2; exit 1 ;;
+esac
+
+sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
+sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
+sudo systemctl daemon-reload
+BACKUP_ON_SUCCESS="$(systemctl show --property=OnSuccess --value \
+  palimpsest-backup.service 2>/dev/null || true)"
+NODE_OFFSITE_ON_SUCCESS=0
+if grep -Fqw palimpsest-node-offsite-backup.service \
+    <<<"$BACKUP_ON_SUCCESS"; then
+  NODE_OFFSITE_ON_SUCCESS=1
+fi
+if (( NODE_OFFSITE_CONFIGURED == 0 )) \
+    && { [[ "${RELEASE_ENABLEMENT[palimpsest-node-offsite-backup.timer]}" \
+        == enabled* ]] \
+      || [[ "${RELEASE_WAS_ACTIVE[palimpsest-node-offsite-backup.timer]}" \
+        == "1" ]] \
+      || (( NODE_OFFSITE_ON_SUCCESS == 1 )); }; then
+  printf 'unconfigured node-offsite backup is enabled or triggerable\n' >&2
+  exit 1
+fi
+
 sudo systemctl status palimpsest-backup.service --no-pager || true
 sudo journalctl -u palimpsest-backup.service -n 100 --no-pager
 uptime
 ps -eo pid,comm,%cpu,%mem,etime --sort=-%cpu | sed -n '1,15p'
 # Stop here until any unexplained high-load process has been cleared.
-sudo systemctl disable --now palimpsest-freshness-watchdog.timer \
-  2>/dev/null || true
-sudo systemctl stop palimpsest-freshness-watchdog.service 2>/dev/null || true
-sudo systemctl stop palimpsest-witness.timer 2>/dev/null || true
-sudo systemctl stop palimpsest-witness.service 2>/dev/null || true
-sudo systemctl stop palimpsest-investigative-analysis.timer
-sudo systemctl stop palimpsest-common-crawl-import.path 2>/dev/null || true
-sudo systemctl stop palimpsest-common-crawl-context.timer 2>/dev/null || true
-sudo systemctl disable --now palimpsest-bleedthrough.timer 2>/dev/null || true
-sudo systemctl stop palimpsest-bleedthrough.service 2>/dev/null || true
+
+stop_loaded_unit() {
+  local unit="$1" load_state active_state
+  load_state="$(systemctl show --property=LoadState --value \
+    "$unit" 2>/dev/null || true)"
+  case "$load_state" in
+    ""|not-found) return 0 ;;
+    loaded|masked) ;;
+    *) printf 'unexpected load state for %s: %s\n' \
+         "$unit" "$load_state" >&2; return 1 ;;
+  esac
+  sudo systemctl stop "$unit"
+  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  case "$active_state" in
+    inactive|failed|unknown|"") ;;
+    *) printf 'unit did not stop: %s (%s)\n' \
+         "$unit" "$active_state" >&2; return 1 ;;
+  esac
+}
+
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  stop_loaded_unit "$unit"
+done
+for unit in "${RELEASE_SERVICES[@]}"; do
+  stop_loaded_unit "$unit"
+done
 sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null || true
 sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || true
-# A running oneshot is allowed to finish; never replace its bundle underneath it.
-while systemctl is-active --quiet palimpsest-investigative-analysis.service; do
-  sleep 2
-done
-sudo systemctl stop palimpsest-investigative-broker.socket 2>/dev/null || true
+test -z "$(systemctl list-units --no-legend --plain \
+  --state=active,activating,deactivating \
+  'palimpsest-common-crawl-mirror@*.service' \
+  'palimpsest-common-crawl-filter@*.service')"
 test -z "$(systemctl list-units --no-legend --plain \
   --state=active,activating,deactivating \
   'palimpsest-investigative-broker@*.service')"
-while systemctl is-active --quiet palimpsest-common-crawl-import.service \
-  || systemctl is-active --quiet palimpsest-common-crawl-context.service; do
-  sleep 2
+
+temporarily_disable_activator() {
+  local unit="$1" previous_enablement="${RELEASE_ENABLEMENT[$1]}"
+  case "$previous_enablement" in
+    enabled|enabled-runtime)
+      sudo systemctl disable "$unit"
+      test "$(read_enablement "$unit")" = "disabled"
+      ;;
+    disabled|static|indirect|not-found) ;;
+    *) printf 'refusing unsafe activator state: %s (%s)\n' \
+         "$unit" "$previous_enablement" >&2; return 1 ;;
+  esac
+}
+
+# Disable every captured activator persistently. This survives a host reboot
+# during the Phase 2 pause. Static/indirect units have no enablement link to
+# remove and remain stopped because every requiring activator is disabled.
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  temporarily_disable_activator "$unit"
 done
-git fetch --prune origin
-git pull --ff-only
-test -z "$(git status --porcelain=v1 --untracked-files=all)"
-DEPLOY_SHA="$(git rev-parse HEAD)"
-[[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
-ops/docker/prod-compose up -d --build
-test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
-curl --fail --silent --show-error \
-  http://127.0.0.1:8010/api/v1/node/status \
-  | python3 -m json.tool >/dev/null
-# The updated isolated image must prove a complete recovery snapshot before
-# either revision receipt or immutable host bundle is advanced.
+
+# A runtime mask under /run cannot override a service installed under /etc.
+# Reset the producer's OnSuccess list through a lexically-last /etc drop-in.
+# The deployed compatibility/base commit must already contain this drop-in.
+# Any failure after installation leaves this safe quiesce in place.
+BACKUP_RELEASE_QUIESCE_ADDED=0
+if (( NODE_OFFSITE_ON_SUCCESS == 1 )); then
+  BACKUP_RELEASE_QUIESCE_TMP="$(mktemp)"
+  release_git cat-file -e "HEAD:${BACKUP_RELEASE_QUIESCE_SOURCE}"
+  release_git show "HEAD:${BACKUP_RELEASE_QUIESCE_SOURCE}" \
+    >"$BACKUP_RELEASE_QUIESCE_TMP"
+  test -s "$BACKUP_RELEASE_QUIESCE_TMP"
+  sudo install -d -o root -g root -m 0755 \
+    /etc/systemd/system/palimpsest-backup.service.d
+  sudo install -o root -g root -m 0644 \
+    "$BACKUP_RELEASE_QUIESCE_TMP" "$BACKUP_RELEASE_QUIESCE_TARGET"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$BACKUP_RELEASE_QUIESCE_TARGET")" \
+    = "0:0:644:1"
+  sudo cmp -s "$BACKUP_RELEASE_QUIESCE_TMP" \
+    "$BACKUP_RELEASE_QUIESCE_TARGET"
+  rm -f -- "$BACKUP_RELEASE_QUIESCE_TMP"
+  sudo systemd-analyze verify /etc/systemd/system/palimpsest-backup.service
+  sudo systemctl daemon-reload
+  test -z "$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service)"
+  BACKUP_RELEASE_QUIESCE_ADDED=1
+fi
+
+# Create and independently verify the PRE-CHANGE restore point before checkout,
+# image build, Compose up, migration, receipt mutation, or candidate code runs.
 sudo systemctl reset-failed palimpsest-backup.service
 sudo systemctl start palimpsest-backup.service
+test "$(sudo systemctl show --property=ConditionResult --value \
+  palimpsest-backup.service)" = "yes"
 test "$(sudo systemctl show --property=Result --value \
   palimpsest-backup.service)" = "success"
+test "$(sudo systemctl show --property=ExecMainStatus --value \
+  palimpsest-backup.service)" = "0"
+PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"
+test -n "$PRE_CHANGE_SNAPSHOT"
+test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
+sudo test -d "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+sudo test ! -L "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
+  _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
+BACKUP_ACTUAL_INVENTORY="$(sudo find \
+  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" -mindepth 1 -maxdepth 1 \
+  -printf '%f\n' | LC_ALL=C sort)"
+test "$BACKUP_ACTUAL_INVENTORY" = "$BACKUP_EXPECTED_INVENTORY"
+for backup_file in MANIFEST.txt artifacts.list artifacts.tar.gz \
+    postgres.dump postgres.list; do
+  sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
+done
+BACKUP_VERIFICATION_JSON="$(sudo python3 \
+  ops/backup/node_backup_snapshot.py verify \
+  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" \
+  --snapshot-id "$PRE_CHANGE_SNAPSHOT")"
+printf '%s\n' "$BACKUP_VERIFICATION_JSON" | python3 -c '
+import json, sys
+snapshot = sys.argv[1]
+value = json.load(sys.stdin)
+checks = (
+    value.get("schema") == "palimpsest-node-backup-verification.v1",
+    value.get("status") == "verified",
+    value.get("snapshot") == snapshot,
+    value.get("counts", {}).get("snapshot_files") == 6,
+    value.get("counts", {}).get("checksum_entries") == 5,
+    value.get("counts", {}).get("artifact_members", 0) > 0,
+)
+if not all(checks):
+    raise SystemExit("pre-change backup verification receipt failed")
+' "$PRE_CHANGE_SNAPSHOT"
+
+release_git switch --detach "$EXPECTED_DEPLOY_SHA"
+test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"
+test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
+ops/docker/prod-compose build
+
+# Certify the exact built image and receipt without installing a consumer unit.
+# Then install and run the provider before either Requires= consumer exists.
+# This ordering is executable on a host that has never seen these units.
+sudo bash ops/investigative-analysis/install-host-bundle.sh --certify-image
+sudo bash ops/osint-sync/install-host-bundle.sh
+sudo systemctl reset-failed palimpsest-public-osint-sync.service
+sudo systemctl start palimpsest-public-osint-sync.service
+test "$(systemctl show --property=ConditionResult --value \
+  palimpsest-public-osint-sync.service)" = "yes"
+test "$(systemctl show --property=Result --value \
+  palimpsest-public-osint-sync.service)" = "success"
+test "$(systemctl show --property=ExecMainStatus --value \
+  palimpsest-public-osint-sync.service)" = "0"
+sudo /usr/bin/python3 \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
+  --verify-installed >/dev/null
+
+# Now install consumers in dependency order. Node-offsite remains last so a
+# restored OnSuccess can never select an old bundle.
 sudo bash ops/investigative-analysis/install-host-bundle.sh
-COMMON_CRAWL_WAREHOUSE_SOURCE=/mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
 sudo bash ops/common-crawl/install-host-bundle.sh \
   --warehouse-source "$COMMON_CRAWL_WAREHOUSE_SOURCE"
-test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$DEPLOY_SHA"
-test "$(sudo cat /usr/local/libexec/palimpsest-analysis/current/REVISION)" \
-  = "$DEPLOY_SHA"
-test "$(sudo cat /usr/local/libexec/palimpsest-network-lane/current/REVISION)" \
-  = "$DEPLOY_SHA"
-test "$(sudo cat /usr/local/libexec/palimpsest-common-crawl/current/REVISION)" \
-  = "$DEPLOY_SHA"
-sudo /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+sudo bash ops/node-offsite/install-host-bundle.sh
 
-# Install the watchdog units from the same clean, receipt-bound checkout. The
-# script remains read-only in that checkout; only its systemd state directory
-# is writable.
+test "$(sudo cat /etc/palimpsest/deployed-commit)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-analysis/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-network-lane/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-common-crawl/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-node-offsite/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+sudo /usr/local/libexec/palimpsest-analysis/current/verify-host-bundle.sh
+sudo /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
+sudo /usr/local/libexec/palimpsest-common-crawl/current/verify-host-bundle.sh
+sudo /usr/local/libexec/palimpsest-public-osint-sync/current/verify-host-bundle.sh
+sudo /usr/local/libexec/palimpsest-node-offsite/current/verify-host-bundle.sh
+
+# All Requires=/After= providers now exist in /etc. Verify the installed graph
+# together before any candidate migration or long-lived process starts.
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-public-osint-sync.service \
+  /etc/systemd/system/palimpsest-public-osint-sync.timer \
+  /etc/systemd/system/palimpsest-investigative-analysis.service \
+  /etc/systemd/system/palimpsest-common-crawl-context.service
+
+# Install the independent observers from the same exact checkout.
 sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.service \
   /etc/systemd/system/
 sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.timer \
@@ -904,47 +1467,840 @@ sudo systemd-analyze verify \
   /etc/systemd/system/palimpsest-witness.service \
   /etc/systemd/system/palimpsest-witness.timer
 sudo systemctl daemon-reload
-sudo systemctl enable --now palimpsest-investigative-broker.socket
-sudo systemctl enable --now palimpsest-investigative-analysis.timer
-sudo systemctl start palimpsest-investigative-analysis.service
-sudo systemctl enable --now palimpsest-common-crawl-import.path
-sudo systemctl enable --now palimpsest-common-crawl-context.timer
+
+# Restore the exact captured trigger only after node-offsite parity. Remove no
+# other drop-in. A failure before this point deliberately leaves backups
+# quiesced instead of allowing mixed-revision offsite work.
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  sudo rm -- "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo systemctl daemon-reload
+  test "$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+fi
+
+# The verified pre-change snapshot is already durable. Only now may Compose run
+# the candidate migration and start containers. Its authority directory mount
+# exists because the first provider sync succeeded above.
+ops/docker/prod-compose up -d
+test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
+curl --fail --silent --show-error \
+  http://127.0.0.1:8010/api/v1/node/status \
+  | python3 -m json.tool >/dev/null
+
+# Import the new Common Crawl bundle before any context run. Analysis and
+# context remain stopped until the public OSINT sync advances in Phase 3.
+sudo systemctl reset-failed palimpsest-common-crawl-import.service
 sudo systemctl start palimpsest-common-crawl-import.service
-sudo systemctl enable --now palimpsest-bleedthrough.timer
-sudo systemctl enable --now palimpsest-freshness-watchdog.timer
-sudo systemctl enable --now palimpsest-witness.timer
-if ! sudo systemctl start palimpsest-freshness-watchdog.service; then
-  # Exit 2 means the watchdog itself worked and found an existing incident.
-  # Any other status is an installation/runtime failure and stops the release.
-  test "$(sudo systemctl show --property=ExecMainStatus --value \
-    palimpsest-freshness-watchdog.service)" = "2"
-fi
-if ! sudo systemctl start palimpsest-witness.service; then
-  test "$(sudo systemctl show --property=ExecMainStatus --value \
-    palimpsest-witness.service)" = "2"
-fi
-systemctl cat palimpsest-witness.timer \
-  | grep -Fqx 'OnCalendar=*:0/15'
-systemctl list-timers palimpsest-witness.timer --no-pager
+test "$(systemctl show --property=ConditionResult --value \
+  palimpsest-common-crawl-import.service)" = "yes"
+test "$(systemctl show --property=Result --value \
+  palimpsest-common-crawl-import.service)" = "success"
+test "$(systemctl show --property=ExecMainStatus --value \
+  palimpsest-common-crawl-import.service)" = "0"
+
+OSINT_AUTHORITY='/var/lib/palimpsest-public-osint-sync/authoritative'
+OSINT_ARTIFACT="$OSINT_AUTHORITY/osint-china-latest.json"
+OSINT_LEDGER="$OSINT_AUTHORITY/readings-ledger.jsonl"
+sudo test -f "$OSINT_ARTIFACT"
+sudo test ! -L "$OSINT_ARTIFACT"
+sudo test -f "$OSINT_LEDGER"
+sudo test ! -L "$OSINT_LEDGER"
+OSINT_ARTIFACT_BEFORE_SHA256="$(sudo sha256sum "$OSINT_ARTIFACT" \
+  | awk '{print $1}')"
+OSINT_LEDGER_BEFORE_SHA256="$(sudo sha256sum "$OSINT_LEDGER" \
+  | awk '{print $1}')"
+OSINT_GENERATED_AT_BEFORE="$(
+  sudo python3 - "$OSINT_ARTIFACT" <<'PY'
+import json
+import sys
+from datetime import datetime, timezone
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+generated_at = value.get("generated_at") if isinstance(value, dict) else None
+if not isinstance(generated_at, str):
+    raise ValueError("local OSINT generated_at is missing")
+parsed = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+if parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+    raise ValueError("local OSINT generated_at is not UTC")
+print(generated_at)
+PY
+)"
+
+# The importer canonically changes only these two root UTC suffixes from
+# +00:00 to Z. The semantic digest rejects duplicate keys and normalizes no
+# other path or representation.
+normalized_bleed_sha256() {
+  python3 - "$1" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+MAX_BYTES = 256 * 1024
+NORMALIZED_FIELDS = ("generated_at", "last_changed_at")
+UTC_TIMESTAMP = re.compile(
+    r"\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]{1,6})?(?:Z|\+00:00)\Z"
+)
+
+
+def reject_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def reject_constant(value):
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+payload = Path(sys.argv[1]).read_bytes()
+if len(payload) > MAX_BYTES:
+    raise ValueError("BLEED artifact exceeds 256 KiB")
+document = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=reject_constant,
+)
+if not isinstance(document, dict):
+    raise ValueError("BLEED artifact root is not an object")
+for field in NORMALIZED_FIELDS:
+    value = document.get(field)
+    if not isinstance(value, str) or UTC_TIMESTAMP.fullmatch(value) is None:
+        raise ValueError(f"/{field} is not a strict UTC timestamp")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        raise ValueError(f"/{field} is not UTC")
+    if value.endswith("+00:00"):
+        document[field] = value[:-6] + "Z"
+canonical = json.dumps(
+    document,
+    sort_keys=True,
+    separators=(",", ":"),
+    ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8")
+print(hashlib.sha256(canonical).hexdigest())
+PY
+}
+
+# The timer stays disabled during one recovery round. Exit 75 is a clean lane
+# deferral, but it is not a recovered artifact and therefore cannot pass here.
+BLEED_ARTIFACT='/var/lib/palimpsest/readings/bleedthrough-latest.json'
+sudo test -f "$BLEED_ARTIFACT"
+BLEED_ARTIFACT_BEFORE_SHA256="$(sudo sha256sum "$BLEED_ARTIFACT" \
+  | awk '{print $1}')"
+sudo systemctl reset-failed palimpsest-bleedthrough.service
+sudo systemctl start palimpsest-bleedthrough.service
+test "$(systemctl show --property=ConditionResult --value \
+  palimpsest-bleedthrough.service)" = "yes"
+test "$(systemctl show --property=Result --value \
+  palimpsest-bleedthrough.service)" = "success"
+test "$(systemctl show --property=ExecMainStatus --value \
+  palimpsest-bleedthrough.service)" = "0"
+BLEED_ARTIFACT_AFTER_SHA256="$(sudo sha256sum "$BLEED_ARTIFACT" \
+  | awk '{print $1}')"
+test "$BLEED_ARTIFACT_AFTER_SHA256" != "$BLEED_ARTIFACT_BEFORE_SHA256"
+sudo python3 -m json.tool "$BLEED_ARTIFACT" >/dev/null
+LIVE_BLEED_URL="https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json?release=$EXPECTED_DEPLOY_SHA"
+LIVE_BLEED_SHA256="$(curl --fail --silent --show-error --location \
+  --max-filesize 262144 --max-time 30 "$LIVE_BLEED_URL" \
+  | sha256sum | awk '{print $1}')"
+test "$LIVE_BLEED_SHA256" = "$BLEED_ARTIFACT_AFTER_SHA256"
+BLEED_ARTIFACT_NORMALIZED_SHA256="$(normalized_bleed_sha256 "$BLEED_ARTIFACT")"
+[[ "$BLEED_ARTIFACT_NORMALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"
+[[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]
+printf 'Phase 1 complete: expected=%s raw=%s normalized=%s\n' \
+  "$EXPECTED_DEPLOY_SHA" "$BLEED_ARTIFACT_AFTER_SHA256" \
+  "$BLEED_ARTIFACT_NORMALIZED_SHA256"
+printf 'Nonsecret same-shell resume token: %s\n' "$RELEASE_RESUME_TOKEN"
+read -r -p 'Run Phase 2 elsewhere, then paste its one-line handoff: ' \
+  RELEASE_HANDOFF_B64
+[[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
 ```
 
-If BLEEDTHROUGH was stale because its old unit was blocked by revision drift,
-start one recovery round only after the load check is clean, then inspect its
-sanitized output and the next `osint-china-refresh.yml` import. The bounded
-round can take close to the unit's three-hour timeout; do not mistake that for
-a hung deploy and do not start a second copy.
+At this boundary the new local bytes and the live `api.seiche.info` proxy match,
+but the public repository and static site do not yet contain them. The SSH shell
+is blocked on the hash-bound nonsecret handoff. Every captured activator,
+including both observers, the BLEED timer, and the public OSINT sync timer,
+remains stopped. A watchdog or witness exit 2 recorded before this boundary is
+expected stale-state evidence, not release success.
+
+### Phase 2: external OSINT publication
+
+Use a separately authenticated operator workstation, never credentials copied
+onto the node. Copy the exact Phase 1 SHA values into this shell, dispatch the
+named workflow from `main`, and select only the new `workflow_dispatch` run ID
+shown by `gh run list`. The run's head must be the expected deployment commit or
+a main-line descendant of it. Do not select an older successful run.
 
 ```bash
-sudo systemctl start palimpsest-bleedthrough.service
-sudo journalctl -u palimpsest-bleedthrough.service -n 200 --no-pager
-curl --fail --silent --show-error \
-  https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json \
-  | python3 -m json.tool >/dev/null
+set -Eeuo pipefail
+PALIMPSEST_REPOSITORY='beepboop2025/palimpsest'
+EXPECTED_DEPLOY_SHA='REPLACE_WITH_SAME_REVIEWED_40_HEX_SHA'
+RELEASE_RESUME_TOKEN='REPLACE_WITH_PHASE_1_32_HEX_TOKEN'
+LOCAL_BLEED_SHA256='REPLACE_WITH_PHASE_1_64_HEX_SHA256'
+LOCAL_BLEED_NORMALIZED_SHA256='REPLACE_WITH_PHASE_1_NORMALIZED_64_HEX_SHA256'
+[[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]
+[[ "$LOCAL_BLEED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$LOCAL_BLEED_NORMALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+gh auth status --hostname github.com
+test "$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/commits/$EXPECTED_DEPLOY_SHA" \
+  --jq .sha)" = "$EXPECTED_DEPLOY_SHA"
+MAIN_RELATION="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/compare/${EXPECTED_DEPLOY_SHA}...main" \
+  --jq .status)"
+[[ "$MAIN_RELATION" == "ahead" || "$MAIN_RELATION" == "identical" ]]
+
+OSINT_LATEST_RUN_ID_BEFORE="$(gh run list \
+  --repo "$PALIMPSEST_REPOSITORY" --workflow osint-china-refresh.yml \
+  --limit 1 --json databaseId \
+  --jq 'if length == 0 then 0 else .[0].databaseId end')"
+[[ "$OSINT_LATEST_RUN_ID_BEFORE" =~ ^[0-9]+$ ]]
+gh workflow run osint-china-refresh.yml \
+  --repo "$PALIMPSEST_REPOSITORY" --ref main
+gh run list --repo "$PALIMPSEST_REPOSITORY" \
+  --workflow osint-china-refresh.yml --event workflow_dispatch --limit 10
+OSINT_RUN_ID='REPLACE_WITH_NEW_NUMERIC_RUN_ID'
+[[ "$OSINT_RUN_ID" =~ ^[0-9]+$ ]]
+(( 10#$OSINT_RUN_ID > 10#$OSINT_LATEST_RUN_ID_BEFORE ))
+test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+  --json event --jq .event)" = "workflow_dispatch"
+test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+  --json workflowName --jq .workflowName)" = "Refresh OSINT China roll-up"
+test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+  --json headBranch --jq .headBranch)" = "main"
+OSINT_HEAD_SHA="$(gh run view "$OSINT_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json headSha --jq .headSha)"
+[[ "$OSINT_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+RUN_RELATION="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/compare/${EXPECTED_DEPLOY_SHA}...${OSINT_HEAD_SHA}" \
+  --jq .status)"
+[[ "$RUN_RELATION" == "ahead" || "$RUN_RELATION" == "identical" ]]
+gh run watch "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" --exit-status
+test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+  --json conclusion --jq .conclusion)" = "success"
+
+normalized_bleed_sha256() {
+  python3 - "$1" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+MAX_BYTES = 256 * 1024
+NORMALIZED_FIELDS = ("generated_at", "last_changed_at")
+UTC_TIMESTAMP = re.compile(
+    r"\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]{1,6})?(?:Z|\+00:00)\Z"
+)
+
+
+def reject_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def reject_constant(value):
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+payload = Path(sys.argv[1]).read_bytes()
+if len(payload) > MAX_BYTES:
+    raise ValueError("BLEED artifact exceeds 256 KiB")
+document = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=reject_constant,
+)
+if not isinstance(document, dict):
+    raise ValueError("BLEED artifact root is not an object")
+for field in NORMALIZED_FIELDS:
+    value = document.get(field)
+    if not isinstance(value, str) or UTC_TIMESTAMP.fullmatch(value) is None:
+        raise ValueError(f"/{field} is not a strict UTC timestamp")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        raise ValueError(f"/{field} is not UTC")
+    if value.endswith("+00:00"):
+        document[field] = value[:-6] + "Z"
+canonical = json.dumps(
+    document,
+    sort_keys=True,
+    separators=(",", ":"),
+    ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8")
+print(hashlib.sha256(canonical).hexdigest())
+PY
+}
+
+file_sha256() {
+  python3 -c \
+    'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' \
+    "$1"
+}
+LIVE_BLEED_TMP="$(mktemp)"
+REPOSITORY_BLEED_TMP="$(mktemp)"
+PUBLIC_BLEED_TMP="$(mktemp)"
+REPOSITORY_OSINT_TMP="$(mktemp)"
+REPOSITORY_LEDGER_TMP="$(mktemp)"
+PUBLIC_OSINT_TMP="$(mktemp)"
+cleanup_publication_files() {
+  rm -f -- \
+    "$LIVE_BLEED_TMP" "$REPOSITORY_BLEED_TMP" "$PUBLIC_BLEED_TMP" \
+    "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" "$PUBLIC_OSINT_TMP"
+}
+trap cleanup_publication_files EXIT
+
+# Bind the host-sync source to one immutable commit, then wait until Pages
+# serves those exact OSINT bytes. Phase 3 independently repeats the Git, seal,
+# ancestry, prefix, freshness, and public-byte proofs before local installation.
+OSINT_FETCHED_MAIN="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/commits/main" --jq .sha)"
+[[ "$OSINT_FETCHED_MAIN" =~ ^[0-9a-f]{40}$ ]]
+MAIN_AFTER_RUN_RELATION="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/compare/${OSINT_HEAD_SHA}...${OSINT_FETCHED_MAIN}" \
+  --jq .status)"
+[[ "$MAIN_AFTER_RUN_RELATION" == "ahead" \
+    || "$MAIN_AFTER_RUN_RELATION" == "identical" ]]
+OSINT_PUBLICATION_SHA="$(gh api --method GET \
+  "repos/$PALIMPSEST_REPOSITORY/commits" \
+  -f sha="$OSINT_FETCHED_MAIN" \
+  -f path='readings/osint-china-latest.json' -f per_page=1 \
+  --jq '.[0].sha')"
+[[ "$OSINT_PUBLICATION_SHA" =~ ^[0-9a-f]{40}$ ]]
+PUBLICATION_RELATION="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/compare/${EXPECTED_DEPLOY_SHA}...${OSINT_PUBLICATION_SHA}" \
+  --jq .status)"
+[[ "$PUBLICATION_RELATION" == "ahead" \
+    || "$PUBLICATION_RELATION" == "identical" ]]
+PUBLICATION_MAIN_RELATION="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/compare/${OSINT_PUBLICATION_SHA}...${OSINT_FETCHED_MAIN}" \
+  --jq .status)"
+[[ "$PUBLICATION_MAIN_RELATION" == "ahead" \
+    || "$PUBLICATION_MAIN_RELATION" == "identical" ]]
+gh api -H 'Accept: application/vnd.github.raw+json' \
+  "repos/$PALIMPSEST_REPOSITORY/contents/readings/osint-china-latest.json?ref=$OSINT_PUBLICATION_SHA" \
+  >"$REPOSITORY_OSINT_TMP"
+REPOSITORY_OSINT_RAW_SHA256="$(file_sha256 "$REPOSITORY_OSINT_TMP")"
+python3 -m json.tool "$REPOSITORY_OSINT_TMP" >/dev/null
+gh api -H 'Accept: application/vnd.github.raw+json' \
+  "repos/$PALIMPSEST_REPOSITORY/contents/readings/readings-ledger.jsonl?ref=$OSINT_PUBLICATION_SHA" \
+  >"$REPOSITORY_LEDGER_TMP"
+REPOSITORY_LEDGER_RAW_SHA256="$(file_sha256 "$REPOSITORY_LEDGER_TMP")"
+[[ "$REPOSITORY_LEDGER_RAW_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test -s "$REPOSITORY_LEDGER_TMP"
+PUBLIC_OSINT_URL="https://palimpsest.info/readings/osint-china-latest.json?publication=$OSINT_PUBLICATION_SHA"
+PUBLIC_OSINT_RAW_SHA256=''
+for _ in {1..80}; do
+  if curl --fail --silent --show-error --location --max-filesize 4194304 \
+      --max-time 30 --output "$PUBLIC_OSINT_TMP" "$PUBLIC_OSINT_URL"; then
+    PUBLIC_OSINT_RAW_SHA256="$(file_sha256 "$PUBLIC_OSINT_TMP")"
+    if [[ "$PUBLIC_OSINT_RAW_SHA256" \
+        == "$REPOSITORY_OSINT_RAW_SHA256" ]]; then
+      break
+    fi
+  fi
+  sleep 15
+done
+test "$PUBLIC_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"
+python3 -m json.tool "$PUBLIC_OSINT_TMP" >/dev/null
+
+LIVE_BLEED_URL="https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json?release=$OSINT_RUN_ID"
+curl --fail --silent --show-error --location --max-filesize 262144 \
+  --max-time 30 --output "$LIVE_BLEED_TMP" "$LIVE_BLEED_URL"
+test "$(file_sha256 "$LIVE_BLEED_TMP")" = "$LOCAL_BLEED_SHA256"
+LIVE_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 "$LIVE_BLEED_TMP")"
+test "$LIVE_BLEED_NORMALIZED_SHA256" = "$LOCAL_BLEED_NORMALIZED_SHA256"
+
+gh api -H 'Accept: application/vnd.github.raw+json' \
+  "repos/$PALIMPSEST_REPOSITORY/contents/readings/bleedthrough-latest.json?ref=$OSINT_FETCHED_MAIN" \
+  >"$REPOSITORY_BLEED_TMP"
+REPOSITORY_BLEED_RAW_SHA256="$(file_sha256 "$REPOSITORY_BLEED_TMP")"
+REPOSITORY_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
+  "$REPOSITORY_BLEED_TMP")"
+test "$REPOSITORY_BLEED_NORMALIZED_SHA256" \
+  = "$LOCAL_BLEED_NORMALIZED_SHA256"
+
+PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$OSINT_RUN_ID"
+PUBLIC_BLEED_RAW_SHA256=''
+for _ in {1..80}; do
+  if curl --fail --silent --show-error --location --max-filesize 262144 \
+      --max-time 30 --output "$PUBLIC_BLEED_TMP" "$PUBLIC_BLEED_URL"; then
+    PUBLIC_BLEED_RAW_SHA256="$(file_sha256 "$PUBLIC_BLEED_TMP")"
+    if [[ "$PUBLIC_BLEED_RAW_SHA256" \
+        == "$REPOSITORY_BLEED_RAW_SHA256" ]]; then
+      break
+    fi
+  fi
+  sleep 15
+done
+test "$PUBLIC_BLEED_RAW_SHA256" = "$REPOSITORY_BLEED_RAW_SHA256"
+python3 -m json.tool "$PUBLIC_BLEED_TMP" >/dev/null
+PUBLIC_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
+  "$PUBLIC_BLEED_TMP")"
+test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
+  = "$LOCAL_BLEED_NORMALIZED_SHA256"
+test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
+  = "$REPOSITORY_BLEED_NORMALIZED_SHA256"
+
+# This canonical handoff transfers the exact Phase 2 proof into the still-open
+# host shell. Phase 3 installs these bytes as the provider's root-only pin.
+RELEASE_PROOF_JSON="$(python3 - \
+  "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" "$OSINT_FETCHED_MAIN" \
+  "$OSINT_PUBLICATION_SHA" "$REPOSITORY_OSINT_RAW_SHA256" \
+  "$REPOSITORY_LEDGER_RAW_SHA256" <<'PY'
+import json
+import re
+import sys
+
+token, deployed, fetched, publication, artifact, ledger = sys.argv[1:]
+if re.fullmatch(r"[0-9a-f]{32}", token) is None:
+    raise SystemExit("invalid resume token")
+if any(re.fullmatch(r"[0-9a-f]{40}", value) is None for value in (
+    deployed, fetched, publication
+)):
+    raise SystemExit("invalid commit in release proof")
+if any(re.fullmatch(r"[0-9a-f]{64}", value) is None for value in (
+    artifact, ledger
+)):
+    raise SystemExit("invalid digest in release proof")
+value = {
+    "schema": "palimpsest-public-osint-release-proof.v1",
+    "resume_token": token,
+    "expected_deploy_sha": deployed,
+    "fetched_main": fetched,
+    "publication_commit": publication,
+    "artifact_sha256": artifact,
+    "ledger_sha256": ledger,
+}
+print(json.dumps(value, sort_keys=True, separators=(",", ":")))
+PY
+)"
+RELEASE_HANDOFF_B64="$(printf '%s\n' "$RELEASE_PROOF_JSON" \
+  | base64 | tr -d '\n')"
+[[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+printf 'Phase 2 complete: run=%s static-raw=%s normalized=%s osint-commit=%s osint-raw=%s ledger-raw=%s\n' \
+  "$OSINT_RUN_ID" "$PUBLIC_BLEED_RAW_SHA256" \
+  "$PUBLIC_BLEED_NORMALIZED_SHA256" "$OSINT_PUBLICATION_SHA" \
+  "$PUBLIC_OSINT_RAW_SHA256" "$REPOSITORY_LEDGER_RAW_SHA256"
+printf 'Paste this exact one-line handoff into Phase 1:\n%s\n' \
+  "$RELEASE_HANDOFF_B64"
 ```
 
-Keep the captured `ROLLBACK_SHA` in the release record. A rollback repeats the
-same stop/build/backup/install/parity sequence at that reviewed revision; never
-roll back only `/etc/palimpsest/deployed-commit` or only one bundle.
+If dispatch, workflow, raw-byte, or normalized semantic validation fails, do
+not run Phase 3. Leave every captured timer stopped and investigate the failed
+publication. Workflow success alone is insufficient unless local raw bytes
+equal the live proxy, repository raw bytes equal the static site, and the three
+normalized digests agree. The exact repository OSINT blob must also match the
+static OSINT bytes before the host resumes.
+
+### Phase 3: host finalization
+
+Return to the still-open Phase 1 SSH shell and paste the exact Phase 2 handoff
+only after every publication proof passes. Recheck the public bytes from the host, advance and prove
+the local OSINT receipt, rerun both local consumers, then run both observers
+anew. Finalization accepts only a fresh invocation with
+`ConditionResult=yes`, `Result=success`, and `ExecMainStatus=0`. Exit 2 is
+printed with its evidence but remains a release-blocking failure.
+
+```bash
+set -Eeuo pipefail
+if ! declare -p \
+    RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS \
+    RELEASE_HANDOFF_B64 \
+    NODE_OFFSITE_CONFIGURED EXPECTED_DEPLOY_SHA \
+    BLEED_ARTIFACT_AFTER_SHA256 BLEED_ARTIFACT_NORMALIZED_SHA256 \
+    OSINT_ARTIFACT OSINT_LEDGER OSINT_ARTIFACT_BEFORE_SHA256 \
+    OSINT_LEDGER_BEFORE_SHA256 OSINT_GENERATED_AT_BEFORE \
+    SYNC_PRE_RELEASE_INVOCATION_ID WATCHDOG_PRE_RELEASE_INVOCATION_ID \
+    WITNESS_PRE_RELEASE_INVOCATION_ID RELEASE_RESUME_TOKEN \
+    >/dev/null 2>&1 \
+    || ! [[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]] \
+    || ! [[ "$BLEED_ARTIFACT_AFTER_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$BLEED_ARTIFACT_NORMALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$OSINT_ARTIFACT_BEFORE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$OSINT_LEDGER_BEFORE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]]; then
+  printf 'Phase 3 must run in the original paused Phase 1 shell\n' >&2
+  exit 1
+fi
+
+release_finalized=0
+phase3_fail_safe() {
+  local unit
+  if (( release_finalized == 1 )); then
+    return 0
+  fi
+  trap - ERR HUP INT TERM
+  set +e
+  printf 'Phase 3 failed; quiescing every release activator\n' >&2
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    sudo systemctl stop "$unit" >/dev/null 2>&1 || true
+    sudo systemctl disable "$unit" >/dev/null 2>&1 || true
+  done
+  sudo systemctl daemon-reload >/dev/null 2>&1 || true
+}
+trap phase3_fail_safe ERR
+trap 'phase3_fail_safe; exit 1' HUP INT TERM
+
+for held_unit in "${RELEASE_ACTIVATORS[@]}"; do
+  held_state="$(systemctl is-active "$held_unit" 2>/dev/null || true)"
+  case "$held_state" in
+    inactive|failed|unknown|"") ;;
+    *) printf 'captured activator restarted before finalization: %s (%s)\n' \
+         "$held_unit" "$held_state" >&2; exit 1 ;;
+  esac
+done
+
+# Decode, strictly validate, and canonically re-emit the Phase 2 handoff. The
+# fixed root-only path makes every Requires=/Wants= rerun select the same Git
+# publication even if main advances during finalization.
+RELEASE_PROOF_TMP="$(mktemp /tmp/palimpsest-release-proof.XXXXXX)"
+chmod 0600 "$RELEASE_PROOF_TMP"
+python3 - "$RELEASE_HANDOFF_B64" "$RELEASE_RESUME_TOKEN" \
+  "$EXPECTED_DEPLOY_SHA" >"$RELEASE_PROOF_TMP" <<'PY'
+import base64
+import binascii
+import json
+import re
+import sys
+
+encoded_text, expected_token, expected_deploy = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate handoff key")
+        value[key] = item
+    return value
+
+try:
+    encoded = encoded_text.encode("ascii")
+    raw = base64.b64decode(encoded, validate=True)
+    value = json.loads(raw.decode("utf-8", "strict"),
+                       object_pairs_hook=reject_duplicates,
+                       parse_constant=lambda item: (_ for _ in ()).throw(
+                           ValueError(f"non-finite value: {item}")
+                       ))
+except (UnicodeError, ValueError, binascii.Error) as error:
+    raise SystemExit(f"invalid Phase 2 handoff: {error}") from error
+fields = {
+    "schema", "resume_token", "expected_deploy_sha", "fetched_main",
+    "publication_commit", "artifact_sha256", "ledger_sha256",
+}
+if not isinstance(value, dict) or set(value) != fields:
+    raise SystemExit("invalid Phase 2 handoff fields")
+if value.get("schema") != "palimpsest-public-osint-release-proof.v1":
+    raise SystemExit("invalid Phase 2 handoff schema")
+if value.get("resume_token") != expected_token:
+    raise SystemExit("Phase 2 handoff does not match the paused shell")
+if value.get("expected_deploy_sha") != expected_deploy:
+    raise SystemExit("Phase 2 handoff does not match the deployed SHA")
+if any(re.fullmatch(r"[0-9a-f]{40}", value.get(field, "")) is None
+       for field in ("expected_deploy_sha", "fetched_main", "publication_commit")):
+    raise SystemExit("invalid Phase 2 handoff commit")
+if any(re.fullmatch(r"[0-9a-f]{64}", value.get(field, "")) is None
+       for field in ("artifact_sha256", "ledger_sha256")):
+    raise SystemExit("invalid Phase 2 handoff digest")
+print(json.dumps(value, sort_keys=True, separators=(",", ":")))
+PY
+RELEASE_PROOF_PATH='/var/lib/palimpsest-public-osint-sync/release-proof.json'
+sudo test ! -L "$RELEASE_PROOF_PATH"
+sudo install -o root -g root -m 0600 \
+  "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
+sudo cmp -s "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
+test "$(sudo stat -c '%u:%g:%a:%h' "$RELEASE_PROOF_PATH")" = "0:0:600:1"
+RELEASE_PROOF_JSON="$(sudo cat "$RELEASE_PROOF_PATH")"
+RELEASE_PROOF_FILE_SHA256="$(sudo sha256sum "$RELEASE_PROOF_PATH" \
+  | awk '{print $1}')"
+[[ "$RELEASE_PROOF_FILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+rm -f -- "$RELEASE_PROOF_TMP"
+PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$EXPECTED_DEPLOY_SHA"
+PUBLIC_BLEED_TMP="$(mktemp /tmp/palimpsest-public-bleed.XXXXXX)"
+chmod 0600 "$PUBLIC_BLEED_TMP"
+curl --fail --silent --show-error --location --max-filesize 262144 \
+  --max-time 30 --output "$PUBLIC_BLEED_TMP" "$PUBLIC_BLEED_URL"
+sudo python3 -m json.tool "$PUBLIC_BLEED_TMP" >/dev/null
+PUBLIC_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
+  "$PUBLIC_BLEED_TMP")"
+rm -f -- "$PUBLIC_BLEED_TMP"
+test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
+  = "$BLEED_ARTIFACT_NORMALIZED_SHA256"
+
+run_final_observer() {
+  local unit="$1" status_path="$2" pre_release_id="$3"
+  local previous_id invocation_id condition_result result exec_status start_rc
+  local observer_ok=1
+  previous_id="$(systemctl show --property=InvocationID --value \
+    "$unit" 2>/dev/null || true)"
+  sudo systemctl reset-failed "$unit"
+  start_rc=0
+  if sudo systemctl start "$unit"; then
+    :
+  else
+    start_rc=$?
+  fi
+  invocation_id="$(systemctl show --property=InvocationID --value \
+    "$unit" 2>/dev/null || true)"
+  condition_result="$(systemctl show --property=ConditionResult --value \
+    "$unit" 2>/dev/null || true)"
+  result="$(systemctl show --property=Result --value \
+    "$unit" 2>/dev/null || true)"
+  exec_status="$(systemctl show --property=ExecMainStatus --value \
+    "$unit" 2>/dev/null || true)"
+
+  (( start_rc == 0 )) || observer_ok=0
+  [[ "$invocation_id" =~ ^[0-9a-f]{32}$ ]] || observer_ok=0
+  [[ "$invocation_id" != "$previous_id" ]] || observer_ok=0
+  if [[ -n "$pre_release_id" && "$invocation_id" == "$pre_release_id" ]]; then
+    observer_ok=0
+  fi
+  [[ "$condition_result" == "yes" ]] || observer_ok=0
+  [[ "$result" == "success" ]] || observer_ok=0
+  [[ "$exec_status" == "0" ]] || observer_ok=0
+
+  if (( observer_ok == 0 )); then
+    printf '%s final invocation failed: id=%s condition=%s result=%s status=%s\n' \
+      "$unit" "$invocation_id" "$condition_result" "$result" \
+      "$exec_status" >&2
+    sudo systemctl status "$unit" --no-pager || true
+    sudo journalctl -u "$unit" -n 200 --no-pager || true
+    if [[ -n "$status_path" ]] && sudo test -f "$status_path"; then
+      sudo python3 -m json.tool "$status_path" || true
+    fi
+    if [[ "$exec_status" == "2" ]]; then
+      printf '%s reported a stale incident; exit 2 is not final success\n' \
+        "$unit" >&2
+    fi
+    return 1
+  fi
+}
+
+# The sync timer is still disabled. Run one fresh Git-bound updater. Every
+# later Requires=/Wants= start may request the oneshot again, but the root-only
+# proof makes those runs byte-idempotent even if public main moves.
+run_final_observer palimpsest-public-osint-sync.service \
+  /var/lib/palimpsest-public-osint-sync/last-failure.json \
+  "$SYNC_PRE_RELEASE_INVOCATION_ID"
+SYNC_RECEIPT_JSON="$(sudo /usr/bin/python3 \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
+  --verify-installed)"
+OSINT_ARTIFACT_AFTER_SHA256="$(sudo sha256sum "$OSINT_ARTIFACT" \
+  | awk '{print $1}')"
+OSINT_LEDGER_AFTER_SHA256="$(sudo sha256sum "$OSINT_LEDGER" \
+  | awk '{print $1}')"
+test "$OSINT_ARTIFACT_AFTER_SHA256" != "$OSINT_ARTIFACT_BEFORE_SHA256"
+test "$OSINT_LEDGER_AFTER_SHA256" != "$OSINT_LEDGER_BEFORE_SHA256"
+printf '%s\n%s\n' "$SYNC_RECEIPT_JSON" "$RELEASE_PROOF_JSON" | python3 -c '
+import datetime
+import hashlib
+import json
+import sys
+
+before, artifact_sha, ledger_sha, deployed = sys.argv[1:]
+receipt = json.loads(sys.stdin.readline())
+proof = json.loads(sys.stdin.readline())
+parse = lambda value: datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+canonical = json.dumps(
+    proof, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8")
+checks = (
+    receipt.get("schema") == "palimpsest-public-osint-sync.v2",
+    receipt.get("status") == "installed",
+    receipt.get("sync_mode") == "release-pinned",
+    receipt.get("deployed_commit") == deployed,
+    receipt.get("fetched_main") == proof.get("fetched_main"),
+    receipt.get("publication_commit") == proof.get("publication_commit"),
+    receipt.get("artifact_sha256") == artifact_sha
+        == proof.get("artifact_sha256"),
+    receipt.get("ledger_sha256") == ledger_sha
+        == proof.get("ledger_sha256"),
+    receipt.get("release_proof_sha256")
+        == hashlib.sha256(canonical).hexdigest(),
+    parse(receipt.get("generated_at", "")) > parse(before),
+    type(receipt.get("ledger_entries")) is int
+        and receipt["ledger_entries"] > 0,
+    len(receipt.get("ledger_head", "")) == 64,
+)
+if not all(checks):
+    raise SystemExit("release-pinned OSINT receipt proof failed")
+' "$OSINT_GENERATED_AT_BEFORE" "$OSINT_ARTIFACT_AFTER_SHA256" \
+  "$OSINT_LEDGER_AFTER_SHA256" "$EXPECTED_DEPLOY_SHA"
+OSINT_PUBLICATION_SHA="$(printf '%s\n' "$SYNC_RECEIPT_JSON" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["publication_commit"])')"
+[[ "$OSINT_PUBLICATION_SHA" =~ ^[0-9a-f]{40}$ ]]
+SYNC_RECEIPT_SHA256="$(printf '%s\n' "$SYNC_RECEIPT_JSON" \
+  | sha256sum | awk '{print $1}')"
+[[ "$SYNC_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+
+# Both consumers now read the receipt-bound local artifact. Context remains
+# timer-disabled until its explicit post-import run succeeds.
+sudo systemctl start palimpsest-investigative-broker.socket
+run_final_observer palimpsest-investigative-analysis.service '' ''
+run_final_observer palimpsest-common-crawl-context.service '' ''
+
+run_final_observer palimpsest-freshness-watchdog.service \
+  /var/lib/palimpsest-watchdog/status.json \
+  "$WATCHDOG_PRE_RELEASE_INVOCATION_ID"
+run_final_observer palimpsest-witness.service '' \
+  "$WITNESS_PRE_RELEASE_INVOCATION_ID"
+systemctl cat palimpsest-witness.timer \
+  | grep -Fqx 'OnCalendar=*:0/15'
+
+# Every dependent start above may have requested the provider again. Prove the
+# final bytes and raw receipt after all consumers and observers while the exact
+# release proof is still installed.
+FINAL_SYNC_RECEIPT_JSON="$(sudo /usr/bin/python3 \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
+  --verify-installed)"
+FINAL_SYNC_RECEIPT_SHA256="$(printf '%s\n' "$FINAL_SYNC_RECEIPT_JSON" \
+  | sha256sum | awk '{print $1}')"
+test "$FINAL_SYNC_RECEIPT_JSON" = "$SYNC_RECEIPT_JSON"
+test "$FINAL_SYNC_RECEIPT_SHA256" = "$SYNC_RECEIPT_SHA256"
+test "$(sudo sha256sum "$OSINT_ARTIFACT" | awk '{print $1}')" \
+  = "$OSINT_ARTIFACT_AFTER_SHA256"
+test "$(sudo sha256sum "$OSINT_LEDGER" | awk '{print $1}')" \
+  = "$OSINT_LEDGER_AFTER_SHA256"
+test "$(sudo sha256sum "$RELEASE_PROOF_PATH" | awk '{print $1}')" \
+  = "$RELEASE_PROOF_FILE_SHA256"
+
+restore_activator_enablement() {
+  local unit="$1" previous="${RELEASE_ENABLEMENT[$1]}" first_install='disable'
+  case "$unit" in
+    palimpsest-public-osint-sync.timer|palimpsest-freshness-watchdog.timer)
+      first_install='enable'
+      ;;
+  esac
+  case "$previous" in
+    enabled) sudo systemctl enable "$unit" ;;
+    enabled-runtime) sudo systemctl enable --runtime "$unit" ;;
+    disabled) sudo systemctl disable "$unit" ;;
+    static|indirect)
+      test "$(read_enablement "$unit")" = "$previous"
+      ;;
+    not-found)
+      if [[ "$first_install" == enable ]]; then
+        sudo systemctl enable "$unit"
+      else
+        sudo systemctl disable "$unit"
+      fi
+      ;;
+    *) printf 'refusing unexpected activator enablement: %s (%s)\n' \
+         "$unit" "$previous" >&2; return 1 ;;
+  esac
+}
+
+# Restore every captured activator. Only the two safety timers are enabled and
+# started on first installation. An unconfigured node-offsite lane can never be
+# restored to enabled or active because Phase 1 rejects that captured state.
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  if [[ "$unit" == palimpsest-node-offsite-backup.timer ]] \
+      && (( NODE_OFFSITE_CONFIGURED == 0 )); then
+    test "${RELEASE_WAS_ACTIVE[$unit]}" = "0"
+    case "${RELEASE_ENABLEMENT[$unit]}" in
+      enabled|enabled-runtime) exit 1 ;;
+    esac
+  fi
+  restore_activator_enablement "$unit"
+done
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  if [[ "${RELEASE_WAS_ACTIVE[$unit]}" == "1" ]] \
+      || { [[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]] \
+        && [[ "$unit" == palimpsest-public-osint-sync.timer \
+          || "$unit" == palimpsest-freshness-watchdog.timer ]]; }; then
+    sudo systemctl start "$unit"
+  else
+    stop_loaded_unit "$unit"
+  fi
+done
+
+# Keep the pin through the complete state restoration. Removing exactly the
+# unchanged proof is the commit point that returns future timer runs to normal
+# newest-main operation.
+test "$(sudo sha256sum "$RELEASE_PROOF_PATH" | awk '{print $1}')" \
+  = "$RELEASE_PROOF_FILE_SHA256"
+sudo rm -- "$RELEASE_PROOF_PATH"
+sudo test ! -e "$RELEASE_PROOF_PATH"
+release_finalized=1
+trap - ERR HUP INT TERM
+
+systemctl list-timers palimpsest-backup.timer \
+  palimpsest-common-crawl-backup.timer \
+  palimpsest-node-offsite-backup.timer \
+  palimpsest-common-crawl-context.timer \
+  palimpsest-bleedthrough.timer \
+  palimpsest-public-osint-sync.timer \
+  palimpsest-freshness-watchdog.timer \
+  palimpsest-witness.timer --no-pager
+```
+
+### Executing a compatible rollback
+
+A rollback is a new three-phase transaction, not a receipt edit. Select a
+reviewed main-line target that still contains every installer, unit, verifier,
+and state contract used above. Select a second reviewed compatible ancestor as
+its recovery target. A branch-only emergency commit is not a generic rollback
+target. In a fresh Phase 1 shell, run this preflight, then execute Phase 1
+unchanged; its environment-aware assignments retain these exact values. Run
+Phase 2 against `ROLLBACK_TARGET_SHA`, and finish Phase 3 in the paused shell.
+
+```bash
+set -Eeuo pipefail
+cd /home/palimpsest/palimpsest
+ROLLBACK_TARGET_SHA='REPLACE_WITH_REVIEWED_MAIN_LINE_40_HEX_SHA'
+ROLLBACK_FALLBACK_SHA='REPLACE_WITH_EARLIER_COMPATIBLE_40_HEX_SHA'
+[[ "$ROLLBACK_TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$ROLLBACK_FALLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+git fetch --prune origin '+refs/heads/main:refs/remotes/origin/main'
+git cat-file -e "${ROLLBACK_TARGET_SHA}^{commit}"
+git cat-file -e "${ROLLBACK_FALLBACK_SHA}^{commit}"
+git merge-base --is-ancestor \
+  "$ROLLBACK_FALLBACK_SHA" "$ROLLBACK_TARGET_SHA"
+git merge-base --is-ancestor \
+  "$ROLLBACK_TARGET_SHA" refs/remotes/origin/main
+for required_path in \
+    ops/investigative-analysis/install-host-bundle.sh \
+    ops/common-crawl/install-host-bundle.sh \
+    ops/osint-sync/install-host-bundle.sh \
+    ops/node-offsite/install-host-bundle.sh \
+    ops/systemd/palimpsest-public-osint-sync.service \
+    ops/systemd/palimpsest-backup.release-quiesce.conf; do
+  git cat-file -e "${ROLLBACK_TARGET_SHA}:${required_path}"
+done
+export EXPECTED_DEPLOY_SHA="$ROLLBACK_TARGET_SHA"
+export COMPATIBLE_ROLLBACK_SHA="$ROLLBACK_FALLBACK_SHA"
+printf 'Rollback transaction pinned: target=%s fallback=%s\n' \
+  "$EXPECTED_DEPLOY_SHA" "$COMPATIBLE_ROLLBACK_SHA"
+# Execute the complete Phase 1 block now, then Phases 2 and 3 as documented.
+```
+
+Record `PREVIOUS_DEPLOY_SHA`, `EXPECTED_DEPLOY_SHA`,
+`COMPATIBLE_ROLLBACK_SHA`, `PRE_CHANGE_SNAPSHOT`, the backup checksum output,
+the full backup-verifier receipt, both BLEED digests, the exact OSINT workflow
+run ID, its repository/static raw digest, and the final local OSINT sync receipt
+and hashes. Never use the raw previous receipt as the rollback decision, and
+never roll back only the receipt or one bundle.
 
 The canonical witness is currently reinstalled on this same host and its
 existing root-only `/etc/palimpsest-witness.env` is deliberately left in place.
@@ -964,8 +2320,8 @@ scope export is never overwritten. The importer will count existing capture
 locators as duplicates and insert only observations newly admitted by the
 expanded scope.
 
-The Compose wrapper and both bundle installers fail closed on Git-status errors
-and a dirty checkout. The investigative installer writes
+The Compose wrapper and all four deployment bundle installers fail closed on Git-status
+errors and a dirty checkout. The investigative installer writes
 `/etc/palimpsest/deployed-commit` only as its final commit point. The Common
 Crawl installer then requires that receipt to match before it switches its own
 immutable bundle. It also installs and validates the revision-bound shared
@@ -973,7 +2329,7 @@ network-lane helper, root-owned bundled BLEED runtime, BLEED/mirror/filter units
 and root-owned network/data lock ACLs. BLEED remains
 held until that installer succeeds. The installer never enables or starts a
 Common Crawl mirror; each reviewed crawl remains a manual action with no timer.
-If either installer fails, keep the affected timers stopped and investigate; do
+If any installer fails, keep the affected timers stopped and investigate; do
 not hand-edit the receipt. No profiled worker is accidentally left on an old
 image. PostgreSQL/Redis volumes and the external `/var/lib/palimpsest` state
 survive.

@@ -28,7 +28,11 @@ def test_installer_requires_a_clean_deployed_revision_and_stages_git_bytes() -> 
     assert "deployed commit receipt does not exactly match Git HEAD" in source
     assert "deployed commit receipt changed while the bundle was staged" in source
     assert 'show "$revision:$repository_path"' in source
-    assert "safe.directory=$repo_root" in source
+    assert "/usr/bin/git --no-replace-objects --git-dir=\"$audit_git\"" in source
+    assert "GIT_CONFIG_GLOBAL=/dev/null" in source
+    assert "GIT_NO_REPLACE_OBJECTS=1" in source
+    assert "core.fsmonitor=false" in source
+    assert "Git grafts or object alternates are forbidden" in source
     assert 'bundle_root="/usr/local/libexec/palimpsest-node-offsite"' in source
     assert "ops/backup/palimpsest-node-offsite-backup.sh" in source
     assert "ops/backup/node_backup_snapshot.py" in source
