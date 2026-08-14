@@ -1,7 +1,7 @@
 {
   "author": "Palimpsest Eval Lab",
   "claim": "GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.",
-  "content_sha256": "341c7df5fa0a0a5192260331c3db40d59f883d3a114b113802b37567d9155e1f",
+  "content_sha256": "b649cd692171599d912cdc0efe8d07b4a21e4992694af320cdade962e3bfcc87",
   "dek": "The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.",
   "evidence": [
     {
@@ -45,11 +45,11 @@
       "url": "/.github/workflows/gfi-refresh.yml"
     },
     {
-      "bytes": 9385,
+      "bytes": 9278,
       "label": "Current assurance state",
       "path": "readings/eval-assurance-latest.json",
       "role": "Keeps GFI at legacy partial evidence until the v2 artifacts actually exist",
-      "sha256": "b2ebad89a7a14397c3fad1997f71d8ce77f234c23d8522d4b717ac0d3ac688c6",
+      "sha256": "0945618a85740e208e9a954017c9752cd9832975753e661ffe954ad1fd06f460",
       "url": "/readings/eval-assurance-latest.json"
     }
   ],
@@ -70,12 +70,12 @@
     "API providers can change routing or model weights behind an endpoint; Palimpsest records the endpoint and time but cannot independently prove the provider's hidden serving stack."
   ],
   "live_context": {
-    "detail": "The guard and workflow are shipped; the current public GFI remains legacy v1 until the next successful model run.",
+    "detail": "The exact v2 protocol and full response matrix are both public.",
     "label": "Protocol state",
-    "url": "/docs/EVAL-REGISTRY.md",
-    "value": "staged for next collection"
+    "url": "/readings/gfi-evaluation-protocol-v2.json",
+    "value": "sealed evidence live"
   },
-  "modified_at": "2026-08-14T19:08:28.649895Z",
+  "modified_at": "2026-08-14T20:41:28.053270Z",
   "published_at": "2026-08-14T17:45:00Z",
   "schema": "palimpsest.eval-journal-article.v1",
   "sections": [
