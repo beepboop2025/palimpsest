@@ -160,6 +160,11 @@ def test_simple_baselines_and_scoring_are_transparent():
     assert random_walk["point"] == 4.0
     assert seasonal["point"] == 2.0
     assert mean_delta["point"] == 5.5
+    for prediction in (random_walk, seasonal, mean_delta):
+        for field in ("point", "lower", "upper"):
+            value = prediction[field]
+            if value is not None:
+                assert value == round(value, 12)
     scores = score_predictions([{
         "actual": 6.0,
         "point": 5.0,

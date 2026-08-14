@@ -197,9 +197,13 @@ def forecast_values(
         point, residuals, interval_coverage, minimum_residuals
     )
     return {
-        "point": point,
-        "lower": lower,
-        "upper": upper,
+        # CPython and libm can differ below the meaningful precision of these
+        # baseline calculations. Quantize computed predictions at the public
+        # model boundary so Linux CI, macOS publication, and offline rebuilds
+        # produce the same JSON bytes and hashes.
+        "point": _rounded(point),
+        "lower": _rounded(lower) if lower is not None else None,
+        "upper": _rounded(upper) if upper is not None else None,
         "interval_coverage": nominal,
         "interval_method": interval_method,
         "origin_value": origin,
