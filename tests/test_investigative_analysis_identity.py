@@ -97,15 +97,18 @@ esac
 
 def _identity_harness() -> str:
     source = INSTALLER.read_text(encoding="utf-8")
-    start = source.index("enumerate_identity_record() {")
-    end = source.index("\n}\n\nif ! revision=", start) + len("\n}")
-    function = source[start:end]
+    functions: list[str] = []
+    for name in ("enumerate_identity_record", "ensure_runtime_identity"):
+        start = source.index(f"{name}() {{")
+        end = source.index("\n}\n", start) + len("\n}")
+        functions.append(source[start:end])
+    identity_functions = "\n\n".join(functions)
     return f"""set -Eeuo pipefail
 die() {{ printf '%s\n' "$*" >&2; exit 97; }}
 runtime_name=palimpsest-analysis
 runtime_id=10001
 nologin_shell=/usr/sbin/nologin
-{function}
+{identity_functions}
 ensure_runtime_identity
 """
 

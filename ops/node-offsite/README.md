@@ -97,6 +97,77 @@ The installer requires `/etc/palimpsest/deployed-commit` to exactly equal Git
 root-owned revision under `/usr/local/libexec/palimpsest-node-offsite`. It does
 not alter the global deployed-commit receipt.
 
+## Release transaction integration
+
+Every node release installs this bundle after the investigative-analysis bundle
+has advanced the receipt and after the Common Crawl/network-lane and public
+OSINT sync bundles have matched it. The transaction then requires all five
+bundle `REVISION` files and `/etc/palimpsest/deployed-commit` to equal the
+operator-pinned `EXPECTED_DEPLOY_SHA`. Installing the code bundle is mandatory
+even when this offsite lane is not configured, because a later configuration
+must not select old code. Enabling or starting the timer is forbidden until all
+three root-only configuration files above exist with their reviewed modes.
+
+Treat those three files as an all-or-none set. A partially configured host, an
+enabled timer without the complete set, or an `OnSuccess` trigger without the
+complete set blocks the release. A host with none of the files may receive the
+new immutable bundle, but `palimpsest-node-offsite-backup.timer` must remain
+disabled and inactive.
+
+The removable `OnSuccess=palimpsest-node-offsite-backup.service` drop-in needs
+an additional release guard. Stopping the offsite timer does not stop
+`palimpsest-backup.service` from triggering the offsite service after the
+required post-build local backup. A runtime mask under `/run` cannot override a
+service file installed directly under `/etc/systemd/system`. Instead, capture
+the original trigger and install the reviewed reset as the lexically-last local
+backup drop-in before that local backup:
+
+```bash
+sudo systemctl daemon-reload
+BACKUP_ON_SUCCESS="$(systemctl show --property=OnSuccess --value \
+  palimpsest-backup.service)"
+grep -Fqw palimpsest-node-offsite-backup.service <<<"$BACKUP_ON_SUCCESS"
+BACKUP_RELEASE_QUIESCE_TARGET=/etc/systemd/system/palimpsest-backup.service.d/zz-release-quiesce.conf
+sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
+sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
+sudo install -d -o root -g root -m 0755 \
+  /etc/systemd/system/palimpsest-backup.service.d
+sudo install -o root -g root -m 0644 \
+  ops/systemd/palimpsest-backup.release-quiesce.conf \
+  "$BACKUP_RELEASE_QUIESCE_TARGET"
+sudo systemd-analyze verify /etc/systemd/system/palimpsest-backup.service
+sudo systemctl daemon-reload
+test -z "$(systemctl show --property=OnSuccess --value \
+  palimpsest-backup.service)"
+```
+
+Keep that drop-in until the node-offsite installer has run last and this exact
+parity check passes:
+
+```bash
+test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-analysis/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-network-lane/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-common-crawl/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat \
+  /usr/local/libexec/palimpsest-public-osint-sync/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /usr/local/libexec/palimpsest-node-offsite/current/REVISION)" \
+  = "$EXPECTED_DEPLOY_SHA"
+sudo rm -- "$BACKUP_RELEASE_QUIESCE_TARGET"
+sudo systemctl daemon-reload
+test "$(systemctl show --property=OnSuccess --value \
+  palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+```
+
+The transaction refuses a pre-existing file at that exact temporary path and
+removes only the file it installed. On failure, leave the quiesce in place. The
+complete state-capture and restoration procedure is in Step 9 of
+[`../DEPLOY-HETZNER.md`](../DEPLOY-HETZNER.md).
+
 ## Mandatory initial restore drill
 
 Keep the timer disabled until this complete drill succeeds:
