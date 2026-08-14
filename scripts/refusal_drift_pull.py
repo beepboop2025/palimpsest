@@ -143,11 +143,13 @@ def _query(key: str, model: str, prompt: str) -> str | None:
             return (d.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt == 0:
-                time.sleep(2); continue
+                time.sleep(2)
+                continue
             return None
         except (urllib.error.URLError, OSError, json.JSONDecodeError):
             if attempt == 0:
-                time.sleep(1); continue
+                time.sleep(1)
+                continue
             return None
     return None
 
@@ -339,7 +341,6 @@ def _run_model(key: str, model: str, probes: dict, bank: dict, prev: dict | None
     prev_labels = _prev_labels(prev, model, bank_commit)
     d = drift.diff_runs(prev_labels, labels) if prev_labels else None
     flips = None if d is None else len(d["new_refusals"]) + len(d["new_answers"])
-    compared = None if d is None else d["n_compared"]
 
     # The FIXED-LOOK test on this one transition. Honest and deliberately weak.
     paired_p = (None if d is None
@@ -659,16 +660,11 @@ def _write_transcripts(texts_by_model: dict, probes: dict, now, commitment: str,
 
 def _refresh_registry_summary(now) -> None:
     reg_out = os.path.join(READINGS, "eval-registry-latest.json")
-    s = reg.summary(REGISTRY)
-    with open(reg_out, "w", encoding="utf-8") as f:
-        json.dump({"generated_at": now.isoformat(),
-                   "title": "Verifiable Eval Registry",
-                   "what": ("tamper-evident, pre-registered AI model evaluations — the questions are "
-                            "frozen before the model is queried, and every result is hash-chained so "
-                            "it cannot be quietly revised. Any model, any suite; this is the record."),
-                   "registry": "readings/eval-registry.jsonl",
-                   "verify_cmd": "python3 scripts/verify_eval_registry.py", **s}, f,
-                  ensure_ascii=False, indent=2)
+    # The projection time is the registry head time, so a no-op refresh cannot
+    # cosmetically advance freshness.  ``now`` remains in the signature for callers
+    # that share it with the other publication steps.
+    del now
+    reg.refresh_summary(REGISTRY, reg_out)
 
 
 if __name__ == "__main__":

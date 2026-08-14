@@ -182,16 +182,8 @@ def main() -> None:
         print(f"eval-registry: recorded run · {model} · suppression {metrics['suppression_rate_pct']}% "
               f"· responses {rh[:16]}… · from {gf_name} as of {as_of}")
 
-    s = reg.summary(REGISTRY)
-    with open(OUT, "w", encoding="utf-8") as f:
-        json.dump({"generated_at": now.isoformat(),
-                   "title": "Verifiable Eval Registry",
-                   "what": ("tamper-evident, pre-registered AI model evaluations — the questions are "
-                            "frozen before the model is queried, and every result is hash-chained so "
-                            "it cannot be quietly revised. Any model, any suite; this is the record."),
-                   "registry": "readings/eval-registry.jsonl",
-                   "verify_cmd": "python3 scripts/verify_eval_registry.py",
-                   **s}, f, ensure_ascii=False, indent=2)
+    document = reg.refresh_summary(REGISTRY, OUT)
+    s = document
     print(f"=== Eval Registry — {s['attestations']} attestations "
           f"({s['preregistrations']} preregistered, {s['runs']} runs), verified={s['verified']}, "
           f"root={s['merkle_root'][:16]}… ===")

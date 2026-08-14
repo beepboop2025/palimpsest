@@ -37,18 +37,241 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
+import stat
+import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
+import fcntl
+
 GENESIS_PREV = "0" * 64
+
+
+class LedgerFormatError(ValueError):
+    """A ledger is not an exact, unambiguous JSONL snapshot."""
+
+
+def _pairs_without_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise LedgerFormatError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_constant(value: str) -> None:
+    raise LedgerFormatError(f"non-finite JSON number is forbidden: {value}")
+
+
+def _finite_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise LedgerFormatError(f"non-finite JSON number is forbidden: {value}")
+    return parsed
+
+
+def _read_regular_bytes(path: str | os.PathLike[str]) -> bytes | None:
+    """Read one inode without following a ledger symlink.
+
+    ``None`` means the path genuinely does not exist.  A dangling symlink is not a
+    missing ledger: it is an unsafe path and fails closed.
+    """
+    target = os.fspath(path)
+    flags = os.O_RDONLY
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(target, flags)
+    except FileNotFoundError:
+        if os.path.lexists(target):
+            raise LedgerFormatError(f"ledger path is not a regular file: {target}")
+        return None
+    except OSError as exc:
+        raise LedgerFormatError(f"cannot open ledger as a regular file: {target}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise LedgerFormatError(f"ledger path is not a regular file: {target}")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+def read_ledger_snapshot(path: str | os.PathLike[str]) -> tuple[list[dict], bytes]:
+    """Return entries and the exact bytes from one stable file-descriptor snapshot.
+
+    Every non-empty ledger ends in ``\n``.  That makes an interrupted last write
+    distinguishable from a complete record, so callers never guess where a damaged
+    tail should end.  Duplicate keys and non-finite numbers are rejected before a
+    Python object can erase their ambiguity.
+    """
+    raw = _read_regular_bytes(path)
+    if raw is None:
+        return [], b""
+    if not raw:
+        return [], raw
+    if not raw.endswith(b"\n"):
+        raise LedgerFormatError("ledger has an incomplete tail (missing final newline)")
+
+    entries: list[dict] = []
+    for number, encoded in enumerate(raw.splitlines(), start=1):
+        if not encoded.strip():
+            raise LedgerFormatError(f"ledger line {number} is blank")
+        try:
+            decoded = encoded.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise LedgerFormatError(f"ledger line {number} is not UTF-8") from exc
+        try:
+            value = json.loads(
+                decoded,
+                object_pairs_hook=_pairs_without_duplicates,
+                parse_constant=_reject_constant,
+                parse_float=_finite_float,
+            )
+        except LedgerFormatError:
+            raise
+        except (json.JSONDecodeError, ValueError) as exc:
+            detail = exc.msg if isinstance(exc, json.JSONDecodeError) else str(exc)
+            raise LedgerFormatError(
+                f"ledger line {number} is invalid JSON: {detail}"
+            ) from exc
+        if type(value) is not dict:
+            raise LedgerFormatError(f"ledger line {number} must be one JSON object")
+        entries.append(value)
+    return entries, raw
+
+
+def _safe_leaf_state(path: Path) -> None:
+    """Allow a missing/regular destination, but never a symlink or special file."""
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return
+    if not stat.S_ISREG(metadata.st_mode):
+        raise LedgerFormatError(f"managed path is not a regular file: {path}")
+
+
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    except OSError:
+        # A few development filesystems do not implement directory fsync.  The
+        # file itself was still fsynced before replacement.
+        pass
+    finally:
+        os.close(descriptor)
+
+
+def atomic_replace_bytes(
+    path: str | os.PathLike[str], raw: bytes, *, mode: int = 0o644
+) -> None:
+    """Durably replace a managed file without ever following its leaf symlink."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _safe_leaf_state(target)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        os.fchmod(descriptor, mode)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        # Recheck after the slow write.  ``replace`` would replace a symlink rather
+        # than follow it, but rejecting the race is clearer than silently healing it.
+        _safe_leaf_state(target)
+        os.replace(temporary, target)
+        _fsync_directory(target.parent)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _lock_path(path: str | os.PathLike[str]) -> Path:
+    target = Path(path)
+    return target.with_name(f".{target.name}.lock")
+
+
+@contextmanager
+def ledger_lock(
+    path: str | os.PathLike[str],
+    *,
+    exclusive: bool = True,
+    create: bool = True,
+):
+    """Hold the stable sidecar lock shared by every writer and verifier.
+
+    The ledger itself is atomically replaced, so locking that changing inode would
+    be racy.  This sidecar intentionally persists; deleting a lock file while waiters
+    exist can create two independent lock domains.
+    """
+    lock = _lock_path(path)
+    if create:
+        lock.parent.mkdir(parents=True, exist_ok=True)
+    _safe_leaf_state(lock)
+    flags = os.O_RDWR if exclusive else os.O_RDONLY
+    if create:
+        flags |= os.O_CREAT
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(lock, flags, 0o644)
+    except FileNotFoundError:
+        if create:
+            raise
+        # A fresh read-only checkout has no ignored sidecar.  The caller must
+        # compare the exact ledger bytes again after verifying all projections;
+        # atomic replacement then turns any concurrent write into a closed
+        # verification failure without requiring a filesystem mutation here.
+        yield False
+        return
+    except OSError as exc:
+        raise LedgerFormatError(f"cannot open ledger lock as a regular file: {lock}") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise LedgerFormatError(f"ledger lock is not a regular file: {lock}")
+        fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        yield True
+    finally:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
 
 
 def _canonical(obj: Any) -> bytes:
     """Deterministic serialization for hashing: sorted keys, tight separators,
     unicode preserved. The same object always hashes to the same digest."""
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"),
-                      ensure_ascii=False).encode("utf-8")
+    return json.dumps(
+        obj,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
 
 
 def _sha256(data: bytes) -> str:
@@ -69,16 +292,9 @@ def _entry_hash(seq: int, ts: str, source: str, payload_sha256: str,
 
 
 def read_ledger(path: str) -> list[dict]:
-    """Load the ledger. Missing file = empty ledger (not an error)."""
-    if not os.path.exists(path):
-        return []
-    out = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                out.append(json.loads(line))
-    return out
+    """Load one exact ledger snapshot. Missing file = empty ledger."""
+    entries, _ = read_ledger_snapshot(path)
+    return entries
 
 
 def head(path: str) -> dict | None:
@@ -96,30 +312,36 @@ def append_seal(path: str, source: str, reading: dict, *,
     same payload digest, we skip (returns None) so a no-change refresh does not
     grow the chain — matching Palimpsest's write-if-changed convention.
     """
-    entries = read_ledger(path)
     digest = payload_digest(reading)
+    with ledger_lock(path):
+        entries, raw = read_ledger_snapshot(path)
+        ok, problems = verify(entries)
+        if not ok:
+            raise LedgerFormatError(
+                "refusing to extend a broken sealed ledger: " + "; ".join(problems)
+            )
 
-    if skip_if_unchanged:
-        for e in reversed(entries):
-            if e.get("source") == source:
-                if e.get("payload_sha256") == digest:
-                    return None
-                break
+        if skip_if_unchanged:
+            for e in reversed(entries):
+                if e.get("source") == source:
+                    if e.get("payload_sha256") == digest:
+                        return None
+                    break
 
-    seq = len(entries)
-    prev_hash = entries[-1]["entry_hash"] if entries else GENESIS_PREV
-    ts = (now or datetime.now(timezone.utc)).isoformat()
-    entry = {
-        "seq": seq,
-        "ts": ts,
-        "source": source,
-        "payload_sha256": digest,
-        "prev_hash": prev_hash,
-        "entry_hash": _entry_hash(seq, ts, source, digest, prev_hash),
-    }
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    return entry
+        seq = len(entries)
+        prev_hash = entries[-1]["entry_hash"] if entries else GENESIS_PREV
+        ts = (now or datetime.now(timezone.utc)).isoformat()
+        entry = {
+            "seq": seq,
+            "ts": ts,
+            "source": source,
+            "payload_sha256": digest,
+            "prev_hash": prev_hash,
+            "entry_hash": _entry_hash(seq, ts, source, digest, prev_hash),
+        }
+        encoded = json.dumps(entry, ensure_ascii=False, allow_nan=False).encode("utf-8")
+        atomic_replace_bytes(path, raw + encoded + b"\n")
+        return entry
 
 
 def merkle_root(entries: list[dict]) -> str:
@@ -183,7 +405,7 @@ def verify(entries: list[dict]) -> tuple[bool, list[str]]:
     prev = GENESIS_PREV
     for i, e in enumerate(entries):
         try:
-            if e["seq"] != i:
+            if type(e["seq"]) is not int or e["seq"] != i:
                 problems.append(f"seq {e.get('seq')} at position {i}: non-contiguous / reordered")
             if e["prev_hash"] != prev:
                 problems.append(f"seq {e.get('seq')}: prev_hash does not link to the previous entry")
@@ -192,7 +414,7 @@ def verify(entries: list[dict]) -> tuple[bool, list[str]]:
             if recomputed != e["entry_hash"]:
                 problems.append(f"seq {e.get('seq')}: entry_hash does not recompute — content was altered after sealing")
             prev = e["entry_hash"]
-        except (KeyError, TypeError) as exc:
+        except (KeyError, TypeError, ValueError) as exc:
             problems.append(f"position {i}: malformed entry ({exc})")
             prev = e.get("entry_hash", prev)
     return (not problems), problems
