@@ -268,9 +268,11 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
   transform: translateX(-50%) translateY(0) scale(1);
   transition-delay: 0s, 0s, 0s;
 }
-/* Keep the last flyouts on screen instead of bleeding off the right edge. */
-.ps-nav__item:nth-last-child(-n+2) .ps-flyout { left: auto; right: 0; transform: translateY(-8px) scale(.97); }
-.ps-nav__item:nth-last-child(-n+2)[data-open] .ps-flyout { transform: translateY(0) scale(1); }
+/* Keep the last flyouts on screen instead of bleeding off the right edge.
+   AI Evals is the third item from the end and owns a two-column panel, so it
+   needs the same edge anchoring as the two menus after it. */
+.ps-nav__item:nth-last-child(-n+3) .ps-flyout { left: auto; right: 0; transform: translateY(-8px) scale(.97); }
+.ps-nav__item:nth-last-child(-n+3)[data-open] .ps-flyout { transform: translateY(0) scale(1); }
 
 /* A two-column flyout for the pillar that has outgrown one list. Apple's
    mega-menu move: widen rather than scroll, because a scrolling menu hides
@@ -380,7 +382,7 @@ body[data-ps-menu] { overflow: hidden; }
     display: none;
   }
   .ps-nav__item[data-open] .ps-flyout { display: block; }
-  .ps-nav__item:nth-last-child(-n+2) .ps-flyout { right: auto; transform: none; }
+  .ps-nav__item:nth-last-child(-n+3) .ps-flyout { right: auto; transform: none; }
   .ps-flyout--wide { min-width: 0; max-width: none; }
   .ps-flyout--wide .ps-flyout__cols { grid-template-columns: 1fr; gap: 0; }
   .ps-flyout__lede { display: none; }

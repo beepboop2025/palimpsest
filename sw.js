@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v13";
+const CACHE = "palimpsest-v15";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
@@ -19,13 +19,23 @@ const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/editorial-readiness-latest.json",
   "/readings/eval-assurance-latest.json",
   "/readings/eval-journal-latest.json",
+  "/readings/eval-articles-latest.json",
+  "/readings/eval-registry-latest.json",
 ]);
 const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
 const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;
 const LIVE_EVENT_ANALYSIS = /^\/news\/wire\/event-[0-9a-f]{24}\/analysis\.json$/;
 const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
+const LIVE_EVAL_SYNDICATION = new Set([
+  "/evals/feed.json",
+  "/evals/feed.xml",
+  "/journal/feed.json",
+  "/journal/feed.xml",
+]);
 const SHELL = [
   "/",
+  "/evals/",
+  "/journal/",
   "/osint-china.html",
   "/dashboards/ddti_observatory.html",
   "/dashboards/ddti_dashboard.html",
@@ -36,6 +46,11 @@ const SHELL = [
   "/dashboards/assets/tikto.css",
   "/assets/shell.css",
   "/assets/shell.js",
+  "/assets/eval-journal.css",
+  "/assets/home.css",
+  "/assets/home.js",
+  "/assets/journal.css",
+  "/assets/network-relay.js",
   "/brand/palimpsest-icon.svg",
   "/brand/palimpsest-icon-512.png",
 ];
@@ -138,6 +153,13 @@ self.addEventListener("fetch", (e) => {
   // installed PWA may cache article pages for offline reading, but it must never
   // present an old JSON Feed or RSS document as the current edition.
   if (LIVE_NEWSROOM_SYNDICATION.has(url.pathname)) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // Both eval publication planes expose mutable edition heads. Their article
+  // revisions may be cached, but feeds must never hide a failed refresh behind
+  // an older edition.
+  if (LIVE_EVAL_SYNDICATION.has(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

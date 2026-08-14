@@ -68,6 +68,9 @@ CONTRACT = {
                "over that declared checklist, so one top-level denominator would duplicate it."),
     "eval-journal":         _d("generated_at", ["source", "method", "scope"],
                                "n_articles"),
+    "eval-articles":        _d(
+        "generated_at", ["source", "scope", "publication_policy"], "n_articles"
+    ),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
@@ -230,6 +233,7 @@ SCHEDULED_PUBLICATIONS = {
     "network-rounds",
     "source-workflow",
     "editorial-readiness",
+    "eval-articles",
     "research-corpus",
 }
 
@@ -355,7 +359,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v13"' in worker
+    assert 'const CACHE = "palimpsest-v15"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A clean run does not erase a failed one | Palimpsest Live Eval Findings</title>
+<meta name="description" content="Mistral Nemo passed all 41 prompt arms in the latest canonical run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.">
+<link rel="canonical" href="https://palimpsest.info/journal/before-reading-the-score-read-the-controls/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<meta name="theme-color" content="#08110f">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="A clean run does not erase a failed one | Palimpsest Live Eval Findings">
+<meta property="og:description" content="Mistral Nemo passed all 41 prompt arms in the latest canonical run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.">
+<meta property="og:url" content="https://palimpsest.info/journal/before-reading-the-score-read-the-controls/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/journal.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"A clean run does not erase a failed one","description":"Mistral Nemo passed all 41 prompt arms in the latest canonical run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.","url":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","mainEntityOfPage":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","datePublished":"2026-08-14T13:34:43.929654+00:00","dateModified":"2026-08-14T19:08:28.649895+00:00","articleSection":"AI evaluation","author":{"@type":"Organization","name":"Palimpsest Eval Desk","url":"https://palimpsest.info/journal/"},"publisher":{"@type":"Organization","name":"Palimpsest Observatory","url":"https://palimpsest.info","logo":{"@type":"ImageObject","url":"https://palimpsest.info/brand/palimpsest-icon-512.png"}},"isBasedOn":["https://palimpsest.info/readings/eval-registry.jsonl","https://palimpsest.info/readings/refusal-drift-history.jsonl","https://palimpsest.info/readings/refusal-drift-latest.json"],"about":["AI evaluation","model refusal","evaluation integrity"],"image":"https://palimpsest.info/brand/palimpsest-og2.png"}</script>
+<meta property="article:published_time" content="2026-08-14T13:34:43.929654+00:00">
+<meta property="article:modified_time" content="2026-08-14T19:08:28.649895+00:00">
+<meta property="article:section" content="AI evaluation">
+</head><body class="ps ej ej--article" data-finding-state="bounded-finding">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-facing economic releases and censorship measurements, separated by method and joined only by receipts.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Start</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>What changed, what is withheld, and the evidence behind both</span></a>
+            <a href="/osint-china.html"><b>OSINT China</b><span>Censorship signals, sources and freshness in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Economic record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
+            <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Information controls</p>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3" data-within="">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Read</p>
+            <a href="/journal/" aria-current="page"><b>Live Eval Findings<span class="ps-tag">new</span></b><span>Current model-panel analysis with uncertainty and sentence receipts</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/refusal-drift-latest.json"><b>Latest panel JSON</b><span>Rates, controls, intervals and model-level labels</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-5">
+        <p class="ps-flyout__lede">Use the public record, reproduce the methods, or help keep the work independent.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use Palimpsest</p>
+            <a href="/data.html"><b>Data</b><span>Every public dataset, format and licence</span></a>
+            <a href="/developers.html"><b>Developers</b><span>REST, MCP and machine-readable contracts</span></a>
+            <a href="/for-researchers.html"><b>For researchers</b><span>Methods, validation and citation guidance</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Carry exact claims and supporting bytes elsewhere</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Public good</p>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall, no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main">
+  <article>
+    <header class="ej-article-head ej-wrap">
+      <nav aria-label="Breadcrumb"><a href="/journal/">Live Eval Findings</a><span>/</span><span>Eval integrity / control failure</span></nav>
+      <div class="ej-article-head__grid">
+        <div class="ej-article-head__copy">
+          <p class="ej-eyebrow">Eval integrity / control failure</p>
+          <h1>A clean run does not erase a failed one</h1>
+          <p class="ej-article-head__dek">Mistral Nemo passed all 41 prompt arms in the latest canonical run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.</p>
+          <p class="ej-byline"><strong>Palimpsest Eval Desk</strong><span>Published <time datetime="2026-08-14T13:34:43.929654+00:00">14 Aug 2026, 13:34 UTC</time></span><span>Updated <time datetime="2026-08-14T19:08:28.649895+00:00">14 Aug 2026, 19:08 UTC</time></span></p>
+        </div>
+        <aside class="ej-article-head__receipt" aria-label="Article receipt">
+          <p>Publication receipt</p>
+          <dl><dt>State</dt><dd>bounded-finding</dd><dt>Citation coverage</dt><dd>100.0%</dd><dt>Sealed runs</dt><dd>4</dd><dt>Revision</dt><dd><code>evalarticlev-6e1c7a9be232217585594328</code></dd></dl>
+          <a href="article.json">Current structured article</a>
+        </aside>
+      </div>
+      <div class="ej-thesis"><span>Thesis</span><p>A headline score is not interpretable until the same run passes its ordinary controls.</p></div>
+      <ul class="ej-key-numbers" aria-label="Key figures"><li><strong>0%</strong><span>family refusal rate</span><small>0 of 34 monitored families</small><i><a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></i></li><li><strong>0</strong><span>control prompt refusals</span><small>every ordinary control answered</small><i><a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></i></li><li><strong>4/4</strong><span>panel runs with clean controls</span><small>same dated sweep</small><i><a href="#evidence-evalevidence-835308651e4159961e13">evalevidence-835308651e4159961e13</a></i></li></ul>
+    </header>
+
+    <div class="ej-article-body ej-wrap">
+      <aside class="ej-article-index">
+        <p>In this analysis</p>
+        <ol><li><a href="#two-readings">01 Two readings from one run</a></li><li><a href="#controls-first">02 Why the controls outrank the score</a></li><li><a href="#counterread">03 The counterread</a></li><li><a href="#since-prior">04 What changed since the prior comparable sweep</a></li></ol>
+        <a href="#evidence">Evidence receipts</a>
+      </aside>
+      <div class="ej-article-prose"><section class="ej-article-section" id="two-readings">
+  <header><span>01</span><h2>Two readings from one run</h2></header>
+  <div><p>On 14 Aug 2026, Mistral Nemo recorded 0 refused families out of 34 monitored families, a headline rate of 0%. The same run answered every ordinary control prompt. This run did not publish a comparable wording-consistency estimate.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-62c0f89f72315d0d23d5">evalevidence-62c0f89f72315d0d23d5</a>, <a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></span></p></div>
+</section><section class="ej-article-section" id="controls-first">
+  <header><span>02</span><h2>Why the controls outrank the score</h2></header>
+  <div><p>Palimpsest uses deliberately ordinary questions as controls, so a refusal there marks an instrument fault for this run. When that gate fails, the desk may describe the failure itself but may not interpret the headline rate as selective suppression.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-07adcda57c0c42a3be6b">evalevidence-07adcda57c0c42a3be6b</a>, <a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></span></p></div>
+</section><section class="ej-article-section" id="counterread">
+  <header><span>03</span><h2>The counterread</h2></header>
+  <div><p>4 of the 4 panel runs answered every control in the same sweep. That argues against calling the entire panel unusable, but it does not identify why one run failed.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-835308651e4159961e13">evalevidence-835308651e4159961e13</a></span></p></div>
+</section><section class="ej-article-section" id="since-prior">
+  <header><span>04</span><h2>What changed since the prior comparable sweep</h2></header>
+  <div><p>In the full sweep on 13 Aug 2026, the same model reported an arm refusal rate of 2.8% and controls_clean=false. The latest canonical arm used 41 prompts, while the full sweep used a broader prompt set and reported wording consistency of 92.7%. The clean canonical arm is a new dated observation, not a like-for-like retest that cancels the failed full sweep.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-64289d77bc486e78bd63">evalevidence-64289d77bc486e78bd63</a>, <a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></span></p></div>
+</section></div>
+    </div>
+
+    <section class="ej-adversarial ej-wrap" aria-label="Adversarial reading">
+      <section class="ej-record ej-record--counter"><h2>The strongest counterread</h2><ul><li><p>A zero observed family rate is still favorable evidence inside the named suite when the controls pass.</p><span><a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a>, <a href="#evidence-evalevidence-07adcda57c0c42a3be6b">evalevidence-07adcda57c0c42a3be6b</a></span></li><li><p>A control failure in one panel run does not invalidate the separately sealed runs from the other models.</p><span><a href="#evidence-evalevidence-835308651e4159961e13">evalevidence-835308651e4159961e13</a>, <a href="#evidence-evalevidence-62c0f89f72315d0d23d5">evalevidence-62c0f89f72315d0d23d5</a></span></li></ul></section>
+      <section class="ej-record ej-record--limits"><h2>What this cannot establish</h2><ul><li><p>The refusal label is produced by a published lexical rule, not a completed independent human-coder study.</p><span><a href="#evidence-evalevidence-07adcda57c0c42a3be6b">evalevidence-07adcda57c0c42a3be6b</a></span></li><li><p>The model and provider labels do not prove which deployed weights or routing path answered a request.</p><span><a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></span></li><li><p>A failed control blocks a content-specific suppression claim from this run.</p><span><a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a>, <a href="#evidence-evalevidence-07adcda57c0c42a3be6b">evalevidence-07adcda57c0c42a3be6b</a></span></li></ul></section>
+    </section>
+
+    <section class="ej-method ej-wrap" aria-labelledby="method-heading">
+      <div class="ej-section-head"><p>Reproduce it</p><h2 id="method-heading">From frozen prompts to a public claim</h2></div>
+      <ol><li><span>01</span><div><h3>Freeze</h3><p>Hash and preregister the prompt bank before querying a model.</p><small><a href="#evidence-evalevidence-62c0f89f72315d0d23d5">evalevidence-62c0f89f72315d0d23d5</a></small></div></li><li><span>02</span><div><h3>Run</h3><p>Publish family rates, prompt-arm rates, controls, and uncertainty from the same dated sweep.</p><small><a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></small></div></li><li><span>03</span><div><h3>Gate</h3><p>Withhold a selective-suppression interpretation whenever ordinary controls fail.</p><small><a href="#evidence-evalevidence-07adcda57c0c42a3be6b">evalevidence-07adcda57c0c42a3be6b</a></small></div></li><li><span>04</span><div><h3>Verify</h3><p>Recompute the registry chain and compare the exact sealed metrics with the public reading.</p><small><a href="#evidence-evalevidence-62c0f89f72315d0d23d5">evalevidence-62c0f89f72315d0d23d5</a>, <a href="#evidence-evalevidence-8035cf161cc2e62641f9">evalevidence-8035cf161cc2e62641f9</a></small></div></li></ol>
+      <div class="ej-command"><span>Verify the chain offline</span><code>python3 scripts/verify_eval_registry.py</code></div>
+    </section>
+
+    <section class="ej-evidence ej-wrap" id="evidence" aria-labelledby="evidence-heading">
+      <div class="ej-section-head"><p>Evidence ledger</p><h2 id="evidence-heading">Every cited value and its limit</h2><a href="article.json">Article JSON</a></div>
+      <div class="ej-table-wrap" role="region" tabindex="0" aria-label="Article evidence receipts"><table><thead><tr><th>Receipt</th><th>Source selector</th><th>Exact value</th><th>Interpretation limit</th></tr></thead><tbody><tr id="evidence-evalevidence-8035cf161cc2e62641f9">
+  <td><code>evalevidence-8035cf161cc2e62641f9</code><span>refusal-drift-current</span></td>
+  <td><strong>Latest Mistral Nemo panel result</strong><code>/models/@model=mistralai/mistral-nemo</code></td>
+  <td><pre>{&quot;arm&quot;: &quot;canonical&quot;, &quot;arm_refusal_rate_pct&quot;: 0.0, &quot;control_refusals&quot;: [], &quot;controls_clean&quot;: true, &quot;family_refusal_ci95_pct&quot;: [0.0, 10.2], &quot;family_refusal_rate_pct&quot;: 0.0, &quot;model&quot;: &quot;mistralai/mistral-nemo&quot;, &quot;n_arms&quot;: 41, &quot;n_families&quot;: 34, &quot;n_refused_families&quot;: 0, &quot;wording_consistency&quot;: null}</pre></td>
+  <td><p>A lexical classifier labels answers and refusals. A failed control blocks a content-specific suppression interpretation.</p><a href="https://palimpsest.info/readings/refusal-drift-latest.json">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-07adcda57c0c42a3be6b">
+  <td><code>evalevidence-07adcda57c0c42a3be6b</code><span>refusal-drift-current</span></td>
+  <td><strong>Published method and control rule</strong><code>/method_note</code></td>
+  <td><pre>{&quot;method&quot;: &quot;every question is a family of meaning-preserving wordings; the family is the statistical unit; new refusals (answered-&gt;refused) are the erasure events; the standing alarm is a mixture supermartingale, so the lifetime false-alarm rate is bounded under unlimited peeking&quot;, &quot;method_note&quot;: &quot;Rates are family-level with Wilson 95% intervals. The paired test is an exact mid-p McNemar on a single transition and is not valid for the rolling series; the churn monitor is, by Ville&#x27;s inequality. Control families are unremarkable questions: if they are refused, the run is an instrument fault and carries no censorship claim. The refusal classifier is lexical and is itself watched by a frozen anchor set.&quot;}</pre></td>
+  <td><p>The method describes this dated suite, not model behaviour outside it.</p><a href="https://palimpsest.info/readings/refusal-drift-latest.json">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-835308651e4159961e13">
+  <td><code>evalevidence-835308651e4159961e13</code><span>refusal-drift-current</span></td>
+  <td><strong>Cross-lab control comparison</strong><code>/models/*/controls_clean</code></td>
+  <td><pre>{&quot;anthropic/claude-3-haiku&quot;: true, &quot;meta-llama/llama-3.3-70b-instruct&quot;: true, &quot;mistralai/mistral-nemo&quot;: true, &quot;openai/gpt-4o-mini&quot;: true}</pre></td>
+  <td><p>Cross-model agreement does not identify a provider-side cause.</p><a href="https://palimpsest.info/readings/refusal-drift-latest.json">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-62c0f89f72315d0d23d5">
+  <td><code>evalevidence-62c0f89f72315d0d23d5</code><span>eval-registry</span></td>
+  <td><strong>Sealed registry run for Mistral Nemo</strong><code>/seq=405</code></td>
+  <td><pre>{&quot;entry_hash&quot;: &quot;c2506c25e9512b3f94295eb9236f7891ed9e9c43ed348237e2954464d01cec7c&quot;, &quot;probe_set_hash&quot;: &quot;31208cb5a9f13b3a23bb64d347ed118dc212f39d8b5fe19ac749a7988f7c0adb&quot;, &quot;responses_hash&quot;: &quot;1946e7e4c2e47d7fcb1b327c7181139894c2333ced11d906113855afef0967bd&quot;, &quot;seq&quot;: 405}</pre></td>
+  <td><p>The seal proves the attestation was not rewritten. It does not prove the classifier was correct.</p><a href="https://palimpsest.info/readings/eval-registry.jsonl">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-64289d77bc486e78bd63">
+  <td><code>evalevidence-64289d77bc486e78bd63</code><span>refusal-drift-history</span></td>
+  <td><strong>Most recent prior full sweep for Mistral Nemo</strong><code>/generated_at=2026-08-13T02:47:59.623887+00:00/models/mistralai/mistral-nemo</code></td>
+  <td><pre>{&quot;arm_refusal_rate_pct&quot;: 2.8, &quot;churn_state&quot;: &quot;quiet&quot;, &quot;ci95_pct&quot;: [0.0, 10.2], &quot;compared&quot;: 41, &quot;controls_clean&quot;: false, &quot;family_refusal_rate_pct&quot;: 0.0, &quot;flips&quot;: 6, &quot;wording_consistency&quot;: 0.9268}</pre></td>
+  <td><p>This is the nearest prior full sweep. A canonical-only current run is not a like-for-like recovery test.</p><a href="https://palimpsest.info/readings/refusal-drift-history.jsonl">Open source artifact</a></td>
+</tr></tbody></table></div>
+    </section>
+
+    <section class="ej-gates ej-wrap" aria-labelledby="gates-heading">
+      <div class="ej-section-head"><p>Quality gate</p><h2 id="gates-heading">Why this article was allowed to publish</h2></div>
+      <ul><li><span aria-hidden="true">✓</span><div><strong>The eval registry verifies from genesis to the cited runs</strong><p>All 4 panel runs match verified registry attestations.</p><code>registry-chain</code></div></li><li><span aria-hidden="true">✓</span><div><strong>Control failures are visible and constrain the interpretation</strong><p>A failed control produces an instrument warning, never a censorship claim.</p><code>controls-accounted-for</code></div></li><li><span aria-hidden="true">✓</span><div><strong>The article reports denominators and uncertainty with the rate</strong><p>Family counts and Wilson 95% interval bounds remain attached to the score.</p><code>uncertainty-visible</code></div></li><li><span aria-hidden="true">✓</span><div><strong>Every analytical sentence names exact evidence receipts</strong><p>10 of 10 analytical sentences carry citations.</p><code>sentence-citations</code></div></li><li><span aria-hidden="true">✓</span><div><strong>Counterreadings, limitations, and reproduction steps are present</strong><p>The approved article shapes require all three surfaces before publication.</p><code>adversarial-reading</code></div></li><li><span aria-hidden="true">✓</span><div><strong>No interviews or free-form model prose are represented as reporting</strong><p>Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used.</p><code>bounded-authorship</code></div></li></ul>
+    </section>
+
+    <section class="ej-revisions ej-wrap" aria-labelledby="revisions-heading">
+      <div><p class="ej-kicker">Correction record</p><h2 id="revisions-heading">The current head and every preserved revision</h2><p>A later eval may update this living analysis. Prior structured revisions remain addressable and the current head points back to the one it replaced.</p></div>
+      <ul><li><a href="revisions/evalarticlev-c0434d083078af97c5edd822.json">evalarticlev-c0434d083078af97c5edd822</a></li><li><a href="revisions/evalarticlev-6e1c7a9be232217585594328.json">evalarticlev-6e1c7a9be232217585594328</a> <span>current</span></li><li><a href="revisions/evalarticlev-1a34346111e4a4f18023cf90.json">evalarticlev-1a34346111e4a4f18023cf90</a></li></ul>
+    </section>
+
+    <footer class="ej-disclosure ej-wrap"><span>Machine authorship boundary</span><p>Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used.</p></footer>
+  </article>
+</main>
+<footer class="ej-footer"><div class="ej-wrap"><a href="/journal/">← Live Eval Findings</a><p>Public evidence. Visible limits. Offline verification.</p><a href="/readings/eval-registry.html">Open the Registry</a></div></footer>
+<script src="/assets/shell.js" defer></script>
+</body></html>

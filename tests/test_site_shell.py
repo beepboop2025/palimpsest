@@ -44,6 +44,9 @@ import sync_nav  # noqa: E402
 GENERATED = {
     "china-brief.html",
     "readings/generative-firewall-index.html",
+} | {
+    str(path.relative_to(ROOT))
+    for path in (ROOT / "journal").glob("**/index.html")
 }
 
 NAV_BLOCK = re.compile(
@@ -189,6 +192,7 @@ def test_generated_pages_use_the_shared_nav():
         ("scripts/build_china_brief.py", "china-brief.html"),
         ("scripts/generative_firewall_reading.py",
          "readings/generative-firewall-index.html"),
+        ("scripts/build_eval_findings.py", "journal/index.html"),
     ):
         src = (ROOT / script).read_text(encoding="utf-8")
         assert "site_nav" in src, (
@@ -210,6 +214,21 @@ def test_skip_link_is_not_promoted_into_the_content_plane():
 
     assert "body.ps > *:not(.ps-nav):not(.ps-skip)" in css
     assert "body.ps > *:not(.ps-nav) { position: relative" not in css
+
+
+def test_wide_eval_menu_is_anchored_inside_the_desktop_viewport():
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+
+    assert ".ps-nav__item:nth-last-child(-n+3) .ps-flyout" in css
+    assert "left: auto; right: 0" in css
+
+
+def test_observatory_flyout_is_active_for_generated_china_routes():
+    observatory = next(item for item in site_nav.NAV if item["label"] == "Observatory")
+
+    assert site_nav._within(observatory, "/china/")
+    assert site_nav._within(observatory, "/china/sources/nbs-national-data/")
+    assert site_nav._within(observatory, "/dashboards/ddti_observatory.html")
 
 
 def test_mobile_menu_owns_focus_until_it_closes():

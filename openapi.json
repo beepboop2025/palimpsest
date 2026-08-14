@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.7.0",
-    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, AI Eval Journal, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom, deterministic machine-analysis desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.8.0",
+    "description": "Stable public JSON readings from the Palimpsest censorship observatory, evidence wire, AI Eval Journal, Live Eval Findings, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated reporting newsroom, deterministic machine-analysis desk and verifiable AI evaluation registry. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -61,6 +61,18 @@
       },
       "EvalJournal": {
         "$ref": "https://palimpsest.info/protocol/eval-journal-v1.schema.json"
+      },
+      "EvalFindings": {
+        "type": "object",
+        "description": "Deterministic live articles built from a verified refusal-drift panel, with controls, uncertainty and sentence receipts.",
+        "required": ["schema_version", "generated_at", "source", "scope", "publication_policy", "n_articles", "articles"],
+        "properties": {
+          "schema_version": {"type": "string", "const": "palimpsest-eval-journal.v1"},
+          "generated_at": {"type": "string", "format": "date-time"},
+          "n_articles": {"type": "integer", "minimum": 1},
+          "articles": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": true}}
+        },
+        "additionalProperties": true
       },
       "NewsroomDenominator": {
         "type": "object",
@@ -272,6 +284,10 @@
         "description": "Evidence-bound AI-evaluation essays with limitations, falsifiers and source receipts",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvalJournal"}}}
       },
+      "EvalFindings": {
+        "description": "Current deterministic AI-evaluation findings with sentence receipts and immutable revisions",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvalFindings"}}}
+      },
       "NewsroomFeed": {
         "description": "Published structured newsroom edition",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
@@ -389,6 +405,11 @@
       "operationId": "getEvalJournal",
       "summary": "Read evidence-bound AI-evaluation articles and their exact source receipts",
       "responses": {"200": {"$ref": "#/components/responses/EvalJournal"}}
+    }},
+    "/readings/eval-articles-latest.json": {"get": {
+      "operationId": "getLiveEvalFindings",
+      "summary": "Read current deterministic eval findings, controls, uncertainty and sentence receipts",
+      "responses": {"200": {"$ref": "#/components/responses/EvalFindings"}}
     }},
     "/readings/refusal-drift-latest.json": {"get": {
       "operationId": "getRefusalDrift",

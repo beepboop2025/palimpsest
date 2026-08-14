@@ -881,6 +881,23 @@
       "license": {"name": "MIT for Palimpsest text, method and structured records; cited upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "eval-articles",
+      "name": "Live Eval Findings",
+      "description": "Continuously rebuilt analysis of the latest verified refusal-drift panel. Findings retain controls, denominators, Wilson intervals, counterreadings, limitations, falsifiers, sentence-level selectors and content-addressed revision receipts.",
+      "layer": "model",
+      "stage": "publication",
+      "collection_mode": "deterministic-evidence-bound-analysis",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": ["GLOBAL"],
+      "sources": ["Palimpsest refusal-drift reading, transcripts and verified eval registry"],
+      "latest": "readings/eval-articles-latest.json",
+      "landing_page": "journal/",
+      "method": "docs/EVAL-FINDINGS.md",
+      "count_fields": ["n_articles"],
+      "license": {"name": "MIT for Palimpsest text, method and structured records; model-output provider terms remain applicable to cited transcripts", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "anchors",
       "name": "External integrity anchors",
       "description": "Deposits ledger roots outside Palimpsest's infrastructure and reports verification problems without hiding partial failure.",

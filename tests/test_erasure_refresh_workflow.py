@@ -143,3 +143,7 @@ def test_eval_assurance_is_rebuilt_after_every_chain_reconciliation():
     assert text.count("python -m scripts.build_eval_journal") >= 6
     assert "python -m scripts.build_eval_journal --check" in text
     assert "readings/eval-journal-latest.json" in text
+    assert text.count("python -m scripts.build_eval_findings") >= 6
+    assert "python -m scripts.build_eval_findings --check" in text
+    assert "readings/eval-articles-latest.json" in text
+    assert "journal/" in text

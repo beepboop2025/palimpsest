@@ -29,6 +29,9 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     assert card["evidence"]["eval_journal_json"].endswith(
         "/readings/eval-journal-latest.json"
     )
+    assert card["evidence"]["live_eval_findings_json"].endswith(
+        "/readings/eval-articles-latest.json"
+    )
     bridge = card["integrations"]["scamshield"]
     assert bridge["schema"] == "scamshield-intelligence-pack/v1"
     assert bridge["version"] == "2026-08-08.2"
@@ -89,6 +92,19 @@ def test_openapi_publishes_the_closed_eval_journal_contract():
     }
 
 
+def test_openapi_publishes_live_eval_findings():
+    spec = _json("openapi.json")
+    schema = spec["components"]["schemas"]["EvalFindings"]
+    assert schema["properties"]["schema_version"]["const"] == (
+        "palimpsest-eval-journal.v1"
+    )
+    operation = spec["paths"]["/readings/eval-articles-latest.json"]["get"]
+    assert operation["operationId"] == "getLiveEvalFindings"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/EvalFindings"
+    }
+
+
 def test_developer_page_exposes_every_activation_path():
     page = (ROOT / "developers.html").read_text(encoding="utf-8")
     assert '<link rel="canonical" href="https://palimpsest.info/developers.html">' in page
@@ -127,7 +143,7 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert "https://t.me/NarcoScopeEvidenceBot" in home
     assert "https://t.me/palimpsest_watch_bot" in home
     assert "https://t.me/EvidenceSignalDesk" in home
-    assert '"Developers", "href": "/developers.html"' in nav
+    assert '("/developers.html", "Developers"' in nav
     assert '"Eval Journal", "href": "/evals/"' in nav
 
     card = _json("product-card.json")

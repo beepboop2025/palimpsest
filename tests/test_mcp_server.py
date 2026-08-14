@@ -446,6 +446,9 @@ def test_registry_signals_are_published_and_described_truthfully():
         path, desc = mcp.SIGNALS[name]
         assert path == f"/readings/{name}-latest.json"
         assert desc
+    findings_path, findings_desc = mcp.SIGNALS["eval-findings"]
+    assert findings_path == "/readings/eval-articles-latest.json"
+    assert "sentence-level" in findings_desc and "uncertainty" in findings_desc
     reg = mcp.SIGNALS["eval-registry"][1].lower()
     assert "cn-sensitive-generative-firewall-v1" in reg
     assert "frontier-overrefusal-v2" in reg

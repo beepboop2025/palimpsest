@@ -1,376 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="google-site-verification" content="FrEE2TEw-orJte17BLZ9M5E-y5dyWyUn-vov7FfgSD8">
-<title>Palimpsest · verifiable public evidence + reviewed intelligence</title>
-<meta name="description" content="Palimpsest measures censorship, seals AI evaluations, and publishes a structured evidence commons connecting reviewed ScamShield, NarcoScope, Seiche and LiquiLens context without collapsing unlike evidence into one score.">
-<meta name="keywords" content="AI evaluation registry, verifiable evals, tamper-evident, refusal drift, authoritarian censorship, AI censorship, generative firewall, LLM refusal measurement, China censorship, DNS injection, middlebox interference, App Store censorship, blocklist keywords, deletion as data, censorship observatory, DDTI, state-aligned AI, China Digital Times, OONI, OSINT censorship">
-<meta name="author" content="Palimpsest">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-<link rel="canonical" href="https://palimpsest.info/">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-site-verification" content="FrEE2TEw-orJte17BLZ9M5E-y5dyWyUn-vov7FfgSD8">
+  <title>Palimpsest | Evidence that survives its author</title>
+  <meta name="description" content="Palimpsest publishes evidence-bound AI evaluation analysis, a public-source wire, and China observatory records whose claims remain attached to their receipts, limits, and revisions.">
+  <meta name="keywords" content="AI evaluation journal, verifiable evals, refusal drift, censorship observatory, evidence receipts, China censorship, public-source intelligence">
+  <meta name="author" content="Palimpsest">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <link rel="canonical" href="https://palimpsest.info/">
+  <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+  <link rel="alternate" type="application/feed+json" title="Palimpsest AI Eval Journal" href="/evals/feed.json">
+  <link rel="alternate" type="application/rss+xml" title="Palimpsest AI Eval Journal" href="/evals/feed.xml">
+  <link rel="alternate" type="application/feed+json" title="Palimpsest Live Eval Findings" href="/journal/feed.json">
+  <link rel="service-desc" type="application/vnd.oai.openapi+json" href="/openapi.json">
 
-<!-- PWA / installable -->
-<meta name="theme-color" content="#0a0a0c">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Palimpsest">
-<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
+  <meta name="theme-color" content="#08110f">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Palimpsest">
 
-<!-- Open Graph / social -->
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Palimpsest · verifiable public evidence + reviewed intelligence">
-<meta property="og:description" content="A censorship observatory, tamper-evident AI evaluation registry and structured evidence commons for China, ScamShield, NarcoScope, Seiche and LiquiLens context.">
-<meta property="og:url" content="https://palimpsest.info/">
-<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Palimpsest: AI evaluations with public commitments, sealed results and external witnesses. Rewrite the served record and the verification path exposes the conflict.">
-<meta property="og:locale" content="en_US">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Palimpsest · verifiable public evidence + reviewed intelligence">
-<meta name="twitter:description" content="Censorship measurements, sealed AI evaluations, and a reviewed ScamShield intelligence bridge that publishes typologies without exporting people.">
-<meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Palimpsest">
+  <meta property="og:title" content="Palimpsest | Evidence that survives its author">
+  <meta property="og:description" content="AI evaluation analysis, public-source reporting, and observatory records with their evidence and uncertainty intact.">
+  <meta property="og:url" content="https://palimpsest.info/">
+  <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Palimpsest, a verifiable public evidence observatory">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Palimpsest | Evidence that survives its author">
+  <meta name="twitter:description" content="Every analytical claim keeps its receipt, limitation, and revision history.">
+  <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
-<!-- Structured data: declares Palimpsest as a citable Dataset + Organization for AI/search engines -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://palimpsest.info/#org",
-      "name": "Palimpsest",
-      "url": "https://palimpsest.info/",
-      "sameAs": ["https://github.com/beepboop2025/palimpsest"],
-      "description": "Open-source public-good observatory that measures authoritarian and AI-model censorship, seals AI evaluation results, and publishes a structured, non-causal evidence commons connecting reviewed ScamShield, NarcoScope, Seiche and LiquiLens context."
-    },
-    {
-      "@type": "WebSite",
-      "@id": "https://palimpsest.info/#website",
-      "url": "https://palimpsest.info/",
-      "name": "Palimpsest · verifiable public evidence + reviewed intelligence",
-      "publisher": { "@id": "https://palimpsest.info/#org" },
-      "inLanguage": "en"
-    },
-    {
-      "@type": "Dataset",
-      "@id": "https://palimpsest.info/#dataset",
-      "name": "Palimpsest Censorship Observatory Dataset",
-      "description": "Continuously updated measurements of censorship in China across three layers. Network layer: DNS answers forged for censored domains as seen by probes inside mainland China, HTTP rewriting by in-path middleboxes and circumvention transport health from OONI, App Store availability in the Chinese storefront, and website, messenger and circumvention-tool blocking rates. Content layer: deletion as data, archived public posts watched for scrubbing and ranked by censor attention and novelty, validated against six documented censorship events, plus keywords newly present in successive client blocklists. Model layer: the Generative Firewall Index, the share of sensitive answers that state-aligned AI models refuse or rewrite against neutral controls, in Chinese and English. Every finding ships its raw evidence.",
-      "url": "https://palimpsest.info/",
-      "keywords": ["authoritarian censorship", "AI censorship", "generative firewall", "LLM refusal", "deletion as data", "China censorship", "DDTI", "censor attention", "DNS injection", "middlebox interference", "App Store censorship", "blocklist keywords", "Great Firewall", "OONI"],
-      "measurementTechnique": ["OONI aggregation of open measurement data", "volunteer DNS probes inside mainland China compared against an out-of-country control arm", "Apple iTunes storefront lookup, Chinese storefront versus control", "diffing successive client blocklist versions from the Citizen Lab chat-censorship corpus", "archived public posts checked for later removal", "probing state-aligned language models on a frozen sensitive prompt set against neutral controls"],
-      "creator": { "@id": "https://palimpsest.info/#org" },
-      "publisher": { "@id": "https://palimpsest.info/#org" },
-      "isAccessibleForFree": true,
-      "license": "https://opensource.org/licenses/MIT",
-      "spatialCoverage": "China",
-      "temporalCoverage": "2026-05/..",
-      "distribution": [
-        { "@type": "DataDownload", "name": "Deletion-as-data corpus", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/latest.json" },
-        { "@type": "DataDownload", "name": "Inside View, DNS forgery seen from inside China", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/inside-view-latest.json" },
-        { "@type": "DataDownload", "name": "Data darkness, publication-cadence watch over official Chinese data surfaces", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/data-darkness-latest.json" },
-        { "@type": "DataDownload", "name": "Silence Index, pre-emptive silence over topics loud abroad", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/silence-index-latest.json" },
-        { "@type": "DataDownload", "name": "CNY fix gap, the PBOC daily fix against an independent reference rate", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/cny-fix-gap-latest.json" },
-        { "@type": "DataDownload", "name": "In-Path Interference, middlebox and transport health", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/in-path-interference-latest.json" },
-        { "@type": "DataDownload", "name": "App Store Layer, Chinese storefront availability", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/app-storefront-latest.json" },
-        { "@type": "DataDownload", "name": "Blocklist Archaeology, newly shipped censorship keywords", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/blocklist-latest.json" },
-        { "@type": "DataDownload", "name": "Great Firewall network blocking rates", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/ooni-gfw-latest.json" },
-        { "@type": "DataDownload", "name": "Erasure Observatory composite index", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/erasure-observatory-latest.json" }
-      ]
-    },
-    {
-      "@type": "Dataset",
-      "@id": "https://palimpsest.info/#eval-registry",
-      "name": "Palimpsest Verifiable Eval Registry",
-      "description": "A tamper-evident, pre-registered public record of AI model evaluations. Declared probe commitments precede their runs, every result is hash-chained, and a Merkle root fingerprints the registry. The preserved cn-sensitive-generative-firewall-v1 history covers Chinese state-aligned endpoints; a staged v2 protocol binds exact prompts and full response matrices. frontier-overrefusal-v2 covers a separate Western frontier panel with exact-prompt commitments and published current transcripts. A machine-readable assurance report keeps chain integrity, response recomputation, statistical design, human validation and independent replication separate. Anyone can recompute the chain offline from the public repository.",
-      "url": "https://palimpsest.info/readings/eval-registry.html",
-      "keywords": ["AI evaluation registry", "verifiable evals", "tamper-evident", "pre-registration", "hash chain", "Merkle root", "refusal drift", "over-refusal", "AI transparency", "frontier model evaluation", "LLM refusal measurement"],
-      "creator": { "@id": "https://palimpsest.info/#org" },
-      "publisher": { "@id": "https://palimpsest.info/#org" },
-      "isAccessibleForFree": true,
-      "license": "https://opensource.org/licenses/MIT",
-      "temporalCoverage": "2026-07/..",
-      "distribution": [
-        { "@type": "DataDownload", "name": "Sealed registry, append-only", "encodingFormat": "application/x-ndjson", "contentUrl": "https://palimpsest.info/readings/eval-registry.jsonl" },
-        { "@type": "DataDownload", "name": "Registry head state", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-registry-latest.json" },
-        { "@type": "DataDownload", "name": "AI eval claim assurance", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/eval-assurance-latest.json" }
-      ]
-    },
-    {
-      "@type": "Dataset",
-      "@id": "https://palimpsest.info/#scamshield-intelligence-pack",
-      "name": "Palimpsest ScamShield Intelligence Pack",
-      "description": "A reviewed, inert map of 18 public sources and 8 scam and money-flow typologies across three dimensions. Support levels describe evidence relationships, not guilt or risk. Raw Telegram messages, exact indicators, private Evidence Capsules and owner-only liquidity values are excluded; outward candidates require human review and are never auto-published.",
-      "url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
-      "version": "2026-08-08.2",
-      "keywords": ["ScamShield", "scam typologies", "threat intelligence", "privacy-minimized intelligence", "Evidence Capsules"],
-      "creator": { "@id": "https://palimpsest.info/#org" },
-      "publisher": { "@id": "https://palimpsest.info/#org" },
-      "isAccessibleForFree": true,
-      "license": "https://opensource.org/licenses/MIT",
-      "distribution": [
-        { "@type": "DataDownload", "name": "ScamShield intelligence pack v1", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json" }
-      ]
-    }
-  ]
-}
-</script>
-
-<!-- FAQ schema: feeds "what is …" answer boxes in Google AI Overviews & Gemini.
-     Answers mirror the visible FAQ section below (Google requires parity). -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "@id": "https://palimpsest.info/#faq",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "What is Palimpsest?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Palimpsest is three things built on one instrument. It is a free, open-source observatory that measures how authoritarian states censor, at the network, content and model layers. It is a verifiable AI eval registry, where published commitments make a later revision detectable and external anchors keep the history from resting only on the operator's word. And it is a public good: MIT licensed, free to read, funded by grants and individuals rather than by customers. It watches the censor, never the censored, and ships raw evidence with every finding."
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://palimpsest.info/#org",
+        "name": "Palimpsest",
+        "url": "https://palimpsest.info/",
+        "sameAs": ["https://github.com/beepboop2025/palimpsest"],
+        "description": "An open-source public-good observatory and evidence publication."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://palimpsest.info/#website",
+        "url": "https://palimpsest.info/",
+        "name": "Palimpsest",
+        "publisher": {"@id": "https://palimpsest.info/#org"},
+        "inLanguage": "en"
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": "https://palimpsest.info/#publication",
+        "url": "https://palimpsest.info/",
+        "name": "Palimpsest evidence publication",
+        "description": "A structured evidence commons for sealed AI evaluations, public-source reporting, and China observatory records.",
+        "publisher": {"@id": "https://palimpsest.info/#org"},
+        "hasPart": [
+          {"@id": "https://palimpsest.info/evals/"},
+          {"@id": "https://palimpsest.info/journal/"},
+          {"@id": "https://palimpsest.info/news/"},
+          {"@id": "https://palimpsest.info/china/"},
+          {"@id": "https://palimpsest.info/readings/eval-registry.html"}
+        ]
+      },
+      {
+        "@type": "Dataset",
+        "@id": "https://palimpsest.info/#scamshield-intelligence-pack",
+        "name": "Palimpsest ScamShield Intelligence Pack",
+        "url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
+        "version": "2026-08-08.2",
+        "description": "A human-reviewed, privacy-minimized map of public sources and scam typologies."
       }
-    },
-    {
-      "@type": "Question",
-      "name": "What is the Palimpsest censorship observatory measuring?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Removal, on three layers. The network layer: DNS answers forged for censored domains, HTTP rewritten in transit by in-path middleboxes, circumvention transports degraded, apps missing from the Chinese App Store storefront, and website and messenger blocking rates. The content layer: deletion as data, which topics the Chinese censor is most actively scrubbing right now, ranked by censor attention and novelty and validated against six documented censorship events, plus the keywords newly added to successive client blocklists. The model layer: the Generative Firewall Index, the share of sensitive answers that state-aligned large language models refuse or rewrite, tested in Chinese and English against neutral control models. Each layer has its own vantage and its own failure modes, so each is reported separately and cross-checked against the others."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What does Palimpsest measure from inside China?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The Inside View signal uses volunteer Globalping probes inside mainland China to resolve a fixed panel of censored and control domains. An answer received inside China is treated as forged when it shares no address with the answer the same round received outside China, so no list of forged addresses has to be hardcoded and a rotating injector pool is still caught. Everything else on the site looks at the firewall from outside. This looks out from inside it. The constraint is real and stated with every reading: the in-China probes sit on datacentre networks, so this is filtering as experienced on Chinese cloud networks, which is not necessarily what a household sees, and a forged answer proves on-path DNS interference rather than national filtering on its own."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What is China censoring right now?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Palimpsest tracks this live. It reads China Digital Times' curated record of removed posts and leaked propaganda directives, and ranks the topics drawing the most censor attention as a live censorship index — attention allocation, not a deletion rate. Alongside it, the network signals show which domains are being answered with forged DNS, which apps have left the Chinese storefront, and which keywords the platform blocklists have newly started to carry. The live readings and raw JSON evidence are published here at palimpsest.info, updated continuously."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What is the Generative Firewall Index?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The Generative Firewall Index measures how often a named panel of state-aligned language-model endpoints refuses or substitutes state-narrative answers on frozen sensitive prompts in Chinese and English, reported beside neutral and matched controls. Contrasts can expose content- or language-conditioned behavior on that panel. They do not prove a model maker's motive or represent every Chinese model."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Why did Palimpsest's founder start doing AI evaluations?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. A screenshot could capture one response but could not prove the questions were fixed first, show whether the pattern persisted, or expose a later edit. That gap became the Generative Firewall and then the eval registry. The claim stays scoped to named models, prompts and dates; it is not a claim about every Chinese model and does not prove motive."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What is the Verifiable Eval Registry?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. Declared probe commitments precede their runs, each result is hash-chained, and a Merkle root fingerprints the registry. GFI v1's China-focused history is preserved while its staged v2 protocol adds exact-prompt and full-matrix evidence; frontier-overrefusal-v2 publishes exact prompt commitments and current full transcripts for a separate Western panel. Anyone can recompute the chain offline. External anchors make whole-history revision observable beyond the operator, while a separate assurance report says that human construct validation and unaffiliated replication remain unfinished."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What is the ScamShield reviewed bridge?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The ScamShield reviewed bridge lets ScamShield load a public, inert map of reviewed sources and typologies while keeping message-level evidence private. The current scamshield-intelligence-pack/v1 release is 2026-08-08.2, with 18 sources, 8 typologies and 3 dimensions. Raw Telegram text is hashed and not sent by default; the public pack excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values. Privacy-minimized publication candidates require human review and are never auto-published. TYPOLOGY_MATCH, CORROBORATED_LEAD and DIRECT_LINK describe evidence relationships, not guilt or risk."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Is Palimpsest free and open source?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public good. It is never a commercial product and never monetizes the people or topics it observes. Its code, method, and raw evidence are all public on GitHub at github.com/beepboop2025/palimpsest."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How is Palimpsest funded?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "By grants and individual contributions, not by customers. There is no paid tier, no supporter-only data and no gate, and there will not be one. Funding pays for the unglamorous parts: probe credits, model API calls for the frozen eval suites, storage for the evidence, and the maintenance that keeps a collector honest when a source changes shape. Everything it produces is published the moment it exists, under MIT, to everyone at once."
-      }
-    }
-  ]
-}
-</script>
+    ]
+  }
+  </script>
 
-<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
-<link rel="stylesheet" href="/dashboards/assets/tikto.css">
-<link rel="stylesheet" href="/assets/shell.css">
-<link rel="stylesheet" href="/assets/charts.css">
-<style>
-  /* Page-specific only. Nothing here redefines a token or a ps-* class. */
-
-  /* ---- hero ----
-     Block padding only. A `padding` shorthand here would land after shell.css
-     at equal specificity and quietly cancel .ps-wrap's gutter, which shows up
-     as the hero touching the screen edge on a phone. */
-  .hero { padding-top: clamp(40px, 7vh, 76px); padding-bottom: clamp(26px, 4vh, 44px); }
-  .hero__logo { width: 56px; height: 56px; display: block; margin: 0 0 20px;
-                filter: drop-shadow(0 6px 22px rgba(0,0,0,.45)); }
-  .hero__note { font-family: var(--tk-font-mono); font-size: 11px; line-height: 1.6;
-                color: var(--tk-text-4); margin: 18px 0 0; max-width: 62ch; }
-
-  /* ---- the publications come before the product map ---- */
-  .publication-doors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-                       gap: 14px; margin: 28px 0 0; }
-  .wire-door { display: grid; grid-template-columns: 1fr;
-               gap: 16px 30px; align-items: end; margin: 0; padding: 22px 24px;
-               color: inherit; text-decoration: none; background: #edf2f1;
-               border: 1px solid #aab8ba; box-shadow: 9px 10px 0 rgba(25,87,210,.16);
-               transition: transform var(--ps-t-fast) var(--ps-ease),
-                           box-shadow var(--ps-t-fast) var(--ps-ease); }
-  .wire-door:hover { transform: translateY(-2px); box-shadow: 12px 13px 0 rgba(25,87,210,.21); }
-  .wire-door__eyebrow { display: block; margin-bottom: 7px; color: #1957d2;
-                        font-family: var(--tk-font-mono); font-size: 10px; font-weight: 700;
-                        letter-spacing: .14em; text-transform: uppercase; }
-  .wire-door__title { display: block; color: #0b131c; font-size: clamp(23px,3.6vw,38px);
-                      font-weight: 800; line-height: 1.05; letter-spacing: -.025em; }
-  .wire-door__body { display: block; color: #42515d; font-size: 13px; line-height: 1.55; }
-  .wire-door__go { display: block; margin-top: 12px; color: #103d9f;
-                   font-family: var(--tk-font-mono); font-size: 10.5px; font-weight: 700;
-                   letter-spacing: .07em; text-transform: uppercase; }
-  .wire-door--eval { grid-template-columns: 1fr; background: #0a1018;
-                     border-color: rgba(53,211,220,.62); box-shadow: 9px 10px 0 rgba(53,211,220,.14); }
-  .wire-door--eval:hover { box-shadow: 12px 13px 0 rgba(53,211,220,.2); }
-  .wire-door--eval .wire-door__eyebrow { color: #35d3dc; }
-  .wire-door--eval .wire-door__title { color: #f7faf9; }
-  .wire-door--eval .wire-door__body { color: #aebbc2; }
-  .wire-door--eval .wire-door__go { color: #35d3dc; }
-  @media (max-width: 920px) { .publication-doors { grid-template-columns: 1fr; } }
-  @media (prefers-reduced-motion: reduce) { .wire-door:hover { transform: none; } }
-
-  /* ---- the four public surfaces ---- */
-  .doors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-           gap: 14px; margin: 30px 0 0; }
-  @media (max-width: 1120px) { .doors { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 680px) { .doors { grid-template-columns: 1fr; } }
-  .door { display: flex; flex-direction: column; padding: 18px 20px 16px;
-          text-decoration: none; color: inherit; min-height: 236px; }
-  .door__k { display: flex; align-items: center; gap: 7px; margin: 0 0 9px;
-             font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .16em;
-             text-transform: uppercase; color: var(--tk-text-3); }
-  .door__t { font-size: 19px; line-height: 1.2; font-weight: 700; letter-spacing: -.015em;
-             color: var(--tk-text-0); margin: 0 0 8px; }
-  .door__b { font-size: 13px; line-height: 1.55; color: var(--tk-text-2); margin: 0 0 16px; }
-  .door__go { margin: auto 0 0; padding-top: 14px; font-family: var(--tk-font-mono);
-              font-size: 10.5px; letter-spacing: .07em; color: var(--tk-live);
-              border-top: 1px solid var(--ps-edge-1); }
-
-  /* ---- a figure and the sentence it fails back to ---- */
-  .stat { margin: 0 0 14px; min-height: 62px; }
-  .stat__line { display: flex; align-items: baseline; gap: 2px; }
-  .stat__fig { font-size: 34px; line-height: 1; font-weight: 800; letter-spacing: -.025em;
-               color: var(--tk-text-0); }
-  .stat__unit { font-size: 14px; font-weight: 600; color: var(--tk-text-3); }
-  .stat__cap { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.45;
-               color: var(--tk-text-3); }
-  .stat__static { display: block; font-size: 12.5px; line-height: 1.5; color: var(--tk-text-3); }
-  .stat__err { display: block; margin-top: 6px; font-family: var(--tk-font-mono);
-               font-size: 10.5px; color: var(--tk-warning); }
-  .stat__err a { color: inherit; }
-  .stat--sm .stat__fig { font-size: 27px; }
-  .stat--sm { min-height: 0; margin-bottom: 10px; }
-
-  .fresh { display: inline-flex; align-items: center; gap: 6px;
-           font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .08em;
-           text-transform: uppercase; color: var(--tk-text-4); }
-  .fresh.is-stale { color: var(--tk-warning); }
-
-  /* ---- pillar bands ---- */
-  .pillar { padding-top: 8px; padding-bottom: 44px; }   /* block only, see .hero */
-  .claim__lede { font-size: 14.5px; line-height: 1.6; color: var(--tk-text-2); margin: 0 0 18px; }
-  .btn-row { display: flex; flex-wrap: wrap; gap: 9px; }
-  .stack { display: grid; gap: 12px; }
-
-  /* ---- signal cards ---- */
-  .lead { display: block; padding: 22px 24px 20px; text-decoration: none; color: inherit; }
-  .lead__t { font-size: 21px; font-weight: 700; letter-spacing: -.015em;
-             color: var(--tk-text-0); margin: 0 0 12px; }
-  .lead__b { font-size: 13.5px; line-height: 1.6; color: var(--tk-text-2); margin: 0; max-width: 60ch; }
-
-  .sig-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 12px; }
-  .sig { display: flex; flex-direction: column; padding: 16px 17px 15px;
-         text-decoration: none; color: inherit; }
-  .sig__k { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 7px;
-            font-family: var(--tk-font-mono); font-size: 10px; letter-spacing: .15em;
-            text-transform: uppercase; color: var(--tk-text-4); }
-  .sig__t { font-size: 15px; font-weight: 700; color: var(--tk-text-0); margin: 0 0 9px; }
-  .sig__b { font-size: 12.5px; line-height: 1.55; color: var(--tk-text-2); margin: 0 0 10px; }
-  .sig__f { margin: auto 0 0; padding-top: 10px; border-top: 1px solid var(--ps-edge-1); }
-
-  /* ---- evidence and caveat strips (plane 1) ---- */
-  .note { padding: 15px 17px; }
-  .note__h { font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
-             text-transform: uppercase; color: var(--tk-text-4); margin: 0 0 8px; }
-  .note p + .note__h { margin-top: 14px; }
-  .note p { font-size: 12px; line-height: 1.6; color: var(--tk-text-3); margin: 0 0 8px; max-width: 74ch; }
-  .note p:last-child { margin-bottom: 0; }
-  .note code { font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-1);
-               background: rgba(255,255,255,.05); padding: 1px 5px; border-radius: 5px; }
-  .note a { color: var(--tk-live); }
-  .filelist { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0; padding: 0; list-style: none; }
-  .filelist a { display: inline-block; padding: 6px 0; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-2);
-                text-decoration: none; border-bottom: 1px solid var(--ps-edge-2); }
-  .filelist a:hover { color: var(--tk-live); border-bottom-color: var(--tk-live); }
-
-  /* ---- method + faq ---- */
-  .method { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-  .method div { padding: 16px 17px; }
-  .method h3 { font-size: 14.5px; font-weight: 700; color: var(--tk-text-0); margin: 0 0 7px; }
-  .method p { font-size: 12.5px; line-height: 1.55; color: var(--tk-text-2); margin: 0; }
-  .links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 16px 0 0; }
-  .links a { font-size: 13px; color: var(--tk-live); text-decoration: none; }
-  .links a:hover { text-decoration: underline; }
-
-  .faq h3 { font-size: 15.5px; font-weight: 700; color: var(--tk-text-0); margin: 22px 0 6px; }
-  .faq p { font-size: 14px; line-height: 1.62; color: var(--tk-text-2); margin: 0; max-width: 74ch; }
-  .faq a { color: var(--tk-live); }
-
-  .foot { margin: 46px 0 60px; padding-top: 18px; border-top: 1px solid var(--ps-edge-1);
-          font-family: var(--tk-font-mono); font-size: 11.5px; line-height: 1.75;
-          color: var(--tk-text-4); max-width: 76ch; }
-  .foot a { color: var(--tk-text-2); }
-</style>
+  <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+  <link rel="stylesheet" href="/assets/shell.css">
+  <link rel="stylesheet" href="/assets/home.css">
+  <script src="/assets/home.js" defer></script>
+  <script src="/assets/network-relay.js" defer></script>
+  <script src="/assets/shell.js" defer></script>
 </head>
-<body class="ps">
+<body class="ps home">
 <!--PS_NAV-->
 <a class="ps-skip" href="#main">Skip to content</a>
 <nav class="ps-nav" aria-label="Primary">
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-1">Censorship<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout ps-flyout--wide" id="ps-fly-1">
-        <p class="ps-flyout__lede">What the apparatus removed, measured at the network, content and model layers.</p>
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-facing economic releases and censorship measurements, separated by method and joined only by receipts.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Boards</p>
-            <a href="/osint-china.html"><b>OSINT China<span class="ps-tag">new</span></b><span>Every signal, source and freshness state in one public roll-up</span></a>
+            <p class="ps-flyout__head">Start</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>What changed, what is withheld, and the evidence behind both</span></a>
+            <a href="/osint-china.html"><b>OSINT China</b><span>Censorship signals, sources and freshness in one public roll-up</span></a>
             <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Economic record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
+            <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Information controls</p>
             <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
             <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
             <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
@@ -388,12 +138,13 @@
       </div>
     </div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
         <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Measure</p>
+            <p class="ps-flyout__head">Read</p>
+            <a href="/journal/"><b>Live Eval Findings<span class="ps-tag">new</span></b><span>Current model-panel analysis with uncertainty and sentence receipts</span></a>
             <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
             <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
           </div>
@@ -401,12 +152,12 @@
             <p class="ps-flyout__head">Verify</p>
             <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
             <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/refusal-drift-latest.json"><b>Latest panel JSON</b><span>Rates, controls, intervals and model-level labels</span></a>
             <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
           </div>
         </div>
       </div>
     </div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout" id="ps-fly-4">
@@ -424,9 +175,26 @@
         </div>
       </div>
     </div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/data.html">Data</a></div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/developers.html">Developers</a></div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Fund</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-5">
+        <p class="ps-flyout__lede">Use the public record, reproduce the methods, or help keep the work independent.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use Palimpsest</p>
+            <a href="/data.html"><b>Data</b><span>Every public dataset, format and licence</span></a>
+            <a href="/developers.html"><b>Developers</b><span>REST, MCP and machine-readable contracts</span></a>
+            <a href="/for-researchers.html"><b>For researchers</b><span>Methods, validation and citation guidance</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Carry exact claims and supporting bytes elsewhere</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Public good</p>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall, no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
   <div class="ps-nav__scrim" aria-hidden="true"></div>
@@ -434,1225 +202,219 @@
 <!--/PS_NAV-->
 
 <main id="main">
-
-  <!-- ══ HERO: pick your door ═══════════════════════════════════════════ -->
-  <header class="hero ps-wrap ps-recede">
-    <img class="hero__logo" src="/brand/palimpsest-icon.svg" alt="Palimpsest logo" width="56" height="56">
-    <p class="ps-kicker">Open source · public good · MIT</p>
-    <h1 class="ps-h1">Palimpsest</h1>
-    <p class="ps-lede">Start with what changed, then inspect the receipts. Palimpsest turns its live
-    censorship, network, state-telemetry and model readings into structured news; every headline keeps
-    its denominator, freshness, limitation and exact source hash. The observatory, verifiable AI eval
-    registry and reviewed intelligence bridges remain underneath as evidence infrastructure. It watches
-    the censor, never the censored.</p>
-    <div class="btn-row">
-      <a class="ps-btn" href="/news/">Read the latest edition</a>
-      <a class="ps-btn ps-btn--ghost" href="/evals/">Read the AI Eval Journal</a>
-      <a class="ps-btn ps-btn--telegram" href="https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero" target="_blank" rel="noopener noreferrer">Get the daily observatory read ↗</a>
-      <a class="ps-btn ps-btn--ghost" href="/data.html">Browse structured data</a>
-      <a class="ps-btn ps-btn--ghost" href="/developers.html">Connect the API + MCP</a>
-    </div>
-
-    <div class="publication-doors ps-stagger">
-      <a class="wire-door ps-reveal" href="/news/">
-        <span>
-          <span class="wire-door__eyebrow">Palimpsest Wire · latest verified edition</span>
-          <span class="wire-door__title">China evidence, reported without hiding the gaps.</span>
-        </span>
-        <span class="wire-door__body">Normalized instruments and attributed reporting become dated,
-        citable dossiers with per-story JSON, RSS and visible coverage failures.
-        <span class="wire-door__go">Open the evidence wire →</span></span>
-      </a>
-
-      <a class="wire-door wire-door--eval ps-reveal" href="/evals/">
-        <span>
-          <span class="wire-door__eyebrow">New · Palimpsest AI Eval Journal</span>
-          <span class="wire-door__title">The methods, failures and findings now publish with receipts.</span>
-        </span>
-        <span class="wire-door__body">Four launch essays bind every claim to exact evidence files,
-        visible limits, a falsifier, verification commands and machine-readable feeds.
-        <span class="wire-door__go">Read edition 001 →</span></span>
-      </a>
-    </div>
-
-    <div class="doors ps-stagger">
-
-      <a class="door ps-p3 ps-reveal" href="#censorship">
-        <p class="door__k"><span class="ps-dot ps-dot--live" style="color:var(--tk-live)" aria-hidden="true"></span>Censorship observatory</p>
-        <h2 class="door__t">What the apparatus removed</h2>
-        <p class="door__b">Network, content and model layers, cross-checked against each other, including
-        a vantage measured from inside mainland China.</p>
-        <p class="stat" data-stat="hero-erasure">
-          <span class="stat__static">A composite index across the three layers of erasure, recomputed
-          every six hours from the layer signals underneath it.</span>
-        </p>
-        <p class="door__go"><span class="fresh" data-fresh="hero-erasure">reading the feed</span><br>
-        For researchers, journalists and OSINT <span aria-hidden="true">↓</span></p>
-      </a>
-
-      <a class="door ps-p3 ps-reveal" href="#evals">
-        <p class="door__k"><span class="ps-dot ps-dot--live" style="color:var(--tk-ok)" aria-hidden="true"></span>Verifiable AI eval registry</p>
-        <h2 class="door__t">Evaluations with a checkable history</h2>
-        <p class="door__b">Questions frozen and hashed before any model is asked. Every result
-        hash-chained, the whole record fingerprinted, the roots deposited outside our own infrastructure.</p>
-        <p class="stat" data-stat="hero-evals">
-          <span class="stat__static">An append-only record of sealed evaluations, recomputable offline
-          by anyone who clones the repository.</span>
-        </p>
-        <p class="door__go"><span class="fresh" data-fresh="hero-evals">reading the feed</span><br>
-        For labs, eval and safety researchers <span aria-hidden="true">↓</span></p>
-      </a>
-
-      <a class="door ps-p3 ps-reveal" href="#scamshield">
-        <p class="door__k"><span class="ps-dot" style="color:var(--tk-live)" aria-hidden="true"></span>Reviewed intelligence bridge</p>
-        <h2 class="door__t">Share typologies, not people</h2>
-        <p class="door__b">ScamShield loads an inert, reviewed source map. Private Evidence Capsules
-        keep message-level evidence local; public candidates are minimized and human-reviewed.</p>
-        <p class="stat">
-          <span class="stat__line"><span class="stat__fig">18</span></span>
-          <span class="stat__cap">public sources · 8 typologies · 3 dimensions · pack 2026-08-08.2</span>
-        </p>
-        <p class="door__go"><span class="fresh">no automatic publication</span><br>
-        For threat researchers and ScamShield operators <span aria-hidden="true">↓</span></p>
-      </a>
-
-      <a class="door ps-p3 ps-reveal" href="#public-good">
-        <p class="door__k"><span class="ps-dot" style="color:var(--tk-watch)" aria-hidden="true"></span>A funded public good</p>
-        <h2 class="door__t">Free to read, free to rebuild</h2>
-        <p class="door__b">Developed in the open. Never a commercial product, and it never monetizes the
-        people or the topics it observes.</p>
-        <p class="stat">
-          <span class="stat__line"><span class="stat__fig">MIT</span></span>
-          <span class="stat__cap">Licensed for reuse. No paid tier, no supporter-only data, nothing sold.</span>
-        </p>
-        <p class="door__go"><span class="fresh">grants and individuals</span><br>
-        For grantmakers and donors <span aria-hidden="true">↓</span></p>
-      </a>
-
-    </div>
-
-    <p class="hero__note">Every figure on this page is fetched from its published JSON when the page
-    loads. If a feed cannot be read you get the plain sentence instead of a number, never a zero and
-    never a placeholder that looks like a reading.</p>
-  </header>
-
-  <!-- ══ EVIDENCE RELAY: a bounded handoff to the sister publication ═══ -->
-  <section class="sister-relay ps-wrap ps-reveal" id="narcoscope-relay" data-narcoscope-relay aria-labelledby="narcoscope-relay-title">
-    <div class="sister-relay__route" aria-hidden="true">
-      <svg viewBox="0 0 480 190">
-        <path d="M24 136 C142 22 307 30 456 86"></path>
-        <path d="M24 136 C168 186 320 171 456 86"></path>
-        <circle cx="24" cy="136" r="5"></circle>
-        <circle cx="456" cy="86" r="6"></circle>
-        <circle cx="202" cy="43" r="3"></circle>
-        <circle cx="295" cy="168" r="3"></circle>
-      </svg>
-      <span>Palimpsest</span>
-      <span>NarcoScope</span>
-    </div>
-
-    <div class="sister-relay__story">
-      <p class="sister-relay__kicker"><span></span>Evidence relay · from NarcoScope</p>
-      <h2 id="narcoscope-relay-title" data-ns-title>What the 2025 INCB precursor report says about China-linked incidents—and what it does not prove</h2>
-      <p class="sister-relay__dek" data-ns-dek>Nine reported incidents, nearly five tonnes, and one crucial missing join: the official record identifies an origin, but it does not establish a causal chain to US deaths or measure lawful industrial trade.</p>
-      <div class="sister-relay__actions">
-        <a data-ns-story-link href="https://narcoscope.com/news/china-linked-precursor-incidents-official-record.html?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Read the NarcoScope investigation <span aria-hidden="true">↗</span></a>
-        <a href="https://narcoscope.com/?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Enter the evidence atlas</a>
-      </div>
-    </div>
-
-    <div class="sister-relay__receipt" aria-label="NarcoScope teaser evidence receipt">
-      <p class="sister-relay__fresh"><span data-ns-feed-state>Checked-in edition</span> · data as of <time data-ns-data-as-of datetime="2026-08-12">12 Aug 2026</time></p>
-      <div class="sister-relay__figures">
-        <p><strong data-ns-incidents>9</strong><span>reported PICS incidents</span></p>
-        <p><strong data-ns-tonnes>≈5 t</strong><span>combined upper-bound mass</span></p>
-        <p><strong data-ns-citations>100%</strong><span>visual rows cited</span></p>
-      </div>
-      <p class="sister-relay__boundary"><b>Boundary.</b> Reported origin is not causal attribution. This adjacent drug-market record does not become evidence for a Palimpsest censorship claim.</p>
-    </div>
-  </section>
-
-  <div class="ps-wrap"><hr class="ps-rule"></div>
-
-  <!-- ══ 01 · CENSORSHIP OBSERVATORY ════════════════════════════════════ -->
-  <section class="pillar ps-wrap ps-defer" id="censorship">
-    <p class="ps-section-head">01 / Censorship observatory</p>
-
-    <div class="ps-band">
-      <div class="ps-pin">
-        <h2 class="ps-h2">Three layers, one apparatus</h2>
-        <p class="claim__lede">Censorship is usually measured as access, in the present tense. Palimpsest
-        measures removal across time: what the network drops, what the content layer scrubs, and what the
-        model will no longer say. Each layer has its own vantage and its own failure modes, so each is
-        reported on its own terms and cross-checked against the others rather than averaged into one
-        confident number. The searchable ledger exposes every field retained by the configured
-        instruments; its evidence spine keeps monetary, illicit-market and reviewed scam context
-        separate from censorship findings.</p>
-        <div class="btn-row">
-          <a class="ps-btn" href="/osint-china.html">Open OSINT China</a>
-          <a class="ps-btn ps-btn--ghost" href="/osint-china.html#commons">Evidence commons</a>
-          <a class="ps-btn ps-btn--ghost" href="/china-brief.html">Read the China Brief</a>
-          <a class="ps-btn ps-btn--ghost" href="/readings/">All readings</a>
-        </div>
+  <header class="hero hm-hero">
+    <div class="hm-wrap">
+      <div class="hm-hero__edition">
+        <span>Independent public evidence</span>
+        <span>New Delhi / UTC record</span>
+        <span>Open source · no paywall</span>
       </div>
 
-      <div class="stack">
-
-        <!-- the reading that leads the pillar -->
-        <a class="lead ps-p3 ps-reveal--deep" href="/readings/inside-view.html">
-          <p class="sig__k">Network layer<span class="ps-tag">new</span>Inside vantage</p>
-          <h3 class="lead__t">Inside View</h3>
-          <p class="stat" data-stat="sig-inside">
-            <span class="stat__static">Volunteer probes inside mainland China resolve a fixed panel of
-            censored and control domains, and the forged share is published each run.</span>
-          </p>
-          <p class="lead__b">An answer received inside China counts as forged when it shares no address
-          with the answer the control arm received outside China in the same round. No forged-address
-          list is hardcoded, because the injector pool rotates. Everything else on this site looks at the
-          firewall from outside. This looks out from inside it.</p>
-          <span class="pc-spark" data-spark="/readings/inside-view-history.jsonl" data-spark-key="block_rate"></span>
-          <p class="sig__f"><span class="fresh" data-fresh="sig-inside">reading the feed</span></p>
-        </a>
-
-        <div class="ps-p1 note ps-reveal">
-          <p class="note__h">Control arm, this round</p>
-          <p data-field="inside-why">The control arm reports which censored domains showed injection in
-          the most recent round.</p>
-          <p class="note__h">What this reading does not prove</p>
-          <p>The in-China probes are volunteer hosted and sit on datacentre networks, so this measures
-          filtering as experienced on Chinese cloud networks, which is not necessarily what a household
-          sees. A volunteer running a probe did not consent to have a home connection emit queries for
-          censored domains, so the household pool is left alone and the cost is stated instead of hidden.
-          A forged answer proves on-path DNS interference. It does not prove national filtering on its
-          own, so a domain forged inside a single network is reported as a single operator rather than as
-          blocked.</p>
-        </div>
-
-        <!-- the other three signals that shipped with it -->
-        <div class="sig-grid ps-stagger ps-reveal">
-
-          <a class="sig ps-p2" href="/readings/in-path-interference.html">
-            <p class="sig__k">Network layer<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">In-Path Interference</h3>
-            <p class="stat stat--sm" data-stat="sig-inpath">
-              <span class="stat__static">HTTP rewritten in transit, and the health of the transports
-              people use to get around it, from OONI measurements in China.</span>
-            </p>
-            <p class="sig__b">Rates are computed over completed tests only. A method that never completes
-            a single run has no anomaly rate, so it is reported as a blackout rather than drawn as zero,
-            which is the louder finding of the two.</p>
-            <p class="sig__b" data-field="inpath-exec">Measurement methods that cannot execute inside
-            China are listed with each reading.</p>
-            <span class="pc-spark" data-spark="/readings/in-path-interference-history.jsonl" data-spark-key="middlebox_index"></span>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-inpath">reading the feed</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/app-store.html">
-            <p class="sig__k">App layer<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">App Store Layer</h3>
-            <p class="stat stat--sm" data-stat="sig-appstore">
-              <span class="stat__static">Our own live panel compares the Chinese storefront against a
-              control storefront, app by app, and records each delisting event.</span>
-            </p>
-            <p class="stat stat--sm" data-stat="sig-apple">
-              <span class="stat__static">GreatFire's corpus supplies the scale and the composition of
-              what is removed, which our panel is far too small to see.</span>
-            </p>
-            <p class="sig__b">Delisting is not network blocking. Facebook, X and YouTube stay listed in
-            the Chinese storefront while being unreachable there. The apps that get removed are the ones
-            that would still work over a VPN.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-appstore">reading the feed</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/blocklist.html">
-            <p class="sig__k">Content layer<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">Blocklist Archaeology</h3>
-            <p class="stat stat--sm" data-stat="sig-blocklist">
-              <span class="stat__static">Keywords newly present in successive client blocklists, each
-              addition dated to the version that first shipped it.</span>
-            </p>
-            <p class="sig__b">Every other signal here infers a directive from what disappeared. This one
-            reads the directive itself: the censor's own keyword list, telling you what it started caring
-            about and when.</p>
-            <p class="sig__b">Corpus: The Citizen Lab, University of Toronto,
-            chat-censorship. No licence file upstream and no stated terms, so it is treated as all rights
-            reserved, cached locally and never redistributed from this repository.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-blocklist">reading the feed</span></p>
-          </a>
-
-        </div>
-
-        <!-- the standing signals -->
-        <div class="sig-grid ps-stagger ps-reveal">
-
-          <a class="sig ps-p2" href="/readings/ooni-gfw.html">
-            <p class="sig__k">Network layer</p>
-            <h3 class="sig__t">Great Firewall</h3>
-            <p class="stat stat--sm" data-stat="sig-gfw">
-              <span class="stat__static">Website, messenger and circumvention-tool reachability inside
-              China, read from OONI's already-aggregated open data.</span>
-            </p>
-            <p class="sig__b">The firewall blocks by connection reset and DNS injection without serving a
-            block page, so OONI's confirmed count stays near zero for China. We track anomaly rate and
-            say so rather than reporting a reassuring zero.</p>
-            <span class="pc-spark" data-spark="/readings/ooni-gfw-history.jsonl" data-spark-key="gfw_index"></span>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-gfw">reading the feed</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/erasure-observatory.html">
-            <p class="sig__k">All three layers</p>
-            <h3 class="sig__t">Erasure Observatory</h3>
-            <p class="stat stat--sm" data-stat="sig-erasure">
-              <span class="stat__static">Each composite reading is sealed into a hash-chained ledger, so
-              our own history cannot be quietly rewritten either.</span>
-            </p>
-            <p class="sig__b">The composite index, plus the layer-by-layer breakdown and the independent
-            cross-checks that either confirm a layer or contradict it. A disabled, stale, or unavailable
-            layer is labelled with that status and never rendered as zero.</p>
-            <span class="pc-spark" data-spark="/readings/erasure-observatory-history.jsonl" data-spark-key="erasure_index"></span>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-erasure">reading the feed</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/dashboards/ddti_observatory.html">
-            <p class="sig__k">Content layer</p>
-            <h3 class="sig__t">DDTI Observatory</h3>
-            <p class="sig__b">Deletion as data: the public record of what was scrubbed, ranked by
-            censor attention and novelty, and validated against six documented censorship events.</p>
-            <p class="sig__b">The full command surface, with the fear index, the live topic network and
-            the ranked censor targets in one view. The deletion tracker also runs on its own board, the
-            Live Monitor.</p>
-            <p class="sig__f"><span class="fresh">refreshed every three hours</span></p>
-          </a>
-
-        </div>
-
-        <div class="sig-grid ps-stagger ps-reveal">
-
-          <a class="sig ps-p2" href="/dashboards/ddti_observatory.html#gdeltCard">
-            <p class="sig__k">Cross-signal</p>
-            <h3 class="sig__t">Censored at home, loud abroad</h3>
-            <p class="sig__b">Which censored topics the world's press is covering heavily at the moment
-            they are being scrubbed at home. Containment, made visible: the gap between what a domestic
-            audience can see and what everyone else can.</p>
-            <p class="sig__f"><span class="fresh">refreshed every six hours</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/dashboards/ddti_observatory.html#refugeCard">
-            <p class="sig__k">Preservation</p>
-            <h3 class="sig__t">Pressure on the mirrors</h3>
-            <p class="sig__b">The repositories that shelter censored material, from 996.ICU to
-            nCovMemory, watched for takedowns, legal blocks, visibility drops and defensive preservation
-            bursts. Public pressure metadata only.</p>
-            <p class="sig__f"><span class="fresh">refreshed twice a day</span></p>
-          </a>
-
-        </div>
-
-        <div class="sig-grid ps-stagger ps-reveal">
-
-          <a class="sig ps-p2" href="/readings/#content">
-            <p class="sig__k">Withholding layer<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">Data darkness</h3>
-            <p class="stat stat--sm" data-stat="sig-darkness">
-              <span class="stat__static">Seven official Chinese publication surfaces, watched daily for
-              the moment they stop publishing.</span>
-            </p>
-            <p class="sig__b">Deletion leaves a scar to count. Withholding leaves nothing: when Beijing
-            suspended the youth-unemployment series in 2023, no page was removed, the numbers simply
-            stopped appearing. This watches the shelves instead of the record: PBOC open-market
-            announcements, the monetary-authority balance sheet, the FX settlement series behind every
-            hidden-intervention estimate, the interbank benchmarks, and the physical-economy monthlies
-            scored against the state's own published release calendar.</p>
-            <p class="sig__b">A surface this vantage cannot reach is reported unreachable, never as
-            darkness. Our own network trouble is not evidence about Beijing.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-darkness">reading the feed</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/#content">
-            <p class="sig__k">Content layer<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">Silence Index</h3>
-            <p class="stat stat--sm" data-stat="sig-silence">
-              <span class="stat__static">Topics loud abroad and absent at home, scored against the
-              domestic attention record.</span>
-            </p>
-            <p class="sig__b">The cleanest censorship leaves a hole where coverage should be, not a scar.
-            A directive not to report produces no deletion to count, so this reads the shape of the
-            absence instead, the pattern of Peng Shuai and the suspended statistics.</p>
-            <p class="sig__b">A topic China never covered being quiet at home is disinterest, not
-            suppression. Without a coupling baseline or gazetteer corroboration the reading abstains, and
-            a round that could not measure records nothing rather than reporting calm.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-silence">reading the feed</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/#state">
-            <p class="sig__k">State credibility<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">The believability read</h3>
-            <p class="stat stat--sm" data-stat="sig-believability">
-              <span class="stat__static">The Li Keqiang composite against the headline claim, computed
-              monthly from the state's own releases.</span>
-            </p>
-            <p class="sig__b">In 2007 Li Keqiang told the US ambassador that GDP figures are man-made and
-            unreliable, and named the three series he watched instead: electricity, rail freight, bank
-            lending. This computes exactly that composite, live, and compares it to the headline the
-            state publishes for the same month.</p>
-            <p class="sig__b">A services economy legitimately uses less electricity per yuan, so the
-            published statistic is drift against the gap's own history with its uncertainty band, never a
-            raw level. A missing component abstains the composite rather than quietly reweighting it.
-            Method, critiques and the counterpoint are published beside it.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-believability">loading latest reading</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/#state">
-            <p class="sig__k">State telemetry<span class="ps-tag">new</span></p>
-            <h3 class="sig__t">Two prices for one currency</h3>
-            <p class="stat stat--sm" data-stat="sig-fixgap">
-              <span class="stat__static">The daily rate the state sets for the yuan, against the rate
-              an independent central bank observes the same day.</span>
-            </p>
-            <p class="sig__b">Every morning the PBOC publishes a central parity, the price it says is
-            right, and the market spends the day agreeing or pulling against it. Read beside the ECB's
-            own reference rate for the same day, the gap is a daily quantitative measure of that
-            tension.</p>
-            <p class="sig__b">Economic backdrop rather than censorship, and deliberately kept off the
-            alarm board. It is here because the same apparatus that curates a statistic also sets a
-            price, and this one can be checked from outside.</p>
-            <p class="sig__f"><span class="fresh" data-fresh="sig-fixgap">reading the feed</span></p>
-          </a>
-
-        </div>
-
-        <div class="ps-p1 note ps-reveal">
-          <p class="note__h">Raw evidence</p>
-          <p>Every figure above is published as JSON alongside a history file, under the same MIT licence
-          as the code. Nothing on this site asks you to take a number on trust.</p>
-          <ul class="filelist">
-            <li><a href="/readings/inside-view-latest.json">inside-view</a></li>
-            <li><a href="/readings/data-darkness-latest.json">data-darkness</a></li>
-            <li><a href="/readings/silence-index-latest.json">silence-index</a></li>
-            <li><a href="/readings/cny-fix-gap-latest.json">cny-fix-gap</a></li>
-            <li><a href="/readings/in-path-interference-latest.json">in-path-interference</a></li>
-            <li><a href="/readings/app-storefront-latest.json">app-storefront</a></li>
-            <li><a href="/readings/apple-censorship-latest.json">apple-censorship</a></li>
-            <li><a href="/readings/blocklist-latest.json">blocklist</a></li>
-            <li><a href="/readings/ooni-gfw-latest.json">ooni-gfw</a></li>
-            <li><a href="/readings/erasure-observatory-latest.json">erasure-observatory</a></li>
-            <li><a href="/readings/ddti-latest.json">ddti</a></li>
-            <li><a href="/readings/gdelt-latest.json">gdelt</a></li>
-            <li><a href="/readings/github-refuge-latest.json">github-refuge</a></li>
-            <li><a href="/readings/latest.json">deletion corpus</a></li>
-            <li><a href="/dashboards/ddti_dashboard.html">live monitor</a></li>
-            <li><a href="/for-researchers.html">data and methods</a></li>
-          </ul>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <div class="ps-wrap"><hr class="ps-rule"></div>
-
-  <!-- ══ 02 · VERIFIABLE AI EVAL REGISTRY ═══════════════════════════════ -->
-  <section class="pillar ps-wrap ps-defer" id="evals">
-    <p class="ps-section-head">02 / Verifiable AI eval registry</p>
-
-    <div class="ps-band">
-      <div class="ps-pin">
-        <h2 class="ps-h2">A result that cannot be quietly revised</h2>
-        <p class="claim__lede">An evaluation you can edit after the fact is a press release. Here the
-        declared commitment is sealed before its matching run can enter the record, every result is
-        chained to the one before it, and the whole record is fingerprinted by a Merkle root. Current
-        collectors also require an exact public protocol before querying. A number changed after
-        publication breaks local verification, and anyone can recompute the served chain offline to find
-        out. That applies to us as much as to anyone we measure.</p>
-        <div class="btn-row">
-          <a class="ps-btn" href="/evals/">Read the Eval Journal</a>
-          <a class="ps-btn" href="/readings/eval-registry.html">Open the registry</a>
-          <a class="ps-btn ps-btn--ghost" href="/readings/generative-firewall-index.html">Firewall Index</a>
-          <a class="ps-btn ps-btn--ghost" href="/readings/eval-assurance-latest.json">Assurance report</a>
-        </div>
-      </div>
-
-      <div class="stack">
-
-        <a class="lead ps-p3 ps-reveal--deep" href="/readings/eval-registry.html">
-          <p class="sig__k">Model layer · sealed record</p>
-          <h3 class="lead__t">The registry, right now</h3>
-          <p class="stat" data-stat="sig-registry">
-            <span class="stat__static">An append-only record of pre-registered evaluation runs across
-            two frozen suites, verified on every publish.</span>
-          </p>
-          <p class="lead__b">Merkle root <code data-field="merkle">loads from the sealed registry</code></p>
-          <p class="sig__f"><span class="fresh" data-fresh="sig-registry">reading the feed</span></p>
-        </a>
-
-        <div class="sig-grid ps-stagger ps-reveal">
-
-          <a class="sig ps-p2" href="/readings/generative-firewall-index.html">
-            <p class="sig__k">China-focused suite</p>
-            <h3 class="sig__t">Generative Firewall</h3>
-            <p class="sig__b">What a state-aligned model refuses or rewrites on sensitive prompts, in
-            Chinese and English, against neutral controls.</p>
-            <p class="sig__b">The v1 record remains public. Its v2 protocol freezes exact prompt text,
-            panel, sampling plan and classifier bytes before the first paid query, then seals the complete
-            response matrix.</p>
-            <p class="sig__f"><span class="fresh">legacy preserved · stronger protocol staged</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/eval-registry.html#drift">
-            <p class="sig__k">Frozen suite</p>
-            <h3 class="sig__t">frontier-overrefusal-v2</h3>
-            <p class="sig__b">What a Western frontier model quietly stops answering. Drift is the diff
-            against that model's own previous sealed run, on the same frozen benign probes.</p>
-            <p class="sig__b">Panel: openai/gpt-4o-mini, anthropic/claude-3-haiku,
-            meta-llama/llama-3.3-70b-instruct, mistralai/mistral-nemo.</p>
-            <p class="sig__f"><span class="fresh">sealed on every run</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/eval-registry.html#anchors">
-            <p class="sig__k">External anchors</p>
-            <h3 class="sig__t">Not resting on our word</h3>
-            <p class="sig__b">Chain roots are deposited outside our own infrastructure, at the Internet
-            Archive and through OpenTimestamps onto Bitcoin, so a root cannot be backdated even by the
-            people who run this site.</p>
-            <p class="sig__f"><span class="fresh">anchored on a schedule</span></p>
-          </a>
-
-          <a class="sig ps-p2" href="/readings/eval-registry.html#assurance">
-            <p class="sig__k">Claim-by-claim assurance</p>
-            <h3 class="sig__t">No single score hides the weak joint</h3>
-            <p class="sig__b">Integrity, exact-prompt precommitment, raw-response recomputation,
-            statistical design, human validation and independent replication are reported separately.</p>
-            <p class="sig__b">The machine-readable report states both what the evidence supports today
-            and what Palimpsest may not yet claim.</p>
-            <p class="sig__f"><span class="fresh">generated and checked on publish</span></p>
-          </a>
-
-        </div>
-
-        <div class="ps-p1 note ps-reveal">
-          <p class="note__h">Why the author started this</p>
-          <p>Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned
-          models change, withhold or replace answers when a prompt criticised the Chinese Communist
-          Party or asked about documented events. A screenshot could show one answer; it could not show
-          whether the questions were fixed first, whether the behavior persisted, or whether the record
-          was later edited. That observation became a repeatable eval, then a registry designed to bind
-          each claim to inspectable evidence. <a href="/readings/eval-registry.html#origin">Read the scoped
-          origin and research context.</a> The full account now opens the
-          <a href="/evals/a-censored-answer-is-not-evidence/">AI Eval Journal</a>.</p>
-        </div>
-
-        <div class="ps-p1 note ps-reveal">
-          <p class="note__h">Check it yourself</p>
-          <p>Clone the repository and run <code>python3 scripts/verify_eval_registry.py</code>. It
-          recomputes every hash link and the Merkle root from the raw
-          <a href="/readings/eval-registry.jsonl">eval-registry.jsonl</a> without touching the network.
-          The two suites share no model, so neither family can be graded on a rubric built for the other.
-          The verifier proves that each declared commitment precedes its matching run in the served chain;
-          the current collectors add a separately published protocol receipt and refuse their first query
-          without it.</p>
-          <p>The registry does not prove a model is good or bad. It makes the ordering and integrity of the
-          served record checkable, while external witnesses make conflicting rewrites visible. Everything
-          beyond that is interpretation, and the interpretation is published with the evidence attached. The
-          <a href="/readings/eval-assurance-latest.json">assurance report</a> keeps integrity,
-          reproducibility, construct validation and independent replication from being collapsed into
-          one flattering badge.</p>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <div class="ps-wrap"><hr class="ps-rule"></div>
-
-  <!-- ══ 03 · SCAMSHIELD REVIEWED BRIDGE ════════════════════════════════ -->
-  <section class="pillar ps-wrap ps-defer" id="scamshield">
-    <p class="ps-section-head">03 / ScamShield reviewed bridge</p>
-
-    <div class="ps-band">
-      <div class="ps-pin">
-        <h2 class="ps-h2">Threat intelligence without exporting the people inside it</h2>
-        <p class="claim__lede">The public side is an inert, versioned map of reviewed sources and
-        scam and money-flow typologies. The private side turns a structured ScamShield assessment
-        into an Evidence Capsule over a local stdin bridge. The two sides are deliberately unequal:
-        public readers get method and provenance, while message-level evidence stays private.</p>
-        <div class="btn-row">
-          <a class="ps-btn" href="/integrations/scamshield/intelligence-pack-v1.json">Open the public pack</a>
-          <a class="ps-btn ps-btn--ghost" href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">Open @Scamshield_2_bot</a>
-          <a class="ps-btn ps-btn--ghost" href="/guides/telegram-scam-message-checker/">Read the public safety guide</a>
-          <a class="ps-btn ps-btn--ghost" href="/evidence-capsules.html#scamshield">Evidence Capsules</a>
-        </div>
-      </div>
-
-      <div class="stack">
-        <div class="lead ps-p3 ps-reveal--deep">
-          <p class="sig__k">Public contract · reviewed release</p>
-          <h3 class="lead__t"><code>scamshield-intelligence-pack/v1</code></h3>
-          <p class="stat">
-            <span class="stat__line"><span class="stat__fig">18</span><span class="stat__unit"> sources</span></span>
-            <span class="stat__cap">8 typologies · 3 dimensions · version 2026-08-08.2</span>
-          </p>
-          <p class="lead__b"><code>TYPOLOGY_MATCH</code>, <code>CORROBORATED_LEAD</code> and
-          <code>DIRECT_LINK</code> state how a lead relates to evidence. They are not guilt, risk or
-          liquidity scores.</p>
-        </div>
-
-        <div class="sig-grid ps-stagger ps-reveal">
-          <div class="sig ps-p2">
-            <p class="sig__k">Public pack</p>
-            <h3 class="sig__t">Sources and bounded typologies</h3>
-            <p class="sig__b">The three dimensions remain separate: laundering mechanism, operating
-            ecosystem and predicate offence. A mechanism match does not silently become a claim about
-            the origin of funds.</p>
-          </div>
-
-          <div class="sig ps-p2">
-            <p class="sig__k">Private boundary</p>
-            <h3 class="sig__t">Message text stays local</h3>
-            <p class="sig__b">Raw Telegram text is hashed and is not sent by default. The public pack
-            excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values.</p>
-          </div>
-
-          <div class="sig ps-p2">
-            <p class="sig__k">Publication boundary</p>
-            <h3 class="sig__t">A candidate is not a post</h3>
-            <p class="sig__b">Outward candidates are privacy-minimized and labelled
-            <code>HUMAN_REVIEW_REQUIRED</code>. The bridge does not publish, call a webhook or open a
-            network connection.</p>
+      <div class="hm-hero__grid">
+        <div>
+          <p class="hm-kicker">Palimpsest / A publication with memory</p>
+          <h1>Evidence should <span>survive its author.</span></h1>
+          <p class="hm-hero__lede">We publish what AI evaluations and public records can support, keep the counterevidence beside the claim, and make every revision inspectable.</p>
+          <div class="hm-actions">
+            <a class="hm-action hm-action--primary" href="https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero" target="_blank" rel="noopener noreferrer">Get the daily observatory read</a>
+            <a class="hm-action" href="/evals/">Read the Eval Journal</a>
+            <a class="hm-action" href="/data.html">Inspect the data</a>
           </div>
         </div>
 
-        <div class="ps-p1 note ps-reveal">
-          <p class="note__h">Collection scope</p>
-          <p>The integration covers user-submitted messages, configured public channels and
-          administrator-authorized surfaces only. It does not claim visibility into all of Telegram,
-          investigate people automatically, or turn repeated wording from one source into independent
-          corroboration.</p>
-        </div>
-
-        <aside class="evidence-dispatch ps-reveal" aria-labelledby="evidence-dispatch-title">
-          <div class="evidence-dispatch__head">
-            <div>
-              <p class="sig__k">Opt-in evidence delivery</p>
-              <h3 class="lead__t" id="evidence-dispatch-title">Follow the record, not an engagement loop</h3>
-            </div>
-            <p>Choose the desk that matches the question. Each route preserves its own evidence
-            boundary; opening another desk does not turn context into corroboration.</p>
+        <aside class="hm-hero__rail" aria-label="Live publication status">
+          <p>Live desks</p>
+          <div class="hm-live-row" data-home-registry data-feed-state="loading">
+            <i class="hm-live-row__dot" aria-hidden="true"></i>
+            <span>Sealed eval runs</span>
+            <strong data-home-registry-runs>...</strong>
           </div>
-
-          <div class="evidence-route" aria-label="Related public-evidence desks">
-            <details class="evidence-route__stop" name="evidence-route" open>
-              <summary>
-                <span class="evidence-route__step">01 · Palimpsest</span>
-                <strong>Censorship watch</strong>
-                <span>Information controls and sealed AI-evaluation shifts.</span>
-              </summary>
-              <div class="evidence-route__body">
-                <p>Use the bot when you want Palimpsest’s own readings delivered without leaving Telegram.</p>
-                <a href="https://t.me/palimpsest_watch_bot?start=site_ecosystem" target="_blank" rel="noopener">Open @palimpsest_watch_bot <span aria-hidden="true">↗</span></a>
-              </div>
-            </details>
-
-            <details class="evidence-route__stop evidence-route__stop--narco" name="evidence-route">
-              <summary>
-                <span class="evidence-route__step">02 · NarcoScope</span>
-                <strong>Official drug-market record</strong>
-                <span>Relevant where China precursor and enforcement context meets public evidence.</span>
-              </summary>
-              <div class="evidence-route__body">
-                <p>Inspect the source-rich product, or subscribe to its evidence bot for official-record updates.</p>
-                <div class="evidence-route__links">
-                  <a href="https://narcoscope.com/?ref=palimpsest_evidence_route" target="_blank" rel="noopener">Visit NarcoScope <span aria-hidden="true">↗</span></a>
-                  <a href="https://t.me/NarcoScopeEvidenceBot?start=palimpsest_ecosystem" target="_blank" rel="noopener">Open evidence bot <span aria-hidden="true">↗</span></a>
-                </div>
-              </div>
-            </details>
-
-            <details class="evidence-route__stop evidence-route__stop--signal" name="evidence-route">
-              <summary>
-                <span class="evidence-route__step">03 · Evidence Signal</span>
-                <strong>Reviewed public-interest desk</strong>
-                <span>A shared channel for high-signal updates across adjacent evidence products.</span>
-              </summary>
-              <div class="evidence-route__body">
-                <p>Follow one low-noise channel when you want reviewed dispatches instead of every source event.</p>
-                <a href="https://t.me/EvidenceSignalDesk" target="_blank" rel="noopener">Follow @EvidenceSignalDesk <span aria-hidden="true">↗</span></a>
-              </div>
-            </details>
-
-            <details class="evidence-route__stop evidence-route__stop--scam" name="evidence-route">
-              <summary>
-                <span class="evidence-route__step">04 · ScamShield</span>
-                <strong>Scam typology bridge</strong>
-                <span>Relevant to reviewed scam and money-flow patterns, not narcotics attribution.</span>
-              </summary>
-              <div class="evidence-route__body">
-                <p>Take a suspicious pattern to the bot while the public pack keeps its claims bounded.</p>
-                <div class="evidence-route__links">
-                  <a href="https://t.me/Scamshield_2_bot?start=palimpsest_ecosystem" target="_blank" rel="noopener">Open @Scamshield_2_bot <span aria-hidden="true">↗</span></a>
-                  <a href="/guides/telegram-scam-message-checker/">Read the safety guide</a>
-                </div>
-              </div>
-            </details>
+          <div class="hm-live-row" data-home-osint data-feed-state="loading">
+            <i class="hm-live-row__dot" aria-hidden="true"></i>
+            <span>Observatory signals</span>
+            <strong><span data-home-osint-live>...</span>/<span data-home-osint-total>...</span></strong>
+          </div>
+          <div class="hm-live-row" data-home-wire data-feed-state="loading">
+            <i class="hm-live-row__dot" aria-hidden="true"></i>
+            <span>Wire events</span>
+            <strong data-home-wire-events>...</strong>
           </div>
         </aside>
       </div>
+
+      <div class="hm-hero__undertext" aria-label="Palimpsest editorial principle">
+        <span>A corrected claim disappears.</span>
+        <strong>A corrected claim leaves its prior wording, evidence, and reason for change in view.</strong>
+      </div>
+    </div>
+  </header>
+
+  <section class="hm-journal" aria-labelledby="journal-title" data-home-journal data-feed-state="loading">
+    <div class="hm-wrap">
+      <header class="hm-section-head">
+        <p>01 / Live Eval Findings</p>
+        <h2 id="journal-title">The result is only the beginning.</h2>
+        <a href="/journal/">All analysis</a>
+      </header>
+
+      <article class="hm-journal__feature">
+        <div class="hm-journal__spine" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="hm-journal__copy">
+          <p class="hm-kicker">Latest evidence-bound article</p>
+          <h3 data-home-journal-title>Read the score. Then read what could break it.</h3>
+          <p data-home-journal-dek>The live edition loads from the same verified artifact that supplies its citations and revision record.</p>
+          <p class="hm-journal__date" data-home-journal-date>Loading current edition</p>
+          <a data-home-journal-link href="/journal/">Read with evidence receipts →</a>
+        </div>
+        <ol class="hm-journal__numbers" aria-label="Article key numbers">
+          <li><strong data-home-journal-number="0">...</strong><span data-home-journal-label="0">current measure</span></li>
+          <li><strong data-home-journal-number="1">...</strong><span data-home-journal-label="1">control result</span></li>
+          <li><strong data-home-journal-number="2">...</strong><span data-home-journal-label="2">panel evidence</span></li>
+        </ol>
+      </article>
     </div>
   </section>
 
-  <div class="ps-wrap"><hr class="ps-rule"></div>
-
-  <!-- ══ 04 · A FUNDED PUBLIC GOOD ══════════════════════════════════════ -->
-  <section class="pillar ps-wrap ps-defer" id="public-good">
-    <p class="ps-section-head">04 / A funded public good</p>
-
-    <div class="ps-band">
-      <div class="ps-pin">
-        <h2 class="ps-h2">Somebody has to pay for the boring part</h2>
-        <p class="claim__lede">Palimpsest is free to read and MIT licensed, and there is no paid tier
-        behind any of it. What it costs is unglamorous: probe credits, model API calls for the frozen
-        eval suites, storage for the evidence, and the maintenance that keeps a collector honest when a
-        source quietly changes shape. Funding buys continuity, which is the only thing a longitudinal
-        record actually needs.</p>
-        <div class="btn-row">
-          <a class="ps-btn" href="/fund.html">Fund the observatory</a>
-          <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
-        </div>
+  <section class="hm-map" aria-labelledby="map-title">
+    <div class="hm-wrap">
+      <header class="hm-section-head">
+        <p>02 / Publication map</p>
+        <h2 id="map-title">Five desks. One evidentiary standard.</h2>
+        <a href="/developers.html">Machine access</a>
+      </header>
+      <div class="hm-map__rows">
+        <a class="hm-map__row" href="/evals/">
+          <span>Explain</span><h3>Eval Journal</h3><p>Evidence-bound essays on what the lab can claim, how the method changed, and where it can still fail.</p><b aria-hidden="true">→</b>
+        </a>
+        <a class="hm-map__row" href="/journal/">
+          <span>Interpret</span><h3>Live Findings</h3><p>Automatically refreshed analysis of sealed evaluation runs, with counterreadings and uncertainty attached.</p><b aria-hidden="true">→</b>
+        </a>
+        <a class="hm-map__row" href="/news/">
+          <span>Report</span><h3>Wire</h3><p>Fast public-source dossiers that separate observed fact, analysis, and open questions.</p><b aria-hidden="true">→</b>
+        </a>
+        <a class="hm-map__row" href="/china/">
+          <span>Observe</span><h3>China Observatory</h3><p>Economic release records and information-control signals, kept distinct by method.</p><b aria-hidden="true">→</b>
+        </a>
+        <a class="hm-map__row" href="/readings/eval-registry.html">
+          <span>Verify</span><h3>AI Registry</h3><p>Pre-registered runs, chained attestations, transcript checks, and external roots.</p><b aria-hidden="true">→</b>
+        </a>
       </div>
-
-      <div class="stack">
-        <div class="sig-grid ps-stagger ps-reveal">
-
-          <div class="sig ps-p2">
-            <p class="sig__k">What funding buys</p>
-            <h3 class="sig__t">More vantage, longer memory</h3>
-            <p class="sig__b">More measurement vantages, longer retention of the raw evidence,
-            human-validated labels behind the classifiers, and the unexciting maintenance that stops a
-            live signal rotting into a stale one.</p>
-          </div>
-
-          <div class="sig ps-p2">
-            <p class="sig__k">What it will never be</p>
-            <h3 class="sig__t">Not a product</h3>
-            <p class="sig__b">Never a commercial product, and it never monetizes the people or the topics
-            it observes. Public reads only. No person inside is ever asked to act, and no state-aligned
-            model is ever the analyst.</p>
-          </div>
-
-          <div class="sig ps-p2">
-            <p class="sig__k">What a funder gets</p>
-            <h3 class="sig__t">Everything, immediately</h3>
-            <p class="sig__b">The same thing everyone else gets, at the same moment: raw JSON, the method
-            documents, the code, and the forecast ledger including the calls we got wrong. There is no
-            supporter tier because there is nothing to withhold.</p>
-          </div>
-
-        </div>
-
-        <div class="ps-p1 note ps-reveal">
-          <p class="note__h">Reuse it</p>
-          <p>Code, method and evidence are MIT licensed. Feeds are stable URLs under
-          <a href="/readings/">/readings/</a>, each with a history file beside it, and the citation is in
-          <a href="https://github.com/beepboop2025/palimpsest/blob/main/CITATION.cff" target="_blank" rel="noopener">CITATION.cff</a>.
-          If you are building on this and something is missing, the useful thing to say is which field
-          you needed. See <a href="/for-researchers.html">data and methods</a> for the shape of each feed.</p>
-        </div>
-
+      <div class="hm-actions">
+        <a class="hm-action hm-action--primary" href="/china/">Open China Observatory</a>
+        <a class="hm-action" href="/osint-china.html#commons">Open the structured evidence commons</a>
       </div>
     </div>
   </section>
 
-  <!-- ══ METHOD ═════════════════════════════════════════════════════════ -->
-  <section class="ps-wrap ps-defer" id="method">
-    <p class="ps-section-head">How it works</p>
-    <div class="method ps-stagger ps-reveal">
-      <div class="ps-p2">
-        <h3>Deletion as data</h3>
-        <p>Archive public posts, watch for their scrubbing, rank what the censor is most focused on right
-        now. Validated against six documented censorship events rather than asserted.</p>
-      </div>
-      <div class="ps-p2">
-        <h3>The generation layer</h3>
-        <p>Probe state-aligned models and record their refusals and state-narrative substitutions, in
-        Chinese and English, against neutral Western controls so selectivity is provable.</p>
-      </div>
-      <div class="ps-p2">
-        <h3>The sealed registry</h3>
-        <p>Pre-register, hash-chain, anchor externally. A lab, a government, or Palimpsest itself cannot
-        revise a published number without breaking a chain anyone can recompute.</p>
-      </div>
-      <div class="ps-p2">
-        <h3>Safety as architecture</h3>
-        <p>Public reads only. No person inside is ever asked to act, no state-aligned model is ever the
-        analyst, and every finding ships its raw evidence.</p>
+  <section class="hm-live" aria-labelledby="live-title">
+    <div class="hm-wrap">
+      <header class="hm-section-head">
+        <p>03 / Current record</p>
+        <h2 id="live-title">Live status without a painted-on pulse.</h2>
+        <a href="/data.html">Every public file</a>
+      </header>
+      <div class="hm-live__grid">
+        <article class="hm-live__item" data-home-registry data-feed-state="loading">
+          <p>Eval registry</p>
+          <strong data-home-registry-runs>...</strong>
+          <h3>Sealed runs</h3>
+          <p>Chain head <code data-home-registry-root>loading</code>. A changed result creates a new record.</p>
+          <a href="/readings/eval-registry.html">Verify the chain</a>
+        </article>
+        <article class="hm-live__item" data-home-osint data-feed-state="loading">
+          <p>China observatory</p>
+          <strong><span data-home-osint-live>...</span>/<span data-home-osint-total>...</span></strong>
+          <h3>Reporting signals</h3>
+          <p>Roll-up health: <span data-home-osint-state>loading</span>. Stale and degraded inputs remain visible.</p>
+          <a href="/osint-china.html">Read the signal board</a>
+        </article>
+        <article class="hm-live__item" data-home-wire data-feed-state="loading">
+          <p>Evidence wire</p>
+          <strong data-home-wire-events>...</strong>
+          <h3>Public events</h3>
+          <p>Edition dated <span data-home-wire-date>loading</span>. Events are grouped by evidence, not drama.</p>
+          <a href="/news/">Enter the Wire</a>
+        </article>
       </div>
     </div>
-    <p class="links">
-      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener">How it is measured</a>
-      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener">Integrity model</a>
-      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener">Validation</a>
-      <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener">Ethics and safety</a>
-      <a href="/for-researchers.html#forecast">Our own misses</a>
-      <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Source code</a>
-    </p>
   </section>
 
-  <!-- ══ FAQ ════════════════════════════════════════════════════════════
-       Kept word-for-word in parity with the FAQPage schema above. Edit both
-       or neither: Google drops the rich result when they diverge. -->
-  <section class="ps-wrap ps-defer faq" id="faq">
-    <p class="ps-section-head">Frequently asked</p>
-
-    <h3>What is Palimpsest?</h3>
-    <p>Palimpsest is three things built on one instrument. It is a free, open-source observatory that
-    measures how authoritarian states censor, at the network, content and model layers. It is a verifiable
-    AI eval registry, where published commitments make a later revision detectable and external anchors
-    keep the history from resting only on the operator's word. And it is a public good: MIT licensed, free to read, funded by grants and individuals
-    rather than by customers. It watches the censor, never the censored, and ships raw evidence with every
-    finding.</p>
-
-    <h3>What is the Palimpsest censorship observatory measuring?</h3>
-    <p>Removal, on three layers. The network layer: DNS answers forged for censored domains, HTTP
-    rewritten in transit by in-path middleboxes, circumvention transports degraded, apps missing from the
-    Chinese App Store storefront, and website and messenger blocking rates. The content layer: deletion as
-    data, which topics the Chinese censor is most actively scrubbing right now, ranked by censor attention
-    and novelty and validated against six documented censorship events, plus the keywords newly added to
-    successive client blocklists. The model layer: the Generative Firewall Index, the share of sensitive
-    answers that state-aligned large language models refuse or rewrite, tested in Chinese and English
-    against neutral control models. Each layer has its own vantage and its own failure modes, so each is
-    reported separately and cross-checked against the others.</p>
-
-    <h3>What does Palimpsest measure from inside China?</h3>
-    <p>The Inside View signal uses volunteer Globalping probes inside mainland China to resolve a fixed
-    panel of censored and control domains. An answer received inside China is treated as forged when it
-    shares no address with the answer the same round received outside China, so no list of forged
-    addresses has to be hardcoded and a rotating injector pool is still caught. Everything else on the
-    site looks at the firewall from outside. This looks out from inside it. The constraint is real and
-    stated with every reading: the in-China probes sit on datacentre networks, so this is filtering as
-    experienced on Chinese cloud networks, which is not necessarily what a household sees, and a forged
-    answer proves on-path DNS interference rather than national filtering on its own.</p>
-
-    <h3>What is China censoring right now?</h3>
-    <p>Palimpsest tracks this live. It reads China Digital Times' curated record of removed posts and
-    leaked propaganda directives, and ranks the topics drawing the most censor attention as a
-    live censorship index — attention allocation, not a deletion rate. Alongside it, the
-    network signals show which domains are being answered with forged DNS, which apps have left the
-    Chinese storefront, and which keywords the platform blocklists have newly started to carry. The live
-    readings and raw JSON evidence are published here at palimpsest.info, updated continuously.</p>
-
-    <h3>What is the Generative Firewall Index?</h3>
-    <p>The Generative Firewall Index measures how often a named panel of state-aligned language-model
-    endpoints refuses or substitutes state-narrative answers on frozen sensitive prompts in Chinese and
-    English, reported beside neutral and matched controls. Contrasts can expose content- or
-    language-conditioned behavior on that panel. They do not prove a model maker's motive or represent
-    every Chinese model.</p>
-
-    <h3>Why did Palimpsest's founder start doing AI evaluations?</h3>
-    <p>Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language
-    models change, withhold or replace answers when prompts criticised the Chinese Communist Party or
-    asked about documented events. A screenshot could capture one response but could not prove the
-    questions were fixed first, show whether the pattern persisted, or expose a later edit. That gap
-    became the Generative Firewall and then the eval registry. The claim stays scoped to named models,
-    prompts and dates; it is not a claim about every Chinese model and does not prove motive.</p>
-
-    <h3>What is the Verifiable Eval Registry?</h3>
-    <p>The Verifiable Eval Registry is a public, tamper-evident record of AI model evaluations. Declared
-    probe commitments precede their runs, each result is hash-chained, and a Merkle root fingerprints the
-    registry. GFI v1's China-focused history is preserved while its staged v2 protocol adds exact-prompt
-    and full-matrix evidence; frontier-overrefusal-v2 publishes exact prompt commitments and current full
-    transcripts for a separate Western panel. Anyone can recompute the chain offline. External anchors
-    make whole-history revision observable beyond the operator, while a separate
-    <a href="/readings/eval-assurance-latest.json">assurance report</a> says that human construct validation
-    and unaffiliated replication remain unfinished.</p>
-
-    <h3>What is the ScamShield reviewed bridge?</h3>
-    <p>The ScamShield reviewed bridge lets ScamShield load a public, inert map of reviewed sources and typologies while keeping message-level evidence private. The current scamshield-intelligence-pack/v1 release is 2026-08-08.2, with 18 sources, 8 typologies and 3 dimensions. Raw Telegram text is hashed and not sent by default; the public pack excludes messages, exact IOCs, private Evidence Capsules and owner-only liquidity values. Privacy-minimized publication candidates require human review and are never auto-published. TYPOLOGY_MATCH, CORROBORATED_LEAD and DIRECT_LINK describe evidence relationships, not guilt or risk.</p>
-
-    <h3>Is Palimpsest free and open source?</h3>
-    <p>Yes. Palimpsest is MIT-licensed, fully open source, and developed in the open as a public good. It
-    is never a commercial product and never monetizes the people or topics it observes. Its code, method,
-    and raw evidence are all public on
-    <a href="https://github.com/beepboop2025/palimpsest">GitHub at github.com/beepboop2025/palimpsest</a>.</p>
-
-    <h3>How is Palimpsest funded?</h3>
-    <p>By grants and individual contributions, not by customers. There is no paid tier, no supporter-only
-    data and no gate, and there will not be one. Funding pays for the unglamorous parts: probe credits,
-    model API calls for the frozen eval suites, storage for the evidence, and the maintenance that keeps a
-    collector honest when a source changes shape. Everything it produces is published the moment it
-    exists, under MIT, to everyone at once.</p>
+  <section class="hm-method" aria-labelledby="method-title">
+    <div class="hm-wrap">
+      <header class="hm-section-head">
+        <p>04 / Publishing gate</p>
+        <h2 id="method-title">How an eval becomes an article.</h2>
+        <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener">Full integrity model</a>
+      </header>
+      <ol class="hm-method__steps">
+        <li><span>01</span><div><h3>Freeze the test</h3><p>The probe set is hashed before any model response exists. A result without a prior registration does not enter the publication path.</p></div></li>
+        <li><span>02</span><div><h3>Recompute the record</h3><p>Published transcripts must reproduce the sealed response hash, labels, controls, and reported metrics.</p></div></li>
+        <li><span>03</span><div><h3>Write from receipts</h3><p>Article sentences are assembled from typed findings. Every analytical sentence points to an exact selector and value.</p></div></li>
+        <li><span>04</span><div><h3>Keep the attack surface</h3><p>Limitations, a counterreading, and a falsifier ship with the conclusion. Failed gates produce a visible warning or abstention.</p></div></li>
+        <li><span>05</span><div><h3>Revise without erasing</h3><p>A later run creates a content-addressed revision. The previous revision remains retrievable and linked.</p></div></li>
+      </ol>
+    </div>
   </section>
 
-  <div class="ps-wrap">
-    <p class="foot">Free and open source, developed in the open as a public good. Never a commercial
-    product, and it never monetizes the people or topics it observes. Watch the censor, never the
-    censored. The internet stays free because people keep measuring the dark.<br>
-    <a href="/readings/">Readings</a> · <a href="/for-researchers.html">Data and methods</a> ·
-    <a href="/developers.html">API + MCP</a> ·
-    <a href="/guides/telegram-scam-message-checker/">ScamShield guide</a> ·
-    <a href="/integrations/scamshield/intelligence-pack-v1.json">ScamShield pack</a> ·
-    <a href="/fund.html">Fund it</a> ·
-    <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">GitHub</a></p>
-  </div>
+  <section class="hm-relay" id="narcoscope-relay" data-narcoscope-relay data-relay-state="dated-fallback" aria-labelledby="narcoscope-relay-title">
+    <div class="hm-wrap hm-relay__grid">
+      <p class="hm-relay__label">05 / Evidence relay<br><span data-ns-feed-state>Dated fallback</span></p>
+      <div class="hm-relay__copy">
+        <h2 id="narcoscope-relay-title" data-ns-title>What the 2025 INCB precursor report says about China-linked incidents: and what it does not prove</h2>
+        <p data-ns-dek>Nine reported incidents, nearly five tonnes, and one crucial limit: reported origin is not causal attribution.</p>
+        <p>Data as of <time data-ns-data-as-of datetime="2026-08-12">12 Aug 2026</time>. <span data-ns-incidents>9</span> incidents. <span data-ns-tonnes>nearly 5 t</span>. Visual citation coverage: <span data-ns-citations>100%</span>.</p>
+        <p><a data-ns-story-link href="https://narcoscope.com/news/china-linked-precursor-incidents-official-record.html?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Read the NarcoScope investigation</a> · <a href="https://narcoscope.com/?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Enter the evidence atlas</a></p>
+      </div>
+      <aside class="hm-relay__boundary">
+        <strong>Boundary</strong>
+        Reported origin is not causal attribution. This dossier does not become evidence for a Palimpsest censorship claim. The relay is a route between publications, not a merged score.
+      </aside>
+    </div>
+  </section>
 
+  <section class="hm-method hm-network" id="scamshield" aria-labelledby="network-title">
+    <div class="hm-wrap">
+      <header class="hm-section-head">
+        <p>06 / Evidence network</p>
+        <h2 id="network-title">Useful together. Never collapsed together.</h2>
+        <a href="/evidence-capsules.html">Evidence Capsules</a>
+      </header>
+      <ol class="hm-method__steps">
+        <li><span>PS</span><div><h3>Palimpsest</h3><p>Public observatory readings and citations. <a href="https://t.me/palimpsest_watch_bot" target="_blank" rel="noopener">Daily bot</a> · <a href="https://t.me/EvidenceSignalDesk" target="_blank" rel="noopener">Signal desk</a></p></div></li>
+        <li><span>NS</span><div><h3>NarcoScope</h3><p>Official-record evidence on illicit-market infrastructure. <a href="https://narcoscope.com/" target="_blank" rel="noopener">Website</a> · <a href="https://t.me/NarcoScopeEvidenceBot" target="_blank" rel="noopener">Evidence bot</a></p></div></li>
+        <li><span>SS</span><div><h3>ScamShield reviewed bridge</h3><p><code>scamshield-intelligence-pack/v1</code>, release <code>2026-08-08.2</code>, maps 18 public sources to 8 typologies. <code>HUMAN_REVIEW_REQUIRED</code> is mandatory. The levels describe evidence relationships, not guilt, and privacy-minimized candidates are never auto-published. <a href="/integrations/scamshield/intelligence-pack-v1.json">Public pack</a> · <a href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">ScamShield bot</a></p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="hm-wrap hm-public-good" aria-labelledby="public-good-title">
+    <div>
+      <p class="hm-kicker">07 / Public good</p>
+      <h2 id="public-good-title">No paywall between a claim and the evidence needed to challenge it.</h2>
+    </div>
+    <div class="hm-public-good__copy">
+      <p>Palimpsest is free to read and open source. Funding supports collection, verification, maintenance, and durable public access. It does not buy a conclusion.</p>
+      <div class="hm-actions">
+        <a class="hm-action hm-action--primary" href="/fund.html">Fund the work</a>
+        <a class="hm-action" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Inspect the source</a>
+      </div>
+    </div>
+  </section>
 </main>
 
-<script src="/assets/shell.js" defer></script>
-<script src="/assets/charts.js" defer></script>
-<script src="/assets/network-relay.js" defer></script>
-<script>
-/* ============================================================================
-   Live figures for the home page.
-   ----------------------------------------------------------------------------
-   Each slot ships a plain English sentence in the markup. A figure only ever
-   REPLACES that sentence, and only when every field its caption names is
-   actually present in the JSON. If a feed is unreachable, or a field the
-   caption depends on is missing, the sentence stays and a small notice says the
-   live figure could not be read. Nothing here can render a zero, a dash, or a
-   plausible-looking placeholder, which on this site would be worse than showing
-   no number at all.
-   ========================================================================== */
-(function () {
-  "use strict";
+<footer class="hm-footer">
+  <div class="hm-wrap">
+    <span>PALIMPSEST · PUBLIC EVIDENCE</span>
+    <p>Watch the censor. Never the censored.</p>
+    <nav aria-label="Footer">
+      <a href="/developers.html">Developers</a>
+      <a href="/data.html#rights">Rights</a>
+      <a href="#scamshield">ScamShield</a>
+      <a href="/llms.txt">llms.txt</a>
+    </nav>
+  </div>
+</footer>
 
-  function run() {
-    var S = window.PalimpsestShell;
-    if (!S) return;                       /* shell.js absent: static copy stands */
-
-    var HOUR = 3600000;
-    var $ = function (sel) { return document.querySelector(sel); };
-
-    /* A field that must be a real finite number, or the whole reading is refused. */
-    function need(v) {
-      if (typeof v !== "number" || !isFinite(v)) throw new Error("figure missing");
-      return v;
-    }
-    function grp(n) { return n.toLocaleString("en-US"); }
-
-    function paint(slot, spec) {
-      if (!slot) throw new Error("slot missing");
-      var line = document.createElement("span");
-      line.className = "stat__line";
-      var fig = document.createElement("span");
-      fig.className = "stat__fig ps-num";
-      fig.textContent = "";
-      line.appendChild(fig);
-      if (spec.unit) {
-        var u = document.createElement("span");
-        u.className = "stat__unit";
-        u.textContent = spec.unit;
-        line.appendChild(u);
-      }
-      var cap = document.createElement("span");
-      cap.className = "stat__cap";
-      cap.textContent = spec.cap;
-      slot.textContent = "";
-      slot.appendChild(line);
-      slot.appendChild(cap);
-      S.countUp(fig, spec.value, { decimals: spec.decimals || 0 });
-    }
-
-    function fail(sel, url) {
-      var slot = $(sel);
-      if (!slot || slot.querySelector(".stat__fig") || slot.querySelector(".stat__err")) return;
-      var e = document.createElement("span");
-      e.className = "stat__err";
-      e.textContent = "live figure unavailable · ";
-      var a = document.createElement("a");
-      a.href = url;
-      a.textContent = "raw JSON";
-      e.appendChild(a);
-      slot.appendChild(e);
-    }
-
-    /* Freshness is a finding: past twice the cadence it is styled as a warning
-       and says so in words, never in colour alone. */
-    function freshen(sel, iso, staleHours) {
-      var node = $(sel);
-      if (!node) return;
-      var t = Date.parse(iso);
-      if (!isFinite(t)) {
-        node.textContent = "measurement time unknown";
-        node.classList.add("is-stale");
-        return;
-      }
-      var stale = (Date.now() - t) > staleHours * HOUR;
-      node.textContent = (stale ? "stale · last measured " : "measured ") + S.ago(iso);
-      node.classList.toggle("is-stale", stale);
-    }
-    function freshFail(sel) {
-      var node = $(sel);
-      if (!node) return;
-      node.textContent = "feed unreachable";
-      node.classList.add("is-stale");
-    }
-
-    function text(sel, value) {
-      var node = $(sel);
-      if (node && typeof value === "string" && value.trim()) node.textContent = value.trim();
-    }
-
-    var FEEDS = [
-      {
-        /* Erasure Observatory: the hero composite, and the ledger it seals into. */
-        url: "/readings/erasure-observatory-latest.json",
-        slots: ["[data-stat='hero-erasure']", "[data-stat='sig-erasure']"],
-        fresh: [["[data-fresh='hero-erasure']", 12], ["[data-fresh='sig-erasure']", 12]],
-        ok: function (d) {
-          var reporting = (d.layers_contributing || []).length;
-          var total = (d.layers || []).length;
-          if (!reporting || !total) throw new Error("layers missing");
-          paint($("[data-stat='hero-erasure']"), {
-            value: need(d.erasure_index), decimals: 1, unit: "/100",
-            cap: "Erasure Index, " + reporting + " of " + total + " layers reporting"
-          });
-          var integ = d.integrity || {};
-          paint($("[data-stat='sig-erasure']"), {
-            value: need(integ.entries), decimals: 0,
-            cap: "sealed ledger entries, " +
-                 (integ.verified === true ? "chain verifies" : "chain does not verify")
-          });
-        }
-      },
-      {
-        /* The registry head: sealed records, runs, suites, root. */
-        url: "/readings/eval-registry-latest.json",
-        slots: ["[data-stat='hero-evals']", "[data-stat='sig-registry']"],
-        fresh: [["[data-fresh='hero-evals']", 12], ["[data-fresh='sig-registry']", 12]],
-        ok: function (d) {
-          var models = (d.models || []).length;
-          if (!models) throw new Error("model panel missing");
-          paint($("[data-stat='hero-evals']"), {
-            value: need(d.attestations), decimals: 0,
-            cap: "sealed records across " + models + " models, " +
-                 (d.verified === true ? "chain verifies" : "chain does not verify")
-          });
-          paint($("[data-stat='sig-registry']"), {
-            value: need(d.runs), decimals: 0,
-            cap: "sealed evaluation runs across " + need(d.preregistrations) +
-                 " pre-registered suites and " + models + " models"
-          });
-          if (typeof d.merkle_root === "string" && d.merkle_root.length > 24) {
-            text("[data-field='merkle']", d.merkle_root.slice(0, 24) + "…");
-          }
-        }
-      },
-      {
-        /* Inside View: the forged share, seen from inside. */
-        url: "/readings/inside-view-latest.json",
-        slots: ["[data-stat='sig-inside']"],
-        fresh: [["[data-fresh='sig-inside']", 12]],
-        ok: function (d) {
-          var blocked = need(d.n_censored_blocked);
-          var answered = need(d.n_censored_answered);
-          paint($("[data-stat='sig-inside']"), {
-            value: need(d.block_rate) * 100, decimals: 0, unit: "%",
-            cap: blocked + " of " + answered +
-                 " censored domains that answered from inside China came back forged"
-          });
-          if (d.control) text("[data-field='inside-why']", d.control.why);
-        }
-      },
-      {
-        /* The fix gap: signed, and scaled against the band the state itself
-           allows, so the number means something without a chart. */
-        url: "/readings/cny-fix-gap-latest.json",
-        slots: ["[data-stat='sig-fixgap']"],
-        fresh: [["[data-fresh='sig-fixgap']", 96]],
-        ok: function (d) {
-          var gap = need(d.gap_pct);
-          var band = need(d.band_pct);
-          paint($("[data-stat='sig-fixgap']"), {
-            value: Math.abs(gap), decimals: 2, unit: "%",
-            cap: "the market priced the yuan " + (gap < 0 ? "stronger" : "weaker") +
-                 " than the state's fix on " + d.asof + ", inside a band of plus or minus " +
-                 band + "%"
-          });
-        }
-      },
-      {
-        /* Data darkness: how late China's official surfaces are against their own
-           rhythm. Unreachable surfaces are excluded upstream, so the index is
-           always a mean over surfaces that actually answered. */
-        url: "/readings/data-darkness-latest.json",
-        slots: ["[data-stat='sig-darkness']"],
-        fresh: [["[data-fresh='sig-darkness']", 48]],
-        ok: function (d) {
-          var watched = need(d.n_series_watched);
-          var reporting = need(d.n_series_reporting);
-          paint($("[data-stat='sig-darkness']"), {
-            value: need(d.darkness_index), decimals: 2,
-            cap: "mean staleness across " + reporting + " of " + watched +
-                 " official publication surfaces, each scored against its own cadence" +
-                 (d.unreachable && d.unreachable.length
-                   ? ". Unreachable this round: " + d.unreachable.join(", ") : "")
-          });
-        }
-      },
-      {
-        /* Silence Index: a blind round publishes nothing rather than calm, so the
-           front page states how much was actually scored. */
-        url: "/readings/silence-index-latest.json",
-        slots: ["[data-stat='sig-silence']"],
-        fresh: [["[data-fresh='sig-silence']", 24]],
-        ok: function (d) {
-          var considered = need(d.n_topics_considered);
-          var scored = need(d.n_scored);
-          if (scored > 0) {
-            paint($("[data-stat='sig-silence']"), {
-              value: need(d.n_blackout), decimals: 0,
-              cap: "topics loud abroad and absent from the domestic board, out of " +
-                   scored + " scored of " + considered + " under deletion pressure"
-            });
-          } else {
-            paint($("[data-stat='sig-silence']"), {
-              value: considered, decimals: 0,
-              cap: "topics under deletion pressure this round. None could be scored " +
-                   "against the domestic record, so the reading abstains rather than " +
-                   "reporting calm"
-            });
-          }
-        }
-      },
-      {
-        /* Believability: the composite abstains unless every canonical component
-           answered, and claims no drift until it has a baseline. */
-        url: "/readings/believability-latest.json",
-        slots: ["[data-stat='sig-believability']"],
-        fresh: [["[data-fresh='sig-believability']", 1100]],
-        ok: function (d) {
-          if (typeof d.gap === "number" && isFinite(d.gap)) {
-            paint($("[data-stat='sig-believability']"), {
-              value: d.gap, decimals: 2, unit: " pts",
-              cap: "between the headline claim and the state's own physical telemetry for " +
-                   d.asof + (d.label === "warming_up"
-                     ? ". Drift is not scored until the gap has a baseline of its own"
-                     : "")
-            });
-          } else {
-            paint($("[data-stat='sig-believability']"), {
-              value: need(d.n_components_present), decimals: 0,
-              cap: "of " + need(d.n_components_required) + " canonical components answered for " +
-                   d.asof + ", so the composite abstains rather than reweighting itself"
-            });
-          }
-        }
-      },
-      {
-        /* In-path interference: rates over completed tests, blackouts named. */
-        url: "/readings/in-path-interference-latest.json",
-        slots: ["[data-stat='sig-inpath']"],
-        fresh: [["[data-fresh='sig-inpath']", 12]],
-        ok: function (d) {
-          var transport = need(d.transport_index);
-          var days = need(d.window_days);
-          paint($("[data-stat='sig-inpath']"), {
-            value: need(d.middlebox_index), decimals: 1, unit: "%",
-            cap: "of completed HTTP probes were rewritten in transit over a " + days +
-                 " day window. Circumvention transports: " + transport.toFixed(1) + "% anomalous"
-          });
-          var out = d.execution_blackouts || [];
-          if (out.length) {
-            var names = out.map(function (t) { return t.test; }).filter(Boolean);
-            if (names.length === out.length) {
-              text("[data-field='inpath-exec']",
-                   out.length + (out.length === 1 ? " measurement method" : " measurement methods") +
-                   " never completed a single run in China this window: " + names.join(", ") + ".");
-            }
-          }
-        }
-      },
-      {
-        /* Our own storefront panel. */
-        url: "/readings/app-storefront-latest.json",
-        slots: ["[data-stat='sig-appstore']"],
-        fresh: [["[data-fresh='sig-appstore']", 12]],
-        ok: function (d) {
-          var delisted = need(d.n_delisted);
-          var tracked = need(d.n_tracked);
-          paint($("[data-stat='sig-appstore']"), {
-            value: need(d.delisting_rate) * 100, decimals: 0, unit: "%",
-            cap: delisted + " of " + tracked +
-                 " apps on our own tracked panel are not offered in the Chinese storefront"
-          });
-        }
-      },
-      {
-        /* GreatFire's corpus: scale and composition, a separate measurement. */
-        url: "/readings/apple-censorship-latest.json",
-        slots: ["[data-stat='sig-apple']"],
-        ok: function (d) {
-          var country = d.country || {};
-          var peer = d.peer_rank || {};
-          var tested = need(country.total_tested);
-          var rank = need(peer.rank);
-          var of = need(peer.of);
-          paint($("[data-stat='sig-apple']"), {
-            value: need(d.unavailable_pct), decimals: 1, unit: "%",
-            cap: "of " + grp(tested) + " apps tested by GreatFire are unavailable in China, " +
-                 (rank === 1 ? "the highest of " + grp(of) + " storefronts surveyed"
-                             : "ranked " + rank + " of " + grp(of) + " storefronts surveyed")
-          });
-        }
-      },
-      {
-        /* Blocklist archaeology. Attribution is mandatory, so the card carries it
-           statically and this only sharpens the wording when the feed is readable. */
-        url: "/readings/blocklist-latest.json",
-        slots: ["[data-stat='sig-blocklist']"],
-        fresh: [["[data-fresh='sig-blocklist']", 336]],
-        ok: function (d) {
-          var versions = need(d.n_versions);
-          var app = typeof d.app === "string" && d.app ? d.app.toUpperCase() : "client";
-          paint($("[data-stat='sig-blocklist']"), {
-            value: need(d.n_additions), decimals: 0,
-            cap: "keywords newly present across " + versions + " successive " + app +
-                 " blocklist versions"
-          });
-        }
-      },
-      {
-        /* Great Firewall, outside-in. */
-        url: "/readings/ooni-gfw-latest.json",
-        slots: ["[data-stat='sig-gfw']"],
-        fresh: [["[data-fresh='sig-gfw']", 12]],
-        ok: function (d) {
-          var n = need(d.n_measurements);
-          var days = need(d.window_days);
-          paint($("[data-stat='sig-gfw']"), {
-            value: need(d.gfw_index), decimals: 1, unit: "/100",
-            cap: "GFW Index over " + grp(n) + " OONI measurements in a " + days + " day window"
-          });
-        }
-      }
-    ];
-
-    FEEDS.forEach(function (feed) {
-      S.loadReading(feed.url, function (d) {
-        /* The feed answered, so freshness is knowable even if a figure is not:
-           report it first, then let any missing field fail only its own slot. */
-        (feed.fresh || []).forEach(function (f) { freshen(f[0], d.generated_at, f[1]); });
-        try {
-          feed.ok(d);
-        } catch (err) {
-          feed.slots.forEach(function (sel) { fail(sel, feed.url); });
-        }
-      }, function () {
-        /* A feed that has not had its first scheduled round yet is not a
-           failure: saying "unavailable" there would report a working
-           instrument as broken. Such a feed declares `pending`, and its card
-           keeps the static sentence it already carries. */
-        if (feed.pending) return;
-        feed.slots.forEach(function (sel) { fail(sel, feed.url); });
-        (feed.fresh || []).forEach(function (f) { freshFail(f[0]); });
-      });
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", run);
-  } else {
-    run();
-  }
-})();
-</script>
+<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
 </body>
 </html>
