@@ -191,11 +191,16 @@ def test_hostile_machine_text_and_urls_remain_inert(publication) -> None:
 
 
 def test_sitemap_marks_only_analysis_reports_as_news(publication) -> None:
-    *_documents, machine, outputs = publication
-    sitemap = outputs[Path("news/sitemap.xml")].decode("utf-8")
+    feed, wire, _pulse, human, machine, _outputs = publication
+    fresh_machine = copy.deepcopy(machine)
+    for case in fresh_machine["cases"]:
+        case["published_at"] = fresh_machine["generated_at"]
+    sitemap = build_newsroom.build_sitemap(
+        feed, wire, human, fresh_machine
+    ).decode("utf-8")
 
     assert "https://palimpsest.info/news/analysis/" in sitemap
-    for case in machine["cases"]:
+    for case in fresh_machine["cases"]:
         absolute = build_newsroom._machine_case_public_url(case)
         fragment = sitemap[sitemap.index(f"<loc>{absolute}</loc>") :]
         fragment = fragment[: fragment.index("</url>")]
