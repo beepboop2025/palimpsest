@@ -71,6 +71,9 @@ CONTRACT = {
     "eval-articles":        _d(
         "generated_at", ["source", "scope", "publication_policy"], "n_articles"
     ),
+    "gfi-transcripts":      _d(
+        "generated_at", ["protocol", "probe_commitment", "verify_cmd"], "n_samples"
+    ),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
@@ -299,6 +302,15 @@ def test_newsroom_contract_keeps_provenance_and_story_denominator_explicit():
     assert "newsroom" in SCHEDULED_PUBLICATIONS
 
 
+def test_gfi_transcript_contract_exposes_the_complete_sample_denominator():
+    assert CONTRACT["gfi-transcripts"] == {
+        "timestamp": "generated_at",
+        "provenance": ["protocol", "probe_commitment", "verify_cmd"],
+        "denominator": "n_samples",
+        "reason": None,
+    }
+
+
 def test_investigations_contract_keeps_cases_and_review_boundary_explicit():
     assert CONTRACT["investigations"] == {
         "timestamp": "generated_at",
@@ -381,6 +393,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
 
     assert 'const CACHE = "palimpsest-v15"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
+    assert '"/readings/gfi-transcripts-latest.json"' in worker
     assert (
         'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
         '"/news/feed.xml"])'

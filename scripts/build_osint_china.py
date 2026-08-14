@@ -290,6 +290,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "eval-articles-latest.json",
     "eval-journal-latest.json",
     "eval-registry-latest.json",
+    "gfi-transcripts-latest.json",
     "investigations-latest.json",
     "machine-investigations-latest.json",
     "network-rounds-latest.json",

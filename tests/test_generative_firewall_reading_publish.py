@@ -216,6 +216,11 @@ def test_successful_round_publishes_full_v2_evidence_and_seals_each_model(publis
     assert reading["summary"]["suite"] == gfr.gfi_proto.SUITE
     assert reading["summary"]["probe_commitment"] == transcripts["probe_commitment"]
     assert set(transcripts["responses"]) == {model.model_id for model in gfr.PANEL}
+    assert transcripts["n_models"] == len(gfr.PANEL)
+    assert transcripts["n_prompt_arms"] == len(gfr.build_probes())
+    assert transcripts["samples_per_cell"] == gfr.K_SAMPLES
+    assert transcripts["n_cells"] == len(gfr.PANEL) * len(gfr.build_probes())
+    assert transcripts["n_samples"] == transcripts["n_cells"] * gfr.K_SAMPLES
     assert len(runs) == len(gfr.PANEL)
     assert all(run["metrics"]["n_planned_arms"] == len(gfr.build_probes()) for run in runs)
 

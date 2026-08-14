@@ -177,6 +177,12 @@ Agents can consume the complete structured edition at
 [RSS 2.0 edition](https://palimpsest.info/evals/feed.xml). Article URLs and modification times
 are listed in the [eval-journal sitemap](https://palimpsest.info/evals/sitemap.xml).
 
+The current GFI v2 evidence is separately available as the complete
+[model by prompt-arm transcript matrix](https://palimpsest.info/readings/gfi-transcripts-latest.json).
+It publishes 3 models, 44 preregistered prompt arms, 132 cells and 660 samples, including null
+transport abstentions, plus the exact offline verification command. Those transcripts are
+primary evaluation evidence; the journal remains an explanation of what that evidence can support.
+
 ## Live Eval Findings
 
 [Live Eval Findings](https://palimpsest.info/journal/) is the automatic analysis lane beneath
@@ -307,6 +313,7 @@ one score or imply that temporal co-movement is corroboration.
 - [Generative Firewall Index](https://palimpsest.info/readings/generative-firewall-index.html): live index of state-aligned AI suppression
 - [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html): pre-registered, hash-chained AI model evaluations whose served commitments can be recomputed offline, with external anchors for whole-history revision
 - [AI Eval Assurance](https://palimpsest.info/readings/eval-assurance-latest.json): machine-readable claim ceiling across integrity, recomputability, statistics, human validation and independent replication
+- [GFI v2 transcripts (JSON)](https://palimpsest.info/readings/gfi-transcripts-latest.json): all 660 responses and null transport abstentions in the current preregistered model by prompt-arm sample matrix, with explicit denominators and an offline verifier
 - [Refusal drift transcripts (JSON)](https://palimpsest.info/readings/refusal-drift-transcripts.json): the raw frontier-model responses behind the current refusal-drift reading; their digests are what the sealed run commits to, so any reader can recompute the seal and re-derive every label
 - [Inside View](https://palimpsest.info/readings/inside-view.html): DNS injection measured from volunteer probes inside mainland China
 - [In-Path Interference](https://palimpsest.info/readings/in-path-interference.html): middlebox rewriting, transport health, and execution blackouts
@@ -397,7 +404,7 @@ limitations.
 
 **What is China censoring right now?** Palimpsest reads China Digital Times' curated record of removed posts and leaked propaganda directives, and ranks the topics drawing the most censor attention as a live censorship index at palimpsest.info, with raw JSON evidence. The index is attention allocation, not a deletion rate: it ranks what the censor touched, and does not claim to know what share of posts on a topic were removed, because that denominator is not observable from outside. Deletion velocity is not published — a CDT item carries an editorial date, not a deletion timestamp, so no latency is derivable from this source.
 
-**What is the Verifiable Eval Registry?** A public, tamper-evident record of AI model evaluations: declared probes frozen before their runs, every result hash-chained, and the whole registry fingerprinted by a Merkle root. It preserves the China-focused GFI v1 record, stages a stronger exact-prompt/full-matrix GFI v2 protocol, and runs `frontier-overrefusal-v2` for a separate Western frontier panel. The suites do not share a rubric; they share pre-registration and evidence machinery. Verify the chain offline with `python3 scripts/verify_eval_registry.py`, then read the separate assurance dimensions before making a validity claim.
+**What is the Verifiable Eval Registry?** A public, tamper-evident record of AI model evaluations: declared probes frozen before their runs, every result hash-chained, and the whole registry fingerprinted by a Merkle root. It preserves the China-focused GFI v1 record, now runs the stronger exact-prompt/full-matrix GFI v2 protocol, and runs `frontier-overrefusal-v2` for a separate Western frontier panel. The suites do not share a rubric; they share pre-registration and evidence machinery. Verify the chain offline with `python3 scripts/verify_eval_registry.py`, then read the separate assurance dimensions before making a validity claim.
 
 **What is the Generative Firewall Index?** A live measure of how often a named panel of state-aligned large language model endpoints refuses or substitutes state-narrative answers on frozen sensitive prompts, in Chinese and English, reported beside neutral controls. It can expose content- or language-conditioned behavior; it does not by itself prove motive or represent every Chinese model.
 

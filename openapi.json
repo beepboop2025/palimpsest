@@ -86,6 +86,40 @@
         },
         "additionalProperties": true
       },
+      "GFITranscripts": {
+        "type": "object",
+        "description": "The complete GFI v2 response matrix. Model keys contain preregistered prompt-arm keys, each containing every sampled response or a null transport abstention.",
+        "required": ["schema", "generated_at", "method_version", "suite", "probe_commitment", "evaluation_protocol_sha256", "protocol", "n_models", "n_prompt_arms", "samples_per_cell", "n_cells", "n_samples", "responses", "verify_cmd"],
+        "properties": {
+          "schema": {"type": "string", "const": "palimpsest.gfi-transcripts.v2"},
+          "generated_at": {"type": "string", "format": "date-time"},
+          "method_version": {"type": "integer", "minimum": 1},
+          "suite": {"type": "string", "const": "cn-sensitive-generative-firewall-v2"},
+          "probe_commitment": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "evaluation_protocol_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "protocol": {"type": "string", "const": "readings/gfi-evaluation-protocol-v2.json"},
+          "n_models": {"type": "integer", "minimum": 1},
+          "n_prompt_arms": {"type": "integer", "minimum": 1},
+          "samples_per_cell": {"type": "integer", "minimum": 1},
+          "n_cells": {"type": "integer", "minimum": 1},
+          "n_samples": {"type": "integer", "minimum": 1},
+          "responses": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": ["string", "null"]}
+              }
+            }
+          },
+          "verify_cmd": {"type": "string", "const": "python -m scripts.verify_gfi_transcripts"}
+        },
+        "additionalProperties": true
+      },
       "NewsroomDenominator": {
         "type": "object",
         "required": ["label", "value"],
@@ -316,6 +350,10 @@
         "description": "Current deterministic AI-evaluation findings with sentence receipts and immutable revisions",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvalFindings"}}}
       },
+      "GFITranscripts": {
+        "description": "Every response and null transport abstention in the current sealed GFI v2 sample matrix",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GFITranscripts"}}}
+      },
       "NewsroomFeed": {
         "description": "Published structured newsroom edition",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/NewsroomFeed"}}}
@@ -458,6 +496,11 @@
       "operationId": "getLiveEvalFindings",
       "summary": "Read current deterministic eval findings, controls, uncertainty and sentence receipts",
       "responses": {"200": {"$ref": "#/components/responses/EvalFindings"}}
+    }},
+    "/readings/gfi-transcripts-latest.json": {"get": {
+      "operationId": "getGFITranscripts",
+      "summary": "Read the complete response matrix behind the current sealed GFI v2 evaluation",
+      "responses": {"200": {"$ref": "#/components/responses/GFITranscripts"}}
     }},
     "/readings/refusal-drift-latest.json": {"get": {
       "operationId": "getRefusalDrift",

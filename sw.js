@@ -25,6 +25,7 @@ const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/eval-journal-latest.json",
   "/readings/eval-articles-latest.json",
   "/readings/eval-registry-latest.json",
+  "/readings/gfi-transcripts-latest.json",
 ]);
 const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
 const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;

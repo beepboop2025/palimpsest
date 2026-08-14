@@ -1047,7 +1047,10 @@ def test_evidence_desk_prompt_routes_machine_analysis_and_preserves_abstention()
 
 # ------------------------------------------------------- both applications --
 def test_registry_signals_are_published_and_described_truthfully():
-    for name in ("eval-registry", "eval-assurance", "eval-journal", "refusal-drift"):
+    for name in (
+        "eval-registry", "eval-assurance", "eval-journal", "gfi-transcripts",
+        "refusal-drift",
+    ):
         path, desc = mcp.SIGNALS[name]
         assert path == f"/readings/{name}-latest.json"
         assert desc
@@ -1062,6 +1065,32 @@ def test_registry_signals_are_published_and_described_truthfully():
     assert "claim" in assurance and "human" in assurance and "replication" in assurance
     journal = mcp.SIGNALS["eval-journal"][1].lower()
     assert "falsifier" in journal and "receipts" in journal
+    transcripts = mcp.SIGNALS["gfi-transcripts"][1].lower()
+    assert "complete" in transcripts and "denominator" in transcripts and "seal" in transcripts
+
+
+def test_gfi_transcript_signal_caps_object_keyed_cells_and_reports_the_denominator(monkeypatch):
+    responses = {
+        model: {
+            f"arm-{arm:02d}": [f"{model} response {arm}"]
+            for arm in range(4)
+        }
+        for model in ("model-a", "model-b", "model-c")
+    }
+    monkeypatch.setattr(mcp, "_fetch", lambda _name: {
+        "generated_at": "2026-08-14T20:41:17Z",
+        "n_cells": 12,
+        "responses": responses,
+    })
+
+    body = mcp.tool_get_signal({"name": "gfi-transcripts", "max_rows": 5})
+
+    assert sum(len(arms) for arms in body["data"]["responses"].values()) == 5
+    assert body["truncated"]["responses.*"] == {
+        "returned": 5, "total": 12, "objects": 3,
+    }
+    assert body["data"]["n_cells"] == 12
+    assert "source_url" in body["how_to_see_everything"]
 
 
 def test_every_signal_has_a_published_reading_on_disk():

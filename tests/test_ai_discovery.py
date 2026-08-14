@@ -32,6 +32,9 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     assert card["evidence"]["live_eval_findings_json"].endswith(
         "/readings/eval-articles-latest.json"
     )
+    assert card["evidence"]["gfi_v2_transcripts"].endswith(
+        "/readings/gfi-transcripts-latest.json"
+    )
     bridge = card["integrations"]["scamshield"]
     assert bridge["schema"] == "scamshield-intelligence-pack/v1"
     assert bridge["version"] == "2026-08-08.2"
@@ -137,6 +140,20 @@ def test_openapi_publishes_live_eval_findings():
     }
 
 
+def test_openapi_publishes_the_complete_gfi_v2_transcript_matrix():
+    spec = _json("openapi.json")
+    schema = spec["components"]["schemas"]["GFITranscripts"]
+    assert schema["properties"]["schema"]["const"] == "palimpsest.gfi-transcripts.v2"
+    assert {"n_models", "n_prompt_arms", "samples_per_cell", "n_cells", "n_samples"} <= set(
+        schema["required"]
+    )
+    operation = spec["paths"]["/readings/gfi-transcripts-latest.json"]["get"]
+    assert operation["operationId"] == "getGFITranscripts"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/GFITranscripts"
+    }
+
+
 def test_developer_page_exposes_every_activation_path():
     page = (ROOT / "developers.html").read_text(encoding="utf-8")
     assert '<link rel="canonical" href="https://palimpsest.info/developers.html">' in page
@@ -148,6 +165,8 @@ def test_developer_page_exposes_every_activation_path():
     assert "Settings → Apps → Create" in page
     assert "six discovered read-only tools" in page
     assert 'id="run-verdict"' in page and "whats_happening" in page
+    assert 'id="gfi-transcripts-command"' in page
+    assert "/readings/gfi-transcripts-latest.json" in page
     assert "/assets/developers.js" in page
     assert 'id="scamshield"' in page
     assert "scamshield-intelligence-pack/v1" in page

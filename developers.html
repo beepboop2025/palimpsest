@@ -323,6 +323,15 @@
   | python3 -m json.tool</code></pre>
       <button class="copy-btn" type="button" data-copy="eval-assurance-command">Copy request</button>
     </div>
+    <p class="dev-copy" style="margin-top:16px">To inspect the primary GFI v2 evidence,
+    fetch the complete transcript matrix. It contains every response and null transport
+    abstention across 3 models, 44 preregistered prompt arms and 660 samples, with explicit
+    denominators and the offline verification command.</p>
+    <div class="codebox ps-p2" style="padding:18px">
+      <pre id="gfi-transcripts-command"><code>curl -sS https://palimpsest.info/readings/gfi-transcripts-latest.json \
+  | python3 -m json.tool</code></pre>
+      <button class="copy-btn" type="button" data-copy="gfi-transcripts-command">Copy request</button>
+    </div>
     <p class="dev-copy" style="margin-top:16px">For evidence-bound explanations of the origin,
     method changes and known failures, fetch the Eval Journal edition. Each article carries its
     falsifier and exact artifact receipts; the linked readings remain the measurement authority.</p>
