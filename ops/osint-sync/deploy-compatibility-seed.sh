@@ -37,6 +37,7 @@ quiesce_repository_path='ops/systemd/palimpsest-backup.release-quiesce.conf'
 quiesce_target='/etc/systemd/system/palimpsest-backup.service.d/zz-release-quiesce.conf'
 seed_state_dir='/var/lib/palimpsest-release'
 seed_state_path="$seed_state_dir/compatibility-seed-$C0_DEPLOY_SHA.json"
+activator_state_path="$seed_state_dir/compatibility-seed-$C0_DEPLOY_SHA.activators.json"
 cd "$repo_root"
 [[ -d .git && ! -L .git ]] || die "deployment checkout is missing or unsafe"
 
@@ -159,6 +160,8 @@ duckdb_sha256="$(sha256sum /usr/local/bin/duckdb | awk '{print $1}')"
 [[ "$duckdb_sha256" =~ ^[0-9a-f]{64}$ \
     && "$(sudo cat /etc/palimpsest/duckdb.sha256)" == "$duckdb_sha256" ]] \
   || die "DuckDB does not match its root-owned pin"
+[[ -x /usr/bin/systemd-run && -x /usr/bin/true ]] \
+  || die "systemd proof-pin tools are unavailable"
 
 read_enablement() {
   local state
@@ -217,6 +220,7 @@ for unit in "${release_activators[@]}"; do
 done
 sudo test ! -e "$seed_state_path"
 sudo test ! -L "$seed_state_path"
+sudo test ! -L "$activator_state_path"
 
 node_offsite_configured=0
 node_offsite_config_count=0
@@ -257,6 +261,141 @@ stop_loaded_unit() {
   esac
 }
 
+write_activator_state() {
+  local state_tmp state_stage
+  state_tmp="$(mktemp)"
+  python3 - "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA" \
+    "$state_units_tmp" >"$state_tmp" <<'PY'
+import json
+import pathlib
+import sys
+
+previous, c0, units_path = sys.argv[1:]
+activators = []
+for line in pathlib.Path(units_path).read_text(encoding="utf-8").splitlines():
+    unit, enablement, active = line.split("\t")
+    activators.append({
+        "unit": unit,
+        "enablement": enablement,
+        "was_active": active == "1",
+    })
+value = {
+    "schema": "palimpsest-compatibility-seed-activators.v1",
+    "previous_deploy_sha": previous,
+    "c0_deploy_sha": c0,
+    "captured_activators": activators,
+}
+print(json.dumps(value, sort_keys=True, separators=(",", ":")))
+PY
+  if sudo test -e "$seed_state_dir"; then
+    sudo test -d "$seed_state_dir"
+    sudo test ! -L "$seed_state_dir"
+  else
+    sudo test ! -L "$seed_state_dir"
+    sudo install -d -o root -g root -m 0700 "$seed_state_dir"
+  fi
+  [[ "$(sudo stat -c '%u:%g:%a' "$seed_state_dir")" == '0:0:700' ]] \
+    || die "seed state directory is unsafe"
+  if sudo test -e "$activator_state_path"; then
+    [[ "$(sudo stat -c '%u:%g:%a:%h' "$activator_state_path")" \
+        == '0:0:600:1' ]] \
+      || die "captured activator state is unsafe"
+    sudo cmp -s "$state_tmp" "$activator_state_path" \
+      || die "captured activator state does not match this attempt"
+    rm -f -- "$state_tmp"
+  else
+    state_stage="$seed_state_dir/.compatibility-seed-$C0_DEPLOY_SHA.activators.$$"
+    sudo test ! -e "$state_stage"
+    sudo test ! -L "$state_stage"
+    sudo install -o root -g root -m 0600 "$state_tmp" "$state_stage"
+    rm -f -- "$state_tmp"
+    sudo mv -Tf "$state_stage" "$activator_state_path"
+  fi
+  [[ "$(sudo stat -c '%u:%g:%a:%h' "$activator_state_path")" \
+      == '0:0:600:1' ]] \
+    || die "captured activator state did not converge safely"
+  sudo python3 -m json.tool "$activator_state_path" >/dev/null
+}
+
+# Disabled timers no longer reference their oneshot services. systemd may then
+# garbage-collect a completed service before a following `systemctl show`,
+# erasing the exact ConditionResult and execution result we need to prove. A
+# transient, inactive-command pin holds only an After= reference: it does not
+# start the target, but it keeps that target's completed invocation inspectable.
+proof_pin_sequence=0
+active_proof_pin=''
+pin_unit_for_proof() {
+  local unit="$1"
+  [[ -z "$active_proof_pin" ]] \
+    || die "another systemd proof pin is still active"
+  proof_pin_sequence=$((proof_pin_sequence + 1))
+  active_proof_pin="palimpsest-c0-proof-${proof_pin_sequence}-$$.service"
+  if ! sudo /usr/bin/systemd-run --quiet --unit="$active_proof_pin" \
+      --property=Type=oneshot --property=RemainAfterExit=yes \
+      --property="After=$unit" /usr/bin/true; then
+    active_proof_pin=''
+    die "could not create systemd proof pin: $unit"
+  fi
+  if [[ "$(systemctl is-active "$active_proof_pin" 2>/dev/null || true)" \
+        == active \
+      && "$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null || true)" == loaded ]]; then
+    return 0
+  fi
+  sudo systemctl stop "$active_proof_pin" >/dev/null 2>&1 || true
+  active_proof_pin=''
+  die "could not pin systemd proof state: $unit"
+}
+
+release_proof_pin() {
+  local pin="$active_proof_pin" state
+  [[ -n "$pin" ]] || return 0
+  sudo systemctl stop "$pin"
+  state="$(systemctl is-active "$pin" 2>/dev/null || true)"
+  case "$state" in
+    inactive|failed|unknown|'') ;;
+    *) die "systemd proof pin did not stop: $pin ($state)" ;;
+  esac
+  active_proof_pin=''
+}
+
+start_and_verify_oneshot() {
+  local unit="$1" failure_message="$2"
+  local previous_invocation invocation condition result status started start_rc
+  pin_unit_for_proof "$unit"
+  previous_invocation="$(systemctl show --property=InvocationID --value \
+    "$unit" 2>/dev/null || true)"
+  if systemctl is-failed --quiet "$unit"; then
+    sudo systemctl reset-failed "$unit"
+  fi
+  start_rc=0
+  sudo systemctl start "$unit" || start_rc=$?
+  invocation="$(systemctl show --property=InvocationID --value \
+    "$unit" 2>/dev/null || true)"
+  condition="$(systemctl show --property=ConditionResult --value \
+    "$unit" 2>/dev/null || true)"
+  result="$(systemctl show --property=Result --value \
+    "$unit" 2>/dev/null || true)"
+  status="$(systemctl show --property=ExecMainStatus --value \
+    "$unit" 2>/dev/null || true)"
+  started="$(systemctl show \
+    --property=ExecMainStartTimestampMonotonic --value \
+    "$unit" 2>/dev/null || true)"
+  if (( start_rc == 0 )) \
+      && [[ "$condition" == yes && "$result" == success && "$status" == 0 \
+        && "$invocation" =~ ^[0-9a-f]{32}$ \
+        && "$invocation" != "$previous_invocation" \
+        && "$started" =~ ^[1-9][0-9]*$ ]]; then
+    release_proof_pin
+    return 0
+  fi
+  printf '%s: unit=%s start=%s condition=%s result=%s status=%s invocation=%s started=%s\n' \
+    "$failure_message" "$unit" "$start_rc" "$condition" "$result" \
+    "$status" "$invocation" "$started" >&2
+  release_proof_pin
+  die "$failure_message"
+}
+
 mutation_started=0
 seed_committed=0
 seed_fail_safe() {
@@ -269,12 +408,19 @@ seed_fail_safe() {
     sudo systemctl stop "$unit" >/dev/null 2>&1 || true
     sudo systemctl disable "$unit" >/dev/null 2>&1 || true
   done
+  if [[ -n "${active_proof_pin:-}" ]]; then
+    sudo systemctl stop "$active_proof_pin" >/dev/null 2>&1 || true
+    active_proof_pin=''
+  fi
+  printf 'captured activator state retained: %s\n' \
+    "$activator_state_path" >&2
   sudo systemctl daemon-reload >/dev/null 2>&1 || true
   rm -f -- "${state_units_tmp:-}" >/dev/null 2>&1 || true
 }
 trap seed_fail_safe ERR
 trap 'seed_fail_safe; exit 1' HUP INT TERM
 
+write_activator_state
 mutation_started=1
 for unit in "${release_activators[@]}"; do
   stop_loaded_unit "$unit"
@@ -320,16 +466,8 @@ latest_node_snapshot() {
 
 create_and_verify_snapshot() {
   local before="$1" output_variable="$2" snapshot actual expected receipt
-  sudo systemctl reset-failed palimpsest-backup.service
-  sudo systemctl start palimpsest-backup.service
-  [[ "$(sudo systemctl show --property=ConditionResult --value \
-      palimpsest-backup.service)" == yes ]] \
-    || die "backup condition did not run"
-  [[ "$(sudo systemctl show --property=Result --value \
-      palimpsest-backup.service)" == success \
-      && "$(sudo systemctl show --property=ExecMainStatus --value \
-        palimpsest-backup.service)" == 0 ]] \
-    || die "backup service did not succeed"
+  start_and_verify_oneshot \
+    palimpsest-backup.service "backup service did not succeed"
   snapshot="$(latest_node_snapshot)"
   [[ -n "$snapshot" && "$snapshot" != "$before" ]] \
     || die "backup did not publish a new snapshot"
@@ -443,15 +581,8 @@ release_git switch --detach "$C0_DEPLOY_SHA"
 ops/docker/prod-compose build
 sudo bash ops/investigative-analysis/install-host-bundle.sh --certify-image
 sudo bash ops/osint-sync/install-host-bundle.sh
-sudo systemctl reset-failed palimpsest-public-osint-sync.service
-sudo systemctl start palimpsest-public-osint-sync.service
-[[ "$(systemctl show --property=ConditionResult --value \
-    palimpsest-public-osint-sync.service)" == yes \
-    && "$(systemctl show --property=Result --value \
-      palimpsest-public-osint-sync.service)" == success \
-    && "$(systemctl show --property=ExecMainStatus --value \
-      palimpsest-public-osint-sync.service)" == 0 ]] \
-  || die "C0 public OSINT provider did not succeed"
+start_and_verify_oneshot palimpsest-public-osint-sync.service \
+  "C0 public OSINT provider did not succeed"
 sudo /usr/bin/python3 \
   /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
   --legacy-readings-mirror --verify-installed >/dev/null
@@ -504,23 +635,12 @@ curl --fail --silent --show-error \
   | python3 -m json.tool >/dev/null
 
 # Prove the old consumers can parse the later mirrored ledger and artifact.
-sudo systemctl reset-failed palimpsest-common-crawl-import.service
-sudo systemctl start palimpsest-common-crawl-import.service
-[[ "$(systemctl show --property=ConditionResult --value \
-    palimpsest-common-crawl-import.service)" == yes \
-    && "$(systemctl show --property=Result --value \
-      palimpsest-common-crawl-import.service)" == success \
-    && "$(systemctl show --property=ExecMainStatus --value \
-      palimpsest-common-crawl-import.service)" == 0 ]] \
-  || die "C0 Common Crawl import did not succeed"
+start_and_verify_oneshot palimpsest-common-crawl-import.service \
+  "C0 Common Crawl import did not succeed"
 for service in palimpsest-investigative-analysis.service \
     palimpsest-common-crawl-context.service; do
-  sudo systemctl reset-failed "$service"
-  sudo systemctl start "$service"
-  [[ "$(systemctl show --property=ConditionResult --value "$service")" == yes \
-      && "$(systemctl show --property=Result --value "$service")" == success \
-      && "$(systemctl show --property=ExecMainStatus --value "$service")" == 0 ]] \
-    || die "legacy consumer failed against C0 mirror: $service"
+  start_and_verify_oneshot "$service" \
+    "legacy consumer failed against C0 mirror: $service"
 done
 
 post_seed_before="$(latest_node_snapshot)"
