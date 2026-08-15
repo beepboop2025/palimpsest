@@ -9,7 +9,10 @@ die() {
   exit 1
 }
 
-[[ "$EUID" -ne 0 ]] || die "run as the palimpsest operator, not root"
+if [[ "$EUID" -eq 0 ]]; then
+  [[ "${PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED:-}" == 1 ]] \
+    || die "root execution requires PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1"
+fi
 for variable in C0_DEPLOY_SHA EXPECTED_PREVIOUS_DEPLOY_SHA \
     COMMON_CRAWL_WAREHOUSE_SOURCE; do
   [[ -n "${!variable:-}" ]] || die "required variable is missing: $variable"
@@ -43,6 +46,7 @@ export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
 release_git() {
   /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
     -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c "safe.directory=$repo_root" \
     -c credential.helper= -c protocol.allow=never \
     -c protocol.https.allow=always "$@"
 }

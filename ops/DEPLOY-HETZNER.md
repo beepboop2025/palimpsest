@@ -873,6 +873,7 @@ the reviewed C0 Git object and prove its blob identity before executing it:
 ```bash
 set -Eeuo pipefail
 cd /home/palimpsest/palimpsest
+PALIMPSEST_REPO_ROOT="$(pwd -P)"
 C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'
 EXPECTED_PREVIOUS_DEPLOY_SHA='REPLACE_WITH_CURRENT_40_HEX_SHA'
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
@@ -885,6 +886,7 @@ export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
 release_git() {
   /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
     -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c "safe.directory=$PALIMPSEST_REPO_ROOT" \
     -c credential.helper= -c protocol.allow=never \
     -c protocol.https.allow=always "$@"
 }
@@ -904,6 +906,7 @@ release_git show "$C0_DEPLOY_SHA:$SEED_PATH" >"$SEED_TMP"
 test "$(release_git hash-object "$SEED_TMP")" \
   = "$(release_git rev-parse "$C0_DEPLOY_SHA:$SEED_PATH")"
 chmod 0700 "$SEED_TMP"
+PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \
 C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
 EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
 COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
@@ -922,6 +925,12 @@ test "$(sudo python3 -c \
   "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.json")" \
   = complete
 ```
+
+The root acknowledgement is consumed only when the SSH shell is actually
+root. It makes that exceptional runner choice explicit; Git trust remains
+command-local, and the seed still requires a clean exact-SHA checkout, verified
+main-line ancestry, unchanged legacy authority boundaries, and both backup
+proofs. Do not add the repository to a global `safe.directory` list.
 
 The executable seed transaction performs both backup proofs, records the exact
 pre-seed snapshot and captured activator state under the root-only
