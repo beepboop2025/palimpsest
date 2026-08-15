@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-15T13:25:20Z",
+  "as_of": "2026-08-15T17:18:54Z",
   "comparisons": [
     {
       "baseline_observations": 0,
@@ -458,7 +458,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -494,7 +494,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -530,7 +530,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -585,7 +585,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -621,7 +621,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -657,7 +657,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -693,7 +693,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -729,7 +729,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -765,7 +765,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -801,7 +801,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -837,7 +837,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -873,7 +873,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -909,7 +909,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -945,7 +945,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -981,7 +981,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -1017,7 +1017,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -1053,7 +1053,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -1089,7 +1089,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 2.971,
+            "age_hours": 6.864,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -1113,19 +1113,55 @@
           "value": 6.7878
         },
         {
-          "collected_at": "2026-08-14T17:51:31Z",
+          "collected_at": "2026-08-15T17:18:54Z",
+          "comparability": {
+            "basis": "Absolute CNY-per-USD difference between two external official derivations.",
+            "concept": "Chinese yuan per US dollar",
+            "concept_id": "usd-cny-rate"
+          },
+          "evidence": {
+            "sha256": "d5762f09cc28b123d8f16530e45ae14ebe1dda97268d4e9220e1c904829e5684",
+            "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
+          },
+          "frequency": "D",
+          "freshness": {
+            "age_hours": 0.0,
+            "budget_hours": 120.0,
+            "status": "current"
+          },
+          "independence_group": "external_fx_reference",
+          "label": "ECB versus Bank of Canada derived-rate difference",
+          "limitation": "A null cross-check is not converted to zero and this value does not add an independent China source.",
+          "metric_id": "cn-fx-external-cross-check-difference",
+          "period_end": "2026-08-14",
+          "period_start": "2026-08-14",
+          "released_at": null,
+          "revision": {
+            "delta": null,
+            "number": null,
+            "previous_value": null,
+            "status": "not_available"
+          },
+          "source_class": "official",
+          "source_id": "external_cny_reference",
+          "status": "derived",
+          "unit": "CNY per USD",
+          "value": 0.00065
+        },
+        {
+          "collected_at": "2026-08-15T17:18:54Z",
           "comparability": {
             "basis": "Percent gap; positive means the market reference prices the yuan weaker than the fix.",
             "concept": "Official-reference FX divergence",
             "concept_id": "usd-cny-reference-gap"
           },
           "evidence": {
-            "sha256": "25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021",
+            "sha256": "d5762f09cc28b123d8f16530e45ae14ebe1dda97268d4e9220e1c904829e5684",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 19.564,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1149,19 +1185,19 @@
           "value": -0.6846
         },
         {
-          "collected_at": "2026-08-14T17:51:31Z",
+          "collected_at": "2026-08-15T17:18:54Z",
           "comparability": {
             "basis": "CNY per USD; higher means a weaker yuan.",
             "concept": "Chinese yuan per US dollar",
             "concept_id": "usd-cny-rate"
           },
           "evidence": {
-            "sha256": "25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021",
+            "sha256": "d5762f09cc28b123d8f16530e45ae14ebe1dda97268d4e9220e1c904829e5684",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 19.564,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1185,19 +1221,19 @@
           "value": 6.7878
         },
         {
-          "collected_at": "2026-08-14T17:51:31Z",
+          "collected_at": "2026-08-15T17:18:54Z",
           "comparability": {
             "basis": "CNY per USD; higher means a weaker yuan.",
             "concept": "Chinese yuan per US dollar",
             "concept_id": "usd-cny-rate"
           },
           "evidence": {
-            "sha256": "25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021",
+            "sha256": "d5762f09cc28b123d8f16530e45ae14ebe1dda97268d4e9220e1c904829e5684",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 19.564,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1221,7 +1257,7 @@
           "value": 6.741333
         }
       ],
-      "n_metrics": 18,
+      "n_metrics": 19,
       "source_classes": [
         "official"
       ],
@@ -1250,7 +1286,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 22.94,
+            "age_hours": 26.833,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1286,7 +1322,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 22.94,
+            "age_hours": 26.833,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1322,7 +1358,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 22.94,
+            "age_hours": 26.833,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1358,7 +1394,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 22.94,
+            "age_hours": 26.833,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1394,7 +1430,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 22.94,
+            "age_hours": 26.833,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1430,7 +1466,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 22.94,
+            "age_hours": 26.833,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1485,7 +1521,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1521,7 +1557,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1557,7 +1593,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1593,7 +1629,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1629,7 +1665,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1665,7 +1701,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 244.247,
+            "age_hours": 248.14,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1729,7 +1765,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 3.893,
             "budget_hours": 50.0,
             "status": "current"
           },
@@ -1772,7 +1808,7 @@
     ],
     "status": "warming_up"
   },
-  "generated_at": "2026-08-15T13:25:20Z",
+  "generated_at": "2026-08-15T17:18:54Z",
   "input_integrity": [
     {
       "check_id": "cfets-wide-ledger-alignment",
@@ -1814,11 +1850,11 @@
       "used": true
     },
     {
-      "bytes": 1430,
+      "bytes": 1433,
       "filename": "cny-fix-gap-latest.json",
-      "generated_at": "2026-08-14T17:51:31Z",
+      "generated_at": "2026-08-15T17:18:54Z",
       "input_id": "cny-fix-gap",
-      "sha256": "25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021",
+      "sha256": "d5762f09cc28b123d8f16530e45ae14ebe1dda97268d4e9220e1c904829e5684",
       "status": "used",
       "used": true
     },
@@ -1842,7 +1878,7 @@
     }
   ],
   "method": "Deterministic no-network join using release and collection clocks, latest-as-of revision selection, source-independence groups, explicit units, and abstention gates.",
-  "n_metrics": 40,
+  "n_metrics": 41,
   "pulse_id": "palimpsest-china-economic-pulse",
   "readiness": {
     "abstention_reason": "Coverage and revision history do not yet support a broad state-of-economy composite.",
@@ -1899,7 +1935,7 @@
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 0.0,
+          "age_hours": 3.893,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1942,7 +1978,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 0.0,
+          "age_hours": 3.893,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1985,7 +2021,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 0.0,
+          "age_hours": 3.893,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -2028,7 +2064,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 0.0,
+          "age_hours": 3.893,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -2071,7 +2107,7 @@
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 0.0,
+          "age_hours": 3.893,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -2114,7 +2150,7 @@
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 0.0,
+          "age_hours": 3.893,
           "budget_hours": 50.0,
           "status": "current"
         },

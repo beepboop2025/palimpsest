@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-15T17:12:43Z",
+  "generated_at": "2026-08-15T17:37:40Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "60e13d0f6b2b4cdc4fdd90d7560efc41425c738c",
+  "source_commit": "9f1a5b62d83ac2a225073ad789aa1110d0553c32",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1438,8 +1438,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-14T17:51:31Z",
-      "modified_at": "2026-08-14T17:51:31Z",
+      "published_at": "2026-08-15T17:18:54Z",
+      "modified_at": "2026-08-15T17:18:54Z",
       "claim_fingerprint": "sha256:4b7244e10cdf17a59b1d8f98170dfacde6845b5383ebc4a5ddf5e1f3e6a950cf",
       "metric": {
         "label": "fix gap",
@@ -1460,10 +1460,10 @@
         "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
         "input": {
           "filename": "cny-fix-gap-latest.json",
-          "sha256": "25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021",
-          "bytes": 1430
+          "sha256": "d5762f09cc28b123d8f16530e45ae14ebe1dda97268d4e9220e1c904829e5684",
+          "bytes": 1433
         },
-        "source_timestamp": "2026-08-14T17:51:31Z"
+        "source_timestamp": "2026-08-15T17:18:54Z"
       },
       "method": {
         "summary": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
