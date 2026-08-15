@@ -1,9 +1,53 @@
 {
-  "generated_at": "2026-08-14T19:39:28.051444+00:00",
-  "headline": "4 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
-  "n_pairs_tested": 4,
+  "generated_at": "2026-08-15T02:05:17.149103+00:00",
+  "headline": "7 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
+  "n_pairs_tested": 7,
   "n_confirmed": 0,
   "pairs": [
+    {
+      "ok": true,
+      "overlap_days": 35,
+      "lag_days": 7,
+      "correlation": 0.711,
+      "p_value": 0.1429,
+      "n_shifts": 20,
+      "null_median_abs_r": 0.356,
+      "pair": [
+        "github_refuge",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-15",
+      "reading": "github_refuge moves 7d BEFORE ooni_gfw",
+      "holm_threshold": 0.00714,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 35,
+      "lag_days": -5,
+      "correlation": 0.487,
+      "p_value": 0.2857,
+      "n_shifts": 20,
+      "null_median_abs_r": 0.374,
+      "pair": [
+        "ddti_novelty",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-15",
+      "reading": "ooni_gfw moves 5d BEFORE ddti_novelty",
+      "holm_threshold": 0.00833,
+      "survives_multiplicity": false
+    },
     {
       "ok": true,
       "overlap_days": 36,
@@ -23,7 +67,7 @@
       "first_day": "2026-07-06",
       "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
-      "holm_threshold": 0.0125,
+      "holm_threshold": 0.01,
       "survives_multiplicity": false
     },
     {
@@ -45,7 +89,7 @@
       "first_day": "2026-07-05",
       "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 3d BEFORE ddti_threat",
-      "holm_threshold": 0.01667,
+      "holm_threshold": 0.0125,
       "survives_multiplicity": false
     },
     {
@@ -67,7 +111,7 @@
       "first_day": "2026-07-06",
       "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 4d BEFORE gdelt_containment",
-      "holm_threshold": 0.025,
+      "holm_threshold": 0.01667,
       "survives_multiplicity": false
     },
     {
@@ -89,6 +133,28 @@
       "first_day": "2026-07-05",
       "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 1d BEFORE ddti_novelty",
+      "holm_threshold": 0.025,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 35,
+      "lag_days": -2,
+      "correlation": -0.238,
+      "p_value": 1.0,
+      "n_shifts": 20,
+      "null_median_abs_r": 0.483,
+      "pair": [
+        "ddti_threat",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-15",
+      "reading": "ooni_gfw moves 2d BEFORE ddti_threat",
       "holm_threshold": 0.05,
       "survives_multiplicity": false
     }
@@ -148,13 +214,6 @@
     {
       "pair": [
         "ddti_novelty",
-        "ooni_gfw"
-      ],
-      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
-    },
-    {
-      "pair": [
-        "ddti_novelty",
         "refusal_drift"
       ],
       "reason": "5 admissible shifts: smallest attainable p is 0.167, above alpha=0.05. Needs about 36d of overlapping daily history (has 20d)"
@@ -165,13 +224,6 @@
         "ioda_outages"
       ],
       "reason": "no usable lag (a series is constant)"
-    },
-    {
-      "pair": [
-        "ddti_threat",
-        "ooni_gfw"
-      ],
-      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
     },
     {
       "pair": [
@@ -207,13 +259,6 @@
         "ioda_outages"
       ],
       "reason": "no usable lag (a series is constant)"
-    },
-    {
-      "pair": [
-        "github_refuge",
-        "ooni_gfw"
-      ],
-      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
     },
     {
       "pair": [
