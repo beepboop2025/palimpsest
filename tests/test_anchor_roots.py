@@ -47,6 +47,26 @@ def _tmp_paths():
     return os.path.join(d, "anchors.jsonl"), os.path.join(d, "anchors-latest.json")
 
 
+def _install_successful_ots(monkeypatch, tmp_path):
+    """Install a durable fake proof and return the stamp call counter."""
+    monkeypatch.setattr(anchor_roots, "ROOT", str(tmp_path))
+    proof = tmp_path / "readings" / "anchors" / "fake-proof.txt.ots"
+    proof.parent.mkdir(parents=True)
+    calls = []
+
+    def _stamp(roots, ts, run=None):
+        calls.append((roots, ts))
+        proof.write_bytes(b"fake proof")
+        return {
+            "ok": True,
+            "file": "readings/anchors/fake-proof.txt",
+            "proof": "readings/anchors/fake-proof.txt.ots",
+        }
+
+    monkeypatch.setattr(anchor_roots, "ots_stamp", _stamp)
+    return calls
+
+
 def test_anchor_records_success(monkeypatch):
     monkeypatch.setattr(anchor_roots.shutil, "which", lambda _: None)  # no ots locally
     log, latest = _tmp_paths()
@@ -65,14 +85,52 @@ def test_anchor_records_success(monkeypatch):
     assert len(summary["readings_root"]) == 64
 
 
-def test_idempotent_when_roots_unchanged(monkeypatch):
-    monkeypatch.setattr(anchor_roots.shutil, "which", lambda _: None)
+def test_idempotent_when_roots_and_external_evidence_are_complete(monkeypatch, tmp_path):
+    ots_calls = _install_successful_ots(monkeypatch, tmp_path)
     log, latest = _tmp_paths()
     first = anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
     assert first is not None
     again = anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
     assert again is None
     assert len(open(log).read().strip().splitlines()) == 1
+    assert len(ots_calls) == 1
+
+
+def test_unchanged_roots_retry_only_missing_external_evidence(monkeypatch, tmp_path):
+    ots_calls = _install_successful_ots(monkeypatch, tmp_path)
+    attempts = []
+
+    def _flaky_opener(req, timeout=0):
+        target = req.full_url.removeprefix("https://web.archive.org/save/")
+        attempts.append(target)
+        if target.endswith("erasure-ledger.jsonl") and attempts.count(target) == 1:
+            raise OSError("connection refused")
+        suffix = target.rsplit("/", 1)[-1]
+        return _FakeResponse(f"https://web.archive.org/web/20260816/{suffix}")
+
+    log, latest = _tmp_paths()
+    first = anchor_roots.anchor(opener=_flaky_opener, log_path=log, latest_path=latest)
+    assert first is not None
+    assert sum(1 for item in first["wayback"] if item["ok"]) == 2
+
+    retry = anchor_roots.anchor(opener=_flaky_opener, log_path=log, latest_path=latest)
+    assert retry is not None
+    assert retry["retry_of"] == first["ts"]
+    assert all(item["ok"] for item in retry["wayback"])
+    assert sum(1 for item in retry["wayback"] if item.get("reused")) == 2
+    assert retry["ots"]["reused"] is True
+    assert attempts.count(anchor_roots.WAYBACK_TARGETS[0]) == 1
+    assert attempts.count(anchor_roots.WAYBACK_TARGETS[1]) == 2
+    assert attempts.count(anchor_roots.WAYBACK_TARGETS[2]) == 1
+    assert len(ots_calls) == 1
+
+    summary = json.load(open(latest))
+    assert summary["wayback_ok"] == len(anchor_roots.WAYBACK_TARGETS)
+    assert summary["wayback_reused"] == 2
+    assert summary["ots_status"] == "stamped" and summary["ots_reused"] is True
+    assert anchor_roots.anchor(
+        opener=_flaky_opener, log_path=log, latest_path=latest
+    ) is None
 
 
 def test_a_readings_only_move_still_anchors(monkeypatch, tmp_path):
