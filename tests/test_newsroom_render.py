@@ -22,9 +22,13 @@ def test_renderer_emits_one_html_and_json_document_per_story():
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)
 
-    assert len(outputs) == 5 + (2 * feed["n_stories"])
+    assert len(outputs) == 9 + (2 * feed["n_stories"])
     assert Path("readings/newsroom-latest.json") in outputs
+    assert Path("readings/china-censorship-analysis-latest.json") in outputs
     assert Path("news/index.html") in outputs
+    assert Path("news/china/analysis/index.html") in outputs
+    assert Path("news/china/analysis/feed.json") in outputs
+    assert Path("news/china/analysis/feed.xml") in outputs
     for story in feed["stories"]:
         assert Path("news") / story["slug"] / "index.html" in outputs
         assert Path("news") / story["slug"] / "story.json" in outputs

@@ -98,6 +98,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
     assert {spec.filename for spec in mod.SIGNALS} >= {"latest.json", "anchors-latest.json"}
     assert mod.EXCLUDED_LATEST_FILES == {
         "china-article-stream-latest.json",
+        "china-censorship-analysis-latest.json",
         "china-econ-forecast-latest.json",
         "china-econ-observations-latest.json",
         "china-economic-pulse-latest.json",

@@ -112,6 +112,53 @@ body.ps.eval-journal-page::before {
   line-height: 1.48;
 }
 
+.ej-live-desk {
+  border-bottom: 1px solid rgba(255, 255, 255, .16);
+  background: var(--ej-black);
+  color: #dce5e8;
+}
+
+.ej-live-desk__grid {
+  display: grid;
+  grid-template-columns: minmax(240px, .75fr) minmax(0, 1.25fr);
+  gap: 34px 72px;
+  padding-block: clamp(28px, 5vw, 52px);
+}
+
+.ej-live-desk h2 {
+  margin: 0;
+  color: #fff;
+  font-family: var(--ej-display);
+  font-size: clamp(34px, 4.5vw, 58px);
+  letter-spacing: -.015em;
+  line-height: .96;
+  text-wrap: balance;
+  text-transform: uppercase;
+}
+
+.ej-live-desk__grid > div:last-child > p {
+  max-width: 710px;
+  margin: 0;
+  color: #aebbc2;
+  font-size: clamp(15px, 1.7vw, 19px);
+  line-height: 1.55;
+}
+
+.ej-live-desk__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 22px;
+  font-family: var(--ej-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.ej-live-desk__actions a { color: var(--ej-cyan-bright); }
+.ej-live-desk__actions a:first-child { color: #fff; }
+
 .ej-trace {
   background: var(--ej-black);
   color: #e8eff1;
@@ -741,6 +788,7 @@ body.ps.eval-journal-page::before {
 @media (max-width: 720px) {
   .ej-mast__line { display: block; }
   .ej-edition { margin-top: 24px; text-align: left; }
+  .ej-live-desk__grid { grid-template-columns: 1fr; gap: 22px; }
   .ej-trace__grid { grid-template-columns: 1fr; }
   .ej-trace__grid > div { min-height: 126px; border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, .15); }
   .ej-trace__grid > div::after { top: auto; right: 22px; bottom: -14px; transform: rotate(90deg); }

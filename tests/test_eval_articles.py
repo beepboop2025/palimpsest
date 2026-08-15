@@ -33,7 +33,13 @@ def test_current_eval_collection_is_sealed_cited_and_publishable():
     collection = eval_articles.build(root=ROOT)
 
     eval_articles.validate_collection(collection)
-    assert collection["n_articles"] == len(collection["articles"]) == 2
+    assert collection["n_articles"] == len(collection["articles"]) == 4
+    assert {article["slug"] for article in collection["articles"]} == {
+        "before-reading-the-score-read-the-controls",
+        "zero-observed-is-not-zero-uncertainty",
+        "what-changed-in-the-latest-model-panel",
+        "what-the-eval-registry-can-prove-today",
+    }
     assert collection["publication_policy"]["freeform_model_generation"] == "prohibited"
     for article in collection["articles"]:
         receipt = article["evaluation_receipt"]
@@ -115,6 +121,43 @@ def test_uncertainty_article_keeps_zero_denominator_and_interval_together():
     assert numbers["95% upper interval bound"]["value"] == "10.2%"
     assert "zero-of-34" in prose
     assert "zero plausible event rate" in prose
+
+
+def test_drift_article_reports_the_paired_transition_without_inventing_a_trend():
+    collection = eval_articles.build(root=ROOT)
+    article = _article(collection, "what-changed-in-the-latest-model-panel")
+    reading = eval_articles.load_sources(root=ROOT)["reading"]
+    transitions = sum(
+        len(model["drift_vs_prior"]["new_refusals"])
+        + len(model["drift_vs_prior"]["new_answers"])
+        for model in reading["models"]
+    )
+    compared = sum(model["drift_vs_prior"]["n_compared"] for model in reading["models"])
+    numbers = {item["label"]: item["value"] for item in article["key_numbers"]}
+    prose = json.dumps(article, ensure_ascii=False)
+
+    assert numbers["answer-state transitions"] == str(transitions)
+    assert numbers["paired family comparisons"] == str(compared)
+    assert "not a trend" in prose
+    assert "provider-side cause" in prose
+
+
+def test_registry_article_matches_the_verified_chain_and_states_its_ceiling():
+    sources = eval_articles.load_sources(root=ROOT)
+    article = _article(
+        eval_articles.build_collection(sources, prior={}),
+        "what-the-eval-registry-can-prove-today",
+    )
+    numbers = {item["label"]: item["value"] for item in article["key_numbers"]}
+    prose = json.dumps(article, ensure_ascii=False)
+
+    assert numbers["verified attestations"] == str(len(sources["registry"]))
+    assert numbers["sealed runs"] == str(
+        sum(entry.get("kind") == "run" for entry in sources["registry"])
+    )
+    assert sources["registry"][-1]["entry_hash"] in prose
+    assert "cannot establish" in prose
+    assert "integrity and measurement validity are separate gates" in prose
 
 
 def test_builder_is_stable_and_links_a_changed_revision():

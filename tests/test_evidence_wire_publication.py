@@ -28,6 +28,28 @@ def _staged_occurrences(workflow: str, artifact: str) -> int:
     )
 
 
+def test_every_newsroom_publisher_stages_both_china_article_heads():
+    workflow_paths = (
+        ROOT / ".github" / "workflows" / "china-econ-refresh.yml",
+        ROOT / ".github" / "workflows" / "data-darkness-refresh.yml",
+        ROOT / ".github" / "workflows" / "gfi-refresh.yml",
+        ROOT / ".github" / "workflows" / "newswire-refresh.yml",
+        ROOT / ".github" / "workflows" / "osint-china-refresh.yml",
+    )
+    for path in workflow_paths:
+        workflow = path.read_text(encoding="utf-8")
+        newsroom_heads = _staged_occurrences(
+            workflow, "readings/newsroom-latest.json"
+        )
+        assert newsroom_heads > 0, path.name
+        assert _staged_occurrences(
+            workflow, "readings/china-article-stream-latest.json"
+        ) == newsroom_heads, path.name
+        assert _staged_occurrences(
+            workflow, "readings/china-censorship-analysis-latest.json"
+        ) == newsroom_heads, path.name
+
+
 def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
     workflow = TESTS_WORKFLOW.read_text(encoding="utf-8")
     contract = workflow[workflow.index("  contract:"):]
@@ -509,6 +531,9 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     ) == 3
     assert _staged_occurrences(
         workflow, "readings/machine-investigations-latest.json"
+    ) == 3
+    assert _staged_occurrences(
+        workflow, "readings/china-censorship-analysis-latest.json"
     ) == 3
     for artifact in (
         "readings/primary-documents-latest.json",

@@ -1182,6 +1182,466 @@ def _uncertainty_article(
     return _finish_article(article, prior)
 
 
+def _drift_article(
+    sources: Mapping[str, Any], prior: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    """Explain the latest adjacent-run transition without turning it into a trend."""
+
+    reading = sources["reading"]
+    models = _model_rows(reading)
+    current_url = f"https://palimpsest.info/readings/{READING_PATH.name}"
+    registry_url = f"https://palimpsest.info/readings/{REGISTRY_PATH.name}"
+
+    projection: dict[str, dict[str, Any]] = {}
+    total_compared = total_new_refusals = total_new_answers = 0
+    changed_models = 0
+    failing_controls = 0
+    for model_id, row in models.items():
+        drift = row.get("drift_vs_prior")
+        if not isinstance(drift, dict):
+            raise EvalArticleError(f"latest drift state is missing for {model_id}")
+        compared = drift.get("n_compared")
+        rate = drift.get("drift_rate_pct")
+        new_refusals = drift.get("new_refusals")
+        new_answers = drift.get("new_answers")
+        _number(compared, f"{model_id}.drift.n_compared")
+        _number(rate, f"{model_id}.drift.drift_rate_pct")
+        if (
+            not isinstance(new_refusals, list)
+            or not isinstance(new_answers, list)
+            or any(not isinstance(value, str) for value in [*new_refusals, *new_answers])
+        ):
+            raise EvalArticleError(f"latest drift transitions are invalid for {model_id}")
+        total_compared += int(compared)
+        total_new_refusals += len(new_refusals)
+        total_new_answers += len(new_answers)
+        changed_models += bool(new_refusals or new_answers)
+        failing_controls += row["controls_clean"] is False
+        projection[model_id] = {
+            "n_compared": compared,
+            "drift_rate_pct": rate,
+            "new_refusals": list(new_refusals),
+            "new_answers": list(new_answers),
+            "controls_clean": row["controls_clean"],
+        }
+
+    churn_projection = {
+        model_id: {
+            key: value
+            for key, value in row.get("churn_monitor", {}).items()
+            if key
+            in {
+                "state",
+                "pairs_seen",
+                "pairs_needed",
+                "evalue",
+            }
+        }
+        for model_id, row in models.items()
+    }
+    drift_evidence = _evidence(
+        input_id="refusal-drift-current",
+        label="Latest adjacent-run answer-state transitions",
+        selector="/models/*/drift_vs_prior",
+        value=projection,
+        interpretation_limit=(
+            "This compares each named endpoint with its immediately prior compatible "
+            "canonical observation. It does not identify a provider-side cause or a trend."
+        ),
+        source_url=current_url,
+    )
+    churn_evidence = _evidence(
+        input_id="refusal-drift-current",
+        label="Anytime-valid churn monitor state and blind spot",
+        selector="/models/*/churn_monitor",
+        value=churn_projection,
+        interpretation_limit=(
+            "The churn monitor watches repeated instability. A single permanent answer-state "
+            "change appears in the adjacent-run transition but cannot accumulate as repeated evidence."
+        ),
+        source_url=current_url,
+    )
+    method_evidence = _evidence(
+        input_id="refusal-drift-current",
+        label="Current panel method and arm",
+        selector="/method",
+        value={
+            "suite": reading.get("suite"),
+            "arm": reading.get("arm"),
+            "method": reading.get("method"),
+            "method_version": reading.get("method_version"),
+            "generated_at": reading.get("generated_at"),
+        },
+        interpretation_limit="The method applies only to the named panel, prompt families, and dated run.",
+        source_url=current_url,
+    )
+    seal_evidence = _evidence(
+        input_id="eval-registry",
+        label="Registry seals for the latest panel transition",
+        selector=f"/runs/ts={reading['generated_at']}",
+        value=[
+            {
+                "model": model_id,
+                "seq": run["seq"],
+                "entry_hash": run["entry_hash"],
+                "responses_hash": run["responses_hash"],
+            }
+            for model_id, run in sorted(sources["matching_runs"].items())
+        ],
+        interpretation_limit=(
+            "The seals make later rewriting detectable inside the served chain. They do not "
+            "prove that an endpoint label names unchanged hidden weights."
+        ),
+        source_url=registry_url,
+    )
+    evidence = [drift_evidence, churn_evidence, method_evidence, seal_evidence]
+    drift_id = drift_evidence["evidence_id"]
+    churn_id = churn_evidence["evidence_id"]
+    method_id = method_evidence["evidence_id"]
+    seal_id = seal_evidence["evidence_id"]
+
+    transitions = total_new_refusals + total_new_answers
+    if total_new_refusals:
+        title = f"{total_new_refusals} new refusal transition{'s' if total_new_refusals != 1 else ''} appeared in the latest panel"
+    elif total_new_answers:
+        title = f"{total_new_answers} previously refused answer{'s' if total_new_answers != 1 else ''} returned in the latest panel"
+    else:
+        title = "No answer-state changes appeared in the latest panel"
+    if transitions:
+        dek = (
+            f"Across {len(models)} sealed endpoint runs, {transitions} of {total_compared} "
+            f"paired family comparisons changed state: {total_new_refusals} toward refusal "
+            f"and {total_new_answers} toward answer. This is a dated transition, not a trend claim."
+        )
+    else:
+        dek = (
+            f"Across {len(models)} sealed endpoint runs, all {total_compared} paired family "
+            "comparisons kept the same answer state. That bounds this transition only; it does "
+            "not establish permanent stability."
+        )
+    if failing_controls:
+        dek += f" {failing_controls} run{'s' if failing_controls != 1 else ''} also failed ordinary controls."
+
+    sections = [
+        _section(
+            "latest-transition",
+            "What changed in the latest transition",
+            _paragraph(
+                _sentence(
+                    f"The latest panel recorded {total_new_refusals} new refusal transitions and {total_new_answers} newly answered transitions across {total_compared} paired family comparisons.",
+                    drift_id,
+                ),
+                _sentence(
+                    f"Those transitions occurred in {changed_models} of {len(models)} named endpoint runs.",
+                    drift_id,
+                    seal_id,
+                ),
+            ),
+        ),
+        _section(
+            "transition-not-trend",
+            "One transition is not a trend",
+            _paragraph(
+                _sentence(
+                    "The comparison is adjacent and endpoint-specific, so a changed label establishes neither a persistent trajectory nor a common cause across providers.",
+                    drift_id,
+                    method_id,
+                ),
+                _sentence(
+                    "The registry preserves the exact current attestations, which makes later revision detectable without revealing a provider's hidden routing or weights.",
+                    seal_id,
+                ),
+            ),
+        ),
+        _section(
+            "monitor-boundary",
+            "The churn alarm watches a different failure mode",
+            _paragraph(
+                _sentence(
+                    "The anytime-valid monitor is designed to detect repeated instability after calibration, while the adjacent comparison records individual answer-state changes immediately.",
+                    churn_id,
+                    method_id,
+                ),
+                _sentence(
+                    "A single change that then remains fixed cannot become repeated evidence merely because the same question is asked again.",
+                    churn_id,
+                ),
+            ),
+        ),
+    ]
+    counterreadings = [
+        _record(
+            "No observed transition is favorable evidence of short-run stability inside this exact panel.",
+            drift_id,
+        ),
+        _record(
+            "An observed transition can reflect endpoint routing, sampling, classifier error, or model change; the eval alone does not select among those explanations.",
+            drift_id,
+            method_id,
+        ),
+    ]
+    limitations = [
+        _record(
+            "Only prompt families present in both compatible adjacent runs enter the paired denominator.",
+            drift_id,
+            method_id,
+        ),
+        _record(
+            "Endpoint names do not independently prove that the provider served unchanged weights or routing across runs.",
+            seal_id,
+        ),
+        _record(
+            "The lexical answer-state classifier still requires independent human validation for a broader construct claim.",
+            method_id,
+        ),
+    ]
+    methodology = [
+        {"step": "Pair", "detail": "Compare only compatible family labels shared by adjacent dated runs.", "citation_ids": [drift_id, method_id]},
+        {"step": "Count", "detail": "Publish new refusals, newly answered families, and the paired denominator separately for every endpoint.", "citation_ids": [drift_id]},
+        {"step": "Seal", "detail": "Bind the current response metrics to verified registry entries before publishing the interpretation.", "citation_ids": [seal_id]},
+        {"step": "Monitor", "detail": "Keep the repeated-instability alarm separate from the one-transition record.", "citation_ids": [churn_id]},
+    ]
+    receipt = _common_gate_receipt(
+        sealed_runs=len(sources["matching_runs"]), evidence=evidence, sections=sections
+    )
+    article = {
+        "schema_version": ARTICLE_SCHEMA,
+        "article_id": "",
+        "revision_id": "",
+        "previous_revision_id": None,
+        "slug": "what-changed-in-the-latest-model-panel",
+        "url": "/journal/what-changed-in-the-latest-model-panel/",
+        "kicker": "Model behavior / adjacent-run drift",
+        "title": title,
+        "dek": dek,
+        "thesis": "A drift result is a dated answer-state transition with a paired denominator, not a diagnosis of why an endpoint changed.",
+        "finding_state": "instrument-warning" if failing_controls else "bounded-finding",
+        "published_at": reading["generated_at"],
+        "updated_at": reading["generated_at"],
+        "key_numbers": [
+            {"value": str(transitions), "label": "answer-state transitions", "note": f"{total_new_refusals} toward refusal, {total_new_answers} toward answer", "citation_ids": [drift_id]},
+            {"value": str(total_compared), "label": "paired family comparisons", "note": f"across {len(models)} named endpoints", "citation_ids": [drift_id]},
+            {"value": f"{changed_models}/{len(models)}", "label": "endpoints with a change", "note": "latest compatible transition", "citation_ids": [drift_id, seal_id]},
+        ],
+        "sections": sections,
+        "counterreadings": counterreadings,
+        "limitations": limitations,
+        "methodology": methodology,
+        "evidence": evidence,
+        "evaluation_receipt": receipt,
+        "authorship": {
+            "byline": "Palimpsest Eval Desk",
+            "mode": PUBLICATION_MODE,
+            "human_interviews": "none",
+            "freeform_model_generation": "none",
+        },
+        "disclosure": DISCLOSURE,
+    }
+    return _finish_article(article, prior)
+
+
+def _registry_article(
+    sources: Mapping[str, Any], prior: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    """State exactly what the current verified registry can and cannot prove."""
+
+    reading = sources["reading"]
+    entries = sources["registry"]
+    if not entries:
+        raise EvalArticleError("eval registry is empty")
+    registry_url = f"https://palimpsest.info/readings/{REGISTRY_PATH.name}"
+    current_url = f"https://palimpsest.info/readings/{READING_PATH.name}"
+    preregistrations = sum(entry.get("kind") == eval_registry.PREREGISTRATION for entry in entries)
+    runs = sum(entry.get("kind") == eval_registry.RUN for entry in entries)
+    models = sorted(
+        {
+            str(entry["model"])
+            for entry in entries
+            if entry.get("kind") == eval_registry.RUN and isinstance(entry.get("model"), str)
+        }
+    )
+    head = entries[-1]
+    chain_value = {
+        "attestations": len(entries),
+        "preregistrations": preregistrations,
+        "runs": runs,
+        "models": models,
+        "head_seq": head.get("seq"),
+        "head_ts": head.get("ts"),
+        "head_hash": head.get("entry_hash"),
+        "merkle_root": merkle_root(entries),
+    }
+    chain_evidence = _evidence(
+        input_id="eval-registry",
+        label="Verified registry head and complete served-chain summary",
+        selector="/",
+        value=chain_value,
+        interpretation_limit=(
+            "Verification detects alteration, deletion, or reordering inside the served chain. "
+            "The file alone does not prove an external wall-clock publication time."
+        ),
+        source_url=registry_url,
+    )
+    current_runs = [
+        {
+            "model": model_id,
+            "seq": run["seq"],
+            "suite": run["suite"],
+            "probe_set_hash": run["probe_set_hash"],
+            "responses_hash": run["responses_hash"],
+            "entry_hash": run["entry_hash"],
+        }
+        for model_id, run in sorted(sources["matching_runs"].items())
+    ]
+    current_evidence = _evidence(
+        input_id="eval-registry",
+        label="Current panel runs matched to the published reading",
+        selector=f"/runs/ts={reading['generated_at']}",
+        value=current_runs,
+        interpretation_limit="Exact metric matching proves publication consistency, not construct validity.",
+        source_url=registry_url,
+    )
+    method_evidence = _evidence(
+        input_id="refusal-drift-current",
+        label="Current suite scope and uncertainty method",
+        selector="/method",
+        value={
+            "suite": reading.get("suite"),
+            "arm": reading.get("arm"),
+            "method": reading.get("method"),
+            "method_version": reading.get("method_version"),
+            "model_count": len(_model_rows(reading)),
+        },
+        interpretation_limit="A verified chain does not widen the suite's sampled population.",
+        source_url=current_url,
+    )
+    evidence = [chain_evidence, current_evidence, method_evidence]
+    chain_id = chain_evidence["evidence_id"]
+    current_id = current_evidence["evidence_id"]
+    method_id = method_evidence["evidence_id"]
+    sections = [
+        _section(
+            "chain-verdict",
+            "What verification establishes",
+            _paragraph(
+                _sentence(
+                    f"The served registry verifies from genesis through {len(entries)} attestations, ending at sequence {head['seq']}.",
+                    chain_id,
+                ),
+                _sentence(
+                    f"It contains {preregistrations} preregistrations and {runs} runs across {len(models)} named model endpoints.",
+                    chain_id,
+                ),
+            ),
+        ),
+        _section(
+            "current-edition",
+            "What entered the current edition",
+            _paragraph(
+                _sentence(
+                    f"The latest refusal reading matches {len(current_runs)} registry runs at {reading['generated_at']} with no missing panel endpoint.",
+                    current_id,
+                    method_id,
+                ),
+                _sentence(
+                    "Each matched run binds its probe commitment, response digest, model label, metrics, and predecessor hash into the chain.",
+                    current_id,
+                    chain_id,
+                ),
+            ),
+        ),
+        _section(
+            "claim-ceiling",
+            "What the chain still cannot prove",
+            _paragraph(
+                _sentence(
+                    "Hash-chain verification cannot establish that a refusal classifier measures the intended construct, that an endpoint label names fixed hidden weights, or that the panel represents all models.",
+                    chain_id,
+                    method_id,
+                ),
+                _sentence(
+                    "Those questions require separate validation, provider transparency, and sampling arguments rather than a stronger hash.",
+                    chain_id,
+                    method_id,
+                ),
+            ),
+        ),
+    ]
+    counterreadings = [
+        _record(
+            "A verified chain is meaningful evidence that the served sequence has not been quietly rewritten.",
+            chain_id,
+        ),
+        _record(
+            "An internally valid chain can still contain a poorly designed eval; integrity and measurement validity are separate gates.",
+            chain_id,
+            method_id,
+        ),
+    ]
+    limitations = [
+        _record(
+            "Without an external witness, the registry file alone cannot prove when its first unseen version was published.",
+            chain_id,
+        ),
+        _record(
+            "Registry verification checks commitments and exact metrics but does not independently relabel every model response.",
+            current_id,
+            method_id,
+        ),
+        _record(
+            "The endpoint set is a declared panel rather than a probability sample of deployed AI systems.",
+            method_id,
+        ),
+    ]
+    methodology = [
+        {"step": "Freeze", "detail": "Append a probe-set commitment before its result can enter the same registry.", "citation_ids": [chain_id]},
+        {"step": "Link", "detail": "Hash every attestation with its predecessor so deletion, reordering, and alteration change the head.", "citation_ids": [chain_id]},
+        {"step": "Match", "detail": "Require every current panel metric to equal its sealed run before building an article.", "citation_ids": [current_id, method_id]},
+        {"step": "Bound", "detail": "Keep chain integrity separate from classifier validity, model identity, and population claims.", "citation_ids": [chain_id, method_id]},
+    ]
+    receipt = _common_gate_receipt(
+        sealed_runs=len(sources["matching_runs"]), evidence=evidence, sections=sections
+    )
+    article = {
+        "schema_version": ARTICLE_SCHEMA,
+        "article_id": "",
+        "revision_id": "",
+        "previous_revision_id": None,
+        "slug": "what-the-eval-registry-can-prove-today",
+        "url": "/journal/what-the-eval-registry-can-prove-today/",
+        "kicker": "Eval integrity / registry status",
+        "title": f"The eval registry verifies {len(entries)} attestations end to end",
+        "dek": (
+            f"The current served chain contains {preregistrations} preregistrations and {runs} "
+            f"runs across {len(models)} model endpoints. Its hashes make revision detectable; "
+            "they do not make the eval construct valid by themselves."
+        ),
+        "thesis": "Tamper evidence answers whether the served eval record changed, not whether the underlying measurement deserves a broader claim.",
+        "finding_state": "bounded-finding",
+        "published_at": reading["generated_at"],
+        "updated_at": reading["generated_at"],
+        "key_numbers": [
+            {"value": str(len(entries)), "label": "verified attestations", "note": f"head sequence {head['seq']}", "citation_ids": [chain_id]},
+            {"value": str(preregistrations), "label": "preregistrations", "note": "probe commitments recorded before linked runs", "citation_ids": [chain_id]},
+            {"value": str(runs), "label": "sealed runs", "note": f"across {len(models)} named endpoints", "citation_ids": [chain_id]},
+        ],
+        "sections": sections,
+        "counterreadings": counterreadings,
+        "limitations": limitations,
+        "methodology": methodology,
+        "evidence": evidence,
+        "evaluation_receipt": receipt,
+        "authorship": {
+            "byline": "Palimpsest Eval Desk",
+            "mode": PUBLICATION_MODE,
+            "human_interviews": "none",
+            "freeform_model_generation": "none",
+        },
+        "disclosure": DISCLOSURE,
+    }
+    return _finish_article(article, prior)
+
+
 def _prior_by_slug(prior: Mapping[str, Any] | None) -> dict[str, Mapping[str, Any]]:
     if not isinstance(prior, dict) or prior.get("schema_version") != SCHEMA_VERSION:
         return {}
@@ -1207,6 +1667,12 @@ def build_collection(
         ),
         _uncertainty_article(
             sources, prior_articles.get("zero-observed-is-not-zero-uncertainty")
+        ),
+        _drift_article(
+            sources, prior_articles.get("what-changed-in-the-latest-model-panel")
+        ),
+        _registry_article(
+            sources, prior_articles.get("what-the-eval-registry-can-prove-today")
         ),
     ]
     document = {

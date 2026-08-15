@@ -13,6 +13,13 @@ The desk has four durable topic pillars:
 
 These pillars form a topic cluster around the [Verifiable Eval Registry](EVAL-REGISTRY.md). Each article routes readers back to the registry and exact input artifact rather than duplicating those artifacts as prose.
 
+The live edition implements all four as recurring analytical shapes: control
+interpretability, finite-sample uncertainty, adjacent-run drift, and registry
+integrity. Each verified panel run may revise those stable articles. RSS and
+JSON Feed identify the content-derived revision as the feed item, so a new
+verified run is syndicated as new analysis while the canonical article URL and
+its first-publication date remain stable.
+
 ## Publication contract
 
 `core/eval_articles.py` accepts exactly three inputs:

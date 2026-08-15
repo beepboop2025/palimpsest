@@ -228,6 +228,23 @@ def render_index(journal: Mapping[str, Any]) -> str:
     <p class="ej-mast__dek">Methods, failures, and findings from the lab measuring how language models refuse, erase, or reframe contested information.</p>
   </header>
 
+  <aside class="ej-live-desk" aria-labelledby="live-desk-title">
+    <div class="ej-shell ej-live-desk__grid">
+      <div>
+        <p class="ej-kicker ej-kicker--light">Continuously verified edition</p>
+        <h2 id="live-desk-title">Read what the eval registry can prove today</h2>
+      </div>
+      <div>
+        <p>The live findings desk rebuilds after verified panel publications. It separates control health, uncertainty, model-panel changes, and registry provenance into evidence-linked analyses.</p>
+        <div class="ej-live-desk__actions">
+          <a href="/journal/">Open live findings <span aria-hidden="true">→</span></a>
+          <a href="/readings/eval-articles-latest.json">Structured current edition</a>
+          <a href="/readings/eval-registry.html">Inspect the registry</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
   <section class="ej-trace" aria-label="Palimpsest evaluation trace">
     <div class="ej-shell ej-trace__grid">
       <div><span>01</span><strong>Prompt</strong><p>Freeze the exact question and comparison before the answer exists.</p></div>

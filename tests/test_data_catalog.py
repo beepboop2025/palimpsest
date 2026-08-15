@@ -247,6 +247,27 @@ def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
     assert "abstentionreport" in description
 
 
+def test_china_censorship_analysis_catalog_exposes_article_quality_boundary():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(
+        item for item in source["datasets"]
+        if item["id"] == "china-censorship-analysis"
+    )
+
+    assert entry["collection_mode"] == "deterministic-cross-instrument-analysis"
+    assert entry["latest"] == "readings/china-censorship-analysis-latest.json"
+    assert entry["landing_page"] == "news/china/analysis/"
+    assert entry["method"] == "docs/CHINA-CENSORSHIP-ANALYSIS.md"
+    assert entry["count_fields"] == [
+        "publication_receipt.required_signal_count",
+        "publication_receipt.live_signal_count",
+    ]
+    description = entry["description"].lower()
+    assert "every analytical sentence" in description
+    assert "denominators remain separate" in description
+    assert "availability warnings" in description
+
+
 def test_reporting_newsroom_catalog_keeps_five_capabilities_distinct():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}

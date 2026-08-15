@@ -280,6 +280,7 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # corpus is mixed-scope; and the remaining files are generic model evaluation surfaces.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-article-stream-latest.json",
+    "china-censorship-analysis-latest.json",
     "china-econ-forecast-latest.json",
     "china-econ-observations-latest.json",
     "china-economic-pulse-latest.json",

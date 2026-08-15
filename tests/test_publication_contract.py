@@ -82,6 +82,12 @@ CONTRACT = {
     "china-article-stream": _d(
         "generated_at", ["source_wire", "method", "scope"], "n_entries"
     ),
+    "china-censorship-analysis": _d(
+        "generated_at", ["evidence", "methodology", "authorship"],
+        reason="a cross-instrument analytical article whose cited measurements retain "
+               "different populations and denominators; one top-level denominator "
+               "would falsely imply that its network, content, and app counts are commensurate.",
+    ),
     "dragon-whispers": _d(
         "generated_at", ["input_provenance", "method", "scope", "publication_policy"],
         "n_entries",
@@ -241,6 +247,7 @@ OPTIONAL_EXTERNAL = {
 SCHEDULED_PUBLICATIONS = {
     "bleedthrough",
     "china-economic-pulse",
+    "china-censorship-analysis",
     "china-econ-observations",
     "china-index",
     "evidence-mesh",

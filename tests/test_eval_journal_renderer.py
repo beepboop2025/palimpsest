@@ -10,7 +10,9 @@ from pathlib import Path
 import pytest
 
 from core import eval_articles
+from core import eval_journal
 from scripts import build_eval_findings
+from scripts import build_eval_journal
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +20,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _collection():
     return eval_articles.build(root=ROOT)
+
+
+def test_authored_eval_journal_points_readers_to_current_findings():
+    journal = eval_journal.build_journal(ROOT)
+    page = build_eval_journal.render_index(journal)
+
+    assert 'aria-labelledby="live-desk-title"' in page
+    assert 'href="/journal/"' in page
+    assert 'href="/readings/eval-articles-latest.json"' in page
+    assert 'href="/readings/eval-registry.html"' in page
 
 
 def test_output_set_contains_reader_agent_and_syndication_surfaces(tmp_path):
@@ -125,7 +137,16 @@ def test_feeds_parse_and_use_unique_article_ids(tmp_path):
     ids = [item["id"] for item in feed["items"]]
     assert feed["version"] == "https://jsonfeed.org/version/1.1"
     assert len(ids) == len(set(ids)) == collection["n_articles"]
+    assert ids == [article["revision_id"] for article in collection["articles"]]
+    assert [item["date_published"] for item in feed["items"]] == [
+        article["updated_at"] for article in collection["articles"]
+    ]
+    assert [item["_palimpsest"]["article_id"] for item in feed["items"]] == [
+        article["article_id"] for article in collection["articles"]
+    ]
     ET.fromstring(outputs[Path("journal/feed.xml")])
+    rss = ET.fromstring(outputs[Path("journal/feed.xml")])
+    assert [item.findtext("guid") for item in rss.findall("./channel/item")] == ids
     ET.fromstring(outputs[Path("journal/sitemap.xml")])
 
 

@@ -696,6 +696,23 @@
       "license": {"name": "MIT for Palimpsest metadata and analysis; upstream publisher rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "china-censorship-analysis",
+      "name": "Palimpsest China Censorship Analysis",
+      "description": "Continuously refreshed cross-instrument analysis of content attention, silence, network interference, erasure and app distribution. Every analytical sentence cites an exact aggregate newsroom receipt, incompatible denominators remain separate, and non-live instruments become visible availability warnings rather than retained findings.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic-cross-instrument-analysis",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["CN", "HK"],
+      "sources": ["Palimpsest aggregate newsroom feed"],
+      "latest": "readings/china-censorship-analysis-latest.json",
+      "landing_page": "news/china/analysis/",
+      "method": "docs/CHINA-CENSORSHIP-ANALYSIS.md",
+      "count_fields": ["publication_receipt.required_signal_count", "publication_receipt.live_signal_count"],
+      "license": {"name": "MIT for Palimpsest structure and analysis; upstream rights retained per cited reading", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "china-economic-pulse",
       "name": "China Economic Pulse",
       "description": "Revision-safe synthesis of official economic releases, market prints and physical telemetry. It preserves as-of clocks, source independence, release gaps and revisions, and abstains from a composite state claim until declared coverage gates pass; it is not an estimate of true GDP.",

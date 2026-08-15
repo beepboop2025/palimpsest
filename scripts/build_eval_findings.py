@@ -246,7 +246,7 @@ def render_index(collection: Mapping[str, Any]) -> str:
     <div class="ej-section-head">
       <p>Latest from the desk</p>
       <h2 id="latest-analysis">Read the finding. Then inspect the instrument.</h2>
-      <a href="/readings/eval-articles-latest.json">Structured edition</a>
+      <a href="/journal/feed.xml">Follow every verified revision</a>
     </div>
     <div class="ej-card-stack">{cards}</div>
   </section>
@@ -513,16 +513,21 @@ def build_json_feed(collection: Mapping[str, Any]) -> dict[str, Any]:
                 text.append(" ".join(sentence["text"] for sentence in paragraph["sentences"]))
         items.append(
             {
-                "id": article["article_id"],
+                # A feed item is a published evidence revision, while the URL and
+                # article_id remain the stable identity of the recurring analysis.
+                # This lets feed readers see every verified run instead of treating
+                # a changing canonical page as the same old post forever.
+                "id": article["revision_id"],
                 "url": _absolute(article["url"]),
                 "title": article["title"],
                 "summary": article["dek"],
                 "content_text": "\n\n".join(text),
-                "date_published": article["published_at"],
+                "date_published": article["updated_at"],
                 "date_modified": article["updated_at"],
                 "authors": [{"name": article["authorship"]["byline"], "url": f"{SITE}/journal/"}],
                 "tags": ["AI evaluation", article["finding_state"]],
                 "_palimpsest": {
+                    "article_id": article["article_id"],
                     "revision_id": article["revision_id"],
                     "finding_state": article["finding_state"],
                     "citation_coverage": article["evaluation_receipt"]["citation_coverage"],
@@ -542,7 +547,7 @@ def build_json_feed(collection: Mapping[str, Any]) -> dict[str, Any]:
 def build_rss(collection: Mapping[str, Any]) -> bytes:
     items = []
     for article in collection["articles"]:
-        published = eval_articles._timestamp(article["published_at"], "published_at")
+        published = eval_articles._timestamp(article["updated_at"], "updated_at")
         items.append(
             "<item>"
             f"<title>{xml_escape(article['title'])}</title>"

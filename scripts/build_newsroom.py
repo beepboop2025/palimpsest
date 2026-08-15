@@ -31,6 +31,7 @@ from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
 from xml.sax.saxutils import quoteattr as xml_quoteattr
 
+from core import china_analysis as china_analysis_model
 from core import china_article_stream as china_stream_model
 from core import dragon_whispers as dragon_whispers_model
 from core import economic_pulse as economic_pulse_model
@@ -115,6 +116,7 @@ EVIDENCE_LABELS = {
 HOME_EVENTS_PER_DESK = 5
 WIRE_PAGE_SIZE = 60
 CHINA_STREAM_PAGE_SIZE = 40
+CHINA_ANALYSIS_READING = ROOT / "readings" / "china-censorship-analysis-latest.json"
 
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
 _ANALYSIS_ROOT = Path("news/analysis")
@@ -1721,14 +1723,14 @@ def render_evidence_index(
     </div>
     <p class="nw-masthead__dek">China intelligence that keeps reported facts, measured facts, corroboration, revisions and unknowns structurally separate.</p>
   </header>
-  <div class="nw-meta-line"><span>China · economy · politics · censorship · networks</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/china/">Every article + analysis</a><a href="/news/feed.xml">Dossier RSS</a><a href="/readings/newswire-latest.json">Structured wire</a></div>
+  <div class="nw-meta-line"><span>China · economy · politics · censorship · networks</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/china/analysis/">Today's censorship analysis</a><a href="/news/china/">China article stream</a><a href="/news/feed.xml">Dossier RSS</a><a href="/readings/newswire-latest.json">Structured wire</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
     <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{wire['n_events']}</strong> dossiers</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage['successful_sources']}/{coverage['registry_sources']}</strong> feeds answered</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
     <span><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> live instruments</span>
   </div>
-  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="/news/china/">Article stream</a></li><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
+  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="/news/china/analysis/">Censorship analysis</a></li><li><a href="/news/china/">Article stream</a></li><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
   {_event_lead(lead, wire)}
   {_economic_panel(pulse)}
   {_machine_analysis_feature(machine_analyses)}
@@ -3087,6 +3089,202 @@ def render_wire_archive(
     ) + "\n" + body
 
 
+def _china_analysis_citations(citation_ids: Sequence[str]) -> str:
+    return ", ".join(
+        f'<a href="#evidence-{_h(citation_id)}">{_h(citation_id)}</a>'
+        for citation_id in citation_ids
+    )
+
+
+def _china_analysis_json_ld(article: Mapping[str, Any]) -> dict[str, Any]:
+    canonical = f"{SITE}{article['url']}"
+    return {
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "headline": article["title"],
+        "description": article["dek"],
+        "url": canonical,
+        "mainEntityOfPage": canonical,
+        "datePublished": article["published_at"],
+        "dateModified": article["updated_at"],
+        "articleSection": "China censorship analysis",
+        "author": {
+            "@type": "Organization",
+            "name": article["authorship"]["byline"],
+            "url": f"{SITE}/news/china/analysis/",
+        },
+        "publisher": _organization(),
+        "isBasedOn": sorted({row["reading_url"] for row in article["evidence"]}),
+        "about": [
+            "China censorship",
+            "internet filtering",
+            "information controls",
+            "content erasure",
+        ],
+        "image": [OG_IMAGE],
+        "isAccessibleForFree": True,
+    }
+
+
+def _china_analysis_records(
+    records: Sequence[Mapping[str, Any]], *, ordered: bool = False
+) -> str:
+    tag = "ol" if ordered else "ul"
+    rows = "".join(
+        f'<li><p>{_h(record["text"])}</p><small>Receipts {_china_analysis_citations(record["citation_ids"])}</small></li>'
+        for record in records
+    )
+    return f'<{tag} class="ca-records">{rows}</{tag}>'
+
+
+def render_china_censorship_analysis(
+    article: Mapping[str, Any], *, feed: Mapping[str, Any]
+) -> str:
+    china_analysis_model.validate(article, feed=feed)
+    numbers = "".join(
+        f'<li><strong>{_h(item["value"])}</strong><span>{_h(item["label"])}</span><small>{_h(item["note"])}</small></li>'
+        for item in article["key_numbers"]
+    )
+    sections = []
+    for index, section in enumerate(article["sections"], 1):
+        paragraphs = []
+        for paragraph in section["paragraphs"]:
+            prose = " ".join(_h(sentence["text"]) for sentence in paragraph["sentences"])
+            receipts = sorted(
+                {
+                    citation_id
+                    for sentence in paragraph["sentences"]
+                    for citation_id in sentence["citation_ids"]
+                }
+            )
+            paragraphs.append(
+                f'<p>{prose}<span class="ca-citations"><b>Receipts</b> {_china_analysis_citations(receipts)}</span></p>'
+            )
+        sections.append(f"""<section class="ca-section" id="{_h(section['section_id'])}">
+  <header><span>{index:02d}</span><h2>{_h(section['heading'])}</h2></header>
+  <div>{''.join(paragraphs)}</div>
+</section>""")
+    evidence_rows = "".join(
+        f"""<article class="ca-evidence" id="evidence-{_h(row['evidence_id'])}" data-status="{_h(row['status'])}">
+  <p><span>{_h(row['signal_id'])}</span><b>{_h(row['status'])}</b></p>
+  <h3><a href="{_h(row['story_url'])}">{_h(row['headline'])}</a></h3>
+  <blockquote>{_h(row['claim'])}</blockquote>
+  <dl><dt>Source clock</dt><dd>{_h(_human_time(row['source_timestamp'])) if row['source_timestamp'] else 'not available'}</dd><dt>Input SHA-256</dt><dd><code>{_h(row['input_sha256'])}</code></dd></dl>
+  <p class="ca-evidence__limit"><strong>Interpretation limit.</strong> {_h(row['interpretation_limit'])}</p>
+  <a href="{_h(row['reading_url'])}">Open exact reading</a>
+</article>"""
+        for row in article["evidence"]
+    )
+    methods = "".join(
+        f'<li><span>{index:02d}</span><div><h3>{_h(item["step"])}</h3><p>{_h(item["detail"])}</p><small>{_china_analysis_citations(item["citation_ids"])}</small></div></li>'
+        for index, item in enumerate(article["methodology"], 1)
+    )
+    gates = "".join(
+        f'<li><span aria-hidden="true">✓</span><div><strong>{_h(gate["label"])}</strong><p>{_h(gate["detail"])}</p><code>{_h(gate["gate_id"])}</code></div></li>'
+        for gate in article["publication_receipt"]["gates"]
+    )
+    warning = ""
+    if article["publication_receipt"]["availability_warnings"]:
+        warning = (
+            '<p class="ca-warning" role="status"><strong>Availability warning.</strong> '
+            + _h(", ".join(article["publication_receipt"]["availability_warnings"]))
+            + " did not publish a current finding in this edition. The article reports those gaps instead of retained values.</p>"
+        )
+    body = f"""<body class="ps newsroom-page china-analysis-page">
+{site_nav.render('/news/china/analysis/')}
+<main id="main">
+  <header class="ca-hero">
+    <div class="ca-shell ca-hero__meta"><span>PALIMPSEST / CHINA CENSORSHIP ANALYSIS</span><time datetime="{_h(article['generated_at'])}">{_h(_human_time(article['generated_at']))}</time></div>
+    <div class="ca-shell ca-hero__grid"><div><p class="ca-eyebrow">A current reading across ten declared instruments</p><h1>{_h(article['title'])}</h1></div><div><p>{_h(article['dek'])}</p><a href="/readings/china-censorship-analysis-latest.json">Structured article</a></div></div>
+    <div class="ca-shell"><ul class="ca-numbers" aria-label="Current key measurements">{numbers}</ul>{warning}</div>
+  </header>
+  <div class="ca-shell ca-layout">
+    <article class="ca-prose">
+      <p class="ca-thesis">{_h(article['thesis'])}</p>
+      {''.join(sections)}
+    </article>
+    <aside class="ca-rail" aria-label="Article publication receipt">
+      <p class="ca-eyebrow">Publication receipt</p>
+      <strong>{article['publication_receipt']['live_signal_count']}/{article['publication_receipt']['required_signal_count']} instruments current</strong>
+      <dl><dt>Finding state</dt><dd>{_h(article['finding_state'])}</dd><dt>Citation coverage</dt><dd>{article['publication_receipt']['citation_coverage']:.0%}</dd><dt>Revision</dt><dd><code>{_h(article['revision_id'])}</code></dd></dl>
+      <p>{_h(article['disclosure'])}</p>
+      <a href="/news/china/feed.xml">Dispatch RSS</a><a href="/news/china/analysis/feed.xml">Analysis RSS</a>
+    </aside>
+  </div>
+  <section class="ca-challenges">
+    <div class="ca-shell"><header><p class="ca-eyebrow">Adversarial reading</p><h2>What else could explain the same observations?</h2></header><div class="ca-challenge-grid"><div><h3>Counterreadings</h3>{_china_analysis_records(article['counterreadings'])}</div><div><h3>Limits that stay attached</h3>{_china_analysis_records(article['limitations'])}</div></div></div>
+  </section>
+  <section class="ca-evidence-ledger ca-shell" aria-labelledby="ca-evidence-title"><header><p class="ca-eyebrow">Evidence ledger</p><h2 id="ca-evidence-title">Every sentence routes back to a current aggregate receipt.</h2></header><div class="ca-evidence-grid">{evidence_rows}</div></section>
+  <section class="ca-method ca-shell" aria-labelledby="ca-method-title"><header><p class="ca-eyebrow">Method</p><h2 id="ca-method-title">A closed path from instrument to article.</h2></header><ol>{methods}</ol></section>
+  <section class="ca-gates"><div class="ca-shell"><header><p class="ca-eyebrow">Quality gate</p><h2>Why this edition was allowed to publish.</h2></header><ul>{gates}</ul></div></section>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/china/">← China dispatch stream</a> · <a href="/news/analysis/">Machine-analysis register</a> · <a href="/readings/newsroom-latest.json">Aggregate newsroom feed</a> · <a href="/docs/NEWSROOM.md">Method</a></div></footer>
+{site_nav.FOOT}
+</body></html>"""
+    return _head(
+        title=f"{article['title']} · Palimpsest",
+        description=article["dek"],
+        canonical=f"{SITE}{article['url']}",
+        page_type="article",
+        published_at=article["published_at"],
+        modified_at=article["updated_at"],
+        feed_base="/news/china/analysis",
+        extra_styles=("/assets/china-analysis.css",),
+        json_ld=_china_analysis_json_ld(article),
+    ) + "\n" + body
+
+
+def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]:
+    text = [article["thesis"]]
+    for section in article["sections"]:
+        text.append(section["heading"])
+        for paragraph in section["paragraphs"]:
+            text.append(" ".join(sentence["text"] for sentence in paragraph["sentences"]))
+    return {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Palimpsest China Censorship Analysis",
+        "home_page_url": f"{SITE}{article['url']}",
+        "feed_url": f"{SITE}/news/china/analysis/feed.json",
+        "description": "Current cross-instrument analysis of China's information controls with sentence-level evidence receipts.",
+        "items": [
+            {
+                "id": article["revision_id"],
+                "url": f"{SITE}{article['url']}",
+                "title": article["title"],
+                "summary": article["dek"],
+                "content_text": "\n\n".join(text),
+                "date_published": article["published_at"],
+                "date_modified": article["updated_at"],
+                "authors": [{"name": article["authorship"]["byline"], "url": f"{SITE}/news/china/analysis/"}],
+                "tags": ["China", "censorship", "internet filtering", "information controls"],
+                "_palimpsest": {
+                    "article_id": article["article_id"],
+                    "revision_id": article["revision_id"],
+                    "finding_state": article["finding_state"],
+                    "citation_coverage": article["publication_receipt"]["citation_coverage"],
+                },
+            }
+        ],
+    }
+
+
+def build_china_analysis_rss(article: Mapping[str, Any]) -> bytes:
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Palimpsest China Censorship Analysis</title>
+  <link>{SITE}{xml_escape(article['url'])}</link>
+  <description>Current cross-instrument China censorship analysis with evidence receipts.</description>
+  <language>en</language>
+  <lastBuildDate>{_rfc2822(article['updated_at'])}</lastBuildDate>
+  <atom:link href="{SITE}/news/china/analysis/feed.xml" rel="self" type="application/rss+xml" />
+  <item><title>{xml_escape(article['title'])}</title><link>{SITE}{xml_escape(article['url'])}</link><guid isPermaLink="false">{xml_escape(article['revision_id'])}</guid><pubDate>{_rfc2822(article['updated_at'])}</pubDate><description>{xml_escape(article['dek'])}</description><category>China censorship analysis</category></item>
+</channel>
+</rss>
+"""
+    return xml.encode("utf-8")
+
+
 def _china_stream_telegram_panel(stream: Mapping[str, Any]) -> str:
     watch = stream["telegram_watch"]
     if watch.get("schema_version") != telegram_watch_model.SCHEMA_VERSION:
@@ -3204,7 +3402,7 @@ def render_china_article_stream(
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China stream formats"><a href="/news/">Evidence edition</a><a href="/news/wire/">Event dossiers</a><a href="/news/china/whispers/">Whispers · reviewed Telegram context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured stream</a></nav>
+    <nav class="cs-subnav" aria-label="China stream formats"><a href="/news/china/analysis/">Today’s censorship analysis</a><a href="/news/">Evidence edition</a><a href="/news/wire/">Event dossiers</a><a href="/news/china/whispers/">Whispers · reviewed Telegram context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured stream</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
@@ -3753,10 +3951,16 @@ def build_sitemap(
     machine_analyses: Mapping[str, Any] | None = None,
     china_stream: Mapping[str, Any] | None = None,
     dragon_whispers: Mapping[str, Any] | None = None,
+    china_analysis: Mapping[str, Any] | None = None,
 ) -> bytes:
     generated_values = [feed["generated_at"]]
     for document in (
-        wire, investigations, machine_analyses, china_stream, dragon_whispers,
+        wire,
+        investigations,
+        machine_analyses,
+        china_stream,
+        dragon_whispers,
+        china_analysis,
     ):
         if document is not None:
             generated_values.append(document["generated_at"])
@@ -3801,6 +4005,11 @@ def build_sitemap(
         urls.extend(
             f"  <url><loc>{SITE}/news/china/page/{page}/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
             for page in range(2, stream_pages + 1)
+        )
+    if china_analysis is not None:
+        news_markup = f"""<news:news><news:publication><news:name>Palimpsest China Desk</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(china_analysis['published_at'])}</news:publication_date><news:title>{xml_escape(china_analysis['title'])}</news:title></news:news>"""
+        urls.append(
+            f"  <url><loc>{SITE}/news/china/analysis/</loc><lastmod>{xml_escape(china_analysis['updated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority>{news_markup}</url>"
         )
     if dragon_whispers is not None:
         urls.append(
@@ -4101,6 +4310,7 @@ def build_outputs(
         dragon_whispers_model.validate_dragon_whispers(dragon_whispers)
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
+    china_analysis = china_analysis_model.build(feed)
     event_analyses: dict[str, Mapping[str, Any]] = {}
     china_stream: Mapping[str, Any] | None = None
     whispers_document: Mapping[str, Any] | None = None
@@ -4127,7 +4337,19 @@ def build_outputs(
         Path("news/feed.xml"): build_rss(feed, wire),
         Path("news/sitemap.xml"): build_sitemap(
             feed, wire, investigations, machine_analyses, china_stream,
-            whispers_document,
+            whispers_document, china_analysis,
+        ),
+        Path("readings/china-censorship-analysis-latest.json"): (
+            china_analysis_model.pretty_json_bytes(china_analysis)
+        ),
+        Path("news/china/analysis/index.html"): (
+            render_china_censorship_analysis(china_analysis, feed=feed).encode("utf-8")
+        ),
+        Path("news/china/analysis/feed.json"): _pretty_json(
+            build_china_analysis_json_feed(china_analysis)
+        ),
+        Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
+            china_analysis
         ),
     }
     if wire is not None:
@@ -4371,6 +4593,7 @@ def build_outputs(
             generated_times.append(machine_analyses["generated_at"])
         if whispers_document is not None:
             generated_times.append(whispers_document["generated_at"])
+        generated_times.append(china_analysis["generated_at"])
         outputs[manifest_path] = _pretty_json({
             "schema_version": "palimpsest-news-manifest.v1",
             "generated_at": max(generated_times),

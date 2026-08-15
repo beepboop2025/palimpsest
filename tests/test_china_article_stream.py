@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from core import china_analysis
 from core import china_article_stream
 from core import event_analysis
 from core import newsroom
@@ -236,11 +237,107 @@ def test_build_outputs_adds_paginated_stream_and_machine_formats(publication):
     assert Path("news/china/feed.xml") in outputs
     assert Path("news/china/feed.json") in outputs
     assert Path("readings/china-article-stream-latest.json") in outputs
+    assert Path("news/china/analysis/index.html") in outputs
+    assert Path("news/china/analysis/feed.xml") in outputs
+    assert Path("news/china/analysis/feed.json") in outputs
+    assert Path("readings/china-censorship-analysis-latest.json") in outputs
+    newsroom_index = outputs[Path("news/index.html")].decode()
+    assert 'href="/news/china/analysis/">Today\'s censorship analysis</a>' in newsroom_index
+    assert 'href="/news/china/analysis/">Censorship analysis</a>' in newsroom_index
     for page in range(2, n_pages + 1):
         assert Path("news/china/page") / str(page) / "index.html" in outputs
     sitemap = outputs[Path("news/sitemap.xml")].decode()
     assert "https://palimpsest.info/news/china/" in sitemap
+    assert "https://palimpsest.info/news/china/analysis/" in sitemap
     assert f"https://palimpsest.info/news/china/page/{n_pages}/" in sitemap
+
+
+def test_cross_instrument_analysis_is_cited_bounded_and_current(publication):
+    _wire, feed, _analyses, _stream = publication
+    article = china_analysis.build(feed)
+    china_analysis.validate(article, feed=feed)
+
+    assert article["finding_state"] == "bounded-finding"
+    assert article["publication_receipt"]["publishable"] is True
+    assert article["publication_receipt"]["citation_coverage"] == 1.0
+    assert article["publication_receipt"]["live_signal_count"] == len(
+        china_analysis.SIGNAL_IDS
+    )
+    assert [row["signal_id"] for row in article["evidence"]] == list(
+        china_analysis.SIGNAL_IDS
+    )
+    evidence_ids = {row["evidence_id"] for row in article["evidence"]}
+    cited_ids = {
+        citation_id
+        for section in article["sections"]
+        for paragraph in section["paragraphs"]
+        for sentence in paragraph["sentences"]
+        for citation_id in sentence["citation_ids"]
+    }
+    assert cited_ids == evidence_ids
+    prose = json.dumps(article, ensure_ascii=False)
+    assert "one censorship rate" in prose
+    assert "does not identify one cause" in prose
+    assert "free-form model prose" in prose
+
+
+def test_cross_instrument_analysis_turns_a_nonlive_source_into_a_warning(publication):
+    _wire, feed, _analyses, _stream = publication
+    changed = copy.deepcopy(feed)
+    ddti = next(story for story in changed["stories"] if story["signal_id"] == "ddti")
+    retained = ddti["metric"]["value"]
+    ddti["status"] = "stale"
+    ddti["headline"] = "Deletion directive index: no current finding"
+    ddti["claims"] = [{
+        "type": "availability",
+        "statement": "No current finding is published for the deletion directive index because the source status is stale.",
+    }]
+    ddti["metric"] = {
+        "label": None,
+        "value": None,
+        "unit": None,
+        "denominator": {"label": None, "value": None},
+    }
+    ddti["limitations"] = [
+        "Current finding withheld because the source exceeded its freshness deadline."
+    ]
+
+    article = china_analysis.build(changed)
+    numbers = {item["label"]: item["value"] for item in article["key_numbers"]}
+    assert article["finding_state"] == "instrument-warning"
+    assert article["publication_receipt"]["availability_warnings"] == ["ddti"]
+    assert numbers["directive terms ranked"] == "withheld"
+    assert str(retained) not in next(
+        row["claim"] for row in article["evidence"] if row["signal_id"] == "ddti"
+    )
+
+
+def test_cross_instrument_analysis_rejects_a_tampered_evidence_projection(publication):
+    _wire, feed, _analyses, _stream = publication
+    article = china_analysis.build(feed)
+    changed = copy.deepcopy(article)
+    changed["evidence"][0]["claim"] = "An unsupported replacement claim."
+    changed["revision_id"] = china_analysis._article_identity(changed)
+
+    with pytest.raises(china_analysis.ChinaAnalysisError, match="evidence does not match"):
+        china_analysis.validate(changed, feed=feed)
+
+
+def test_cross_instrument_analysis_has_reader_and_feed_surfaces(publication):
+    _wire, feed, _analyses, _stream = publication
+    article = china_analysis.build(feed)
+    page = build_newsroom.render_china_censorship_analysis(article, feed=feed)
+    json_feed = build_newsroom.build_china_analysis_json_feed(article)
+    rss = ET.fromstring(build_newsroom.build_china_analysis_rss(article))
+
+    assert page.count("<h1") == 1
+    assert 'class="ca-section"' in page
+    assert page.count('class="ca-evidence"') == len(china_analysis.SIGNAL_IDS)
+    assert "/assets/china-analysis.css" in page
+    assert "innerHTML" not in page
+    assert "\u2013" not in page and "\u2014" not in page
+    assert json_feed["items"][0]["id"] == article["revision_id"]
+    assert rss.findtext("./channel/item/guid") == article["revision_id"]
 
 
 def test_event_revision_keeps_first_published_mutation_bytes(publication, tmp_path):
