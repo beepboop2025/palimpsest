@@ -5,7 +5,7 @@
         "all-eval-suites"
       ],
       "dimension": "integrity",
-      "evidence": "All 410 attestations verify with no chain or ordering break.",
+      "evidence": "All 418 attestations verify with no chain or ordering break.",
       "id": "registry-chain-integrity",
       "label": "The public eval chain recomputes and every run follows a preregistration",
       "limitation": "Hash-chain integrity detects revision and ordering violations; it does not establish construct validity or external witnessing by itself.",
@@ -17,7 +17,7 @@
         "frontier-overrefusal-v2"
       ],
       "dimension": "prompt_precommitment",
-      "evidence": "41 published prompts reproduce the preregistered commitment.",
+      "evidence": "144 published prompts reproduce the preregistered commitment.",
       "id": "frontier-exact-prompt-commitment",
       "label": "Exact frontier prompts were frozen before answers",
       "limitation": "Git history or an external witness is still needed to assign public wall-clock time to the commit.",
@@ -29,7 +29,7 @@
         "frontier-overrefusal-v2"
       ],
       "dimension": "response_recomputability",
-      "evidence": "164 full responses reproduce all 4 current model seals.",
+      "evidence": "576 full responses reproduce all 4 current model seals.",
       "id": "frontier-response-recomputation",
       "label": "Raw frontier responses reproduce every current seal",
       "limitation": "Recomputation proves which text was measured, not that the project classifier is substantively correct.",
@@ -41,11 +41,11 @@
         "frontier-overrefusal-v2"
       ],
       "dimension": "pipeline_reproducibility",
-      "evidence": "All 164 labels re-derive; the published artifact is method v3 and the shipping judge is v4.",
+      "evidence": "All 576 labels re-derive; the published artifact is method v4 and the shipping judge is v4.",
       "id": "frontier-label-recomputation",
       "label": "Published frontier labels re-derive from raw text",
-      "limitation": "A fresh run must rebaseline under the quote-aware v4 judge before new longitudinal claims are made.",
-      "status": "partial",
+      "limitation": "Agreement with the project's own deterministic judge is not human construct validation.",
+      "status": "pass",
       "verify_cmd": "python -m scripts.verify_refusal_transcripts"
     },
     {
@@ -169,7 +169,7 @@
       ],
       "id": "pipeline_reproducibility",
       "question": "Can labels be regenerated under an identified method?",
-      "status": "partial"
+      "status": "pass"
     },
     {
       "checks": [
@@ -197,7 +197,7 @@
       "status": "open"
     }
   ],
-  "generated_at": "2026-08-14T20:41:28.053270+00:00",
+  "generated_at": "2026-08-15T01:46:03.489857+00:00",
   "schema": "palimpsest.eval-assurance.v1",
   "sources": {
     "frontier_reading": "readings/refusal-drift-latest.json",
@@ -210,8 +210,8 @@
     "checks": 11,
     "fail": 0,
     "open": 1,
-    "partial": 1,
-    "pass": 8,
+    "partial": 0,
+    "pass": 9,
     "pending": 1
   },
   "title": "Palimpsest AI Eval Assurance",

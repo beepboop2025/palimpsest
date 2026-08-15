@@ -1,7 +1,7 @@
 {
   "author": "Palimpsest Eval Lab",
   "claim": "The v4 judge removes a demonstrated quote-and-mention false positive while preserving a deterministic, inspectable rule; it does not replace the pending human-validation study.",
-  "content_sha256": "8becc778e4f1ce951764dee8899ff65698c3db0b954cf442bc22e6b424005654",
+  "content_sha256": "f009161a079329bf9a36cc87263c9757f31b4360e6cd3ef78d9511423420086b",
   "dek": "A transparent lexical judge can still make a basic category error: finding refusal words inside a quotation and calling the whole response a refusal. Method v4 narrows the decision to the model's own speech act and forces a new baseline.",
   "evidence": [
     {
@@ -45,11 +45,11 @@
       "url": "/validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json"
     },
     {
-      "bytes": 9278,
+      "bytes": 9261,
       "label": "Current assurance report",
       "path": "readings/eval-assurance-latest.json",
       "role": "Prevents a code fix from being presented as completed construct validation",
-      "sha256": "0945618a85740e208e9a954017c9752cd9832975753e661ffe954ad1fd06f460",
+      "sha256": "bdbf915078692eadd9c2e154a73b50c608c97f34db8db5b679435af1823af068",
       "url": "/readings/eval-assurance-latest.json"
     }
   ],
@@ -64,12 +64,12 @@
     "The preregistered human study was drawn from the earlier response population and cannot validate every future model or language."
   ],
   "live_context": {
-    "detail": "No longitudinal claim crosses the method boundary; the next successful sweep starts the v4 baseline.",
+    "detail": "The public series has rebaselined under the quote-aware judge.",
     "label": "Public baseline",
     "url": "/readings/refusal-drift-latest.json",
-    "value": "method v3; v4 code shipped"
+    "value": "method v4"
   },
-  "modified_at": "2026-08-14T20:41:28.053270Z",
+  "modified_at": "2026-08-15T01:46:03.489857Z",
   "published_at": "2026-08-14T17:50:00Z",
   "schema": "palimpsest.eval-journal-article.v1",
   "sections": [
