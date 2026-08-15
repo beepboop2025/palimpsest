@@ -13,10 +13,13 @@ control, so rewriting history would require defeating them too:
      loudly). The resulting .ots files are committed and verify with the
      standard client against the Bitcoin blockchain, not against us.
 
-Idempotent by the house convention: if none of the three roots moved since the
-last anchor record, nothing is anchored and nothing grows. All three are
-compared, because a root that is published but never re-anchored goes stale
-against the chain it claims to fingerprint.
+Idempotent by the house convention: if none of the three roots moved and the
+last anchor record completed every external deposit, nothing is anchored and
+nothing grows. An incomplete external attempt is resumed selectively: proven
+Wayback snapshots and a present OpenTimestamps proof are reused, while only
+the missing evidence is retried. All three roots are compared, because a root
+that is published but never re-anchored goes stale against the chain it claims
+to fingerprint.
 
 A broken chain is never anchored, because anchoring a bad root would launder
 it, but the three chains do not fail together:
@@ -72,6 +75,7 @@ WAYBACK_TARGETS = (
     f"{SITE}/readings/erasure-ledger.jsonl",
     f"{SITE}/readings/readings-ledger.jsonl",
 )
+ROOT_KEYS = ("registry_root", "erasure_root", "readings_root")
 UA = "palimpsest-anchor/1.0 (+https://palimpsest.info)"
 
 
@@ -178,6 +182,34 @@ def ots_stamp(roots: dict, ts: str, run=subprocess.run) -> dict:
         return {"ok": False, "reason": f"{type(exc).__name__}: {exc}"}
 
 
+def reusable_wayback(prev: dict | None) -> dict[str, dict]:
+    """Return successful snapshots that still match the configured targets."""
+    if not isinstance(prev, dict):
+        return {}
+    reusable = {}
+    for item in prev.get("wayback", []):
+        if not isinstance(item, dict):
+            continue
+        target = item.get("target")
+        snapshot = item.get("snapshot")
+        if (target in WAYBACK_TARGETS and item.get("ok") is True
+                and isinstance(snapshot, str) and snapshot):
+            reusable[target] = dict(item)
+    return reusable
+
+
+def reusable_ots(prev: dict | None) -> dict | None:
+    """Return the prior stamp only when its referenced proof still exists."""
+    if not isinstance(prev, dict) or not isinstance(prev.get("ots"), dict):
+        return None
+    ots = prev["ots"]
+    proof = ots.get("proof")
+    if ots.get("ok") is not True or not isinstance(proof, str) or not proof:
+        return None
+    proof_path = proof if os.path.isabs(proof) else os.path.join(ROOT, proof)
+    return dict(ots) if os.path.isfile(proof_path) else None
+
+
 def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
            run=subprocess.run, log_path: str = ANCHOR_LOG,
            latest_path: str = ANCHOR_LATEST) -> dict | None:
@@ -188,21 +220,45 @@ def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
     # while the other readings moved, anchored nothing and kept republishing a
     # readings_root that no longer fingerprinted readings-ledger.jsonl, for as
     # many consecutive quiet rounds as it took.
-    if prev and all(prev.get("roots", {}).get(k) == roots.get(k)
-                    for k in ("registry_root", "erasure_root", "readings_root")):
+    same_roots = bool(prev) and all(
+        prev.get("roots", {}).get(key) == roots.get(key) for key in ROOT_KEYS
+    )
+    prior_wayback = reusable_wayback(prev) if same_roots else {}
+    prior_ots = reusable_ots(prev) if same_roots else None
+    missing_wayback = [target for target in WAYBACK_TARGETS
+                       if target not in prior_wayback]
+    if same_roots and not missing_wayback and prior_ots is not None:
         print("roots unchanged since last anchor — nothing to do")
         return None
-    ts = datetime.now(timezone.utc).isoformat()
     if dry_run:
-        print(json.dumps({"would_anchor": roots}, indent=2))
+        action = "would_retry" if same_roots else "would_anchor"
+        print(json.dumps({action: {
+            "roots": roots,
+            "wayback_targets": missing_wayback if same_roots else list(WAYBACK_TARGETS),
+            "opentimestamps": "reuse" if prior_ots is not None else "stamp",
+        }}, indent=2))
         return None
+    ts = datetime.now(timezone.utc).isoformat()
 
     record = {
         "ts": ts,
         "roots": roots,
-        "wayback": [wayback_save(u, opener=opener) for u in WAYBACK_TARGETS],
-        "ots": ots_stamp(roots, ts, run=run),
+        "wayback": [],
     }
+    if same_roots:
+        record["retry_of"] = prev.get("ts")
+    for target in WAYBACK_TARGETS:
+        if target in prior_wayback:
+            reused = dict(prior_wayback[target])
+            reused["reused"] = True
+            record["wayback"].append(reused)
+        else:
+            record["wayback"].append(wayback_save(target, opener=opener))
+    if prior_ots is not None:
+        record["ots"] = dict(prior_ots)
+        record["ots"]["reused"] = True
+    else:
+        record["ots"] = ots_stamp(roots, ts, run=run)
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
@@ -216,10 +272,14 @@ def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
         "readings_problems": roots.get("readings_problems", []),
         "wayback_ok": ok_wayback,
         "wayback_snapshots": [w.get("snapshot") for w in record["wayback"] if w["ok"]],
+        "wayback_reused": sum(1 for w in record["wayback"] if w.get("reused") is True),
         "ots": record["ots"].get("proof") if record["ots"]["ok"] else None,
         "ots_status": "stamped" if record["ots"]["ok"]
                       else record["ots"].get("reason", "failed"),
+        "ots_reused": record["ots"].get("reused") is True,
     }
+    if record.get("retry_of"):
+        latest["retry_of"] = record["retry_of"]
     with open(latest_path, "w", encoding="utf-8") as f:
         json.dump(latest, f, ensure_ascii=False, indent=1)
 
