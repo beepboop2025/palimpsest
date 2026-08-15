@@ -200,14 +200,22 @@ def test_active_marker_is_published_after_signal_handlers_are_ready(
     active = lane.LanePaths.from_root(state).active
     previous_handler = signal.getsignal(signal.SIGTERM)
     observed_handlers = []
+    observed_spawns = []
     atomic_write = lane._atomic_write_json
+    popen = lane.subprocess.Popen
 
     def observe_handler(path, value):
         if path == active:
             observed_handlers.append(signal.getsignal(signal.SIGTERM))
         atomic_write(path, value)
 
+    def observe_spawn(*args, **kwargs):
+        observed_spawns.append(active.exists())
+        assert active.exists()
+        return popen(*args, **kwargs)
+
     monkeypatch.setattr(lane, "_atomic_write_json", observe_handler)
+    monkeypatch.setattr(lane.subprocess, "Popen", observe_spawn)
 
     assert lane.execute_guarded_job(
         state_dir=state,
@@ -216,6 +224,7 @@ def test_active_marker_is_published_after_signal_handlers_are_ready(
     ) == 0
     assert len(observed_handlers) == 1
     assert observed_handlers[0] is not previous_handler
+    assert observed_spawns == [True]
     assert signal.getsignal(signal.SIGTERM) is previous_handler
 
 
