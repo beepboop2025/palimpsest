@@ -643,6 +643,16 @@ def _control_article(
     )
     evidence = [current_evidence, method_evidence, panel_evidence, seal_evidence]
     current_is_full_sweep = reading.get("arm") == "full-sweep"
+    current_method_version = reading.get("method_version")
+    prior_method_version = (
+        prior_full.get("method_version") if isinstance(prior_full, dict) else None
+    )
+    method_versions_match = (
+        isinstance(current_method_version, int)
+        and isinstance(prior_method_version, int)
+        and current_method_version == prior_method_version
+    )
+    full_sweeps_comparable = current_is_full_sweep and method_versions_match
     prior_row = None
     if isinstance(prior_full, dict) and isinstance(prior_full.get("models"), dict):
         prior_row = prior_full["models"].get(model_id)
@@ -657,9 +667,16 @@ def _control_article(
                 "This is the nearest prior full sweep. The two full-sweep records are "
                 "descriptively comparable, but they do not identify a model release, "
                 "provider, or routing cause."
-                if current_is_full_sweep
-                else "This is the nearest prior full sweep. A canonical-only current run "
-                "is not a like-for-like recovery test."
+                if full_sweeps_comparable
+                else (
+                    "This is the nearest prior full sweep. Both records use the full-sweep "
+                    f"arm, but method versions v{prior_method_version} and "
+                    f"v{current_method_version} differ, so their values are not directly "
+                    "comparable."
+                    if current_is_full_sweep
+                    else "This is the nearest prior full sweep. A canonical-only current "
+                    "run is not a like-for-like recovery test."
+                )
             ),
             source_url=history_url,
         )
@@ -674,11 +691,17 @@ def _control_article(
     if lead["controls_clean"] and prior_failed:
         title = "A clean run does not erase a failed one"
         finding_state = "bounded-finding"
-        if current_is_full_sweep:
+        if full_sweeps_comparable:
             dek = (
                 f"{model_name} passed all {lead['n_arms']} prompt arms in the latest "
                 "full-sweep run. The prior failed controls remain part of the record; "
                 "the change is descriptive rather than causal."
+            )
+        elif current_is_full_sweep:
+            dek = (
+                f"{model_name} passed all {lead['n_arms']} prompt arms in the latest "
+                "full-sweep run. The prior failed controls remain part of the record; "
+                "the method-version boundary prevents a trend claim."
             )
         else:
             dek = (
@@ -766,7 +789,7 @@ def _control_article(
             f"reported an arm refusal rate of {_pct(prior_row['arm_refusal_rate_pct'])} and "
             f"controls_clean={str(prior_row['controls_clean']).lower()}."
         )
-        if current_is_full_sweep:
+        if full_sweeps_comparable:
             consistency_text = (
                 f"Wording consistency moved from {_pct(100 * prior_consistency)} to {_pct(100 * consistency)}."
                 if isinstance(prior_consistency, (int, float)) and isinstance(consistency, (int, float))
@@ -775,6 +798,22 @@ def _control_article(
             comparison_limit = (
                 "The comparison is descriptive and does not assign the change to a model release, provider, or prompt-routing decision."
             )
+            comparison_heading = "What changed since the prior comparable sweep"
+        elif current_is_full_sweep:
+            consistency_text = (
+                f"Method v{prior_method_version} reported wording consistency of "
+                f"{_pct(100 * prior_consistency)}, while method v{current_method_version} "
+                f"reported {_pct(100 * consistency)}."
+                if isinstance(prior_consistency, (int, float))
+                and isinstance(consistency, (int, float))
+                else "The two method versions do not both contain a wording-consistency estimate."
+            )
+            comparison_limit = (
+                f"Method versions v{prior_method_version} and v{current_method_version} "
+                "differ, so these values are not directly comparable, do not establish "
+                "a trend, and do not identify a model release, provider, or prompt-routing cause."
+            )
+            comparison_heading = "What the prior sweep does and does not show"
         else:
             consistency_text = (
                 f"The latest {reading.get('arm', 'dated')} arm used {lead['n_arms']} prompts, while "
@@ -785,10 +824,11 @@ def _control_article(
             comparison_limit = (
                 "The clean canonical arm is a new dated observation, not a like-for-like retest that cancels the failed full sweep."
             )
+            comparison_heading = "What the prior sweep does and does not show"
         sections.append(
             _section(
                 "since-prior",
-                "What changed since the prior comparable sweep",
+                comparison_heading,
                 _paragraph(
                     _sentence(prior_text, prior_id, current_id),
                     _sentence(consistency_text, prior_id, current_id),

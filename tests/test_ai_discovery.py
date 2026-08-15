@@ -1,6 +1,7 @@
 """Proof that Palimpsest's human and agent acquisition surfaces stay aligned."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -11,10 +12,19 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_well_known_security_policy_routes_sensitive_reports_privately():
     policy = (ROOT / ".well-known" / "security.txt").read_text(encoding="utf-8")
+    fields = dict(
+        line.split(": ", 1)
+        for line in policy.splitlines()
+        if ": " in line and not line.startswith("#")
+    )
     assert "Contact: https://github.com/beepboop2025/palimpsest/security/advisories/new" in policy
     assert "Canonical: https://palimpsest.info/.well-known/security.txt" in policy
     assert "Policy: https://github.com/beepboop2025/palimpsest/blob/main/SECURITY.md" in policy
+    expires = datetime.fromisoformat(fields["Expires"].replace("Z", "+00:00"))
+    assert expires > datetime.now(timezone.utc)
+    assert fields["Preferred-Languages"] == "en"
     assert "Do not open a public issue" in policy
+    assert "live collection seam" in policy
 
 
 def _json(name: str):

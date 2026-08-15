@@ -407,7 +407,11 @@ def _reject_leakage(value: str, field: str) -> None:
         )
 
 
-def _method(transports: dict[str, dict[str, Any]]) -> str:
+def _method(
+    transports: dict[str, dict[str, Any]], *, method_version: int | None = None
+) -> str:
+    if method_version is None:
+        method_version = METHOD_VERSION
     legs = [
         name
         for name, key in (
@@ -422,7 +426,7 @@ def _method(transports: dict[str, dict[str, Any]]) -> str:
         )
     direct_schedule = (
         " Direct receive windows overlap; outbound sends remain rate-capped."
-        if transports["direct"]["ran"]
+        if method_version >= 3 and transports["direct"]["ran"]
         else ""
     )
     return (
@@ -582,7 +586,11 @@ def validate_document(
         raise BleedthroughImportError(
             "BLEEDTHROUGH transport targets do not equal vantages_probed"
         )
-    _exact_text(root["method"], "method", _method(transports))
+    _exact_text(
+        root["method"],
+        "method",
+        _method(transports, method_version=method_version),
+    )
 
     vantage_count = _integer(
         provenance["vantage_count"], "provenance.vantage_count", minimum=1, maximum=1

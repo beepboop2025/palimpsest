@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import time
 
 import pytest
 
@@ -103,10 +104,36 @@ def publish(tmp_path, monkeypatch):
                 return []
             return [RawInjection(ip, rr_ttl=64) for ip in pool]
 
+        class BurstSession:
+            def __init__(self, domain, target_ip):
+                self._query = (domain, target_ip)
+                self._groups = []
+
+            def send(self):
+                self._groups.append(transport(*self._query))
+
+            @staticmethod
+            def poll(seconds):
+                time.sleep(seconds)
+
+            def finish(self):
+                return self._groups
+
+            def close(self):
+                return None
+
+        class BurstTransport:
+            def __call__(self, domain, target_ip):
+                return transport(domain, target_ip)
+
+            @staticmethod
+            def start_burst(domain, target_ip):
+                return BurstSession(domain, target_ip)
+
         def transport_factory(*, wait):
             if observed_waits is not None:
                 observed_waits.append(wait)
-            return transport
+            return BurstTransport()
 
         monkeypatch.setattr(pull, "direct_udp_transport", transport_factory)
         pull.main()
