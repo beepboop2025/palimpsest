@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-15T13:25:11Z",
+  "generated_at": "2026-08-15T13:29:54Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "bffa4b758d362b25080c23e34303887ad17701e5",
+  "source_commit": "0977ffd9a1ba8e63b0584f4e69670f59897bc0b3",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 31,
-    "status": "degraded",
+    "live": 32,
+    "status": "healthy",
     "counts": {
-      "live": 31,
+      "live": 32,
       "degraded": 1,
-      "stale": 1,
+      "stale": 0,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-15T13:19:08Z",
       "modified_at": "2026-08-15T13:19:08Z",
-      "claim_fingerprint": "sha256:152805e174daf62602de02a7158cc18f2e54cbd1a631e7d36889ceaaa6072520",
+      "claim_fingerprint": "sha256:4571c0e0db66701190a8e386b5552aceb8580eeca5891a1a8e4e38be0e40ced6",
       "metric": {
         "label": "board e-value",
         "value": 30.576,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 30.576; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 30.576; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -501,8 +501,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T07:17:41Z",
-      "modified_at": "2026-08-15T07:17:41Z",
+      "published_at": "2026-08-15T13:18:30Z",
+      "modified_at": "2026-08-15T13:18:30Z",
       "claim_fingerprint": "sha256:db8ea3175b55f16e75cb8cd5cee3264f56078e38b2b6c5c9a79156779c59988c",
       "metric": {
         "label": "blackout topics",
@@ -523,10 +523,10 @@
         "url": "https://palimpsest.info/readings/silence-index-latest.json",
         "input": {
           "filename": "silence-index-latest.json",
-          "sha256": "30ca5214dbca690d2a504d433dc9a0b305069db535285b69c4f9586dce659962",
-          "bytes": 6631
+          "sha256": "1ba36dfcbfb6b12a4d56a0b74a418a5820810c817f804fadd9183b810469f758",
+          "bytes": 6630
         },
-        "source_timestamp": "2026-08-15T07:17:41Z"
+        "source_timestamp": "2026-08-15T13:18:30Z"
       },
       "method": {
         "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
@@ -1534,46 +1534,45 @@
       "slug": "official-data-darkness",
       "url": "https://palimpsest.info/news/official-data-darkness/",
       "signal_id": "data-darkness",
-      "headline": "Official-data darkness: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The official-data darkness index is 0.5753 across 7 watched series",
+      "dek": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
       "section": "economy",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "stale",
-      "published_at": "2026-08-13T11:06:11Z",
-      "modified_at": "2026-08-13T11:06:11Z",
-      "claim_fingerprint": "sha256:0b041b3529018c1ffc1dc78c1516d4244abbe9831be11cc783f6a7111f3bc7a6",
+      "status": "live",
+      "published_at": "2026-08-15T13:25:20Z",
+      "modified_at": "2026-08-15T13:25:20Z",
+      "claim_fingerprint": "sha256:d9b2d20a92fa5c1742b6f461816178a7d62c2ddb3d0296eb73966de9ab5bbc9e",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "darkness index",
+        "value": 0.5753,
+        "unit": "index",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "series watched",
+          "value": 7
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Official-data darkness because the source status is stale."
+          "type": "finding",
+          "statement": "The current publication-cadence darkness index is 0.5753 across 7 watched official series."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/data-darkness-latest.json",
         "input": {
           "filename": "data-darkness-latest.json",
-          "sha256": "55518ec26c2c20faade1091f09c2c45b168cc43cb7ae755f7e2ff89b06ef896c",
-          "bytes": 3886
+          "sha256": "f2756702573f2e6a25b4196357c55652bec1d230166d868cf07d80df40a97182",
+          "bytes": 3434
         },
-        "source_timestamp": "2026-08-13T11:06:11Z"
+        "source_timestamp": "2026-08-15T13:25:20Z"
       },
       "method": {
         "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation."
       ],
       "related_signal_ids": [

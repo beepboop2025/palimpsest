@@ -1,10 +1,10 @@
 {
- "asof": "2026-08-13",
- "darkness_index": 0.5899,
- "generated_at": "2026-08-13T11:06:11Z",
+ "asof": "2026-08-15",
+ "darkness_index": 0.5753,
+ "generated_at": "2026-08-15T13:25:20Z",
  "method_note": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
  "method_version": 1,
- "n_series_reporting": 7,
+ "n_series_reporting": 6,
  "n_series_watched": 7,
  "note": "high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md",
  "series": {
@@ -12,44 +12,19 @@
    "basis": "business",
    "days_since": 0,
    "families": {
-    "central_parity": "2026-08-13",
-    "repo_fixing": "2026-08-13",
-    "shibor": "2026-08-13"
+    "central_parity": "2026-08-14",
+    "repo_fixing": "2026-08-14",
+    "shibor": "2026-08-14"
    },
-   "latest_publication": "2026-08-13",
+   "latest_publication": "2026-08-14",
    "nominal_interval_days": 1,
-   "our_last_look": "2026-08-13T08:03:27Z",
+   "our_last_look": "2026-08-15T10:27:05Z",
    "staleness_ratio": 0.0
-  },
-  "nbs_energy": {
-   "basis": "calendar",
-   "days_past_promise": 0,
-   "days_since": 29,
-   "latest_period": "2026-06",
-   "latest_publication": "2026-07-15",
-   "n_listed": 1,
-   "nominal_interval_days": 31,
-   "periods_behind": 0,
-   "promise_calendar": {
-    "1": 19,
-    "3": 16,
-    "4": 16,
-    "5": 18,
-    "6": 16,
-    "7": 15,
-    "8": 17,
-    "9": 15,
-    "10": 19,
-    "11": 16,
-    "12": 15
-   },
-   "promised_day": 17,
-   "staleness_ratio": 0.9355
   },
   "nbs_industrial": {
    "basis": "calendar",
    "days_past_promise": 0,
-   "days_since": 29,
+   "days_since": 31,
    "latest_period": "2026-06",
    "latest_publication": "2026-07-15",
    "n_listed": 1,
@@ -69,48 +44,50 @@
     "12": 15
    },
    "promised_day": 17,
-   "staleness_ratio": 0.9355
+   "staleness_ratio": 1.0
   },
   "nra_rail": {
    "basis": "calendar",
-   "days_since": 30,
+   "days_since": 32,
    "latest_period": "2026-06",
    "latest_publication": "2026-07-14",
    "nominal_interval_days": 31,
-   "staleness_ratio": 0.9677
+   "staleness_ratio": 1.0323
   },
   "pboc_mb_stats": {
    "basis": "calendar",
-   "days_since": 13,
+   "days_since": 15,
    "latest_period": "2026-06",
    "latest_publication": "2026-07-31",
    "months_listed": 6,
    "nominal_interval_days": 31,
-   "staleness_ratio": 0.4194
+   "staleness_ratio": 0.4839
   },
   "pboc_omo": {
    "announcement_year": 2026,
    "basis": "business",
    "days_since": 0,
-   "first_listed": "2026-07-17",
-   "latest_announcement_no": 156,
-   "latest_publication": "2026-08-13",
+   "first_listed": "2026-07-20",
+   "latest_announcement_no": 157,
+   "latest_publication": "2026-08-14",
    "n_listed": 20,
    "n_listed_latest_year": 20,
    "nominal_interval_days": 1,
-   "numbers_listed_max": 156,
-   "numbers_listed_min": 137,
+   "numbers_listed_max": 157,
+   "numbers_listed_min": 138,
    "staleness_ratio": 0.0
   },
   "safe_settlement": {
    "basis": "calendar",
-   "days_since": 27,
+   "days_since": 29,
    "latest_publication": "2026-07-17",
    "n_files": 8,
    "nominal_interval_days": 31,
-   "staleness_ratio": 0.871
+   "staleness_ratio": 0.9355
   }
  },
  "source": "official Chinese publication surfaces, read keyless: pbc.gov.cn (OMO announcements; Money & Banking Statistics directory), safe.gov.cn (bank FX settlement page), stats.gov.cn (最新发布 firehose for the energy and industrial monthlies, plus the release calendar), nra.gov.cn (rail freight monthly), and this repo's own committed CFETS benchmark history",
- "unreachable": []
+ "unreachable": [
+  "nbs_energy"
+ ]
 }
