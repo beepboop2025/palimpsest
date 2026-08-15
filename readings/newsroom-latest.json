@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-15T13:06:59Z",
+  "generated_at": "2026-08-15T13:25:11Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "6be5f7ae7f5c6749a13517fd2f3c598df19d312f",
+  "source_commit": "bffa4b758d362b25080c23e34303887ad17701e5",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -86,12 +86,12 @@
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-15T07:17:59Z",
-      "modified_at": "2026-08-15T07:17:59Z",
-      "claim_fingerprint": "sha256:a432f6d9385cafe2ff64e22c5b54a71bb0182924773ad78bd8d8e63c40cf1a9b",
+      "published_at": "2026-08-15T13:19:08Z",
+      "modified_at": "2026-08-15T13:19:08Z",
+      "claim_fingerprint": "sha256:152805e174daf62602de02a7158cc18f2e54cbd1a631e7d36889ceaaa6072520",
       "metric": {
         "label": "board e-value",
-        "value": 27.962,
+        "value": 30.576,
         "unit": "e-value",
         "denominator": {
           "label": null,
@@ -101,17 +101,17 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 27.962; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 30.576; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/board-alarm-latest.json",
         "input": {
           "filename": "board-alarm-latest.json",
-          "sha256": "5635da390458844ace1444f939b6addd10fad0c9204ecc8ab6d0ad8ff251ae45",
-          "bytes": 10618
+          "sha256": "fcc2279c59c1b7a50b97cfcfdd7cfad3c8cbc62627fa27f4514e7bd3310e2fc1",
+          "bytes": 10236
         },
-        "source_timestamp": "2026-08-15T07:17:59Z"
+        "source_timestamp": "2026-08-15T13:19:08Z"
       },
       "method": {
         "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
@@ -138,8 +138,8 @@
       "type": "methodology",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T07:16:24Z",
-      "modified_at": "2026-08-15T07:16:24Z",
+      "published_at": "2026-08-15T13:17:00Z",
+      "modified_at": "2026-08-15T13:17:00Z",
       "claim_fingerprint": "sha256:289b7d19351323dafa1c0178f6a84f4bba0796d50f493a83ae7baeb1e6f38a95",
       "metric": {
         "label": "signals reporting",
@@ -160,10 +160,10 @@
         "url": "https://palimpsest.info/readings/event-flags-latest.json",
         "input": {
           "filename": "event-flags-latest.json",
-          "sha256": "7291cf6ca83fce1a32a2c00bdc98ebfc674ac2c29618adea7e99e3f3fe48c671",
-          "bytes": 6620
+          "sha256": "2965df6b9b47fcbbdf7f823fb785f733e3635954c1efd4b52b8d3ceea4f906f5",
+          "bytes": 6272
         },
-        "source_timestamp": "2026-08-15T07:16:24Z"
+        "source_timestamp": "2026-08-15T13:17:00Z"
       },
       "method": {
         "summary": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
@@ -190,8 +190,8 @@
       "type": "methodology",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T07:17:59Z",
-      "modified_at": "2026-08-15T07:17:59Z",
+      "published_at": "2026-08-15T13:19:08Z",
+      "modified_at": "2026-08-15T13:19:08Z",
       "claim_fingerprint": "sha256:70ac60095fdce6e2ab3e1cd6ecb2f707f630534d316cf3d25b116ede7cdd9ebd",
       "metric": {
         "label": "confounded signals",
@@ -212,10 +212,10 @@
         "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
         "input": {
           "filename": "coverage-guard-latest.json",
-          "sha256": "eb6b00b466f899fa210d931eb56bb12ba8c7ce74838a0734f6f1ba123562b581",
-          "bytes": 4852
+          "sha256": "49bb896b07020a2cdb38976286bce452921ff2691be54458f2d0b1fbadbef626",
+          "bytes": 4853
         },
-        "source_timestamp": "2026-08-15T07:17:59Z"
+        "source_timestamp": "2026-08-15T13:19:08Z"
       },
       "method": {
         "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
@@ -235,39 +235,39 @@
       "slug": "forecast-ledger",
       "url": "https://palimpsest.info/news/forecast-ledger/",
       "signal_id": "forecast-ledger",
-      "headline": "Forecast bands covered 84.2% of 1,370 scored readings",
+      "headline": "Forecast bands covered 84.3% of 1,377 scored readings",
       "dek": "Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
       "section": "command",
       "order": 4,
       "type": "methodology",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-15T07:17:59Z",
-      "modified_at": "2026-08-15T07:17:59Z",
-      "claim_fingerprint": "sha256:aafc6099f5fa97f99ad15eb077819a80c3b4e28fe0d710ab9d02ba2c53619e63",
+      "published_at": "2026-08-15T13:19:08Z",
+      "modified_at": "2026-08-15T13:19:08Z",
+      "claim_fingerprint": "sha256:ffaa1d7a7181d44dcfd4d42135d3eeedf023f4c3d8c3da9787681659d3492565",
       "metric": {
         "label": "empirical coverage",
-        "value": 0.842,
+        "value": 0.843,
         "unit": "ratio",
         "denominator": {
           "label": "forecasts",
-          "value": 1370
+          "value": 1377
         }
       },
       "claims": [
         {
           "type": "method",
-          "statement": "Empirical forecast coverage is 84.2% across 1,370 scored forecasts."
+          "statement": "Empirical forecast coverage is 84.3% across 1,377 scored forecasts."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
         "input": {
           "filename": "forecast-ledger-latest.json",
-          "sha256": "60e23ecdbe889ddec68358a5c256d547a03e5ff668d33f0e28ffadb4de197f21",
-          "bytes": 13302
+          "sha256": "1afb38151924cbe7e6b6c7004119de4fd15672a47f75aba2a305ccd0ac841e08",
+          "bytes": 13304
         },
-        "source_timestamp": "2026-08-15T07:17:59Z"
+        "source_timestamp": "2026-08-15T13:19:08Z"
       },
       "method": {
         "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
@@ -293,8 +293,8 @@
       "type": "methodology",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-15T07:17:59Z",
-      "modified_at": "2026-08-15T07:17:59Z",
+      "published_at": "2026-08-15T13:19:08Z",
+      "modified_at": "2026-08-15T13:19:08Z",
       "claim_fingerprint": "sha256:34322e87371fe1daa4ce37dcf6f8aad06cc59c8361cd0f941f874010e72ca2fa",
       "metric": {
         "label": "confirmed pairs",
@@ -315,10 +315,10 @@
         "url": "https://palimpsest.info/readings/cross-layer-latest.json",
         "input": {
           "filename": "cross-layer-latest.json",
-          "sha256": "9a9b6e340bfb9da62ac1949681db589728c01a81b139125c44d4f0682bbd03af",
+          "sha256": "a32acdda58b28a570d3a4cd85e82059dd1a946fdb869a063381d2ed5fc56865a",
           "bytes": 10191
         },
-        "source_timestamp": "2026-08-15T07:17:59Z"
+        "source_timestamp": "2026-08-15T13:19:08Z"
       },
       "method": {
         "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
@@ -397,8 +397,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-15T07:21:21Z",
-      "modified_at": "2026-08-15T07:21:21Z",
+      "published_at": "2026-08-15T13:21:58Z",
+      "modified_at": "2026-08-15T13:21:58Z",
       "claim_fingerprint": "sha256:2e41f5e2cc84d65129d52592d92d88c2d51eef4be2594ba137fc9977437bba4a",
       "metric": {
         "label": "terms with global data",
@@ -419,10 +419,10 @@
         "url": "https://palimpsest.info/readings/gdelt-latest.json",
         "input": {
           "filename": "gdelt-latest.json",
-          "sha256": "25b30e71e3a18494b811b96d1d053814dbec8e9b68550e383830a0bbdf211f32",
-          "bytes": 6747
+          "sha256": "e070901d7686b4c883b04c48c78e3c8817e985b17691224f5cd627c4b9df5c2c",
+          "bytes": 6722
         },
-        "source_timestamp": "2026-08-15T07:21:21Z"
+        "source_timestamp": "2026-08-15T13:21:58Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -442,19 +442,19 @@
       "slug": "weibo-hot-search-join",
       "url": "https://palimpsest.info/news/weibo-hot-search-join/",
       "signal_id": "weibo-hotsearch",
-      "headline": "The latest Weibo archive contains 2,620 hot-search board entries",
+      "headline": "The latest Weibo archive contains 2,728 hot-search board entries",
       "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
       "section": "attention",
       "order": 3,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T07:09:46Z",
-      "modified_at": "2026-08-15T07:09:46Z",
-      "claim_fingerprint": "sha256:8874ab0114d80c2ab3ab9a0fec59c6bc8ce74197b0b7283f3dbdd0c356a54d78",
+      "published_at": "2026-08-15T13:15:16Z",
+      "modified_at": "2026-08-15T13:15:16Z",
+      "claim_fingerprint": "sha256:819abaa5ea1b46229bf97aefe1e60ef1fa7b9b7186690027255a741f0a8b4c01",
       "metric": {
         "label": "board entries",
-        "value": 2620,
+        "value": 2728,
         "unit": "count",
         "denominator": {
           "label": null,
@@ -464,17 +464,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current archive window contains 2,620 Weibo hot-search board entries available for joining."
+          "statement": "The current archive window contains 2,728 Weibo hot-search board entries available for joining."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
         "input": {
           "filename": "weibo-hotsearch-latest.json",
-          "sha256": "51e9afb9b55dcd15339835e577ad16193740ab9ef29eed2514ac7e81769ad8aa",
-          "bytes": 6115
+          "sha256": "1baad9408d7cd4c8a76821d1d8e025303a12565c3c684bc0f5d35cb49530f542",
+          "bytes": 6194
         },
-        "source_timestamp": "2026-08-15T07:09:46Z"
+        "source_timestamp": "2026-08-15T13:15:16Z"
       },
       "method": {
         "summary": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
@@ -604,8 +604,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-15T02:02:44Z",
-      "modified_at": "2026-08-15T02:02:44Z",
+      "published_at": "2026-08-15T13:15:24Z",
+      "modified_at": "2026-08-15T13:15:24Z",
       "claim_fingerprint": "sha256:e9382578ae1c0f58a9461d8ec6275fc9bb7fbccd75329d2bdbca5b9d62c222a4",
       "metric": {
         "label": "recent events",
@@ -626,10 +626,10 @@
         "url": "https://palimpsest.info/readings/net4people-latest.json",
         "input": {
           "filename": "net4people-latest.json",
-          "sha256": "bee42266a0ed612080893afb7d5554ede506b4f3fa076427ca5317c99f09935d",
+          "sha256": "06dfdfb3276e42ff5448b0c2733201594e738783bf455285102749f1a941bbf9",
           "bytes": 7309
         },
-        "source_timestamp": "2026-08-15T02:02:44Z"
+        "source_timestamp": "2026-08-15T13:15:24Z"
       },
       "method": {
         "summary": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
@@ -813,8 +813,8 @@
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-15T07:08:47Z",
-      "modified_at": "2026-08-15T07:08:47Z",
+      "published_at": "2026-08-15T13:10:35Z",
+      "modified_at": "2026-08-15T13:10:35Z",
       "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
       "metric": {
         "label": "blocked share",
@@ -835,10 +835,10 @@
         "url": "https://palimpsest.info/readings/inside-view-latest.json",
         "input": {
           "filename": "inside-view-latest.json",
-          "sha256": "f08e11192d0b915f417d3c5e11b87064273dbbbc6de33e9792f3141e263d4663",
-          "bytes": 66152
+          "sha256": "856295b11cb46bdf93d26bda83a9eac6d4a82cc25345a17c737c0ffb24e9d1b2",
+          "bytes": 58897
         },
-        "source_timestamp": "2026-08-15T07:08:47Z"
+        "source_timestamp": "2026-08-15T13:10:35Z"
       },
       "method": {
         "summary": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
@@ -969,8 +969,8 @@
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-15T07:17:23Z",
-      "modified_at": "2026-08-15T07:17:23Z",
+      "published_at": "2026-08-15T13:18:35Z",
+      "modified_at": "2026-08-15T13:18:35Z",
       "claim_fingerprint": "sha256:c49e5d5701bf39cb7f38c8cb516e554412dc353cf3e7d7179b5ff6fe05f9ffab",
       "metric": {
         "label": "fused network index",
@@ -991,10 +991,10 @@
         "url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
         "input": {
           "filename": "vantage-fusion-latest.json",
-          "sha256": "424d0717300dfba433e95a8e5f16983faa32f8517fddaf569fe37b06914e3bbd",
+          "sha256": "9e429b45ca303d8d9f6240a7cd0d7614321369b7fed01ecc87e38f252a25b439",
           "bytes": 2093
         },
-        "source_timestamp": "2026-08-15T07:17:23Z"
+        "source_timestamp": "2026-08-15T13:18:35Z"
       },
       "method": {
         "summary": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
@@ -1022,8 +1022,8 @@
       "type": "measurement",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-15T12:36:32Z",
-      "modified_at": "2026-08-15T12:36:32Z",
+      "published_at": "2026-08-15T13:03:56Z",
+      "modified_at": "2026-08-15T13:03:56Z",
       "claim_fingerprint": "sha256:7190da75589e6491b290240598c8bf219c4079f70a8d5798c9318190bfcaef4a",
       "metric": {
         "label": "injector response-process floor",
@@ -1044,10 +1044,10 @@
         "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
         "input": {
           "filename": "bleedthrough-latest.json",
-          "sha256": "b2dae944b4f7fcd793c66e5124ecb9f7f5746569c609de9f0aad74f389b7a6e7",
+          "sha256": "7c1eec98566953831a0b72fa83c20a2754f3a064b75cfb6721eea91e0012c40f",
           "bytes": 2760
         },
-        "source_timestamp": "2026-08-15T12:36:32Z"
+        "source_timestamp": "2026-08-15T13:03:56Z"
       },
       "method": {
         "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
@@ -1066,19 +1066,19 @@
       "slug": "erasure-observatory",
       "url": "https://palimpsest.info/news/erasure-observatory/",
       "signal_id": "erasure-observatory",
-      "headline": "The composite erasure index stands at 42.4",
+      "headline": "The composite erasure index stands at 39.8",
       "dek": "The roll-up keeps archive, redaction, repository and distribution evidence separate beneath one directional index.",
       "section": "erasure",
       "order": 1,
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-15T03:09:06Z",
-      "modified_at": "2026-08-15T03:09:06Z",
-      "claim_fingerprint": "sha256:482033b9791748c31a798e3fccb2bc83a64a0d412c9ed236cf3c81c42f7585cc",
+      "published_at": "2026-08-15T13:10:39Z",
+      "modified_at": "2026-08-15T13:10:39Z",
+      "claim_fingerprint": "sha256:d8a84fbfb1c8cbe763cb53d9e3302ad9ecfbde74c2b436a0d7b519d7288ce15f",
       "metric": {
         "label": "erasure index",
-        "value": 42.4,
+        "value": 39.8,
         "unit": "index",
         "denominator": {
           "label": null,
@@ -1088,17 +1088,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current cross-layer erasure index is 42.4."
+          "statement": "The current cross-layer erasure index is 39.8."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
         "input": {
           "filename": "erasure-observatory-latest.json",
-          "sha256": "90b5da84edb3e26591c1544702403fde0d0e558eb2aaeadf47d5d4a6cc1b1551",
+          "sha256": "3f51a3fea6d56ba8b92b8a41a1cb19b97c889bda9a03e8bd9d14367619a485a0",
           "bytes": 3911
         },
-        "source_timestamp": "2026-08-15T03:09:06Z"
+        "source_timestamp": "2026-08-15T13:10:39Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1201,7 +1201,7 @@
         "url": "https://palimpsest.info/readings/baike-redaction-latest.json",
         "input": {
           "filename": "baike-redaction-latest.json",
-          "sha256": "551bb1da333ff74d3ec16f0f964021b9e33da8d6dbe380bd4978a4919ea4fd4b",
+          "sha256": "7bd7c6b266b08d8a70ccfd692887b049c84ac7ac3918419e6cfdf5ff103e5cf1",
           "bytes": 4205
         },
         "source_timestamp": "2026-07-30T20:31:16Z"
@@ -1224,19 +1224,19 @@
       "slug": "github-refuge-watch",
       "url": "https://palimpsest.info/news/github-refuge-watch/",
       "signal_id": "github-refuge",
-      "headline": "Public metadata records 1 pressure event across 7 watched repositories",
+      "headline": "Public metadata records 0 pressure event across 7 watched repositories",
       "dek": "The watch preserves public repository-level pressure signals without collecting contributor identities.",
       "section": "erasure",
       "order": 4,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-15T02:02:20Z",
-      "modified_at": "2026-08-15T02:02:20Z",
-      "claim_fingerprint": "sha256:37d96190b31fb48e06be8d5cf1f000aada165a2a2529f16d8c84de1939181b24",
+      "published_at": "2026-08-15T13:14:51Z",
+      "modified_at": "2026-08-15T13:14:51Z",
+      "claim_fingerprint": "sha256:07c4c36c073eb430c32e3c3a8a2cf5dbf8164c0cc3ce44cebb633712cb2acf21",
       "metric": {
         "label": "pressure events",
-        "value": 1,
+        "value": 0,
         "unit": "count",
         "denominator": {
           "label": "repositories watched",
@@ -1246,17 +1246,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current public-metadata watch records 1 pressure event among 7 configured repositories."
+          "statement": "The current public-metadata watch records 0 pressure event among 7 configured repositories."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/github-refuge-latest.json",
         "input": {
           "filename": "github-refuge-latest.json",
-          "sha256": "cf42c4feefc5a415784f8503416420cc7786105d27b28070125940755e427ff9",
-          "bytes": 3747
+          "sha256": "e959c4b7c6c743eb94971123095801207da5fc125fc1ed731cae71584635ac11",
+          "bytes": 3727
         },
-        "source_timestamp": "2026-08-15T02:02:20Z"
+        "source_timestamp": "2026-08-15T13:14:51Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1283,8 +1283,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T07:20:54Z",
-      "modified_at": "2026-08-15T07:20:54Z",
+      "published_at": "2026-08-15T13:22:06Z",
+      "modified_at": "2026-08-15T13:22:06Z",
       "claim_fingerprint": "sha256:9f931cb4bc4e94265c2edaf659cc8bf95fba045fafb1bf0ecf77a55d256fd1a3",
       "metric": {
         "label": "delisting rate",
@@ -1305,10 +1305,10 @@
         "url": "https://palimpsest.info/readings/app-storefront-latest.json",
         "input": {
           "filename": "app-storefront-latest.json",
-          "sha256": "c9b97555098dcefbf2db14497f50b607e94989e0e5efcd709d399e422dd260cb",
+          "sha256": "61c60e3d1e5953a466fcf807f3ddc57a75490ad8bfc0adfee1960d06afef8250",
           "bytes": 3519
         },
-        "source_timestamp": "2026-08-15T07:20:54Z"
+        "source_timestamp": "2026-08-15T13:22:06Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1697,8 +1697,8 @@
       "type": "integrity",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T03:09:17Z",
-      "modified_at": "2026-08-15T03:09:17Z",
+      "published_at": "2026-08-15T13:10:46Z",
+      "modified_at": "2026-08-15T13:10:46Z",
       "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
       "metric": {
         "label": null,
@@ -1719,10 +1719,10 @@
         "url": "https://palimpsest.info/readings/anchors-latest.json",
         "input": {
           "filename": "anchors-latest.json",
-          "sha256": "227d5e9c9536430fd03c548d60d51ea27bbde84d9e0ffcc8f7f3187ac9804a3e",
-          "bytes": 692
+          "sha256": "a9166a30396441ecce54a1a3ebb2e492167381dd91d702b56a192f6c825b8639",
+          "bytes": 795
         },
-        "source_timestamp": "2026-08-15T03:09:17Z"
+        "source_timestamp": "2026-08-15T13:10:46Z"
       },
       "method": {
         "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
@@ -1749,8 +1749,8 @@
       "type": "intelligence",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-15T12:29:16Z",
-      "modified_at": "2026-08-15T12:29:16Z",
+      "published_at": "2026-08-15T13:14:16Z",
+      "modified_at": "2026-08-15T13:14:16Z",
       "claim_fingerprint": "sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
       "metric": {
         "label": "topics ranked",
@@ -1771,10 +1771,10 @@
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "e896b8b673091efb724c5c1175dd646aee708f0c5d4b270c31d73fbc8a898f88",
-          "bytes": 168497
+          "sha256": "6bdf5fb82076196526c7beda42c7fea08989560bc4abc2a21f4d5c1063f8d8eb",
+          "bytes": 168502
         },
-        "source_timestamp": "2026-08-15T12:29:16Z"
+        "source_timestamp": "2026-08-15T13:14:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
