@@ -62,6 +62,32 @@ def test_pages_are_semantic_crawlable_and_receipt_complete(tmp_path):
         assert cited == visible == {row["evidence_id"] for row in article["evidence"]}
 
 
+def test_revision_links_follow_the_structured_chain_from_current_to_oldest():
+    candidates = [
+        (article, build_eval_findings._revision_inventory(article, root=ROOT))
+        for article in _collection()["articles"]
+    ]
+    article, revisions = max(candidates, key=lambda candidate: len(candidate[1]))
+    assert len(revisions) > 1
+
+    page = build_eval_findings.render_article(article, revisions=revisions)
+    rendered = re.findall(
+        r'href="revisions/(evalarticlev-[0-9a-f]{24})\.json"', page
+    )
+    assert rendered == revisions
+    assert rendered[0] == article["revision_id"]
+    assert page.count("<span>current</span>") == 1
+
+    documents = {article["revision_id"]: article}
+    for revision_id in revisions[1:]:
+        path = ROOT / "journal" / article["slug"] / "revisions" / f"{revision_id}.json"
+        documents[revision_id] = json.loads(path.read_text(encoding="utf-8"))
+    assert [documents[item]["previous_revision_id"] for item in revisions] == [
+        *revisions[1:],
+        None,
+    ]
+
+
 def test_feeds_parse_and_use_unique_article_ids(tmp_path):
     collection = _collection()
     outputs = build_eval_findings.build_outputs(collection, root=tmp_path)

@@ -68,7 +68,7 @@ These sources are behind anti-bot defenses that block datacenter/foreign egress.
 You need a **residential or in-China proxy** and the Playwright render path. The
 `WITH_BROWSER=true` build setting installs Chromium in `Dockerfile.app`.
 
-1. Add the proxy to `.env`:
+1. Add the proxy to `ops/docker/.env`:
 
    ```dotenv
    CENSORWATCH_PROXY_URL=http://user:pass@your-residential-proxy:port
@@ -140,7 +140,18 @@ Then watch the dashboard at `/api/v5/censorwatch/`. Flower (task monitor) is at
 
 ## Turning it off
 
-Set `CENSORWATCH_ENABLED=` (empty) in `ops/docker/.env` and run
-`ops/docker/prod-compose up -d`. The beat
-stops scheduling `cw_*` tasks, the dashboard router unmounts, and the worker idles.
-The production stack is unaffected — censorwatch never touches its tables.
+Set `CENSORWATCH_ENABLED=` (empty) in `ops/docker/.env`, then apply the change to
+every long-lived service that caches the flag:
+
+```bash
+ops/docker/prod-compose --profile velocity stop worker-velocity
+ops/docker/prod-compose up -d --force-recreate beat
+# Run this too when the API profile is deployed:
+ops/docker/prod-compose --profile api up -d --force-recreate api
+```
+
+Stopping `worker-velocity` prevents an existing container with the old enabled
+environment from continuing to consume `censorwatch` tasks. The recreated beat
+stops scheduling `cw_*` tasks, and the recreated API unmounts the dashboard
+router. The production stack is unaffected — censorwatch never touches its
+tables.
