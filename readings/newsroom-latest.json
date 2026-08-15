@@ -2,22 +2,22 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 2 degraded.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-15T23:13:52Z",
+  "generated_at": "2026-08-15T23:20:53Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "78ab3670420a5ebb25510668cad20ec2f4230606",
+  "source_commit": "d8389a9f2fe1b660a5953cb29c25898fb9b3e837",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 31,
-    "status": "degraded",
+    "live": 32,
+    "status": "healthy",
     "counts": {
-      "live": 31,
-      "degraded": 2,
+      "live": 32,
+      "degraded": 1,
       "stale": 0,
       "missing": 0,
       "corrupt": 0
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-15T19:09:39Z",
       "modified_at": "2026-08-15T19:09:39Z",
-      "claim_fingerprint": "sha256:699256776addb5d942df9ef60df86aaea6448856e26802aee95d1cdde2cddba5",
+      "claim_fingerprint": "sha256:e35e66107a8f59761cf9fd4efbc8b429f6e48e16bd35499b42f16049c7774fa9",
       "metric": {
         "label": "board e-value",
         "value": 30.028,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 2 degraded. The board-wide e-value is 30.028; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 30.028; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -1689,16 +1689,16 @@
       "slug": "integrity-anchors",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "signal_id": "anchors",
-      "headline": "Integrity anchors: no current finding",
-      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Palimpsest's public ledgers have a current integrity-anchor reading",
+      "dek": "Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
       "section": "integrity",
       "order": 1,
       "type": "integrity",
       "priority": "high",
-      "status": "degraded",
-      "published_at": "2026-08-15T18:58:56Z",
-      "modified_at": "2026-08-15T18:58:56Z",
-      "claim_fingerprint": "sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
+      "status": "live",
+      "published_at": "2026-08-15T23:18:01Z",
+      "modified_at": "2026-08-15T23:18:01Z",
+      "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
       "metric": {
         "label": null,
         "value": null,
@@ -1710,25 +1710,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Integrity anchors because the source status is degraded."
+          "type": "integrity",
+          "statement": "A current aggregate integrity-anchor record is published for the Palimpsest ledgers."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/anchors-latest.json",
         "input": {
           "filename": "anchors-latest.json",
-          "sha256": "d92ba67476447981937b400d43e5cb24b54393c1320c6ae4f4ab1268a095249f",
-          "bytes": 488
+          "sha256": "4e8c6749b3f550eafca80586d37df0797359a3c80c3d2a0239492722a2e433bc",
+          "bytes": 1223
         },
-        "source_timestamp": "2026-08-15T18:58:56Z"
+        "source_timestamp": "2026-08-15T23:18:01Z"
       },
       "method": {
         "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
         "version": null
       },
       "limitations": [
-        "Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
         "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
       ],
       "related_signal_ids": [
@@ -1749,8 +1748,8 @@
       "type": "intelligence",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-15T22:59:16Z",
-      "modified_at": "2026-08-15T22:59:16Z",
+      "published_at": "2026-08-15T23:14:16Z",
+      "modified_at": "2026-08-15T23:14:16Z",
       "claim_fingerprint": "sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
       "metric": {
         "label": "topics ranked",
@@ -1771,10 +1770,10 @@
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "4062aee9c5b8187e92f77034aa3725297699b1bd9e1b789bc50102aed1b3b047",
-          "bytes": 168522
+          "sha256": "0819951290b15db0774d00f36806e137ed6e997c54c52bd3b04631cd4535d35f",
+          "bytes": 168526
         },
-        "source_timestamp": "2026-08-15T22:59:16Z"
+        "source_timestamp": "2026-08-15T23:14:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
