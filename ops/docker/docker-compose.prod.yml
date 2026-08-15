@@ -71,9 +71,6 @@ x-app: &app
     PALIMPSEST_LIVE: ${PALIMPSEST_LIVE:-0}
     PALIMPSEST_OONI_BULK_ENABLED: ${PALIMPSEST_OONI_BULK_ENABLED:-0}
     PALIMPSEST_OONI_WAREHOUSE_DIR: ${PALIMPSEST_OONI_WAREHOUSE_DIR:-/app/data/ooni-bulk}
-    PALIMPSEST_OSINT_AUTHORITY_DIR: /app/osint-authority
-    PALIMPSEST_OSINT_PATH: /app/osint-authority/osint-china-latest.json
-    PALIMPSEST_READINGS_LEDGER_PATH: /app/osint-authority/readings-ledger.jsonl
   # Bind the repo's readings/ and private data/ so durable state survives image
   # rebuilds. Production points these variables at operator-owned paths outside
   # the git checkout; the relative fallbacks keep local development convenient.
@@ -81,7 +78,6 @@ x-app: &app
   volumes:
     - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:rw
     - ${PALIMPSEST_DATA_HOST_PATH:-../../data}:/app/data:rw
-    - ${PALIMPSEST_OSINT_AUTHORITY_HOST_PATH:-/var/lib/palimpsest-public-osint-sync/authoritative}:/app/osint-authority:ro
   read_only: true
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
@@ -226,7 +222,6 @@ services:
     volumes:
       - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:rw
       - ${PALIMPSEST_OONI_WAREHOUSE_HOST_PATH:-../../data/ooni-bulk}:/app/data/ooni-bulk:rw
-      - ${PALIMPSEST_OSINT_AUTHORITY_HOST_PATH:-/var/lib/palimpsest-public-osint-sync/authoritative}:/app/osint-authority:ro
     stop_grace_period: 120s
     mem_limit: 2048m
     memswap_limit: 2048m
@@ -268,7 +263,6 @@ services:
     volumes:
       - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:ro
       - ${PALIMPSEST_DATA_HOST_PATH:-../../data}:/app/data:ro
-      - ${PALIMPSEST_OSINT_AUTHORITY_HOST_PATH:-/var/lib/palimpsest-public-osint-sync/authoritative}:/app/osint-authority:ro
     mem_limit: 512m
     memswap_limit: 512m
     pids_limit: 128
