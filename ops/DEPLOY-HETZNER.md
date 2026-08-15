@@ -877,6 +877,8 @@ PALIMPSEST_REPO_ROOT="$(pwd -P)"
 C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'
 EXPECTED_PREVIOUS_DEPLOY_SHA='REPLACE_WITH_CURRENT_40_HEX_SHA'
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+PREPARED_C0_SHA=''
+PALIMPSEST_ALLOW_PREPARED_C0_RESUME=''
 [[ "$C0_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 
@@ -907,6 +909,8 @@ test "$(release_git hash-object "$SEED_TMP")" \
   = "$(release_git rev-parse "$C0_DEPLOY_SHA:$SEED_PATH")"
 chmod 0700 "$SEED_TMP"
 PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \
+PALIMPSEST_ALLOW_PREPARED_C0_RESUME="$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \
+PREPARED_C0_SHA="$PREPARED_C0_SHA" \
 C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
 EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
 COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
@@ -944,9 +948,31 @@ independent freshness watchdog in legacy-path mode, and runs both still-legacy
 consumers against the later mirrored ledger. It enables the new provider and
 watchdog timers only after a second snapshot passes the C0 verifier. A failure leaves every
 activator disabled, retains the backup quiesce, and preserves the activator
-recovery map. A same-SHA retry accepts that map only after the original state
-has been restored exactly. Do not guess at the old timer state or delete the
-map.
+recovery map. If failure occurs before the `prepared` transaction receipt is
+published, a same-SHA retry accepts that map only after the original state has
+been restored exactly.
+
+If failure occurs after the receipt says `prepared`, do not delete or rewrite
+either receipt and do not recapture the now-mutated host state. Merge a reviewed
+forward-repair C0 whose `release-mode` is still `legacy-mirror`, require its
+exact-SHA CI, and rerun the same extracted seed block with:
+
+```bash
+PREPARED_C0_SHA='REPLACE_WITH_PREPARED_C0_40_HEX_SHA'
+PALIMPSEST_ALLOW_PREPARED_C0_RESUME=1
+EXPECTED_PREVIOUS_DEPLOY_SHA="$PREPARED_C0_SHA"
+C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_REPAIR_C0_40_HEX_SHA'
+```
+
+Resume mode requires the checkout and deployed receipt to equal the prepared
+C0, validates both root-owned prepared artifacts and their pre-seed backup,
+requires every activator to remain disabled and inactive, and carries the
+original captured state forward without recapturing it. It then takes a new
+pre-repair backup and repeats the full C0 installation and proof sequence at the
+new exact SHA. The new complete receipt records both
+`resumed_from_prepared_c0_sha` and `original_previous_deploy_sha`; the old
+prepared receipt remains as immutable incident evidence. Do not guess at the
+old timer state or delete either artifact.
 
 Only after the C0 receipt says `complete` may C1 be merged. C1 must contain
 `protected-only`, and its parent or main-line ancestry must include the exact C0
