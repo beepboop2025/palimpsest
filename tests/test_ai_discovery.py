@@ -9,6 +9,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def test_well_known_security_policy_routes_sensitive_reports_privately():
+    policy = (ROOT / ".well-known" / "security.txt").read_text(encoding="utf-8")
+    assert "Contact: https://github.com/beepboop2025/palimpsest/security/advisories/new" in policy
+    assert "Canonical: https://palimpsest.info/.well-known/security.txt" in policy
+    assert "Policy: https://github.com/beepboop2025/palimpsest/blob/main/SECURITY.md" in policy
+    assert "Do not open a public issue" in policy
+
+
 def _json(name: str):
     return json.loads((ROOT / name).read_text(encoding="utf-8"))
 
