@@ -239,6 +239,12 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
     observer_verify = seed.index("sudo systemd-analyze verify", observer)
     start = seed.index("ops/docker/prod-compose up -d", observer_verify)
     readiness = seed.index("for (( api_attempt=1; api_attempt<=30; api_attempt++ ))", start)
+    readiness_probe = seed.index(
+        "http://127.0.0.1:8010/api/v1/node/status", readiness
+    )
+    readiness_timeout = seed.rindex(
+        "--connect-timeout 1 --max-time 2", readiness, readiness_probe
+    )
     readiness_gate = seed.index(
         '(( api_ready == 1 )) || die "C0 API did not become ready"', readiness
     )
@@ -260,6 +266,8 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
         < observer_verify
         < start
         < readiness
+        < readiness_timeout
+        < readiness_probe
         < readiness_gate
         < exercise
     )

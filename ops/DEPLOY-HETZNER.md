@@ -1597,9 +1597,20 @@ fi
 # exists because the first provider sync succeeded above.
 ops/docker/prod-compose up -d
 test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
-curl --fail --silent --show-error \
-  http://127.0.0.1:8010/api/v1/node/status \
-  | python3 -m json.tool >/dev/null
+api_ready=0
+for (( api_attempt=1; api_attempt<=30; api_attempt++ )); do
+  if curl --fail --silent --connect-timeout 1 --max-time 2 \
+      http://127.0.0.1:8010/api/v1/node/status \
+      2>/dev/null | python3 -m json.tool >/dev/null 2>&1; then
+    api_ready=1
+    break
+  fi
+  sleep 2
+done
+if (( api_ready != 1 )); then
+  printf 'C1 API did not become ready after Compose restart\n' >&2
+  exit 1
+fi
 
 # Import the new Common Crawl bundle before any context run. Analysis and
 # context remain stopped until the public OSINT sync advances in Phase 3.
