@@ -43,6 +43,7 @@ MAX_TEXT = 8192
 
 PROJECT_IDS = ("palimpsest", "seiche", "liquilens", "scamshield", "narcoscope")
 PUBLICATION_PLANE_IDS = frozenset({
+    "china-article-stream",
     "evidence-mesh",
     "machine-investigations",
     "newsroom",

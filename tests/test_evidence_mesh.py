@@ -143,12 +143,12 @@ def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(mesh: d
         if row["project_id"] == "palimpsest" and row["namespace"] == "osint"
     }
 
-    assert len(catalog_ids) == 54
+    assert len(catalog_ids) == 55
     assert len(signal_ids) == 33
     assert mesh_catalog_ids == catalog_ids
     assert mesh_signal_ids == signal_ids
     assert mesh["summary"]["palimpsest_catalog"] == {
-        "expected": 54, "accounted": 54, "complete": True,
+        "expected": 55, "accounted": 55, "complete": True,
     }
     assert mesh["summary"]["palimpsest_osint"] == {
         "expected": 33, "accounted": 33, "complete": True,
@@ -447,6 +447,7 @@ def test_atomic_write_and_check_are_byte_deterministic(tmp_path: Path) -> None:
 def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -> None:
     root = _isolated_root(tmp_path)
     publication_paths = {
+        "china-article-stream": root / "readings/china-article-stream-latest.json",
         "evidence-mesh": root / "readings/evidence-mesh-latest.json",
         "machine-investigations": root / "readings/machine-investigations-latest.json",
         "newsroom": root / "readings/newsroom-latest.json",

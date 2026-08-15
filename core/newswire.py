@@ -229,6 +229,54 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "media",
         "voice-of-america-chinese-editorial",
     ),
+    "guardian-china": (
+        "https://www.theguardian.com/world/china/rss",
+        ("www.theguardian.com",),
+        "media",
+        "guardian-editorial",
+    ),
+    "financial-times-china": (
+        "https://www.ft.com/china?format=rss",
+        ("www.ft.com",),
+        "media",
+        "financial-times-editorial",
+    ),
+    "diplomat-china": (
+        "https://thediplomat.com/tag/china/feed/",
+        ("thediplomat.com",),
+        "media",
+        "diplomat-editorial",
+    ),
+    "economist-china": (
+        "https://www.economist.com/china/rss.xml",
+        ("www.economist.com",),
+        "media",
+        "economist-editorial",
+    ),
+    "foreign-policy-china": (
+        "https://foreignpolicy.com/tag/china/feed/",
+        ("foreignpolicy.com",),
+        "media",
+        "foreign-policy-editorial",
+    ),
+    "china-media-project": (
+        "https://chinamediaproject.org/feed/",
+        ("chinamediaproject.org",),
+        "research",
+        "china-media-project-research",
+    ),
+    "china-power-csis": (
+        "https://chinapower.csis.org/feed/",
+        ("chinapower.csis.org",),
+        "research",
+        "csis-china-power-research",
+    ),
+    "asia-times-china": (
+        "https://asiatimes.com/category/china/feed/",
+        ("asiatimes.com",),
+        "media",
+        "asia-times-editorial",
+    ),
 }
 
 _SOURCE_FIELDS = frozenset(
@@ -333,15 +381,22 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "rfa-mandarin",
         "hksar-releases",
         "citizen-lab-chat-censorship",
-        "hong-kong-free-press",
         "scmp-china",
         "scmp-china-economy",
         "scmp-china-tech",
+        "guardian-china",
+        "financial-times-china",
+        "diplomat-china",
+        "economist-china",
+        "foreign-policy-china",
+        "china-media-project",
+        "china-power-csis",
+        "asia-times-china",
     }
 )
 _CHINA_TERMS = (
     "china", "chinese", "prc", "beijing", "shanghai", "hong kong",
-    "xinjiang", "tibet", "uyghur", "taiwan", "great firewall", "gfw",
+    "xinjiang", "tibet", "uyghur", "taiwan", "polyu", "great firewall", "gfw",
     "中国", "中國", "中国大陆", "中國大陸", "北京", "上海", "香港", "新疆",
     "西藏", "维吾尔", "維吾爾", "台湾", "台灣",
 )
@@ -795,6 +850,25 @@ def _topic_matches(haystack: str) -> dict[str, set[str]]:
 
 def _is_china_relevant(source: SourceSpec, haystack: str) -> bool:
     return source.id in _CHINA_SCOPED_SOURCE_IDS or any(
+        _keyword_present(haystack, term) for term in _CHINA_TERMS
+    )
+
+
+def is_china_relevant_item(item: Mapping[str, Any]) -> bool:
+    """Return whether retained feed metadata places an item in the China stream.
+
+    This intentionally uses the same reviewed source and keyword boundary as
+    collector-link promotion.  It does not infer from an article body because
+    the newswire's rights boundary retains metadata only.
+    """
+
+    source_id = item.get("source_id")
+    title = item.get("title")
+    excerpt = item.get("excerpt")
+    if not all(isinstance(value, str) for value in (source_id, title, excerpt)):
+        return False
+    haystack = unicodedata.normalize("NFKC", f" {title} {excerpt} ").casefold()
+    return source_id in _CHINA_SCOPED_SOURCE_IDS or any(
         _keyword_present(haystack, term) for term in _CHINA_TERMS
     )
 

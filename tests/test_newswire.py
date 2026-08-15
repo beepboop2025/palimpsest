@@ -115,7 +115,7 @@ def _all_live_mapping(registry: SourceRegistry, *, title_prefix: str = "Source u
 def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
     registry = load_source_registry()
 
-    assert len(registry.sources) == 23
+    assert len(registry.sources) == 31
     assert {source.id for source in registry.sources} == set(nw._CLOSED_SOURCES)
     assert all(source.feed_url.startswith("https://") for source in registry.sources)
     assert all(source.rights_policy == "metadata-link-only" for source in registry.sources)
@@ -126,6 +126,12 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "scmp-china-economy",
         "scmp-china-tech",
         "voa-chinese",
+        "guardian-china",
+        "financial-times-china",
+        "diplomat-china",
+        "economist-china",
+        "foreign-policy-china",
+        "asia-times-china",
     }
     assert all(_source(source_id).role == "media" for source_id in secondary_ids)
     assert all(_source(source_id).rights_policy == "metadata-link-only" for source_id in secondary_ids)
@@ -143,6 +149,14 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         _source("scmp-china-economy").feed_url,
         _source("scmp-china-tech").feed_url,
         _source("voa-chinese").feed_url,
+        _source("guardian-china").feed_url,
+        _source("financial-times-china").feed_url,
+        _source("diplomat-china").feed_url,
+        _source("economist-china").feed_url,
+        _source("foreign-policy-china").feed_url,
+        _source("china-media-project").feed_url,
+        _source("china-power-csis").feed_url,
+        _source("asia-times-china").feed_url,
     } == {
         "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
         "https://hongkongfp.com/feed/",
@@ -150,6 +164,14 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "https://www.scmp.com/rss/318421/feed/",
         "https://www.scmp.com/rss/320663/feed/",
         "https://www.voachinese.com/api/zm_yql-vomx-tpeybti",
+        "https://www.theguardian.com/world/china/rss",
+        "https://www.ft.com/china?format=rss",
+        "https://thediplomat.com/tag/china/feed/",
+        "https://www.economist.com/china/rss.xml",
+        "https://foreignpolicy.com/tag/china/feed/",
+        "https://chinamediaproject.org/feed/",
+        "https://chinapower.csis.org/feed/",
+        "https://asiatimes.com/category/china/feed/",
     }
 
 
@@ -443,7 +465,13 @@ def test_collection_emits_explicit_success_stale_empty_fetch_and_parse_receipts(
     counts = document["coverage"]["counts"]
     receipts = {row["source_id"]: row for row in document["coverage"]["sources"]}
 
-    assert counts == {"success": 1, "stale": 1, "empty": 1, "parse_error": 1, "fetch_error": 19}
+    assert counts == {
+        "success": 1,
+        "stale": 1,
+        "empty": 1,
+        "parse_error": 1,
+        "fetch_error": len(registry.sources) - 4,
+    }
     assert document["coverage"]["status"] == "degraded"
     assert document["coverage"]["successful_sources"] == 2
     assert document["n_items"] == 2
@@ -738,7 +766,7 @@ def test_every_accepted_item_is_partitioned_into_exactly_one_event():
     document = collect_newswire(registry, _fetch_map(_all_live_mapping(registry)), now=NOW)
     refs = [ref["item_id"] for event in document["events"] for ref in event["evidence_refs"]]
 
-    assert len(refs) == document["n_items"] == 23
+    assert len(refs) == document["n_items"] == len(registry.sources)
     assert len(refs) == len(set(refs))
     assert set(refs) == {item["item_id"] for item in document["items"]}
     assert "confidence" not in json.dumps(document).casefold()

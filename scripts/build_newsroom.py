@@ -31,6 +31,7 @@ from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
 from xml.sax.saxutils import quoteattr as xml_quoteattr
 
+from core import china_article_stream as china_stream_model
 from core import economic_pulse as economic_pulse_model
 from core import event_analysis as event_analysis_model
 from core import evidence_mesh as evidence_mesh_model
@@ -38,6 +39,7 @@ from core import investigations as investigations_model
 from core import machine_investigations as machine_investigations_model
 from core import newsroom
 from core import newswire as newswire_model
+from core import telegram_watch as telegram_watch_model
 from scripts import site_nav
 
 
@@ -51,6 +53,7 @@ MACHINE_INVESTIGATIONS_READING = (
     ROOT / "readings" / "machine-investigations-latest.json"
 )
 EVIDENCE_MESH_READING = ROOT / "readings" / "evidence-mesh-latest.json"
+TELEGRAM_WATCH_READING = ROOT / "readings" / "telegram-watch-latest.json"
 PUBLIC_DATA_CATALOG = ROOT / "config" / "public_data_catalog.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
@@ -81,11 +84,13 @@ EVIDENCE_LABELS = {
 
 HOME_EVENTS_PER_DESK = 5
 WIRE_PAGE_SIZE = 60
+CHINA_STREAM_PAGE_SIZE = 40
 
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
 _ANALYSIS_ROOT = Path("news/analysis")
 _MACHINE_REVISION_FILENAME = re.compile(r"machinev-[0-9a-f]{24}\.json")
 _EVENT_ANALYSIS_REVISION_FILENAME = re.compile(r"analysisv-[0-9a-f]{24}\.json")
+_EVENT_REVISION_FILENAME = re.compile(r"eventv-[0-9a-f]{24}\.json")
 _WIRE_EVENT_DIRECTORY = re.compile(r"event-[0-9a-f]{24}")
 _MACHINE_EVIDENCE_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.json")
 _ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -875,6 +880,18 @@ def _load_machine_investigations(
     return document
 
 
+def _load_telegram_watch(
+    path: Path = TELEGRAM_WATCH_READING,
+) -> dict[str, Any] | None:
+    """Load only a human-promoted public aggregate; private summaries are refused."""
+
+    if not path.exists():
+        return None
+    document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+    telegram_watch_model.validate_telegram_watch(document)
+    return document
+
+
 def _revision_id(value: Mapping[str, Any], prefix: str = "revision") -> str:
     payload = json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
@@ -960,6 +977,8 @@ def _head(
     published_at: str | None = None,
     modified_at: str | None = None,
     json_ld: object,
+    feed_base: str = "/news",
+    extra_styles: Sequence[str] = (),
 ) -> str:
     article_meta = ""
     if published_at:
@@ -970,6 +989,9 @@ def _head(
         article_meta += (
             f'<meta property="article:modified_time" content="{_h(modified_at)}">\n'
         )
+    style_links = "".join(
+        f'<link rel="stylesheet" href="{_h(path)}">\n' for path in extra_styles
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -981,8 +1003,8 @@ def _head(
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="{_h(canonical)}">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
-<link rel="alternate" type="application/feed+json" title="Palimpsest Wire JSON Feed" href="/news/feed.json">
-<link rel="alternate" type="application/rss+xml" title="Palimpsest Wire RSS" href="/news/feed.xml">
+<link rel="alternate" type="application/feed+json" title="Palimpsest Wire JSON Feed" href="{_h(feed_base)}/feed.json">
+<link rel="alternate" type="application/rss+xml" title="Palimpsest Wire RSS" href="{_h(feed_base)}/feed.xml">
 <meta name="theme-color" content="#0b131c">
 <meta property="og:type" content="{_h(page_type)}">
 <meta property="og:site_name" content="Palimpsest Wire">
@@ -997,6 +1019,7 @@ def _head(
 {article_meta}<script type="application/ld+json">{_json_script(json_ld)}</script>
 {site_nav.HEAD}
 <link rel="stylesheet" href="/assets/newsroom.css">
+{style_links}
 </head>"""
 
 
@@ -1656,14 +1679,14 @@ def render_evidence_index(
     </div>
     <p class="nw-masthead__dek">China intelligence that keeps reported facts, measured facts, corroboration, revisions and unknowns structurally separate.</p>
   </header>
-  <div class="nw-meta-line"><span>China · economy · politics · censorship · networks</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/feed.xml">RSS</a><a href="/news/feed.json">JSON Feed</a><a href="/readings/newswire-latest.json">Structured wire</a></div>
+  <div class="nw-meta-line"><span>China · economy · politics · censorship · networks</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/china/">Every article + analysis</a><a href="/news/feed.xml">Dossier RSS</a><a href="/readings/newswire-latest.json">Structured wire</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
     <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{wire['n_events']}</strong> dossiers</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage['successful_sources']}/{coverage['registry_sources']}</strong> feeds answered</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
     <span><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> live instruments</span>
   </div>
-  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
+  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="/news/china/">Article stream</a></li><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
   {_event_lead(lead, wire)}
   {_economic_panel(pulse)}
   {_machine_analysis_feature(machine_analyses)}
@@ -1673,7 +1696,7 @@ def render_evidence_index(
   {_instrument_sections(feed)}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="/readings/newsroom-latest.json">Instrument feed</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/china/">Every China article + analysis</a> · <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
 {site_nav.FOOT}
 </body>
 </html>
@@ -3003,7 +3026,7 @@ def render_wire_archive(
   {pagination}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/readings/newswire-latest.json">Structured wire</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/news/china/">Every article + analysis</a> · <a href="/readings/newswire-latest.json">Structured wire</a></div></footer>
 {site_nav.FOOT}
 </body></html>"""
     return _head(
@@ -3020,6 +3043,248 @@ def render_wire_archive(
             "dateModified": wire["generated_at"],
         },
     ) + "\n" + body
+
+
+def _china_stream_telegram_panel(stream: Mapping[str, Any]) -> str:
+    watch = stream["telegram_watch"]
+    if watch.get("schema_version") != telegram_watch_model.SCHEMA_VERSION:
+        return f"""<aside class="cs-telegram cs-telegram--quiet" aria-labelledby="telegram-watch-title">
+  <div><p class="cs-eyebrow">Telegram watch · review gate closed</p><h2 id="telegram-watch-title">No Telegram signal is being smuggled in as fact.</h2><a href="/docs/EVIDENCE-WIRE.md#telegram-and-scamshield-context">How the ScamShield boundary works</a></div>
+  <p>{_h(watch['explanation'])}</p>
+</aside>"""
+
+    coverage = watch["coverage"]
+    detections = watch["detections"]
+    families = detections["reviewed_china_family_counts"]
+    family_rows = "".join(
+        f"<li><strong>{count:,}</strong><span>{_h(label.replace('_', ' ').title())}</span></li>"
+        for label, count in sorted(families.items(), key=lambda row: (-row[1], row[0]))
+    )
+    family_section = (
+        f'<ul class="cs-telegram__families" aria-label="Reviewed China-relevant classifier families">{family_rows}</ul>'
+        if family_rows else
+        '<p class="cs-telegram__empty">Coverage was reviewed, but no classifier family was approved as China-desk context.</p>'
+    )
+    return f"""<aside class="cs-telegram" aria-labelledby="telegram-watch-title">
+  <div class="cs-telegram__head"><div><p class="cs-eyebrow">Telegram watch · human reviewed · context only</p><h2 id="telegram-watch-title">Configured public-channel pulse</h2></div><span>{_h(_human_time(watch['window']['start']))} → {_h(_human_time(watch['window']['end']))}</span></div>
+  <div class="cs-telegram__coverage" aria-label="Telegram sampling coverage"><span><strong>{coverage['messages_observed']:,}</strong> messages observed</span><span><strong>{coverage['sources_observed']:,}</strong> sources observed</span><span><strong>{coverage['messages_flagged']:,}</strong> classifier flags</span><span><strong>{coverage['collection_errors']:,}</strong> collection errors</span></div>
+  {family_section}
+  <p>{_h(watch['interpretation'])}</p>
+  <details><summary>Coverage and privacy boundary</summary><ul>{''.join(f'<li>{_h(value)}</li>' for value in watch['limitations'])}</ul><p>Reviewed by role: {_h(watch['review']['reviewer_role'])}. Source receipt: <code>{_h(watch['review']['source_summary_sha256'][:16])}…</code></p></details>
+</aside>"""
+
+
+def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> str:
+    analysis = entry["analysis"]
+    dossier = entry["dossier"]
+    publisher = entry["publisher"]
+    excerpt = entry["excerpt"] or "The publisher supplied no feed excerpt. Open the original for the report itself."
+    topics = "".join(f"<span>{_h(topic)}</span>" for topic in entry["topics"])
+    rationale = "".join(f"<li>{_h(value)}</li>" for value in analysis["rationale"])
+    checks = "".join(f"<li>{_h(value)}</li>" for value in analysis["next_checks"])
+    unknowns = "".join(f"<li>{_h(value)}</li>" for value in analysis["known_unknowns"])
+    collector_rows = "".join(
+        f"""<li><a href="{_h(_site_path(row['story_url']))}">{_h(row['headline'])}</a><span>{_h(row['status'])} · {_h(row['relation'])}</span><p>{_h(row['interpretation'])}</p></li>"""
+        for row in analysis["collector_context"]
+    )
+    collector = (
+        f"<div class=" + '"cs-analysis__collectors"><h4>Palimpsest collector context</h4><ul>' + collector_rows + "</ul></div>"
+        if collector_rows else
+        '<p class="cs-analysis__abstention"><strong>Collector abstention:</strong> no current Palimpsest measurement is declared for this event.</p>'
+    )
+    expanded_attr = " open" if expanded else ""
+    search_text = " ".join(
+        [entry["headline"], excerpt, publisher["name"], entry["desk"], *entry["topics"]]
+    ).casefold()
+    return f"""<article class="cs-entry" id="dispatch-{_h(entry['entry_id'])}" data-desk="{_h(entry['desk'])}" data-search="{_h(search_text)}">
+  <div class="cs-entry__rail"><time datetime="{_h(entry['published_at'])}">{_h(_human_time(entry['published_at']))}</time><span>{_h(publisher['name'])}</span><i aria-hidden="true"></i></div>
+  <div class="cs-entry__body">
+    <div class="cs-entry__flags"><span data-strength="{_h(dossier['evidence_strength'])}">{_h(EVIDENCE_LABELS[dossier['evidence_strength']])}</span><span>{_h(publisher['role'])}</span><span>{dossier['source_items']} item{'s' if dossier['source_items'] != 1 else ''} / {dossier['independent_groups']} independent group{'s' if dossier['independent_groups'] != 1 else ''}</span></div>
+    <h2 lang="{_h(entry['language'])}"><a href="{_h(entry['original_url'])}" rel="external">{_h(entry['headline'])}</a></h2>
+    <p class="cs-entry__excerpt" lang="{_h(entry['language'])}">{_h(excerpt)}</p>
+    <div class="cs-entry__topics"><span>{_h(EVENT_DESKS[entry['desk']])}</span>{topics}</div>
+    <details class="cs-analysis"{expanded_attr}>
+      <summary><span>Palimpsest analysis</span><strong>{_h(analysis['disposition'].replace('-', ' '))}</strong><small>Open the evidence read, unknowns, and next checks</small></summary>
+      <div class="cs-analysis__inside">
+        <p class="cs-analysis__position">{_h(analysis['position'])}</p>
+        <div class="cs-analysis__grid">
+          <div><h3>Why Palimpsest says that</h3><ol>{rationale}</ol></div>
+          <div><h3>Next verification moves</h3><ol>{checks}</ol></div>
+        </div>
+        {collector}
+        <details class="cs-analysis__limits"><summary>Known unknowns and method limits</summary><ul>{unknowns}</ul></details>
+        <div class="cs-analysis__links"><a href="{_h(_site_path(dossier['url']))}">Open evidence dossier</a><a href="{_h(_site_path(analysis['url']))}">Structured analysis</a><a href="{_h(entry['original_url'])}" rel="external">Read at publisher ↗</a></div>
+        <p class="cs-analysis__receipt">Analysis {_h(analysis['analysis_id'])} · item {_h(entry['entry_id'])} · feed receipt {_h(publisher['feed_sha256'][:16])}…</p>
+      </div>
+    </details>
+  </div>
+</article>"""
+
+
+def render_china_article_stream(
+    stream: Mapping[str, Any],
+    *,
+    entries: Sequence[Mapping[str, Any]] | None = None,
+    page: int = 1,
+    n_pages: int = 1,
+) -> str:
+    page_entries = list(entries if entries is not None else stream["entries"])
+    articles = "".join(
+        _china_stream_entry(entry, expanded=(page == 1 and index == 0))
+        for index, entry in enumerate(page_entries)
+    )
+    previous_href = (
+        "/news/china/" if page == 2
+        else f"/news/china/page/{page - 1}/" if page > 2
+        else ""
+    )
+    next_href = f"/news/china/page/{page + 1}/" if page < n_pages else ""
+    pagination = f"""<nav class="cs-pagination" aria-label="China article stream pages">
+  <span>{f'<a rel="prev" href="{previous_href}">← Newer dispatches</a>' if previous_href else '<i>Newest dispatches</i>'}</span>
+  <strong>Page {page} / {n_pages}</strong>
+  <span>{f'<a rel="next" href="{next_href}">Older dispatches →</a>' if next_href else '<i>End of current window</i>'}</span>
+</nav>"""
+    desk_buttons = "".join(
+        f'<button type="button" data-desk-filter="{_h(desk)}">{_h(label)}</button>'
+        for desk, label in EVENT_DESKS.items()
+    )
+    coverage = stream["coverage"]
+    canonical = (
+        f"{SITE}/news/china/" if page == 1
+        else f"{SITE}/news/china/page/{page}/"
+    )
+    suffix = f" · page {page} of {n_pages}" if n_pages > 1 else ""
+    body = f"""<body class="ps newsroom-page china-stream-page">
+{site_nav.render('/news/')}
+<main id="main">
+  <header class="cs-hero">
+    <div class="cs-hero__grid"><div><p class="cs-eyebrow">Palimpsest / China dispatch stream{_h(suffix)}</p><h1>Every dispatch.<br><em>Evidence<br>attached.</em></h1></div><p class="cs-hero__dek">A chronological feed of every China/Hong Kong item retained from the monitored publisher registry. Each report carries Palimpsest’s evidence position, collector boundary, unknowns, and next verification moves.</p></div>
+    <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
+  </header>
+  <div class="cs-shell">
+    <nav class="cs-subnav" aria-label="China stream formats"><a href="/news/">Evidence edition</a><a href="/news/wire/">Event dossiers</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured stream</a></nav>
+    {_china_stream_telegram_panel(stream)}
+    <section class="cs-controls" aria-label="Filter this page">
+      <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
+      <div class="cs-controls__desks"><button class="is-active" type="button" data-desk-filter="all">All desks</button>{desk_buttons}</div>
+      <p id="china-stream-count" role="status" aria-live="polite">Showing {len(page_entries)} dispatches on this page</p>
+    </section>
+    {pagination}
+    <section class="cs-stream" aria-label="China publisher dispatches">{articles}<p class="cs-no-results" id="china-stream-empty" hidden>No dispatches on this page match that filter.</p></section>
+    {pagination}
+    <aside class="cs-method"><p class="cs-eyebrow">What “every” means here</p><h2>Complete across the declared feeds—not the entire internet.</h2><div><p>{_h(stream['scope'])}</p><p>{_h(stream['method']['analysis'])} {_h(stream['method']['rights'])}</p></div></aside>
+  </div>
+</main>
+<footer class="nw-footer"><div class="nw-shell">Publisher metadata remains attributed. Telegram aggregates remain context-only. <a href="/docs/EVIDENCE-WIRE.md">Method</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
+<script src="/assets/china-stream.js" defer></script>
+{site_nav.FOOT}
+</body></html>"""
+    return _head(
+        title=f"China dispatch stream{suffix} · Palimpsest Wire",
+        description=stream["scope"],
+        canonical=canonical,
+        page_type="website",
+        modified_at=stream["generated_at"],
+        feed_base="/news/china",
+        extra_styles=("/assets/china-stream.css",),
+        json_ld={
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "url": canonical,
+            "name": f"Palimpsest China dispatch stream{suffix}",
+            "dateModified": stream["generated_at"],
+            "numberOfItems": len(page_entries),
+            "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
+        },
+    ) + "\n" + body
+
+
+def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
+    items = []
+    for entry in stream["entries"]:
+        analysis = entry["analysis"]
+        dossier = entry["dossier"]
+        content = [
+            entry["excerpt"] or "No feed excerpt supplied by the publisher.",
+            analysis["position"],
+            "Why: " + " ".join(analysis["rationale"]),
+            "Next checks: " + " ".join(analysis["next_checks"]),
+            "Known unknowns: " + " ".join(analysis["known_unknowns"]),
+        ]
+        items.append({
+            "id": entry["entry_id"],
+            "url": entry["original_url"],
+            "external_url": entry["original_url"],
+            "title": entry["headline"],
+            "summary": entry["excerpt"],
+            "content_text": "\n\n".join(content),
+            "date_published": entry["published_at"],
+            "date_modified": entry["collected_at"],
+            "language": entry["language"],
+            "authors": [{"name": entry["publisher"]["name"]}],
+            "tags": [entry["desk"], *entry["topics"]],
+            "attachments": [
+                {"url": dossier["url"], "mime_type": "text/html", "title": "Palimpsest evidence dossier"},
+                {"url": analysis["url"], "mime_type": "application/json", "title": "Palimpsest structured analysis"},
+            ],
+            "_palimpsest": {
+                "kind": "publisher_item_with_event_analysis",
+                "item_version_id": entry["version_id"],
+                "event_id": dossier["event_id"],
+                "event_version_id": dossier["version_id"],
+                "analysis_id": analysis["analysis_id"],
+                "evidence_strength": dossier["evidence_strength"],
+                "independent_groups": dossier["independent_groups"],
+                "position": analysis["position"],
+                "next_checks": analysis["next_checks"],
+            },
+        })
+    return {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Palimpsest · China dispatch stream",
+        "home_page_url": stream["url"],
+        "feed_url": stream["json_feed_url"],
+        "description": stream["scope"],
+        "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
+        "items": items,
+    }
+
+
+def build_china_stream_rss(stream: Mapping[str, Any]) -> bytes:
+    rows = []
+    for entry in stream["entries"]:
+        analysis = entry["analysis"]
+        description = "\n\n".join([
+            entry["excerpt"] or "No feed excerpt supplied by the publisher.",
+            analysis["position"],
+            "Why: " + " ".join(analysis["rationale"]),
+            "Next checks: " + " ".join(analysis["next_checks"]),
+            "Known unknowns: " + " ".join(analysis["known_unknowns"]),
+            "Evidence dossier: " + entry["dossier"]["url"],
+        ])
+        rows.append(f"""  <item>
+    <title>{xml_escape(entry['headline'])}</title>
+    <link>{xml_escape(entry['original_url'])}</link>
+    <guid isPermaLink="false">{xml_escape(entry['entry_id'])}</guid>
+    <pubDate>{_rfc2822(entry['published_at'])}</pubDate>
+    <description>{xml_escape(description)}</description>
+    <category>{xml_escape(entry['desk'])}</category>
+    <source url={xml_quoteattr(entry['original_url'])}>{xml_escape(entry['publisher']['name'])}</source>
+  </item>""")
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Palimpsest · China dispatch stream</title>
+  <link>{xml_escape(stream['url'])}</link>
+  <description>{xml_escape(stream['scope'])}</description>
+  <language>en</language>
+  <lastBuildDate>{_rfc2822(stream['generated_at'])}</lastBuildDate>
+  <atom:link href="{SITE}/news/china/feed.xml" rel="self" type="application/rss+xml" />
+{chr(10).join(rows)}
+</channel>
+</rss>
+"""
+    return xml.encode("utf-8")
 
 
 def _format_economic_value(metric: Mapping[str, Any]) -> str:
@@ -3229,9 +3494,10 @@ def build_sitemap(
     wire: Mapping[str, Any] | None = None,
     investigations: Mapping[str, Any] | None = None,
     machine_analyses: Mapping[str, Any] | None = None,
+    china_stream: Mapping[str, Any] | None = None,
 ) -> bytes:
     generated_values = [feed["generated_at"]]
-    for document in (wire, investigations, machine_analyses):
+    for document in (wire, investigations, machine_analyses, china_stream):
         if document is not None:
             generated_values.append(document["generated_at"])
     reference_time = max(_parse_time(value) for value in generated_values)
@@ -3262,6 +3528,19 @@ def build_sitemap(
             )
         urls.append(
             f"  <url><loc>{SITE}/news/economy/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>daily</changefreq></url>"
+        )
+    if china_stream is not None:
+        stream_pages = max(
+            1,
+            (len(china_stream["entries"]) + CHINA_STREAM_PAGE_SIZE - 1)
+            // CHINA_STREAM_PAGE_SIZE,
+        )
+        urls.append(
+            f"  <url><loc>{SITE}/news/china/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.9</priority></url>"
+        )
+        urls.extend(
+            f"  <url><loc>{SITE}/news/china/page/{page}/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
+            for page in range(2, stream_pages + 1)
         )
     if investigations is not None:
         urls.append(
@@ -3485,6 +3764,52 @@ def _retain_immutable_analysis_output(
     outputs[relative] = raw
 
 
+def _event_revision_bytes(
+    event: Mapping[str, Any],
+    relative: Path,
+    *,
+    archive_root: Path,
+) -> bytes:
+    """Return first-published bytes for an event version, or create them once.
+
+    ``mutation`` describes how the mutable head relates to the immediately
+    preceding pull and is intentionally outside the event content identity. An
+    unchanged future pull must not rewrite that transient label inside the
+    immutable revision archive.
+    """
+
+    destination = archive_root / relative
+    try:
+        metadata = destination.lstat()
+    except FileNotFoundError:
+        return _pretty_json(event)
+    if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+        raise newsroom.NewsroomError(
+            f"immutable event revision is not a regular file: {relative}"
+        )
+    raw = _read_immutable_analysis_file(relative, root=archive_root)
+    try:
+        archived = newswire_model.strict_json_loads(
+            raw, label=f"immutable event revision {relative}"
+        )
+        newswire_model._validate_public_event(archived, str(relative))
+    except (TypeError, ValueError, newswire_model.NewswireError) as exc:
+        raise newsroom.NewsroomError(
+            f"invalid immutable event revision: {relative}"
+        ) from exc
+    archived_core = {
+        key: value for key, value in archived.items() if key != "mutation"
+    }
+    current_core = {
+        key: value for key, value in event.items() if key != "mutation"
+    }
+    if archived_core != current_core:
+        raise newsroom.NewsroomError(
+            f"event version collides with unequal archived content: {relative}"
+        )
+    return raw
+
+
 def build_outputs(
     feed: Mapping[str, Any],
     *,
@@ -3492,6 +3817,7 @@ def build_outputs(
     pulse: Mapping[str, Any] | None = None,
     investigations: Mapping[str, Any] | None = None,
     machine_analyses: Mapping[str, Any] | None = None,
+    telegram_watch: Mapping[str, Any] | None = None,
     archive_root: Path = ROOT,
 ) -> dict[Path, bytes]:
     """Return every public output without touching the filesystem."""
@@ -3504,8 +3830,17 @@ def build_outputs(
         investigations_model.validate_investigations(investigations)
     if machine_analyses is not None:
         machine_investigations_model.validate_machine_investigations(machine_analyses)
+    if telegram_watch is not None:
+        telegram_watch_model.validate_telegram_watch(telegram_watch)
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
+    event_analyses: dict[str, Mapping[str, Any]] = {}
+    china_stream: Mapping[str, Any] | None = None
+    if wire is not None:
+        event_analyses = event_analysis_model.build_event_analyses(wire, feed)
+        china_stream = china_stream_model.build_china_article_stream(
+            wire, event_analyses, telegram_watch=telegram_watch
+        )
     outputs: dict[Path, bytes] = {
         Path("readings/newsroom-latest.json"): _pretty_json(feed),
         Path("news/index.html"): (
@@ -3518,13 +3853,36 @@ def build_outputs(
         Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
         Path("news/feed.xml"): build_rss(feed, wire),
         Path("news/sitemap.xml"): build_sitemap(
-            feed, wire, investigations, machine_analyses
+            feed, wire, investigations, machine_analyses, china_stream
         ),
     }
     if wire is not None:
-        event_analyses = event_analysis_model.build_event_analyses(wire, feed)
         outputs[Path("news/instruments/feed.json")] = _pretty_json(build_json_feed(feed))
         outputs[Path("news/instruments/feed.xml")] = build_rss(feed)
+        if china_stream is None:
+            raise newsroom.NewsroomError("China stream was not built from the wire")
+        outputs[Path("readings/china-article-stream-latest.json")] = _pretty_json(
+            china_stream
+        )
+        outputs[Path("news/china/feed.json")] = _pretty_json(
+            build_china_stream_json_feed(china_stream)
+        )
+        outputs[Path("news/china/feed.xml")] = build_china_stream_rss(china_stream)
+        stream_pages = [
+            china_stream["entries"][offset:offset + CHINA_STREAM_PAGE_SIZE]
+            for offset in range(0, len(china_stream["entries"]), CHINA_STREAM_PAGE_SIZE)
+        ] or [[]]
+        for page_number, page_entries in enumerate(stream_pages, 1):
+            stream_path = (
+                Path("news/china/index.html") if page_number == 1
+                else Path("news/china/page") / str(page_number) / "index.html"
+            )
+            outputs[stream_path] = render_china_article_stream(
+                china_stream,
+                entries=page_entries,
+                page=page_number,
+                n_pages=len(stream_pages),
+            ).encode("utf-8")
         event_pages = [
             wire["events"][offset:offset + WIRE_PAGE_SIZE]
             for offset in range(0, len(wire["events"]), WIRE_PAGE_SIZE)
@@ -3550,7 +3908,12 @@ def build_outputs(
                 event, wire=wire, feed=feed, analysis=analysis
             ).encode("utf-8")
             outputs[base / "story.json"] = _pretty_json(event)
-            outputs[base / "revisions" / f"{event['version_id']}.json"] = _pretty_json(event)
+            event_revision_path = base / "revisions" / f"{event['version_id']}.json"
+            outputs[event_revision_path] = _event_revision_bytes(
+                event,
+                event_revision_path,
+                archive_root=archive_root,
+            )
             outputs[base / "analysis.json"] = _pretty_json(analysis)
             outputs[
                 base / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
@@ -3793,11 +4156,18 @@ def _is_immutable_analysis_path(relative: Path) -> bool:
         and parts[3:5] == ("analysis", "revisions")
         and _EVENT_ANALYSIS_REVISION_FILENAME.fullmatch(parts[5]) is not None
     )
+    event_dossier_revision = (
+        len(parts) == 5
+        and parts[:2] == ("news", "wire")
+        and _WIRE_EVENT_DIRECTORY.fullmatch(parts[2]) is not None
+        and parts[3] == "revisions"
+        and _EVENT_REVISION_FILENAME.fullmatch(parts[4]) is not None
+    )
     machine_revision = _is_managed_analysis_path(relative) and (
         "/revisions/" in relative.as_posix()
         or parts[:3] == ("news", "analysis", "evidence")
     )
-    return event_revision or machine_revision
+    return event_revision or event_dossier_revision or machine_revision
 
 
 def _directory_open_flags() -> int:
@@ -4203,12 +4573,14 @@ def main(argv: list[str] | None = None) -> int:
     feed = newsroom.build_news_feed()
     wire, pulse, investigations = _load_extension_documents()
     machine_analyses = _load_machine_investigations()
+    telegram_watch = _load_telegram_watch()
     outputs = build_outputs(
         feed,
         wire=wire,
         pulse=pulse,
         investigations=investigations,
         machine_analyses=machine_analyses,
+        telegram_watch=telegram_watch,
     )
     if args.check:
         drift = check(outputs)

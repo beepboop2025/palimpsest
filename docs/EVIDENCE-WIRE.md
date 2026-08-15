@@ -13,13 +13,16 @@ Palimpsest measurements. It preserves the boundary between:
 - what changed after first publication; and
 - what the available evidence cannot establish.
 
-“Every item is analysed” now means every accepted event receives both a durable
-source receipt and a content-addressed Palimpsest assessment. The assessment
+“Every item is analysed” now has two public projections. Every accepted event
+receives a durable source receipt and a content-addressed Palimpsest assessment;
+the China Article Stream then restores every in-scope publisher item as its own
+chronological entry and attaches that exact event assessment. The assessment
 states whether the event is inside the declared remit, evaluates independent
 source structure, quotes only explicitly linked normalized collector findings,
 and publishes an abstention when those collectors are not current. It does not
 mean every duplicate, heartbeat, or single-source assertion is promoted to a
-lead story.
+lead story. Publisher repetition remains visible in the article stream but does
+not manufacture additional source independence.
 
 The first release covers public, aggregate evidence about China across economy,
 politics and law, censorship and rights, networks, technology, security, and
@@ -29,9 +32,11 @@ controls, mirror article bodies, or claim to estimate a hidden “true GDP”.
 ## Architecture
 
 ```text
- allowlisted RSS/Atom ──> item receipts ──> lexical dossiers ────────┐
+ allowlisted RSS/Atom ──> item receipts ──> chronological China feed ─┐
+                                  └───────> lexical dossiers ─────────┤
  official/market bytes ─> bitemporal observations ─> economic pulse ┤
  Palimpsest scans ──────> current instrument briefs ────────────────┤
+ reviewed ScamShield aggregate ─> context-only Telegram watch ──────┤
                                                                     v
                                 server-rendered wire + receipt tape
                                 + declared topic pointers (not joins)
@@ -43,6 +48,50 @@ controls, mirror article bodies, or claim to estimate a hidden “true GDP”.
 Acquisition and publication are separate failure domains. A malformed feed may
 degrade that source's receipt, but it cannot erase the last-good public edition
 or block a fresh censorship scan. Rendering performs no network access.
+
+The public article stream is available at `/news/china/`, with RSS at
+`/news/china/feed.xml`, JSON Feed 1.1 at `/news/china/feed.json`, and its strict
+document at `/readings/china-article-stream-latest.json`. “Every” means every
+in-scope item from the declared, measured registry window—not the entire web.
+Global feeds must contain an explicit China/Hong Kong term in retained title or
+excerpt metadata; reviewed China-specific desks are included item by item.
+
+## Telegram and ScamShield context
+
+Telegram is a separate monitoring lane, never an evidence shortcut. ScamShield
+collects only configured public channels and operator-authorized surfaces and
+exports a private daily aggregate with observed-message, observed-source, flag,
+and error counts. Raw text, channel identities, pseudonyms, exact IOCs,
+assessment IDs and message-level allegations are excluded.
+
+The private `scamshield-telegram-monitoring-summary/v1` is explicitly not
+publication-eligible. `scripts/review_scamshield_summary.py` requires a human to
+approve a public aggregate and explicitly select any classifier families that
+are relevant to the China desk. Its output is validated as
+`palimpsest-telegram-watch.v1`; it remains labelled
+`aggregate-context-only-not-corroboration` and cannot increase a dossier's
+independent-source count. If no reviewed artifact exists, the page says so
+instead of rendering missing coverage as quiet or zero activity.
+
+Run the promotion only in the secure review environment; keep the private
+summary outside this repository. Replace the illustrative review time, note,
+and classifier families with the reviewer-approved values:
+
+```bash
+python3 scripts/review_scamshield_summary.py \
+  /secure/review/scamshield-monitoring-summary.json \
+  --reviewed-at 2026-08-15T08:00:00Z \
+  --reviewer-role china-desk-editor \
+  --review-note "Reviewed aggregate coverage and selected China-relevant families." \
+  --china-family CYBER_FRAUD \
+  --approve-public-aggregate \
+  --output readings/telegram-watch-latest.json
+python3 -m scripts.build_newsroom
+```
+
+The first command writes only the validated public aggregate. The second
+rebuilds the article stream and changes its Telegram panel from review-gate
+closed to human-reviewed context; it still cannot alter article corroboration.
 
 The existing `palimpsest-news.v1` instrument briefs remain a compatibility
 surface. Dynamic events live in a parallel contract and join the instruments
