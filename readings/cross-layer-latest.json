@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-15T07:17:59.737905+00:00",
+  "generated_at": "2026-08-15T13:19:08.643917+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
@@ -9,9 +9,9 @@
       "overlap_days": 35,
       "lag_days": 7,
       "correlation": 0.711,
-      "p_value": 0.1429,
+      "p_value": 0.0476,
       "n_shifts": 20,
-      "null_median_abs_r": 0.357,
+      "null_median_abs_r": 0.366,
       "pair": [
         "github_refuge",
         "ooni_gfw"
@@ -74,10 +74,10 @@
       "ok": true,
       "overlap_days": 35,
       "lag_days": 0,
-      "correlation": -0.34,
-      "p_value": 0.619,
+      "correlation": -0.332,
+      "p_value": 0.6667,
       "n_shifts": 20,
-      "null_median_abs_r": 0.563,
+      "null_median_abs_r": 0.566,
       "pair": [
         "gdelt_containment",
         "ooni_gfw"
@@ -161,8 +161,8 @@
     {
       "ok": true,
       "overlap_days": 35,
-      "lag_days": -2,
-      "correlation": -0.237,
+      "lag_days": 7,
+      "correlation": 0.237,
       "p_value": 1.0,
       "n_shifts": 20,
       "null_median_abs_r": 0.482,
@@ -176,7 +176,7 @@
       ],
       "first_day": "2026-07-11",
       "last_day": "2026-08-15",
-      "reading": "ooni_gfw moves 2d BEFORE ddti_threat",
+      "reading": "ddti_threat moves 7d BEFORE ooni_gfw",
       "holm_threshold": 0.05,
       "survives_multiplicity": false
     }
