@@ -257,10 +257,15 @@ def test_event_revision_keeps_first_published_mutation_bytes(publication, tmp_pa
     next_event = next(
         row for row in next_wire["events"] if row["event_id"] == event["event_id"]
     )
-    next_event["mutation"] = {
-        "kind": "unchanged",
-        "previous_version_id": next_event["version_id"],
-    }
+    current_kind = next_event["mutation"]["kind"]
+    if current_kind == "new":
+        next_event["mutation"] = {
+            "kind": "updated", "previous_version_id": next_event["version_id"],
+        }
+    else:
+        next_event["mutation"]["kind"] = (
+            "updated" if current_kind == "unchanged" else "unchanged"
+        )
     second = build_newsroom.build_outputs(
         feed, wire=next_wire, archive_root=tmp_path
     )
