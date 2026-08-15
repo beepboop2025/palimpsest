@@ -95,6 +95,10 @@ def test_release_mode_controls_only_the_reviewed_compatibility_dropin():
         "ReadWritePaths=/var/lib/palimpsest-public-osint-sync "
         "/var/lib/palimpsest/readings" in dropin
     )
+    assert _unit_values(COMPATIBILITY_DROPIN, "CapabilityBoundingSet") == [
+        "",
+        "CAP_CHOWN CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_FOWNER",
+    ]
 
 
 def test_installer_and_runtime_are_executable_in_the_checkout():
