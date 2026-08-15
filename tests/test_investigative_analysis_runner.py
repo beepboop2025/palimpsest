@@ -21,6 +21,32 @@ from ops import investigative_analysis_runner as runner
 
 COMMIT = "a" * 40
 IMAGE_ID = "sha256:" + "b" * 64
+_DISK_USAGE_RESULT = type(shutil.disk_usage(Path.cwd()))
+
+
+@pytest.fixture(autouse=True)
+def _stable_analysis_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep unit behavior independent of the developer or CI volume size."""
+    healthy = _DISK_USAGE_RESULT(
+        3 * runner.MIN_FREE_BYTES,
+        runner.MIN_FREE_BYTES,
+        2 * runner.MIN_FREE_BYTES,
+    )
+    monkeypatch.setattr(runner.shutil, "disk_usage", lambda _path: healthy)
+
+
+def test_capacity_guard_fails_closed_below_the_production_floor(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    low = _DISK_USAGE_RESULT(
+        2 * runner.MIN_FREE_BYTES,
+        runner.MIN_FREE_BYTES + 1,
+        runner.MIN_FREE_BYTES - 1,
+    )
+    monkeypatch.setattr(runner.shutil, "disk_usage", lambda _path: low)
+
+    with pytest.raises(runner.AnalysisRunnerError, match="less than 10 GiB"):
+        runner._require_capacity(tmp_path)
 
 
 def _write(path: Path, value: dict) -> None:

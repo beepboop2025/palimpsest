@@ -1,0 +1,23 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public Cloudflare Web Analytics beacon identifier"
+condition = "AND"
+paths = ['''^assets/shell\.js$''']
+regexTarget = "line"
+regexes = ['''^\s*beacon\.setAttribute\("data-cf-beacon", '\{"token":"[0-9a-f]{32}"\}'\);\s*$''']
+
+[[allowlists]]
+description = "Published SHA-256 frontier probe commitments"
+condition = "AND"
+paths = ['''^core/frontier_probes\.py$''']
+regexTarget = "line"
+regexes = ['''^\s*"[a-z0-9/-]+": "[0-9a-f]{64}",\s*$''']
+
+[[allowlists]]
+description = "Published SHA-256 blinded-study commitment"
+condition = "AND"
+paths = ['''^validation/studies/2026-08-01-gfi-classifier-v1/WITHHELD\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"answer_key\.jsonl": "[0-9a-f]{64}"\s*$''']
