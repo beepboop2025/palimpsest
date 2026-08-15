@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-eval-journal.v1",
   "desk_id": "palimpsest-eval-journal",
-  "generated_at": "2026-08-15T01:46:03.489857+00:00",
+  "generated_at": "2026-08-15T12:55:00.684023+00:00",
   "source": "Sealed Palimpsest AI evaluation artifacts and their published method receipts.",
   "scope": "Dated interpretation of model refusal, control, wording, drift, and uncertainty measurements. No model leaderboard and no claim beyond the named suites.",
   "publication_policy": {
@@ -20,9 +20,9 @@
     {
       "input_id": "refusal-drift-current",
       "filename": "refusal-drift-latest.json",
-      "sha256": "f3875593db0c3f74d175fb06aa69015d1ea380df26dcd8b4e16a07447bc40d98",
-      "bytes": 42990,
-      "generated_at": "2026-08-15T01:46:03.489857+00:00",
+      "sha256": "46440428763ef7441a6d9adf4f5c670d77766be741e3fb3bca63b8504965cc0a",
+      "bytes": 51335,
+      "generated_at": "2026-08-15T12:55:00.684023+00:00",
       "public_url": "https://palimpsest.info/readings/refusal-drift-latest.json",
       "integrity": "strict-json-and-sealed-run-match"
     },
@@ -31,18 +31,18 @@
       "filename": "refusal-drift-history.jsonl",
       "sha256": "e878c7dce69397b5d3107a53cec413c88312f48de99ae49cf1e8cba90b7397a3",
       "bytes": 69178,
-      "generated_at": "2026-08-15T01:46:03.489857+00:00",
+      "generated_at": "2026-08-15T12:55:00.684023+00:00",
       "public_url": "https://palimpsest.info/readings/refusal-drift-history.jsonl",
       "integrity": "strict-jsonl"
     },
     {
       "input_id": "eval-registry",
       "filename": "eval-registry.jsonl",
-      "sha256": "683b5d38bd85ce912244a255b85d7c24e361f22a6cb00bdfc97d3c5155dfb520",
-      "bytes": 284829,
-      "generated_at": "2026-08-15T01:46:03.489857+00:00",
+      "sha256": "a20a70a85d6d7766be14c6e4bb89539b467ed59ae69ba53f0b384e6a4c804035",
+      "bytes": 290347,
+      "generated_at": "2026-08-15T12:55:00.684023+00:00",
       "public_url": "https://palimpsest.info/readings/eval-registry.jsonl",
-      "integrity": "verified-hash-chain:d739328365e5648feef54c06d810d278838ae3023319f71b35ad76bd1e1bd21d"
+      "integrity": "verified-hash-chain:c8c55cff12a83d6d39bb32acafd7b3860fcec932ebb8a6773d93c7f3c697a5d7"
     }
   ],
   "n_articles": 2,
@@ -50,24 +50,24 @@
     {
       "schema_version": "palimpsest-eval-article.v1",
       "article_id": "evalarticle-2a851582dec97dfbf095",
-      "revision_id": "evalarticlev-b48b25df991b30413468adb7",
-      "previous_revision_id": "evalarticlev-e2a627f4eaacf1cacbb93f26",
+      "revision_id": "evalarticlev-52b557c1006a859c47b1162b",
+      "previous_revision_id": "evalarticlev-b48b25df991b30413468adb7",
       "slug": "before-reading-the-score-read-the-controls",
       "url": "/journal/before-reading-the-score-read-the-controls/",
       "kicker": "Eval integrity / control failure",
-      "title": "A clean run does not erase a failed one",
-      "dek": "Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The prior failed controls remain part of the record; the method-version boundary prevents a trend claim.",
+      "title": "The controls passed. Now the score is interpretable.",
+      "dek": "OpenAI GPT-4o mini passed every ordinary control in the latest dated run. That clears one interpretation gate, but it does not turn a small eval into a universal claim.",
       "thesis": "A headline score is not interpretable until the same run passes its ordinary controls.",
       "finding_state": "bounded-finding",
       "published_at": "2026-08-14T13:34:43.929654+00:00",
-      "updated_at": "2026-08-15T01:46:03.489857+00:00",
+      "updated_at": "2026-08-15T12:55:00.684023+00:00",
       "key_numbers": [
         {
           "value": "0%",
           "label": "family refusal rate",
           "note": "0 of 34 monitored families",
           "citation_ids": [
-            "evalevidence-181136267c92ac9866bc"
+            "evalevidence-5a98ad74fe1432491d2a"
           ]
         },
         {
@@ -75,7 +75,7 @@
           "label": "control prompt refusals",
           "note": "every ordinary control answered",
           "citation_ids": [
-            "evalevidence-181136267c92ac9866bc"
+            "evalevidence-5a98ad74fe1432491d2a"
           ]
         },
         {
@@ -95,22 +95,22 @@
             {
               "sentences": [
                 {
-                  "text": "On 15 Aug 2026, Mistral Nemo recorded 0 refused families out of 34 monitored families, a headline rate of 0%.",
+                  "text": "On 15 Aug 2026, OpenAI GPT-4o mini recorded 0 refused families out of 34 monitored families, a headline rate of 0%.",
                   "citation_ids": [
-                    "evalevidence-181136267c92ac9866bc",
-                    "evalevidence-c0f90df24be03162d9c3"
+                    "evalevidence-5a98ad74fe1432491d2a",
+                    "evalevidence-1e8f6a2c526f05988074"
                   ]
                 },
                 {
                   "text": "The same run answered every ordinary control prompt.",
                   "citation_ids": [
-                    "evalevidence-181136267c92ac9866bc"
+                    "evalevidence-5a98ad74fe1432491d2a"
                   ]
                 },
                 {
-                  "text": "Its wording consistency was 100% across the testable families.",
+                  "text": "This run did not publish a comparable wording-consistency estimate.",
                   "citation_ids": [
-                    "evalevidence-181136267c92ac9866bc"
+                    "evalevidence-5a98ad74fe1432491d2a"
                   ]
                 }
               ]
@@ -133,7 +133,7 @@
                   "text": "When that gate fails, the desk may describe the failure itself but may not interpret the headline rate as selective suppression.",
                   "citation_ids": [
                     "evalevidence-07adcda57c0c42a3be6b",
-                    "evalevidence-181136267c92ac9866bc"
+                    "evalevidence-5a98ad74fe1432491d2a"
                   ]
                 }
               ]
@@ -169,24 +169,24 @@
             {
               "sentences": [
                 {
-                  "text": "In the full sweep on 13 Aug 2026, the same model reported an arm refusal rate of 2.8% and controls_clean=false.",
+                  "text": "In the full sweep on 15 Aug 2026, the same model reported an arm refusal rate of 0% and controls_clean=true.",
                   "citation_ids": [
-                    "evalevidence-64289d77bc486e78bd63",
-                    "evalevidence-181136267c92ac9866bc"
+                    "evalevidence-116b3fe899847e30b6f3",
+                    "evalevidence-5a98ad74fe1432491d2a"
                   ]
                 },
                 {
-                  "text": "Method v3 reported wording consistency of 92.7%, while method v4 reported 100%.",
+                  "text": "The latest canonical arm used 41 prompts, while the full sweep used a broader prompt set and reported wording consistency of 100%.",
                   "citation_ids": [
-                    "evalevidence-64289d77bc486e78bd63",
-                    "evalevidence-181136267c92ac9866bc"
+                    "evalevidence-116b3fe899847e30b6f3",
+                    "evalevidence-5a98ad74fe1432491d2a"
                   ]
                 },
                 {
-                  "text": "Method versions v3 and v4 differ, so these values are not directly comparable, do not establish a trend, and do not identify a model release, provider, or prompt-routing cause.",
+                  "text": "The clean canonical arm is a new dated observation, not a like-for-like retest that cancels the failed full sweep.",
                   "citation_ids": [
-                    "evalevidence-64289d77bc486e78bd63",
-                    "evalevidence-181136267c92ac9866bc"
+                    "evalevidence-116b3fe899847e30b6f3",
+                    "evalevidence-5a98ad74fe1432491d2a"
                   ]
                 }
               ]
@@ -198,7 +198,7 @@
         {
           "text": "A zero observed family rate is still favorable evidence inside the named suite when the controls pass.",
           "citation_ids": [
-            "evalevidence-181136267c92ac9866bc",
+            "evalevidence-5a98ad74fe1432491d2a",
             "evalevidence-07adcda57c0c42a3be6b"
           ]
         },
@@ -206,7 +206,7 @@
           "text": "A control failure in one panel run does not invalidate the separately sealed runs from the other models.",
           "citation_ids": [
             "evalevidence-835308651e4159961e13",
-            "evalevidence-c0f90df24be03162d9c3"
+            "evalevidence-1e8f6a2c526f05988074"
           ]
         }
       ],
@@ -220,13 +220,13 @@
         {
           "text": "The model and provider labels do not prove which deployed weights or routing path answered a request.",
           "citation_ids": [
-            "evalevidence-181136267c92ac9866bc"
+            "evalevidence-5a98ad74fe1432491d2a"
           ]
         },
         {
           "text": "A failed control blocks a content-specific suppression claim from this run.",
           "citation_ids": [
-            "evalevidence-181136267c92ac9866bc",
+            "evalevidence-5a98ad74fe1432491d2a",
             "evalevidence-07adcda57c0c42a3be6b"
           ]
         }
@@ -236,14 +236,14 @@
           "step": "Freeze",
           "detail": "Hash and preregister the prompt bank before querying a model.",
           "citation_ids": [
-            "evalevidence-c0f90df24be03162d9c3"
+            "evalevidence-1e8f6a2c526f05988074"
           ]
         },
         {
           "step": "Run",
           "detail": "Publish family rates, prompt-arm rates, controls, and uncertainty from the same dated sweep.",
           "citation_ids": [
-            "evalevidence-181136267c92ac9866bc"
+            "evalevidence-5a98ad74fe1432491d2a"
           ]
         },
         {
@@ -257,20 +257,20 @@
           "step": "Verify",
           "detail": "Recompute the registry chain and compare the exact sealed metrics with the public reading.",
           "citation_ids": [
-            "evalevidence-c0f90df24be03162d9c3",
-            "evalevidence-181136267c92ac9866bc"
+            "evalevidence-1e8f6a2c526f05988074",
+            "evalevidence-5a98ad74fe1432491d2a"
           ]
         }
       ],
       "evidence": [
         {
-          "evidence_id": "evalevidence-181136267c92ac9866bc",
+          "evidence_id": "evalevidence-5a98ad74fe1432491d2a",
           "input_id": "refusal-drift-current",
-          "label": "Latest Mistral Nemo panel result",
-          "selector": "/models/@model=mistralai/mistral-nemo",
+          "label": "Latest OpenAI GPT-4o mini panel result",
+          "selector": "/models/@model=openai/gpt-4o-mini",
           "value": {
-            "model": "mistralai/mistral-nemo",
-            "arm": "full-sweep",
+            "model": "openai/gpt-4o-mini",
+            "arm": "canonical",
             "family_refusal_rate_pct": 0.0,
             "n_refused_families": 0,
             "n_families": 34,
@@ -279,10 +279,10 @@
               10.2
             ],
             "arm_refusal_rate_pct": 0.0,
-            "n_arms": 144,
+            "n_arms": 41,
             "controls_clean": true,
             "control_refusals": [],
-            "wording_consistency": 1.0
+            "wording_consistency": null
           },
           "interpretation_limit": "A lexical classifier labels answers and refusals. A failed control blocks a content-specific suppression interpretation.",
           "source_url": "https://palimpsest.info/readings/refusal-drift-latest.json"
@@ -314,38 +314,38 @@
           "source_url": "https://palimpsest.info/readings/refusal-drift-latest.json"
         },
         {
-          "evidence_id": "evalevidence-c0f90df24be03162d9c3",
+          "evidence_id": "evalevidence-1e8f6a2c526f05988074",
           "input_id": "eval-registry",
-          "label": "Sealed registry run for Mistral Nemo",
-          "selector": "/seq=417",
+          "label": "Sealed registry run for OpenAI GPT-4o mini",
+          "selector": "/seq=422",
           "value": {
-            "seq": 417,
-            "entry_hash": "3f8d27affa9f93dbb3de6b4d03d04245e921107c634b809f192a6d0ef183b7db",
-            "responses_hash": "0f64318f0590e103508303114f227124a65073860a91982f550ad11245fc4a0b",
-            "probe_set_hash": "17f271e4f3b77a45a5f6e62ed60643f7111636a444e10b6d724714e84e1975fd"
+            "seq": 422,
+            "entry_hash": "215340010da39cc08b8f38203607e3977cfb2c1298162295e0ed1738c5a0a6fd",
+            "responses_hash": "1c1f62271dc91e3b41792e27b4aa228099282cd8ecd6fe40d0312d1595808a93",
+            "probe_set_hash": "31208cb5a9f13b3a23bb64d347ed118dc212f39d8b5fe19ac749a7988f7c0adb"
           },
           "interpretation_limit": "The seal proves the attestation was not rewritten. It does not prove the classifier was correct.",
           "source_url": "https://palimpsest.info/readings/eval-registry.jsonl"
         },
         {
-          "evidence_id": "evalevidence-64289d77bc486e78bd63",
+          "evidence_id": "evalevidence-116b3fe899847e30b6f3",
           "input_id": "refusal-drift-history",
-          "label": "Most recent prior full sweep for Mistral Nemo",
-          "selector": "/generated_at=2026-08-13T02:47:59.623887+00:00/models/mistralai/mistral-nemo",
+          "label": "Most recent prior full sweep for OpenAI GPT-4o mini",
+          "selector": "/generated_at=2026-08-15T01:46:03.489857+00:00/models/openai/gpt-4o-mini",
           "value": {
             "family_refusal_rate_pct": 0.0,
             "ci95_pct": [
               0.0,
               10.2
             ],
-            "arm_refusal_rate_pct": 2.8,
-            "wording_consistency": 0.9268,
-            "controls_clean": false,
-            "flips": 6,
-            "compared": 41,
-            "churn_state": "quiet"
+            "arm_refusal_rate_pct": 0.0,
+            "wording_consistency": 1.0,
+            "controls_clean": true,
+            "flips": null,
+            "compared": null,
+            "churn_state": "calibrating"
           },
-          "interpretation_limit": "This is the nearest prior full sweep. Both records use the full-sweep arm, but method versions v3 and v4 differ, so their values are not directly comparable.",
+          "interpretation_limit": "This is the nearest prior full sweep. A canonical-only current run is not a like-for-like recovery test.",
           "source_url": "https://palimpsest.info/readings/refusal-drift-history.jsonl"
         }
       ],
@@ -404,8 +404,8 @@
     {
       "schema_version": "palimpsest-eval-article.v1",
       "article_id": "evalarticle-635451d800aca8c43550",
-      "revision_id": "evalarticlev-46f2505bb21d25d21ce2722b",
-      "previous_revision_id": "evalarticlev-dc6514807d75054f41c2641c",
+      "revision_id": "evalarticlev-a24cbd73e705abef13639ae7",
+      "previous_revision_id": "evalarticlev-46f2505bb21d25d21ce2722b",
       "slug": "zero-observed-is-not-zero-uncertainty",
       "url": "/journal/zero-observed-is-not-zero-uncertainty/",
       "kicker": "Eval method / uncertainty",
@@ -414,7 +414,7 @@
       "thesis": "A finite eval can observe no refusals and still leave a meaningful range of plausible rates.",
       "finding_state": "bounded-finding",
       "published_at": "2026-08-14T13:34:43.929654+00:00",
-      "updated_at": "2026-08-15T01:46:03.489857+00:00",
+      "updated_at": "2026-08-15T12:55:00.684023+00:00",
       "key_numbers": [
         {
           "value": "0",
@@ -454,7 +454,7 @@
                   "text": "In the 15 Aug 2026 panel, 4 control-clean runs observed zero refused families among 34 monitored non-control families.",
                   "citation_ids": [
                     "evalevidence-e4d8af3496e0ac6acdd0",
-                    "evalevidence-c992062e7f6d67f0b2cb"
+                    "evalevidence-41bc5415f7f0e940c770"
                   ]
                 },
                 {
@@ -529,13 +529,13 @@
                 {
                   "text": "The registry binds every score to a model label, prompt commitment, response hash, and timestamp.",
                   "citation_ids": [
-                    "evalevidence-c992062e7f6d67f0b2cb"
+                    "evalevidence-41bc5415f7f0e940c770"
                   ]
                 },
                 {
                   "text": "Those receipts make change auditable, but they do not justify a permanent ranking from one sweep.",
                   "citation_ids": [
-                    "evalevidence-c992062e7f6d67f0b2cb",
+                    "evalevidence-41bc5415f7f0e940c770",
                     "evalevidence-e4d8af3496e0ac6acdd0"
                   ]
                 }
@@ -570,7 +570,7 @@
           "text": "A provider may change routing or model behaviour after the dated sweep.",
           "citation_ids": [
             "evalevidence-e4d8af3496e0ac6acdd0",
-            "evalevidence-c992062e7f6d67f0b2cb"
+            "evalevidence-41bc5415f7f0e940c770"
           ]
         },
         {
@@ -585,7 +585,7 @@
           "step": "Pre-register",
           "detail": "Commit the exact probe bank before any endpoint is queried.",
           "citation_ids": [
-            "evalevidence-c992062e7f6d67f0b2cb"
+            "evalevidence-41bc5415f7f0e940c770"
           ]
         },
         {
@@ -607,7 +607,7 @@
           "step": "Re-run",
           "detail": "Compare later sealed sweeps with the same method instead of turning this edition into a standing ranking.",
           "citation_ids": [
-            "evalevidence-c992062e7f6d67f0b2cb"
+            "evalevidence-41bc5415f7f0e940c770"
           ]
         }
       ],
@@ -685,30 +685,30 @@
           "source_url": "https://palimpsest.info/readings/refusal-drift-latest.json"
         },
         {
-          "evidence_id": "evalevidence-c992062e7f6d67f0b2cb",
+          "evidence_id": "evalevidence-41bc5415f7f0e940c770",
           "input_id": "eval-registry",
           "label": "Sealed attestations for the latest panel",
-          "selector": "/runs/@ts=2026-08-15T01:46:03.489857+00:00/@suite=frontier-overrefusal-v2",
+          "selector": "/runs/@ts=2026-08-15T12:55:00.684023+00:00/@suite=frontier-overrefusal-v2",
           "value": {
             "openai/gpt-4o-mini": {
-              "seq": 411,
-              "entry_hash": "8f5aa1e76493245de38c5a31a9d11c9feb68f2e7fc0f0cbd38b31dc0eadd443b",
-              "responses_hash": "90c3a07a48e2b4d4cb061c75de2b09c128e07f0832436757a7865bb41de588be"
+              "seq": 422,
+              "entry_hash": "215340010da39cc08b8f38203607e3977cfb2c1298162295e0ed1738c5a0a6fd",
+              "responses_hash": "1c1f62271dc91e3b41792e27b4aa228099282cd8ecd6fe40d0312d1595808a93"
             },
             "anthropic/claude-3-haiku": {
-              "seq": 413,
-              "entry_hash": "14c3588cec15ca8537f246490ba1794ef511c71cba6d4f1f29e9895500ce6c47",
-              "responses_hash": "5044a6192dd7a70ba7647f75509e744dc9710f06e71fb87314b9dd62c5c41028"
+              "seq": 424,
+              "entry_hash": "2418486c95c09e2066ae102649c94fe71b939352022791b7f0b243b4f4224784",
+              "responses_hash": "009f10fb045a3a4e4383115febbc9bda6d34c4979b7b927de2d72b5cb9fc7a5a"
             },
             "meta-llama/llama-3.3-70b-instruct": {
-              "seq": 415,
-              "entry_hash": "b2c6e6acf8f822e18635e5b270d72c0f0e04ccf2cdf5dd56ece960eaac7280c3",
-              "responses_hash": "530ed297c5074b01d5124e7e22f6141ba012798b17a3bd06261b05cf779cf69b"
+              "seq": 426,
+              "entry_hash": "952ecb8e2229206b4cad2cdf427243b9b87392478513cea2bcebef907c9ba7af",
+              "responses_hash": "86991492d4f3515317af351e5002962a560b1710bf16dd621148215c5987967a"
             },
             "mistralai/mistral-nemo": {
-              "seq": 417,
-              "entry_hash": "3f8d27affa9f93dbb3de6b4d03d04245e921107c634b809f192a6d0ef183b7db",
-              "responses_hash": "0f64318f0590e103508303114f227124a65073860a91982f550ad11245fc4a0b"
+              "seq": 428,
+              "entry_hash": "53228f91a9345813a7e3297a2b17dbfb020432522d072ecbd72bcd03a465aaf3",
+              "responses_hash": "c1b3518fda0daa9f4b49cadc21c445bb0ef0fe24c82e4a660d72fbedd9a0b51b"
             }
           },
           "interpretation_limit": "The chain proves these attestations persisted unchanged. It does not widen the sampled population.",

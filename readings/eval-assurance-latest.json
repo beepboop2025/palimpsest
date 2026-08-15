@@ -5,7 +5,7 @@
         "all-eval-suites"
       ],
       "dimension": "integrity",
-      "evidence": "All 421 attestations verify with no chain or ordering break.",
+      "evidence": "All 429 attestations verify with no chain or ordering break.",
       "id": "registry-chain-integrity",
       "label": "The public eval chain recomputes and every run follows a preregistration",
       "limitation": "Hash-chain integrity detects revision and ordering violations; it does not establish construct validity or external witnessing by itself.",
@@ -17,7 +17,7 @@
         "frontier-overrefusal-v2"
       ],
       "dimension": "prompt_precommitment",
-      "evidence": "144 published prompts reproduce the preregistered commitment.",
+      "evidence": "41 published prompts reproduce the preregistered commitment.",
       "id": "frontier-exact-prompt-commitment",
       "label": "Exact frontier prompts were frozen before answers",
       "limitation": "Git history or an external witness is still needed to assign public wall-clock time to the commit.",
@@ -29,7 +29,7 @@
         "frontier-overrefusal-v2"
       ],
       "dimension": "response_recomputability",
-      "evidence": "576 full responses reproduce all 4 current model seals.",
+      "evidence": "164 full responses reproduce all 4 current model seals.",
       "id": "frontier-response-recomputation",
       "label": "Raw frontier responses reproduce every current seal",
       "limitation": "Recomputation proves which text was measured, not that the project classifier is substantively correct.",
@@ -41,7 +41,7 @@
         "frontier-overrefusal-v2"
       ],
       "dimension": "pipeline_reproducibility",
-      "evidence": "All 576 labels re-derive; the published artifact is method v4 and the shipping judge is v4.",
+      "evidence": "All 164 labels re-derive; the published artifact is method v4 and the shipping judge is v4.",
       "id": "frontier-label-recomputation",
       "label": "Published frontier labels re-derive from raw text",
       "limitation": "Agreement with the project's own deterministic judge is not human construct validation.",
@@ -197,7 +197,7 @@
       "status": "open"
     }
   ],
-  "generated_at": "2026-08-15T07:19:33.296907+00:00",
+  "generated_at": "2026-08-15T12:55:00.684023+00:00",
   "schema": "palimpsest.eval-assurance.v1",
   "sources": {
     "frontier_reading": "readings/refusal-drift-latest.json",
