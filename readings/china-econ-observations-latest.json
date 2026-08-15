@@ -1,13 +1,13 @@
 {
  "artifact": {
-  "bytes": 651672,
+  "bytes": 921255,
   "media_type": "application/x-ndjson",
   "path": "readings/china-econ-observations.jsonl",
-  "records": 742,
-  "sha256": "c2daa98643eeb55dd90b6255803a4a71f71f9fc1465566d9a5195c5d24e37fef",
+  "records": 1049,
+  "sha256": "bba35cc102c9a2ab1249895f27bb7f1574722bcfa2ac21c0c82d1929d74e5a61",
   "url": "https://palimpsest.info/readings/china-econ-observations.jsonl"
  },
- "as_of": "2026-08-15T10:24:07.852079Z",
+ "as_of": "2026-08-15T10:27:05.819112Z",
  "contract": {
   "aggregate_only": true,
   "bitemporal": true,
@@ -34,15 +34,15 @@
    "CN"
   ],
   "geography_count": 1,
-  "last_collected_at": "2026-08-15T10:24:07.852079Z",
-  "last_released_at": "2026-08-15T10:24:07.852079Z",
+  "last_collected_at": "2026-08-15T10:27:05.819112Z",
+  "last_released_at": "2026-08-15T10:27:05.819112Z",
   "ownership_count": 1,
   "ownerships": [
    "all"
   ],
   "period_end": "2026-08-14",
   "period_start": "2026-07-06",
-  "provenance_only_vintages": 307,
+  "provenance_only_vintages": 614,
   "sector_count": 1,
   "sectors": [
    "all"
@@ -75,7 +75,7 @@
   ],
   "value_revision_events": 0
  },
- "generated_at": "2026-08-15T10:24:07.852079Z",
+ "generated_at": "2026-08-15T10:27:05.819112Z",
  "integrity": {
   "exact_byte_digest": true,
   "monotonic_source_revisions": true,
@@ -89,7 +89,7 @@
   "Where a source omits a release timestamp, released_at may be a conservative first-observed upper bound declared in row metadata."
  ],
  "method": "Validate every aggregate observation and observation_id, enforce append order and source revision invariants, then hash the exact published JSONL bytes.",
- "n_observations": 742,
+ "n_observations": 1049,
  "schema_version": "palimpsest-economic-observation-manifest.v1",
  "scope": "Aggregate China economic observations actually collected by Palimpsest; this is a bitemporal evidence ledger, not a GDP estimate or a claim of complete source coverage.",
  "source": "Palimpsest aggregate collectors; each observation retains its own source_id, evidence_url, and raw response digest"
