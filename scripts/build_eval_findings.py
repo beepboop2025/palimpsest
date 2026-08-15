@@ -331,11 +331,12 @@ def _revision_inventory(article: Mapping[str, Any], *, root: Path) -> list[str]:
         if not path.is_file() or _REVISION_FILE.fullmatch(path.name) is None:
             continue
         try:
-            document = json.loads(path.read_bytes())
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raw = path.read_bytes()
+        except OSError as exc:
             raise eval_articles.EvalArticleError(
                 f"cannot read journal revision {path.name}"
             ) from exc
+        document = eval_articles._strict_json(raw, label=path.name)
         if not isinstance(document, dict) or document.get("revision_id") != path.stem:
             raise eval_articles.EvalArticleError(
                 f"journal revision identity does not match {path.name}"
@@ -356,6 +357,16 @@ def _revision_inventory(article: Mapping[str, Any], *, root: Path) -> list[str]:
                 f"journal revision has an invalid predecessor: {path.name}"
             )
         revision_id = document["revision_id"]
+        try:
+            computed_id = eval_articles._article_identity(document)
+        except eval_articles.EvalArticleError as exc:
+            raise eval_articles.EvalArticleError(
+                f"journal revision content is malformed: {path.name}"
+            ) from exc
+        if computed_id != revision_id or computed_id != path.stem:
+            raise eval_articles.EvalArticleError(
+                f"journal revision content does not match its identity: {path.name}"
+            )
         if revision_id in links and links[revision_id] != previous_id:
             raise eval_articles.EvalArticleError(
                 f"journal revision link disagrees with current head: {path.name}"

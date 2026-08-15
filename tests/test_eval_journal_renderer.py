@@ -88,6 +88,36 @@ def test_revision_links_follow_the_structured_chain_from_current_to_oldest():
     ]
 
 
+def test_revision_inventory_rejects_historical_content_with_a_reused_id(tmp_path):
+    candidates = [
+        (article, build_eval_findings._revision_inventory(article, root=ROOT))
+        for article in _collection()["articles"]
+    ]
+    article, revisions = max(candidates, key=lambda candidate: len(candidate[1]))
+    historical_id = revisions[1]
+    source = (
+        ROOT
+        / "journal"
+        / article["slug"]
+        / "revisions"
+        / f"{historical_id}.json"
+    )
+    document = json.loads(source.read_text(encoding="utf-8"))
+    document["title"] += " (tampered)"
+    destination = (
+        tmp_path
+        / "journal"
+        / article["slug"]
+        / "revisions"
+        / f"{historical_id}.json"
+    )
+    destination.parent.mkdir(parents=True)
+    destination.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(eval_articles.EvalArticleError, match="content does not match"):
+        build_eval_findings._revision_inventory(article, root=tmp_path)
+
+
 def test_feeds_parse_and_use_unique_article_ids(tmp_path):
     collection = _collection()
     outputs = build_eval_findings.build_outputs(collection, root=tmp_path)
