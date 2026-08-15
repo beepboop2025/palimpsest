@@ -1,8 +1,9 @@
 # Running censorwatch 24/7
 
-Censorwatch is the feature-flagged DDTI velocity leg. It runs as part of the
-`social_scraper` Docker stack but is **off by default** — nothing starts collecting
-until `CENSORWATCH_ENABLED=1` is set.
+Censorwatch is the feature-flagged DDTI velocity leg. It runs as the
+`worker-velocity` service in the Palimpsest production Docker stack but is **off
+by default** — nothing starts collecting until the `velocity` profile is enabled
+and `CENSORWATCH_ENABLED=1` is set.
 
 There are two tiers:
 - **Tier 1 — Eastmoney guba only.** Works from any host, no proxy. Live in ~10 min.
@@ -23,7 +24,7 @@ There are two tiers:
 
 ## Tier 1 — guba only (no proxy)
 
-1. Create `.env` in the repo root:
+1. Configure `ops/docker/.env`:
 
    ```dotenv
    POSTGRES_PASSWORD=choose-a-strong-password   # required by compose
@@ -35,10 +36,11 @@ There are two tiers:
 2. Bring up the stack:
 
    ```bash
-   docker compose up -d --build
+   WITH_BROWSER=true ops/docker/prod-compose \
+     --profile velocity --profile api up -d --build
    ```
 
-   This starts `postgres`, `redis`, `api`, `beat`, and `censorwatch-worker`
+   This starts `postgres`, `redis`, `api`, `beat`, and `worker-velocity`
    (plus the rest of the platform). Tables auto-create on the first task run.
 
 3. Open the dashboard:
@@ -55,7 +57,7 @@ There are two tiers:
 | Service | Role |
 |---------|------|
 | `beat` | Schedules `cw_collect` (every 10m), tiered `cw_recheck` (15m/2h/12h), `cw_signal` (20m) |
-| `censorwatch-worker` | Runs those tasks off the isolated `censorwatch` queue (so it can't starve production collectors) |
+| `worker-velocity` | Runs those tasks off the isolated `censorwatch` queue (so it can't starve production collectors) |
 | `api` | Serves the dashboard + JSON API at `/api/v5/censorwatch/*` |
 
 ---
@@ -63,10 +65,10 @@ There are two tiers:
 ## Tier 2 — add Weibo + Xueqiu (needs a proxy)
 
 These sources are behind anti-bot defenses that block datacenter/foreign egress.
-You need a **residential or in-China proxy** and the Playwright render path (already
-baked into `Dockerfile.censorwatch`).
+You need a **residential or in-China proxy** and the Playwright render path. The
+`WITH_BROWSER=true` build setting installs Chromium in `Dockerfile.app`.
 
-1. Add the proxy to `.env`:
+1. Add the proxy to `ops/docker/.env`:
 
    ```dotenv
    CENSORWATCH_PROXY_URL=http://user:pass@your-residential-proxy:port
@@ -94,7 +96,8 @@ baked into `Dockerfile.censorwatch`).
    schedule, then rebuild:
 
    ```bash
-   docker compose up -d --build censorwatch-worker beat
+   WITH_BROWSER=true ops/docker/prod-compose \
+     --profile velocity --profile api up -d --build worker-velocity beat api
    ```
 
 ---
@@ -103,18 +106,18 @@ baked into `Dockerfile.censorwatch`).
 
 ```bash
 # Worker picked up the queue?
-docker compose logs -f censorwatch-worker | grep -i censorwatch
+ops/docker/prod-compose --profile velocity logs -f worker-velocity | grep -i censorwatch
 
 # Force one capture immediately (don't wait for beat):
-docker compose exec censorwatch-worker \
+ops/docker/prod-compose --profile velocity exec worker-velocity \
   python -c "from censorwatch.tasks import cw_collect; print(cw_collect('eastmoney_guba'))"
 
 # Rows landing?
-docker compose exec postgres \
+ops/docker/prod-compose exec postgres \
   psql -U scraper -d econscraper -c "select source,count(*) from censored_posts group by 1;"
 
 # Confirmed deletions (populates over time):
-docker compose exec postgres \
+ops/docker/prod-compose exec postgres \
   psql -U scraper -d econscraper -c "select count(*) from post_deletions;"
 ```
 
@@ -137,6 +140,18 @@ Then watch the dashboard at `/api/v5/censorwatch/`. Flower (task monitor) is at
 
 ## Turning it off
 
-Set `CENSORWATCH_ENABLED=` (empty) in `.env` and `docker compose up -d`. The beat
-stops scheduling `cw_*` tasks, the dashboard router unmounts, and the worker idles.
-The production stack is unaffected — censorwatch never touches its tables.
+Set `CENSORWATCH_ENABLED=` (empty) in `ops/docker/.env`, then apply the change to
+every long-lived service that caches the flag:
+
+```bash
+ops/docker/prod-compose --profile velocity stop worker-velocity
+ops/docker/prod-compose up -d --force-recreate beat
+# Run this too when the API profile is deployed:
+ops/docker/prod-compose --profile api up -d --force-recreate api
+```
+
+Stopping `worker-velocity` prevents an existing container with the old enabled
+environment from continuing to consume `censorwatch` tasks. The recreated beat
+stops scheduling `cw_*` tasks, and the recreated API unmounts the dashboard
+router. The production stack is unaffected — censorwatch never touches its
+tables.

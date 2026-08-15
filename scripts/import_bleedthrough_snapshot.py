@@ -47,7 +47,7 @@ MAX_FUTURE_SKEW_SECONDS = 300.0
 EARLIEST_TIMESTAMP = datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()
 
 SIGNAL = "bleedthrough"
-METHOD_VERSION = 2
+METHOD_VERSION = 3
 MIN_PUBLIC_METHOD_VERSION = 2
 TITLE = "GFW injector fleet"
 PROBE_DOMAIN = "torproject.org"
@@ -407,7 +407,11 @@ def _reject_leakage(value: str, field: str) -> None:
         )
 
 
-def _method(transports: dict[str, dict[str, Any]]) -> str:
+def _method(
+    transports: dict[str, dict[str, Any]], *, method_version: int | None = None
+) -> str:
+    if method_version is None:
+        method_version = METHOD_VERSION
     legs = [
         name
         for name, key in (
@@ -420,10 +424,15 @@ def _method(transports: dict[str, dict[str, Any]]) -> str:
         raise BleedthroughImportError(
             "BLEEDTHROUGH declares no transport for the round"
         )
+    direct_schedule = (
+        " Direct receive windows overlap; outbound sends remain rate-capped."
+        if method_version >= 3 and transports["direct"]["ran"]
+        else ""
+    )
     return (
         "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's "
         "own injectors to answer; we fingerprint the fleet from the forgeries. "
-        f"Transport this round: {' + '.join(legs)}. "
+        f"Transport this round: {' + '.join(legs)}.{direct_schedule} "
         "Injector count is a FLOOR, not a census: each injector answers a given "
         "query at most once, so a silent injector is undercounted."
     )
@@ -577,7 +586,11 @@ def validate_document(
         raise BleedthroughImportError(
             "BLEEDTHROUGH transport targets do not equal vantages_probed"
         )
-    _exact_text(root["method"], "method", _method(transports))
+    _exact_text(
+        root["method"],
+        "method",
+        _method(transports, method_version=method_version),
+    )
 
     vantage_count = _integer(
         provenance["vantage_count"], "provenance.vantage_count", minimum=1, maximum=1

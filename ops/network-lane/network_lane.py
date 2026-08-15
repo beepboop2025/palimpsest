@@ -1026,6 +1026,7 @@ def _run_child(
     *,
     signal_grace_seconds: float = SIGNAL_GRACE_SECONDS,
     handle_signals: bool = True,
+    on_ready: Callable[[], None] | None = None,
 ) -> ChildOutcome:
     if not command or any(
         not isinstance(item, str) or not item or "\0" in item for item in command
@@ -1051,6 +1052,8 @@ def _run_child(
         for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             previous_handlers[signum] = signal.signal(signum, forward)
     try:
+        if on_ready is not None:
+            on_ready()
         try:
             child = subprocess.Popen(
                 list(command),
@@ -1189,11 +1192,11 @@ def execute_guarded_job(
             "started_unix_ns": started_ns,
             **metadata,
         }
-        _atomic_write_json(paths.active, active)
         outcome = _run_child(
             command,
             signal_grace_seconds=signal_grace_seconds,
             handle_signals=handle_signals,
+            on_ready=lambda: _atomic_write_json(paths.active, active),
         )
         completed_ns = now_ns()
         completion_result = (

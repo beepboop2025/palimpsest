@@ -34,7 +34,7 @@ from collectors.bleedthrough import (
     JsonFleetStore,
     FleetBaselineStore,
     REGIONAL_FIREWALL,
-    _udp_transport,
+    direct_udp_transport,
     distinct_region_pools,
     load_targets,
     open_resolver_transport,
@@ -54,7 +54,7 @@ HIST = os.getenv(
 # do not move. Write-if-changed compares readings, so without this a methodology
 # correction that leaves the values identical never reaches the published file and
 # the site keeps asserting a method it no longer uses.
-METHOD_VERSION = 2
+METHOD_VERSION = 3
 
 STORE_DIR = os.getenv(
     "BLEEDTHROUGH_STORE",
@@ -543,7 +543,7 @@ def main() -> None:
         return
     rate = RateCeiling(rate=RATE_PER_SEC)
     # Armed PER PROBE, not merely checked once above: a round is thousands of datagrams over
-    # roughly an hour, and a startup-only gate leaves that whole window unstoppable.
+    # tens of minutes, and a startup-only gate leaves that whole window unstoppable.
     kill = KillSwitch()
     durable_store = JsonFleetStore(STORE_DIR)
     staged_store = _StagedFleetStore(durable_store)
@@ -552,14 +552,10 @@ def main() -> None:
     fingerprints, events = [], []
     # direct-injection round (fleet size) over dark IPs
     if dark:
-
-        def direct_transport(domain, target_ip):
-            return _udp_transport(domain, target_ip, wait=WAIT_S)
-
         r = run_round(
             probe,
             dark,
-            transport=direct_transport,
+            transport=direct_udp_transport(wait=WAIT_S),
             store=store,
             kill_switch=kill,
             rate_ceiling=rate,
@@ -627,6 +623,11 @@ def main() -> None:
     projected_events = [
         public for event in events if (public := _public_event(event)) is not None
     ]
+    direct_schedule = (
+        " Direct receive windows overlap; outbound sends remain rate-capped."
+        if transports["direct"]["ran"]
+        else ""
+    )
     # Multiple private targets can observe the same coarse apparatus transition.
     # Publishing one identical row per target would leak panel shape and inflate
     # apparent event volume, so the public boundary keeps one deterministic row
@@ -650,7 +651,7 @@ def main() -> None:
         "method": (
             "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's "
             "own injectors to answer; we fingerprint the fleet from the forgeries. "
-            f"Transport this round: {' + '.join(legs)}. "
+            f"Transport this round: {' + '.join(legs)}.{direct_schedule} "
             "Injector count is a FLOOR, not a census: each injector answers a given "
             "query at most once, so a silent injector is undercounted."
         ),

@@ -317,17 +317,78 @@ def _render_records(title: str, records: Sequence[Mapping[str, Any]], class_name
 
 def _revision_inventory(article: Mapping[str, Any], *, root: Path) -> list[str]:
     revision_dir = root / "journal" / article["slug"] / "revisions"
-    found: set[str] = {article["revision_id"]}
+    current_id = article["revision_id"]
+    links = {current_id: article["previous_revision_id"]}
     try:
-        candidates = list(revision_dir.iterdir())
+        candidates = sorted(revision_dir.iterdir())
     except FileNotFoundError:
         candidates = []
     except OSError as exc:
         raise eval_articles.EvalArticleError("cannot inspect journal revisions") from exc
+    if not candidates:
+        return [current_id]
     for path in candidates:
-        if path.is_file() and _REVISION_FILE.fullmatch(path.name):
-            found.add(path.stem)
-    return sorted(found)
+        if not path.is_file() or _REVISION_FILE.fullmatch(path.name) is None:
+            continue
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            raise eval_articles.EvalArticleError(
+                f"cannot read journal revision {path.name}"
+            ) from exc
+        document = eval_articles._strict_json(raw, label=path.name)
+        if not isinstance(document, dict) or document.get("revision_id") != path.stem:
+            raise eval_articles.EvalArticleError(
+                f"journal revision identity does not match {path.name}"
+            )
+        if (
+            document.get("article_id") != article["article_id"]
+            or document.get("slug") != article["slug"]
+        ):
+            raise eval_articles.EvalArticleError(
+                f"journal revision belongs to another article: {path.name}"
+            )
+        previous_id = document.get("previous_revision_id")
+        if previous_id is not None and (
+            not isinstance(previous_id, str)
+            or _REVISION_FILE.fullmatch(f"{previous_id}.json") is None
+        ):
+            raise eval_articles.EvalArticleError(
+                f"journal revision has an invalid predecessor: {path.name}"
+            )
+        revision_id = document["revision_id"]
+        try:
+            computed_id = eval_articles._article_identity(document)
+        except eval_articles.EvalArticleError as exc:
+            raise eval_articles.EvalArticleError(
+                f"journal revision content is malformed: {path.name}"
+            ) from exc
+        if computed_id != revision_id or computed_id != path.stem:
+            raise eval_articles.EvalArticleError(
+                f"journal revision content does not match its identity: {path.name}"
+            )
+        if revision_id in links and links[revision_id] != previous_id:
+            raise eval_articles.EvalArticleError(
+                f"journal revision link disagrees with current head: {path.name}"
+            )
+        links[revision_id] = previous_id
+
+    ordered: list[str] = []
+    revision_id: str | None = current_id
+    while revision_id is not None:
+        if revision_id in ordered:
+            raise eval_articles.EvalArticleError("journal revision history contains a cycle")
+        if revision_id not in links:
+            raise eval_articles.EvalArticleError(
+                f"journal revision history is missing {revision_id}"
+            )
+        ordered.append(revision_id)
+        revision_id = links[revision_id]
+    if set(ordered) != set(links):
+        raise eval_articles.EvalArticleError(
+            "journal revision history contains a disconnected revision"
+        )
+    return ordered
 
 
 def render_article(
@@ -370,7 +431,7 @@ def render_article(
     )
     revision_links = "".join(
         f'<li><a href="revisions/{_h(revision)}.json">{_h(revision)}</a>{" <span>current</span>" if revision == article["revision_id"] else ""}</li>'
-        for revision in reversed(revisions)
+        for revision in revisions
     )
     return f"""<!doctype html>
 <html lang="en"><head>

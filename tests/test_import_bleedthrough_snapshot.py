@@ -523,6 +523,7 @@ def test_new_semantics_cannot_claim_a_change_before_the_last_good_observation(tm
 
 
 def test_method_upgrade_retains_the_supported_history_prefix(tmp_path, monkeypatch):
+    monkeypatch.setattr(importer, "METHOD_VERSION", 2)
     _first, output, history = _import(tmp_path)
     monkeypatch.setattr(importer, "METHOD_VERSION", 3)
     upgraded = _snapshot()
@@ -532,6 +533,42 @@ def test_method_upgrade_retains_the_supported_history_prefix(tmp_path, monkeypat
 
     assert _load(output) == imported
     assert [row["method_version"] for row in _history(history)] == [2, 3]
+
+
+def test_stored_v2_latest_is_accepted_during_a_v3_publish(tmp_path):
+    legacy = _snapshot()
+    legacy["method_version"] = 2
+    legacy["method"] = importer._method(
+        legacy["provenance"]["transports"], method_version=2
+    )
+    output = tmp_path / "bleedthrough-latest.json"
+    history = tmp_path / "bleedthrough-history.jsonl"
+    output.write_text(json.dumps(legacy), encoding="utf-8")
+    history.write_text(
+        json.dumps(
+            importer._history_row(legacy, timestamp=legacy["last_changed_at"]),
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    upgraded = _snapshot()
+    upgraded["generated_at"] = upgraded["last_changed_at"] = (
+        "2027-01-15T07:59:20Z"
+    )
+    imported = importer.import_snapshot(
+        output=output,
+        history=history,
+        fetcher=_fetch(_wire(upgraded)),
+        now=NOW,
+    )
+
+    assert "Direct receive windows overlap" not in legacy["method"]
+    assert imported["method_version"] == 3
+    assert [row["method_version"] for row in _history(history)] == [2, 3]
+    with pytest.raises(importer.BleedthroughImportError, match="unsupported"):
+        importer.validate_document(legacy, now=NOW, require_current_method=True)
 
 
 def test_history_write_failure_preserves_both_last_good_files(tmp_path, monkeypatch):

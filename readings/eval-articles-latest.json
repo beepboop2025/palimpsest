@@ -50,13 +50,13 @@
     {
       "schema_version": "palimpsest-eval-article.v1",
       "article_id": "evalarticle-2a851582dec97dfbf095",
-      "revision_id": "evalarticlev-3b5a917d0ebdf36fcbfe5dd2",
-      "previous_revision_id": "evalarticlev-6e1c7a9be232217585594328",
+      "revision_id": "evalarticlev-b48b25df991b30413468adb7",
+      "previous_revision_id": "evalarticlev-e2a627f4eaacf1cacbb93f26",
       "slug": "before-reading-the-score-read-the-controls",
       "url": "/journal/before-reading-the-score-read-the-controls/",
       "kicker": "Eval integrity / control failure",
       "title": "A clean run does not erase a failed one",
-      "dek": "Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.",
+      "dek": "Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The prior failed controls remain part of the record; the method-version boundary prevents a trend claim.",
       "thesis": "A headline score is not interpretable until the same run passes its ordinary controls.",
       "finding_state": "bounded-finding",
       "published_at": "2026-08-14T13:34:43.929654+00:00",
@@ -164,7 +164,7 @@
         },
         {
           "section_id": "since-prior",
-          "heading": "What changed since the prior comparable sweep",
+          "heading": "What the prior sweep does and does not show",
           "paragraphs": [
             {
               "sentences": [
@@ -176,14 +176,14 @@
                   ]
                 },
                 {
-                  "text": "Wording consistency moved from 92.7% to 100%.",
+                  "text": "Method v3 reported wording consistency of 92.7%, while method v4 reported 100%.",
                   "citation_ids": [
                     "evalevidence-64289d77bc486e78bd63",
                     "evalevidence-181136267c92ac9866bc"
                   ]
                 },
                 {
-                  "text": "The comparison is descriptive and does not assign the change to a model release, provider, or prompt-routing decision.",
+                  "text": "Method versions v3 and v4 differ, so these values are not directly comparable, do not establish a trend, and do not identify a model release, provider, or prompt-routing cause.",
                   "citation_ids": [
                     "evalevidence-64289d77bc486e78bd63",
                     "evalevidence-181136267c92ac9866bc"
@@ -345,7 +345,7 @@
             "compared": 41,
             "churn_state": "quiet"
           },
-          "interpretation_limit": "This is the nearest prior full sweep. A canonical-only current run is not a like-for-like recovery test.",
+          "interpretation_limit": "This is the nearest prior full sweep. Both records use the full-sweep arm, but method versions v3 and v4 differ, so their values are not directly comparable.",
           "source_url": "https://palimpsest.info/readings/refusal-drift-history.jsonl"
         }
       ],

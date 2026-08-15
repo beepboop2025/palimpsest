@@ -30,10 +30,25 @@ def test_seed_is_executable_and_valid_shell() -> None:
 def test_seed_pins_main_line_c0_and_rejects_authority_cutover() -> None:
     seed = _seed()
     mutation = seed.index("mutation_started=1")
+    root_guard = (
+        'if [[ "$EUID" -eq 0 ]]; then\n'
+        '  [[ "${PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED:-}" == 1 ]] \\\n'
+        '    || die "root execution requires '
+        'PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1"\n'
+        "fi"
+    )
+    release_function = seed[
+        seed.index("release_git() {") : seed.index("\n}\n", seed.index("release_git() {"))
+    ]
+
+    assert root_guard in seed[:mutation]
+    assert '-c "safe.directory=$repo_root" \\\n' in release_function
 
     for marker in (
+        "PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED",
         "C0_DEPLOY_SHA",
         "EXPECTED_PREVIOUS_DEPLOY_SHA",
+        'safe.directory=$repo_root',
         "release_git -c fetch.fsckObjects=true",
         'release_git cat-file -e "${C0_DEPLOY_SHA}^{commit}"',
         '"$C0_DEPLOY_SHA" refs/remotes/origin/main',
@@ -161,8 +176,20 @@ def test_runbook_executes_the_exact_reviewed_seed_blob() -> None:
         guide.index("### First protected rollout: compatibility seed (C0)") :
         guide.index("### Phase 1: host transaction and local BLEED recovery")
     ]
+    invocation = (
+        'PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \\\n'
+        'C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \\\n'
+        'EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \\\n'
+        'COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \\\n'
+        '  bash "$SEED_TMP"'
+    )
+
+    assert invocation in section
 
     for marker in (
+        'PALIMPSEST_REPO_ROOT="$(pwd -P)"',
+        'safe.directory=$PALIMPSEST_REPO_ROOT',
+        "PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1",
         "C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'",
         "EXPECTED_PREVIOUS_DEPLOY_SHA='REPLACE_WITH_CURRENT_40_HEX_SHA'",
         "release_git -c fetch.fsckObjects=true",

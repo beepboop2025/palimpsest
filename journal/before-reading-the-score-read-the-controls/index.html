@@ -3,13 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A clean run does not erase a failed one | Palimpsest Live Eval Findings</title>
-<meta name="description" content="Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.">
+<meta name="description" content="Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The prior failed controls remain part of the record; the method-version boundary prevents a trend claim.">
 <link rel="canonical" href="https://palimpsest.info/journal/before-reading-the-score-read-the-controls/">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <meta name="theme-color" content="#08110f">
 <meta property="og:site_name" content="Palimpsest">
 <meta property="og:title" content="A clean run does not erase a failed one | Palimpsest Live Eval Findings">
-<meta property="og:description" content="Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.">
+<meta property="og:description" content="Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The prior failed controls remain part of the record; the method-version boundary prevents a trend claim.">
 <meta property="og:url" content="https://palimpsest.info/journal/before-reading-the-score-read-the-controls/">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/dashboards/assets/tikto.css">
 <link rel="stylesheet" href="/assets/shell.css">
 <link rel="stylesheet" href="/assets/journal.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"A clean run does not erase a failed one","description":"Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.","url":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","mainEntityOfPage":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","datePublished":"2026-08-14T13:34:43.929654+00:00","dateModified":"2026-08-15T01:46:03.489857+00:00","articleSection":"AI evaluation","author":{"@type":"Organization","name":"Palimpsest Eval Desk","url":"https://palimpsest.info/journal/"},"publisher":{"@type":"Organization","name":"Palimpsest Observatory","url":"https://palimpsest.info","logo":{"@type":"ImageObject","url":"https://palimpsest.info/brand/palimpsest-icon-512.png"}},"isBasedOn":["https://palimpsest.info/readings/eval-registry.jsonl","https://palimpsest.info/readings/refusal-drift-history.jsonl","https://palimpsest.info/readings/refusal-drift-latest.json"],"about":["AI evaluation","model refusal","evaluation integrity"],"image":"https://palimpsest.info/brand/palimpsest-og2.png"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"A clean run does not erase a failed one","description":"Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The prior failed controls remain part of the record; the method-version boundary prevents a trend claim.","url":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","mainEntityOfPage":"https://palimpsest.info/journal/before-reading-the-score-read-the-controls/","datePublished":"2026-08-14T13:34:43.929654+00:00","dateModified":"2026-08-15T01:46:03.489857+00:00","articleSection":"AI evaluation","author":{"@type":"Organization","name":"Palimpsest Eval Desk","url":"https://palimpsest.info/journal/"},"publisher":{"@type":"Organization","name":"Palimpsest Observatory","url":"https://palimpsest.info","logo":{"@type":"ImageObject","url":"https://palimpsest.info/brand/palimpsest-icon-512.png"}},"isBasedOn":["https://palimpsest.info/readings/eval-registry.jsonl","https://palimpsest.info/readings/refusal-drift-history.jsonl","https://palimpsest.info/readings/refusal-drift-latest.json"],"about":["AI evaluation","model refusal","evaluation integrity"],"image":"https://palimpsest.info/brand/palimpsest-og2.png"}</script>
 <meta property="article:published_time" content="2026-08-14T13:34:43.929654+00:00">
 <meta property="article:modified_time" content="2026-08-15T01:46:03.489857+00:00">
 <meta property="article:section" content="AI evaluation">
@@ -136,12 +136,12 @@
         <div class="ej-article-head__copy">
           <p class="ej-eyebrow">Eval integrity / control failure</p>
           <h1>A clean run does not erase a failed one</h1>
-          <p class="ej-article-head__dek">Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.</p>
+          <p class="ej-article-head__dek">Mistral Nemo passed all 144 prompt arms in the latest full-sweep run. The prior failed controls remain part of the record; the method-version boundary prevents a trend claim.</p>
           <p class="ej-byline"><strong>Palimpsest Eval Desk</strong><span>Published <time datetime="2026-08-14T13:34:43.929654+00:00">14 Aug 2026, 13:34 UTC</time></span><span>Updated <time datetime="2026-08-15T01:46:03.489857+00:00">15 Aug 2026, 01:46 UTC</time></span></p>
         </div>
         <aside class="ej-article-head__receipt" aria-label="Article receipt">
           <p>Publication receipt</p>
-          <dl><dt>State</dt><dd>bounded-finding</dd><dt>Citation coverage</dt><dd>100.0%</dd><dt>Sealed runs</dt><dd>4</dd><dt>Revision</dt><dd><code>evalarticlev-3b5a917d0ebdf36fcbfe5dd2</code></dd></dl>
+          <dl><dt>State</dt><dd>bounded-finding</dd><dt>Citation coverage</dt><dd>100.0%</dd><dt>Sealed runs</dt><dd>4</dd><dt>Revision</dt><dd><code>evalarticlev-b48b25df991b30413468adb7</code></dd></dl>
           <a href="article.json">Current structured article</a>
         </aside>
       </div>
@@ -152,7 +152,7 @@
     <div class="ej-article-body ej-wrap">
       <aside class="ej-article-index">
         <p>In this analysis</p>
-        <ol><li><a href="#two-readings">01 Two readings from one run</a></li><li><a href="#controls-first">02 Why the controls outrank the score</a></li><li><a href="#counterread">03 The counterread</a></li><li><a href="#since-prior">04 What changed since the prior comparable sweep</a></li></ol>
+        <ol><li><a href="#two-readings">01 Two readings from one run</a></li><li><a href="#controls-first">02 Why the controls outrank the score</a></li><li><a href="#counterread">03 The counterread</a></li><li><a href="#since-prior">04 What the prior sweep does and does not show</a></li></ol>
         <a href="#evidence">Evidence receipts</a>
       </aside>
       <div class="ej-article-prose"><section class="ej-article-section" id="two-readings">
@@ -165,8 +165,8 @@
   <header><span>03</span><h2>The counterread</h2></header>
   <div><p>4 of the 4 panel runs answered every control in the same sweep. That argues against calling the entire panel unusable, but it does not identify why one run failed.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-835308651e4159961e13">evalevidence-835308651e4159961e13</a></span></p></div>
 </section><section class="ej-article-section" id="since-prior">
-  <header><span>04</span><h2>What changed since the prior comparable sweep</h2></header>
-  <div><p>In the full sweep on 13 Aug 2026, the same model reported an arm refusal rate of 2.8% and controls_clean=false. Wording consistency moved from 92.7% to 100%. The comparison is descriptive and does not assign the change to a model release, provider, or prompt-routing decision.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-181136267c92ac9866bc">evalevidence-181136267c92ac9866bc</a>, <a href="#evidence-evalevidence-64289d77bc486e78bd63">evalevidence-64289d77bc486e78bd63</a></span></p></div>
+  <header><span>04</span><h2>What the prior sweep does and does not show</h2></header>
+  <div><p>In the full sweep on 13 Aug 2026, the same model reported an arm refusal rate of 2.8% and controls_clean=false. Method v3 reported wording consistency of 92.7%, while method v4 reported 100%. Method versions v3 and v4 differ, so these values are not directly comparable, do not establish a trend, and do not identify a model release, provider, or prompt-routing cause.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-181136267c92ac9866bc">evalevidence-181136267c92ac9866bc</a>, <a href="#evidence-evalevidence-64289d77bc486e78bd63">evalevidence-64289d77bc486e78bd63</a></span></p></div>
 </section></div>
     </div>
 
@@ -207,7 +207,7 @@
   <td><code>evalevidence-64289d77bc486e78bd63</code><span>refusal-drift-history</span></td>
   <td><strong>Most recent prior full sweep for Mistral Nemo</strong><code>/generated_at=2026-08-13T02:47:59.623887+00:00/models/mistralai/mistral-nemo</code></td>
   <td><pre>{&quot;arm_refusal_rate_pct&quot;: 2.8, &quot;churn_state&quot;: &quot;quiet&quot;, &quot;ci95_pct&quot;: [0.0, 10.2], &quot;compared&quot;: 41, &quot;controls_clean&quot;: false, &quot;family_refusal_rate_pct&quot;: 0.0, &quot;flips&quot;: 6, &quot;wording_consistency&quot;: 0.9268}</pre></td>
-  <td><p>This is the nearest prior full sweep. A canonical-only current run is not a like-for-like recovery test.</p><a href="https://palimpsest.info/readings/refusal-drift-history.jsonl">Open source artifact</a></td>
+  <td><p>This is the nearest prior full sweep. Both records use the full-sweep arm, but method versions v3 and v4 differ, so their values are not directly comparable.</p><a href="https://palimpsest.info/readings/refusal-drift-history.jsonl">Open source artifact</a></td>
 </tr></tbody></table></div>
     </section>
 
@@ -218,7 +218,7 @@
 
     <section class="ej-revisions ej-wrap" aria-labelledby="revisions-heading">
       <div><p class="ej-kicker">Correction record</p><h2 id="revisions-heading">The current head and every preserved revision</h2><p>A later eval may update this living analysis. Prior structured revisions remain addressable and the current head points back to the one it replaced.</p></div>
-      <ul><li><a href="revisions/evalarticlev-c0434d083078af97c5edd822.json">evalarticlev-c0434d083078af97c5edd822</a></li><li><a href="revisions/evalarticlev-6e1c7a9be232217585594328.json">evalarticlev-6e1c7a9be232217585594328</a></li><li><a href="revisions/evalarticlev-3b5a917d0ebdf36fcbfe5dd2.json">evalarticlev-3b5a917d0ebdf36fcbfe5dd2</a> <span>current</span></li><li><a href="revisions/evalarticlev-1a34346111e4a4f18023cf90.json">evalarticlev-1a34346111e4a4f18023cf90</a></li></ul>
+      <ul><li><a href="revisions/evalarticlev-b48b25df991b30413468adb7.json">evalarticlev-b48b25df991b30413468adb7</a> <span>current</span></li><li><a href="revisions/evalarticlev-e2a627f4eaacf1cacbb93f26.json">evalarticlev-e2a627f4eaacf1cacbb93f26</a></li><li><a href="revisions/evalarticlev-3b5a917d0ebdf36fcbfe5dd2.json">evalarticlev-3b5a917d0ebdf36fcbfe5dd2</a></li><li><a href="revisions/evalarticlev-6e1c7a9be232217585594328.json">evalarticlev-6e1c7a9be232217585594328</a></li><li><a href="revisions/evalarticlev-1a34346111e4a4f18023cf90.json">evalarticlev-1a34346111e4a4f18023cf90</a></li><li><a href="revisions/evalarticlev-c0434d083078af97c5edd822.json">evalarticlev-c0434d083078af97c5edd822</a></li></ul>
     </section>
 
     <footer class="ej-disclosure ej-wrap"><span>Machine authorship boundary</span><p>Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used.</p></footer>

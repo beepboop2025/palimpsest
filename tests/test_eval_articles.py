@@ -33,18 +33,63 @@ def test_current_eval_collection_is_sealed_cited_and_publishable():
         assert article["authorship"]["freeform_model_generation"] == "none"
 
 
-def test_control_article_keeps_non_comparable_runs_apart():
-    collection = eval_articles.build(root=ROOT)
+@pytest.mark.parametrize(
+    ("arm", "current_method", "prior_method", "required", "forbidden"),
+    (
+        (
+            "full-sweep",
+            4,
+            4,
+            (
+                "The two full-sweep records are descriptively comparable",
+                "does not assign the change to a model release, provider, or prompt-routing decision",
+            ),
+            ("not a like-for-like retest", "values are not directly comparable"),
+        ),
+        (
+            "full-sweep",
+            4,
+            3,
+            (
+                "Method versions v3 and v4 differ",
+                "values are not directly comparable",
+                "do not establish a trend",
+                "do not identify a model release, provider, or prompt-routing cause",
+            ),
+            ("Wording consistency moved from", "descriptively comparable"),
+        ),
+        (
+            "canonical",
+            4,
+            3,
+            (
+                "A canonical-only current run is not a like-for-like recovery test",
+                "not a like-for-like retest that cancels the failed full sweep",
+            ),
+            ("descriptively comparable", "Wording consistency moved from"),
+        ),
+    ),
+)
+def test_control_article_keeps_non_comparable_runs_apart(
+    arm, current_method, prior_method, required, forbidden
+):
+    sources = copy.deepcopy(eval_articles.load_sources(root=ROOT))
+    sources["reading"]["arm"] = arm
+    sources["reading"]["method_version"] = current_method
+    sources["previous_full_sweep"]["method_version"] = prior_method
+    collection = eval_articles.build_collection(sources, prior={})
     article = _article(collection, "before-reading-the-score-read-the-controls")
     prose = json.dumps(article, ensure_ascii=False)
 
     assert article["title"] == "A clean run does not erase a failed one"
     assert "Mistral Nemo" in prose
-    assert "canonical" in prose
     assert "full sweep" in prose
-    assert "not a like-for-like retest" in prose
+    current = next(row for row in article["evidence"] if "Latest Mistral Nemo" in row["label"])
     prior = next(row for row in article["evidence"] if "prior full sweep" in row["label"])
+    assert current["value"]["arm"] == arm
     assert prior["value"]["controls_clean"] is False
+    assert all(text in prose for text in required)
+    assert all(text not in prose for text in forbidden)
 
 
 def test_uncertainty_article_keeps_zero_denominator_and_interval_together():
