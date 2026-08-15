@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No answer-state changes appeared in the latest panel | Palimpsest Live Eval Findings</title>
+<meta name="description" content="Across 4 sealed endpoint runs, all 164 paired family comparisons kept the same answer state. That bounds this transition only; it does not establish permanent stability.">
+<link rel="canonical" href="https://palimpsest.info/journal/what-changed-in-the-latest-model-panel/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<meta name="theme-color" content="#08110f">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="No answer-state changes appeared in the latest panel | Palimpsest Live Eval Findings">
+<meta property="og:description" content="Across 4 sealed endpoint runs, all 164 paired family comparisons kept the same answer state. That bounds this transition only; it does not establish permanent stability.">
+<meta property="og:url" content="https://palimpsest.info/journal/what-changed-in-the-latest-model-panel/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<link rel="stylesheet" href="/assets/journal.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"No answer-state changes appeared in the latest panel","description":"Across 4 sealed endpoint runs, all 164 paired family comparisons kept the same answer state. That bounds this transition only; it does not establish permanent stability.","url":"https://palimpsest.info/journal/what-changed-in-the-latest-model-panel/","mainEntityOfPage":"https://palimpsest.info/journal/what-changed-in-the-latest-model-panel/","datePublished":"2026-08-15T12:55:00.684023+00:00","dateModified":"2026-08-15T12:55:00.684023+00:00","articleSection":"AI evaluation","author":{"@type":"Organization","name":"Palimpsest Eval Desk","url":"https://palimpsest.info/journal/"},"publisher":{"@type":"Organization","name":"Palimpsest Observatory","url":"https://palimpsest.info","logo":{"@type":"ImageObject","url":"https://palimpsest.info/brand/palimpsest-icon-512.png"}},"isBasedOn":["https://palimpsest.info/readings/eval-registry.jsonl","https://palimpsest.info/readings/refusal-drift-latest.json"],"about":["AI evaluation","model refusal","evaluation integrity"],"image":"https://palimpsest.info/brand/palimpsest-og2.png"}</script>
+<meta property="article:published_time" content="2026-08-15T12:55:00.684023+00:00">
+<meta property="article:modified_time" content="2026-08-15T12:55:00.684023+00:00">
+<meta property="article:section" content="AI evaluation">
+</head><body class="ps ej ej--article" data-finding-state="bounded-finding">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">China-facing economic releases and censorship measurements, separated by method and joined only by receipts.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Start</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>What changed, what is withheld, and the evidence behind both</span></a>
+            <a href="/osint-china.html"><b>OSINT China</b><span>Censorship signals, sources and freshness in one public roll-up</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Economic record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
+            <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Information controls</p>
+            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
+            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Signals</p>
+            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
+            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
+            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
+            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
+            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
+            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3" data-within="">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Read</p>
+            <a href="/journal/" aria-current="page"><b>Live Eval Findings<span class="ps-tag">new</span></b><span>Current model-panel analysis with uncertainty and sentence receipts</span></a>
+            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
+            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Verify</p>
+            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
+            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
+            <a href="/readings/refusal-drift-latest.json"><b>Latest panel JSON</b><span>Rates, controls, intervals and model-level labels</span></a>
+            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-4">
+        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">How it works</p>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
+            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-5">
+        <p class="ps-flyout__lede">Use the public record, reproduce the methods, or help keep the work independent.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use Palimpsest</p>
+            <a href="/data.html"><b>Data</b><span>Every public dataset, format and licence</span></a>
+            <a href="/developers.html"><b>Developers</b><span>REST, MCP and machine-readable contracts</span></a>
+            <a href="/for-researchers.html"><b>For researchers</b><span>Methods, validation and citation guidance</span></a>
+            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Carry exact claims and supporting bytes elsewhere</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Public good</p>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall, no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main">
+  <article>
+    <header class="ej-article-head ej-wrap">
+      <nav aria-label="Breadcrumb"><a href="/journal/">Live Eval Findings</a><span>/</span><span>Model behavior / adjacent-run drift</span></nav>
+      <div class="ej-article-head__grid">
+        <div class="ej-article-head__copy">
+          <p class="ej-eyebrow">Model behavior / adjacent-run drift</p>
+          <h1>No answer-state changes appeared in the latest panel</h1>
+          <p class="ej-article-head__dek">Across 4 sealed endpoint runs, all 164 paired family comparisons kept the same answer state. That bounds this transition only; it does not establish permanent stability.</p>
+          <p class="ej-byline"><strong>Palimpsest Eval Desk</strong><span>Published <time datetime="2026-08-15T12:55:00.684023+00:00">15 Aug 2026, 12:55 UTC</time></span><span>Updated <time datetime="2026-08-15T12:55:00.684023+00:00">15 Aug 2026, 12:55 UTC</time></span></p>
+        </div>
+        <aside class="ej-article-head__receipt" aria-label="Article receipt">
+          <p>Publication receipt</p>
+          <dl><dt>State</dt><dd>bounded-finding</dd><dt>Citation coverage</dt><dd>100.0%</dd><dt>Sealed runs</dt><dd>4</dd><dt>Revision</dt><dd><code>evalarticlev-2f3e5c23b0e4e639ddbea6af</code></dd></dl>
+          <a href="article.json">Current structured article</a>
+        </aside>
+      </div>
+      <div class="ej-thesis"><span>Thesis</span><p>A drift result is a dated answer-state transition with a paired denominator, not a diagnosis of why an endpoint changed.</p></div>
+      <ul class="ej-key-numbers" aria-label="Key figures"><li><strong>0</strong><span>answer-state transitions</span><small>0 toward refusal, 0 toward answer</small><i><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a></i></li><li><strong>164</strong><span>paired family comparisons</span><small>across 4 named endpoints</small><i><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a></i></li><li><strong>0/4</strong><span>endpoints with a change</span><small>latest compatible transition</small><i><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a>, <a href="#evidence-evalevidence-611a9df765f0234d0dcc">evalevidence-611a9df765f0234d0dcc</a></i></li></ul>
+    </header>
+
+    <div class="ej-article-body ej-wrap">
+      <aside class="ej-article-index">
+        <p>In this analysis</p>
+        <ol><li><a href="#latest-transition">01 What changed in the latest transition</a></li><li><a href="#transition-not-trend">02 One transition is not a trend</a></li><li><a href="#monitor-boundary">03 The churn alarm watches a different failure mode</a></li></ol>
+        <a href="#evidence">Evidence receipts</a>
+      </aside>
+      <div class="ej-article-prose"><section class="ej-article-section" id="latest-transition">
+  <header><span>01</span><h2>What changed in the latest transition</h2></header>
+  <div><p>The latest panel recorded 0 new refusal transitions and 0 newly answered transitions across 164 paired family comparisons. Those transitions occurred in 0 of 4 named endpoint runs.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-611a9df765f0234d0dcc">evalevidence-611a9df765f0234d0dcc</a>, <a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a></span></p></div>
+</section><section class="ej-article-section" id="transition-not-trend">
+  <header><span>02</span><h2>One transition is not a trend</h2></header>
+  <div><p>The comparison is adjacent and endpoint-specific, so a changed label establishes neither a persistent trajectory nor a common cause across providers. The registry preserves the exact current attestations, which makes later revision detectable without revealing a provider&#x27;s hidden routing or weights.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-1c02ea82ea7a4a23494a">evalevidence-1c02ea82ea7a4a23494a</a>, <a href="#evidence-evalevidence-611a9df765f0234d0dcc">evalevidence-611a9df765f0234d0dcc</a>, <a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a></span></p></div>
+</section><section class="ej-article-section" id="monitor-boundary">
+  <header><span>03</span><h2>The churn alarm watches a different failure mode</h2></header>
+  <div><p>The anytime-valid monitor is designed to detect repeated instability after calibration, while the adjacent comparison records individual answer-state changes immediately. A single change that then remains fixed cannot become repeated evidence merely because the same question is asked again.<span class="ej-citations"><b>Receipts</b> <a href="#evidence-evalevidence-1c02ea82ea7a4a23494a">evalevidence-1c02ea82ea7a4a23494a</a>, <a href="#evidence-evalevidence-2673ec0d7cab9e1270a0">evalevidence-2673ec0d7cab9e1270a0</a></span></p></div>
+</section></div>
+    </div>
+
+    <section class="ej-adversarial ej-wrap" aria-label="Adversarial reading">
+      <section class="ej-record ej-record--counter"><h2>The strongest counterread</h2><ul><li><p>No observed transition is favorable evidence of short-run stability inside this exact panel.</p><span><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a></span></li><li><p>An observed transition can reflect endpoint routing, sampling, classifier error, or model change; the eval alone does not select among those explanations.</p><span><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a>, <a href="#evidence-evalevidence-1c02ea82ea7a4a23494a">evalevidence-1c02ea82ea7a4a23494a</a></span></li></ul></section>
+      <section class="ej-record ej-record--limits"><h2>What this cannot establish</h2><ul><li><p>Only prompt families present in both compatible adjacent runs enter the paired denominator.</p><span><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a>, <a href="#evidence-evalevidence-1c02ea82ea7a4a23494a">evalevidence-1c02ea82ea7a4a23494a</a></span></li><li><p>Endpoint names do not independently prove that the provider served unchanged weights or routing across runs.</p><span><a href="#evidence-evalevidence-611a9df765f0234d0dcc">evalevidence-611a9df765f0234d0dcc</a></span></li><li><p>The lexical answer-state classifier still requires independent human validation for a broader construct claim.</p><span><a href="#evidence-evalevidence-1c02ea82ea7a4a23494a">evalevidence-1c02ea82ea7a4a23494a</a></span></li></ul></section>
+    </section>
+
+    <section class="ej-method ej-wrap" aria-labelledby="method-heading">
+      <div class="ej-section-head"><p>Reproduce it</p><h2 id="method-heading">From frozen prompts to a public claim</h2></div>
+      <ol><li><span>01</span><div><h3>Pair</h3><p>Compare only compatible family labels shared by adjacent dated runs.</p><small><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a>, <a href="#evidence-evalevidence-1c02ea82ea7a4a23494a">evalevidence-1c02ea82ea7a4a23494a</a></small></div></li><li><span>02</span><div><h3>Count</h3><p>Publish new refusals, newly answered families, and the paired denominator separately for every endpoint.</p><small><a href="#evidence-evalevidence-b7b5ae6301c7677fe794">evalevidence-b7b5ae6301c7677fe794</a></small></div></li><li><span>03</span><div><h3>Seal</h3><p>Bind the current response metrics to verified registry entries before publishing the interpretation.</p><small><a href="#evidence-evalevidence-611a9df765f0234d0dcc">evalevidence-611a9df765f0234d0dcc</a></small></div></li><li><span>04</span><div><h3>Monitor</h3><p>Keep the repeated-instability alarm separate from the one-transition record.</p><small><a href="#evidence-evalevidence-2673ec0d7cab9e1270a0">evalevidence-2673ec0d7cab9e1270a0</a></small></div></li></ol>
+      <div class="ej-command"><span>Verify the chain offline</span><code>python3 scripts/verify_eval_registry.py</code></div>
+    </section>
+
+    <section class="ej-evidence ej-wrap" id="evidence" aria-labelledby="evidence-heading">
+      <div class="ej-section-head"><p>Evidence ledger</p><h2 id="evidence-heading">Every cited value and its limit</h2><a href="article.json">Article JSON</a></div>
+      <div class="ej-table-wrap" role="region" tabindex="0" aria-label="Article evidence receipts"><table><thead><tr><th>Receipt</th><th>Source selector</th><th>Exact value</th><th>Interpretation limit</th></tr></thead><tbody><tr id="evidence-evalevidence-b7b5ae6301c7677fe794">
+  <td><code>evalevidence-b7b5ae6301c7677fe794</code><span>refusal-drift-current</span></td>
+  <td><strong>Latest adjacent-run answer-state transitions</strong><code>/models/*/drift_vs_prior</code></td>
+  <td><pre>{&quot;anthropic/claude-3-haiku&quot;: {&quot;controls_clean&quot;: true, &quot;drift_rate_pct&quot;: 0.0, &quot;n_compared&quot;: 41, &quot;new_answers&quot;: [], &quot;new_refusals&quot;: []}, &quot;meta-llama/llama-3.3-70b-instruct&quot;: {&quot;controls_clean&quot;: true, &quot;drift_rate_pct&quot;: 0.0, &quot;n_compared&quot;: 41, &quot;new_answers&quot;: [], &quot;new_refusals&quot;: []}, &quot;mistralai/mistral-nemo&quot;: {&quot;controls_clean&quot;: true, &quot;drift_rate_pct&quot;: 0.0, &quot;n_compared&quot;: 41, &quot;new_answers&quot;: [], &quot;new_refusals&quot;: []}, &quot;openai/gpt-4o-mini&quot;: {&quot;controls_clean&quot;: true, &quot;drift_rate_pct&quot;: 0.0, &quot;n_compared&quot;: 41, &quot;new_answers&quot;: [], &quot;new_refusals&quot;: []}}</pre></td>
+  <td><p>This compares each named endpoint with its immediately prior compatible canonical observation. It does not identify a provider-side cause or a trend.</p><a href="https://palimpsest.info/readings/refusal-drift-latest.json">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-2673ec0d7cab9e1270a0">
+  <td><code>evalevidence-2673ec0d7cab9e1270a0</code><span>refusal-drift-current</span></td>
+  <td><strong>Anytime-valid churn monitor state and blind spot</strong><code>/models/*/churn_monitor</code></td>
+  <td><pre>{&quot;anthropic/claude-3-haiku&quot;: {&quot;evalue&quot;: null, &quot;pairs_needed&quot;: 21, &quot;pairs_seen&quot;: 1, &quot;state&quot;: &quot;calibrating&quot;}, &quot;meta-llama/llama-3.3-70b-instruct&quot;: {&quot;evalue&quot;: null, &quot;pairs_needed&quot;: 21, &quot;pairs_seen&quot;: 1, &quot;state&quot;: &quot;calibrating&quot;}, &quot;mistralai/mistral-nemo&quot;: {&quot;evalue&quot;: null, &quot;pairs_needed&quot;: 21, &quot;pairs_seen&quot;: 1, &quot;state&quot;: &quot;calibrating&quot;}, &quot;openai/gpt-4o-mini&quot;: {&quot;evalue&quot;: null, &quot;pairs_needed&quot;: 21, &quot;pairs_seen&quot;: 1, &quot;state&quot;: &quot;calibrating&quot;}}</pre></td>
+  <td><p>The churn monitor watches repeated instability. A single permanent answer-state change appears in the adjacent-run transition but cannot accumulate as repeated evidence.</p><a href="https://palimpsest.info/readings/refusal-drift-latest.json">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-1c02ea82ea7a4a23494a">
+  <td><code>evalevidence-1c02ea82ea7a4a23494a</code><span>refusal-drift-current</span></td>
+  <td><strong>Current panel method and arm</strong><code>/method</code></td>
+  <td><pre>{&quot;arm&quot;: &quot;canonical&quot;, &quot;generated_at&quot;: &quot;2026-08-15T12:55:00.684023+00:00&quot;, &quot;method&quot;: &quot;every question is a family of meaning-preserving wordings; the family is the statistical unit; new refusals (answered-&gt;refused) are the erasure events; the standing alarm is a mixture supermartingale, so the lifetime false-alarm rate is bounded under unlimited peeking&quot;, &quot;method_version&quot;: 4, &quot;suite&quot;: &quot;frontier-overrefusal-v2&quot;}</pre></td>
+  <td><p>The method applies only to the named panel, prompt families, and dated run.</p><a href="https://palimpsest.info/readings/refusal-drift-latest.json">Open source artifact</a></td>
+</tr><tr id="evidence-evalevidence-611a9df765f0234d0dcc">
+  <td><code>evalevidence-611a9df765f0234d0dcc</code><span>eval-registry</span></td>
+  <td><strong>Registry seals for the latest panel transition</strong><code>/runs/ts=2026-08-15T12:55:00.684023+00:00</code></td>
+  <td><pre>[{&quot;entry_hash&quot;: &quot;2418486c95c09e2066ae102649c94fe71b939352022791b7f0b243b4f4224784&quot;, &quot;model&quot;: &quot;anthropic/claude-3-haiku&quot;, &quot;responses_hash&quot;: &quot;009f10fb045a3a4e4383115febbc9bda6d34c4979b7b927de2d72b5cb9fc7a5a&quot;, &quot;seq&quot;: 424}, {&quot;entry_hash&quot;: &quot;952ecb8e2229206b4cad2cdf427243b9b87392478513cea2bcebef907c9ba7af&quot;, &quot;model&quot;: &quot;meta-llama/llama-3.3-70b-instruct&quot;, &quot;responses_hash&quot;: &quot;86991492d4f3515317af351e5002962a560b1710bf16dd621148215c5987967a&quot;, &quot;seq&quot;: 426}, {&quot;entry_hash&quot;: &quot;53228f91a9345813a7e3297a2b17dbfb020432522d072ecbd72bcd03a465aaf3&quot;, &quot;model&quot;: &quot;mistralai/mistral-nemo&quot;, &quot;responses_hash&quot;: &quot;c1b3518fda0daa9f4b49cadc21c445bb0ef0fe24c82e4a660d72fbedd9a0b51b&quot;, &quot;seq&quot;: 428}, {&quot;entry_hash&quot;: &quot;215340010da39cc08b8f38203607e3977cfb2c1298162295e0ed1738c5a0a6fd&quot;, &quot;model&quot;: &quot;openai/gpt-4o-mini&quot;, &quot;responses_hash&quot;: &quot;1c1f62271dc91e3b41792e27b4aa228099282cd8ecd6fe40d0312d1595808a93&quot;, &quot;seq&quot;: 422}]</pre></td>
+  <td><p>The seals make later rewriting detectable inside the served chain. They do not prove that an endpoint label names unchanged hidden weights.</p><a href="https://palimpsest.info/readings/eval-registry.jsonl">Open source artifact</a></td>
+</tr></tbody></table></div>
+    </section>
+
+    <section class="ej-gates ej-wrap" aria-labelledby="gates-heading">
+      <div class="ej-section-head"><p>Quality gate</p><h2 id="gates-heading">Why this article was allowed to publish</h2></div>
+      <ul><li><span aria-hidden="true">✓</span><div><strong>The eval registry verifies from genesis to the cited runs</strong><p>All 4 panel runs match verified registry attestations.</p><code>registry-chain</code></div></li><li><span aria-hidden="true">✓</span><div><strong>Control failures are visible and constrain the interpretation</strong><p>A failed control produces an instrument warning, never a censorship claim.</p><code>controls-accounted-for</code></div></li><li><span aria-hidden="true">✓</span><div><strong>The article reports denominators and uncertainty with the rate</strong><p>Family counts and Wilson 95% interval bounds remain attached to the score.</p><code>uncertainty-visible</code></div></li><li><span aria-hidden="true">✓</span><div><strong>Every analytical sentence names exact evidence receipts</strong><p>6 of 6 analytical sentences carry citations.</p><code>sentence-citations</code></div></li><li><span aria-hidden="true">✓</span><div><strong>Counterreadings, limitations, and reproduction steps are present</strong><p>The approved article shapes require all three surfaces before publication.</p><code>adversarial-reading</code></div></li><li><span aria-hidden="true">✓</span><div><strong>No interviews or free-form model prose are represented as reporting</strong><p>Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used.</p><code>bounded-authorship</code></div></li></ul>
+    </section>
+
+    <section class="ej-revisions ej-wrap" aria-labelledby="revisions-heading">
+      <div><p class="ej-kicker">Correction record</p><h2 id="revisions-heading">The current head and every preserved revision</h2><p>A later eval may update this living analysis. Prior structured revisions remain addressable and the current head points back to the one it replaced.</p></div>
+      <ul><li><a href="revisions/evalarticlev-2f3e5c23b0e4e639ddbea6af.json">evalarticlev-2f3e5c23b0e4e639ddbea6af</a> <span>current</span></li></ul>
+    </section>
+
+    <footer class="ej-disclosure ej-wrap"><span>Machine authorship boundary</span><p>Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used.</p></footer>
+  </article>
+</main>
+<footer class="ej-footer"><div class="ej-wrap"><a href="/journal/">← Live Eval Findings</a><p>Public evidence. Visible limits. Offline verification.</p><a href="/readings/eval-registry.html">Open the Registry</a></div></footer>
+<script src="/assets/shell.js" defer></script>
+</body></html>
