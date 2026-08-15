@@ -1,5 +1,5 @@
 {
- "as_of": "2026-08-14T08:00:17.966002Z",
+ "as_of": "2026-08-15T10:24:07.852079Z",
  "claim": "Named-series one-step forecasts only after frozen pseudo-real-time promotion gates pass; otherwise this artifact publishes backtest evidence and abstains.",
  "configuration": {
   "baseline_model_id": "random-walk",
@@ -20,7 +20,7 @@
   },
   "sha256": "49c91dcd953aec9767ab606bdce88e237ec93a780e41d906e34c33921c14202f"
  },
- "generated_at": "2026-08-14T08:00:17.966002Z",
+ "generated_at": "2026-08-15T10:24:07.852079Z",
  "integrity": {
   "aggregate_only": true,
   "collection_clock_enforced": true,
@@ -40,11 +40,11 @@
  "schema_version": "palimpsest-economic-forecast.v1",
  "scope": "One-step forecasts for explicitly named CFETS benchmark series; this configuration does not define an economy-wide activity measure.",
  "snapshot": {
-  "as_of": "2026-08-14T08:00:17.966002Z",
-  "bytes": 382089,
+  "as_of": "2026-08-15T10:24:07.852079Z",
+  "bytes": 651672,
   "path": "readings/china-econ-observations.jsonl",
-  "records": 435,
-  "sha256": "86c5630727f81b80d49c95a8695394aafdee5e9acc8a4a291b5d10752303db58"
+  "records": 742,
+  "sha256": "c2daa98643eeb55dd90b6255803a4a71f71f9fc1465566d9a5195c5d24e37fef"
  },
  "source": "Palimpsest bitemporal China economic observation ledger",
  "source_registry": {
@@ -167,7 +167,7 @@
       "candidate_rows": 2,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 2,
-      "same_or_future_period_rows_excluded": 116,
+      "same_or_future_period_rows_excluded": 200,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-07",
@@ -278,7 +278,7 @@
       "candidate_rows": 6,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 6,
-      "same_or_future_period_rows_excluded": 112,
+      "same_or_future_period_rows_excluded": 196,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-08",
@@ -389,7 +389,7 @@
       "candidate_rows": 10,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 10,
-      "same_or_future_period_rows_excluded": 108,
+      "same_or_future_period_rows_excluded": 192,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-09",
@@ -500,7 +500,7 @@
       "candidate_rows": 14,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 14,
-      "same_or_future_period_rows_excluded": 104,
+      "same_or_future_period_rows_excluded": 188,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-10",
@@ -611,7 +611,7 @@
       "candidate_rows": 18,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 18,
-      "same_or_future_period_rows_excluded": 100,
+      "same_or_future_period_rows_excluded": 184,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-13",
@@ -722,7 +722,7 @@
       "candidate_rows": 22,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 22,
-      "same_or_future_period_rows_excluded": 96,
+      "same_or_future_period_rows_excluded": 180,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-14",
@@ -833,7 +833,7 @@
       "candidate_rows": 26,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 26,
-      "same_or_future_period_rows_excluded": 92,
+      "same_or_future_period_rows_excluded": 176,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-15",
@@ -944,7 +944,7 @@
       "candidate_rows": 30,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 30,
-      "same_or_future_period_rows_excluded": 88,
+      "same_or_future_period_rows_excluded": 172,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-16",
@@ -1052,10 +1052,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 34,
+      "candidate_rows": 36,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 34,
-      "same_or_future_period_rows_excluded": 84,
+      "excluded_by_release_clock": 36,
+      "same_or_future_period_rows_excluded": 166,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-17",
@@ -1073,122 +1073,11 @@
      },
      "fold_id": "abae89a4394d5048b3f69dab150a0e923cb2d8e1e8a5895e5d2ee369b022e035",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "9780c26f1d2aee8fa1102be3439c2639c2a17b4896a0ea3eff4be05c29874b31",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "9f9168edf20b2bf46cd765a16923b365b6e4197e9e30ac5321724f84f61e708c",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.412
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 38,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 38,
-      "same_or_future_period_rows_excluded": 80,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-20",
-     "target_period_start": "2026-07-20"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "0dcde85ad845d03cf8c61870f00b17b2c8eec51955d87b494457abb84e874629",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.382
-     },
-     "fold_id": "6dcc82223b8d67afa2c2a50083d48daf45935995b1bcb5eb8234abe37fdd7957",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "0dcde85ad845d03cf8c61870f00b17b2c8eec51955d87b494457abb84e874629",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.382
      },
      "outcome_changed": false,
      "predictions": [
@@ -1277,140 +1166,29 @@
       "candidate_rows": 42,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 42,
-      "same_or_future_period_rows_excluded": 76,
+      "same_or_future_period_rows_excluded": 160,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-21",
-     "target_period_start": "2026-07-21"
+     "target_period_end": "2026-07-20",
+     "target_period_start": "2026-07-20"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "99d8aa7f2b138a4247c71221bbaa50fd9428ad0fb081d51555fce7dba36f8f02",
+      "observation_id": "0dcde85ad845d03cf8c61870f00b17b2c8eec51955d87b494457abb84e874629",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.373
+      "value": 1.382
      },
-     "fold_id": "053511ffd4b4b1949b185f053641f5e3a80cfaaa64e22b5ddea72d650ba18b5c",
+     "fold_id": "6dcc82223b8d67afa2c2a50083d48daf45935995b1bcb5eb8234abe37fdd7957",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "99d8aa7f2b138a4247c71221bbaa50fd9428ad0fb081d51555fce7dba36f8f02",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "3d9eb06e0b688b0dc44f27d4622504f6118b990dfe6d1c773f5bd72d569603df",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.373
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 46,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 46,
-      "same_or_future_period_rows_excluded": 72,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-22",
-     "target_period_start": "2026-07-22"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "8b26b3568a4e20729e996706c4c6d41f4439dfe42be3f44c04a074e1bff976a1",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.365
-     },
-     "fold_id": "00dcc1b1b66bef7eff9f090d881dbe213a9e179e47f32136afdbf7014402a6e3",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "8b26b3568a4e20729e996706c4c6d41f4439dfe42be3f44c04a074e1bff976a1",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.365
+      "value": 1.382
      },
      "outcome_changed": false,
      "predictions": [
@@ -1499,140 +1277,29 @@
       "candidate_rows": 50,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 50,
-      "same_or_future_period_rows_excluded": 68,
+      "same_or_future_period_rows_excluded": 152,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-23",
-     "target_period_start": "2026-07-23"
+     "target_period_end": "2026-07-21",
+     "target_period_start": "2026-07-21"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "1d662f283ad6c78a6e610fd44a28f5c809fff86b0ab1e4605d5bb49ca905ffe8",
+      "observation_id": "99d8aa7f2b138a4247c71221bbaa50fd9428ad0fb081d51555fce7dba36f8f02",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.3812
+      "value": 1.373
      },
-     "fold_id": "0d7fb6c6b8e62642e68764ccf32921e9223cb6fef833f15662228d365f728e51",
+     "fold_id": "053511ffd4b4b1949b185f053641f5e3a80cfaaa64e22b5ddea72d650ba18b5c",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "1d662f283ad6c78a6e610fd44a28f5c809fff86b0ab1e4605d5bb49ca905ffe8",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "ebca0483f4cfc4ad391a3898824e20ff6494f93f77d9ebe8efb7ccae4ae73aeb",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.3812
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 54,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 54,
-      "same_or_future_period_rows_excluded": 64,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-24",
-     "target_period_start": "2026-07-24"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "47958d56b867982e850373eb989294b6a8b351aee135bf8c85e647df65cae3f6",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.418
-     },
-     "fold_id": "040242bd48574bda968c7a97f1c7e8d9a89114cf548b98fe1b79bb170e89cd85",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "47958d56b867982e850373eb989294b6a8b351aee135bf8c85e647df65cae3f6",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.418
+      "value": 1.373
      },
      "outcome_changed": false,
      "predictions": [
@@ -1721,140 +1388,29 @@
       "candidate_rows": 58,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 58,
-      "same_or_future_period_rows_excluded": 60,
+      "same_or_future_period_rows_excluded": 144,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-27",
-     "target_period_start": "2026-07-27"
+     "target_period_end": "2026-07-22",
+     "target_period_start": "2026-07-22"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "a3e795d60d2ac1472b436081680aeb28628ae6cd14489609ad17c05001254235",
+      "observation_id": "8b26b3568a4e20729e996706c4c6d41f4439dfe42be3f44c04a074e1bff976a1",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.415
+      "value": 1.365
      },
-     "fold_id": "2cee69ccb839c9c19671582e5350ae321adfbe83418c3d8a03dde54e6f194417",
+     "fold_id": "00dcc1b1b66bef7eff9f090d881dbe213a9e179e47f32136afdbf7014402a6e3",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "a3e795d60d2ac1472b436081680aeb28628ae6cd14489609ad17c05001254235",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "60f7ca709866d75abdefdcbbaa335f56782f32cf3808e014e13169760a16f803",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.415
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 62,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 62,
-      "same_or_future_period_rows_excluded": 56,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-28",
-     "target_period_start": "2026-07-28"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "4ae2b0c0cda9765f25e678cacf165be3b121fe9fa9ee8295f28fe74299c1cd21",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.438
-     },
-     "fold_id": "563bd86c0dfcfd56056d5e486c8df081134c154f2ab2f7b327e64a24c409fff7",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "4ae2b0c0cda9765f25e678cacf165be3b121fe9fa9ee8295f28fe74299c1cd21",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.438
+      "value": 1.365
      },
      "outcome_changed": false,
      "predictions": [
@@ -1943,140 +1499,29 @@
       "candidate_rows": 66,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 66,
-      "same_or_future_period_rows_excluded": 52,
+      "same_or_future_period_rows_excluded": 136,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-29",
-     "target_period_start": "2026-07-29"
+     "target_period_end": "2026-07-23",
+     "target_period_start": "2026-07-23"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "fb62633189807d3469b8611d9fab4c8cccdb70489ef9d8898a858d4aae3d3344",
+      "observation_id": "1d662f283ad6c78a6e610fd44a28f5c809fff86b0ab1e4605d5bb49ca905ffe8",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.4
+      "value": 1.3812
      },
-     "fold_id": "a4734ab42459b305fe290910733fd2cf690a8c19574f0066e8df42ab73605966",
+     "fold_id": "0d7fb6c6b8e62642e68764ccf32921e9223cb6fef833f15662228d365f728e51",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "fb62633189807d3469b8611d9fab4c8cccdb70489ef9d8898a858d4aae3d3344",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "fb8d0e3a590a487477b4f2daaa07c1904f932b8f6ff4dd71fc988118e0418aa3",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.4
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 70,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 70,
-      "same_or_future_period_rows_excluded": 48,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-30",
-     "target_period_start": "2026-07-30"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "244ec819fddf7b7444af35f239935f40705acc589a1c6b3bcb58e5d1567849f3",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.41
-     },
-     "fold_id": "427bd6ac3d28f937dcacacb2d69c45a1b1a8970f3d659ef2dcb1da61781682b4",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "244ec819fddf7b7444af35f239935f40705acc589a1c6b3bcb58e5d1567849f3",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.41
+      "value": 1.3812
      },
      "outcome_changed": false,
      "predictions": [
@@ -2165,140 +1610,29 @@
       "candidate_rows": 74,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 74,
-      "same_or_future_period_rows_excluded": 44,
+      "same_or_future_period_rows_excluded": 128,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-31",
-     "target_period_start": "2026-07-31"
+     "target_period_end": "2026-07-24",
+     "target_period_start": "2026-07-24"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "24bc9acabd3d50ddcc04f112e4af486cd6032bd2130507e19b65600142df1e9d",
+      "observation_id": "47958d56b867982e850373eb989294b6a8b351aee135bf8c85e647df65cae3f6",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.413
+      "value": 1.418
      },
-     "fold_id": "1b37368a80f78cf86422f4e09ea835e151572df7ebfcc0321568fb700abd2cde",
+     "fold_id": "040242bd48574bda968c7a97f1c7e8d9a89114cf548b98fe1b79bb170e89cd85",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "24bc9acabd3d50ddcc04f112e4af486cd6032bd2130507e19b65600142df1e9d",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "b8e52c7fb10cea3442f6d1490f5ccf682954c51c84f9d11ff39291346227c6e8",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.413
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 78,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 78,
-      "same_or_future_period_rows_excluded": 40,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-08-03",
-     "target_period_start": "2026-08-03"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "82ba150ea288ae203167fddd6094095319c5e0e7cccd3624ebad00ac77f7162d",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.366
-     },
-     "fold_id": "c17479afbfab814e605652a8e4f5c5b4fc817f492c439bb6758392f589c91310",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "82ba150ea288ae203167fddd6094095319c5e0e7cccd3624ebad00ac77f7162d",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.366
+      "value": 1.418
      },
      "outcome_changed": false,
      "predictions": [
@@ -2387,7 +1721,673 @@
       "candidate_rows": 82,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 82,
-      "same_or_future_period_rows_excluded": 36,
+      "same_or_future_period_rows_excluded": 120,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-27",
+     "target_period_start": "2026-07-27"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "a3e795d60d2ac1472b436081680aeb28628ae6cd14489609ad17c05001254235",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.415
+     },
+     "fold_id": "2cee69ccb839c9c19671582e5350ae321adfbe83418c3d8a03dde54e6f194417",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "d1a7a61114d7f9dde25a6eb094a133647bd85a729681c8abe53cd558135bedf5",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.415
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 90,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 90,
+      "same_or_future_period_rows_excluded": 112,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-28",
+     "target_period_start": "2026-07-28"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "4ae2b0c0cda9765f25e678cacf165be3b121fe9fa9ee8295f28fe74299c1cd21",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.438
+     },
+     "fold_id": "563bd86c0dfcfd56056d5e486c8df081134c154f2ab2f7b327e64a24c409fff7",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "3e1a9e7470bd87a3bac6b0187f2988ddc27e56deb2d2e30c108f0636adcfb362",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.438
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 98,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 98,
+      "same_or_future_period_rows_excluded": 104,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-29",
+     "target_period_start": "2026-07-29"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "fb62633189807d3469b8611d9fab4c8cccdb70489ef9d8898a858d4aae3d3344",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.4
+     },
+     "fold_id": "a4734ab42459b305fe290910733fd2cf690a8c19574f0066e8df42ab73605966",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "0b1f2979e2752e49a96b630aeeb6eca4be3b33265e40ae3dd42641a471bac3ea",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.4
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 106,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 106,
+      "same_or_future_period_rows_excluded": 96,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-30",
+     "target_period_start": "2026-07-30"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "244ec819fddf7b7444af35f239935f40705acc589a1c6b3bcb58e5d1567849f3",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.41
+     },
+     "fold_id": "427bd6ac3d28f937dcacacb2d69c45a1b1a8970f3d659ef2dcb1da61781682b4",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "143ce8d35b722f38f6390ebd13815399f847d1df8e26c661e03e161d123d29c1",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.41
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 114,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 114,
+      "same_or_future_period_rows_excluded": 88,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-31",
+     "target_period_start": "2026-07-31"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "24bc9acabd3d50ddcc04f112e4af486cd6032bd2130507e19b65600142df1e9d",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.413
+     },
+     "fold_id": "1b37368a80f78cf86422f4e09ea835e151572df7ebfcc0321568fb700abd2cde",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "8ac631d8791c106899a2172612afea831074b539f0262c6bbc6e0cef6c42fb6e",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.413
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 122,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 122,
+      "same_or_future_period_rows_excluded": 80,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-08-03",
+     "target_period_start": "2026-08-03"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "82ba150ea288ae203167fddd6094095319c5e0e7cccd3624ebad00ac77f7162d",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.366
+     },
+     "fold_id": "c17479afbfab814e605652a8e4f5c5b4fc817f492c439bb6758392f589c91310",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "2ea1017923b94fb6414f9217dc223ac9e1f638dc0f4deb159bdb742ce82758c5",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.366
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 130,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 130,
+      "same_or_future_period_rows_excluded": 72,
       "selected_rows": 0
      },
      "target_period_end": "2026-08-04",
@@ -2405,9 +2405,9 @@
      },
      "fold_id": "27750699aeeb36223136f98ac3426adb0024cf398af67dc3a88496483c6f18b4",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-05T03:48:15.933541Z",
-      "observation_id": "8a0a175ff5efdc6eca712b14d62515556ae92742b19bb6de0ad85dca8e7c2457",
-      "released_at": "2026-08-05T03:48:15.933541Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "259a4ffecb738dca421aebbf5b24d771d36b25be6a4579e1ccd1cf1d6d76c110",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.3604
      },
@@ -2510,10 +2510,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 86,
+      "candidate_rows": 138,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 32,
+      "excluded_by_release_clock": 52,
+      "same_or_future_period_rows_excluded": 64,
       "selected_rows": 86
      },
      "target_period_end": "2026-08-05",
@@ -2531,9 +2531,9 @@
      },
      "fold_id": "9b3d742268bae528fb2a09e15cc0fd40071188e71e1795964d030dae887fe784",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-06T09:28:17.220121Z",
-      "observation_id": "4170e6df567146a05c672429fc3f056e83ee24732cf1fdd56bb3fa1e2cd6b19d",
-      "released_at": "2026-08-06T09:28:17.220121Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "9f4026f424302f0f243432c2fc4ba73e3ea5ecf35af77bd0306163f95987dd9e",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.353
      },
@@ -2636,10 +2636,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 90,
+      "candidate_rows": 146,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 28,
+      "excluded_by_release_clock": 56,
+      "same_or_future_period_rows_excluded": 56,
       "selected_rows": 90
      },
      "target_period_end": "2026-08-06",
@@ -2657,9 +2657,9 @@
      },
      "fold_id": "592010c3aa883683da399e9973e649c6e240384785f6e5a0adf7eecb06f1f054",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-07T03:37:03.652966Z",
-      "observation_id": "9e6342cf2f8fb20d6b622d1005b1f30ea3f625de6282a8dbfba10d01dd03dbd3",
-      "released_at": "2026-08-07T03:37:03.652966Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "d2fc2e0eda0d281ada98a051ea1cda164b049d0422446be910ff58c1f8f93dc3",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.361
      },
@@ -2762,10 +2762,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 94,
+      "candidate_rows": 154,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 24,
+      "excluded_by_release_clock": 60,
+      "same_or_future_period_rows_excluded": 48,
       "selected_rows": 94
      },
      "target_period_end": "2026-08-07",
@@ -2783,9 +2783,9 @@
      },
      "fold_id": "ed847afbf3a800c8fc076abab0fb6665b47397630de92047754c9ae97a11b8a4",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-10T08:15:29.624549Z",
-      "observation_id": "ae4de21cd1d6ce3a33ec383042fa919a6d080488415a90e935e02430389c929c",
-      "released_at": "2026-08-10T08:15:29.624549Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "f2d0681435aceeaef583d47a9a15fd7f0c608b7db35575cc7920e1c5b0e7c6ee",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.377
      },
@@ -2888,10 +2888,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 98,
+      "candidate_rows": 162,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 20,
+      "excluded_by_release_clock": 64,
+      "same_or_future_period_rows_excluded": 40,
       "selected_rows": 98
      },
      "target_period_end": "2026-08-10",
@@ -2909,9 +2909,9 @@
      },
      "fold_id": "27bd1c979a34d88f8161b1a4194225fa26302a823261754a7b357f4a09137d07",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-11T07:51:44.346661Z",
-      "observation_id": "1d28f5cfc4e86f407785dca77a5b2a12a791f1f3fb1fc2b3b0349905017b5828",
-      "released_at": "2026-08-11T07:51:44.346661Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "4cf9ff36e858a27822d35726194ce53d063d71daa983fbe6f1a675eabe042c54",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.358
      },
@@ -3014,10 +3014,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 102,
+      "candidate_rows": 170,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 16,
+      "excluded_by_release_clock": 68,
+      "same_or_future_period_rows_excluded": 32,
       "selected_rows": 102
      },
      "target_period_end": "2026-08-11",
@@ -3035,9 +3035,9 @@
      },
      "fold_id": "c022aff917be4024b090657eeb72561e00b8755d9d05e1cb1214b811225a957b",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-12T03:08:38.083976Z",
-      "observation_id": "3e61699ad8ca239e455e70990e709efea0539ded052f8c714bab3c3eab1b5490",
-      "released_at": "2026-08-12T03:08:38.083976Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "4c1142a3d32dd9f5d6a4a1d64b981fbb5a4f3c0616379800f7a6bab7f148c82c",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.3712
      },
@@ -3140,10 +3140,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 106,
+      "candidate_rows": 178,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 12,
+      "excluded_by_release_clock": 72,
+      "same_or_future_period_rows_excluded": 24,
       "selected_rows": 106
      },
      "target_period_end": "2026-08-12",
@@ -3161,9 +3161,9 @@
      },
      "fold_id": "5b8b12cf0d03aeaf513d42b156d251db7052a76163a696a70ea5318b7bc8ceed",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-13T03:12:37.394713Z",
-      "observation_id": "18115954ed93b3217038f9740f28d1cfb65bdef6e8d710e5c35c00810f9e9227",
-      "released_at": "2026-08-13T03:12:37.394713Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "ec63e1f7b2db4253281266483ea167665d308cf2e51445e7566bf8953e301774",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.367
      },
@@ -3266,10 +3266,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 110,
+      "candidate_rows": 186,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 8,
+      "excluded_by_release_clock": 76,
+      "same_or_future_period_rows_excluded": 16,
       "selected_rows": 110
      },
      "target_period_end": "2026-08-13",
@@ -3287,9 +3287,9 @@
      },
      "fold_id": "2bc84f3f7a253657c90b37e31d782c60e642be8889e9f4341830cf089b370588",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-14T03:10:44.766045Z",
-      "observation_id": "20a43da22e6bf6ecb0366d4210db06b5b238e4074d0229986d61ce30833685d8",
-      "released_at": "2026-08-14T03:10:44.766045Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "3d123d7617a8a043f97405c0bf13f05f72777bc999792cc1bcfc191bb413e59d",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.363
      },
@@ -3392,10 +3392,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 114,
+      "candidate_rows": 194,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 4,
+      "excluded_by_release_clock": 80,
+      "same_or_future_period_rows_excluded": 8,
       "selected_rows": 114
      },
      "target_period_end": "2026-08-14",
@@ -3874,7 +3874,7 @@
       "candidate_rows": 0,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 118,
+      "same_or_future_period_rows_excluded": 202,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-06",
@@ -3985,7 +3985,7 @@
       "candidate_rows": 2,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 2,
-      "same_or_future_period_rows_excluded": 116,
+      "same_or_future_period_rows_excluded": 200,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-07",
@@ -4096,7 +4096,7 @@
       "candidate_rows": 6,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 6,
-      "same_or_future_period_rows_excluded": 112,
+      "same_or_future_period_rows_excluded": 196,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-08",
@@ -4207,7 +4207,7 @@
       "candidate_rows": 10,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 10,
-      "same_or_future_period_rows_excluded": 108,
+      "same_or_future_period_rows_excluded": 192,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-09",
@@ -4318,7 +4318,7 @@
       "candidate_rows": 14,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 14,
-      "same_or_future_period_rows_excluded": 104,
+      "same_or_future_period_rows_excluded": 188,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-10",
@@ -4429,7 +4429,7 @@
       "candidate_rows": 18,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 18,
-      "same_or_future_period_rows_excluded": 100,
+      "same_or_future_period_rows_excluded": 184,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-13",
@@ -4540,7 +4540,7 @@
       "candidate_rows": 22,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 22,
-      "same_or_future_period_rows_excluded": 96,
+      "same_or_future_period_rows_excluded": 180,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-14",
@@ -4651,7 +4651,7 @@
       "candidate_rows": 26,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 26,
-      "same_or_future_period_rows_excluded": 92,
+      "same_or_future_period_rows_excluded": 176,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-15",
@@ -4669,9 +4669,9 @@
      },
      "fold_id": "1b8ef65a41d32a30bc0c7c5ed083e16e23ce5f876eaa34e5507c88ef28cb8a25",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "8e5e433750d2112ea57a7ba9582317654f44d8ce4a553eeb01d76a5f09db86c3",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "b6889584b059017359f4a4a806e7ee8ce193b649b396c11fc9ed4ae00cb9736a",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.39
      },
@@ -4762,7 +4762,7 @@
       "candidate_rows": 30,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 30,
-      "same_or_future_period_rows_excluded": 88,
+      "same_or_future_period_rows_excluded": 172,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-16",
@@ -4780,9 +4780,9 @@
      },
      "fold_id": "9eb2508b04fdc05e3d523270ce218e333715a7918b01b6198a83deefbe332710",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "21e3905b81f9c8166a30b4d00204de9c2ceb17b314d59cad338bb4df3d800e7e",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "bf6743fbb2d75f80b5aebfff18e59d517f3fcd8c0219f96de0344902a9b819f3",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.4
      },
@@ -4870,10 +4870,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 34,
+      "candidate_rows": 36,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 34,
-      "same_or_future_period_rows_excluded": 84,
+      "excluded_by_release_clock": 36,
+      "same_or_future_period_rows_excluded": 166,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-17",
@@ -4891,122 +4891,11 @@
      },
      "fold_id": "253953f448c19660479c8e7d03957fc86ec29d061fc8568f93d1ea0799a8159f",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "1c77345432fe9188b372b621f4c831f1264903a833090ecef33285c809a6e48e",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "f36a1cf61b0215c048871653857f65995bf09594469ff3a1f1dba55c0d44d5a4",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.41
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 38,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 38,
-      "same_or_future_period_rows_excluded": 80,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-20",
-     "target_period_start": "2026-07-20"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "303abde1e57ef19c16dc0c70c694b6aa24057743acef3783a6213fbdddedcbce",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.38
-     },
-     "fold_id": "bf987a652e3fe58acfdd0ec3956d00dfbf5688b499cf509c78cf429903255d46",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "303abde1e57ef19c16dc0c70c694b6aa24057743acef3783a6213fbdddedcbce",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.38
      },
      "outcome_changed": false,
      "predictions": [
@@ -5095,140 +4984,29 @@
       "candidate_rows": 42,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 42,
-      "same_or_future_period_rows_excluded": 76,
+      "same_or_future_period_rows_excluded": 160,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-21",
-     "target_period_start": "2026-07-21"
+     "target_period_end": "2026-07-20",
+     "target_period_start": "2026-07-20"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "b7dc97d860af2981d0f7f43184f8cd52acb37a0332ca6fe836a65103ffc8f235",
+      "observation_id": "303abde1e57ef19c16dc0c70c694b6aa24057743acef3783a6213fbdddedcbce",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.37
+      "value": 1.38
      },
-     "fold_id": "614516cf87e27260c49d9a235f0688ca5231dcaaf733c2df4dc466c37a9a6926",
+     "fold_id": "bf987a652e3fe58acfdd0ec3956d00dfbf5688b499cf509c78cf429903255d46",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "b7dc97d860af2981d0f7f43184f8cd52acb37a0332ca6fe836a65103ffc8f235",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "928dc5f9dc67978153e43c6a3723fbd0c4d9cbdcb0b60b8f84b771d08104b035",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.37
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 46,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 46,
-      "same_or_future_period_rows_excluded": 72,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-22",
-     "target_period_start": "2026-07-22"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "35c39ec2fb95d548d3d3d5a4b5e137ef8b5b160d2a51160f52e0909100765868",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.36
-     },
-     "fold_id": "2fdc5875f2ab6c353224db770751981a924dbbc2bdde29e41f807a831c93967b",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "35c39ec2fb95d548d3d3d5a4b5e137ef8b5b160d2a51160f52e0909100765868",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.36
+      "value": 1.38
      },
      "outcome_changed": false,
      "predictions": [
@@ -5317,140 +5095,29 @@
       "candidate_rows": 50,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 50,
-      "same_or_future_period_rows_excluded": 68,
+      "same_or_future_period_rows_excluded": 152,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-23",
-     "target_period_start": "2026-07-23"
+     "target_period_end": "2026-07-21",
+     "target_period_start": "2026-07-21"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "81a67dca1d8b030dfc1b42713158aec5a31df06878989d75cd7c42bbf54f8b4b",
+      "observation_id": "b7dc97d860af2981d0f7f43184f8cd52acb37a0332ca6fe836a65103ffc8f235",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.38
+      "value": 1.37
      },
-     "fold_id": "200ecc5a24efa80fe70cfef131f34111eec753688ea8983300548a86680f89da",
+     "fold_id": "614516cf87e27260c49d9a235f0688ca5231dcaaf733c2df4dc466c37a9a6926",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "81a67dca1d8b030dfc1b42713158aec5a31df06878989d75cd7c42bbf54f8b4b",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "c52f8708dbd92577018a0a57c2bfc002a54317d4761224b6a772549b56b79766",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.38
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 54,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 54,
-      "same_or_future_period_rows_excluded": 64,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-24",
-     "target_period_start": "2026-07-24"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "5ee8f298d51e582162855ff86462c5fb07426ee6e359d21c9ab9863d52af0b77",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.42
-     },
-     "fold_id": "46b01dae6f5991fc7f98a83cb8b91d27759f1a1c22d3d8824f3ed30e60af2876",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "5ee8f298d51e582162855ff86462c5fb07426ee6e359d21c9ab9863d52af0b77",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.42
+      "value": 1.37
      },
      "outcome_changed": false,
      "predictions": [
@@ -5539,140 +5206,29 @@
       "candidate_rows": 58,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 58,
-      "same_or_future_period_rows_excluded": 60,
+      "same_or_future_period_rows_excluded": 144,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-27",
-     "target_period_start": "2026-07-27"
+     "target_period_end": "2026-07-22",
+     "target_period_start": "2026-07-22"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "e92c62f0bd888df4975eb9270515d2860ff71976000637a65c5e1ecca32a20af",
+      "observation_id": "35c39ec2fb95d548d3d3d5a4b5e137ef8b5b160d2a51160f52e0909100765868",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.42
+      "value": 1.36
      },
-     "fold_id": "695098ac1906e3f0e98a26c39c9759b1ad4d7dad0c500aaeb33cae423034807b",
+     "fold_id": "2fdc5875f2ab6c353224db770751981a924dbbc2bdde29e41f807a831c93967b",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "e92c62f0bd888df4975eb9270515d2860ff71976000637a65c5e1ecca32a20af",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "58d7bbdd0ef5442402f95cdfe356f107041c316f4550a9b18b83be86bdc375a6",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.42
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 62,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 62,
-      "same_or_future_period_rows_excluded": 56,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-28",
-     "target_period_start": "2026-07-28"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "10f93ac49e778741901667271247f76854390205e1a7bf4218bf162966c54580",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.4412
-     },
-     "fold_id": "4e72e3b44ba0ada939d5e5858e548c8cf67e95a65f007aef087aab7ac60f3ca1",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "10f93ac49e778741901667271247f76854390205e1a7bf4218bf162966c54580",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.4412
+      "value": 1.36
      },
      "outcome_changed": false,
      "predictions": [
@@ -5761,140 +5317,29 @@
       "candidate_rows": 66,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 66,
-      "same_or_future_period_rows_excluded": 52,
+      "same_or_future_period_rows_excluded": 136,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-29",
-     "target_period_start": "2026-07-29"
+     "target_period_end": "2026-07-23",
+     "target_period_start": "2026-07-23"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "ecab55b5d2c42021c04ebee976b013f3fb72129b0b83bb1f6f14344d557d40e0",
+      "observation_id": "81a67dca1d8b030dfc1b42713158aec5a31df06878989d75cd7c42bbf54f8b4b",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 1.4
+      "value": 1.38
      },
-     "fold_id": "31b5ad4d7948815d0786e94f870c49e40205fdc2b1568c169c1dc5964fd459e4",
+     "fold_id": "200ecc5a24efa80fe70cfef131f34111eec753688ea8983300548a86680f89da",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "ecab55b5d2c42021c04ebee976b013f3fb72129b0b83bb1f6f14344d557d40e0",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "5b05f6555d22821e8099bc3877270204f8792bebf6896cbc41ac06bb2f6639d5",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 1.4
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 70,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 70,
-      "same_or_future_period_rows_excluded": 48,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-30",
-     "target_period_start": "2026-07-30"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "251868ca51b751293b2c7ad022f875e9774f19dcb1ca57e3bb28281007b57fb0",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.42
-     },
-     "fold_id": "54ce99adc3a88041c7c5e2bf3df5d3d20c6f6b0feaa09d7d8067e3ebfdece34c",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "251868ca51b751293b2c7ad022f875e9774f19dcb1ca57e3bb28281007b57fb0",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.42
+      "value": 1.38
      },
      "outcome_changed": false,
      "predictions": [
@@ -5983,140 +5428,29 @@
       "candidate_rows": 74,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 74,
-      "same_or_future_period_rows_excluded": 44,
+      "same_or_future_period_rows_excluded": 128,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-31",
-     "target_period_start": "2026-07-31"
+     "target_period_end": "2026-07-24",
+     "target_period_start": "2026-07-24"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "2b7abba056b5aed2d83c84bbec19c6228b5a47bd0cc8b27af0b7748748e6373e",
+      "observation_id": "5ee8f298d51e582162855ff86462c5fb07426ee6e359d21c9ab9863d52af0b77",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
       "value": 1.42
      },
-     "fold_id": "d488429f04a0ad9a31209db1ecfdd44b28825e8e9a28f8aeb3518a1f87b41b28",
+     "fold_id": "46b01dae6f5991fc7f98a83cb8b91d27759f1a1c22d3d8824f3ed30e60af2876",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "2b7abba056b5aed2d83c84bbec19c6228b5a47bd0cc8b27af0b7748748e6373e",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "6c002322e7c76ff58e2e0d019e0fbf3dd6ca2f7ea5e936b2e0e1b95fcf85a3fb",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.42
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 78,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 78,
-      "same_or_future_period_rows_excluded": 40,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-08-03",
-     "target_period_start": "2026-08-03"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "4ecdf49c92cdf65a8c8e533fbbaeebf9c7bacee2025b782f2e99d83477273303",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.37
-     },
-     "fold_id": "45003f90e6ca01ca679357f5b67548047080905541bca56f331c1acc1ece981a",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "4ecdf49c92cdf65a8c8e533fbbaeebf9c7bacee2025b782f2e99d83477273303",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 1.37
      },
      "outcome_changed": false,
      "predictions": [
@@ -6205,7 +5539,673 @@
       "candidate_rows": 82,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 82,
-      "same_or_future_period_rows_excluded": 36,
+      "same_or_future_period_rows_excluded": 120,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-27",
+     "target_period_start": "2026-07-27"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "e92c62f0bd888df4975eb9270515d2860ff71976000637a65c5e1ecca32a20af",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.42
+     },
+     "fold_id": "695098ac1906e3f0e98a26c39c9759b1ad4d7dad0c500aaeb33cae423034807b",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "da22a8fc06d1d8f37214d153c244219489f59ce039da0841c383ec11590a0f73",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.42
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 90,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 90,
+      "same_or_future_period_rows_excluded": 112,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-28",
+     "target_period_start": "2026-07-28"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "10f93ac49e778741901667271247f76854390205e1a7bf4218bf162966c54580",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.4412
+     },
+     "fold_id": "4e72e3b44ba0ada939d5e5858e548c8cf67e95a65f007aef087aab7ac60f3ca1",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "8a8cf0e7254d143f451ae9d66cf04ca536d07747c8dfe6e4fa5cf51afb81c6a4",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.4412
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 98,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 98,
+      "same_or_future_period_rows_excluded": 104,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-29",
+     "target_period_start": "2026-07-29"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "ecab55b5d2c42021c04ebee976b013f3fb72129b0b83bb1f6f14344d557d40e0",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.4
+     },
+     "fold_id": "31b5ad4d7948815d0786e94f870c49e40205fdc2b1568c169c1dc5964fd459e4",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "c502c512583e56f225f8bc5b1ce056e4fd9d8cedc364c9742db224ec9d0adc02",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.4
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 106,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 106,
+      "same_or_future_period_rows_excluded": 96,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-30",
+     "target_period_start": "2026-07-30"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "251868ca51b751293b2c7ad022f875e9774f19dcb1ca57e3bb28281007b57fb0",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.42
+     },
+     "fold_id": "54ce99adc3a88041c7c5e2bf3df5d3d20c6f6b0feaa09d7d8067e3ebfdece34c",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "a90cdbebfbff6aa357fe4c710141e4309d9ade181dde2fbaea2a263e052fa8a1",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.42
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 114,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 114,
+      "same_or_future_period_rows_excluded": 88,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-31",
+     "target_period_start": "2026-07-31"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "2b7abba056b5aed2d83c84bbec19c6228b5a47bd0cc8b27af0b7748748e6373e",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.42
+     },
+     "fold_id": "d488429f04a0ad9a31209db1ecfdd44b28825e8e9a28f8aeb3518a1f87b41b28",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "4af086faa0064183210e88c232ff0d49d4ca55fd09b913e340628b32d345db43",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.42
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 122,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 122,
+      "same_or_future_period_rows_excluded": 80,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-08-03",
+     "target_period_start": "2026-08-03"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "4ecdf49c92cdf65a8c8e533fbbaeebf9c7bacee2025b782f2e99d83477273303",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 1.37
+     },
+     "fold_id": "45003f90e6ca01ca679357f5b67548047080905541bca56f331c1acc1ece981a",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "a04d38e812d5914789806fcbbdb3a2452bc5ef27f06c9692434ed22878fffc9c",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 1.37
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 130,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 130,
+      "same_or_future_period_rows_excluded": 72,
       "selected_rows": 0
      },
      "target_period_end": "2026-08-04",
@@ -6223,9 +6223,9 @@
      },
      "fold_id": "7452c48c805bd9f72d66c6448501f0169d054269cf86501f5d0fed1438c2c69c",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-05T03:48:15.933541Z",
-      "observation_id": "a7c4e9b98e4d9eb7d210b3e3c19e78b6193c28793d6bbd9b2bfadc818a6177bf",
-      "released_at": "2026-08-05T03:48:15.933541Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "4641d2d070515a25f0871b087cfd214999ba3abaa1ddc82acf644b59bc68a1b3",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.36
      },
@@ -6328,10 +6328,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 86,
+      "candidate_rows": 138,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 32,
+      "excluded_by_release_clock": 52,
+      "same_or_future_period_rows_excluded": 64,
       "selected_rows": 86
      },
      "target_period_end": "2026-08-05",
@@ -6349,9 +6349,9 @@
      },
      "fold_id": "e375eff6eb5b95adb94e47357d0c1f5e848bab5c28348ea4547db1beaa75f1e9",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-06T09:28:17.220121Z",
-      "observation_id": "bbb6f374662ffa31957ab592d08023a9c8eada7efcccdfbbf883b60eba5802a7",
-      "released_at": "2026-08-06T09:28:17.220121Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "1d14185f6d8eadfe153e6e7a01fb4a6b65db2662f65915086ced817628bbe4ad",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.35
      },
@@ -6454,10 +6454,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 90,
+      "candidate_rows": 146,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 28,
+      "excluded_by_release_clock": 56,
+      "same_or_future_period_rows_excluded": 56,
       "selected_rows": 90
      },
      "target_period_end": "2026-08-06",
@@ -6475,9 +6475,9 @@
      },
      "fold_id": "33cfd6a4ef225573e8418bb8bba7391b21527f3de0a6d8dd8706aa74cdb12974",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-07T03:37:03.652966Z",
-      "observation_id": "c8ad1f4a17762067b7f78868271dc6d716aa0d62059f38103b9ef5bd33763b7a",
-      "released_at": "2026-08-07T03:37:03.652966Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "74532e84b9e955f97f154d315e06bc1a780d7f6197a14e1b6c12d7d4e6afcc04",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.37
      },
@@ -6580,10 +6580,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 94,
+      "candidate_rows": 154,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 24,
+      "excluded_by_release_clock": 60,
+      "same_or_future_period_rows_excluded": 48,
       "selected_rows": 94
      },
      "target_period_end": "2026-08-07",
@@ -6601,9 +6601,9 @@
      },
      "fold_id": "21dcc26f6948924ca38c91dc472c337b0ba71315567732e570653c474d50a5e1",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-10T08:15:29.624549Z",
-      "observation_id": "78219700f178051cdae975f7c62fa00e34412cab3187b9ee5d6674055109acdb",
-      "released_at": "2026-08-10T08:15:29.624549Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "37377120735bce9f2f6e6d620865e09a0467ec0e223b4db3cd8fad112e5d26e4",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.38
      },
@@ -6706,10 +6706,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 98,
+      "candidate_rows": 162,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 20,
+      "excluded_by_release_clock": 64,
+      "same_or_future_period_rows_excluded": 40,
       "selected_rows": 98
      },
      "target_period_end": "2026-08-10",
@@ -6727,9 +6727,9 @@
      },
      "fold_id": "07822bdcd70098beb6ac4f8f52461e8908abfc0fa1046a60a73c08cd64245a38",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-11T07:51:44.346661Z",
-      "observation_id": "9de82a657bc64cdc929d195bff73c98c2c52dbf45daddf62f121974eb9059c01",
-      "released_at": "2026-08-11T07:51:44.346661Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "11641f671913dd5e9ebdd39d1c5b686094fb04ad07e620a685f177fa947dc4cb",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.36
      },
@@ -6832,10 +6832,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 102,
+      "candidate_rows": 170,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 16,
+      "excluded_by_release_clock": 68,
+      "same_or_future_period_rows_excluded": 32,
       "selected_rows": 102
      },
      "target_period_end": "2026-08-11",
@@ -6853,9 +6853,9 @@
      },
      "fold_id": "7fd2bf7d0f0e13a66fc2ae2b44e788f23d03d39abbb97df288a704e405790dd0",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-12T03:49:48.498430Z",
-      "observation_id": "baac7b4ca43b887dead1ecae573d9eea3c9a5006e54add99ecd51e7ff45f4db1",
-      "released_at": "2026-08-12T03:49:48.498430Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "2220cb7e871062523f5467dd290aa35a4878f8f13dadf7694bb439cccc3aeab5",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.37
      },
@@ -6958,10 +6958,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 106,
+      "candidate_rows": 178,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 12,
+      "excluded_by_release_clock": 72,
+      "same_or_future_period_rows_excluded": 24,
       "selected_rows": 106
      },
      "target_period_end": "2026-08-12",
@@ -6979,9 +6979,9 @@
      },
      "fold_id": "975879c6b673105a979160267f171c7d96f89e9d47825c8ae0dc5d414331e275",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-13T08:03:27.396416Z",
-      "observation_id": "5d53570e3b38d377f9453fba4d4c4fb6f3ee0a4266eed66e630f36b0d996bdc7",
-      "released_at": "2026-08-13T08:03:27.396416Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "63b48a692dd7676af4b4713a61e9bf81003e76066778c1041837646a2709722e",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.36
      },
@@ -7084,10 +7084,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 110,
+      "candidate_rows": 186,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 8,
+      "excluded_by_release_clock": 76,
+      "same_or_future_period_rows_excluded": 16,
       "selected_rows": 110
      },
      "target_period_end": "2026-08-13",
@@ -7105,9 +7105,9 @@
      },
      "fold_id": "7560b6f3444f67720295fcff72ca1adf575aef64f97e0a1eb34dd8c23f4f6918",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-14T08:00:17.966002Z",
-      "observation_id": "3d129bc7d4f1c5a45fdeb3b0b5d20dc39f2e321e4c06f8deb5a2a288ab26f006",
-      "released_at": "2026-08-14T08:00:17.966002Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "74966835511c1ef5c369dec8b94ecc0b7cbeff8bc5033a7611963b422b110c98",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 1.36
      },
@@ -7210,10 +7210,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 114,
+      "candidate_rows": 194,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 4,
+      "excluded_by_release_clock": 80,
+      "same_or_future_period_rows_excluded": 8,
       "selected_rows": 114
      },
      "target_period_end": "2026-08-14",
@@ -7692,7 +7692,7 @@
       "candidate_rows": 0,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 23,
+      "same_or_future_period_rows_excluded": 38,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-15",
@@ -7803,7 +7803,7 @@
       "candidate_rows": 1,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 1,
-      "same_or_future_period_rows_excluded": 22,
+      "same_or_future_period_rows_excluded": 37,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-16",
@@ -7914,7 +7914,7 @@
       "candidate_rows": 2,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 2,
-      "same_or_future_period_rows_excluded": 21,
+      "same_or_future_period_rows_excluded": 36,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-17",
@@ -8025,7 +8025,7 @@
       "candidate_rows": 3,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 3,
-      "same_or_future_period_rows_excluded": 20,
+      "same_or_future_period_rows_excluded": 35,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-20",
@@ -8136,7 +8136,7 @@
       "candidate_rows": 4,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 4,
-      "same_or_future_period_rows_excluded": 19,
+      "same_or_future_period_rows_excluded": 34,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-21",
@@ -8247,7 +8247,7 @@
       "candidate_rows": 5,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 5,
-      "same_or_future_period_rows_excluded": 18,
+      "same_or_future_period_rows_excluded": 33,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-22",
@@ -8358,7 +8358,7 @@
       "candidate_rows": 6,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 6,
-      "same_or_future_period_rows_excluded": 17,
+      "same_or_future_period_rows_excluded": 32,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-23",
@@ -8469,7 +8469,7 @@
       "candidate_rows": 7,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 7,
-      "same_or_future_period_rows_excluded": 16,
+      "same_or_future_period_rows_excluded": 31,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-24",
@@ -8487,9 +8487,9 @@
      },
      "fold_id": "d21ca6bcce12dfb871951f9d1f64c484e307eb9cca61fa8a77e7f6524fd84ede",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "cf4fef4caf0d6f32778afe8d052312bf5a629d673878ce5b1882014890a2ee5c",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "9a41f96ba725404410e74b4a9d88edca4859e06e763b9eb98be25a9e3964f7b2",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7911
      },
@@ -8580,7 +8580,7 @@
       "candidate_rows": 8,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 8,
-      "same_or_future_period_rows_excluded": 15,
+      "same_or_future_period_rows_excluded": 30,
       "selected_rows": 0
      },
      "target_period_end": "2026-07-27",
@@ -8598,122 +8598,11 @@
      },
      "fold_id": "2ac016cb1f5b27a6adcde380d92591c3c770c9608b71a1ac4f53a452e21d75dc",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "0eed1a77f5d8b2c76cd0d1b24d8523369bd2db5e6e51bb7074e472d1e627b35c",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "741aec0eed645347e8810d5024652515eccbf81a492964ed273b050750fe1937",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7928
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 9,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 9,
-      "same_or_future_period_rows_excluded": 14,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-28",
-     "target_period_start": "2026-07-28"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "edaa8928e7b591b84918e6c68ff61168b01fe26fc97064140b8ec68ad6b33a75",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 6.7899
-     },
-     "fold_id": "4dbbfb8abeef7a9161f5751efd9e76b00b3d49412b1088e12489cbedb73db3d8",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "edaa8928e7b591b84918e6c68ff61168b01fe26fc97064140b8ec68ad6b33a75",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 6.7899
      },
      "outcome_changed": false,
      "predictions": [
@@ -8802,140 +8691,29 @@
       "candidate_rows": 10,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 10,
-      "same_or_future_period_rows_excluded": 13,
+      "same_or_future_period_rows_excluded": 28,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-29",
-     "target_period_start": "2026-07-29"
+     "target_period_end": "2026-07-28",
+     "target_period_start": "2026-07-28"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "51a5e606409c9a21cfcd9299a1ed9bbe565ea5900107f27e2df1dedcfff41591",
+      "observation_id": "edaa8928e7b591b84918e6c68ff61168b01fe26fc97064140b8ec68ad6b33a75",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 6.7892
+      "value": 6.7899
      },
-     "fold_id": "7716e615734bf5b47be5ef7f5cf3dbe1fa5ac16b3bdb1eade86a43bf196fda5d",
+     "fold_id": "4dbbfb8abeef7a9161f5751efd9e76b00b3d49412b1088e12489cbedb73db3d8",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "51a5e606409c9a21cfcd9299a1ed9bbe565ea5900107f27e2df1dedcfff41591",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "7b8896c000709b638ed229c31f9fb7202dd199321e2f0465f9162990d9506a09",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 6.7892
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 11,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 11,
-      "same_or_future_period_rows_excluded": 12,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-07-30",
-     "target_period_start": "2026-07-30"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "a462886e146618db216366b05d1c288a9c3ce19c1f642e3366dde4cab1901c9b",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 6.7894
-     },
-     "fold_id": "7e05a2717ddfe1eabb7f867eec114172abcc7dba978b59d4d43e594ee4b70a45",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "a462886e146618db216366b05d1c288a9c3ce19c1f642e3366dde4cab1901c9b",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 6.7894
+      "value": 6.7899
      },
      "outcome_changed": false,
      "predictions": [
@@ -9024,140 +8802,29 @@
       "candidate_rows": 12,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 12,
-      "same_or_future_period_rows_excluded": 11,
+      "same_or_future_period_rows_excluded": 26,
       "selected_rows": 0
      },
-     "target_period_end": "2026-07-31",
-     "target_period_start": "2026-07-31"
+     "target_period_end": "2026-07-29",
+     "target_period_start": "2026-07-29"
     },
     {
      "decision_time": "2026-08-04T10:19:26.966883Z",
      "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
      "first_release_outcome": {
       "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "96c0809795bf932e39e6426ae0ae65ed6bd5ee5939099c07c11a02bbf9a0bbf2",
+      "observation_id": "51a5e606409c9a21cfcd9299a1ed9bbe565ea5900107f27e2df1dedcfff41591",
       "released_at": "2026-08-04T10:19:26.966884Z",
       "revision": 0,
-      "value": 6.7898
+      "value": 6.7892
      },
-     "fold_id": "9b783a0d397f99f217d16e345518e60eb4891b04b592443d1904dfaec763e18c",
+     "fold_id": "7716e615734bf5b47be5ef7f5cf3dbe1fa5ac16b3bdb1eade86a43bf196fda5d",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "96c0809795bf932e39e6426ae0ae65ed6bd5ee5939099c07c11a02bbf9a0bbf2",
-      "released_at": "2026-08-04T10:19:26.966884Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "ec2595aab715bb6d36ea231d796de7144ab5a0b818a89829510bc81867e55029",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
-      "value": 6.7898
-     },
-     "outcome_changed": false,
-     "predictions": [
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "random-walk",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 10 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "seasonal-naive-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 6 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "mean-delta-five",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      },
-      {
-       "contributor_series_ids": [],
-       "failure": {
-        "code": "insufficient_training_history",
-        "message": "requires 2 target observations; found 0"
-       },
-       "independence_groups": [],
-       "interval_coverage": null,
-       "interval_method": null,
-       "lower": null,
-       "method": null,
-       "model_id": "equal-delta-bridge",
-       "origin_value": null,
-       "point": null,
-       "source_ids": [],
-       "status": "failed",
-       "training_observations": 0,
-       "training_residuals": 0,
-       "upper": null
-      }
-     ],
-     "selection": {
-      "candidate_rows": 13,
-      "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 13,
-      "same_or_future_period_rows_excluded": 10,
-      "selected_rows": 0
-     },
-     "target_period_end": "2026-08-03",
-     "target_period_start": "2026-08-03"
-    },
-    {
-     "decision_time": "2026-08-04T10:19:26.966883Z",
-     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-     "first_release_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "59d1e4b675ac94265bb0d815fc88ce9af7ddcfef56b9c365c7d38c0e54cfab4c",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 6.7917
-     },
-     "fold_id": "03460e386cfdd7a918e69a24d128250afa51da4153e570c68b364686c06bf168",
-     "latest_revised_outcome": {
-      "collected_at": "2026-08-04T10:19:26.966884Z",
-      "observation_id": "59d1e4b675ac94265bb0d815fc88ce9af7ddcfef56b9c365c7d38c0e54cfab4c",
-      "released_at": "2026-08-04T10:19:26.966884Z",
-      "revision": 0,
-      "value": 6.7917
+      "value": 6.7892
      },
      "outcome_changed": false,
      "predictions": [
@@ -9246,7 +8913,340 @@
       "candidate_rows": 14,
       "excluded_by_collection_clock": 0,
       "excluded_by_release_clock": 14,
-      "same_or_future_period_rows_excluded": 9,
+      "same_or_future_period_rows_excluded": 24,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-30",
+     "target_period_start": "2026-07-30"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "a462886e146618db216366b05d1c288a9c3ce19c1f642e3366dde4cab1901c9b",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 6.7894
+     },
+     "fold_id": "7e05a2717ddfe1eabb7f867eec114172abcc7dba978b59d4d43e594ee4b70a45",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "089f5ac5bb0f802b111950641e075fbac3480203fd1db4bbe3c527cc8c5c14c1",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 6.7894
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 16,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 16,
+      "same_or_future_period_rows_excluded": 22,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-07-31",
+     "target_period_start": "2026-07-31"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "96c0809795bf932e39e6426ae0ae65ed6bd5ee5939099c07c11a02bbf9a0bbf2",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 6.7898
+     },
+     "fold_id": "9b783a0d397f99f217d16e345518e60eb4891b04b592443d1904dfaec763e18c",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "fef14e0f1f25926178dbaf0afe7d07e27086ce961faab3e10c5b7ef3615ef825",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 6.7898
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 18,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 18,
+      "same_or_future_period_rows_excluded": 20,
+      "selected_rows": 0
+     },
+     "target_period_end": "2026-08-03",
+     "target_period_start": "2026-08-03"
+    },
+    {
+     "decision_time": "2026-08-04T10:19:26.966883Z",
+     "feature_snapshot_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+     "first_release_outcome": {
+      "collected_at": "2026-08-04T10:19:26.966884Z",
+      "observation_id": "59d1e4b675ac94265bb0d815fc88ce9af7ddcfef56b9c365c7d38c0e54cfab4c",
+      "released_at": "2026-08-04T10:19:26.966884Z",
+      "revision": 0,
+      "value": 6.7917
+     },
+     "fold_id": "03460e386cfdd7a918e69a24d128250afa51da4153e570c68b364686c06bf168",
+     "latest_revised_outcome": {
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "8f4cca5343c61bfcd05a60f7236aedc10c30d236e14f9a217a9e64f29546935b",
+      "released_at": "2026-08-15T10:24:07.852079Z",
+      "revision": 0,
+      "value": 6.7917
+     },
+     "outcome_changed": false,
+     "predictions": [
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "random-walk",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 10 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "seasonal-naive-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 6 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "mean-delta-five",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      },
+      {
+       "contributor_series_ids": [],
+       "failure": {
+        "code": "insufficient_training_history",
+        "message": "requires 2 target observations; found 0"
+       },
+       "independence_groups": [],
+       "interval_coverage": null,
+       "interval_method": null,
+       "lower": null,
+       "method": null,
+       "model_id": "equal-delta-bridge",
+       "origin_value": null,
+       "point": null,
+       "source_ids": [],
+       "status": "failed",
+       "training_observations": 0,
+       "training_residuals": 0,
+       "upper": null
+      }
+     ],
+     "selection": {
+      "candidate_rows": 20,
+      "excluded_by_collection_clock": 0,
+      "excluded_by_release_clock": 20,
+      "same_or_future_period_rows_excluded": 18,
       "selected_rows": 0
      },
      "target_period_end": "2026-08-04",
@@ -9264,9 +9264,9 @@
      },
      "fold_id": "0768f745250597a57e8918bcb950e514e788975592040d6bba677fc84ffec3a6",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-05T03:48:15.933541Z",
-      "observation_id": "c10a9f6c8efaba4eedfac6fddc3094f2e25dce9adee7c312180e3fad9adcf2ea",
-      "released_at": "2026-08-05T03:48:15.933541Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "acaee1d8a7c22488495d2487e1ee7ab5befbb57547b7e53b379a3fce0f685278",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7889
      },
@@ -9367,10 +9367,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 15,
+      "candidate_rows": 22,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 8,
+      "excluded_by_release_clock": 7,
+      "same_or_future_period_rows_excluded": 16,
       "selected_rows": 15
      },
      "target_period_end": "2026-08-05",
@@ -9388,9 +9388,9 @@
      },
      "fold_id": "9a91af2dfe028296e55b82e50fb2b88899a0b634da2a361009283a2a9f84a537",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-06T09:28:17.220121Z",
-      "observation_id": "7b5a6e43569be8d95a337d1fda15b6a80ef6b374951217ffec1c36f1d5b5a8f7",
-      "released_at": "2026-08-06T09:28:17.220121Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "26d39171569a3e87a6f6183b9c9fee492f15ce06e62b725591051f1649cf4992",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7895
      },
@@ -9491,10 +9491,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 16,
+      "candidate_rows": 24,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 7,
+      "excluded_by_release_clock": 8,
+      "same_or_future_period_rows_excluded": 14,
       "selected_rows": 16
      },
      "target_period_end": "2026-08-06",
@@ -9512,9 +9512,9 @@
      },
      "fold_id": "eea556c34c62235264adfe193f876f07cc41c179a7d75c68c13445a1f8a0ddda",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-07T03:37:03.652966Z",
-      "observation_id": "7b6e589fbf185448b942f38482bf29e0a561d2b69015e9519a977024b8461643",
-      "released_at": "2026-08-07T03:37:03.652966Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "54d4c3c6165f7682170374f3140a63bd516340f03afeaf65e75b41cbdbfeb207",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7904
      },
@@ -9615,10 +9615,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 17,
+      "candidate_rows": 26,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 6,
+      "excluded_by_release_clock": 9,
+      "same_or_future_period_rows_excluded": 12,
       "selected_rows": 17
      },
      "target_period_end": "2026-08-07",
@@ -9636,9 +9636,9 @@
      },
      "fold_id": "f6611670923555240cb0c0ebcff0b3e8582be3bda2b38caa06826853de6684b4",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-10T02:57:00.949864Z",
-      "observation_id": "003f4930621c36bfd12ea1519fbdcfa61b99dbaf6ebb179987231ebec24e39c6",
-      "released_at": "2026-08-10T02:57:00.949864Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "4963aa79282464daa2671f7695656e83bfdd5009190d33559126888ac5a6abd5",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7884
      },
@@ -9739,10 +9739,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 18,
+      "candidate_rows": 28,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 5,
+      "excluded_by_release_clock": 10,
+      "same_or_future_period_rows_excluded": 10,
       "selected_rows": 18
      },
      "target_period_end": "2026-08-10",
@@ -9760,9 +9760,9 @@
      },
      "fold_id": "ad8b3885357083e52fec1fbd2c5df94a9124170643cc0b21893e27f2bfcabcf6",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-11T02:50:11.067693Z",
-      "observation_id": "78fc67bc19fb25b01659aaf09cb74efca5332f9bca51be4a1b92d56da4d777e5",
-      "released_at": "2026-08-11T02:50:11.067693Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "86c2caa570036cbe5bc7e8a849f179c6773aa4d7fc707ccd184dc43329f9339f",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.79
      },
@@ -9863,10 +9863,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 19,
+      "candidate_rows": 30,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 4,
+      "excluded_by_release_clock": 11,
+      "same_or_future_period_rows_excluded": 8,
       "selected_rows": 19
      },
      "target_period_end": "2026-08-11",
@@ -9884,9 +9884,9 @@
      },
      "fold_id": "8b4577ef972a8cfdb2cba01428c8d0616cd55feb344b17f5d5b67669d09363fa",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-12T03:08:38.083976Z",
-      "observation_id": "6cc8776e7efec40a4ed335a3d51ed95fd38833c6659fdcf289b575cd37644e65",
-      "released_at": "2026-08-12T03:08:38.083976Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "eb329103a19ab838a45096cc3363c4a66038f868d98c1c83ce11305482a3bea2",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7882
      },
@@ -9987,10 +9987,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 20,
+      "candidate_rows": 32,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 3,
+      "excluded_by_release_clock": 12,
+      "same_or_future_period_rows_excluded": 6,
       "selected_rows": 20
      },
      "target_period_end": "2026-08-12",
@@ -10008,9 +10008,9 @@
      },
      "fold_id": "d90f7cfe5fc265b77fd32e5dd3ec33427952ef6ae29d0f6e30c594ae194256e6",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-13T03:12:37.394713Z",
-      "observation_id": "a93903fe30577cc2a4d439eaeb65955408159c990abb9456e96b49b65519e69e",
-      "released_at": "2026-08-13T03:12:37.394713Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "1dafddd2c488b04e60a2bdd90150fd65f561f51f8b454c02ec2a6ce6dc0aa31e",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7888
      },
@@ -10111,10 +10111,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 21,
+      "candidate_rows": 34,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 2,
+      "excluded_by_release_clock": 13,
+      "same_or_future_period_rows_excluded": 4,
       "selected_rows": 21
      },
      "target_period_end": "2026-08-13",
@@ -10132,9 +10132,9 @@
      },
      "fold_id": "94997f6f48b4afd93e6decdc4a9314ed7875151eec2e563c46972d35a945928b",
      "latest_revised_outcome": {
-      "collected_at": "2026-08-14T03:10:44.766045Z",
-      "observation_id": "e75583b64fbaf0a4bf10ecc9b6e11cead49c8472a35546bcef4af45f9956de3e",
-      "released_at": "2026-08-14T03:10:44.766045Z",
+      "collected_at": "2026-08-15T10:24:07.852079Z",
+      "observation_id": "68f2fd74e6cc467c6bc4b1d1c3e95fcc52b95a41047d8b7379acb3f3c1dca347",
+      "released_at": "2026-08-15T10:24:07.852079Z",
       "revision": 0,
       "value": 6.7878
      },
@@ -10235,10 +10235,10 @@
       }
      ],
      "selection": {
-      "candidate_rows": 22,
+      "candidate_rows": 36,
       "excluded_by_collection_clock": 0,
-      "excluded_by_release_clock": 0,
-      "same_or_future_period_rows_excluded": 1,
+      "excluded_by_release_clock": 14,
+      "same_or_future_period_rows_excluded": 2,
       "selected_rows": 22
      },
      "target_period_end": "2026-08-14",
