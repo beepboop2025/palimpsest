@@ -630,9 +630,16 @@ for revision_path in \
 done
 ops/docker/prod-compose up -d
 [[ "$(ops/docker/prod-compose port api 8000)" == '127.0.0.1:8010' ]]
-curl --fail --silent --show-error \
-  http://127.0.0.1:8010/api/v1/node/status \
-  | python3 -m json.tool >/dev/null
+api_ready=0
+for (( api_attempt=1; api_attempt<=30; api_attempt++ )); do
+  if curl --fail --silent http://127.0.0.1:8010/api/v1/node/status \
+      2>/dev/null | python3 -m json.tool >/dev/null 2>&1; then
+    api_ready=1
+    break
+  fi
+  sleep 2
+done
+(( api_ready == 1 )) || die "C0 API did not become ready"
 
 # Prove the old consumers can parse the later mirrored ledger and artifact.
 start_and_verify_oneshot palimpsest-common-crawl-import.service \
