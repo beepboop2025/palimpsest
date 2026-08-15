@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-15T13:19:08.643917+00:00",
+  "generated_at": "2026-08-15T19:09:39.313542+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
@@ -8,7 +8,7 @@
       "ok": true,
       "overlap_days": 35,
       "lag_days": 7,
-      "correlation": 0.711,
+      "correlation": 0.71,
       "p_value": 0.0476,
       "n_shifts": 20,
       "null_median_abs_r": 0.366,
@@ -72,28 +72,6 @@
     },
     {
       "ok": true,
-      "overlap_days": 35,
-      "lag_days": 0,
-      "correlation": -0.332,
-      "p_value": 0.6667,
-      "n_shifts": 20,
-      "null_median_abs_r": 0.566,
-      "pair": [
-        "gdelt_containment",
-        "ooni_gfw"
-      ],
-      "layers": [
-        "content",
-        "network"
-      ],
-      "first_day": "2026-07-11",
-      "last_day": "2026-08-15",
-      "reading": "gdelt_containment and ooni_gfw move the same day",
-      "holm_threshold": 0.01,
-      "survives_multiplicity": false
-    },
-    {
-      "ok": true,
       "overlap_days": 37,
       "lag_days": -3,
       "correlation": -0.32,
@@ -111,6 +89,28 @@
       "first_day": "2026-07-05",
       "last_day": "2026-08-11",
       "reading": "tor_bridge_cn moves 3d BEFORE ddti_threat",
+      "holm_threshold": 0.01,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 35,
+      "lag_days": 0,
+      "correlation": -0.316,
+      "p_value": 0.7143,
+      "n_shifts": 20,
+      "null_median_abs_r": 0.567,
+      "pair": [
+        "gdelt_containment",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-15",
+      "reading": "gdelt_containment and ooni_gfw move the same day",
       "holm_threshold": 0.0125,
       "survives_multiplicity": false
     },
@@ -165,7 +165,7 @@
       "correlation": 0.237,
       "p_value": 1.0,
       "n_shifts": 20,
-      "null_median_abs_r": 0.482,
+      "null_median_abs_r": 0.481,
       "pair": [
         "ddti_threat",
         "ooni_gfw"
