@@ -237,6 +237,12 @@ def test_html_rss_json_and_build_outputs_share_the_reviewed_artifact() -> None:
     assert "What this does not establish" in page
     assert "What to check next" in page
     assert "Raw on Telegram" in page
+    assert "Open the live, unreviewed feed" in page
+    assert "https://t.me/DragonDenWhispers" in page
+    assert "https://t.me/DragonDenCyber" in page
+    assert "https://t.me/DragonDenBorderlands" in page
+    assert "https://t.me/DragonDenWhispersBot" in page
+    assert page.count('rel="noopener noreferrer"') == 4
     assert "@withheld_source" not in page
     assert "example.invalid" not in page
     assert "innerHTML" not in page
