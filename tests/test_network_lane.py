@@ -193,6 +193,32 @@ def test_future_completion_clock_fails_closed(tmp_path):
         )
 
 
+def test_active_marker_is_published_after_signal_handlers_are_ready(
+    tmp_path, monkeypatch
+):
+    state = _state(tmp_path)
+    active = lane.LanePaths.from_root(state).active
+    previous_handler = signal.getsignal(signal.SIGTERM)
+    observed_handlers = []
+    atomic_write = lane._atomic_write_json
+
+    def observe_handler(path, value):
+        if path == active:
+            observed_handlers.append(signal.getsignal(signal.SIGTERM))
+        atomic_write(path, value)
+
+    monkeypatch.setattr(lane, "_atomic_write_json", observe_handler)
+
+    assert lane.execute_guarded_job(
+        state_dir=state,
+        job_kind="bleedthrough",
+        command=[sys.executable, "-c", "raise SystemExit(0)"],
+    ) == 0
+    assert len(observed_handlers) == 1
+    assert observed_handlers[0] is not previous_handler
+    assert signal.getsignal(signal.SIGTERM) is previous_handler
+
+
 def test_sigterm_is_forwarded_and_state_is_completed_before_unlock(tmp_path):
     state = _state(tmp_path)
     process = subprocess.Popen(
