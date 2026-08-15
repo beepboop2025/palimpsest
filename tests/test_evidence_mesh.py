@@ -447,6 +447,7 @@ def test_atomic_write_and_check_are_byte_deterministic(tmp_path: Path) -> None:
 def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -> None:
     root = _isolated_root(tmp_path)
     publication_paths = {
+        "china-article-stream": root / "readings/china-article-stream-latest.json",
         "evidence-mesh": root / "readings/evidence-mesh-latest.json",
         "machine-investigations": root / "readings/machine-investigations-latest.json",
         "newsroom": root / "readings/newsroom-latest.json",
