@@ -523,6 +523,7 @@ def test_new_semantics_cannot_claim_a_change_before_the_last_good_observation(tm
 
 
 def test_method_upgrade_retains_the_supported_history_prefix(tmp_path, monkeypatch):
+    monkeypatch.setattr(importer, "METHOD_VERSION", 2)
     _first, output, history = _import(tmp_path)
     monkeypatch.setattr(importer, "METHOD_VERSION", 3)
     upgraded = _snapshot()

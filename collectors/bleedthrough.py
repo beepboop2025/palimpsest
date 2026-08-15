@@ -66,6 +66,7 @@ import ipaddress
 import json
 import logging
 import os
+import selectors
 import socket
 import struct
 import time
@@ -436,13 +437,193 @@ def _to_injections(answers: list) -> list:
                          from_addr=a.get("from_addr", "")) for a in answers if a.get("ip")]
 
 
-def _udp_transport(domain: str, target_ip: str, *, wait: float = 1.2) -> list:
+def _udp_transport(
+    domain: str, target_ip: str, *, port: int = 53, wait: float = 1.2
+) -> list:
     """Direct-injection transport: probe a DARK IP inside China; the on-path GFW injects a
     forgery back at us. A dark IP has no real host, so any answer is a forgery — but we still
     apply looks_injected() as a guard against a target that has been reassigned to a live
     host, in which case a lone genuine answer is not counted."""
-    injs = _to_injections(_dns_exchange(domain, target_ip, wait=wait))
+    injs = _to_injections(_dns_exchange(domain, target_ip, port=port, wait=wait))
     return injs if looks_injected(injs) else []
+
+
+class _DirectUDPBurstSession:
+    """Overlap direct-DNS receive windows without increasing the send ceiling.
+
+    Every query keeps its own ephemeral socket, transaction ID, deadline, and answer
+    group.  `InjectionProbe` remains responsible for the kill-switch and rate token before
+    it calls `send()`.  While the rate limiter waits for its next token, `poll()` drains all
+    sockets that are ready; `finish()` then waits only for the final outstanding windows.
+    """
+
+    def __init__(
+        self,
+        domain: str,
+        target_ip: str,
+        *,
+        port: int,
+        wait: float,
+        clock=time.monotonic,
+        sleep=time.sleep,
+        socket_factory=socket.socket,
+        selector_factory=selectors.DefaultSelector,
+    ):
+        if wait <= 0:
+            raise ValueError("wait must be positive")
+        self._domain = domain
+        self._target = (target_ip, port)
+        self._wait = float(wait)
+        self._clock = clock
+        self._sleep = sleep
+        self._socket_factory = socket_factory
+        self._selector = selector_factory()
+        self._pending = {}
+        self._groups: list[list[RawInjection]] = []
+        self._closed = False
+
+    def _close_socket(self, sock) -> None:
+        self._pending.pop(sock, None)
+        try:
+            self._selector.unregister(sock)
+        except (KeyError, ValueError):
+            pass
+        sock.close()
+
+    def _expire(self, now: float | None = None) -> None:
+        observed_at = self._clock() if now is None else now
+        for sock, state in list(self._pending.items()):
+            if state["deadline"] <= observed_at:
+                self._close_socket(sock)
+
+    def _collect_ready(self, timeout: float) -> None:
+        for key, _mask in self._selector.select(max(0.0, timeout)):
+            sock = key.fileobj
+            state = self._pending.get(sock)
+            if state is None:
+                continue
+            while True:
+                try:
+                    data, addr = sock.recvfrom(4096)
+                except BlockingIOError:
+                    break
+                except OSError:
+                    self._close_socket(sock)
+                    break
+                received_at = self._clock()
+                if received_at > state["deadline"]:
+                    continue
+                parsed = parse_response(data)
+                if parsed.get("txid") != state["txid"]:
+                    continue
+                rtt_ms = round((received_at - state["sent_at"]) * 1000.0, 2)
+                for answer in parsed.get("answers", []):
+                    if answer.get("ip"):
+                        self._groups[state["index"]].append(
+                            RawInjection(
+                                answer["ip"],
+                                rr_ttl=int(answer.get("ttl") or 0),
+                                rtt_ms=rtt_ms,
+                                from_addr=addr[0],
+                            )
+                        )
+
+    def send(self) -> None:
+        if self._closed:
+            raise RuntimeError("burst session is closed")
+        self._expire()
+        if self._pending:
+            self._collect_ready(0.0)
+
+        txid = struct.unpack(">H", os.urandom(2))[0]
+        query = build_query(self._domain, txid, qtype=1)
+        sock = self._socket_factory(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.setblocking(False)
+            sent_at = self._clock()
+            sock.sendto(query, self._target)
+            index = len(self._groups)
+            self._groups.append([])
+            self._pending[sock] = {
+                "deadline": sent_at + self._wait,
+                "index": index,
+                "sent_at": sent_at,
+                "txid": txid,
+            }
+            self._selector.register(sock, selectors.EVENT_READ)
+        except BaseException:
+            self._pending.pop(sock, None)
+            sock.close()
+            raise
+
+    def poll(self, seconds: float) -> None:
+        """Sleep for the requested limiter delay while also draining ready sockets."""
+        duration = max(0.0, float(seconds))
+        stop_at = self._clock() + duration
+        if duration == 0:
+            self._expire()
+            if self._pending:
+                self._collect_ready(0.0)
+            self._expire()
+            return
+
+        while self._clock() < stop_at:
+            self._expire()
+            now = self._clock()
+            remaining = stop_at - now
+            if remaining <= 0:
+                break
+            if not self._pending:
+                self._sleep(remaining)
+                break
+            next_deadline = min(state["deadline"] for state in self._pending.values())
+            self._collect_ready(min(remaining, max(0.0, next_deadline - now)))
+        self._expire()
+
+    def finish(self) -> list[list[RawInjection]]:
+        if self._closed:
+            raise RuntimeError("burst session is closed")
+        while self._pending:
+            now = self._clock()
+            next_deadline = min(state["deadline"] for state in self._pending.values())
+            self.poll(max(0.0, next_deadline - now))
+        return [group if looks_injected(group) else [] for group in self._groups]
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        for sock in list(self._pending):
+            self._close_socket(sock)
+        self._selector.close()
+        self._closed = True
+
+
+class DirectUDPBurstTransport:
+    """Direct transport with a rate-limiter-aware overlapped burst protocol."""
+
+    def __init__(self, *, wait: float = 1.2, port: int = 53):
+        if wait <= 0:
+            raise ValueError("wait must be positive")
+        if not 1 <= port <= 65535:
+            raise ValueError("port must be in 1..65535")
+        self.wait = float(wait)
+        self.port = int(port)
+
+    def __call__(self, domain: str, target_ip: str) -> list:
+        return _udp_transport(domain, target_ip, port=self.port, wait=self.wait)
+
+    def start_burst(self, domain: str, target_ip: str) -> _DirectUDPBurstSession:
+        return _DirectUDPBurstSession(
+            domain,
+            target_ip,
+            port=self.port,
+            wait=self.wait,
+        )
+
+
+def direct_udp_transport(*, wait: float = 1.2, port: int = 53) -> DirectUDPBurstTransport:
+    """Build the direct transport used by the live runner and injectable offline tests."""
+    return DirectUDPBurstTransport(wait=wait, port=port)
 
 
 # ── open-resolver fallback transport (Satellite/Iris-style; the robust channel) ────────
@@ -717,8 +898,29 @@ class InjectionProbe:
         self.burst = burst
 
     def measure(self, probe: InjectorProbe, target: TargetVantage) -> InjectorFingerprint:
-        """Send `burst` queries; concatenate the injected answers in arrival order (the
-        cycle signal lives in the order); reduce to a fingerprint."""
+        """Send `burst` queries; concatenate groups in probe-send order while preserving
+        arrival order inside each probe. The cycle signal lives in that stable order."""
+        start_burst = getattr(self._transport, "start_burst", None)
+        if callable(start_burst) and self._rate is not None:
+            session = start_burst(probe.domain, target.ip)
+            try:
+                for _ in range(self.burst):
+                    if self._kill is not None:
+                        self._kill.require_live()
+                    self._rate.acquire(sleep=session.poll)
+                    session.send()
+                groups = session.finish()
+            finally:
+                session.close()
+            sequence = [injection for group in groups for injection in group]
+            max_multiplicity = max((len(group) for group in groups), default=0)
+            return fingerprint_injector(
+                target.tag(),
+                sequence,
+                n_probes=self.burst,
+                process_hint=max_multiplicity or None,
+            )
+
         sequence: list = []
         max_multiplicity = 0
         for _ in range(self.burst):

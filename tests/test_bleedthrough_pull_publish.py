@@ -96,16 +96,19 @@ def publish(tmp_path, monkeypatch):
         # Every injector answers every probe with the same forged pool, so the
         # fingerprint is a function of `pool` alone and an unchanged round is
         # genuinely unchanged rather than accidentally so.
-        def transport(domain, target_ip, *, wait):
-            if observed_waits is not None:
-                observed_waits.append(wait)
+        def transport(domain, target_ip):
             if observed_targets is not None:
                 observed_targets.append(target_ip)
             if target_ip in silent_targets:
                 return []
             return [RawInjection(ip, rr_ttl=64) for ip in pool]
 
-        monkeypatch.setattr(pull, "_udp_transport", transport)
+        def transport_factory(*, wait):
+            if observed_waits is not None:
+                observed_waits.append(wait)
+            return transport
+
+        monkeypatch.setattr(pull, "direct_udp_transport", transport_factory)
         pull.main()
         out = tmp_path / "bleedthrough-latest.json"
         # None, not an exception: an abstaining round legitimately publishes nothing,
@@ -479,7 +482,11 @@ def test_unsafe_probe_identity_is_rejected_before_collection(
         called = True
         return []
 
-    monkeypatch.setattr(pull, "_udp_transport", transport_must_not_run)
+    monkeypatch.setattr(
+        pull,
+        "direct_udp_transport",
+        lambda **_kwargs: transport_must_not_run,
+    )
     pull.main()
 
     assert called is False

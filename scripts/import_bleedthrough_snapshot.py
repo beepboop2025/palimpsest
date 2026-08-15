@@ -47,7 +47,7 @@ MAX_FUTURE_SKEW_SECONDS = 300.0
 EARLIEST_TIMESTAMP = datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()
 
 SIGNAL = "bleedthrough"
-METHOD_VERSION = 2
+METHOD_VERSION = 3
 MIN_PUBLIC_METHOD_VERSION = 2
 TITLE = "GFW injector fleet"
 PROBE_DOMAIN = "torproject.org"
@@ -420,10 +420,15 @@ def _method(transports: dict[str, dict[str, Any]]) -> str:
         raise BleedthroughImportError(
             "BLEEDTHROUGH declares no transport for the round"
         )
+    direct_schedule = (
+        " Direct receive windows overlap; outbound sends remain rate-capped."
+        if transports["direct"]["ran"]
+        else ""
+    )
     return (
         "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's "
         "own injectors to answer; we fingerprint the fleet from the forgeries. "
-        f"Transport this round: {' + '.join(legs)}. "
+        f"Transport this round: {' + '.join(legs)}.{direct_schedule} "
         "Injector count is a FLOOR, not a census: each injector answers a given "
         "query at most once, so a silent injector is undercounted."
     )

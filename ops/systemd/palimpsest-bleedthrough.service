@@ -23,9 +23,10 @@ ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-network-lane/current/verify-h
 ExecStart=/usr/bin/python3 /usr/local/libexec/palimpsest-network-lane/current/network_lane.py --state-dir /var/lib/palimpsest/network-lane bleedthrough --quiet-seconds 900
 SuccessExitStatus=75
 
-# 216 targets × 24 probes × a 1.2s receive window is already ~104 minutes before
-# BGP refresh, curation, and network variance. The durable flock separately prevents
-# a manual start from overlapping the timer while the three-hour envelope is active.
+# Direct-probe receive windows overlap under the unchanged 5-query/s token bucket:
+# 216 targets × ((24 / 5) + 1.2s) is roughly 22 minutes before BGP refresh,
+# curation, and network variance. The durable flock separately prevents a manual
+# start from overlapping the timer while the three-hour safety envelope is active.
 TimeoutStartSec=3h
 UMask=0027
 Nice=10

@@ -2,15 +2,18 @@
 
     PYTHONPATH=. python3 -m pytest tests/test_bleedthrough.py -q
 
-Pure/offline: the DNS wire codec is exercised against bytes it builds itself, and the
-prober runs against an injected (canned) transport that reproduces the Wallbleed
-multi-injector model, so nothing touches the network — the same discipline as
+Offline from the public network: the DNS wire codec is exercised against bytes it builds
+itself, the burst socket path uses loopback only, and the prober runs against an injected
+transport that reproduces the Wallbleed multi-injector model — the same discipline as
 test_undertext.
 """
 
 import pytest
 
 import json
+import socket
+import struct
+import threading
 
 from collectors.bleedthrough import (
     CAPACITY_SHIFT,
@@ -31,6 +34,7 @@ from collectors.bleedthrough import (
     classify_resolver_answers,
     curate_dark_ips,
     curate_resolvers,
+    direct_udp_transport,
     parse_announced_prefixes,
     sample_ips_from_prefix,
     select_ipv4_prefixes,
@@ -67,6 +71,40 @@ def _fleet(pool, n_injectors=2, rr_ttl=64):
 
 def _silent_transport(domain, ip):
     return []  # a vantage where no injector sits on the path
+
+
+class _BurstSession:
+    def __init__(self, groups):
+        self.groups = groups
+        self.sent = 0
+        self.polls = []
+        self.closed = False
+
+    def send(self):
+        self.sent += 1
+
+    def poll(self, seconds):
+        self.polls.append(seconds)
+
+    def finish(self):
+        assert self.sent == len(self.groups)
+        return self.groups
+
+    def close(self):
+        self.closed = True
+
+
+class _BurstTransport:
+    def __init__(self, groups):
+        self.session = _BurstSession(groups)
+        self.started = []
+
+    def start_burst(self, domain, target_ip):
+        self.started.append((domain, target_ip))
+        return self.session
+
+    def __call__(self, _domain, _target_ip):
+        raise AssertionError("rate-limited burst transport must not use the serial path")
 
 
 # ── DNS wire codec (round-trips bytes it builds itself) ────────────────────────────────
@@ -208,6 +246,170 @@ def test_rate_ceiling_is_consulted():
                            rate_ceiling=_Rate(rate=100), burst=5)
     probe.measure(InjectorProbe("x.org"), TargetVantage("202.0.0.1"))
     assert calls["n"] == 5   # one token per probe in the burst
+
+
+def test_rate_limited_burst_overlaps_waits_and_preserves_probe_groups():
+    groups = [
+        [RawInjection("8.7.198.45"), RawInjection("2.1.1.2")],
+        [RawInjection("2.1.1.2"), RawInjection("8.7.198.45")],
+        [RawInjection("8.7.198.45")],
+    ]
+    transport = _BurstTransport(groups)
+
+    class _Rate:
+        def __init__(self):
+            self.calls = 0
+
+        def acquire(self, tokens=1.0, *, sleep):
+            assert tokens == 1.0
+            self.calls += 1
+            sleep(0.2)
+
+    class _Kill:
+        def __init__(self):
+            self.calls = 0
+
+        def require_live(self):
+            self.calls += 1
+
+    rate = _Rate()
+    kill = _Kill()
+    fingerprint = InjectionProbe(
+        transport=transport,
+        kill_switch=kill,
+        rate_ceiling=rate,
+        burst=3,
+    ).measure(InjectorProbe("torproject.org"), TargetVantage("202.0.0.1"))
+
+    assert transport.started == [("torproject.org", "202.0.0.1")]
+    assert transport.session.sent == 3
+    assert transport.session.polls == [0.2, 0.2, 0.2]
+    assert transport.session.closed is True
+    assert rate.calls == kill.calls == 3
+    assert fingerprint.n_probes == 3
+    assert fingerprint.process_count == 2
+    assert fingerprint.pool == ("2.1.1.2", "8.7.198.45")
+
+
+def test_burst_session_closes_if_kill_switch_halts_mid_round():
+    transport = _BurstTransport([[RawInjection("8.7.198.45")]] * 4)
+
+    class _Rate:
+        def acquire(self, *, sleep, **_kwargs):
+            sleep(0.01)
+
+    class _Kill:
+        def __init__(self):
+            self.calls = 0
+
+        def require_live(self):
+            self.calls += 1
+            if self.calls == 3:
+                raise RuntimeError("halted")
+
+    with pytest.raises(RuntimeError, match="halted"):
+        InjectionProbe(
+            transport=transport,
+            kill_switch=_Kill(),
+            rate_ceiling=_Rate(),
+            burst=4,
+        ).measure(InjectorProbe("x.org"), TargetVantage("202.0.0.1"))
+
+    assert transport.session.sent == 2
+    assert transport.session.closed is True
+
+
+def test_burst_capable_transport_without_rate_ceiling_stays_serial():
+    class _DualTransport:
+        def __init__(self):
+            self.serial_calls = 0
+            self.burst_calls = 0
+
+        def __call__(self, _domain, _target_ip):
+            self.serial_calls += 1
+            return [RawInjection("8.7.198.45")]
+
+        def start_burst(self, _domain, _target_ip):
+            self.burst_calls += 1
+            raise AssertionError("unlimited callers must use the serial path")
+
+    transport = _DualTransport()
+    fingerprint = InjectionProbe(transport=transport, burst=3).measure(
+        InjectorProbe("x.org"), TargetVantage("202.0.0.1")
+    )
+
+    assert transport.serial_calls == 3
+    assert transport.burst_calls == 0
+    assert fingerprint.n_probes == 3
+
+
+def test_direct_burst_transport_validates_bounds_and_empty_session_closes():
+    with pytest.raises(ValueError, match="wait must be positive"):
+        direct_udp_transport(wait=0)
+    with pytest.raises(ValueError, match="port must be"):
+        direct_udp_transport(port=0)
+
+    transport = direct_udp_transport(wait=0.1, port=5300)
+    session = transport.start_burst("x.org", "127.0.0.1")
+    try:
+        assert session.finish() == []
+    finally:
+        session.close()
+
+
+def _dns_a_response(query, *, txid=None, ip="8.7.198.45"):
+    query_txid = struct.unpack(">H", query[:2])[0]
+    response_txid = query_txid if txid is None else txid
+    header = struct.pack(">HHHHHH", response_txid, 0x8180, 1, 1, 0, 0)
+    answer = (
+        b"\xc0\x0c"
+        + struct.pack(">HHIH", 1, 1, 64, 4)
+        + bytes(int(part) for part in ip.split("."))
+    )
+    return header + query[12:] + answer
+
+
+def test_direct_burst_session_demultiplexes_real_loopback_sockets():
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.bind(("127.0.0.1", 0))
+    server.settimeout(2.0)
+    source_ports = []
+    failures = []
+
+    def respond():
+        try:
+            for index in range(3):
+                query, address = server.recvfrom(4096)
+                source_ports.append(address[1])
+                if index == 0:
+                    wrong_txid = (struct.unpack(">H", query[:2])[0] + 1) & 0xFFFF
+                    server.sendto(_dns_a_response(query, txid=wrong_txid), address)
+                server.sendto(_dns_a_response(query), address)
+        except BaseException as exc:  # surfaced in the assertion below
+            failures.append(exc)
+
+    responder = threading.Thread(target=respond, daemon=True)
+    responder.start()
+    session = direct_udp_transport(wait=0.5, port=server.getsockname()[1]).start_burst(
+        "torproject.org", "127.0.0.1"
+    )
+    try:
+        for _ in range(3):
+            session.send()
+        groups = session.finish()
+    finally:
+        session.close()
+        responder.join(timeout=2.0)
+        server.close()
+
+    assert responder.is_alive() is False
+    assert failures == []
+    assert len(set(source_ports)) == 3
+    assert [[item.forged_ip for item in group] for group in groups] == [
+        ["8.7.198.45"],
+        ["8.7.198.45"],
+        ["8.7.198.45"],
+    ]
 
 
 # ── emit adapters ──────────────────────────────────────────────────────────────────────
