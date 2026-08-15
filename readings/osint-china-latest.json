@@ -23,26 +23,34 @@
       "source_id": "baike-redaction",
       "summary": "optional collector is disabled pending authorized access; no current Baike measurement is claimed",
       "title": "Baike redaction: degraded"
+    },
+    {
+      "id": "health-data-darkness",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "data-darkness",
+      "summary": "freshness deadline has passed",
+      "title": "Official-data darkness: stale"
     }
   ],
-  "generated_at": "2026-08-15T12:37:35Z",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
+  "generated_at": "2026-08-15T13:06:59Z",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 1,
-      "live": 32,
+      "live": 31,
       "missing": 0,
-      "stale": 0
+      "stale": 1
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 29,
+    "required_live": 28,
     "required_reporting": 29,
     "required_total": 29,
-    "status": "healthy"
+    "status": "degraded"
   },
-  "input_commit": "3378e23f5777181b5754c232abe9aeabbe137a49",
+  "input_commit": "6be5f7ae7f5c6749a13517fd2f3c598df19d312f",
   "layers": [
     {
       "id": "command",
@@ -115,8 +123,8 @@
     },
     {
       "id": "economy",
-      "n_degraded": 0,
-      "n_live": 5,
+      "n_degraded": 1,
+      "n_live": 4,
       "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
@@ -126,7 +134,7 @@
         "data-darkness",
         "believability"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Economic undertext"
     },
     {
@@ -168,7 +176,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 32,
+  "n_signals_live": 31,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -178,7 +186,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 5.327,
+        "age_hours": 5.817,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -503,7 +511,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:16:24Z",
       "health": {
-        "age_hours": 5.353,
+        "age_hours": 5.843,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -727,7 +735,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 5.326,
+        "age_hours": 5.816,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -875,7 +883,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 5.326,
+        "age_hours": 5.816,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1424,7 +1432,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 5.326,
+        "age_hours": 5.816,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1809,9 +1817,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-15T16:42:12Z",
+      "freshness_deadline": "2026-08-15T19:59:51Z",
       "health": {
-        "age_hours": 2.923,
+        "age_hours": 0.119,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1821,9 +1829,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 26586,
+        "bytes": 26565,
         "filename": "ddti-latest.json",
-        "sha256": "254545673f6d14e65d7eeeebeff3ffab216ff0e919a50fa01432f98270951919"
+        "sha256": "37664cbcc3ce53264433169ff40a2b6a416028b150342a5b46d1cfae160133f3"
       },
       "layer": "attention",
       "live": true,
@@ -1845,7 +1853,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 196.2,
+          "days_covered": 196.3,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1859,12 +1867,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-15T09:42:12.682648+00:00",
+        "generated_at": "2026-08-15T12:59:51.820356+00:00",
         "n_observations": 83,
         "n_terms": 207,
         "ranked": [
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -1881,10 +1889,10 @@
               }
             ],
             "term": "Discouraged",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -1901,10 +1909,10 @@
               }
             ],
             "term": "France",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -1921,10 +1929,10 @@
               }
             ],
             "term": "Peking University",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -1941,10 +1949,10 @@
               }
             ],
             "term": "U.S. universities",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -1961,10 +1969,10 @@
               }
             ],
             "term": "academics",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -1981,10 +1989,10 @@
               }
             ],
             "term": "foreign universities",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -2001,10 +2009,10 @@
               }
             ],
             "term": "mathematics",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -2021,10 +2029,10 @@
               }
             ],
             "term": "overseas Chinese",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T23:04:56+00:00",
@@ -2041,10 +2049,10 @@
               }
             ],
             "term": "science education",
-            "threat": 1.5012
+            "threat": 1.4314
           },
           {
-            "attention": 1.4858,
+            "attention": 1.4168,
             "burst_ratio": 0.73,
             "domain": "TECHNOLOGY",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2069,10 +2077,10 @@
               }
             ],
             "term": "WeChat",
-            "threat": 1.4858
+            "threat": 1.4168
           },
           {
-            "attention": 0.8643,
+            "attention": 0.8242,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-03-04T22:42:51+00:00",
@@ -2093,10 +2101,10 @@
               }
             ],
             "term": "nationalism",
-            "threat": 1.4406
+            "threat": 1.3736
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-03-09T23:19:55+00:00",
@@ -2117,10 +2125,10 @@
               }
             ],
             "term": "United States",
-            "threat": 1.4297
+            "threat": 1.3633
           },
           {
-            "attention": 0.8491,
+            "attention": 0.8096,
             "burst_ratio": 2.0,
             "domain": "OTHER",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -2145,10 +2153,10 @@
               }
             ],
             "term": "social media",
-            "threat": 1.3585
+            "threat": 1.2954
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-04-03T02:47:04+00:00",
@@ -2165,10 +2173,10 @@
               }
             ],
             "term": "Academia",
-            "threat": 1.2867
+            "threat": 1.2269
           },
           {
-            "attention": 0.6223,
+            "attention": 0.5934,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-14T00:51:23+00:00",
@@ -2185,10 +2193,10 @@
               }
             ],
             "term": "Cannot Speak Openly",
-            "threat": 1.089
+            "threat": 1.0384
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-03-11T23:40:37+00:00",
@@ -2205,10 +2213,10 @@
               }
             ],
             "term": "women",
-            "threat": 1.0723
+            "threat": 1.0224
           },
           {
-            "attention": 0.6223,
+            "attention": 0.5934,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-15T06:41:23+00:00",
@@ -2225,10 +2233,10 @@
               }
             ],
             "term": "tech companies",
-            "threat": 0.9335
+            "threat": 0.8901
           },
           {
-            "attention": 0.8643,
+            "attention": 0.8242,
             "burst_ratio": 0.43,
             "domain": "OTHER",
             "first_seen": "2026-02-23T02:11:05+00:00",
@@ -2249,10 +2257,10 @@
               }
             ],
             "term": "translation excerpt",
-            "threat": 0.8643
+            "threat": 0.8242
           },
           {
-            "attention": 0.6273,
+            "attention": 0.5982,
             "burst_ratio": 1.4,
             "domain": "INFORMATION",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2277,10 +2285,10 @@
               }
             ],
             "term": "censorship",
-            "threat": 0.8625
+            "threat": 0.8225
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 0.75,
             "domain": "OTHER",
             "first_seen": "2026-02-28T01:56:40+00:00",
@@ -2297,10 +2305,10 @@
               }
             ],
             "term": "Weibo censorship",
-            "threat": 0.8578
+            "threat": 0.818
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 1.0,
             "domain": "OTHER",
             "first_seen": "2026-04-03T02:47:04+00:00",
@@ -2317,10 +2325,10 @@
               }
             ],
             "term": "higher education",
-            "threat": 0.8578
+            "threat": 0.818
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 1.0,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2341,10 +2349,10 @@
               }
             ],
             "term": "netizen comments",
-            "threat": 0.8578
+            "threat": 0.818
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 0.6,
             "domain": "INFORMATION",
             "first_seen": "2026-02-23T02:11:05+00:00",
@@ -2369,10 +2377,10 @@
               }
             ],
             "term": "online public opinion",
-            "threat": 0.8578
+            "threat": 0.818
           },
           {
-            "attention": 0.8578,
+            "attention": 0.818,
             "burst_ratio": 1.0,
             "domain": "OTHER",
             "first_seen": "2026-04-03T02:47:04+00:00",
@@ -2389,10 +2397,10 @@
               }
             ],
             "term": "universities",
-            "threat": 0.8578
+            "threat": 0.818
           },
           {
-            "attention": 0.6311,
+            "attention": 0.6017,
             "burst_ratio": 1.04,
             "domain": "INFORMATION",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2417,10 +2425,10 @@
               }
             ],
             "term": "social media censorship",
-            "threat": 0.6626
+            "threat": 0.6318
           },
           {
-            "attention": 0.6328,
+            "attention": 0.6034,
             "burst_ratio": 0.86,
             "domain": "INFORMATION",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2445,10 +2453,10 @@
               }
             ],
             "term": "Internet censorship",
-            "threat": 0.6328
+            "threat": 0.6034
           },
           {
-            "attention": 0.6311,
+            "attention": 0.6017,
             "burst_ratio": 0.83,
             "domain": "INFORMATION",
             "first_seen": "2026-02-18T19:52:57+00:00",
@@ -2473,10 +2481,10 @@
               }
             ],
             "term": "online censorship",
-            "threat": 0.6311
+            "threat": 0.6017
           },
           {
-            "attention": 0.6223,
+            "attention": 0.5934,
             "burst_ratio": 0.6,
             "domain": "OTHER",
             "first_seen": "2026-02-26T07:40:33+00:00",
@@ -2493,10 +2501,10 @@
               }
             ],
             "term": "sensitive words",
-            "threat": 0.6223
+            "threat": 0.5934
           },
           {
-            "attention": 0.2268,
+            "attention": 0.2162,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-11T02:57:16+00:00",
@@ -2513,7 +2521,7 @@
               }
             ],
             "term": "Caixin",
-            "threat": 0.3969
+            "threat": 0.3784
           }
         ],
         "source_feeds": {
@@ -2535,7 +2543,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-15T09:42:12Z",
+      "source_timestamp": "2026-08-15T12:59:51Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 207 count.",
       "title": "Deletion-directive term index"
@@ -2544,7 +2552,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:21:21Z",
       "health": {
-        "age_hours": 5.27,
+        "age_hours": 5.76,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2842,7 +2850,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:09:46Z",
       "health": {
-        "age_hours": 5.464,
+        "age_hours": 5.954,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3130,7 +3138,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:41Z",
       "health": {
-        "age_hours": 5.332,
+        "age_hours": 5.822,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3437,7 +3445,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 126.752,
+        "age_hours": 127.242,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3748,7 +3756,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-16T04:02:44Z",
       "health": {
-        "age_hours": 10.581,
+        "age_hours": 11.071,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4028,9 +4036,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T21:02:02Z",
+      "freshness_deadline": "2026-08-16T03:02:46Z",
       "health": {
-        "age_hours": 5.592,
+        "age_hours": 0.07,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4040,9 +4048,9 @@
       },
       "id": "ooni-gfw",
       "input": {
-        "bytes": 7900,
+        "bytes": 7888,
         "filename": "ooni-gfw-latest.json",
-        "sha256": "198059d8a86fb441946e6dcaeae28743c7ec5968cc7ea0ef842cba605292e606"
+        "sha256": "e4ebb3c9c561a8be14e9edf9c565214c0f617061972e57a4370867bd7120d35b"
       },
       "layer": "network",
       "live": true,
@@ -4051,7 +4059,7 @@
       "metric": {
         "denominator": {
           "label": "completed measurements",
-          "value": 274040
+          "value": 275134
         },
         "label": "GFW anomaly index",
         "unit": "percent",
@@ -4060,75 +4068,75 @@
       "optional": false,
       "payload": {
         "china_caveat": "the GFW blocks via RST/DNS injection without a block page, so OONI 'confirmed' is near-zero for CN; we track anomaly rate, not confirmed",
-        "generated_at": "2026-08-15T07:02:02.172365+00:00",
+        "generated_at": "2026-08-15T13:02:46.761506+00:00",
         "gfw_index": 58.6,
-        "last_changed_at": "2026-08-15T07:02:02.172365+00:00",
+        "last_changed_at": "2026-08-15T13:02:46.761506+00:00",
         "method": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
         "method_version": 2,
-        "n_completed_measurements": 274040,
-        "n_measurements": 275678,
+        "n_completed_measurements": 275134,
+        "n_measurements": 276799,
         "n_tests_with_data": 6,
         "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
         "since": "2026-08-08",
         "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
         "tests": [
           {
-            "anomaly_count": 159515,
-            "anomaly_rate": 0.5852,
+            "anomaly_count": 159998,
+            "anomaly_rate": 0.5847,
             "available": true,
-            "failure_count": 1637,
+            "failure_count": 1664,
             "label": "website / URL blocking",
-            "measurement_count": 274241,
-            "reading": "59% anomalous — substantial interference",
+            "measurement_count": 275306,
+            "reading": "58% anomalous — substantial interference",
             "test": "web_connectivity"
           },
           {
-            "anomaly_count": 316,
-            "anomaly_rate": 0.9753,
+            "anomaly_count": 328,
+            "anomaly_rate": 0.9762,
             "available": true,
             "failure_count": 0,
             "label": "Telegram reachability",
-            "measurement_count": 324,
+            "measurement_count": 336,
             "reading": "98% anomalous — heavily interfered with",
             "test": "telegram"
           },
           {
-            "anomaly_count": 312,
-            "anomaly_rate": 0.972,
+            "anomaly_count": 326,
+            "anomaly_rate": 0.9731,
             "available": true,
             "failure_count": 0,
             "label": "WhatsApp reachability",
-            "measurement_count": 321,
+            "measurement_count": 335,
             "reading": "97% anomalous — heavily interfered with",
             "test": "whatsapp"
           },
           {
-            "anomaly_count": 306,
-            "anomaly_rate": 0.9745,
+            "anomaly_count": 320,
+            "anomaly_rate": 0.9756,
             "available": true,
             "failure_count": 1,
             "label": "Signal reachability",
-            "measurement_count": 315,
-            "reading": "97% anomalous — heavily interfered with",
+            "measurement_count": 329,
+            "reading": "98% anomalous — heavily interfered with",
             "test": "signal"
           },
           {
-            "anomaly_count": 201,
-            "anomaly_rate": 0.9617,
+            "anomaly_count": 211,
+            "anomaly_rate": 0.9591,
             "available": true,
             "failure_count": 0,
             "label": "Tor reachability",
-            "measurement_count": 209,
+            "measurement_count": 220,
             "reading": "96% anomalous — heavily interfered with",
             "test": "tor"
           },
           {
-            "anomaly_count": 57,
-            "anomaly_rate": 0.2127,
+            "anomaly_count": 58,
+            "anomaly_rate": 0.2125,
             "available": true,
             "failure_count": 0,
             "label": "Psiphon circumvention",
-            "measurement_count": 268,
+            "measurement_count": 273,
             "reading": "21% anomalous — some interference",
             "test": "psiphon"
           },
@@ -4153,20 +4161,20 @@
             "measurement_count": 41
           },
           {
+            "anomaly_count": 39,
+            "anomaly_rate": 1.0,
+            "completed_measurement_count": 39,
+            "domain": "studentsforafreetibet.org",
+            "failure_count": 0,
+            "measurement_count": 39
+          },
+          {
             "anomaly_count": 38,
             "anomaly_rate": 1.0,
             "completed_measurement_count": 38,
             "domain": "1.1.1.1",
             "failure_count": 0,
             "measurement_count": 38
-          },
-          {
-            "anomaly_count": 37,
-            "anomaly_rate": 1.0,
-            "completed_measurement_count": 37,
-            "domain": "studentsforafreetibet.org",
-            "failure_count": 0,
-            "measurement_count": 37
           },
           {
             "anomaly_count": 33,
@@ -4284,6 +4292,22 @@
             "anomaly_count": 26,
             "anomaly_rate": 1.0,
             "completed_measurement_count": 26,
+            "domain": "rsf.org",
+            "failure_count": 1,
+            "measurement_count": 27
+          },
+          {
+            "anomaly_count": 26,
+            "anomaly_rate": 1.0,
+            "completed_measurement_count": 26,
+            "domain": "tunsafe.com",
+            "failure_count": 0,
+            "measurement_count": 26
+          },
+          {
+            "anomaly_count": 26,
+            "anomaly_rate": 1.0,
+            "completed_measurement_count": 26,
             "domain": "video.twimg.com",
             "failure_count": 1,
             "measurement_count": 27
@@ -4327,22 +4351,6 @@
             "domain": "cn.nytimes.com",
             "failure_count": 0,
             "measurement_count": 25
-          },
-          {
-            "anomaly_count": 25,
-            "anomaly_rate": 1.0,
-            "completed_measurement_count": 25,
-            "domain": "freetibet.org",
-            "failure_count": 0,
-            "measurement_count": 25
-          },
-          {
-            "anomaly_count": 25,
-            "anomaly_rate": 1.0,
-            "completed_measurement_count": 25,
-            "domain": "googleweblight.com",
-            "failure_count": 0,
-            "measurement_count": 25
           }
         ],
         "until": "2026-08-16",
@@ -4351,16 +4359,16 @@
       "raw_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
       "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
       "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
-      "source_timestamp": "2026-08-15T07:02:02Z",
+      "source_timestamp": "2026-08-15T13:02:46Z",
       "status": "live",
-      "summary": "Aggregates OONI measurements made by probes in China across network test families. Latest payload reports GFW anomaly index at 58.6 percent across 274040 completed measurements.",
+      "summary": "Aggregates OONI measurements made by probes in China across network test families. Latest payload reports GFW anomaly index at 58.6 percent across 275134 completed measurements.",
       "title": "OONI Great Firewall index"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T21:04:58Z",
+      "freshness_deadline": "2026-08-16T03:05:35Z",
       "health": {
-        "age_hours": 5.544,
+        "age_hours": 0.023,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4372,7 +4380,7 @@
       "input": {
         "bytes": 4262,
         "filename": "in-path-interference-latest.json",
-        "sha256": "6663d697d45ccbe7e26359d1935164e1cbba28bae9d39c2ae481ff599ef06270"
+        "sha256": "fbce2c1d4983d540ce13172f4ab5cbcec992130ba07a8cae490fdec836e6de1a"
       },
       "layer": "network",
       "live": true,
@@ -4381,7 +4389,7 @@
       "metric": {
         "denominator": {
           "label": "completed middlebox tests",
-          "value": 9623
+          "value": 9645
         },
         "label": "middlebox index",
         "unit": "percent",
@@ -4396,21 +4404,21 @@
         "execution_blackouts": [
           {
             "label": "DNS-integrity test completion",
-            "measurement_count": 68066,
+            "measurement_count": 68281,
             "test": "dnscheck"
           },
           {
             "label": "Encrypted Client Hello test completion",
-            "measurement_count": 253,
+            "measurement_count": 254,
             "test": "echcheck"
           }
         ],
         "execution_reading": "2 measurement method(s) never completed a single run in China this window: dnscheck, echcheck",
-        "generated_at": "2026-08-15T07:04:58.290926+00:00",
-        "last_changed_at": "2026-08-15T07:04:58.290926+00:00",
+        "generated_at": "2026-08-15T13:05:35.965658+00:00",
+        "last_changed_at": "2026-08-15T13:05:35.965658+00:00",
         "method": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
         "method_version": 1,
-        "middlebox_completed_count": 9623,
+        "middlebox_completed_count": 9645,
         "middlebox_index": 1.28,
         "middlebox_reading": "1.3% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
         "scope": "in-path tampering, real-time/circumvention transport health, and measurement methods that cannot execute inside China",
@@ -4420,12 +4428,12 @@
             "anomaly_count": 74,
             "anomaly_rate": 0.0155,
             "available": true,
-            "completed_count": 4771,
+            "completed_count": 4782,
             "execution_failure_rate": 0.0,
             "failure_count": 0,
             "family": "MIDDLEBOX",
             "label": "HTTP headers rewritten in transit",
-            "measurement_count": 4771,
+            "measurement_count": 4782,
             "never_completes": false,
             "test": "http_header_field_manipulation",
             "why": null
@@ -4434,26 +4442,26 @@
             "anomaly_count": 49,
             "anomaly_rate": 0.0101,
             "available": true,
-            "completed_count": 4852,
+            "completed_count": 4863,
             "execution_failure_rate": 0.0,
             "failure_count": 0,
             "family": "MIDDLEBOX",
             "label": "malformed request lines normalised in transit",
-            "measurement_count": 4852,
+            "measurement_count": 4863,
             "never_completes": false,
             "test": "http_invalid_request_line",
             "why": null
           },
           {
-            "anomaly_count": 12209,
-            "anomaly_rate": 0.3294,
+            "anomaly_count": 12248,
+            "anomaly_rate": 0.3296,
             "available": true,
-            "completed_count": 37059,
+            "completed_count": 37158,
             "execution_failure_rate": 0.0,
             "failure_count": 0,
             "family": "TRANSPORT",
             "label": "STUN servers unreachable (real-time voice / WebRTC)",
-            "measurement_count": 37059,
+            "measurement_count": 37158,
             "never_completes": false,
             "test": "stunreachability",
             "why": null
@@ -4463,11 +4471,11 @@
             "anomaly_rate": 0.9213,
             "available": true,
             "completed_count": 445,
-            "execution_failure_rate": 0.8811,
-            "failure_count": 3299,
+            "execution_failure_rate": 0.8815,
+            "failure_count": 3309,
             "family": "TRANSPORT",
             "label": "stock Tor bootstrap",
-            "measurement_count": 3744,
+            "measurement_count": 3754,
             "never_completes": false,
             "test": "vanilla_tor",
             "why": null
@@ -4492,10 +4500,10 @@
             "available": false,
             "completed_count": 0,
             "execution_failure_rate": 1.0,
-            "failure_count": 68066,
+            "failure_count": 68281,
             "family": "EXECUTION",
             "label": "DNS-integrity test completion",
-            "measurement_count": 68066,
+            "measurement_count": 68281,
             "never_completes": true,
             "test": "dnscheck",
             "why": "only 0 completed measurement(s); below the 100 floor for a rate"
@@ -4506,32 +4514,32 @@
             "available": false,
             "completed_count": 0,
             "execution_failure_rate": 1.0,
-            "failure_count": 253,
+            "failure_count": 254,
             "family": "EXECUTION",
             "label": "Encrypted Client Hello test completion",
-            "measurement_count": 253,
+            "measurement_count": 254,
             "never_completes": true,
             "test": "echcheck",
             "why": "only 0 completed measurement(s); below the 100 floor for a rate"
           }
         ],
-        "transport_index": 33.75,
+        "transport_index": 33.76,
         "transport_reading": "33.8% anomalous — transports partly degraded",
         "window_days": 90
       },
       "raw_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
       "scope": "in-path tampering, real-time/circumvention transport health, and measurement methods that cannot execute inside China",
       "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
-      "source_timestamp": "2026-08-15T07:04:58Z",
+      "source_timestamp": "2026-08-15T13:05:35Z",
       "status": "live",
-      "summary": "Separates middlebox signatures, transport failures and tests that could not execute. Latest payload reports middlebox index at 1.28 percent across 9623 completed middlebox tests.",
+      "summary": "Separates middlebox signatures, transport failures and tests that could not execute. Latest payload reports middlebox index at 1.28 percent across 9645 completed middlebox tests.",
       "title": "In-path interference"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T07:55:40Z",
       "health": {
-        "age_hours": 6.698,
+        "age_hours": 7.188,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4707,7 +4715,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:08:47Z",
       "health": {
-        "age_hours": 5.48,
+        "age_hours": 5.97,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7000,9 +7008,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T21:03:13Z",
+      "freshness_deadline": "2026-08-16T03:04:13Z",
       "health": {
-        "age_hours": 5.573,
+        "age_hours": 0.046,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7014,7 +7022,7 @@
       "input": {
         "bytes": 668,
         "filename": "ioda-outages-latest.json",
-        "sha256": "9616d18cb092a45e345a3ef7a57e47185071ce30ad82abb926714226ede22c6f"
+        "sha256": "06e7b20b932adf554247faf463bf8fb0b8516bea4555c4de2b637b0ceee5f493"
       },
       "layer": "network",
       "live": true,
@@ -7029,7 +7037,7 @@
       "optional": false,
       "payload": {
         "events": [],
-        "generated_at": "2026-08-15T07:03:13Z",
+        "generated_at": "2026-08-15T13:04:13Z",
         "instruments_firing": 0,
         "method_note": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
         "method_version": 1,
@@ -7043,7 +7051,7 @@
       "raw_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
       "scope": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments.",
       "source": "IODA (Georgia Tech Internet Intelligence) v2 API — outage events for country CN from BGP, active probing (ping-slash24) and darknet (merit-nt) instruments",
-      "source_timestamp": "2026-08-15T07:03:13Z",
+      "source_timestamp": "2026-08-15T13:04:13Z",
       "status": "live",
       "summary": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments. Latest payload reports instruments firing at 0 count.",
       "title": "IODA outage monitor"
@@ -7052,7 +7060,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T07:42:09Z",
       "health": {
-        "age_hours": 6.924,
+        "age_hours": 7.414,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7125,7 +7133,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:23Z",
       "health": {
-        "age_hours": 5.337,
+        "age_hours": 5.827,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7203,7 +7211,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T02:36:32Z",
       "health": {
-        "age_hours": 0.017,
+        "age_hours": 0.507,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7324,7 +7332,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T17:09:06Z",
       "health": {
-        "age_hours": 9.475,
+        "age_hours": 9.965,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7453,9 +7461,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-15T15:50:24Z",
+      "freshness_deadline": "2026-08-16T15:04:33Z",
       "health": {
-        "age_hours": 22.786,
+        "age_hours": 0.04,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7467,7 +7475,7 @@
       "input": {
         "bytes": 1453,
         "filename": "wayback-latest.json",
-        "sha256": "b40fa77b2971f4f592d404668c00689c77320901cc1499a49b85e3a495a6efef"
+        "sha256": "bc7a6bd13f0e2620d16ddc41669dced7f71dc96b837fb11a1891c9e59390a641"
       },
       "layer": "erasure",
       "live": true,
@@ -7485,7 +7493,7 @@
       "optional": false,
       "payload": {
         "ddti_observations": [],
-        "generated_at": "2026-08-14T13:50:24.524981+00:00",
+        "generated_at": "2026-08-15T13:04:33.404068+00:00",
         "method_version": 1,
         "n_deletions": 0,
         "n_mutations": 0,
@@ -7535,7 +7543,7 @@
       "raw_url": "https://palimpsest.info/readings/wayback-latest.json",
       "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket",
       "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
-      "source_timestamp": "2026-08-14T13:50:24Z",
+      "source_timestamp": "2026-08-15T13:04:33Z",
       "status": "live",
       "summary": "Reconstructs deletions and silent mutations only where archive captures provide a witness. Latest payload reports reconstructed deletions at 0 count across 4 URLs watched.",
       "title": "Wayback reconstruction"
@@ -7544,7 +7552,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 376.105,
+        "age_hours": 376.595,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7698,7 +7706,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-16T04:02:20Z",
       "health": {
-        "age_hours": 10.587,
+        "age_hours": 11.077,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7877,7 +7885,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:20:54Z",
       "health": {
-        "age_hours": 5.278,
+        "age_hours": 5.768,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8053,7 +8061,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T07:52:35Z",
       "health": {
-        "age_hours": 6.75,
+        "age_hours": 7.24,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8157,7 +8165,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T00:27:05Z",
       "health": {
-        "age_hours": 2.175,
+        "age_hours": 2.665,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8224,7 +8232,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T19:51:31Z",
       "health": {
-        "age_hours": 18.768,
+        "age_hours": 19.258,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8276,7 +8284,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 22.144,
+        "age_hours": 22.634,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8334,12 +8342,12 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 49.523,
+        "age_hours": 50.013,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "data-darkness",
@@ -8349,7 +8357,7 @@
         "sha256": "55518ec26c2c20faade1091f09c2c45b168cc43cb7ae755f7e2ff89b06ef896c"
       },
       "layer": "economy",
-      "live": true,
+      "live": false,
       "method": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
       "method_version": 1,
       "metric": {
@@ -8482,15 +8490,15 @@
       "scope": "Checks official Chinese economic series against their own publication rhythms.",
       "source": "official Chinese publication surfaces, read keyless: pbc.gov.cn (OMO announcements; Money & Banking Statistics directory), safe.gov.cn (bank FX settlement page), stats.gov.cn (最新发布 firehose for the energy and industrial monthlies, plus the release calendar), nra.gov.cn (rail freight monthly), and this repo's own committed CFETS benchmark history",
       "source_timestamp": "2026-08-13T11:06:11Z",
-      "status": "live",
-      "summary": "Checks official Chinese economic series against their own publication rhythms. Upstream reading: high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md. Latest payload reports darkness index at 0.5899 index across 7 series watched.",
+      "status": "stale",
+      "summary": "Checks official Chinese economic series against their own publication rhythms. The retained payload is stale: source timestamp 2026-08-13T11:06:11Z passed its freshness deadline 2026-08-15T13:06:11Z, so it is not labelled live. Upstream reading: high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md. Latest payload reports darkness index at 0.5899 index across 7 series watched.",
       "title": "Official-data darkness"
     },
     {
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 243.451,
+        "age_hours": 243.941,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8558,7 +8566,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T09:18:18Z",
       "health": {
-        "age_hours": 5.321,
+        "age_hours": 5.811,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14034,7 +14042,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T17:09:17Z",
       "health": {
-        "age_hours": 9.472,
+        "age_hours": 9.962,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14081,7 +14089,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-15T13:29:16Z",
       "health": {
-        "age_hours": 0.139,
+        "age_hours": 0.629,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,

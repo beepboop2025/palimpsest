@@ -154,15 +154,15 @@
       <p class="nw-section__label">Reported facts</p><h2 id="reported-title">What the registered sources published</h2>
       <ol class="nw-fact-list"><li><strong>Financial Times — China.</strong> <span lang="en">Financial Times — China published “Price of niche rare earth jumps on fears of renewed Chinese export controls”.</span> <time datetime="2026-08-13T11:00:12Z">13 Aug 2026 · 11:00 UTC</time></li></ol>
     </section>
-    <section class="nw-dossier__section nw-assessment" data-disposition="collector-context" aria-labelledby="assessment-title">
+    <section class="nw-dossier__section nw-assessment" data-disposition="collector-abstention" aria-labelledby="assessment-title">
   <p class="nw-section__label">Palimpsest analysis</p><h2 id="assessment-title">What Palimpsest concludes</h2>
   <div class="nw-assessment__verdict">
-    <p class="nw-assessment__status">Current collector context · as of <time datetime="2026-08-15T10:27:05Z">15 Aug 2026 · 10:27 UTC</time></p>
-    <p class="nw-assessment__position">Palimpsest&#x27;s view: current collectors add relevant measured context, but they do not independently verify or refute this article.</p>
+    <p class="nw-assessment__status">Collector conclusion withheld · as of <time datetime="2026-08-15T10:27:05Z">15 Aug 2026 · 10:27 UTC</time></p>
+    <p class="nw-assessment__position">Palimpsest withholds a collector-backed conclusion because one or more declared measurement surfaces are not current.</p>
     <p>The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.</p>
   </div>
   <h3 class="nw-assessment__subhead">Why Palimpsest takes this position</h3>
-  <ul class="nw-assessment__rationale"><li>The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.</li><li>All 5 declared collector surfaces are live. Their normalized findings are published below as topical context, not article-specific confirmation.</li></ul>
+  <ul class="nw-assessment__rationale"><li>The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.</li><li>1 of 5 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view.</li></ul>
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   <div class="nw-assessment-grid"><article class="nw-assessment-card" data-status="live">
   <p class="nw-assessment-card__state">Current evidence · believability</p>
@@ -184,12 +184,11 @@
   <p class="nw-assessment-card__metric"><strong>-0.6846%</strong><span>fix gap</span></p>
   <p class="nw-assessment-card__limit">Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.</p>
   <details><summary>Method and receipt</summary><p>two prices for one currency: the state&#x27;s 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct &gt; 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board</p><dl><dt>Observed</dt><dd>14 Aug 2026 · 17:51 UTC</dd><dt>Evidence</dt><dd><a href="https://palimpsest.info/readings/cny-fix-gap-latest.json">cny-fix-gap-latest.json</a></dd><dt>SHA-256</dt><dd><code>25cb6fa1c979711590c1f4a03c2862531e443da0184156f0310907d4079e4021</code></dd></dl></details>
-</article><article class="nw-assessment-card" data-status="live">
-  <p class="nw-assessment-card__state">Current evidence · data-darkness</p>
-  <h3><a href="/news/official-data-darkness/">The official-data darkness index is 0.5899 across 7 watched series</a></h3>
-  <p>The current publication-cadence darkness index is 0.5899 across 7 watched official series.</p>
-  <p class="nw-assessment-card__metric"><strong>0.5899 index</strong><span>darkness index · across 7 series watched</span></p>
-  <p class="nw-assessment-card__limit">Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.</p>
+</article><article class="nw-assessment-card" data-status="stale">
+  <p class="nw-assessment-card__state">Evidence stale · data-darkness</p>
+  <h3><a href="/news/official-data-darkness/">Official-data darkness: no current finding</a></h3>
+  <p>No current finding is published for Official-data darkness because the source status is stale.</p>
+  <p class="nw-assessment-card__limit">Collector status is stale; retained values are not treated as a current finding.</p>
   <details><summary>Method and receipt</summary><p>publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector&#x27;s reference learns). NBS series additionally carry days_past_promise, scored against the state&#x27;s own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent</p><dl><dt>Observed</dt><dd>13 Aug 2026 · 11:06 UTC</dd><dt>Evidence</dt><dd><a href="https://palimpsest.info/readings/data-darkness-latest.json">data-darkness-latest.json</a></dd><dt>SHA-256</dt><dd><code>55518ec26c2c20faade1091f09c2c45b168cc43cb7ae755f7e2ff89b06ef896c</code></dd></dl></details>
 </article><article class="nw-assessment-card" data-status="live">
   <p class="nw-assessment-card__state">Current evidence · stock-connect</p>
@@ -199,7 +198,7 @@
   <p class="nw-assessment-card__limit">Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.</p>
   <details><summary>Method and receipt</summary><p>See the complete embedded upstream payload and its raw feed</p><dl><dt>Observed</dt><dd>14 Aug 2026 · 14:28 UTC</dd><dt>Evidence</dt><dd><a href="https://palimpsest.info/readings/stock-connect-latest.json">stock-connect-latest.json</a></dd><dt>SHA-256</dt><dd><code>659a35af203a31fafd2b5ccbac91f2678587dd6c3af9a2308cf110a49f6f03c6</code></dd></dl></details>
 </article></div>
-  <p class="nw-assessment__receipt">Analysis <code>analysisv-14447dd9acd6aa2542883601</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/analysisv-14447dd9acd6aa2542883601.json">immutable revision</a></p>
+  <p class="nw-assessment__receipt">Analysis <code>analysisv-6718d686abc92bc7f0483827</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/analysisv-6718d686abc92bc7f0483827.json">immutable revision</a></p>
 </section>
     <section class="nw-dossier__section" aria-labelledby="braid-title">
       <p class="nw-section__label">Evidence braid</p><h2 id="braid-title">Order, provenance and declared surfaces</h2>
@@ -207,7 +206,7 @@
   <p class="nw-braid__role">media · financial-times-editorial</p>
   <p class="nw-braid__source"><a href="https://www.ft.com/content/395650e6-7963-428b-9d86-b39c36453f5d?syn-25a6b1a6=1">Financial Times — China</a></p>
   <p class="nw-braid__title" lang="en">Price of niche rare earth jumps on fears of renewed Chinese export controls</p>
-  <p class="nw-braid__time"><time datetime="2026-08-13T11:00:12Z">13 Aug 2026 · 11:00 UTC</time> · feed sha 86182705c6d1</p>
+  <p class="nw-braid__time"><time datetime="2026-08-13T11:00:12Z">13 Aug 2026 · 11:00 UTC</time> · feed sha bcf08394f562</p>
 </li><li class="nw-braid__node nw-braid__node--link" data-role="topic-link">
   <p class="nw-braid__role">Declared topic surfaces · not a causal match</p>
   <p class="nw-braid__title">economic:believability · economic:china-econ · economic:cny-fix-gap · economic:data-darkness · economic:stock-connect</p>
@@ -222,7 +221,7 @@
   <td><span class="nw-role" data-role="media">media</span></td>
   <td><a href="https://www.ft.com/content/395650e6-7963-428b-9d86-b39c36453f5d?syn-25a6b1a6=1">Financial Times — China</a><small>financial-times-editorial</small></td>
   <td><span lang="en">Price of niche rare earth jumps on fears of renewed Chinese export controls</span><small lang="en">Erbium, used widely in infrastructure, is among the broad range of metals that China dominates production of</small></td>
-  <td><time datetime="2026-08-13T11:00:12Z">13 Aug 2026 · 11:00 UTC</time><small>feed sha 86182705c6d1</small></td>
+  <td><time datetime="2026-08-13T11:00:12Z">13 Aug 2026 · 11:00 UTC</time><small>feed sha bcf08394f562</small></td>
 </tr></tbody></table></div>
     </section>
     <section class="nw-dossier__section" aria-labelledby="surfaces-title">
