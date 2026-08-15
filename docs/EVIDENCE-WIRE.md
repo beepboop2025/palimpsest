@@ -36,7 +36,10 @@ controls, mirror article bodies, or claim to estimate a hidden “true GDP”.
                                   └───────> lexical dossiers ─────────┤
  official/market bytes ─> bitemporal observations ─> economic pulse ┤
  Palimpsest scans ──────> current instrument briefs ────────────────┤
+ public Telegram allowlist ─> raw warned Telegram mirror ───────────┐
+                              └─> private ScamShield capsules ──────┤
  reviewed ScamShield aggregate ─> context-only Telegram watch ──────┤
+ human-reviewed capsule ─> sanitized individual whisper ────────────┤
                                                                     v
                                 server-rendered wire + receipt tape
                                 + declared topic pointers (not joins)
@@ -58,11 +61,67 @@ excerpt metadata; reviewed China-specific desks are included item by item.
 
 ## Telegram and ScamShield context
 
-Telegram is a separate monitoring lane, never an evidence shortcut. ScamShield
-collects only configured public channels and operator-authorized surfaces and
-exports a private daily aggregate with observed-message, observed-source, flag,
-and error counts. Raw text, channel identities, pseudonyms, exact IOCs,
-assessment IDs and message-level allegations are excluded.
+Telegram is a separate monitoring lane, never an evidence shortcut. It now has
+two publication surfaces with different contracts.
+
+**Whispers from the Dragon Den on Telegram** is the raw companion. A dedicated
+bot receives new and edited posts from an explicit allowlist of public Telegram
+channels and uses Telegram's native forward operation to send each delivered
+post to one catch-all destination and any configured topic destinations. A
+mandatory warning is posted before the forward. There is no classifier or
+editorial gate on that Telegram delivery: ScamShield analysis runs in parallel
+and cannot suppress it. Native forwarding preserves Telegram's source context;
+protected or otherwise unforwardable posts produce a warning tombstone rather
+than being copied around the restriction.
+
+“Every post” means every new or edited channel update Telegram delivers after
+the bot is active and an administrator in the configured public source and
+destination channels. It does not mean historical backfill, deleted posts,
+private channels, direct messages, invite-only access, or guaranteed delivery
+through a third-party platform. The forwarding service persists delivery
+coordinates and receipts, not message bodies or media. Its separate bot token,
+route file and operational runbook live in the ScamShield repository.
+
+**Whispers on Palimpsest** is the smaller reviewed lane at
+`/news/china/whispers/`, with RSS at `/news/china/whispers/feed.xml`, JSON Feed
+at `/news/china/whispers/feed.json`, and the strict artifact at
+`/readings/dragon-whispers-latest.json`. A page entry can be created only from a
+verified Evidence Capsule for an explicitly public channel, after a human
+reviewer approves both sanitation and China relevance. The closed
+`palimpsest-dragon-whispers.v1` contract rejects raw wording, source identity,
+Telegram coordinates, named allegations, exact indicators, URLs and contact
+details. It retains only classifier tier/family labels, indicator counts,
+script hints, reviewer-authored analysis, uncertainty, next checks and a
+capsule digest receipt. Every projection says
+`unverified-context-only-not-evidence` and cannot increase a dossier's
+independent-source count.
+
+Promote one eligible private capsule only in the secure review environment.
+The analytical text below is illustrative; a reviewer must write it from their
+own assessment rather than copying the Telegram post:
+
+```bash
+python3 scripts/review_dragon_whisper.py \
+  /secure/review/public-channel-capsule.json \
+  --reviewed-at 2026-08-15T08:00:00Z \
+  --reviewer-role china-desk-editor \
+  --review-note "Reviewed for privacy, scope, and analytical restraint." \
+  --headline "Sanitized pattern-level headline" \
+  --summary "What the classifier record suggests without repeating the claim." \
+  --why-it-matters "Why this pattern merits independent China-desk checks." \
+  --uncertainty "What remains unknown and what one observation cannot establish." \
+  --next-check "Compare with independently archived public reporting." \
+  --next-check "Seek a separate attributable source class." \
+  --approve-sanitized-whisper \
+  --confirm-china-relevance
+python3 -m scripts.build_newsroom
+```
+
+The existing daily aggregate is a third, coarser context path. ScamShield
+collects configured public channels and operator-authorized surfaces and
+exports a private summary with observed-message, observed-source, flag, and
+error counts. Raw text, channel identities, pseudonyms, exact IOCs, assessment
+IDs and message-level allegations are excluded.
 
 The private `scamshield-telegram-monitoring-summary/v1` is explicitly not
 publication-eligible. `scripts/review_scamshield_summary.py` requires a human to
@@ -89,9 +148,11 @@ python3 scripts/review_scamshield_summary.py \
 python3 -m scripts.build_newsroom
 ```
 
-The first command writes only the validated public aggregate. The second
-rebuilds the article stream and changes its Telegram panel from review-gate
-closed to human-reviewed context; it still cannot alter article corroboration.
+The aggregate-review command writes only the validated public aggregate. The
+newsroom command rebuilds the article stream and changes its Telegram panel
+from review-gate closed to human-reviewed context; it still cannot alter article
+corroboration. Neither aggregate review nor individual-whisper review controls
+raw delivery inside the separate Telegram companion.
 
 The existing `palimpsest-news.v1` instrument briefs remain a compatibility
 surface. Dynamic events live in a parallel contract and join the instruments

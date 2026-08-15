@@ -284,6 +284,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "china-econ-observations-latest.json",
     "china-economic-pulse-latest.json",
     "china-index-latest.json",
+    "dragon-whispers-latest.json",
     "corroboration-latest.json",
     "editorial-readiness-latest.json",
     "evidence-mesh-latest.json",

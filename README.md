@@ -78,6 +78,11 @@ not sent by default; public candidates omit messages, exact indicators and owner
 values, require human review, and are never auto-published. The complete boundary is documented in
 [`integrations/scamshield/README.md`](integrations/scamshield/README.md).
 
+The newsroom also exposes [Whispers from the Dragon Den](https://palimpsest.info/news/china/whispers/):
+human-reviewed, source-free analytical context derived from eligible public-channel capsules, with
+its own RSS and JSON Feed. Raw public-channel forwards remain in a separate warned Telegram bot and
+never enter the website artifact.
+
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
 > (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
 > the [AI Eval Journal](https://palimpsest.info/evals/),

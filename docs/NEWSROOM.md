@@ -47,9 +47,13 @@ Changing that file is an editorial policy change and is reviewable as code.
 | `/news/china/` | Every in-scope monitored China publisher item with detailed event-bound analysis |
 | `/news/china/feed.xml` | Article-by-article China RSS 2.0 feed |
 | `/news/china/feed.json` | Article-by-article China JSON Feed 1.1 |
+| `/news/china/whispers/` | Human-reviewed, sanitized individual Telegram pattern context; never verified news or corroboration |
+| `/news/china/whispers/feed.xml` | Reviewed Whispers RSS 2.0 feed |
+| `/news/china/whispers/feed.json` | Reviewed Whispers JSON Feed 1.1 |
 | `/news/sitemap.xml` | Newsroom sitemap with article modification times |
 | `/readings/newsroom-latest.json` | Complete strict newsroom feed, included in the readings seal |
 | `/readings/china-article-stream-latest.json` | Strict article stream with coverage, analysis, unknowns, next checks and reviewed Telegram context state |
+| `/readings/dragon-whispers-latest.json` | Closed reviewed/sanitized Whispers artifact; no raw text, sources, exact IOCs or named allegations |
 
 The stable story URL is a live article: `datePublished` records the source reading behind the current
 claim and `dateModified` records the evidence time used by the renderer. Git history and the readings
