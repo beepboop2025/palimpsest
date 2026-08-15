@@ -32,6 +32,7 @@ from xml.sax.saxutils import escape as xml_escape
 from xml.sax.saxutils import quoteattr as xml_quoteattr
 
 from core import china_article_stream as china_stream_model
+from core import dragon_whispers as dragon_whispers_model
 from core import economic_pulse as economic_pulse_model
 from core import event_analysis as event_analysis_model
 from core import evidence_mesh as evidence_mesh_model
@@ -54,6 +55,7 @@ MACHINE_INVESTIGATIONS_READING = (
 )
 EVIDENCE_MESH_READING = ROOT / "readings" / "evidence-mesh-latest.json"
 TELEGRAM_WATCH_READING = ROOT / "readings" / "telegram-watch-latest.json"
+DRAGON_WHISPERS_READING = ROOT / "readings" / "dragon-whispers-latest.json"
 PUBLIC_DATA_CATALOG = ROOT / "config" / "public_data_catalog.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
@@ -889,6 +891,18 @@ def _load_telegram_watch(
         return None
     document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
     telegram_watch_model.validate_telegram_watch(document)
+    return document
+
+
+def _load_dragon_whispers(
+    path: Path = DRAGON_WHISPERS_READING,
+) -> dict[str, Any] | None:
+    """Load only the reviewed/sanitized website artifact, never a raw queue."""
+
+    if not path.exists():
+        return None
+    document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+    dragon_whispers_model.validate_dragon_whispers(document)
     return document
 
 
@@ -3162,7 +3176,7 @@ def render_china_article_stream(
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China stream formats"><a href="/news/">Evidence edition</a><a href="/news/wire/">Event dossiers</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured stream</a></nav>
+    <nav class="cs-subnav" aria-label="China stream formats"><a href="/news/">Evidence edition</a><a href="/news/wire/">Event dossiers</a><a href="/news/china/whispers/">Whispers · reviewed Telegram context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured stream</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
@@ -3280,6 +3294,208 @@ def build_china_stream_rss(stream: Mapping[str, Any]) -> bytes:
   <language>en</language>
   <lastBuildDate>{_rfc2822(stream['generated_at'])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/feed.xml" rel="self" type="application/rss+xml" />
+{chr(10).join(rows)}
+</channel>
+</rss>
+"""
+    return xml.encode("utf-8")
+
+
+def _whisper_label(value: str) -> str:
+    return value.replace("_", " ").title()
+
+
+def _dragon_whisper_entry(
+    entry: Mapping[str, Any], *, sequence: int, expanded: bool = False,
+) -> str:
+    analysis = entry["analysis"]
+    signal = entry["signal"]
+    review = entry["review"]
+    families = "".join(
+        f"<span>{_h(_whisper_label(value))}</span>" for value in signal["families"]
+    ) or "<span>Pattern family withheld</span>"
+    counts = "".join(
+        f"<li><strong>{count}</strong><span>{_h(_whisper_label(kind))} observed</span></li>"
+        for kind, count in sorted(signal["ioc_counts"].items())
+    ) or "<li><strong>0</strong><span>Exact indicators exposed</span></li>"
+    checks = "".join(f"<li>{_h(value)}</li>" for value in analysis["next_checks"])
+    limitations = "".join(f"<li>{_h(value)}</li>" for value in entry["limitations"])
+    scripts = ", ".join(_whisper_label(value) for value in signal["script_hints"])
+    search_text = " ".join(
+        [
+            analysis["headline"], analysis["summary"], analysis["why_it_matters"],
+            signal["tier"], *signal["families"], *signal["script_hints"],
+        ]
+    ).casefold()
+    open_attr = " open" if expanded else ""
+    return f"""<article class="dw-entry" id="{_h(entry['whisper_id'])}" data-tier="{_h(signal['tier'])}" data-search="{_h(search_text)}">
+  <div class="dw-entry__rail" aria-hidden="true"><span>{sequence:03d}</span><i></i></div>
+  <div class="dw-entry__body">
+    <header class="dw-entry__header">
+      <div><p class="dw-stamp">Unverified / context only</p><p class="dw-entry__time">Reviewed <time datetime="{_h(entry['published_at'])}">{_h(_human_time(entry['published_at']))}</time> · observed {_h(_human_time(entry['observed_at']))}</p></div>
+      <span class="dw-tier" data-tier="{_h(signal['tier'])}">{_h(_whisper_label(signal['tier']))}</span>
+    </header>
+    <h2>{_h(analysis['headline'])}</h2>
+    <p class="dw-entry__summary">{_h(analysis['summary'])}</p>
+    <div class="dw-families" aria-label="Reviewed classifier families">{families}</div>
+    <details class="dw-analysis"{open_attr}>
+      <summary><span>Open the analytical read</span><small>Significance, uncertainty, checks, and receipt</small></summary>
+      <div class="dw-analysis__inside">
+        <section aria-labelledby="why-{_h(entry['whisper_id'])}"><p class="dw-label">Why it matters</p><h3 id="why-{_h(entry['whisper_id'])}">Pattern-level significance</h3><p>{_h(analysis['why_it_matters'])}</p></section>
+        <section class="dw-uncertainty" aria-labelledby="unknown-{_h(entry['whisper_id'])}"><p class="dw-label">Uncertainty</p><h3 id="unknown-{_h(entry['whisper_id'])}">What this does not establish</h3><p>{_h(analysis['uncertainty'])}</p></section>
+        <section aria-labelledby="checks-{_h(entry['whisper_id'])}"><p class="dw-label">Verification queue</p><h3 id="checks-{_h(entry['whisper_id'])}">What to check next</h3><ol>{checks}</ol></section>
+        <section aria-labelledby="counts-{_h(entry['whisper_id'])}"><p class="dw-label">Redacted structure</p><h3 id="counts-{_h(entry['whisper_id'])}">Counts, never values</h3><ul class="dw-counts">{counts}</ul><p class="dw-script">Script hints: {_h(scripts or 'not recorded')}.</p></section>
+        <details class="dw-limits"><summary>Review note and publication limits</summary><p>{_h(review['note'])}</p><ul>{limitations}</ul></details>
+        <p class="dw-receipt">{_h(entry['whisper_id'])} · reviewer role {_h(review['reviewer_role'])} · capsule <code>{_h(review['source_capsule_sha256'][:16])}…</code></p>
+      </div>
+    </details>
+  </div>
+</article>"""
+
+
+def render_dragon_whispers(document: Mapping[str, Any]) -> str:
+    dragon_whispers_model.validate_dragon_whispers(document)
+    entries = document["entries"]
+    family_count = len({
+        family for entry in entries for family in entry["signal"]["families"]
+    })
+    indicator_count = sum(
+        count
+        for entry in entries
+        for count in entry["signal"]["ioc_counts"].values()
+    )
+    ledger = "".join(
+        _dragon_whisper_entry(entry, sequence=index, expanded=index == 1)
+        for index, entry in enumerate(entries, 1)
+    )
+    if not ledger:
+        ledger = """<section class="dw-empty" aria-labelledby="whispers-empty-title">
+  <p class="dw-stamp">Review queue / no public artifact</p>
+  <h2 id="whispers-empty-title">No sanitized whisper has cleared review.</h2>
+  <p>The raw Telegram companion may be active, but nothing from it appears here until a public-channel ScamShield capsule is human-reviewed, made China-relevant, stripped of identifiers and exact indicators, and approved as context only.</p>
+</section>"""
+    body = f"""<body class="ps newsroom-page dragon-whispers-page">
+{site_nav.render('/news/')}
+<main id="main">
+  <header class="dw-hero">
+    <div class="dw-shell dw-hero__grid">
+      <div><p class="dw-kicker">Palimpsest / China / reviewed Telegram context</p><h1>Whispers from<br><em>the Dragon Den</em></h1></div>
+      <div class="dw-hero__brief"><p class="dw-stamp">Unverified · context only · never corroboration</p><p>Detailed analyst notes derived from ScamShield pattern records after human review and deterministic sanitization. The raw Telegram feed is a separate publication surface.</p></div>
+    </div>
+  </header>
+  <div class="dw-shell">
+    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
+    <aside class="dw-warning" aria-labelledby="dw-warning-title">
+      <div><p class="dw-kicker">Read before the ledger</p><h2 id="dw-warning-title">This is not verified news.</h2></div>
+      <div><p>Entries are sanitized interpretations of automated signals from configured public Telegram sources. The underlying post may be false, incomplete, manipulated, illegal, or malicious.</p><p>Do not use this page to accuse, identify, contact, pay, or investigate a person. Raw wording, source identity, Telegram coordinates, live links, named parties, and exact indicators are withheld. No entry counts as evidence or corroboration.</p></div>
+    </aside>
+    <section class="dw-stats" aria-label="Reviewed Whispers coverage"><span><strong>{len(entries)}</strong> reviewed whispers</span><span><strong>{family_count}</strong> pattern families</span><span><strong>{indicator_count}</strong> indicators counted, zero exposed</span><span><strong>{_h(_human_time(document['generated_at']))}</strong> ledger rebuilt</span></section>
+    <section class="dw-controls" aria-label="Filter reviewed whispers">
+      <label><span>Search the sanitized analysis</span><input id="dragon-whispers-search" type="search" placeholder="pattern, significance, uncertainty…" autocomplete="off"></label>
+      <div role="group" aria-label="Filter by classifier tier"><button class="is-active" type="button" data-whisper-tier="all" aria-pressed="true">All tiers</button><button type="button" data-whisper-tier="WATCH" aria-pressed="false">Watch</button><button type="button" data-whisper-tier="LIKELY_SCAM" aria-pressed="false">Likely scam</button><button type="button" data-whisper-tier="CONFIRMED_PATTERN" aria-pressed="false">Confirmed pattern</button></div>
+      <p id="dragon-whispers-count" role="status" aria-live="polite">Showing {len(entries)} reviewed whisper{'s' if len(entries) != 1 else ''}</p>
+    </section>
+    <section class="dw-ledger" aria-label="Reviewed sanitized Telegram context">{ledger}<p class="dw-no-results" id="dragon-whispers-empty-filter" hidden>No reviewed whisper matches this filter.</p></section>
+    <aside class="dw-method"><p class="dw-kicker">Two lanes, one hard wall</p><h2>Raw on Telegram.<br>Reviewed here.</h2><div><p>The companion bot forwards every delivered post from its explicit public-source registry into configured Telegram destinations with a mandatory warning. Palimpsest does not ingest that raw feed.</p><p>This page can be built only from the smaller <code>{_h(dragon_whispers_model.SCHEMA_VERSION)}</code> artifact. Human review is mandatory; raw messages, identifiers, exact IOCs, named allegations, and corroboration claims are prohibited by schema and runtime validation.</p></div></aside>
+  </div>
+</main>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/china/">← China article stream</a> · <a href="/docs/EVIDENCE-WIRE.md#telegram-and-scamshield-context">Evidence boundary</a> · <a href="/protocol/dragon-whispers-v1.schema.json">Public schema</a>.</div></footer>
+<script src="/assets/dragon-whispers.js" defer></script>
+{site_nav.FOOT}
+</body></html>"""
+    return _head(
+        title="Whispers from the Dragon Den · Palimpsest China",
+        description=document["scope"],
+        canonical=f"{SITE}/news/china/whispers/",
+        page_type="website",
+        modified_at=document["generated_at"],
+        feed_base="/news/china/whispers",
+        extra_styles=("/assets/dragon-whispers.css",),
+        json_ld={
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "url": f"{SITE}/news/china/whispers/",
+            "name": "Whispers from the Dragon Den",
+            "description": document["scope"],
+            "dateModified": document["generated_at"],
+            "numberOfItems": len(entries),
+            "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
+        },
+    ) + "\n" + body
+
+
+def build_dragon_whispers_json_feed(document: Mapping[str, Any]) -> dict[str, Any]:
+    dragon_whispers_model.validate_dragon_whispers(document)
+    disclaimer = (
+        "Unverified context only. This sanitized analysis is not evidence or "
+        "corroboration; raw content and identifiers are withheld."
+    )
+    items = []
+    for entry in document["entries"]:
+        analysis = entry["analysis"]
+        items.append({
+            "id": entry["whisper_id"],
+            "url": f"{SITE}/news/china/whispers/#{entry['whisper_id']}",
+            "title": analysis["headline"],
+            "summary": analysis["summary"],
+            "content_text": "\n\n".join([
+                disclaimer,
+                analysis["summary"],
+                "Why it matters: " + analysis["why_it_matters"],
+                "Uncertainty: " + analysis["uncertainty"],
+                "Next checks: " + " ".join(analysis["next_checks"]),
+            ]),
+            "date_published": entry["published_at"],
+            "date_modified": entry["published_at"],
+            "authors": [{"name": PUBLISHER}],
+            "tags": ["unverified-context", entry["signal"]["tier"], *entry["signal"]["families"]],
+            "_palimpsest": {
+                "kind": "reviewed_sanitized_telegram_context",
+                "relation": dragon_whispers_model.RELATION,
+                "counts_as_corroboration": False,
+            },
+        })
+    return {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": "Whispers from the Dragon Den · reviewed Palimpsest context",
+        "home_page_url": f"{SITE}/news/china/whispers/",
+        "feed_url": f"{SITE}/news/china/whispers/feed.json",
+        "description": document["scope"],
+        "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
+        "items": items,
+    }
+
+
+def build_dragon_whispers_rss(document: Mapping[str, Any]) -> bytes:
+    dragon_whispers_model.validate_dragon_whispers(document)
+    rows = []
+    for entry in document["entries"]:
+        analysis = entry["analysis"]
+        description = "\n\n".join([
+            "UNVERIFIED CONTEXT ONLY — not evidence or corroboration.",
+            analysis["summary"],
+            "Why it matters: " + analysis["why_it_matters"],
+            "Uncertainty: " + analysis["uncertainty"],
+            "Next checks: " + " ".join(analysis["next_checks"]),
+        ])
+        url = f"{SITE}/news/china/whispers/#{entry['whisper_id']}"
+        rows.append(f"""  <item>
+    <title>{xml_escape(analysis['headline'])}</title>
+    <link>{xml_escape(url)}</link>
+    <guid isPermaLink="false">{xml_escape(entry['whisper_id'])}</guid>
+    <pubDate>{_rfc2822(entry['published_at'])}</pubDate>
+    <description>{xml_escape(description)}</description>
+    <category>{xml_escape(entry['signal']['tier'])}</category>
+  </item>""")
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Whispers from the Dragon Den · reviewed Palimpsest context</title>
+  <link>{SITE}/news/china/whispers/</link>
+  <description>{xml_escape(document['scope'])}</description>
+  <language>en</language>
+  <lastBuildDate>{_rfc2822(document['generated_at'])}</lastBuildDate>
+  <atom:link href="{SITE}/news/china/whispers/feed.xml" rel="self" type="application/rss+xml" />
 {chr(10).join(rows)}
 </channel>
 </rss>
@@ -3495,9 +3711,12 @@ def build_sitemap(
     investigations: Mapping[str, Any] | None = None,
     machine_analyses: Mapping[str, Any] | None = None,
     china_stream: Mapping[str, Any] | None = None,
+    dragon_whispers: Mapping[str, Any] | None = None,
 ) -> bytes:
     generated_values = [feed["generated_at"]]
-    for document in (wire, investigations, machine_analyses, china_stream):
+    for document in (
+        wire, investigations, machine_analyses, china_stream, dragon_whispers,
+    ):
         if document is not None:
             generated_values.append(document["generated_at"])
     reference_time = max(_parse_time(value) for value in generated_values)
@@ -3541,6 +3760,10 @@ def build_sitemap(
         urls.extend(
             f"  <url><loc>{SITE}/news/china/page/{page}/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
             for page in range(2, stream_pages + 1)
+        )
+    if dragon_whispers is not None:
+        urls.append(
+            f"  <url><loc>{SITE}/news/china/whispers/</loc><lastmod>{xml_escape(dragon_whispers['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>"
         )
     if investigations is not None:
         urls.append(
@@ -3818,6 +4041,7 @@ def build_outputs(
     investigations: Mapping[str, Any] | None = None,
     machine_analyses: Mapping[str, Any] | None = None,
     telegram_watch: Mapping[str, Any] | None = None,
+    dragon_whispers: Mapping[str, Any] | None = None,
     archive_root: Path = ROOT,
 ) -> dict[Path, bytes]:
     """Return every public output without touching the filesystem."""
@@ -3832,14 +4056,22 @@ def build_outputs(
         machine_investigations_model.validate_machine_investigations(machine_analyses)
     if telegram_watch is not None:
         telegram_watch_model.validate_telegram_watch(telegram_watch)
+    if dragon_whispers is not None:
+        dragon_whispers_model.validate_dragon_whispers(dragon_whispers)
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
     event_analyses: dict[str, Mapping[str, Any]] = {}
     china_stream: Mapping[str, Any] | None = None
+    whispers_document: Mapping[str, Any] | None = None
     if wire is not None:
         event_analyses = event_analysis_model.build_event_analyses(wire, feed)
         china_stream = china_stream_model.build_china_article_stream(
             wire, event_analyses, telegram_watch=telegram_watch
+        )
+        whispers_document = (
+            dragon_whispers
+            if dragon_whispers is not None
+            else dragon_whispers_model.empty_document(wire["generated_at"])
         )
     outputs: dict[Path, bytes] = {
         Path("readings/newsroom-latest.json"): _pretty_json(feed),
@@ -3853,7 +4085,8 @@ def build_outputs(
         Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
         Path("news/feed.xml"): build_rss(feed, wire),
         Path("news/sitemap.xml"): build_sitemap(
-            feed, wire, investigations, machine_analyses, china_stream
+            feed, wire, investigations, machine_analyses, china_stream,
+            whispers_document,
         ),
     }
     if wire is not None:
@@ -3861,6 +4094,8 @@ def build_outputs(
         outputs[Path("news/instruments/feed.xml")] = build_rss(feed)
         if china_stream is None:
             raise newsroom.NewsroomError("China stream was not built from the wire")
+        if whispers_document is None:
+            raise newsroom.NewsroomError("Dragon Whispers desk was not initialized")
         outputs[Path("readings/china-article-stream-latest.json")] = _pretty_json(
             china_stream
         )
@@ -3868,6 +4103,18 @@ def build_outputs(
             build_china_stream_json_feed(china_stream)
         )
         outputs[Path("news/china/feed.xml")] = build_china_stream_rss(china_stream)
+        outputs[Path("readings/dragon-whispers-latest.json")] = _pretty_json(
+            whispers_document
+        )
+        outputs[Path("news/china/whispers/index.html")] = (
+            render_dragon_whispers(whispers_document).encode("utf-8")
+        )
+        outputs[Path("news/china/whispers/feed.json")] = _pretty_json(
+            build_dragon_whispers_json_feed(whispers_document)
+        )
+        outputs[Path("news/china/whispers/feed.xml")] = (
+            build_dragon_whispers_rss(whispers_document)
+        )
         stream_pages = [
             china_stream["entries"][offset:offset + CHINA_STREAM_PAGE_SIZE]
             for offset in range(0, len(china_stream["entries"]), CHINA_STREAM_PAGE_SIZE)
@@ -4081,6 +4328,8 @@ def build_outputs(
             generated_times.append(investigations["generated_at"])
         if machine_analyses is not None:
             generated_times.append(machine_analyses["generated_at"])
+        if whispers_document is not None:
+            generated_times.append(whispers_document["generated_at"])
         outputs[manifest_path] = _pretty_json({
             "schema_version": "palimpsest-news-manifest.v1",
             "generated_at": max(generated_times),
@@ -4574,6 +4823,7 @@ def main(argv: list[str] | None = None) -> int:
     wire, pulse, investigations = _load_extension_documents()
     machine_analyses = _load_machine_investigations()
     telegram_watch = _load_telegram_watch()
+    dragon_whispers = _load_dragon_whispers()
     outputs = build_outputs(
         feed,
         wire=wire,
@@ -4581,6 +4831,7 @@ def main(argv: list[str] | None = None) -> int:
         investigations=investigations,
         machine_analyses=machine_analyses,
         telegram_watch=telegram_watch,
+        dragon_whispers=dragon_whispers,
     )
     if args.check:
         drift = check(outputs)

@@ -82,6 +82,10 @@ CONTRACT = {
     "china-article-stream": _d(
         "generated_at", ["source_wire", "method", "scope"], "n_entries"
     ),
+    "dragon-whispers": _d(
+        "generated_at", ["input_provenance", "method", "scope", "publication_policy"],
+        "n_entries",
+    ),
     "china-economic-pulse": _d("generated_at", ["source", "method", "scope"],
                                "n_metrics"),
     "china-econ-observations": _d(
@@ -244,6 +248,7 @@ SCHEDULED_PUBLICATIONS = {
     "machine-investigations",
     "newswire",
     "newsroom",
+    "dragon-whispers",
     "primary-documents",
     "corroboration",
     "network-rounds",
