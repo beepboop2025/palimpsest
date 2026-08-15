@@ -35,7 +35,7 @@ body.home::before {
   pointer-events: none;
 }
 
-body.home > * { position: relative; z-index: 1; }
+body.home > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: 1; }
 body.home .ps-nav { background: rgba(8, 17, 15, 0.96); }
 
 .hm-wrap {

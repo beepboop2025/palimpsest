@@ -35,7 +35,7 @@ body.ej::before {
   pointer-events: none;
 }
 
-body.ej > * { position: relative; z-index: 1; }
+body.ej > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: 1; }
 body.ej .ps-nav { background: rgba(8, 17, 15, 0.96); }
 
 .ej-wrap {

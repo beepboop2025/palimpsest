@@ -215,12 +215,30 @@ def test_skip_link_is_not_promoted_into_the_content_plane():
     assert "body.ps > *:not(.ps-nav):not(.ps-skip)" in css
     assert "body.ps > *:not(.ps-nav) { position: relative" not in css
 
+    for stylesheet in ("assets/home.css", "assets/journal.css"):
+        page_css = (ROOT / stylesheet).read_text(encoding="utf-8")
+        assert "> * { position: relative; z-index: 1; }" not in page_css, (
+            f"{stylesheet} promotes the nav into the content plane"
+        )
+        assert "> *:not(.ps-nav):not(.ps-skip)" in page_css
+
 
 def test_wide_eval_menu_is_anchored_inside_the_desktop_viewport():
     css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
 
     assert ".ps-nav__item:nth-last-child(-n+3) .ps-flyout" in css
     assert "left: auto; right: 0" in css
+
+
+def test_desktop_flyout_has_a_continuous_pointer_corridor():
+    """Crossing the visual gap must not dismiss the menu under the pointer."""
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+    script = (ROOT / "assets/shell.js").read_text(encoding="utf-8")
+
+    assert ".ps-flyout::before" in css
+    assert "top: -8px; height: 8px" in css
+    assert 'panel.addEventListener("pointerenter"' in script
+    assert "clearTimeout(closeTimer);\n          open(item);" in script
 
 
 def test_observatory_flyout_is_active_for_generated_china_routes():

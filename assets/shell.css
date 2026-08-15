@@ -263,6 +263,15 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
               transform var(--ps-t) var(--ps-ease-out),
               visibility 0s linear var(--ps-t);
 }
+/* The panel is visually separated from its trigger, but the pointer path must
+   remain continuous. Without this transparent hit corridor, crossing the 7px
+   breathing room fires pointerleave before the panel can cancel its close
+   timer, which makes the options disappear under a reader's cursor. */
+.ps-flyout::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -8px; height: 8px;
+}
 .ps-nav__item[data-open] .ps-flyout {
   opacity: 1; visibility: visible;
   transform: translateX(-50%) translateY(0) scale(1);
@@ -381,6 +390,7 @@ body[data-ps-menu] { overflow: hidden; }
     border-left: 1px solid var(--ps-edge-1);
     display: none;
   }
+  .ps-flyout::before { display: none; }
   .ps-nav__item[data-open] .ps-flyout { display: block; }
   .ps-nav__item:nth-last-child(-n+3) .ps-flyout { right: auto; transform: none; }
   .ps-flyout--wide { min-width: 0; max-width: none; }

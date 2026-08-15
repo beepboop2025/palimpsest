@@ -64,6 +64,17 @@
           clearTimeout(openTimer);
           closeTimer = setTimeout(function () { close(item); }, 180);
         });
+        /* Moving from the trigger into an absolutely positioned flyout can
+           cross a few pixels where the document, rather than the nav item, is
+           the hit target. Entering the panel must therefore cancel the pending
+           close explicitly; relying on the ancestor's pointerenter leaves the
+           timer armed in Chromium and WebKit. */
+        panel.addEventListener("pointerenter", function () {
+          if (isCompact()) return;
+          clearTimeout(openTimer);
+          clearTimeout(closeTimer);
+          open(item);
+        });
       }
 
       /* Keyboard: the flyout is a menu, so it closes on Escape and returns
