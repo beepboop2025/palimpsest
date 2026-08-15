@@ -193,6 +193,10 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
     )
     observer_verify = seed.index("sudo systemd-analyze verify", observer)
     start = seed.index("ops/docker/prod-compose up -d", observer_verify)
+    readiness = seed.index("for (( api_attempt=1; api_attempt<=30; api_attempt++ ))", start)
+    readiness_gate = seed.index(
+        '(( api_ready == 1 )) || die "C0 API did not become ready"', readiness
+    )
     exercise = seed.index("legacy consumer failed against C0 mirror", start)
 
     assert (
@@ -210,6 +214,8 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
         < observer
         < observer_verify
         < start
+        < readiness
+        < readiness_gate
         < exercise
     )
 
