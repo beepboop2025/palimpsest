@@ -40,11 +40,17 @@ def test_control_article_keeps_non_comparable_runs_apart():
 
     assert article["title"] == "A clean run does not erase a failed one"
     assert "Mistral Nemo" in prose
-    assert "canonical" in prose
     assert "full sweep" in prose
-    assert "not a like-for-like retest" in prose
+    current = next(row for row in article["evidence"] if "Latest Mistral Nemo" in row["label"])
     prior = next(row for row in article["evidence"] if "prior full sweep" in row["label"])
     assert prior["value"]["controls_clean"] is False
+    if current["value"]["arm"] == "full-sweep":
+        assert "not a like-for-like retest" not in prose
+        assert "descriptively comparable" in prose
+        assert "descriptive rather than causal" in prose
+    else:
+        assert "canonical" in prose
+        assert "not a like-for-like retest" in prose
 
 
 def test_uncertainty_article_keeps_zero_denominator_and_interval_together():

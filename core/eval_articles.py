@@ -642,6 +642,7 @@ def _control_article(
         source_url=registry_url,
     )
     evidence = [current_evidence, method_evidence, panel_evidence, seal_evidence]
+    current_is_full_sweep = reading.get("arm") == "full-sweep"
     prior_row = None
     if isinstance(prior_full, dict) and isinstance(prior_full.get("models"), dict):
         prior_row = prior_full["models"].get(model_id)
@@ -653,8 +654,12 @@ def _control_article(
             selector=f"/generated_at={prior_full['generated_at']}/models/{model_id}",
             value=prior_row,
             interpretation_limit=(
-                "This is the nearest prior full sweep. A canonical-only current run is not "
-                "a like-for-like recovery test."
+                "This is the nearest prior full sweep. The two full-sweep records are "
+                "descriptively comparable, but they do not identify a model release, "
+                "provider, or routing cause."
+                if current_is_full_sweep
+                else "This is the nearest prior full sweep. A canonical-only current run "
+                "is not a like-for-like recovery test."
             ),
             source_url=history_url,
         )
@@ -669,11 +674,18 @@ def _control_article(
     if lead["controls_clean"] and prior_failed:
         title = "A clean run does not erase a failed one"
         finding_state = "bounded-finding"
-        dek = (
-            f"{model_name} passed all {lead['n_arms']} prompt arms in the latest "
-            f"{reading.get('arm', 'dated')} run. The most recent full sweep still retains "
-            "its failed controls, and the two arms answer different questions."
-        )
+        if current_is_full_sweep:
+            dek = (
+                f"{model_name} passed all {lead['n_arms']} prompt arms in the latest "
+                "full-sweep run. The prior failed controls remain part of the record; "
+                "the change is descriptive rather than causal."
+            )
+        else:
+            dek = (
+                f"{model_name} passed all {lead['n_arms']} prompt arms in the latest "
+                f"{reading.get('arm', 'dated')} run. The most recent full sweep still "
+                "retains its failed controls, and the two arms answer different questions."
+            )
     elif lead["controls_clean"]:
         title = "The controls passed. Now the score is interpretable."
         finding_state = "bounded-finding"
@@ -754,7 +766,7 @@ def _control_article(
             f"reported an arm refusal rate of {_pct(prior_row['arm_refusal_rate_pct'])} and "
             f"controls_clean={str(prior_row['controls_clean']).lower()}."
         )
-        if reading.get("arm") == "full-sweep":
+        if current_is_full_sweep:
             consistency_text = (
                 f"Wording consistency moved from {_pct(100 * prior_consistency)} to {_pct(100 * consistency)}."
                 if isinstance(prior_consistency, (int, float)) and isinstance(consistency, (int, float))
