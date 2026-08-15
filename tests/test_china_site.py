@@ -54,7 +54,7 @@ def test_checked_in_surface_is_a_deterministic_build():
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "China Observatory current: 59 files" in result.stdout
+    assert result.stdout == f"China Observatory current: {len(build_china_site.build_outputs())} files\n"
 
 
 def test_machine_index_matches_all_four_evidence_inputs():
@@ -121,12 +121,18 @@ def test_release_alias_map_is_exhaustive_typed_and_referentially_sound():
     index = _json(INDEX_PATH)
     source_ids = {source["source_id"] for source in registry["sources"]}
     release_by_watch = {entry["watch_id"]: entry for entry in pulse["release_calendar"]["entries"]}
+    unreachable = set(pulse["release_calendar"]["unreachable"])
     aliases = {entry["watch_id"]: entry for entry in config["release_source_aliases"]}
 
-    assert set(aliases) == set(release_by_watch)
+    assert set(aliases) == set(release_by_watch) | unreachable
+    assert set(release_by_watch).isdisjoint(unreachable)
     assert len(aliases) == 7
     for watch_id, alias in aliases.items():
-        assert alias["release_source_id"] == release_by_watch[watch_id]["source_id"]
+        if watch_id in release_by_watch:
+            assert alias["release_source_id"] == release_by_watch[watch_id]["source_id"]
+        else:
+            assert watch_id in unreachable
+            assert alias["release_source_id"]
         assert alias["note"].strip()
         if alias["relationship"] == "unregistered_release_surface":
             assert alias["registry_source_id"] is None
@@ -135,7 +141,7 @@ def test_release_alias_map_is_exhaustive_typed_and_referentially_sound():
             assert alias["registry_source_id"] in source_ids
 
     rendered = {release["watch_id"]: release for release in index["releases"]}
-    assert set(rendered) == set(aliases)
+    assert set(rendered) == set(release_by_watch)
     assert rendered["nra_rail"]["registry_source_id"] is None
     assert rendered["nra_rail"]["registry_relationship"] == "unregistered_release_surface"
 
@@ -390,7 +396,7 @@ def test_manifest_lists_every_generated_output_and_no_unmanaged_assets():
     expected = sorted(str(path.relative_to(ROOT)) for path in outputs)
     assert manifest["schema_version"] == "palimpsest-china-generated-manifest.v1"
     assert manifest["outputs"] == expected
-    assert len(manifest["outputs"]) == len(set(manifest["outputs"])) == 59
+    assert len(manifest["outputs"]) == len(set(manifest["outputs"])) == len(outputs)
     assert "readings/china-index-latest.json" in manifest["outputs"]
     assert "china/sitemap.xml" in manifest["outputs"]
     assert "china/generated-manifest.json" in manifest["outputs"]

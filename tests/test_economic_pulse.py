@@ -146,9 +146,15 @@ def test_coverage_publishes_registered_live_observed_and_adapter_ready_separatel
 
 
 def test_release_calendar_keeps_unknown_intraday_release_clocks_null():
-    calendar_rows = _build()["release_calendar"]["entries"]
+    calendar = _build()["release_calendar"]
+    calendar_rows = calendar["entries"]
+    reporting_watch_ids = {row["watch_id"] for row in calendar_rows}
+    unreachable_watch_ids = set(calendar["unreachable"])
 
-    assert len(calendar_rows) == 7
+    assert calendar["watched"] == 7
+    assert calendar["reporting"] == len(calendar_rows) == len(reporting_watch_ids)
+    assert calendar["watched"] == len(reporting_watch_ids | unreachable_watch_ids)
+    assert reporting_watch_ids.isdisjoint(unreachable_watch_ids)
     assert all(row["released_at"] is None for row in calendar_rows)
     assert all(row["latest_publication_date"] for row in calendar_rows)
     assert all(row["unit"] == "days" for row in calendar_rows)

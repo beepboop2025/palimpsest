@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 CHINA = ROOT / "china"
+INDEX = ROOT / "readings" / "china-index-latest.json"
 
 
 class PageParser(HTMLParser):
@@ -53,6 +54,10 @@ def _html_pages() -> list[Path]:
     return sorted(CHINA.rglob("*.html"))
 
 
+def _index() -> dict:
+    return json.loads(INDEX.read_text(encoding="utf-8"))
+
+
 def _parser(path: Path) -> PageParser:
     parser = PageParser()
     parser.feed(path.read_text(encoding="utf-8"))
@@ -70,10 +75,13 @@ def _route_to_path(href: str) -> Path:
 
 def test_exact_static_route_inventory_is_server_rendered():
     pages = _html_pages()
-    assert len(pages) == 56
-    assert len(list((CHINA / "sources").glob("*/index.html"))) == 33
-    assert len(list((CHINA / "releases").glob("*/index.html"))) == 7
-    assert len(list((CHINA / "domains").glob("*/index.html"))) == 12
+    counts = _index()["counts"]
+    assert len(pages) == (
+        4 + counts["sources"] + counts["release_monitors"] + counts["domains"]
+    )
+    assert len(list((CHINA / "sources").glob("*/index.html"))) == counts["sources"]
+    assert len(list((CHINA / "releases").glob("*/index.html"))) == counts["release_monitors"]
+    assert len(list((CHINA / "domains").glob("*/index.html"))) == counts["domains"]
     assert (CHINA / "index.html") in pages
     assert (CHINA / "sources" / "index.html") in pages
     assert (CHINA / "releases" / "index.html") in pages
@@ -111,12 +119,14 @@ def test_every_internal_china_link_resolves_to_an_ssr_page():
     assert broken == []
 
 
-def test_root_page_leads_with_abstention_and_retains_all_desks_and_releases():
+def test_root_page_leads_with_abstention_and_retains_all_reporting_releases():
     page = (CHINA / "index.html").read_text(encoding="utf-8")
+    release_monitors = _index()["counts"]["release_monitors"]
     assert "The current read is <em>no broad direction.</em>" in page
     assert "4 of 4 gates" not in page
     assert page.count('class="cn-desk"') == 6
-    assert page.count('/china/releases/cn-release-lag-') >= 7
+    assert release_monitors > 0
+    assert page.count('/china/releases/cn-release-lag-') >= release_monitors
     assert "Four rails, six desks, gaps left visible" in page
     assert page.count("cn-loom__cell--present") > 0
     assert page.count("cn-loom__cell--gap") > 0
@@ -182,7 +192,11 @@ def test_china_styles_use_the_evidence_palette_without_gradients_or_card_grid():
 def test_nested_sitemap_contains_every_html_canonical_once():
     sitemap = (CHINA / "sitemap.xml").read_text(encoding="utf-8")
     canonicals = [_parser(path).canonicals[0] for path in _html_pages()]
+    counts = _index()["counts"]
+    expected_pages = (
+        4 + counts["sources"] + counts["release_monitors"] + counts["domains"]
+    )
     assert sitemap.startswith('<?xml version="1.0" encoding="UTF-8"?>')
-    assert sitemap.count("<url>") == len(canonicals) == 56
+    assert sitemap.count("<url>") == len(canonicals) == expected_pages
     for canonical in canonicals:
         assert sitemap.count(f"<loc>{canonical}</loc>") == 1
