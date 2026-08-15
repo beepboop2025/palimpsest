@@ -65,6 +65,34 @@ DESCRIPTION = (
 )
 OG_IMAGE = f"{SITE}/brand/palimpsest-og2.png"
 
+DRAGON_DEN_TELEGRAM_CHANNELS = (
+    (
+        "all",
+        "All raw signals",
+        "@DragonDenWhispers",
+        "https://t.me/DragonDenWhispers",
+        "The catch-all transmission: China news, cyber reporting, and regional context.",
+    ),
+    (
+        "cyber",
+        "Cyber / technology",
+        "@DragonDenCyber",
+        "https://t.me/DragonDenCyber",
+        "Source-attributed forwards from the configured cyber and technology routes.",
+    ),
+    (
+        "borderlands",
+        "Regional / borderlands",
+        "@DragonDenBorderlands",
+        "https://t.me/DragonDenBorderlands",
+        "Source-attributed forwards from the configured regional and borderlands routes.",
+    ),
+)
+DRAGON_DEN_TELEGRAM_BOT = (
+    "@DragonDenWhispersBot",
+    "https://t.me/DragonDenWhispersBot",
+)
+
 EVENT_DESKS = {
     "economy": "Economy",
     "politics": "Politics & law",
@@ -3368,11 +3396,19 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
         _dragon_whisper_entry(entry, sequence=index, expanded=index == 1)
         for index, entry in enumerate(entries, 1)
     )
+    routes = "".join(
+        f"""<a class="dw-companion__route" data-route="{_h(route)}" href="{_h(url)}" target="_blank" rel="noopener noreferrer">
+  <span class="dw-companion__route-label">{_h(label)}</span>
+  <span><strong>{_h(handle)}</strong><small>{_h(description)}</small></span>
+  <b aria-hidden="true">Open ↗</b>
+</a>"""
+        for route, label, handle, url, description in DRAGON_DEN_TELEGRAM_CHANNELS
+    )
     if not ledger:
         ledger = """<section class="dw-empty" aria-labelledby="whispers-empty-title">
   <p class="dw-stamp">Review queue / no public artifact</p>
   <h2 id="whispers-empty-title">No sanitized whisper has cleared review.</h2>
-  <p>The raw Telegram companion may be active, but nothing from it appears here until a public-channel ScamShield capsule is human-reviewed, made China-relevant, stripped of identifiers and exact indicators, and approved as context only.</p>
+  <p>The raw Telegram companion is active, but nothing from it appears here until a public-channel ScamShield capsule is human-reviewed, made China-relevant, stripped of identifiers and exact indicators, and approved as context only.</p>
 </section>"""
     body = f"""<body class="ps newsroom-page dragon-whispers-page">
 {site_nav.render('/news/')}
@@ -3389,6 +3425,11 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
       <div><p class="dw-kicker">Read before the ledger</p><h2 id="dw-warning-title">This is not verified news.</h2></div>
       <div><p>Entries are sanitized interpretations of automated signals from configured public Telegram sources. The underlying post may be false, incomplete, manipulated, illegal, or malicious.</p><p>Do not use this page to accuse, identify, contact, pay, or investigate a person. Raw wording, source identity, Telegram coordinates, live links, named parties, and exact indicators are withheld. No entry counts as evidence or corroboration.</p></div>
     </aside>
+    <aside class="dw-companion" aria-labelledby="dw-companion-title">
+      <div class="dw-companion__intro"><p class="dw-kicker">External transmission / Telegram</p><h2 id="dw-companion-title">Open the live, unreviewed feed.</h2><p>These public channels carry automatic native forwards with Telegram source attribution intact. Posts may be false, harmful, manipulated, or illegal. A warning travels with every forward; publication is not verification or endorsement.</p><p class="dw-companion__bot">Publisher identity: <a href="{_h(DRAGON_DEN_TELEGRAM_BOT[1])}" target="_blank" rel="noopener noreferrer">{_h(DRAGON_DEN_TELEGRAM_BOT[0])}</a></p></div>
+      <div class="dw-companion__routes" aria-label="Raw Dragon Den Telegram destinations">{routes}</div>
+      <p class="dw-companion__boundary"><strong>Raw stays on Telegram.</strong><span>Only reviewed, identifier-free analysis can cross into this ledger.</span></p>
+    </aside>
     <section class="dw-stats" aria-label="Reviewed Whispers coverage"><span><strong>{len(entries)}</strong> reviewed whispers</span><span><strong>{family_count}</strong> pattern families</span><span><strong>{indicator_count}</strong> indicators counted, zero exposed</span><span><strong>{_h(_human_time(document['generated_at']))}</strong> ledger rebuilt</span></section>
     <section class="dw-controls" aria-label="Filter reviewed whispers">
       <label><span>Search the sanitized analysis</span><input id="dragon-whispers-search" type="search" placeholder="pattern, significance, uncertainty…" autocomplete="off"></label>
@@ -3396,7 +3437,7 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
       <p id="dragon-whispers-count" role="status" aria-live="polite">Showing {len(entries)} reviewed whisper{'s' if len(entries) != 1 else ''}</p>
     </section>
     <section class="dw-ledger" aria-label="Reviewed sanitized Telegram context">{ledger}<p class="dw-no-results" id="dragon-whispers-empty-filter" hidden>No reviewed whisper matches this filter.</p></section>
-    <aside class="dw-method"><p class="dw-kicker">Two lanes, one hard wall</p><h2>Raw on Telegram.<br>Reviewed here.</h2><div><p>The companion bot forwards every delivered post from its explicit public-source registry into configured Telegram destinations with a mandatory warning. Palimpsest does not ingest that raw feed.</p><p>This page can be built only from the smaller <code>{_h(dragon_whispers_model.SCHEMA_VERSION)}</code> artifact. Human review is mandatory; raw messages, identifiers, exact IOCs, named allegations, and corroboration claims are prohibited by schema and runtime validation.</p></div></aside>
+    <aside class="dw-method"><p class="dw-kicker">Two lanes, one hard wall</p><h2>Raw on Telegram.<br>Reviewed here.</h2><div><p>The authenticated monitor native-forwards every delivered post from its explicit public-source registry. The dedicated bot adds a mandatory warning. Palimpsest does not ingest that raw feed.</p><p>This page can be built only from the smaller <code>{_h(dragon_whispers_model.SCHEMA_VERSION)}</code> artifact. Human review is mandatory; raw messages, identifiers, exact IOCs, named allegations, and corroboration claims are prohibited by schema and runtime validation.</p></div></aside>
   </div>
 </main>
 <footer class="nw-footer"><div class="nw-shell"><a href="/news/china/">← China article stream</a> · <a href="/docs/EVIDENCE-WIRE.md#telegram-and-scamshield-context">Evidence boundary</a> · <a href="/protocol/dragon-whispers-v1.schema.json">Public schema</a>.</div></footer>
