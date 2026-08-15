@@ -261,6 +261,7 @@ def _observation(
     frequency="D",
     period_start=date(2026, 1, 2),
     period_end=None,
+    raw_marker=None,
 ):
     released_at = datetime.fromisoformat(released)
     return EconomicObservation(
@@ -275,7 +276,9 @@ def _observation(
         source_id=source_id,
         evidence_url="https://www.chinamoney.com.cn/example",
         revision=revision,
-        raw_sha256=sha256_bytes(f"revision-{revision}".encode()),
+        raw_sha256=sha256_bytes(
+            (raw_marker or f"revision-{revision}").encode()
+        ),
         metadata={"family": "shibor", "release_time_semantics": "test fixture"},
     )
 
@@ -318,6 +321,41 @@ def test_revision_selection_and_ledger_are_point_in_time(tmp_path):
     assert feb_metric["revision"]["delta"] == pytest.approx(-0.1)
     assert len(february["revisions"]) == 1
     assert february["revisions"][0]["delta"] == pytest.approx(-0.1)
+
+
+def test_same_value_provenance_vintage_remains_an_original_observation(tmp_path):
+    initial = _observation(
+        value=1.5,
+        revision=0,
+        released="2026-01-03T00:00:00+00:00",
+        raw_marker="first-response",
+    )
+    refreshed_provenance = _observation(
+        value=1.5,
+        revision=0,
+        released="2026-01-04T00:00:00+00:00",
+        raw_marker="second-response",
+    )
+    _write_ledger(
+        tmp_path / "china-econ-observations.jsonl",
+        [initial, refreshed_provenance],
+    )
+
+    pulse = build_economic_pulse(
+        readings_dir=tmp_path,
+        registry_path=REGISTRY,
+        as_of=datetime(2026, 1, 5, tzinfo=UTC),
+    )
+
+    metric = _desk(pulse, "money-credit-fx")["metrics"][0]
+    assert metric["collected_at"] == "2026-01-04T00:00:00Z"
+    assert metric["revision"] == {
+        "status": "original",
+        "number": 0,
+        "previous_value": None,
+        "delta": None,
+    }
+    assert pulse["revisions"] == []
 
 
 def test_late_collection_does_not_leak_into_an_earlier_replay(tmp_path):

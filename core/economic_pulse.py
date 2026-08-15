@@ -697,7 +697,14 @@ def _ledger_metrics(
             prior_by_vintage[row.vintage_key],
             key=lambda item: (item.released_at, item.collected_at, item.revision),
         )
-        previous = ordered[-2] if len(ordered) > 1 else None
+        previous = next(
+            (
+                candidate
+                for candidate in reversed(ordered)
+                if candidate.revision < row.revision
+            ),
+            None,
+        )
         metrics_by_desk[spec.desk_id].append(_metric(
             metric_id=spec.metric_id,
             label=spec.label,
