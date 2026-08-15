@@ -164,6 +164,48 @@ def _sorted_strings(values: Iterable[Any]) -> list[str]:
     return sorted({str(value) for value in values if value is not None})
 
 
+def _validate_release_alias_inventory(
+    *,
+    alias_by_watch: Mapping[str, Mapping[str, Any]],
+    release_by_watch: Mapping[str, Mapping[str, Any]],
+    release_calendar: Mapping[str, Any],
+) -> None:
+    """Require an alias for every reporting or explicitly unreachable watch."""
+
+    unreachable = release_calendar.get("unreachable")
+    if not isinstance(unreachable, list):
+        raise ChinaSiteError("release calendar unreachable inventory must be an array")
+    unreachable_watch_ids: set[str] = set()
+    for watch_id in unreachable:
+        if not isinstance(watch_id, str) or not SLUG_RE.fullmatch(watch_id):
+            raise ChinaSiteError(f"invalid unreachable release watch_id: {watch_id!r}")
+        if watch_id in unreachable_watch_ids:
+            raise ChinaSiteError(f"duplicate unreachable release watch_id: {watch_id}")
+        unreachable_watch_ids.add(watch_id)
+
+    reporting_watch_ids = set(release_by_watch)
+    overlap = sorted(reporting_watch_ids & unreachable_watch_ids)
+    if overlap:
+        raise ChinaSiteError(
+            f"release watches cannot be both reporting and unreachable: {overlap}"
+        )
+    reporting = release_calendar.get("reporting")
+    if type(reporting) is not int or reporting != len(reporting_watch_ids):
+        raise ChinaSiteError("release calendar reporting count is inconsistent")
+
+    expected_watch_ids = reporting_watch_ids | unreachable_watch_ids
+    watched = release_calendar.get("watched")
+    if type(watched) is not int or watched != len(expected_watch_ids):
+        raise ChinaSiteError("release calendar watched count is inconsistent")
+    if set(alias_by_watch) != expected_watch_ids:
+        missing = sorted(expected_watch_ids - set(alias_by_watch))
+        extra = sorted(set(alias_by_watch) - expected_watch_ids)
+        raise ChinaSiteError(
+            "release aliases must cover reporting and explicitly unreachable watches; "
+            f"missing={missing}, extra={extra}"
+        )
+
+
 def _latest_by_source_slice(
     rows: Sequence[EconomicObservation],
 ) -> list[dict[str, Any]]:
@@ -305,7 +347,10 @@ def build_index(*, root: Path = ROOT) -> dict[str, Any]:
 
     source_values = registry.get("sources")
     desk_values = pulse.get("desks")
-    release_values = pulse.get("release_calendar", {}).get("entries")
+    release_calendar = pulse.get("release_calendar")
+    if not isinstance(release_calendar, dict):
+        raise ChinaSiteError("release calendar must be an object")
+    release_values = release_calendar.get("entries")
     matrix_values = pulse.get("coverage", {}).get("matrix")
     aliases = site_config.get("release_source_aliases")
     if not all(isinstance(value, list) for value in (source_values, desk_values, release_values, matrix_values, aliases)):
@@ -327,10 +372,11 @@ def build_index(*, root: Path = ROOT) -> dict[str, Any]:
     release_by_watch = _unique_by(release_values, "watch_id", "release")
     matrix_by_domain = _unique_by(matrix_values, "domain", "domain")
     alias_by_watch = _unique_by(aliases, "watch_id", "release alias")
-    if set(alias_by_watch) != set(release_by_watch):
-        missing = sorted(set(release_by_watch) - set(alias_by_watch))
-        extra = sorted(set(alias_by_watch) - set(release_by_watch))
-        raise ChinaSiteError(f"release aliases must be exhaustive; missing={missing}, extra={extra}")
+    _validate_release_alias_inventory(
+        alias_by_watch=alias_by_watch,
+        release_by_watch=release_by_watch,
+        release_calendar=release_calendar,
+    )
 
     domain_order = site_config.get("domain_order")
     labels = site_config.get("domain_labels")

@@ -140,6 +140,62 @@ def test_release_alias_map_is_exhaustive_typed_and_referentially_sound():
     assert rendered["nra_rail"]["registry_relationship"] == "unregistered_release_surface"
 
 
+def test_release_alias_map_preserves_explicitly_unreachable_watches(tmp_path: Path):
+    pulse = _json(PULSE_PATH)
+    pulse["release_calendar"]["entries"] = [
+        entry
+        for entry in pulse["release_calendar"]["entries"]
+        if entry["watch_id"] != "nbs_energy"
+    ]
+    pulse["release_calendar"]["reporting"] = 6
+    pulse["release_calendar"]["unreachable"] = ["nbs_energy"]
+    pulse["n_metrics"] -= 1
+
+    for relative in (
+        "config/china_econ_sources.json",
+        "config/china_site.json",
+        "readings/china-econ-observations.jsonl",
+        "readings/china-econ-forecast-latest.json",
+    ):
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / relative).read_bytes())
+    pulse_path = tmp_path / "readings" / "china-economic-pulse-latest.json"
+    pulse_path.write_text(json.dumps(pulse, sort_keys=True) + "\n", encoding="utf-8")
+
+    index = build_china_site.build_index(root=tmp_path)
+
+    assert index["counts"]["release_monitors"] == 6
+    assert "nbs_energy" not in {release["watch_id"] for release in index["releases"]}
+
+
+def test_release_alias_map_rejects_silently_missing_watch():
+    pulse = _json(PULSE_PATH)
+    release_by_watch = {
+        entry["watch_id"]: entry
+        for entry in pulse["release_calendar"]["entries"]
+        if entry["watch_id"] != "nbs_energy"
+    }
+    alias_by_watch = {
+        entry["watch_id"]: entry
+        for entry in _json(CONFIG_PATH)["release_source_aliases"]
+    }
+    calendar = {
+        **pulse["release_calendar"],
+        "entries": list(release_by_watch.values()),
+        "reporting": 6,
+        "unreachable": [],
+        "watched": 6,
+    }
+
+    with pytest.raises(build_china_site.ChinaSiteError, match="explicitly unreachable"):
+        build_china_site._validate_release_alias_inventory(
+            alias_by_watch=alias_by_watch,
+            release_by_watch=release_by_watch,
+            release_calendar=calendar,
+        )
+
+
 def test_nra_release_stays_monitored_without_a_false_mot_join():
     page = (ROOT / "china" / "releases" / "cn-release-lag-nra-rail" / "index.html").read_text(
         encoding="utf-8"
