@@ -34,6 +34,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the hash-pinned eval publication test environment
+        run: >-
+          python -m pip install --quiet --require-hashes
+          -r .github/osint-china-ci-requirements.txt
+
       - name: Synchronize inputs before the long model sweep
         run: |
           git config user.name  "palimpsest-bot"
@@ -246,6 +251,11 @@ jobs:
           python -m scripts.build_eval_journal --check
           python -m scripts.build_eval_findings --check
           python3 scripts/seal_readings.py --check
+          python -m pytest -q \
+            tests/test_eval_assurance.py \
+            tests/test_eval_journal.py \
+            tests/test_eval_articles.py \
+            tests/test_eval_journal_renderer.py
 
       - name: Anchor only the reconciled roots
         if: steps.candidate.outputs.changed == 'true'
@@ -348,6 +358,11 @@ jobs:
             python -m scripts.build_eval_journal --check
             python -m scripts.build_eval_findings --check
             python3 scripts/seal_readings.py --check
+            python -m pytest -q \
+              tests/test_eval_assurance.py \
+              tests/test_eval_journal.py \
+              tests/test_eval_articles.py \
+              tests/test_eval_journal_renderer.py
             python -m scripts.anchor_roots
             python scripts/verify_public_surface.py
 

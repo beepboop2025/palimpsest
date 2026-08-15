@@ -18,6 +18,17 @@ def _article(collection, slug):
     return next(item for item in collection["articles"] if item["slug"] == slug)
 
 
+def _sources_with_failed_prior():
+    sources = copy.deepcopy(eval_articles.load_sources(root=ROOT))
+    for model in sources["previous_full_sweep"]["models"].values():
+        model["controls_clean"] = True
+    failed = copy.deepcopy(sources["previous_full_sweep"])
+    model = failed["models"]["mistralai/mistral-nemo"]
+    model["controls_clean"] = False
+    sources["previous_failed_full_sweep"] = failed
+    return sources
+
+
 def test_current_eval_collection_is_sealed_cited_and_publishable():
     collection = eval_articles.build(root=ROOT)
 
@@ -73,10 +84,10 @@ def test_current_eval_collection_is_sealed_cited_and_publishable():
 def test_control_article_keeps_non_comparable_runs_apart(
     arm, current_method, prior_method, required, forbidden
 ):
-    sources = copy.deepcopy(eval_articles.load_sources(root=ROOT))
+    sources = _sources_with_failed_prior()
     sources["reading"]["arm"] = arm
     sources["reading"]["method_version"] = current_method
-    sources["previous_full_sweep"]["method_version"] = prior_method
+    sources["previous_failed_full_sweep"]["method_version"] = prior_method
     collection = eval_articles.build_collection(sources, prior={})
     article = _article(collection, "before-reading-the-score-read-the-controls")
     prose = json.dumps(article, ensure_ascii=False)
@@ -107,7 +118,7 @@ def test_uncertainty_article_keeps_zero_denominator_and_interval_together():
 
 
 def test_builder_is_stable_and_links_a_changed_revision():
-    sources = eval_articles.load_sources(root=ROOT)
+    sources = _sources_with_failed_prior()
     first = eval_articles.build_collection(sources, prior={})
     repeated = eval_articles.build_collection(sources, prior=first)
     assert [item["revision_id"] for item in repeated["articles"]] == [
@@ -118,7 +129,7 @@ def test_builder_is_stable_and_links_a_changed_revision():
     ]
 
     changed_sources = copy.deepcopy(sources)
-    old_sweep = changed_sources["previous_full_sweep"]
+    old_sweep = changed_sources["previous_failed_full_sweep"]
     old_sweep["models"]["mistralai/mistral-nemo"]["arm_refusal_rate_pct"] = 3.1
     changed_sources["raw"]["refusal-drift-history"] += b"\n"
     changed = eval_articles.build_collection(changed_sources, prior=first)
@@ -127,6 +138,25 @@ def test_builder_is_stable_and_links_a_changed_revision():
     assert new_article["revision_id"] != old_article["revision_id"]
     assert new_article["previous_revision_id"] == old_article["revision_id"]
     assert new_article["published_at"] == old_article["published_at"]
+
+
+def test_clean_nearest_sweep_does_not_hide_the_latest_failed_sweep():
+    sources = _sources_with_failed_prior()
+
+    nearest = sources["previous_full_sweep"]
+    failed = sources["previous_failed_full_sweep"]
+    assert nearest is not None
+    assert failed is not None
+    assert all(row["controls_clean"] for row in nearest["models"].values())
+    assert any(row["controls_clean"] is False for row in failed["models"].values())
+
+    article = _article(
+        eval_articles.build_collection(sources, prior={}),
+        "before-reading-the-score-read-the-controls",
+    )
+    prior = next(row for row in article["evidence"] if "prior full sweep" in row["label"])
+    assert "with failed controls" in prior["label"]
+    assert prior["value"]["controls_clean"] is False
 
 
 def test_broken_registry_and_metric_mismatch_fail_closed(tmp_path):

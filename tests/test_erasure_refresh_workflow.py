@@ -147,3 +147,31 @@ def test_eval_assurance_is_rebuilt_after_every_chain_reconciliation():
     assert "python -m scripts.build_eval_findings --check" in text
     assert "readings/eval-articles-latest.json" in text
     assert "journal/" in text
+
+
+def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    command = "python -m pytest -q"
+
+    assert "Install the hash-pinned eval publication test environment" in text
+    assert ".github/osint-china-ci-requirements.txt" in text
+    assert text.count(command) == 2
+    for test_path in (
+        "tests/test_eval_assurance.py",
+        "tests/test_eval_journal.py",
+        "tests/test_eval_articles.py",
+        "tests/test_eval_journal_renderer.py",
+    ):
+        assert text.count(test_path) == 2, test_path
+
+    reconcile = text.index("Verify the reconciled eval and readings chains")
+    reconcile_check = text.index("python -m scripts.build_eval_findings --check", reconcile)
+    reconcile_tests = text.index(command, reconcile_check)
+    reconcile_anchor = text.index("Anchor only the reconciled roots", reconcile_tests)
+    assert reconcile < reconcile_check < reconcile_tests < reconcile_anchor
+
+    retry = text.index("Recollect, reverify, and retry after a push race")
+    retry_check = text.index("python -m scripts.build_eval_findings --check", retry)
+    retry_tests = text.index(command, retry_check)
+    retry_anchor = text.index("python -m scripts.anchor_roots", retry_tests)
+    assert retry < retry_check < retry_tests < retry_anchor

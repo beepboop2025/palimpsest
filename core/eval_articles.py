@@ -342,7 +342,10 @@ def _matching_runs(
 
 
 def _previous_full_sweep(
-    history: Sequence[Mapping[str, Any]], generated_at: str
+    history: Sequence[Mapping[str, Any]],
+    generated_at: str,
+    *,
+    failed_controls_only: bool = False,
 ) -> Mapping[str, Any] | None:
     current = _timestamp(generated_at, "generated_at")
     eligible = [
@@ -350,6 +353,13 @@ def _previous_full_sweep(
         for row in history
         if row.get("arm") == "full-sweep"
         and isinstance(row.get("models"), dict)
+        and (
+            not failed_controls_only
+            or any(
+                isinstance(model, dict) and model.get("controls_clean") is False
+                for model in row["models"].values()
+            )
+        )
         and _timestamp(row.get("generated_at"), "history.generated_at") < current
     ]
     return max(
@@ -357,6 +367,34 @@ def _previous_full_sweep(
         key=lambda row: _timestamp(row["generated_at"], "history.generated_at"),
         default=None,
     )
+
+
+def _prior_sweep_limit(
+    *,
+    failed_comparator: bool,
+    current_is_full_sweep: bool,
+    method_versions_match: bool,
+    prior_method_version: Any,
+    current_method_version: Any,
+) -> str:
+    subject = (
+        "This is the most recent earlier full sweep with a failed control for "
+        "a current-panel model."
+        if failed_comparator
+        else "This is the nearest prior full sweep."
+    )
+    if current_is_full_sweep and method_versions_match:
+        return (
+            f"{subject} The two full-sweep records are descriptively comparable, "
+            "but they do not identify a model release, provider, or routing cause."
+        )
+    if current_is_full_sweep:
+        return (
+            f"{subject} Both records use the full-sweep arm, but method versions "
+            f"v{prior_method_version} and v{current_method_version} differ, so their "
+            "values are not directly comparable."
+        )
+    return f"{subject} A canonical-only current run is not a like-for-like recovery test."
 
 
 def load_sources(*, root: Path = ROOT) -> dict[str, Any]:
@@ -379,12 +417,16 @@ def load_sources(*, root: Path = ROOT) -> dict[str, Any]:
     generated_at = _text(reading.get("generated_at"), "generated_at", maximum=80)
     _timestamp(generated_at, "generated_at")
     runs = _matching_runs(reading, entries)
+    previous_full_sweep = _previous_full_sweep(history, generated_at)
     return {
         "reading": reading,
         "history": history,
         "registry": entries,
         "matching_runs": runs,
-        "previous_full_sweep": _previous_full_sweep(history, generated_at),
+        "previous_full_sweep": previous_full_sweep,
+        "previous_failed_full_sweep": _previous_full_sweep(
+            history, generated_at, failed_controls_only=True
+        ),
         "raw": {
             "refusal-drift-current": reading_raw,
             "refusal-drift-history": history_raw,
@@ -558,7 +600,22 @@ def _control_article(
     reading = sources["reading"]
     models = _model_rows(reading)
     failing = [row for row in models.values() if not row["controls_clean"]]
-    prior_full = sources.get("previous_full_sweep")
+    previous_full_sweep = sources.get("previous_full_sweep")
+    previous_failed_full_sweep = sources.get("previous_failed_full_sweep")
+    # A clean current run needs the latest earlier instrument failure as its
+    # historical counterweight, even when a newer clean sweep exists. A current
+    # failure instead compares with the immediately previous full sweep. These
+    # are different editorial questions and must not share an implicit selector.
+    prior_full = (
+        previous_full_sweep
+        if failing
+        else previous_failed_full_sweep or previous_full_sweep
+    )
+    prior_is_failed_comparator = (
+        not failing
+        and isinstance(previous_failed_full_sweep, dict)
+        and prior_full is previous_failed_full_sweep
+    )
     prior_models = (
         prior_full.get("models", {})
         if isinstance(prior_full, dict) and isinstance(prior_full.get("models"), dict)
@@ -660,23 +717,19 @@ def _control_article(
     if isinstance(prior_row, dict):
         prior_evidence = _evidence(
             input_id="refusal-drift-history",
-            label=f"Most recent prior full sweep for {model_name}",
+            label=(
+                f"Most recent prior full sweep with failed controls for {model_name}"
+                if prior_is_failed_comparator
+                else f"Most recent prior full sweep for {model_name}"
+            ),
             selector=f"/generated_at={prior_full['generated_at']}/models/{model_id}",
             value=prior_row,
-            interpretation_limit=(
-                "This is the nearest prior full sweep. The two full-sweep records are "
-                "descriptively comparable, but they do not identify a model release, "
-                "provider, or routing cause."
-                if full_sweeps_comparable
-                else (
-                    "This is the nearest prior full sweep. Both records use the full-sweep "
-                    f"arm, but method versions v{prior_method_version} and "
-                    f"v{current_method_version} differ, so their values are not directly "
-                    "comparable."
-                    if current_is_full_sweep
-                    else "This is the nearest prior full sweep. A canonical-only current "
-                    "run is not a like-for-like recovery test."
-                )
+            interpretation_limit=_prior_sweep_limit(
+                failed_comparator=prior_is_failed_comparator,
+                current_is_full_sweep=current_is_full_sweep,
+                method_versions_match=method_versions_match,
+                prior_method_version=prior_method_version,
+                current_method_version=current_method_version,
             ),
             source_url=history_url,
         )
