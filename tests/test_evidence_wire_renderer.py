@@ -155,7 +155,19 @@ def test_every_event_has_a_human_page_current_json_and_immutable_revision(public
         assert "What this dossier cannot establish" in text
         assert "cannot establish cause" in text
         assert json.loads(outputs[base / "story.json"]) == event
-        assert json.loads(outputs[base / "revisions" / f"{event['version_id']}.json"]) == event
+        revision = json.loads(
+            outputs[base / "revisions" / f"{event['version_id']}.json"]
+        )
+        # The mutable head's mutation label changes from new/updated to
+        # unchanged on later pulls. Immutable revision bytes retain the label
+        # they had when first published; every content-identified field must
+        # still be exactly equal.
+        assert {
+            key: value for key, value in revision.items() if key != "mutation"
+        } == {
+            key: value for key, value in event.items() if key != "mutation"
+        }
+        assert revision["mutation"]["kind"] in {"new", "updated", "unchanged"}
         analysis = json.loads(outputs[base / "analysis.json"])
         event_analysis.validate_event_analysis(analysis, event=event)
         assert json.loads(

@@ -79,6 +79,9 @@ CONTRACT = {
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
                                "n_items"),
+    "china-article-stream": _d(
+        "generated_at", ["source_wire", "method", "scope"], "n_entries"
+    ),
     "china-economic-pulse": _d("generated_at", ["source", "method", "scope"],
                                "n_metrics"),
     "china-econ-observations": _d(

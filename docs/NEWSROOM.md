@@ -44,8 +44,12 @@ Changing that file is an editorial policy change and is reviewable as code.
 | `/news/<signal>/story.json` | One machine-readable story |
 | `/news/feed.json` | JSON Feed 1.1 |
 | `/news/feed.xml` | RSS 2.0 feed |
+| `/news/china/` | Every in-scope monitored China publisher item with detailed event-bound analysis |
+| `/news/china/feed.xml` | Article-by-article China RSS 2.0 feed |
+| `/news/china/feed.json` | Article-by-article China JSON Feed 1.1 |
 | `/news/sitemap.xml` | Newsroom sitemap with article modification times |
 | `/readings/newsroom-latest.json` | Complete strict newsroom feed, included in the readings seal |
+| `/readings/china-article-stream-latest.json` | Strict article stream with coverage, analysis, unknowns, next checks and reviewed Telegram context state |
 
 The stable story URL is a live article: `datePublished` records the source reading behind the current
 claim and `dateModified` records the evidence time used by the renderer. Git history and the readings

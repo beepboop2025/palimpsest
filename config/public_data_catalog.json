@@ -679,6 +679,23 @@
       "license": {"name": "MIT for Palimpsest metadata and derived fields; upstream rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "china-article-stream",
+      "name": "Palimpsest China Article Stream",
+      "description": "Newest-first, one-entry-per-publisher-item China and Hong Kong feed projected from the evidence wire. Every entry includes its event-bound Palimpsest position, source-independence assessment, declared collector context, known unknowns and next verification moves. Reviewed ScamShield Telegram aggregates remain a separate context-only lane and never count as corroboration.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic-metadata-projection",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["CN", "HK"],
+      "sources": ["Palimpsest Evidence Wire", "Palimpsest per-event analysis", "Optional human-reviewed ScamShield aggregate"],
+      "latest": "readings/china-article-stream-latest.json",
+      "landing_page": "news/china/",
+      "method": "docs/EVIDENCE-WIRE.md",
+      "count_fields": ["n_entries", "coverage.registered_sources", "coverage.successful_sources", "coverage.excluded_global_feed_items"],
+      "license": {"name": "MIT for Palimpsest metadata and analysis; upstream publisher rights retained", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "china-economic-pulse",
       "name": "China Economic Pulse",
       "description": "Revision-safe synthesis of official economic releases, market prints and physical telemetry. It preserves as-of clocks, source independence, release gaps and revisions, and abstains from a composite state claim until declared coverage gates pass; it is not an estimate of true GDP.",

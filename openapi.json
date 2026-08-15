@@ -29,6 +29,12 @@
       "EventAnalysis": {
         "$ref": "https://palimpsest.info/protocol/event-analysis-v1.schema.json"
       },
+      "ChinaArticleStream": {
+        "$ref": "https://palimpsest.info/protocol/china-article-stream-v1.schema.json"
+      },
+      "TelegramWatch": {
+        "$ref": "https://palimpsest.info/protocol/telegram-watch-v1.schema.json"
+      },
       "ChinaIndex": {
         "$ref": "https://palimpsest.info/protocol/china-index-v1.schema.json"
       },
@@ -286,6 +292,10 @@
         "description": "Content-addressed Palimpsest assessment of one event using source structure and declared collector context",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventAnalysis"}}}
       },
+      "ChinaArticleStream": {
+        "description": "Newest-first China publisher items with evidence-bound Palimpsest analysis and a separate reviewed Telegram context lane",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaArticleStream"}}}
+      },
       "ChinaIndex": {
         "description": "Published machine-readable index of China Observatory sources, releases, datasets, readiness and evidence rails",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaIndex"}}}
@@ -380,6 +390,11 @@
       "operationId": "getEvidenceNewswire",
       "summary": "Read normalized RSS and Atom event dossiers with explicit source coverage and evidence independence",
       "responses": {"200": {"$ref": "#/components/responses/EvidenceNewswire"}}
+    }},
+    "/readings/china-article-stream-latest.json": {"get": {
+      "operationId": "getChinaArticleStream",
+      "summary": "Read every monitored China publisher item with its evidence position, unknowns and next checks",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaArticleStream"}}
     }},
     "/news/wire/{event_id}/analysis.json": {"get": {
       "operationId": "getEventAnalysis",
