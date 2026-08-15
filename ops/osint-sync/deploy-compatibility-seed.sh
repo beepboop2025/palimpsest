@@ -17,12 +17,21 @@ for variable in C0_DEPLOY_SHA EXPECTED_PREVIOUS_DEPLOY_SHA \
     COMMON_CRAWL_WAREHOUSE_SOURCE; do
   [[ -n "${!variable:-}" ]] || die "required variable is missing: $variable"
 done
+PREPARED_C0_SHA="${PREPARED_C0_SHA:-}"
 [[ "$C0_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] \
   || die "C0_DEPLOY_SHA must be one full commit ID"
 [[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] \
   || die "EXPECTED_PREVIOUS_DEPLOY_SHA must be one full commit ID"
 [[ "$C0_DEPLOY_SHA" != "$EXPECTED_PREVIOUS_DEPLOY_SHA" ]] \
   || die "C0 must differ from the current deployment"
+if [[ -n "$PREPARED_C0_SHA" ]]; then
+  [[ "${PALIMPSEST_ALLOW_PREPARED_C0_RESUME:-}" == 1 ]] \
+    || die "prepared C0 resume requires PALIMPSEST_ALLOW_PREPARED_C0_RESUME=1"
+  [[ "$PREPARED_C0_SHA" =~ ^[0-9a-f]{40}$ ]] \
+    || die "PREPARED_C0_SHA must be one full commit ID"
+  [[ "$PREPARED_C0_SHA" == "$EXPECTED_PREVIOUS_DEPLOY_SHA" ]] \
+    || die "prepared C0 must equal the current deployment"
+fi
 [[ "$COMMON_CRAWL_WAREHOUSE_SOURCE" =~ ^/[A-Za-z0-9._/-]+$ \
     && "$COMMON_CRAWL_WAREHOUSE_SOURCE" != / \
     && "$COMMON_CRAWL_WAREHOUSE_SOURCE" != */ \
@@ -38,6 +47,12 @@ quiesce_target='/etc/systemd/system/palimpsest-backup.service.d/zz-release-quies
 seed_state_dir='/var/lib/palimpsest-release'
 seed_state_path="$seed_state_dir/compatibility-seed-$C0_DEPLOY_SHA.json"
 activator_state_path="$seed_state_dir/compatibility-seed-$C0_DEPLOY_SHA.activators.json"
+prepared_seed_state_path=''
+prepared_activator_state_path=''
+if [[ -n "$PREPARED_C0_SHA" ]]; then
+  prepared_seed_state_path="$seed_state_dir/compatibility-seed-$PREPARED_C0_SHA.json"
+  prepared_activator_state_path="$seed_state_dir/compatibility-seed-$PREPARED_C0_SHA.activators.json"
+fi
 cd "$repo_root"
 [[ -d .git && ! -L .git ]] || die "deployment checkout is missing or unsafe"
 
@@ -81,6 +96,11 @@ release_git merge-base --is-ancestor \
   "$C0_DEPLOY_SHA" refs/remotes/origin/main
 release_git merge-base --is-ancestor \
   "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA"
+if [[ -n "$PREPARED_C0_SHA" ]]; then
+  [[ "$(release_git show "$PREPARED_C0_SHA:ops/osint-sync/release-mode")" \
+      == legacy-mirror ]] \
+    || die "prepared C0 is not the compatibility mode"
+fi
 
 c0_contract_paths=(
   ops/backup/node_backup_snapshot.py
@@ -203,21 +223,213 @@ release_services=(
   palimpsest-witness.service
 )
 declare -A was_active enablement
-for unit in "${release_activators[@]}"; do
-  enablement["$unit"]="$(read_enablement "$unit")"
-  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
-  case "$active_state" in
-    active) was_active["$unit"]=1 ;;
-    inactive|failed|unknown|'') was_active["$unit"]=0 ;;
-    *) die "unit is changing state: $unit ($active_state)" ;;
-  esac
-done
 state_units_tmp="$(mktemp)"
 chmod 0600 "$state_units_tmp"
-for unit in "${release_activators[@]}"; do
-  printf '%s\t%s\t%s\n' "$unit" "${enablement[$unit]}" \
-    "${was_active[$unit]}" >>"$state_units_tmp"
-done
+resumed_from_prepared_c0_sha=''
+original_previous_deploy_sha="$EXPECTED_PREVIOUS_DEPLOY_SHA"
+prepared_pre_seed_snapshot=''
+prepared_backup_on_success=''
+prepared_quiesce_present=0
+if [[ -n "$PREPARED_C0_SHA" ]]; then
+  [[ "$(sudo stat -c '%u:%g:%a' "$seed_state_dir")" == '0:0:700' ]] \
+    || die "prepared seed state directory is unsafe"
+  for prepared_path in "$prepared_seed_state_path" \
+      "$prepared_activator_state_path"; do
+    sudo test -f "$prepared_path"
+    sudo test ! -L "$prepared_path"
+    [[ "$(sudo stat -c '%u:%g:%a:%h' "$prepared_path")" \
+        == '0:0:600:1' ]] \
+      || die "prepared C0 recovery evidence is unsafe: $prepared_path"
+  done
+
+  resume_validation_tmp="$(mktemp)"
+  # Root reads the protected evidence; the invoking user owns this private
+  # derived-output file so later parsing does not broaden privileges.
+  # shellcheck disable=SC2024
+  sudo python3 - "$prepared_seed_state_path" \
+      "$prepared_activator_state_path" "$PREPARED_C0_SHA" \
+      "${release_activators[@]}" >"$resume_validation_tmp" <<'PY'
+import json
+import re
+import sys
+
+receipt_path, activators_path, prepared_sha, *expected_units = sys.argv[1:]
+with open(receipt_path, encoding="utf-8") as handle:
+    receipt = json.load(handle)
+with open(activators_path, encoding="utf-8") as handle:
+    activator_state = json.load(handle)
+
+captured = receipt.get("captured_activators")
+receipt_base_keys = {
+    "schema",
+    "status",
+    "previous_deploy_sha",
+    "c0_deploy_sha",
+    "pre_seed_snapshot",
+    "post_seed_snapshot",
+    "backup_on_success",
+    "captured_activators",
+}
+activator_base_keys = {
+    "schema",
+    "previous_deploy_sha",
+    "c0_deploy_sha",
+    "captured_activators",
+}
+provenance_keys = {
+    "resumed_from_prepared_c0_sha",
+    "original_previous_deploy_sha",
+}
+receipt_keys = set(receipt)
+activator_keys = set(activator_state)
+receipt_has_provenance = receipt_keys == receipt_base_keys | provenance_keys
+activator_has_provenance = (
+    activator_keys == activator_base_keys | provenance_keys
+)
+checks = (
+    receipt_keys in (receipt_base_keys, receipt_base_keys | provenance_keys),
+    activator_keys
+        in (activator_base_keys, activator_base_keys | provenance_keys),
+    receipt_has_provenance == activator_has_provenance,
+    receipt.get("schema") == "palimpsest-compatibility-seed.v1",
+    receipt.get("status") == "prepared",
+    receipt.get("c0_deploy_sha") == prepared_sha,
+    receipt.get("post_seed_snapshot") is None,
+    isinstance(receipt.get("backup_on_success"), str),
+    activator_state.get("schema")
+        == "palimpsest-compatibility-seed-activators.v1",
+    activator_state.get("c0_deploy_sha") == prepared_sha,
+    activator_state.get("previous_deploy_sha")
+        == receipt.get("previous_deploy_sha"),
+    activator_state.get("captured_activators") == captured,
+)
+if not all(checks):
+    raise SystemExit("prepared C0 receipt or activator map is invalid")
+
+original_previous = receipt.get(
+    "original_previous_deploy_sha", receipt.get("previous_deploy_sha")
+)
+previous = receipt.get("previous_deploy_sha")
+pre_snapshot = receipt.get("pre_seed_snapshot")
+backup_on_success = receipt.get("backup_on_success")
+if (
+    re.fullmatch(r"[0-9a-f]{40}", str(previous)) is None
+    or previous == prepared_sha
+    or re.fullmatch(r"[0-9a-f]{40}", str(original_previous)) is None
+    or re.fullmatch(r"20[0-9]{6}T[0-9]{6}Z", str(pre_snapshot)) is None
+    or not isinstance(backup_on_success, str)
+    or any(character in backup_on_success for character in "\t\r\n")
+    or not isinstance(captured, list)
+    or [item.get("unit") for item in captured] != expected_units
+):
+    raise SystemExit("prepared C0 recovery metadata is invalid")
+if receipt_has_provenance and (
+    receipt.get("resumed_from_prepared_c0_sha") != previous
+    or activator_state.get("resumed_from_prepared_c0_sha") != previous
+    or activator_state.get("original_previous_deploy_sha")
+        != original_previous
+):
+    raise SystemExit("prepared C0 recovery provenance is inconsistent")
+
+allowed_enablement = {
+    "enabled", "enabled-runtime", "disabled", "static", "indirect", "not-found"
+}
+print(
+    "METADATA",
+    original_previous,
+    pre_snapshot,
+    backup_on_success,
+    sep="\t",
+)
+for item in captured:
+    if (
+        set(item) != {"unit", "enablement", "was_active"}
+        or item["enablement"] not in allowed_enablement
+        or not isinstance(item["was_active"], bool)
+    ):
+        raise SystemExit("prepared C0 captured activator is invalid")
+    print(
+        item["unit"],
+        item["enablement"],
+        "1" if item["was_active"] else "0",
+        sep="\t",
+    )
+PY
+  IFS=$'\t' read -r metadata_marker original_previous_deploy_sha \
+    prepared_pre_seed_snapshot prepared_backup_on_success \
+    <"$resume_validation_tmp"
+  [[ "$metadata_marker" == METADATA \
+      && "$original_previous_deploy_sha" =~ ^[0-9a-f]{40}$ \
+      && "$prepared_pre_seed_snapshot" =~ ^20[0-9]{6}T[0-9]{6}Z$ ]] \
+    || die "prepared C0 recovery metadata did not parse"
+  tail -n +2 "$resume_validation_tmp" >"$state_units_tmp"
+  rm -f -- "$resume_validation_tmp"
+
+  [[ "$(wc -l <"$state_units_tmp")" -eq "${#release_activators[@]}" ]] \
+    || die "prepared C0 activator count is not exact"
+  while IFS=$'\t' read -r unit previous active; do
+    enablement["$unit"]="$previous"
+    was_active["$unit"]="$active"
+  done <"$state_units_tmp"
+  for unit in "${release_activators[@]}"; do
+    [[ "$(read_enablement "$unit")" == disabled \
+        && "$(systemctl is-active "$unit" 2>/dev/null || true)" \
+          == inactive ]] \
+      || die "prepared C0 host is not quiesced: $unit"
+  done
+  release_git merge-base --is-ancestor \
+    "$original_previous_deploy_sha" "$C0_DEPLOY_SHA"
+  for repository_path in "${legacy_authority_paths[@]}"; do
+    original_boundary="$(
+      authority_boundary "$original_previous_deploy_sha" "$repository_path"
+    )"
+    c0_boundary="$(authority_boundary "$C0_DEPLOY_SHA" "$repository_path")"
+    [[ "$c0_boundary" == "$original_boundary" ]] \
+      || die "resumed C0 changes the original OSINT authority boundary: $repository_path"
+  done
+  sudo test -d "$node_backup_root/$prepared_pre_seed_snapshot"
+  sudo test ! -L "$node_backup_root/$prepared_pre_seed_snapshot"
+  sudo python3 ops/backup/node_backup_snapshot.py verify \
+    "$node_backup_root/$prepared_pre_seed_snapshot" \
+    --snapshot-id "$prepared_pre_seed_snapshot" >/dev/null
+  [[ -z "$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service 2>/dev/null || true)" ]] \
+    || die "prepared C0 backup service is not quiesced"
+  if [[ -n "$prepared_backup_on_success" ]]; then
+    sudo test -f "$quiesce_target"
+    sudo test ! -L "$quiesce_target"
+    [[ "$(sudo stat -c '%u:%g:%a:%h' "$quiesce_target")" \
+        == '0:0:644:1' ]] \
+      || die "prepared C0 backup quiesce is unsafe"
+    quiesce_tmp="$(mktemp)"
+    release_git show \
+      "$PREPARED_C0_SHA:$quiesce_repository_path" >"$quiesce_tmp"
+    sudo cmp -s "$quiesce_tmp" "$quiesce_target" \
+      || die "prepared C0 backup quiesce is not exact"
+    release_git show \
+      "$C0_DEPLOY_SHA:$quiesce_repository_path" >"$quiesce_tmp"
+    sudo cmp -s "$quiesce_tmp" "$quiesce_target" \
+      || die "repair C0 changes the retained backup quiesce"
+    rm -f -- "$quiesce_tmp"
+    prepared_quiesce_present=1
+  else
+    sudo test ! -e "$quiesce_target"
+    sudo test ! -L "$quiesce_target"
+  fi
+  resumed_from_prepared_c0_sha="$PREPARED_C0_SHA"
+else
+  for unit in "${release_activators[@]}"; do
+    enablement["$unit"]="$(read_enablement "$unit")"
+    active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+    case "$active_state" in
+      active) was_active["$unit"]=1 ;;
+      inactive|failed|unknown|'') was_active["$unit"]=0 ;;
+      *) die "unit is changing state: $unit ($active_state)" ;;
+    esac
+    printf '%s\t%s\t%s\n' "$unit" "${enablement[$unit]}" \
+      "${was_active[$unit]}" >>"$state_units_tmp"
+  done
+fi
 sudo test ! -e "$seed_state_path"
 sudo test ! -L "$seed_state_path"
 sudo test ! -L "$activator_state_path"
@@ -265,12 +477,13 @@ write_activator_state() {
   local state_tmp state_stage
   state_tmp="$(mktemp)"
   python3 - "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA" \
-    "$state_units_tmp" >"$state_tmp" <<'PY'
+    "$state_units_tmp" "$resumed_from_prepared_c0_sha" \
+    "$original_previous_deploy_sha" >"$state_tmp" <<'PY'
 import json
 import pathlib
 import sys
 
-previous, c0, units_path = sys.argv[1:]
+previous, c0, units_path, resumed_from, original_previous = sys.argv[1:]
 activators = []
 for line in pathlib.Path(units_path).read_text(encoding="utf-8").splitlines():
     unit, enablement, active = line.split("\t")
@@ -285,6 +498,9 @@ value = {
     "c0_deploy_sha": c0,
     "captured_activators": activators,
 }
+if resumed_from:
+    value["resumed_from_prepared_c0_sha"] = resumed_from
+    value["original_previous_deploy_sha"] = original_previous
 print(json.dumps(value, sort_keys=True, separators=(",", ":")))
 PY
   if sudo test -e "$seed_state_dir"; then
@@ -437,12 +653,17 @@ for unit in "${release_activators[@]}"; do
   esac
 done
 
-backup_on_success="$(systemctl show --property=OnSuccess --value \
-  palimpsest-backup.service 2>/dev/null || true)"
-sudo test ! -e "$quiesce_target"
-sudo test ! -L "$quiesce_target"
-quiesce_added=0
-if [[ -n "$backup_on_success" ]]; then
+if [[ -n "$resumed_from_prepared_c0_sha" ]]; then
+  backup_on_success="$prepared_backup_on_success"
+  quiesce_added="$prepared_quiesce_present"
+else
+  backup_on_success="$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service 2>/dev/null || true)"
+  sudo test ! -e "$quiesce_target"
+  sudo test ! -L "$quiesce_target"
+  quiesce_added=0
+fi
+if [[ -n "$backup_on_success" && "$quiesce_added" == 0 ]]; then
   quiesce_tmp="$(mktemp)"
   release_git show "$C0_DEPLOY_SHA:$quiesce_repository_path" >"$quiesce_tmp"
   [[ -s "$quiesce_tmp" ]] || die "C0 quiesce file is empty"
@@ -508,12 +729,23 @@ write_seed_state() {
   state_tmp="$(mktemp)"
   python3 - "$status" "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA" \
     "$pre_seed_snapshot" "$post_snapshot" "$backup_on_success" \
-    "$state_units_tmp" >"$state_tmp" <<'PY'
+    "$state_units_tmp" "$resumed_from_prepared_c0_sha" \
+    "$original_previous_deploy_sha" >"$state_tmp" <<'PY'
 import json
 import pathlib
 import sys
 
-status, previous, c0, pre_snapshot, post_snapshot, on_success, units_path = (
+(
+    status,
+    previous,
+    c0,
+    pre_snapshot,
+    post_snapshot,
+    on_success,
+    units_path,
+    resumed_from,
+    original_previous,
+) = (
     sys.argv[1:]
 )
 activators = []
@@ -534,6 +766,9 @@ value = {
     "backup_on_success": on_success,
     "captured_activators": activators,
 }
+if resumed_from:
+    value["resumed_from_prepared_c0_sha"] = resumed_from
+    value["original_previous_deploy_sha"] = original_previous
 print(json.dumps(value, sort_keys=True, separators=(",", ":")))
 PY
   sudo install -d -o root -g root -m 0700 "$seed_state_dir"
@@ -710,3 +945,7 @@ trap - ERR HUP INT TERM
 printf 'C0 compatibility seed complete: previous=%s c0=%s pre=%s post=%s\n' \
   "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$C0_DEPLOY_SHA" \
   "$pre_seed_snapshot" "$post_seed_snapshot"
+if [[ -n "$resumed_from_prepared_c0_sha" ]]; then
+  printf 'C0 compatibility seed resumed: prepared=%s original=%s\n' \
+    "$resumed_from_prepared_c0_sha" "$original_previous_deploy_sha"
+fi

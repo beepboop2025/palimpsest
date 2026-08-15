@@ -76,6 +76,9 @@ def test_seed_pins_main_line_c0_and_rejects_authority_cutover() -> None:
 def test_seed_records_state_and_verifies_backups_on_both_sides() -> None:
     seed = _seed()
     mutation = seed.index("mutation_started=1")
+    inherited_backup_verify = seed.index(
+        "sudo python3 ops/backup/node_backup_snapshot.py verify"
+    )
     durable_capture = seed.index("write_activator_state\n", mutation - 80)
     pre_backup = seed.index(
         'create_and_verify_snapshot "$snapshot_before" pre_seed_snapshot'
@@ -90,13 +93,13 @@ def test_seed_records_state_and_verifies_backups_on_both_sides() -> None:
         'write_seed_state complete "$post_seed_snapshot"', restore
     )
 
-    assert seed.count("ops/backup/node_backup_snapshot.py verify") == 1
+    assert seed.count("ops/backup/node_backup_snapshot.py verify") == 2
     assert "create_and_verify_snapshot() {" in seed
     assert "palimpsest-compatibility-seed.v1" in seed
     assert "captured_activators" in seed
     assert "pre_seed_snapshot" in seed
     assert "post_seed_snapshot" in seed
-    assert durable_capture < mutation < pre_backup
+    assert inherited_backup_verify < durable_capture < mutation < pre_backup
     assert pre_backup < prepared < checkout < post_backup < restore < complete
 
 
@@ -124,6 +127,48 @@ def test_seed_retains_root_owned_activator_recovery_evidence() -> None:
     assert 'sudo cmp -s "$state_tmp" "$activator_state_path"' in capture
     assert "captured activator state retained" in failure_handler
     assert 'rm -f -- "${state_units_tmp:-}"' in failure_handler
+
+
+def test_seed_forward_resumes_only_from_exact_prepared_evidence() -> None:
+    seed = _seed()
+    mutation = seed.index("mutation_started=1")
+    preflight = seed[:mutation]
+
+    for marker in (
+        "PALIMPSEST_ALLOW_PREPARED_C0_RESUME",
+        "PREPARED_C0_SHA",
+        '[[ "$PREPARED_C0_SHA" == "$EXPECTED_PREVIOUS_DEPLOY_SHA" ]]',
+        "compatibility-seed-$PREPARED_C0_SHA.json",
+        "compatibility-seed-$PREPARED_C0_SHA.activators.json",
+        "prepared C0 recovery evidence is unsafe",
+        'receipt.get("status") == "prepared"',
+        'receipt.get("c0_deploy_sha") == prepared_sha',
+        'receipt.get("post_seed_snapshot") is None',
+        'activator_state.get("captured_activators") == captured',
+        "receipt_has_provenance == activator_has_provenance",
+        "prepared C0 recovery provenance is inconsistent",
+        '[item.get("unit") for item in captured] != expected_units',
+        '[[ "$(read_enablement "$unit")" == disabled',
+        '== inactive ]]',
+        'authority_boundary "$original_previous_deploy_sha"',
+        "resumed C0 changes the original OSINT authority boundary",
+        "sudo python3 ops/backup/node_backup_snapshot.py verify",
+        "prepared C0 backup service is not quiesced",
+        "prepared C0 backup quiesce is not exact",
+        "repair C0 changes the retained backup quiesce",
+        'backup_on_success="$prepared_backup_on_success"',
+        'resumed_from_prepared_c0_sha="$PREPARED_C0_SHA"',
+        'value["resumed_from_prepared_c0_sha"] = resumed_from',
+        'value["original_previous_deploy_sha"] = original_previous',
+    ):
+        assert marker in preflight or marker in seed
+
+    validation = seed.index('receipt.get("status") == "prepared"')
+    inherited = seed.index('tail -n +2 "$resume_validation_tmp"')
+    durable_copy = seed.index("write_activator_state\n", mutation - 80)
+    assert validation < inherited < durable_copy < mutation
+    assert 'rm -f -- "$prepared_seed_state_path"' not in seed
+    assert 'rm -f -- "$prepared_activator_state_path"' not in seed
 
 
 def test_seed_pins_each_oneshot_until_its_exact_result_is_proved() -> None:
@@ -256,6 +301,9 @@ def test_runbook_executes_the_exact_reviewed_seed_blob() -> None:
     ]
     invocation = (
         'PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \\\n'
+        'PALIMPSEST_ALLOW_PREPARED_C0_RESUME='
+        '"$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \\\n'
+        'PREPARED_C0_SHA="$PREPARED_C0_SHA" \\\n'
         'C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \\\n'
         'EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \\\n'
         'COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \\\n'
