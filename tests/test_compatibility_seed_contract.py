@@ -75,6 +75,8 @@ def test_seed_pins_main_line_c0_and_rejects_authority_cutover() -> None:
 
 def test_seed_records_state_and_verifies_backups_on_both_sides() -> None:
     seed = _seed()
+    mutation = seed.index("mutation_started=1")
+    durable_capture = seed.index("write_activator_state\n", mutation - 80)
     pre_backup = seed.index(
         'create_and_verify_snapshot "$snapshot_before" pre_seed_snapshot'
     )
@@ -94,7 +96,77 @@ def test_seed_records_state_and_verifies_backups_on_both_sides() -> None:
     assert "captured_activators" in seed
     assert "pre_seed_snapshot" in seed
     assert "post_seed_snapshot" in seed
+    assert durable_capture < mutation < pre_backup
     assert pre_backup < prepared < checkout < post_backup < restore < complete
+
+
+def test_seed_retains_root_owned_activator_recovery_evidence() -> None:
+    seed = _seed()
+    capture = seed[
+        seed.index("write_activator_state() {") : seed.index(
+            "# Disabled timers no longer reference"
+        )
+    ]
+    failure_handler = seed[
+        seed.index("seed_fail_safe() {") : seed.index("trap seed_fail_safe ERR")
+    ]
+
+    for marker in (
+        "compatibility-seed-$C0_DEPLOY_SHA.activators.json",
+        "palimpsest-compatibility-seed-activators.v1",
+        '"captured_activators": activators',
+        "sudo install -d -o root -g root -m 0700",
+        "sudo install -o root -g root -m 0600",
+        "captured activator state does not match this attempt",
+        "sudo python3 -m json.tool",
+    ):
+        assert marker in seed
+    assert 'sudo cmp -s "$state_tmp" "$activator_state_path"' in capture
+    assert "captured activator state retained" in failure_handler
+    assert 'rm -f -- "${state_units_tmp:-}"' in failure_handler
+
+
+def test_seed_pins_each_oneshot_until_its_exact_result_is_proved() -> None:
+    seed = _seed()
+    mutation = seed.index("mutation_started=1")
+    helper = seed[
+        seed.index("pin_unit_for_proof() {") : seed.index(
+            "mutation_started=0"
+        )
+    ]
+    failure_handler = seed[
+        seed.index("seed_fail_safe() {") : seed.index("trap seed_fail_safe ERR")
+    ]
+
+    for marker in (
+        'sudo /usr/bin/systemd-run --quiet --unit="$active_proof_pin"',
+        '--property="After=$unit"',
+        "--property=Type=oneshot",
+        "--property=RemainAfterExit=yes",
+        'systemctl is-failed --quiet "$unit"',
+        'sudo systemctl reset-failed "$unit"',
+        'sudo systemctl start "$unit"',
+        "--property=ConditionResult --value",
+        "--property=Result --value",
+        "--property=ExecMainStatus --value",
+        "--property=InvocationID --value",
+        "--property=ExecMainStartTimestampMonotonic --value",
+        '"$invocation" != "$previous_invocation"',
+        'release_proof_pin',
+    ):
+        assert marker in helper
+
+    assert "[[ -x /usr/bin/systemd-run && -x /usr/bin/true ]]" in seed[:mutation]
+    assert seed.index("pin_unit_for_proof() {") < mutation
+    assert 'active_proof_pin=\'\'' in helper
+    assert 'sudo systemctl stop "$active_proof_pin"' in failure_handler
+    assert (
+        "start_and_verify_oneshot \\\n"
+        "    palimpsest-backup.service" in seed
+    )
+    assert "start_and_verify_oneshot palimpsest-public-osint-sync.service" in seed
+    assert "start_and_verify_oneshot palimpsest-common-crawl-import.service" in seed
+    assert 'start_and_verify_oneshot "$service"' in seed
 
 
 def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
@@ -104,7 +176,7 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
     certify = seed.index("--certify-image", build)
     provider = seed.index("ops/osint-sync/install-host-bundle.sh", certify)
     provider_start = seed.index(
-        "sudo systemctl start palimpsest-public-osint-sync.service", provider
+        "start_and_verify_oneshot palimpsest-public-osint-sync.service", provider
     )
     mirror_verify = seed.index("--legacy-readings-mirror --verify-installed")
     byte_match = seed.index(

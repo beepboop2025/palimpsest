@@ -66,23 +66,22 @@ A runtime mask of the offsite service is not sufficient because a unit file in
 `/etc/systemd/system` has higher load-path priority than a mask in `/run`.
 
 `systemctl start` and `Result=success` are not sufficient proof. A oneshot whose
-conditions do not pass can be skipped without running its command. The release
-must require `ConditionResult=yes`, `ExecMainStatus=0`, a new complete snapshot
-name, and the standalone snapshot verifier. The verifier independently requires
-the exact six-file inventory, nonempty dump/list/manifest artifacts, exact
-checksum and manifest inventories, valid PostgreSQL framing, and an archive
-that exactly matches its listing:
+conditions do not pass can be skipped without running its command. Once the
+timer is stopped, systemd may also garbage-collect the unreferenced service and
+erase those result fields before they are read. The release runbook's
+`start_and_verify_oneshot` helper therefore creates a transient, After-only
+proof pin that does not start the service, retains its exact invocation, and is
+removed immediately after requiring `ConditionResult=yes`,
+`ExecMainStatus=0`, a fresh invocation ID, and a nonzero monotonic start time.
+The release additionally requires a new complete snapshot name and the
+standalone snapshot verifier. The verifier independently requires the
+exact six-file inventory, nonempty dump/list/manifest artifacts, exact checksum
+and manifest inventories, valid PostgreSQL framing, and an archive that
+exactly matches its listing:
 
 ```bash
 PRE_CHANGE_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
-sudo systemctl reset-failed palimpsest-backup.service
-sudo systemctl start palimpsest-backup.service
-test "$(sudo systemctl show --property=ConditionResult --value \
-  palimpsest-backup.service)" = "yes"
-test "$(sudo systemctl show --property=Result --value \
-  palimpsest-backup.service)" = "success"
-test "$(sudo systemctl show --property=ExecMainStatus --value \
-  palimpsest-backup.service)" = "0"
+start_and_verify_oneshot palimpsest-backup.service
 PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"
 test -n "$PRE_CHANGE_SNAPSHOT"
 test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
@@ -110,12 +109,13 @@ if value.get("schema") != "palimpsest-node-backup-verification.v1" \
 '
 ```
 
-The `latest_node_snapshot` helper and fixed production `NODE_BACKUP_ROOT` are
-defined in Step 9 of [`../DEPLOY-HETZNER.md`](../DEPLOY-HETZNER.md). A failed or
-skipped proof blocks every receipt-changing installer. Restore the local backup
-timer only after the analysis, Common Crawl/network-lane, and node-offsite
-bundles plus the public OSINT sync bundle all match `EXPECTED_DEPLOY_SHA`. Only
-then remove the exact temporary
+The `start_and_verify_oneshot` and `latest_node_snapshot` helpers plus the
+fixed production `NODE_BACKUP_ROOT` are defined in Step 9 of
+[`../DEPLOY-HETZNER.md`](../DEPLOY-HETZNER.md). A failed or skipped proof
+blocks every receipt-changing installer. Restore the local backup timer only
+after the analysis, Common Crawl/network-lane, and node-offsite bundles plus
+the public OSINT sync bundle all match `EXPECTED_DEPLOY_SHA`. Only then
+remove the exact temporary
 drop-in, reload systemd, and require the captured original `OnSuccess` value to
 be restored. A failed transaction leaves the quiesce installed and every
 captured timer stopped.

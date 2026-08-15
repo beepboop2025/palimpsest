@@ -149,7 +149,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
     trigger_empty = transaction.index(
         'test -z "$(systemctl show --property=OnSuccess --value', quiesce
     )
-    backup = transaction.index("sudo systemctl start palimpsest-backup.service")
+    backup = transaction.index(
+        "start_and_verify_oneshot palimpsest-backup.service"
+    )
     node_install = transaction.index(
         "sudo bash ops/node-offsite/install-host-bundle.sh"
     )
@@ -217,9 +219,9 @@ def test_pre_change_backup_must_publish_and_validate_before_candidate_code() -> 
 
     checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
     build = transaction.index("ops/docker/prod-compose build")
-    start = transaction.index("sudo systemctl start palimpsest-backup.service")
-    condition = transaction.index("--property=ConditionResult --value", start)
-    status = transaction.index("--property=ExecMainStatus --value", condition)
+    start = transaction.index(
+        "start_and_verify_oneshot palimpsest-backup.service"
+    )
     new_snapshot = transaction.index(
         'test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"'
     )
@@ -240,8 +242,6 @@ def test_pre_change_backup_must_publish_and_validate_before_candidate_code() -> 
     assert 'PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"' in transaction
     assert (
         start
-        < condition
-        < status
         < new_snapshot
         < checksum
         < exact_inventory
@@ -252,6 +252,43 @@ def test_pre_change_backup_must_publish_and_validate_before_candidate_code() -> 
         < build
         < receipt_change
     )
+
+
+def test_oneshot_proofs_are_pinned_against_systemd_garbage_collection() -> None:
+    transaction = _transaction()
+    helper = transaction[
+        transaction.index("pin_unit_for_proof() {") : transaction.index(
+            "declare -A RELEASE_WAS_ACTIVE"
+        )
+    ]
+
+    assert "test -x /usr/bin/systemd-run" in transaction[
+        : transaction.index("pin_unit_for_proof() {")
+    ]
+    for marker in (
+        'sudo /usr/bin/systemd-run --quiet --unit="$ACTIVE_PROOF_PIN"',
+        '--property="After=$unit"',
+        "--property=Type=oneshot",
+        "--property=RemainAfterExit=yes",
+        'systemctl is-failed --quiet "$unit"',
+        'sudo systemctl start "$unit"',
+        "--property=ConditionResult --value",
+        "--property=Result --value",
+        "--property=ExecMainStatus --value",
+        "--property=InvocationID --value",
+        "--property=ExecMainStartTimestampMonotonic --value",
+        '"$invocation" != "$previous_invocation"',
+        "release_proof_pin",
+    ):
+        assert marker in helper
+
+    for unit in (
+        "palimpsest-backup.service",
+        "palimpsest-public-osint-sync.service",
+        "palimpsest-common-crawl-import.service",
+        "palimpsest-bleedthrough.service",
+    ):
+        assert f"start_and_verify_oneshot {unit}" in transaction
 
 
 def test_bundle_install_order_and_revision_parity_are_exact() -> None:
@@ -308,20 +345,14 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
     transaction = _transaction()
 
     import_start = transaction.index(
-        "sudo systemctl start palimpsest-common-crawl-import.service"
-    )
-    import_status = transaction.index(
-        'palimpsest-common-crawl-import.service)" = "0"', import_start
+        "start_and_verify_oneshot palimpsest-common-crawl-import.service"
     )
     disable_loop = transaction.index(
         'for unit in "${RELEASE_ACTIVATORS[@]}"; do\n'
         '  temporarily_disable_activator "$unit"'
     )
     bleed_start = transaction.index(
-        "sudo systemctl start palimpsest-bleedthrough.service"
-    )
-    bleed_status = transaction.index(
-        'palimpsest-bleedthrough.service)" = "0"', bleed_start
+        "start_and_verify_oneshot palimpsest-bleedthrough.service"
     )
     artifact_advance = transaction.index(
         'test "$BLEED_ARTIFACT_AFTER_SHA256" != "$BLEED_ARTIFACT_BEFORE_SHA256"'
@@ -353,9 +384,7 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
     assert (
         disable_loop
         < import_start
-        < import_status
         < bleed_start
-        < bleed_status
         < artifact_advance
         < live_api
         < dispatch
@@ -595,12 +624,15 @@ def test_final_observers_reject_stored_or_exit_two_statuses() -> None:
 
     for marker in (
         'previous_id="$(systemctl show --property=InvocationID',
+        'pin_unit_for_proof "$unit"',
+        "release_proof_pin",
         '[[ "$invocation_id" =~ ^[0-9a-f]{32}$ ]] || observer_ok=0',
         '[[ "$invocation_id" != "$previous_id" ]] || observer_ok=0',
         '"$invocation_id" == "$pre_release_id"',
         '[[ "$condition_result" == "yes" ]] || observer_ok=0',
         '[[ "$result" == "success" ]] || observer_ok=0',
         '[[ "$exec_status" == "0" ]] || observer_ok=0',
+        '[[ "$started" =~ ^[1-9][0-9]*$ ]] || observer_ok=0',
         '[[ "$exec_status" == "2" ]]',
         "exit 2 is not final success",
         "systemctl status",
@@ -625,6 +657,8 @@ def test_backup_and_node_offsite_guides_repeat_the_release_safety_boundary() -> 
         "Required pre-change release proof",
         "ConditionResult=yes",
         "ExecMainStatus=0",
+        "proof pin",
+        "start_and_verify_oneshot",
         "PRE_CHANGE_SNAPSHOT",
         "sha256sum --check SHA256SUMS",
         "node_backup_snapshot.py verify",

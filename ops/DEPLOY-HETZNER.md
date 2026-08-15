@@ -920,6 +920,8 @@ test "$(sudo cat \
   = legacy-mirror
 sudo python3 -m json.tool \
   "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.json"
+sudo python3 -m json.tool \
+  "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.activators.json"
 test "$(sudo python3 -c \
   'import json,sys; print(json.load(open(sys.argv[1]))["status"])' \
   "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.json")" \
@@ -932,16 +934,19 @@ command-local, and the seed still requires a clean exact-SHA checkout, verified
 main-line ancestry, unchanged legacy authority boundaries, and both backup
 proofs. Do not add the repository to a global `safe.directory` list.
 
-The executable seed transaction performs both backup proofs, records the exact
-pre-seed snapshot and captured activator state under the root-only
-`/var/lib/palimpsest-release` directory, installs and runs the C0 provider,
-proves the protected and legacy bytes match, proves legacy file identity did
-not change, reinstalls every C0 bundle, installs the independent freshness
-watchdog in legacy-path mode, and runs both still-legacy consumers against the
-later mirrored ledger. It enables the new provider and watchdog timers only
-after a second snapshot passes the C0 verifier. A failure leaves every
-activator disabled, retains the backup quiesce, and preserves the recovery
-receipt. Do not guess at the old timer state or delete that receipt.
+The executable seed transaction records the exact enablement/activity map in
+`compatibility-seed-$C0_DEPLOY_SHA.activators.json` before stopping any
+unit, then performs both backup proofs and records the exact pre-seed snapshot
+under the root-only `/var/lib/palimpsest-release` directory. It installs and
+runs the C0 provider, proves the protected and legacy bytes match, proves legacy
+file identity did not change, reinstalls every C0 bundle, installs the
+independent freshness watchdog in legacy-path mode, and runs both still-legacy
+consumers against the later mirrored ledger. It enables the new provider and
+watchdog timers only after a second snapshot passes the C0 verifier. A failure leaves every
+activator disabled, retains the backup quiesce, and preserves the activator
+recovery map. A same-SHA retry accepts that map only after the original state
+has been restored exactly. Do not guess at the old timer state or delete the
+map.
 
 Only after the C0 receipt says `complete` may C1 be merged. C1 must contain
 `protected-only`, and its parent or main-line ancestry must include the exact C0
@@ -1041,6 +1046,89 @@ read_enablement() {
     *) printf 'unexpected enablement for %s: %s\n' "$1" "$state" >&2; return 1 ;;
   esac
   printf '%s\n' "$state"
+}
+
+test -x /usr/bin/systemd-run
+test -x /usr/bin/true
+PROOF_PIN_SEQUENCE=0
+ACTIVE_PROOF_PIN=''
+pin_unit_for_proof() {
+  local unit="$1"
+  if [[ -n "$ACTIVE_PROOF_PIN" ]]; then
+    printf 'another systemd proof pin is still active: %s\n' \
+      "$ACTIVE_PROOF_PIN" >&2
+    return 1
+  fi
+  PROOF_PIN_SEQUENCE=$((PROOF_PIN_SEQUENCE + 1))
+  ACTIVE_PROOF_PIN="palimpsest-release-proof-${PROOF_PIN_SEQUENCE}-$$.service"
+  if ! sudo /usr/bin/systemd-run --quiet --unit="$ACTIVE_PROOF_PIN" \
+      --property=Type=oneshot --property=RemainAfterExit=yes \
+      --property="After=$unit" /usr/bin/true; then
+    ACTIVE_PROOF_PIN=''
+    return 1
+  fi
+  if [[ "$(systemctl is-active "$ACTIVE_PROOF_PIN" 2>/dev/null || true)" \
+        == active \
+      && "$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null || true)" == loaded ]]; then
+    return 0
+  fi
+  printf 'could not pin systemd proof state: %s\n' "$unit" >&2
+  sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 || true
+  ACTIVE_PROOF_PIN=''
+  return 1
+}
+
+release_proof_pin() {
+  local pin="$ACTIVE_PROOF_PIN" state stop_rc=0
+  [[ -n "$pin" ]] || return 0
+  sudo systemctl stop "$pin" || stop_rc=$?
+  state="$(systemctl is-active "$pin" 2>/dev/null || true)"
+  if (( stop_rc != 0 )); then
+    printf 'could not stop systemd proof pin: %s\n' "$pin" >&2
+    return 1
+  fi
+  case "$state" in
+    inactive|failed|unknown|"") ACTIVE_PROOF_PIN=''; return 0 ;;
+    *) printf 'systemd proof pin did not stop: %s (%s)\n' \
+         "$pin" "$state" >&2; return 1 ;;
+  esac
+}
+
+start_and_verify_oneshot() {
+  local unit="$1"
+  local previous_invocation invocation condition result status started
+  local start_rc=0 release_rc=0
+  pin_unit_for_proof "$unit" || return 1
+  previous_invocation="$(systemctl show --property=InvocationID --value \
+    "$unit" 2>/dev/null || true)"
+  if systemctl is-failed --quiet "$unit"; then
+    sudo systemctl reset-failed "$unit"
+  fi
+  sudo systemctl start "$unit" || start_rc=$?
+  invocation="$(systemctl show --property=InvocationID --value \
+    "$unit" 2>/dev/null || true)"
+  condition="$(systemctl show --property=ConditionResult --value \
+    "$unit" 2>/dev/null || true)"
+  result="$(systemctl show --property=Result --value \
+    "$unit" 2>/dev/null || true)"
+  status="$(systemctl show --property=ExecMainStatus --value \
+    "$unit" 2>/dev/null || true)"
+  started="$(systemctl show \
+    --property=ExecMainStartTimestampMonotonic --value \
+    "$unit" 2>/dev/null || true)"
+  release_proof_pin || release_rc=$?
+  if (( start_rc == 0 && release_rc == 0 )) \
+      && [[ "$condition" == yes && "$result" == success && "$status" == 0 \
+        && "$invocation" =~ ^[0-9a-f]{32}$ \
+        && "$invocation" != "$previous_invocation" \
+        && "$started" =~ ^[1-9][0-9]*$ ]]; then
+    return 0
+  fi
+  printf 'oneshot proof failed: unit=%s start=%s release=%s condition=%s result=%s status=%s invocation=%s started=%s\n' \
+    "$unit" "$start_rc" "$release_rc" "$condition" "$result" "$status" \
+    "$invocation" "$started" >&2
+  return 1
 }
 
 declare -A RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT
@@ -1348,14 +1436,7 @@ fi
 
 # Create and independently verify the PRE-CHANGE restore point before checkout,
 # image build, Compose up, migration, receipt mutation, or candidate code runs.
-sudo systemctl reset-failed palimpsest-backup.service
-sudo systemctl start palimpsest-backup.service
-test "$(sudo systemctl show --property=ConditionResult --value \
-  palimpsest-backup.service)" = "yes"
-test "$(sudo systemctl show --property=Result --value \
-  palimpsest-backup.service)" = "success"
-test "$(sudo systemctl show --property=ExecMainStatus --value \
-  palimpsest-backup.service)" = "0"
+start_and_verify_oneshot palimpsest-backup.service
 PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"
 test -n "$PRE_CHANGE_SNAPSHOT"
 test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
@@ -1402,14 +1483,7 @@ ops/docker/prod-compose build
 # This ordering is executable on a host that has never seen these units.
 sudo bash ops/investigative-analysis/install-host-bundle.sh --certify-image
 sudo bash ops/osint-sync/install-host-bundle.sh
-sudo systemctl reset-failed palimpsest-public-osint-sync.service
-sudo systemctl start palimpsest-public-osint-sync.service
-test "$(systemctl show --property=ConditionResult --value \
-  palimpsest-public-osint-sync.service)" = "yes"
-test "$(systemctl show --property=Result --value \
-  palimpsest-public-osint-sync.service)" = "success"
-test "$(systemctl show --property=ExecMainStatus --value \
-  palimpsest-public-osint-sync.service)" = "0"
+start_and_verify_oneshot palimpsest-public-osint-sync.service
 sudo /usr/bin/python3 \
   /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
   --verify-installed >/dev/null
@@ -1503,14 +1577,7 @@ curl --fail --silent --show-error \
 
 # Import the new Common Crawl bundle before any context run. Analysis and
 # context remain stopped until the public OSINT sync advances in Phase 3.
-sudo systemctl reset-failed palimpsest-common-crawl-import.service
-sudo systemctl start palimpsest-common-crawl-import.service
-test "$(systemctl show --property=ConditionResult --value \
-  palimpsest-common-crawl-import.service)" = "yes"
-test "$(systemctl show --property=Result --value \
-  palimpsest-common-crawl-import.service)" = "success"
-test "$(systemctl show --property=ExecMainStatus --value \
-  palimpsest-common-crawl-import.service)" = "0"
+start_and_verify_oneshot palimpsest-common-crawl-import.service
 
 OSINT_AUTHORITY='/var/lib/palimpsest-public-osint-sync/authoritative'
 OSINT_ARTIFACT="$OSINT_AUTHORITY/osint-china-latest.json"
@@ -1610,14 +1677,7 @@ BLEED_ARTIFACT='/var/lib/palimpsest/readings/bleedthrough-latest.json'
 sudo test -f "$BLEED_ARTIFACT"
 BLEED_ARTIFACT_BEFORE_SHA256="$(sudo sha256sum "$BLEED_ARTIFACT" \
   | awk '{print $1}')"
-sudo systemctl reset-failed palimpsest-bleedthrough.service
-sudo systemctl start palimpsest-bleedthrough.service
-test "$(systemctl show --property=ConditionResult --value \
-  palimpsest-bleedthrough.service)" = "yes"
-test "$(systemctl show --property=Result --value \
-  palimpsest-bleedthrough.service)" = "success"
-test "$(systemctl show --property=ExecMainStatus --value \
-  palimpsest-bleedthrough.service)" = "0"
+start_and_verify_oneshot palimpsest-bleedthrough.service
 BLEED_ARTIFACT_AFTER_SHA256="$(sudo sha256sum "$BLEED_ARTIFACT" \
   | awk '{print $1}')"
 test "$BLEED_ARTIFACT_AFTER_SHA256" != "$BLEED_ARTIFACT_BEFORE_SHA256"
@@ -1939,6 +1999,7 @@ set -Eeuo pipefail
 if ! declare -p \
     RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS \
     RELEASE_HANDOFF_B64 \
+    PROOF_PIN_SEQUENCE ACTIVE_PROOF_PIN \
     NODE_OFFSITE_CONFIGURED EXPECTED_DEPLOY_SHA \
     BLEED_ARTIFACT_AFTER_SHA256 BLEED_ARTIFACT_NORMALIZED_SHA256 \
     OSINT_ARTIFACT OSINT_LEDGER OSINT_ARTIFACT_BEFORE_SHA256 \
@@ -1951,7 +2012,9 @@ if ! declare -p \
     || ! [[ "$BLEED_ARTIFACT_NORMALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$OSINT_ARTIFACT_BEFORE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$OSINT_LEDGER_BEFORE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
-    || ! [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]]; then
+    || ! [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
+    || ! declare -F pin_unit_for_proof release_proof_pin \
+      >/dev/null 2>&1; then
   printf 'Phase 3 must run in the original paused Phase 1 shell\n' >&2
   exit 1
 fi
@@ -1969,6 +2032,10 @@ phase3_fail_safe() {
     sudo systemctl stop "$unit" >/dev/null 2>&1 || true
     sudo systemctl disable "$unit" >/dev/null 2>&1 || true
   done
+  if [[ -n "${ACTIVE_PROOF_PIN:-}" ]]; then
+    sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 || true
+    ACTIVE_PROOF_PIN=''
+  fi
   sudo systemctl daemon-reload >/dev/null 2>&1 || true
 }
 trap phase3_fail_safe ERR
@@ -2061,11 +2128,15 @@ test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
 
 run_final_observer() {
   local unit="$1" status_path="$2" pre_release_id="$3"
-  local previous_id invocation_id condition_result result exec_status start_rc
+  local previous_id invocation_id condition_result result exec_status started
+  local start_rc release_rc
   local observer_ok=1
   previous_id="$(systemctl show --property=InvocationID --value \
     "$unit" 2>/dev/null || true)"
-  sudo systemctl reset-failed "$unit"
+  pin_unit_for_proof "$unit" || return 1
+  if systemctl is-failed --quiet "$unit"; then
+    sudo systemctl reset-failed "$unit"
+  fi
   start_rc=0
   if sudo systemctl start "$unit"; then
     :
@@ -2080,8 +2151,14 @@ run_final_observer() {
     "$unit" 2>/dev/null || true)"
   exec_status="$(systemctl show --property=ExecMainStatus --value \
     "$unit" 2>/dev/null || true)"
+  started="$(systemctl show \
+    --property=ExecMainStartTimestampMonotonic --value \
+    "$unit" 2>/dev/null || true)"
+  release_rc=0
+  release_proof_pin || release_rc=$?
 
   (( start_rc == 0 )) || observer_ok=0
+  (( release_rc == 0 )) || observer_ok=0
   [[ "$invocation_id" =~ ^[0-9a-f]{32}$ ]] || observer_ok=0
   [[ "$invocation_id" != "$previous_id" ]] || observer_ok=0
   if [[ -n "$pre_release_id" && "$invocation_id" == "$pre_release_id" ]]; then
@@ -2090,11 +2167,12 @@ run_final_observer() {
   [[ "$condition_result" == "yes" ]] || observer_ok=0
   [[ "$result" == "success" ]] || observer_ok=0
   [[ "$exec_status" == "0" ]] || observer_ok=0
+  [[ "$started" =~ ^[1-9][0-9]*$ ]] || observer_ok=0
 
   if (( observer_ok == 0 )); then
-    printf '%s final invocation failed: id=%s condition=%s result=%s status=%s\n' \
+    printf '%s final invocation failed: id=%s condition=%s result=%s status=%s started=%s\n' \
       "$unit" "$invocation_id" "$condition_result" "$result" \
-      "$exec_status" >&2
+      "$exec_status" "$started" >&2
     sudo systemctl status "$unit" --no-pager || true
     sudo journalctl -u "$unit" -n 200 --no-pager || true
     if [[ -n "$status_path" ]] && sudo test -f "$status_path"; then
