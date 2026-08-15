@@ -5,12 +5,15 @@ and the anchor log + latest summary carry what the site needs.
 """
 from __future__ import annotations
 
+import gzip
 import io
 import json
 import os
 import shutil
 import sys
 import tempfile
+import urllib.error
+import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import sealed_ledger as led  # noqa: E402
@@ -20,9 +23,11 @@ from scripts import anchor_roots  # noqa: E402
 class _FakeResponse(io.BytesIO):
     status = 200
 
-    def __init__(self, url="https://web.archive.org/web/20260711/snap"):
-        super().__init__(b"ok")
+    def __init__(self, url="https://web.archive.org/web/20260711000000/snap",
+                 body=b"ok", headers=None):
+        super().__init__(body)
         self._url = url
+        self.headers = headers or {}
 
     def geturl(self):
         return self._url
@@ -34,8 +39,32 @@ class _FakeResponse(io.BytesIO):
         return False
 
 
+def _capture_target(request_url):
+    if "/save/" in request_url:
+        return request_url.split("/save/", 1)[1]
+    if "id_/" in request_url:
+        return request_url.split("id_/", 1)[1]
+    raise AssertionError(f"unexpected Wayback request: {request_url}")
+
+
 def _ok_opener(req, timeout=0):
-    return _FakeResponse()
+    if "/cdx/search/cdx?" in req.full_url:
+        return _FakeResponse(req.full_url, body=b"[]")
+    target = _capture_target(req.full_url)
+    if "/save/" in req.full_url:
+        snapshot = f"https://web.archive.org/web/20260816000000/{target}"
+        return _FakeResponse(snapshot, body=b"saved")
+    filename = os.path.basename(urllib.parse.urlsplit(target).path)
+    source_path = next(
+        source for source in (
+            anchor_roots.REGISTRY,
+            anchor_roots.ERASURE,
+            anchor_roots.READINGS_LEDGER,
+        )
+        if os.path.basename(source) == filename
+    )
+    with open(source_path, "rb") as source:
+        return _FakeResponse(req.full_url, body=source.read())
 
 
 def _down_opener(req, timeout=0):
@@ -73,6 +102,12 @@ def test_anchor_records_success(monkeypatch):
     rec = anchor_roots.anchor(opener=_ok_opener, log_path=log, latest_path=latest)
     assert rec is not None
     assert all(w["ok"] for w in rec["wayback"])
+    assert all(
+        urllib.parse.parse_qs(urllib.parse.urlsplit(w["capture_target"]).query)[
+            "palimpsest_capture_version"
+        ] == [anchor_roots.WAYBACK_CAPTURE_VERSION]
+        for w in rec["wayback"]
+    )
     assert rec["ots"]["skipped"] is True  # skipped loudly, not faked
     summary = json.load(open(latest))
     # Every chain we anchor gets a Wayback snapshot, so this tracks the target
@@ -101,12 +136,18 @@ def test_unchanged_roots_retry_only_missing_external_evidence(monkeypatch, tmp_p
     attempts = []
 
     def _flaky_opener(req, timeout=0):
-        target = req.full_url.removeprefix("https://web.archive.org/save/")
-        attempts.append(target)
-        if target.endswith("erasure-ledger.jsonl") and attempts.count(target) == 1:
-            raise OSError("connection refused")
-        suffix = target.rsplit("/", 1)[-1]
-        return _FakeResponse(f"https://web.archive.org/web/20260816/{suffix}")
+        if "/save/" in req.full_url:
+            target = _capture_target(req.full_url)
+            target_path = urllib.parse.urlsplit(target).path
+            canonical = next(
+                item for item in anchor_roots.WAYBACK_TARGETS
+                if urllib.parse.urlsplit(item).path == target_path
+            )
+            attempts.append(canonical)
+            if (canonical.endswith("erasure-ledger.jsonl")
+                    and attempts.count(canonical) == 1):
+                raise OSError("connection refused")
+        return _ok_opener(req, timeout=timeout)
 
     log, latest = _tmp_paths()
     first = anchor_roots.anchor(opener=_flaky_opener, log_path=log, latest_path=latest)
@@ -194,6 +235,195 @@ def test_wayback_failure_is_recorded_not_faked(monkeypatch):
     assert all(w["ok"] is False and "reason" in w for w in rec["wayback"])
     summary = json.load(open(latest))
     assert summary["wayback_ok"] == 0 and summary["wayback_snapshots"] == []
+
+
+def test_wayback_http_success_with_stale_bytes_is_rejected(monkeypatch):
+    monkeypatch.setattr(anchor_roots.shutil, "which", lambda _: None)
+
+    def _stale_opener(req, timeout=0):
+        if "/cdx/search/cdx?" in req.full_url:
+            return _FakeResponse(req.full_url, body=b"[]")
+        target = _capture_target(req.full_url)
+        if "/save/" in req.full_url:
+            return _FakeResponse(
+                f"https://web.archive.org/web/20260816000000/{target}",
+                body=b"saved",
+            )
+        return _FakeResponse(req.full_url, body=b"stale bytes")
+
+    log, latest = _tmp_paths()
+    rec = anchor_roots.anchor(opener=_stale_opener, log_path=log, latest_path=latest)
+    assert rec is not None
+    assert all(item["ok"] is False for item in rec["wayback"])
+    assert all("does not match" in item["reason"] for item in rec["wayback"])
+    summary = json.load(open(latest))
+    assert summary["wayback_ok"] == 0 and summary["wayback_snapshots"] == []
+
+
+def test_wayback_gzip_replay_is_verified_after_bounded_decoding(monkeypatch):
+    monkeypatch.setattr(anchor_roots.shutil, "which", lambda _: None)
+
+    def _gzip_opener(req, timeout=0):
+        if "/cdx/search/cdx?" in req.full_url:
+            return _FakeResponse(req.full_url, body=b"[]")
+        target = _capture_target(req.full_url)
+        if "/save/" in req.full_url:
+            return _FakeResponse(
+                f"https://web.archive.org/web/20260816000000/{target}",
+                body=b"saved",
+            )
+        filename = os.path.basename(urllib.parse.urlsplit(target).path)
+        source_path = next(
+            source for source in (
+                anchor_roots.REGISTRY,
+                anchor_roots.ERASURE,
+                anchor_roots.READINGS_LEDGER,
+            )
+            if os.path.basename(source) == filename
+        )
+        with open(source_path, "rb") as source:
+            compressed = gzip.compress(source.read())
+        return _FakeResponse(
+            req.full_url,
+            body=compressed,
+            headers={"Content-Encoding": "gzip"},
+        )
+
+    log, latest = _tmp_paths()
+    rec = anchor_roots.anchor(opener=_gzip_opener, log_path=log, latest_path=latest)
+    assert rec is not None
+    assert all(item["ok"] is True for item in rec["wayback"])
+    assert all(item["replay_content_encoding"] == "gzip" for item in rec["wayback"])
+
+
+def test_wayback_recovers_capture_url_from_eventual_replay_404():
+    target = anchor_roots.WAYBACK_TARGETS[0]
+    expected = anchor_roots.wayback_expectations()[target]
+    replay_calls = 0
+
+    def _eventual_opener(req, timeout=0):
+        nonlocal replay_calls
+        if "/cdx/search/cdx?" in req.full_url:
+            return _FakeResponse(req.full_url, body=b"[]")
+        capture_target = _capture_target(req.full_url)
+        if "/save/" in req.full_url:
+            snapshot = (
+                "https://web.archive.org/web/20260816000000/"
+                + capture_target
+            )
+            raise urllib.error.HTTPError(
+                snapshot, 404, "not replicated yet", {}, io.BytesIO()
+            )
+        replay_calls += 1
+        if replay_calls == 1:
+            raise urllib.error.HTTPError(
+                req.full_url, 404, "not replicated yet", {}, io.BytesIO()
+            )
+        with open(anchor_roots.REGISTRY, "rb") as source:
+            return _FakeResponse(req.full_url, body=source.read())
+
+    result = anchor_roots.wayback_save(
+        target,
+        expected_sha256=expected["sha256"],
+        expected_bytes=expected["bytes"],
+        opener=_eventual_opener,
+        sleeper=lambda _seconds: None,
+    )
+    assert result["ok"] is True
+    assert result["http"] == 404
+    assert replay_calls == 2
+
+
+def test_wayback_uses_cdx_after_direct_transient_save_failure():
+    target = anchor_roots.WAYBACK_TARGETS[1]
+    expected = anchor_roots.wayback_expectations()[target]
+    timestamp = "20260816000000"
+    cdx_calls = 0
+
+    def _cdx_opener(req, timeout=0):
+        nonlocal cdx_calls
+        if "/save/" in req.full_url:
+            raise urllib.error.HTTPError(
+                req.full_url, 500, "temporary save failure", {}, io.BytesIO()
+            )
+        if "/cdx/search/cdx?" in req.full_url:
+            cdx_calls += 1
+            if cdx_calls == 1:
+                return _FakeResponse(req.full_url, body=b"[]")
+            requested = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(req.full_url).query
+            )["url"][0]
+            payload = [
+                ["timestamp", "original", "statuscode"],
+                [timestamp, requested, "200"],
+            ]
+            return _FakeResponse(req.full_url, body=json.dumps(payload).encode())
+        capture_target = _capture_target(req.full_url)
+        filename = os.path.basename(urllib.parse.urlsplit(capture_target).path)
+        assert filename == os.path.basename(anchor_roots.ERASURE)
+        with open(anchor_roots.ERASURE, "rb") as source:
+            return _FakeResponse(req.full_url, body=source.read())
+
+    result = anchor_roots.wayback_save(
+        target,
+        expected_sha256=expected["sha256"],
+        expected_bytes=expected["bytes"],
+        opener=_cdx_opener,
+        sleeper=lambda _seconds: None,
+    )
+    assert result["ok"] is True
+    assert result["capture_source"] == "cdx"
+    assert result["http"] == 500
+    assert cdx_calls == 2
+
+
+def test_wayback_replaces_unreadable_redirect_with_indexed_capture():
+    target = anchor_roots.WAYBACK_TARGETS[1]
+    expected = anchor_roots.wayback_expectations()[target]
+    transient_timestamp = "20260816000001"
+    indexed_timestamp = "20260816000000"
+    cdx_calls = 0
+
+    def _indexed_opener(req, timeout=0):
+        nonlocal cdx_calls
+        if "/save/" in req.full_url:
+            capture_target = _capture_target(req.full_url)
+            snapshot = (
+                f"https://web.archive.org/web/{transient_timestamp}/"
+                + capture_target
+            )
+            raise urllib.error.HTTPError(
+                snapshot, 404, "not replicated", {}, io.BytesIO()
+            )
+        if "/cdx/search/cdx?" in req.full_url:
+            cdx_calls += 1
+            if cdx_calls == 1:
+                return _FakeResponse(req.full_url, body=b"[]")
+            requested = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(req.full_url).query
+            )["url"][0]
+            payload = [
+                ["timestamp", "original", "statuscode"],
+                [indexed_timestamp, requested, "200"],
+            ]
+            return _FakeResponse(req.full_url, body=json.dumps(payload).encode())
+        if transient_timestamp in req.full_url:
+            raise urllib.error.HTTPError(
+                req.full_url, 404, "not replicated", {}, io.BytesIO()
+            )
+        with open(anchor_roots.ERASURE, "rb") as source:
+            return _FakeResponse(req.full_url, body=source.read())
+
+    result = anchor_roots.wayback_save(
+        target,
+        expected_sha256=expected["sha256"],
+        expected_bytes=expected["bytes"],
+        opener=_indexed_opener,
+        sleeper=lambda _seconds: None,
+    )
+    assert result["ok"] is True
+    assert result["capture_source"] == "cdx"
+    assert indexed_timestamp in result["snapshot"]
 
 
 def test_broken_chain_is_never_anchored(monkeypatch, tmp_path):
