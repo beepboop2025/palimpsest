@@ -75,6 +75,44 @@ def test_release_checks_out_one_reviewed_sha_without_an_unconstrained_pull() -> 
     assert fetch < checkout < build < start
 
 
+def test_release_waits_for_api_readiness_before_first_consumer() -> None:
+    transaction = _transaction()
+
+    start = transaction.index("ops/docker/prod-compose up -d")
+    readiness = transaction.index("api_ready=0", start)
+    retry = transaction.index(
+        "for (( api_attempt=1; api_attempt<=30; api_attempt++ ))", readiness
+    )
+    probe = transaction.index(
+        "http://127.0.0.1:8010/api/v1/node/status", retry
+    )
+    timeout = transaction.rindex(
+        "--connect-timeout 1 --max-time 2", retry, probe
+    )
+    delay = transaction.index("sleep 2", probe)
+    gate = transaction.index("if (( api_ready != 1 )); then", delay)
+    message = transaction.index(
+        "C1 API did not become ready after Compose restart", gate
+    )
+    failure = transaction.index("exit 1", message)
+    first_consumer = transaction.index(
+        "start_and_verify_oneshot palimpsest-common-crawl-import.service", failure
+    )
+
+    assert (
+        start
+        < readiness
+        < retry
+        < timeout
+        < probe
+        < delay
+        < gate
+        < message
+        < failure
+        < first_consumer
+    )
+
+
 def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> None:
     transaction = _transaction()
     receipt_change = transaction.index(
