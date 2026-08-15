@@ -33,7 +33,7 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-15T07:19:34Z",
+  "generated_at": "2026-08-15T07:46:24Z",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "health": {
     "counts": {
@@ -50,7 +50,7 @@
     "required_total": 29,
     "status": "healthy"
   },
-  "input_commit": "41e45e8122d29fd371427f62cc542e447390ef75",
+  "input_commit": "bbe20083ebdfceb5f8432101c42940efccea0b4c",
   "layers": [
     {
       "id": "command",
@@ -186,7 +186,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 0.026,
+        "age_hours": 0.473,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -511,7 +511,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:16:24Z",
       "health": {
-        "age_hours": 0.053,
+        "age_hours": 0.5,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -735,7 +735,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 0.026,
+        "age_hours": 0.473,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -883,7 +883,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 0.026,
+        "age_hours": 0.473,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1432,7 +1432,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:59Z",
       "health": {
-        "age_hours": 0.026,
+        "age_hours": 0.473,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1819,7 +1819,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-15T13:58:24Z",
       "health": {
-        "age_hours": 0.353,
+        "age_hours": 0.8,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2550,9 +2550,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T16:09:13Z",
+      "freshness_deadline": "2026-08-15T21:21:21Z",
       "health": {
-        "age_hours": 5.172,
+        "age_hours": 0.417,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2562,9 +2562,9 @@
       },
       "id": "gdelt",
       "input": {
-        "bytes": 6746,
+        "bytes": 6747,
         "filename": "gdelt-latest.json",
-        "sha256": "5ae6c7ee187225fe9072d3fa25fb215c30b73cde1a6e5abaa8c8696fdd866f8b"
+        "sha256": "25b30e71e3a18494b811b96d1d053814dbec8e9b68550e383830a0bbdf211f32"
       },
       "layer": "attention",
       "live": true,
@@ -2577,58 +2577,58 @@
         },
         "label": "terms with global data",
         "unit": "count",
-        "value": 4
+        "value": 5
       },
       "optional": false,
       "payload": {
-        "ddti_generated_at": "2026-08-15T01:49:59.588864+00:00",
-        "generated_at": "2026-08-15T02:09:13.152738+00:00",
+        "ddti_generated_at": "2026-08-15T06:58:24.710841+00:00",
+        "generated_at": "2026-08-15T07:21:21.576805+00:00",
         "method_version": 1,
         "n_blackout": 0,
-        "n_containment": 4,
+        "n_containment": 5,
         "n_terms": 25,
-        "n_with_global_data": 4,
+        "n_with_global_data": 5,
         "ranked": [
           {
-            "cross_score": 0.0271,
-            "domestic_attention": 0.9611,
+            "cross_score": 0.0326,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
-            "global_norm": 0.0554,
-            "global_volume_intensity": 0.2769277108433735,
+            "global_norm": 0.0691,
+            "global_volume_intensity": 0.34551939393939396,
             "label": "containment",
-            "term": "academics"
+            "term": "mathematics"
           },
           {
             "cross_score": 0.0023,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
-            "global_norm": 0.0047,
-            "global_volume_intensity": 0.02351867469879518,
+            "global_norm": 0.0049,
+            "global_volume_intensity": 0.024305454545454543,
             "label": "containment",
             "term": "overseas Chinese"
           },
           {
-            "cross_score": 0.0004,
-            "domestic_attention": 0.9611,
+            "cross_score": 0.002,
+            "domestic_attention": 1.5456,
             "domestic_present": true,
-            "global_norm": 0.0008,
-            "global_volume_intensity": 0.003828915662650603,
+            "global_norm": 0.0033,
+            "global_volume_intensity": 0.016435757575757576,
             "label": "containment",
-            "term": "foreign universities"
+            "term": "WeChat"
           },
           {
-            "cross_score": 0.0,
-            "domestic_attention": 0.707,
+            "cross_score": 0.0003,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
-            "global_norm": 0.0001,
-            "global_volume_intensity": 0.0003150602409638554,
+            "global_norm": 0.0006,
+            "global_volume_intensity": 0.0030533333333333337,
             "label": "containment",
-            "term": "social media censorship"
+            "term": "U.S. universities"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2638,7 +2638,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2648,7 +2648,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2658,27 +2658,27 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
             "label": "unknown",
-            "term": "U.S. universities"
+            "term": "academics"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
             "label": "unknown",
-            "term": "mathematics"
+            "term": "foreign universities"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2688,17 +2688,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 1.6646,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "WeChat"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.9684,
+            "domestic_attention": 0.8991,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2708,7 +2698,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2718,7 +2708,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9513,
+            "domestic_attention": 0.8832,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2728,7 +2718,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2738,7 +2728,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6972,
+            "domestic_attention": 0.6473,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2748,7 +2738,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2758,7 +2748,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6972,
+            "domestic_attention": 0.6473,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2768,7 +2758,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9684,
+            "domestic_attention": 0.8991,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2778,7 +2768,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.7028,
+            "domestic_attention": 0.6525,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2788,7 +2778,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2798,7 +2788,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2806,19 +2796,18 @@
             "term": "higher education"
           },
           {
-            "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
+            "global_norm": 0.0,
+            "global_volume_intensity": 0.00010363636363636364,
+            "label": "containment",
             "term": "netizen comments"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2828,12 +2817,22 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.9611,
+            "domestic_attention": 0.8923,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
             "label": "unknown",
             "term": "universities"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.6564,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "social media censorship"
           }
         ],
         "scope": "cross-signal: domestic censorship attention vs global coverage volume",
@@ -2842,16 +2841,16 @@
       "raw_url": "https://palimpsest.info/readings/gdelt-latest.json",
       "scope": "cross-signal: domestic censorship attention vs global coverage volume",
       "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
-      "source_timestamp": "2026-08-15T02:09:13Z",
+      "source_timestamp": "2026-08-15T07:21:21Z",
       "status": "live",
-      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 4 count across 25 terms compared.",
+      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 5 count across 25 terms compared.",
       "title": "Global coverage cross-signal"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:09:46Z",
       "health": {
-        "age_hours": 0.163,
+        "age_hours": 0.611,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3137,9 +3136,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T16:07:28Z",
+      "freshness_deadline": "2026-08-15T21:17:41Z",
       "health": {
-        "age_hours": 5.202,
+        "age_hours": 0.479,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3149,9 +3148,9 @@
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6635,
+        "bytes": 6631,
         "filename": "silence-index-latest.json",
-        "sha256": "4ee0dbc1d7af04c191c66d3ffefcb7a9702bc8e4d286bef602ad1460be705a82"
+        "sha256": "30ca5214dbca690d2a504d433dc9a0b305069db535285b69c4f9586dce659962"
       },
       "layer": "attention",
       "live": true,
@@ -3169,7 +3168,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-15T02:07:28Z",
+        "generated_at": "2026-08-15T07:17:41Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -3186,51 +3185,21 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 1.0,
+            "global_norm": 0.0296,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "women"
+            "topic": "censorship"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0691,
+            "global_norm": 0.0001,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "mathematics"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0229,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "nationalism"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0155,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "science education"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0034,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "WeChat"
+            "topic": "social media censorship"
           },
           {
             "abstained": true,
@@ -3300,7 +3269,47 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
+            "topic": "mathematics"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
             "topic": "overseas Chinese"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "science education"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "WeChat"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "nationalism"
           },
           {
             "abstained": true,
@@ -3350,6 +3359,16 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
+            "topic": "women"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
             "topic": "tech companies"
           },
           {
@@ -3361,16 +3380,6 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "translation excerpt"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "censorship"
           },
           {
             "abstained": true,
@@ -3406,7 +3415,7 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": null,
+            "global_norm": 0.0,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -3421,23 +3430,13 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "universities"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "social media censorship"
           }
         ]
       },
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-15T02:07:28Z",
+      "source_timestamp": "2026-08-15T07:17:41Z",
       "status": "live",
       "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously. Latest payload reports blackout topics at 0 count across 25 topics considered.",
       "title": "Silence index"
@@ -3446,7 +3445,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 121.452,
+        "age_hours": 121.899,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3757,7 +3756,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-16T04:02:44Z",
       "health": {
-        "age_hours": 5.281,
+        "age_hours": 5.728,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4039,7 +4038,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:02:02Z",
       "health": {
-        "age_hours": 0.292,
+        "age_hours": 0.739,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4369,7 +4368,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:04:58Z",
       "health": {
-        "age_hours": 0.243,
+        "age_hours": 0.69,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4540,7 +4539,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T07:55:40Z",
       "health": {
-        "age_hours": 1.398,
+        "age_hours": 1.845,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4716,7 +4715,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:08:47Z",
       "health": {
-        "age_hours": 0.18,
+        "age_hours": 0.627,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7011,7 +7010,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:03:13Z",
       "health": {
-        "age_hours": 0.273,
+        "age_hours": 0.72,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7061,7 +7060,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T07:42:09Z",
       "health": {
-        "age_hours": 1.624,
+        "age_hours": 2.071,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7134,7 +7133,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T21:17:23Z",
       "health": {
-        "age_hours": 0.036,
+        "age_hours": 0.483,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7212,7 +7211,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T16:23:23Z",
       "health": {
-        "age_hours": 4.936,
+        "age_hours": 5.384,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7333,7 +7332,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T17:09:06Z",
       "health": {
-        "age_hours": 4.174,
+        "age_hours": 4.622,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7464,7 +7463,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-15T15:50:24Z",
       "health": {
-        "age_hours": 17.486,
+        "age_hours": 17.933,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7553,7 +7552,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 370.805,
+        "age_hours": 371.252,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -7707,7 +7706,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-16T04:02:20Z",
       "health": {
-        "age_hours": 5.287,
+        "age_hours": 5.734,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7884,9 +7883,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-15T16:07:32Z",
+      "freshness_deadline": "2026-08-15T21:20:54Z",
       "health": {
-        "age_hours": 5.2,
+        "age_hours": 0.425,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7898,7 +7897,7 @@
       "input": {
         "bytes": 3519,
         "filename": "app-storefront-latest.json",
-        "sha256": "0c2b5d6ec036e8e969c62bf7802778bde822430554f6eb9869e3d8c6755be1bd"
+        "sha256": "c9b97555098dcefbf2db14497f50b607e94989e0e5efcd709d399e422dd260cb"
       },
       "layer": "erasure",
       "live": true,
@@ -8040,7 +8039,7 @@
           "The New York Times"
         ],
         "delisting_rate": 0.6,
-        "generated_at": "2026-08-15T02:07:32.783300+00:00",
+        "generated_at": "2026-08-15T07:20:54.261901+00:00",
         "last_changed_at": "2026-07-31T04:15:37.987842+00:00",
         "method_version": 1,
         "n_delisted": 6,
@@ -8053,7 +8052,7 @@
       "raw_url": "https://palimpsest.info/readings/app-storefront-latest.json",
       "scope": "app-layer availability: which apps are offered in the Chinese App Store storefront versus the US one",
       "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
-      "source_timestamp": "2026-08-15T02:07:32Z",
+      "source_timestamp": "2026-08-15T07:20:54Z",
       "status": "live",
       "summary": "Compares a fixed app panel in the China and US Apple storefronts. Upstream reading: much of the tracked catalogue is unavailable in the Chinese storefront. Latest payload reports delisting rate at 0.6 ratio across 10 apps tracked.",
       "title": "App Storefront panel"
@@ -8062,7 +8061,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T07:52:35Z",
       "health": {
-        "age_hours": 1.45,
+        "age_hours": 1.897,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8166,7 +8165,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T09:34:47Z",
       "health": {
-        "age_hours": 11.746,
+        "age_hours": 12.194,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8233,7 +8232,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-16T19:51:31Z",
       "health": {
-        "age_hours": 13.467,
+        "age_hours": 13.915,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8285,7 +8284,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 16.844,
+        "age_hours": 17.291,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8343,7 +8342,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-15T13:06:11Z",
       "health": {
-        "age_hours": 44.223,
+        "age_hours": 44.67,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8499,7 +8498,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 238.151,
+        "age_hours": 238.598,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8567,7 +8566,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T09:18:18Z",
       "health": {
-        "age_hours": 0.021,
+        "age_hours": 0.468,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14043,7 +14042,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-15T17:09:17Z",
       "health": {
-        "age_hours": 4.171,
+        "age_hours": 4.618,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14090,7 +14089,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-15T06:14:16Z",
       "health": {
-        "age_hours": 2.088,
+        "age_hours": 2.535,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
