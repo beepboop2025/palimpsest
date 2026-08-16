@@ -38,7 +38,7 @@ from urllib.parse import urlsplit
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.8.1"
+SERVER_VERSION = "1.9.0"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
@@ -298,6 +298,16 @@ SIGNALS = {
         "/readings/newswire-latest.json",
         "normalized RSS/Atom event dossiers with rights policy, source independence, "
         "coverage receipts and scan-linked corroboration"),
+    "social-observations": (
+        "/readings/social-observations-latest.json",
+        "bounded institutional Telegram and Instagram metadata from a closed source "
+        "registry, with explicit coverage receipts; attributed context, never "
+        "independent corroboration"),
+    "china-situation": (
+        "/readings/china-situation-latest.json",
+        "the combined China situation desk: publisher reports, exact-link social "
+        "observations, reviewed source-free Telegram context and declared Observatory "
+        "measurements kept in distinct evidentiary roles"),
     "china-economic-pulse": (
         "/readings/china-economic-pulse-latest.json",
         "revision-safe official, market and physical-telemetry state with coverage "

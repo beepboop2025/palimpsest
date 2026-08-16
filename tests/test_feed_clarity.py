@@ -45,6 +45,12 @@ FEEDS = {
         "prefixes": ("[Source report]", "[Corroborated source report]"),
         "kinds": {"publisher_source_record_with_analysis"},
     },
+    "china_situation": {
+        "rss": "news/china/situation/feed.xml",
+        "json": "news/china/situation/feed.json",
+        "prefixes": ("[Situation synthesis]",),
+        "kinds": {"china_situation_synthesis"},
+    },
     "china_analysis": {
         "rss": "news/china/analysis/feed.xml",
         "json": "news/china/analysis/feed.json",
@@ -64,7 +70,7 @@ def _starts_with_one(value: str, prefixes: tuple[str, ...]) -> bool:
     return any(value.startswith(prefix) for prefix in prefixes)
 
 
-def test_all_seven_feed_pairs_parse_and_identify_themselves() -> None:
+def test_all_eight_feed_pairs_parse_and_identify_themselves() -> None:
     rss_self_urls: set[str] = set()
     json_self_urls: set[str] = set()
 
@@ -166,7 +172,7 @@ def test_feed_directory_contract_and_service_worker_cover_every_endpoint() -> No
     contract = (ROOT / "docs/FEED-QUALITY.md").read_text(encoding="utf-8")
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
 
-    assert "7 RSS + 7 JSON Feed" in directory
+    assert "8 RSS + 8 JSON Feed" in directory
     assert "Four kinds of item" in directory
     for item in FEEDS.values():
         for endpoint in (item["rss"], item["json"]):
@@ -185,7 +191,7 @@ def test_progress_note_answers_the_criticism_without_hiding_ai_assistance() -> N
         "Thanks. I worked on these.",
         "I still use AI assistance.",
         "More criticism is welcome.",
-        "14 public feed endpoints",
+        "16 public feed endpoints",
         "not a replacement newspaper",
     ):
         assert phrase in update

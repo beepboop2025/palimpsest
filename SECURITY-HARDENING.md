@@ -298,6 +298,30 @@ you even reach for key rotation.
 
 ## 5. Input safety and fail-soft
 
+### Social-platform intake boundary
+
+The social observation lane adds two narrowly scoped credential paths without
+expanding the public-data line:
+
+- Instagram uses `PALIMPSEST_INSTAGRAM_ENABLED` as an independent kill switch and
+  reads `META_INSTAGRAM_ACCESS_TOKEN` plus
+  `META_INSTAGRAM_BUSINESS_ACCOUNT_ID` only inside the scheduled collector step.
+  Requests are fixed to `graph.facebook.com/v26.0`, carry the token only in the
+  `Authorization` header, disable redirects, and request no comments, engagement,
+  locations, followers, messages or media bytes.
+- The ScamShield node retains Telegram session material and native peer/message IDs.
+  Palimpsest receives only an exact-byte HMAC-authenticated latest view and immutable
+  sanitized version ledger. `SOCIAL_OBSERVATIONS_HMAC_KEY` authenticates that handoff;
+  the importer checks the local public-registry digest and refuses remote non-Telegram
+  observations.
+
+All three optional GitHub values are absent by default. A missing gate or credential
+causes no network request and keeps an explicit `not-attempted` receipt. A total
+attempt failure preserves the last good artifacts. Token files use `O_NOFOLLOW`, a
+regular-file check and a byte cap; error messages never include tokens or upstream
+payloads. See [`docs/SOCIAL-OBSERVATION-PIPELINE.md`](docs/SOCIAL-OBSERVATION-PIPELINE.md)
+for the data model and deployment boundary.
+
 Fetched content is only ever treated as **data**. It is parsed, fingerprinted, and classified
 by lexical, rule-based code; it is never executed, deserialised into live objects, or handed
 to a shell. §2's no-dangerous-sinks test keeps that true as the code grows.

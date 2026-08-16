@@ -104,9 +104,10 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "china-econ-forecast-latest.json",
         "china-econ-observations-latest.json",
         "china-economic-pulse-latest.json",
-            "china-index-latest.json",
-            "dragon-whispers-latest.json",
-            "corroboration-latest.json",
+        "china-index-latest.json",
+        "china-situation-latest.json",
+        "dragon-whispers-latest.json",
+        "corroboration-latest.json",
         "editorial-readiness-latest.json",
         "evidence-mesh-latest.json",
         "eval-assurance-latest.json",
@@ -123,6 +124,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "research-corpus-latest.json",
         "refusal-drift-latest.json",
         "source-workflow-latest.json",
+        "social-observations-latest.json",
     }
 
 
@@ -736,6 +738,8 @@ def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
         r"\s*python -m core\.machine_investigations --check\n"
         r"\s*python -m scripts\.build_newsroom\n"
         r"\s*python -m scripts\.build_newsroom --check\n"
+        r"\s*python -m scripts\.build_china_situation\n"
+        r"\s*python -m scripts\.build_china_situation --check\n"
         r"\s*python -m scripts\.build_data_catalog",
         text,
     )

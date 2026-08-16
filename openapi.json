@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.8.1",
-    "description": "Stable public readings from Palimpsest's censorship observatory, revision-safe China Economic Observatory, evidence-bound AI Eval Journal and verifiable AI evaluation registry. The API also exposes the evidence wire, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated newsroom and deterministic machine-analysis desk. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
+    "version": "1.9.0",
+    "description": "Stable public readings from Palimpsest's censorship observatory, revision-safe China Economic Observatory, evidence-bound AI Eval Journal and verifiable AI evaluation registry. The API also exposes the evidence wire, bounded social observation ledger, combined China Situation index, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated newsroom and deterministic machine-analysis desk. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
   "externalDocs": {
@@ -31,6 +31,12 @@
       },
       "ChinaArticleStream": {
         "$ref": "https://palimpsest.info/protocol/china-article-stream-v1.schema.json"
+      },
+      "SocialObservations": {
+        "$ref": "https://palimpsest.info/protocol/social-observations-v1.schema.json"
+      },
+      "ChinaSituation": {
+        "$ref": "https://palimpsest.info/protocol/china-situation-v1.schema.json"
       },
       "TelegramWatch": {
         "$ref": "https://palimpsest.info/protocol/telegram-watch-v1.schema.json"
@@ -296,6 +302,14 @@
         "description": "Newest-first China publisher items with evidence-bound Palimpsest analysis and a separate reviewed Telegram context lane",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaArticleStream"}}}
       },
+      "SocialObservations": {
+        "description": "Closed-registry institutional Telegram and Instagram metadata with per-source coverage and append-only revision identities; never corroboration",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SocialObservations"}}}
+      },
+      "ChinaSituation": {
+        "description": "Evidence-bound synthesis of publisher reports, exact-link social observations, reviewed source-free Telegram context and declared Observatory measurements",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaSituation"}}}
+      },
       "ChinaIndex": {
         "description": "Published machine-readable index of China Observatory sources, releases, datasets, readiness and evidence rails",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaIndex"}}}
@@ -395,6 +409,16 @@
       "operationId": "getChinaArticleStream",
       "summary": "Read every monitored China publisher item with its evidence position, unknowns and next checks",
       "responses": {"200": {"$ref": "#/components/responses/ChinaArticleStream"}}
+    }},
+    "/readings/social-observations-latest.json": {"get": {
+      "operationId": "getSocialObservations",
+      "summary": "Read bounded institutional social observations with source coverage and non-corroboration labels",
+      "responses": {"200": {"$ref": "#/components/responses/SocialObservations"}}
+    }},
+    "/readings/china-situation-latest.json": {"get": {
+      "operationId": "getChinaSituation",
+      "summary": "Read combined China situations while preserving reporting, social, reviewed Telegram and measurement evidence roles",
+      "responses": {"200": {"$ref": "#/components/responses/ChinaSituation"}}
     }},
     "/news/wire/{event_id}/analysis.json": {"get": {
       "operationId": "getEventAnalysis",

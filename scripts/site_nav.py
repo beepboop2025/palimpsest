@@ -41,6 +41,8 @@ NAV = [
                 "links": [
                     ("/china/", "China Observatory",
                      "See reporting status and current evidence", "new"),
+                    ("/news/china/situation/", "China situation desk",
+                     "Combine publisher reports, social context and measurements", "new"),
                     ("/osint-china.html", "Signal board",
                      "Inspect every signal and its freshness"),
                     ("/china-brief.html", "China Brief",

@@ -43,6 +43,7 @@ import sync_nav  # noqa: E402
 # byte-identical stamped block — their nav is rendered at build time.
 GENERATED = {
     "china-brief.html",
+    "news/china/situation/index.html",
     "readings/generative-firewall-index.html",
 } | {
     str(path.relative_to(ROOT))
@@ -190,6 +191,7 @@ def test_generated_pages_use_the_shared_nav():
     or the next cron run reverts the site to the old navigation."""
     for script, page in (
         ("scripts/build_china_brief.py", "china-brief.html"),
+        ("scripts/build_china_situation.py", "news/china/situation/index.html"),
         ("scripts/generative_firewall_reading.py",
          "readings/generative-firewall-index.html"),
         ("scripts/build_eval_findings.py", "journal/index.html"),
@@ -247,6 +249,11 @@ def test_observatory_flyout_is_active_for_generated_china_routes():
     assert site_nav._within(observatory, "/china/")
     assert site_nav._within(observatory, "/china/sources/nbs-national-data/")
     assert site_nav._within(observatory, "/dashboards/ddti_observatory.html")
+    assert site_nav._within(observatory, "/news/china/situation/")
+    assert (
+        'href="/news/china/situation/" aria-current="page"'
+        in site_nav.render("/news/china/situation/")
+    )
 
 
 def test_mobile_menu_owns_focus_until_it_closes():

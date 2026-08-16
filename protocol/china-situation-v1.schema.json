@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/china-situation-v1.schema.json",
+  "title": "Palimpsest China situation synthesis v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "url",
+    "scope",
+    "relation_policy",
+    "inputs",
+    "coverage",
+    "reviewed_telegram",
+    "situations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-china-situation.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "url": {"const": "https://palimpsest.info/news/china/situation/"},
+    "scope": {"$ref": "#/$defs/nonemptyText"},
+    "relation_policy": {"$ref": "#/$defs/nonemptyText"},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "newswire_generated_at",
+        "newswire_sha256",
+        "analysis_sha256",
+        "social_status",
+        "social_generated_at",
+        "social_sha256",
+        "telegram_status",
+        "telegram_generated_at",
+        "telegram_sha256"
+      ],
+      "properties": {
+        "newswire_generated_at": {"$ref": "#/$defs/timestamp"},
+        "newswire_sha256": {"$ref": "#/$defs/sha256"},
+        "analysis_sha256": {"$ref": "#/$defs/sha256"},
+        "social_status": {"type": "string", "minLength": 1, "maxLength": 80},
+        "social_generated_at": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "social_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "telegram_status": {"type": "string", "minLength": 1, "maxLength": 80},
+        "telegram_generated_at": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "telegram_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wire_events",
+        "in_scope_events",
+        "publisher_reports",
+        "independent_publisher_groups",
+        "events_with_measurement_context",
+        "measurement_context_rows",
+        "social_observations",
+        "social_observations_linked",
+        "social_observations_unmatched",
+        "social_observations_ambiguous",
+        "situations_with_three_layers",
+        "reviewed_telegram_signals"
+      ],
+      "properties": {
+        "wire_events": {"$ref": "#/$defs/count"},
+        "in_scope_events": {"$ref": "#/$defs/count"},
+        "publisher_reports": {"$ref": "#/$defs/count"},
+        "independent_publisher_groups": {"$ref": "#/$defs/count"},
+        "events_with_measurement_context": {"$ref": "#/$defs/count"},
+        "measurement_context_rows": {"$ref": "#/$defs/count"},
+        "social_observations": {"$ref": "#/$defs/count"},
+        "social_observations_linked": {"$ref": "#/$defs/count"},
+        "social_observations_unmatched": {"$ref": "#/$defs/count"},
+        "social_observations_ambiguous": {"$ref": "#/$defs/count"},
+        "situations_with_three_layers": {"$ref": "#/$defs/count"},
+        "reviewed_telegram_signals": {"$ref": "#/$defs/count"}
+      }
+    },
+    "reviewed_telegram": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/reviewedTelegram"}
+    },
+    "situations": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/situation"}
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000000000},
+    "nonemptyText": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "httpsUrl": {
+      "type": "string",
+      "minLength": 9,
+      "maxLength": 2048,
+      "pattern": "^https://"
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value", "unit", "denominator"],
+      "properties": {
+        "label": {"type": ["string", "null"], "maxLength": 100},
+        "value": {"type": ["number", "null"]},
+        "unit": {"type": ["string", "null"], "maxLength": 64},
+        "denominator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "value"],
+          "properties": {
+            "label": {"type": ["string", "null"], "maxLength": 100},
+            "value": {"type": ["number", "null"]}
+          }
+        }
+      }
+    },
+    "reportSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "version_id",
+        "source_id",
+        "source_name",
+        "role",
+        "independence_group",
+        "published_at",
+        "title",
+        "url"
+      ],
+      "properties": {
+        "item_id": {"type": "string", "pattern": "^item-[0-9a-f]{24}$"},
+        "version_id": {"type": "string", "pattern": "^itemv-[0-9a-f]{24}$"},
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "source_name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "role": {"type": "string", "minLength": 1, "maxLength": 80},
+        "independence_group": {"type": "string", "minLength": 1, "maxLength": 80},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "url": {"$ref": "#/$defs/httpsUrl"}
+      }
+    },
+    "socialContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "version_id",
+        "platform",
+        "source_id",
+        "source_name",
+        "independence_group",
+        "published_at",
+        "permalink",
+        "title",
+        "excerpt",
+        "state",
+        "matched_article_url",
+        "same_publisher_lineage",
+        "relation"
+      ],
+      "properties": {
+        "observation_id": {"type": "string", "pattern": "^social-[0-9a-f]{32}$"},
+        "version_id": {"type": "string", "pattern": "^socialv-[0-9a-f]{32}$"},
+        "platform": {"enum": ["telegram", "instagram"]},
+        "source_id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "source_name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "independence_group": {"type": "string", "minLength": 1, "maxLength": 80},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "permalink": {"$ref": "#/$defs/httpsUrl"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "excerpt": {"type": "string", "maxLength": 2000},
+        "state": {"type": "string", "minLength": 1, "maxLength": 40},
+        "matched_article_url": {"$ref": "#/$defs/httpsUrl"},
+        "same_publisher_lineage": {"type": "boolean"},
+        "relation": {"const": "publisher-link-context-not-corroboration"}
+      }
+    },
+    "reviewedTelegram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "whisper_id",
+        "observed_at",
+        "published_at",
+        "tier",
+        "families",
+        "headline",
+        "summary",
+        "why_it_matters",
+        "uncertainty",
+        "next_checks",
+        "limitations",
+        "relation"
+      ],
+      "properties": {
+        "whisper_id": {"type": "string", "pattern": "^whisper-[0-9a-f]{24}$"},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "tier": {"type": "string", "minLength": 1, "maxLength": 80},
+        "families": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 80}
+        },
+        "headline": {"type": "string", "minLength": 1, "maxLength": 180},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 1200},
+        "why_it_matters": {"type": "string", "minLength": 1, "maxLength": 1800},
+        "uncertainty": {"type": "string", "minLength": 1, "maxLength": 1200},
+        "next_checks": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {"type": "string", "minLength": 1, "maxLength": 500}
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 8,
+          "items": {"type": "string", "minLength": 1, "maxLength": 500}
+        },
+        "relation": {"const": "human-reviewed-source-free-context-not-evidence"}
+      }
+    },
+    "measurementContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_id",
+        "status",
+        "headline",
+        "finding",
+        "metric",
+        "source_timestamp",
+        "story_url",
+        "evidence_url",
+        "relation",
+        "interpretation"
+      ],
+      "properties": {
+        "signal_id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "status": {"enum": ["live", "degraded", "stale", "missing", "corrupt"]},
+        "headline": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "finding": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "metric": {"$ref": "#/$defs/metric"},
+        "source_timestamp": {"$ref": "#/$defs/timestamp"},
+        "story_url": {"$ref": "#/$defs/httpsUrl"},
+        "evidence_url": {"$ref": "#/$defs/httpsUrl"},
+        "relation": {"const": "topic-surface-only"},
+        "interpretation": {"type": "string", "minLength": 1, "maxLength": 2000}
+      }
+    },
+    "situation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "situation_id",
+        "version_id",
+        "event_id",
+        "event_version_id",
+        "analysis_id",
+        "url",
+        "headline",
+        "dek",
+        "desk",
+        "topics",
+        "published_at",
+        "updated_at",
+        "posture",
+        "measurement_state",
+        "reporting",
+        "social_context",
+        "measurement_context",
+        "synthesis"
+      ],
+      "properties": {
+        "situation_id": {"type": "string", "pattern": "^situation-[0-9a-f]{24}$"},
+        "version_id": {"type": "string", "pattern": "^situationv-[0-9a-f]{24}$"},
+        "event_id": {"type": "string", "pattern": "^event-[0-9a-f]{24}$"},
+        "event_version_id": {"type": "string", "pattern": "^eventv-[0-9a-f]{24}$"},
+        "analysis_id": {"type": "string", "pattern": "^analysisv-[0-9a-f]{24}$"},
+        "url": {
+          "type": "string",
+          "pattern": "^https://palimpsest\\.info/news/china/situation/#situation-[0-9a-f]{24}$"
+        },
+        "headline": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "dek": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "desk": {"type": "string", "minLength": 1, "maxLength": 80},
+        "topics": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 80}
+        },
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "posture": {
+          "enum": [
+            "report-only",
+            "report-plus-social-context",
+            "report-plus-measurement-context",
+            "three-layer-context"
+          ]
+        },
+        "measurement_state": {"enum": ["none", "live", "mixed", "nonlive"]},
+        "reporting": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "relation",
+            "evidence_strength",
+            "source_count",
+            "independent_groups",
+            "sources"
+          ],
+          "properties": {
+            "relation": {"const": "attributed-publisher-reporting"},
+            "evidence_strength": {"type": "string", "minLength": 1, "maxLength": 80},
+            "source_count": {"$ref": "#/$defs/count"},
+            "independent_groups": {"$ref": "#/$defs/count"},
+            "sources": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/reportSource"}
+            }
+          }
+        },
+        "social_context": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {"$ref": "#/$defs/socialContext"}
+        },
+        "measurement_context": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/measurementContext"}
+        },
+        "synthesis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "known_unknowns", "next_checks"],
+          "properties": {
+            "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "known_unknowns": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {"type": "string", "minLength": 1, "maxLength": 4000}
+            },
+            "next_checks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {"type": "string", "minLength": 1, "maxLength": 4000}
+            }
+          }
+        }
+      }
+    }
+  }
+}

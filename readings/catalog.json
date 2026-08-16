@@ -1,6 +1,6 @@
 {
   "schema": "palimpsest-data-catalog/v1",
-  "generated_at": "2026-08-16T14:43:59.797795Z",
+  "generated_at": "2026-08-16T16:24:00.972512Z",
   "id": "palimpsest-evidence-atlas",
   "name": "Palimpsest Evidence Atlas",
   "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
@@ -9,27 +9,28 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 56,
+    "datasets": 59,
     "states": {
       "disabled": 1,
-      "fresh": 45,
-      "gated": 5,
+      "fresh": 44,
+      "gated": 6,
       "private-node": 1,
-      "stale": 2,
+      "stale": 5,
       "warming": 2
     },
     "layers": {
       "content": 8,
-      "cross-layer": 16,
+      "cross-layer": 17,
       "economy": 4,
       "integrity": 1,
       "model": 7,
+      "narrative": 2,
       "network": 12,
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 8831751,
-    "history_rows": 5654
+    "published_bytes": 13335054,
+    "history_rows": 5926
   },
   "datasets": [
     {
@@ -62,7 +63,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:00:17.339548Z",
-        "age_seconds": 6222,
+        "age_seconds": 12223,
         "counts": {
           "n_observations": 83,
           "n_terms": 207
@@ -110,7 +111,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:05:09.869664Z",
-        "age_seconds": 5929,
+        "age_seconds": 11931,
         "counts": {
           "n_measurements": 275574,
           "n_tests_with_data": 6
@@ -213,7 +214,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-16T13:15:07.652213Z",
-        "age_seconds": 5332,
+        "age_seconds": 11333,
         "counts": {
           "panel_size": 11,
           "n_censored_answered": 4,
@@ -266,7 +267,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T12:57:15.538118Z",
-        "age_seconds": 6404,
+        "age_seconds": 12405,
         "counts": {
           "vantages_probed": 216,
           "vantages_injecting": 216,
@@ -362,7 +363,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:07:33.036592Z",
-        "age_seconds": 5786,
+        "age_seconds": 11787,
         "counts": {},
         "latest_bytes": 4323,
         "history_bytes": 8430,
@@ -407,7 +408,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:57:34.988244Z",
-        "age_seconds": 31584,
+        "age_seconds": 37585,
         "counts": {
           "series_points": 70,
           "n_events": 0
@@ -452,7 +453,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:08:18Z",
-        "age_seconds": 5741,
+        "age_seconds": 11742,
         "counts": {},
         "latest_bytes": 668,
         "history_bytes": 16046,
@@ -498,7 +499,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:16:07.159358Z",
-        "age_seconds": 5272,
+        "age_seconds": 11273,
         "counts": {
           "n_recent": 8,
           "n_blocking": 1,
@@ -546,7 +547,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:43:40Z",
-        "age_seconds": 32419,
+        "age_seconds": 38420,
         "counts": {
           "history_days": 412
         },
@@ -590,7 +591,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:22:11.968819Z",
-        "age_seconds": 4907,
+        "age_seconds": 10909,
         "counts": {},
         "latest_bytes": 2093,
         "history_bytes": 517,
@@ -633,9 +634,9 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "fresh",
+        "evidence_state": "stale",
         "observed_at": "2026-08-16T13:17:41Z",
-        "age_seconds": 5178,
+        "age_seconds": 11179,
         "counts": {
           "board_entries": 2742,
           "ddti_terms_joined": 0
@@ -686,7 +687,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:24:22.836183Z",
-        "age_seconds": 4776,
+        "age_seconds": 10778,
         "counts": {
           "n_terms": 25,
           "n_with_global_data": 7,
@@ -738,7 +739,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:11:21.194199Z",
-        "age_seconds": 5558,
+        "age_seconds": 11559,
         "counts": {
           "n_watched": 7,
           "n_present": 7,
@@ -793,7 +794,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:12:09.634445Z",
-        "age_seconds": 5510,
+        "age_seconds": 11511,
         "counts": {
           "n_sources": 5,
           "n_changed": 0,
@@ -845,7 +846,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:06:24.175778Z",
-        "age_seconds": 5855,
+        "age_seconds": 11856,
         "counts": {
           "n_watched": 4,
           "n_deletions": 0,
@@ -897,7 +898,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:21:10.178456Z",
-        "age_seconds": 4969,
+        "age_seconds": 10970,
         "counts": {
           "panel_size": 12,
           "n_tracked": 10,
@@ -946,7 +947,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:55:28.077132Z",
-        "age_seconds": 31711,
+        "age_seconds": 37712,
         "counts": {
           "country.total_tested": 109308
         },
@@ -993,7 +994,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-10T05:52:27.182828Z",
-        "age_seconds": 550292,
+        "age_seconds": 556293,
         "counts": {
           "n_additions": 503,
           "n_gazetteer_proposals": 17
@@ -1042,7 +1043,7 @@
       "artifacts": {
         "evidence_state": "disabled",
         "observed_at": "2026-07-30T20:31:16.856256Z",
-        "age_seconds": 1447962,
+        "age_seconds": 1453964,
         "counts": {
           "n_entities": 10,
           "n_comparable": 0,
@@ -1094,7 +1095,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T10:31:35Z",
-        "age_seconds": 15144,
+        "age_seconds": 21145,
         "counts": {
           "n_series_watched": 7,
           "n_series_reporting": 6
@@ -1140,9 +1141,9 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "fresh",
+        "evidence_state": "stale",
         "observed_at": "2026-08-16T01:23:31Z",
-        "age_seconds": 48028,
+        "age_seconds": 54029,
         "counts": {
           "history_days": 44
         },
@@ -1192,7 +1193,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T01:23:31.816425Z",
-        "age_seconds": 48027,
+        "age_seconds": 54029,
         "counts": {
           "artifact.records": 1350,
           "coverage.series_count": 15,
@@ -1243,7 +1244,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T01:23:31.816425Z",
-        "age_seconds": 48027,
+        "age_seconds": 54029,
         "counts": {
           "n_targets": 3,
           "summary.ready_targets": 0,
@@ -1294,7 +1295,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-15T17:18:54Z",
-        "age_seconds": 77105,
+        "age_seconds": 83106,
         "counts": {
           "history_days": 10
         },
@@ -1344,7 +1345,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-05T09:10:30Z",
-        "age_seconds": 970409,
+        "age_seconds": 976410,
         "counts": {
           "n_components_present": 3,
           "n_components_required": 3,
@@ -1393,7 +1394,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-14T14:28:55Z",
-        "age_seconds": 173704,
+        "age_seconds": 179705,
         "counts": {
           "history_days": 154
         },
@@ -1442,7 +1443,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:21:48Z",
-        "age_seconds": 4931,
+        "age_seconds": 10932,
         "counts": {
           "n_topics_considered": 25,
           "n_scored": 0,
@@ -1493,7 +1494,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:19:40.534543Z",
-        "age_seconds": 5059,
+        "age_seconds": 11060,
         "counts": {
           "n_signals": 15,
           "n_reporting": 13,
@@ -1540,7 +1541,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:21:48.944923Z",
-        "age_seconds": 4930,
+        "age_seconds": 10932,
         "counts": {},
         "latest_bytes": 10259,
         "history_bytes": 4449,
@@ -1583,7 +1584,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:21:49.025507Z",
-        "age_seconds": 4930,
+        "age_seconds": 10931,
         "counts": {},
         "latest_bytes": 4507,
         "history_bytes": 4844,
@@ -1629,7 +1630,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-16T13:21:49.137973Z",
-        "age_seconds": 4930,
+        "age_seconds": 10931,
         "counts": {
           "n_pairs_tested": 8,
           "n_confirmed": 0
@@ -1679,7 +1680,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T13:21:49.062918Z",
-        "age_seconds": 4930,
+        "age_seconds": 10931,
         "counts": {
           "n_forecasts": 1404,
           "n_signals_scored": 8,
@@ -1727,7 +1728,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T06:01:48.922077Z",
-        "age_seconds": 31330,
+        "age_seconds": 37332,
         "counts": {
           "layers_contributing": 2
         },
@@ -1772,12 +1773,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:43:50Z",
-        "age_seconds": 9,
+        "observed_at": "2026-08-16T16:23:50Z",
+        "age_seconds": 10,
         "counts": {
           "n_stories": 33
         },
-        "latest_bytes": 71801,
+        "latest_bytes": 71984,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1821,17 +1822,17 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:42:51Z",
-        "age_seconds": 68,
+        "observed_at": "2026-08-16T16:05:25Z",
+        "age_seconds": 1115,
         "counts": {
-          "n_items": 349,
-          "n_events": 306,
-          "coverage.registry_sources": 31,
-          "coverage.successful_sources": 30
+          "n_items": 627,
+          "n_events": 574,
+          "coverage.registry_sources": 47,
+          "coverage.successful_sources": 46
         },
-        "latest_bytes": 1425339,
-        "history_bytes": 504707,
-        "history_rows": 1361,
+        "latest_bytes": 2561792,
+        "history_bytes": 597869,
+        "history_rows": 1633,
         "latest_available": true,
         "history_available": true
       },
@@ -1875,15 +1876,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:42:51Z",
-        "age_seconds": 68,
+        "observed_at": "2026-08-16T16:05:25Z",
+        "age_seconds": 1115,
         "counts": {
-          "n_entries": 294,
-          "coverage.registered_sources": 31,
-          "coverage.successful_sources": 30,
-          "coverage.excluded_global_feed_items": 55
+          "n_entries": 507,
+          "coverage.registered_sources": 47,
+          "coverage.successful_sources": 46,
+          "coverage.excluded_global_feed_items": 120
         },
-        "latest_bytes": 1410401,
+        "latest_bytes": 2404950,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1893,6 +1894,164 @@
         "latest": "https://palimpsest.info/readings/china-article-stream-latest.json",
         "landing_page": "https://palimpsest.info/news/china/",
         "method": "https://palimpsest.info/docs/EVIDENCE-WIRE.md"
+      }
+    },
+    {
+      "id": "social-observations",
+      "name": "Bounded Social Observation Ledger",
+      "description": "Versioned, publication-safe metadata from a closed registry of institutional Telegram and Instagram sources. Official APIs or an authenticated companion runtime provide bounded observations; native identifiers, credentials, engagement, comments, direct messages, locations and media binaries never enter the public artifact. Social observations are context, not corroboration.",
+      "layer": "narrative",
+      "stage": "observation",
+      "collection_mode": "official-api-bounded-metadata",
+      "status": "gated",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Closed allowlist in config/social_sources.json",
+        "Instagram Graph API",
+        "Authenticated ScamShield Telegram export"
+      ],
+      "latest": "readings/social-observations-latest.json",
+      "history": "readings/social-observations-versions.jsonl",
+      "landing_page": "news/china/situation/",
+      "method": "docs/SOCIAL-OBSERVATION-PIPELINE.md",
+      "count_fields": [
+        "n_observations",
+        "coverage.configured",
+        "coverage.successful",
+        "coverage.failed"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest metadata and derived fields; publisher and platform rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "gated",
+        "observed_at": "2026-08-16T16:18:55Z",
+        "age_seconds": 305,
+        "counts": {
+          "n_observations": 0,
+          "coverage.configured": 8,
+          "coverage.successful": 0,
+          "coverage.failed": 0
+        },
+        "latest_bytes": 2184,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/social-observations-latest.json",
+        "history": "https://palimpsest.info/readings/social-observations-versions.jsonl",
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md"
+      }
+    },
+    {
+      "id": "dragon-whispers",
+      "name": "Dragon Whispers Reviewed Telegram Context",
+      "description": "Human-reviewed, privacy-minimized analytical signals derived from configured public Telegram sources. Raw forwards stay in Telegram; the website excludes source identifiers, raw messages, exact IOCs and named allegations, and the resulting signals never count as evidence or corroboration.",
+      "layer": "narrative",
+      "stage": "review",
+      "collection_mode": "human-reviewed-privacy-minimized",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Verified ScamShield evidence capsules",
+        "Human review receipts"
+      ],
+      "latest": "readings/dragon-whispers-latest.json",
+      "landing_page": "news/china/whispers/",
+      "method": "docs/SOCIAL-OBSERVATION-PIPELINE.md",
+      "count_fields": [
+        "n_entries"
+      ],
+      "license": {
+        "name": "MIT for sanitized Palimpsest structure and analysis; upstream rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "stale",
+        "observed_at": "2026-08-15T08:16:38Z",
+        "age_seconds": 115642,
+        "counts": {
+          "n_entries": 0
+        },
+        "latest_bytes": 921,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/dragon-whispers-latest.json",
+        "landing_page": "https://palimpsest.info/news/china/whispers/",
+        "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md"
+      }
+    },
+    {
+      "id": "china-situation",
+      "name": "China Situation Synthesis",
+      "description": "Deterministic event dossiers that place attributed publisher reports, exact-link institutional social observations, human-reviewed source-free Telegram signals and declared Observatory measurements in one view while preserving their different evidentiary roles. Exact URL joins are used for social context; topic-level measurements never become article verification.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "deterministic-evidence-bound-projection",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "HK"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "Bounded Social Observation Ledger",
+        "Dragon Whispers",
+        "Palimpsest Observatory event analysis"
+      ],
+      "latest": "readings/china-situation-latest.json",
+      "landing_page": "news/china/situation/",
+      "method": "docs/SOCIAL-OBSERVATION-PIPELINE.md",
+      "count_fields": [
+        "coverage.in_scope_events",
+        "coverage.publisher_reports",
+        "coverage.measurement_context_rows",
+        "coverage.social_observations_linked",
+        "coverage.reviewed_telegram_signals"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest synthesis and metadata; upstream publisher rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-16T16:18:55Z",
+        "age_seconds": 305,
+        "counts": {
+          "coverage.in_scope_events": 472,
+          "coverage.publisher_reports": 507,
+          "coverage.measurement_context_rows": 647,
+          "coverage.social_observations_linked": 0,
+          "coverage.reviewed_telegram_signals": 0
+        },
+        "latest_bytes": 2143169,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/china-situation-latest.json",
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md"
       }
     },
     {
@@ -1924,13 +2083,13 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:43:50Z",
-        "age_seconds": 9,
+        "observed_at": "2026-08-16T16:23:50Z",
+        "age_seconds": 10,
         "counts": {
           "publication_receipt.required_signal_count": 10,
           "publication_receipt.live_signal_count": 10
         },
-        "latest_bytes": 24576,
+        "latest_bytes": 24594,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1974,7 +2133,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T10:31:35Z",
-        "age_seconds": 15144,
+        "age_seconds": 21145,
         "counts": {
           "n_metrics": 41,
           "coverage.registered_sources": 33,
@@ -2022,12 +2181,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:43:50Z",
-        "age_seconds": 9,
+        "observed_at": "2026-08-16T16:23:50Z",
+        "age_seconds": 10,
         "counts": {
           "n_cases": 2
         },
-        "latest_bytes": 34395,
+        "latest_bytes": 34396,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2071,15 +2230,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:43:53Z",
-        "age_seconds": 6,
+        "observed_at": "2026-08-16T16:23:52Z",
+        "age_seconds": 8,
         "counts": {
           "inputs": 8,
-          "resources": 104,
-          "dependency_groups": 78,
+          "resources": 107,
+          "dependency_groups": 86,
           "projects": 5
         },
-        "latest_bytes": 163098,
+        "latest_bytes": 169361,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2121,8 +2280,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:43:53Z",
-        "age_seconds": 6,
+        "observed_at": "2026-08-16T16:23:52Z",
+        "age_seconds": 8,
         "counts": {
           "n_cases": 2
         },
@@ -2183,7 +2342,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-12T11:09:06Z",
-        "age_seconds": 358493,
+        "age_seconds": 364494,
         "counts": {
           "n_documents": 13,
           "n_vintages": 16,
@@ -2237,16 +2396,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:42:51Z",
-        "age_seconds": 68,
+        "observed_at": "2026-08-16T16:05:25Z",
+        "age_seconds": 1115,
         "counts": {
-          "n_events": 306,
+          "n_events": 574,
           "n_candidate_edges": 0,
           "n_reviewed_edges": 0,
           "n_accepted_edges": 0,
-          "n_corroborated_events": 1
+          "n_corroborated_events": 4
         },
-        "latest_bytes": 100959,
+        "latest_bytes": 188218,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2293,7 +2452,7 @@
       "artifacts": {
         "evidence_state": "warming",
         "observed_at": "2026-08-16T13:15:07Z",
-        "age_seconds": 5332,
+        "age_seconds": 11333,
         "counts": {
           "n_rounds": 18,
           "n_comparable_rounds": 0,
@@ -2341,7 +2500,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-12T11:24:43Z",
-        "age_seconds": 357556,
+        "age_seconds": 363557,
         "counts": {
           "n_packages": 3,
           "n_records": 0
@@ -2395,17 +2554,17 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-16T14:43:50Z",
-        "age_seconds": 9,
+        "observed_at": "2026-08-16T16:23:50Z",
+        "age_seconds": 10,
         "counts": {
-          "summary.wire_events": 306,
-          "summary.wire_eligible": 306,
+          "summary.wire_events": 574,
+          "summary.wire_eligible": 574,
           "summary.explainers": 1,
           "summary.explainers_publishable": 0,
           "summary.investigations": 2,
           "summary.investigations_publishable": 0
         },
-        "latest_bytes": 58471,
+        "latest_bytes": 97612,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2445,7 +2604,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-15T07:18:18.646293Z",
-        "age_seconds": 113141,
+        "age_seconds": 119142,
         "counts": {},
         "latest_bytes": 200091,
         "history_bytes": 138942,
@@ -2490,7 +2649,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-16T05:44:28.738110Z",
-        "age_seconds": 32371,
+        "age_seconds": 38372,
         "counts": {},
         "latest_bytes": 51335,
         "history_bytes": 69178,
@@ -2538,7 +2697,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-15T07:18:18.646293Z",
-        "age_seconds": 113141,
+        "age_seconds": 119142,
         "counts": {
           "n_models": 3,
           "n_prompt_arms": 44,
@@ -2589,7 +2748,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:44:28.738110Z",
-        "age_seconds": 32371,
+        "age_seconds": 38372,
         "counts": {
           "runs": 447,
           "models": 7,
@@ -2641,7 +2800,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:44:28.738110Z",
-        "age_seconds": 32371,
+        "age_seconds": 38372,
         "counts": {
           "summary.checks": 11,
           "summary.pass": 9,
@@ -2691,7 +2850,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:44:28.738110Z",
-        "age_seconds": 32371,
+        "age_seconds": 38372,
         "counts": {
           "n_articles": 4
         },
@@ -2735,7 +2894,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T05:44:28.738110Z",
-        "age_seconds": 32371,
+        "age_seconds": 38372,
         "counts": {
           "n_articles": 4
         },
@@ -2782,7 +2941,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T07:30:10.690587Z",
-        "age_seconds": 26029,
+        "age_seconds": 32030,
         "counts": {
           "wayback_snapshots": 3,
           "readings_problems": 0

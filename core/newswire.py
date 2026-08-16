@@ -84,6 +84,10 @@ _TRACKING_QUERY_NAMES = frozenset(
         "spm",
     }
 )
+# CECC serves its reviewed feed over HTTPS but still emits legacy absolute HTTP
+# item URLs on the same exact host.  Canonicalization may upgrade that one
+# publisher's links; it never fetches the article body or permits another host.
+_LEGACY_HTTP_UPGRADE_SOURCE_IDS = frozenset({"cecc"})
 _UNSAFE_XML_RE = re.compile(br"<!\s*(?:DOCTYPE|ENTITY)\b", re.IGNORECASE)
 _HTML_INTERSTITIAL_RE = re.compile(br"^\s*(?:<!doctype\s+html\b|<html\b)", re.IGNORECASE)
 
@@ -277,6 +281,102 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "media",
         "asia-times-editorial",
     ),
+    "rthk-greater-china": (
+        "https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_egreaterchina.xml",
+        ("news.rthk.hk",),
+        "media",
+        "rthk-editorial",
+    ),
+    "rthk-finance": (
+        "https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_efinance.xml",
+        ("news.rthk.hk",),
+        "media",
+        "rthk-editorial",
+    ),
+    "hk-censtat-releases": (
+        "https://www.censtatd.gov.hk/data/en/press_release/rss.xml",
+        ("www.censtatd.gov.hk",),
+        "primary",
+        "hksar-government",
+    ),
+    "china-news-service-politics": (
+        "https://www.chinanews.com.cn/rss/china.xml",
+        ("www.chinanews.com.cn",),
+        "media",
+        "china-news-service-state-media",
+    ),
+    "china-news-service-finance": (
+        "https://www.chinanews.com.cn/rss/finance.xml",
+        ("www.chinanews.com.cn",),
+        "media",
+        "china-news-service-state-media",
+    ),
+    "cgtn-china": (
+        "https://www.cgtn.com/subscribe/rss/section/china.xml",
+        ("news.cgtn.com", "www.cgtn.com"),
+        "media",
+        "china-media-group-state-media",
+    ),
+    "dw-chinese": (
+        "https://rss.dw.com/rdf/rss-chi-all",
+        ("www.dw.com",),
+        "media",
+        "deutsche-welle-chinese-editorial",
+    ),
+    "rfi-chinese": (
+        "https://www.rfi.fr/cn/rss",
+        ("www.rfi.fr",),
+        "media",
+        "france-medias-monde-rfi-editorial",
+    ),
+    "global-voices-china": (
+        "https://globalvoices.org/-/world/east-asia/china/feed/",
+        ("globalvoices.org",),
+        "media",
+        "global-voices-editorial",
+    ),
+    "pandaily": (
+        "https://pandaily.com/feed",
+        ("pandaily.com",),
+        "media",
+        "pandaily-editorial",
+    ),
+    "new-bloom": (
+        "https://newbloommag.net/feed/",
+        ("newbloommag.net",),
+        "media",
+        "new-bloom-editorial",
+    ),
+    "taiwan-insight": (
+        "https://taiwaninsight.org/feed/",
+        ("taiwaninsight.org",),
+        "research",
+        "taiwan-insight-editorial",
+    ),
+    "taipei-times": (
+        "https://www.taipeitimes.com/xml/index.rss",
+        ("www.taipeitimes.com",),
+        "media",
+        "liberty-times-group-editorial",
+    ),
+    "cecc": (
+        "https://www.cecc.gov/rss.xml",
+        ("www.cecc.gov",),
+        "documentation",
+        "us-cecc-government",
+    ),
+    "made-in-china-journal": (
+        "https://madeinchinajournal.com/feed/",
+        ("madeinchinajournal.com",),
+        "research",
+        "made-in-china-journal-editorial",
+    ),
+    "chrd": (
+        "https://www.nchrd.org/feed/",
+        ("www.nchrd.org",),
+        "documentation",
+        "chrd-documentation",
+    ),
 }
 
 _SOURCE_FIELDS = frozenset(
@@ -392,6 +492,18 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "china-media-project",
         "china-power-csis",
         "asia-times-china",
+        "rthk-greater-china",
+        "rthk-finance",
+        "hk-censtat-releases",
+        "china-news-service-politics",
+        "china-news-service-finance",
+        "cgtn-china",
+        "global-voices-china",
+        "pandaily",
+        "taiwan-insight",
+        "cecc",
+        "made-in-china-journal",
+        "chrd",
     }
 )
 _CHINA_TERMS = (
@@ -761,6 +873,17 @@ def canonicalize_article_url(value: str, source: SourceSpec) -> str:
         raise FeedParseError("article URL is invalid") from exc
     host = (parts.hostname or "").lower().rstrip(".")
     if (
+        parts.scheme.casefold() == "http"
+        and source.id in _LEGACY_HTTP_UPGRADE_SOURCE_IDS
+        and host in source.article_hosts
+        and parts.username is None
+        and parts.password is None
+        and port in (None, 80)
+    ):
+        candidate = urlunsplit(("https", host, parts.path, parts.query, parts.fragment))
+        parts = urlsplit(candidate)
+        port = parts.port
+    if (
         parts.scheme.casefold() != "https"
         or not host
         or host == "palimpsest.info"
@@ -891,7 +1014,7 @@ def _is_material_economic_item(
             for term in _HKSAR_ECONOMIC_RELEASE_TERMS
         )
     if source.default_desk == "economy":
-        # The one reviewed economy-only channel is an editorially curated desk.
+        # Reviewed economy-only channels are editorially curated desks.
         return True
     if any(_keyword_present(title_haystack, term) for term in _ECONOMIC_TITLE_TERMS):
         return True

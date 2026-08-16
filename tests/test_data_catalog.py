@@ -142,6 +142,81 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
     assert "coverage gates" in pulse["description"]
 
 
+def test_social_ledger_catalog_keeps_access_and_corroboration_boundaries_explicit():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(
+        item for item in source["datasets"] if item["id"] == "social-observations"
+    )
+
+    assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
+        "narrative",
+        "observation",
+        "official-api-bounded-metadata",
+    )
+    assert entry["status"] == "gated"
+    assert entry["cadence"] == "PT1H"
+    assert entry["latest"] == "readings/social-observations-latest.json"
+    assert entry["history"] == "readings/social-observations-versions.jsonl"
+    assert entry["landing_page"] == "news/china/situation/"
+    assert entry["method"] == "docs/SOCIAL-OBSERVATION-PIPELINE.md"
+    assert entry["count_fields"] == [
+        "n_observations",
+        "coverage.configured",
+        "coverage.successful",
+        "coverage.failed",
+    ]
+    description = entry["description"].lower()
+    assert "context, not corroboration" in description
+    assert "credentials" in description and "direct messages" in description
+
+
+def test_china_situation_catalog_exposes_layer_specific_coverage_and_public_surface():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(
+        item for item in source["datasets"] if item["id"] == "china-situation"
+    )
+
+    assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
+        "cross-layer",
+        "synthesis",
+        "deterministic-evidence-bound-projection",
+    )
+    assert entry["status"] == "live"
+    assert entry["cadence"] == "PT1H"
+    assert entry["latest"] == "readings/china-situation-latest.json"
+    assert entry["landing_page"] == "news/china/situation/"
+    assert entry["method"] == "docs/SOCIAL-OBSERVATION-PIPELINE.md"
+    assert entry["count_fields"] == [
+        "coverage.in_scope_events",
+        "coverage.publisher_reports",
+        "coverage.measurement_context_rows",
+        "coverage.social_observations_linked",
+        "coverage.reviewed_telegram_signals",
+    ]
+    assert entry["sources"] == [
+        "Palimpsest Evidence Wire",
+        "Bounded Social Observation Ledger",
+        "Dragon Whispers",
+        "Palimpsest Observatory event analysis",
+    ]
+    description = entry["description"].lower()
+    assert "exact url joins" in description
+    assert "never become article verification" in description
+
+    built, _jsonld, _package = catalog.build_catalog(
+        now=datetime(2026, 8, 16, 16, tzinfo=timezone.utc)
+    )
+    built_entry = next(
+        item for item in built["datasets"] if item["id"] == "china-situation"
+    )
+    assert built_entry["urls"]["latest"] == (
+        "https://palimpsest.info/readings/china-situation-latest.json"
+    )
+    assert built_entry["urls"]["landing_page"] == (
+        "https://palimpsest.info/news/china/situation/"
+    )
+
+
 def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}

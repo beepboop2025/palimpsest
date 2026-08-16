@@ -90,11 +90,19 @@ def test_truth_source_context_and_motive_probabilities_remain_separate() -> None
         row["fit"] != "direct-test-surface"
         for row in yuan["current_condition"]
     )
-    assert any(
-        row["signal_id"] == "china-econ"
-        and row["metric"]["label"] == "FDR007 repo fixing"
+    osint = json.loads((READINGS / "osint-china-latest.json").read_bytes())
+    china_econ = next(row for row in osint["signals"] if row["id"] == "china-econ")
+    fdr_rows = [
+        row
         for row in yuan["current_condition"]
-    )
+        if row["signal_id"] == "china-econ"
+        and row["metric"]["label"] == "FDR007 repo fixing"
+    ]
+    if china_econ["live"]:
+        assert len(fdr_rows) == 1
+    else:
+        assert fdr_rows == []
+        assert china_econ["status"] == "stale"
     assert "conditional on the source account" in yuan["synthesis"][
         "why_it_might_be_happening"
     ].casefold()

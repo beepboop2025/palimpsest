@@ -1,0 +1,25 @@
+{
+  "schema_version": "palimpsest-instagram-graph.v1",
+  "api": {
+    "origin": "https://graph.facebook.com",
+    "version": "v26.0",
+    "fields": ["id", "caption", "media_type", "permalink", "timestamp"]
+  },
+  "bindings": [
+    {"source_id": "cecc-instagram", "username": "ceccgov", "relevance_policy": "source-scoped"},
+    {"source_id": "chrd-instagram", "username": "chrdnet", "relevance_policy": "source-scoped"},
+    {"source_id": "dw-chinese-instagram", "username": "dw.chinese", "relevance_policy": "item-keywords"},
+    {"source_id": "global-voices-instagram", "username": "globalvoicesonline", "relevance_policy": "item-keywords"},
+    {"source_id": "new-bloom-instagram", "username": "newbloommag", "relevance_policy": "source-scoped"},
+    {"source_id": "pandaily-instagram", "username": "thepandaily", "relevance_policy": "source-scoped"},
+    {"source_id": "rthk-instagram", "username": "rthk.hk", "relevance_policy": "item-keywords"}
+  ],
+  "limits": {
+    "timeout_seconds": 20,
+    "response_bytes": 1048576,
+    "page_size": 25,
+    "max_pages_per_source": 4,
+    "max_items_per_source": 100,
+    "max_request_attempts_per_run": 28
+  }
+}

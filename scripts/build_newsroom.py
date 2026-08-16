@@ -3476,7 +3476,7 @@ def render_china_article_stream(
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
+    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
@@ -3489,7 +3489,7 @@ def render_china_article_stream(
     <aside class="cs-method"><p class="cs-eyebrow">What “every” means here</p><h2>Complete across the declared feeds—not the entire internet.</h2><div><p>{_h(stream['scope'])}</p><p>{_h(stream['method']['analysis'])} {_h(stream['method']['rights'])}</p></div></aside>
   </div>
 </main>
-<footer class="nw-footer"><div class="nw-shell">Publisher reports remain attributed and are not converted into Palimpsest findings. Telegram aggregates remain unverified context. <a href="/feeds/">Feed directory</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Publisher reports remain attributed and are not converted into Palimpsest findings. Telegram aggregates remain unverified context. <a href="/news/china/situation/">Combine reports with Observatory measurements</a> · <a href="/feeds/">Feed directory</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
 <script src="/assets/china-stream.js" defer></script>
 {site_nav.FOOT}
 </body></html>"""
@@ -3725,7 +3725,7 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
     </div>
   </header>
   <div class="dw-shell">
-    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
+    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
     <aside class="dw-warning" aria-labelledby="dw-warning-title">
       <div><p class="dw-kicker">Read before the ledger</p><h2 id="dw-warning-title">This is not verified news.</h2></div>
       <div><p>Entries are sanitized interpretations of automated signals from configured public Telegram sources. The underlying post may be false, incomplete, manipulated, illegal, or malicious.</p><p>Do not use this page to accuse, identify, contact, pay, or investigate a person. Raw wording, source identity, Telegram coordinates, live links, named parties, and exact indicators are withheld. No entry counts as evidence or corroboration.</p></div>
@@ -4202,6 +4202,9 @@ def build_sitemap(
         urls.extend(
             f"  <url><loc>{SITE}/news/china/page/{page}/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
             for page in range(2, stream_pages + 1)
+        )
+        urls.append(
+            f"  <url><loc>{SITE}/news/china/situation/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority></url>"
         )
     if china_analysis is not None:
         news_markup = f"""<news:news><news:publication><news:name>Palimpsest China Desk</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(china_analysis['published_at'])}</news:publication_date><news:title>{xml_escape(china_analysis['title'])}</news:title></news:news>"""

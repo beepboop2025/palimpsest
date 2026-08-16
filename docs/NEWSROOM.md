@@ -15,6 +15,10 @@ The pipeline has three distinct records:
 3. `scripts/build_newsroom.py` turns that normalized board into the strict
    `palimpsest-news.v1` contract at `readings/newsroom-latest.json`, JSON Feed and RSS, plus
    static article pages under `news/`.
+4. `scripts/build_china_situation.py` projects Evidence Wire events, declared
+   measurement context, the bounded social-observation ledger, and reviewed Dragon
+   Whispers into a separate situation index. Social observations join only by an exact
+   allowlisted publisher URL; source-free Telegram signals remain an adjacent briefing.
 
 The third step is the only editorial step. It never reaches the network, reads private storage,
 or changes an upstream measurement. It is safe to replay offline.
@@ -47,12 +51,18 @@ Changing that file is an editorial policy change and is reviewable as code.
 | `/news/china/` | Every in-scope monitored China publisher item with detailed event-bound analysis |
 | `/news/china/feed.xml` | Article-by-article China RSS 2.0 feed |
 | `/news/china/feed.json` | Article-by-article China JSON Feed 1.1 |
+| `/news/china/situation/` | Evidence-bound China situations combining reporting, social context, reviewed Telegram and Observatory measurements without merging their proof roles |
+| `/news/china/situation/feed.xml` | China Situation RSS 2.0 feed |
+| `/news/china/situation/feed.json` | China Situation JSON Feed 1.1 |
 | `/news/china/whispers/` | Human-reviewed, sanitized individual Telegram pattern context; never verified news or corroboration |
 | `/news/china/whispers/feed.xml` | Reviewed Whispers RSS 2.0 feed |
 | `/news/china/whispers/feed.json` | Reviewed Whispers JSON Feed 1.1 |
 | `/news/sitemap.xml` | Newsroom sitemap with article modification times |
 | `/readings/newsroom-latest.json` | Complete strict newsroom feed, included in the readings seal |
 | `/readings/china-article-stream-latest.json` | Strict article stream with coverage, analysis, unknowns, next checks and reviewed Telegram context state |
+| `/readings/china-situation-latest.json` | Strict combined situation index with per-layer relationships and coverage |
+| `/readings/social-observations-latest.json` | Closed-registry Telegram/Instagram metadata latest view; never corroboration |
+| `/readings/social-observations-versions.jsonl` | Append-only sanitized social revision ledger |
 | `/readings/dragon-whispers-latest.json` | Closed reviewed/sanitized Whispers artifact; no raw text, sources, exact IOCs or named allegations |
 
 The stable story URL is a live article: `datePublished` records the source reading behind the current
@@ -63,6 +73,7 @@ ledger preserve prior published states.
 
 ```bash
 PYTHONPATH=. python -m scripts.build_newsroom
+PYTHONPATH=. python -m scripts.build_china_situation
 PYTHONPATH=. python -m pytest -q tests/test_structured_newsroom.py
 python scripts/sync_nav.py --check
 python scripts/seal_readings.py --check

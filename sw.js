@@ -13,6 +13,9 @@ const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/china-econ-observations.jsonl",
   "/readings/china-econ-forecast-latest.json",
   "/readings/china-index-latest.json",
+  "/readings/china-situation-latest.json",
+  "/readings/social-observations-latest.json",
+  "/readings/social-observations-versions.jsonl",
   "/readings/investigations-latest.json",
   "/readings/evidence-mesh-latest.json",
   "/readings/machine-investigations-latest.json",
@@ -39,6 +42,8 @@ const LIVE_NEWSROOM_SYNDICATION = new Set([
   "/news/china/feed.xml",
   "/news/china/analysis/feed.json",
   "/news/china/analysis/feed.xml",
+  "/news/china/situation/feed.json",
+  "/news/china/situation/feed.xml",
   "/news/china/whispers/feed.json",
   "/news/china/whispers/feed.xml",
 ]);

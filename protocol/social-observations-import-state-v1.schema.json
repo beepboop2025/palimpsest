@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/social-observations-import-state-v1.schema.json",
+  "title": "Palimpsest authenticated social import acceptance state v1",
+  "description": "The last authenticated remote social-observation bundle accepted by Palimpsest. This receipt is written only after the public latest document and version ledger, and prevents rollback or timestamp equivocation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "remote_generated_at",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "palimpsest-social-observations-import-state.v1"
+    },
+    "bundle_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "remote_generated_at": {"$ref": "#/$defs/timestamp"},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "social-observations-latest.json",
+        "social-observations-versions.jsonl"
+      ],
+      "properties": {
+        "social-observations-latest.json": {"$ref": "#/$defs/artifact"},
+        "social-observations-versions.jsonl": {"$ref": "#/$defs/artifact"}
+      }
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

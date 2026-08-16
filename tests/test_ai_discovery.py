@@ -302,6 +302,42 @@ def test_china_observatory_is_discoverable_by_humans_and_agents():
     )
 
 
+def test_china_situation_and_social_observations_are_agent_discoverable():
+    llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+    root_sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    news_sitemap = (ROOT / "news" / "sitemap.xml").read_text(encoding="utf-8")
+    situation_url = "https://palimpsest.info/news/china/situation/"
+
+    assert situation_url in root_sitemap
+    assert situation_url in news_sitemap
+    for url in (
+        situation_url,
+        f"{situation_url}feed.xml",
+        f"{situation_url}feed.json",
+        "https://palimpsest.info/readings/china-situation-latest.json",
+        "https://palimpsest.info/readings/social-observations-latest.json",
+        "https://palimpsest.info/readings/social-observations-versions.jsonl",
+        "https://palimpsest.info/protocol/china-situation-v1.schema.json",
+        "https://palimpsest.info/protocol/social-observations-v1.schema.json",
+    ):
+        assert url in llms
+
+    for relative in (
+        "news/china/situation/index.html",
+        "news/china/situation/feed.xml",
+        "news/china/situation/feed.json",
+        "readings/china-situation-latest.json",
+        "readings/social-observations-latest.json",
+        "readings/social-observations-versions.jsonl",
+        "protocol/china-situation-v1.schema.json",
+        "protocol/social-observations-v1.schema.json",
+    ):
+        assert (ROOT / relative).is_file(), relative
+
+    page = (ROOT / "news/china/situation/index.html").read_text(encoding="utf-8")
+    assert f'<link rel="canonical" href="{situation_url}">' in page
+
+
 def test_scamshield_public_surfaces_share_one_bounded_contract():
     pack = _json("integrations/scamshield/intelligence-pack-v1.json")
     card = _json("product-card.json")["integrations"]["scamshield"]

@@ -143,12 +143,12 @@ def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(mesh: d
         if row["project_id"] == "palimpsest" and row["namespace"] == "osint"
     }
 
-    assert len(catalog_ids) == 56
+    assert len(catalog_ids) == 59
     assert len(signal_ids) == 33
     assert mesh_catalog_ids == catalog_ids
     assert mesh_signal_ids == signal_ids
     assert mesh["summary"]["palimpsest_catalog"] == {
-        "expected": 56, "accounted": 56, "complete": True,
+        "expected": 59, "accounted": 59, "complete": True,
     }
     assert mesh["summary"]["palimpsest_osint"] == {
         "expected": 33, "accounted": 33, "complete": True,

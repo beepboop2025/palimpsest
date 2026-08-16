@@ -1,6 +1,6 @@
 # Feed quality contract
 
-Palimpsest publishes seven logical feeds in two formats: RSS 2.0 for readers
+Palimpsest publishes eight logical feeds in two formats: RSS 2.0 for readers
 and JSON Feed 1.1 for software. The public directory is `/feeds/`.
 
 The feeds do not all make the same kind of claim. A subscriber must be able to
@@ -16,6 +16,7 @@ opening the website.
 | Instrument measurements | `/news/instruments/feed.xml` | `/news/instruments/feed.json` | Palimpsest measurement |
 | Source index plus measurements | `/news/feed.xml` | `/news/feed.json` | Explicitly mixed |
 | China publisher source index | `/news/china/feed.xml` | `/news/china/feed.json` | Publisher source record with Palimpsest context |
+| China situation synthesis | `/news/china/situation/feed.xml` | `/news/china/situation/feed.json` | Reports, social observations, and measurements with relations preserved |
 | China censorship analysis | `/news/china/analysis/feed.xml` | `/news/china/analysis/feed.json` | Palimpsest analysis |
 | Reviewed Telegram context | `/news/china/whispers/feed.xml` | `/news/china/whispers/feed.json` | Unverified context |
 
@@ -39,6 +40,9 @@ a stable `_palimpsest.kind` value.
   It does not adopt the report as a Palimpsest finding.
 - `[Unverified context]`: sanitized, human-reviewed context that can suggest a
   later check. It does not count as evidence or corroboration.
+- `[Situation synthesis]`: a deterministic projection that places attributed
+  reporting, exact-link social context, and declared Observatory measurements
+  together. It preserves each input's relation and does not imply verification.
 
 ## Transport and identity requirements
 

@@ -82,6 +82,16 @@ CONTRACT = {
     "china-article-stream": _d(
         "generated_at", ["source_wire", "method", "scope"], "n_entries"
     ),
+    "social-observations": _d(
+        "generated_at", ["source_registry", "scope", "relation"], "n_observations"
+    ),
+    "china-situation": _d(
+        "generated_at", ["inputs", "scope", "relation_policy"],
+        reason="a deterministic join across distinct evidence layers: the complete event, "
+               "publisher-report, social-observation, measurement-context and reviewed-"
+               "Telegram counts are declared separately under coverage, so one top-level "
+               "denominator would falsely imply that those populations are commensurate.",
+    ),
     "china-censorship-analysis": _d(
         "generated_at", ["evidence", "methodology", "authorship"],
         reason="a cross-instrument analytical article whose cited measurements retain "
@@ -263,6 +273,8 @@ SCHEDULED_PUBLICATIONS = {
     "editorial-readiness",
     "eval-articles",
     "research-corpus",
+    "social-observations",
+    "china-situation",
 }
 
 
@@ -373,8 +385,39 @@ def test_reporting_newsroom_feeds_have_explicit_publication_contracts():
     } <= SCHEDULED_PUBLICATIONS
 
 
+def test_social_and_situation_contracts_preserve_distinct_evidence_populations():
+    assert CONTRACT["social-observations"] == {
+        "timestamp": "generated_at",
+        "provenance": ["source_registry", "scope", "relation"],
+        "denominator": "n_observations",
+        "reason": None,
+    }
+    assert CONTRACT["china-situation"]["provenance"] == [
+        "inputs", "scope", "relation_policy"
+    ]
+    assert CONTRACT["china-situation"]["denominator"] is None
+    assert "distinct evidence layers" in CONTRACT["china-situation"]["reason"]
+    assert {"social-observations", "china-situation"} <= SCHEDULED_PUBLICATIONS
+
+    social = _load(
+        os.path.join(ROOT, "readings", "social-observations-latest.json")
+    )
+    situation = _load(
+        os.path.join(ROOT, "readings", "china-situation-latest.json")
+    )
+    assert social["n_observations"] == len(social["observations"])
+    assert social["relation"] == "attributed-source-report-not-corroboration"
+    assert situation["coverage"]["in_scope_events"] == len(
+        situation["situations"]
+    )
+    assert "without converting social circulation" in situation["relation_policy"]
+
+
 def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     sitemap = open(os.path.join(ROOT, "sitemap.xml"), encoding="utf-8").read()
+    news_sitemap = open(
+        os.path.join(ROOT, "news", "sitemap.xml"), encoding="utf-8"
+    ).read()
     robots = open(os.path.join(ROOT, "robots.txt"), encoding="utf-8").read()
     llms = open(os.path.join(ROOT, "llms.txt"), encoding="utf-8").read()
     worker = open(os.path.join(ROOT, "sw.js"), encoding="utf-8").read()
@@ -398,6 +441,19 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert "https://palimpsest.info/readings/china-econ-observations.jsonl" in llms
     assert "https://palimpsest.info/readings/china-econ-forecast-latest.json" in llms
     assert "https://palimpsest.info/protocol/economic-forecast-v1.schema.json" in llms
+    assert "https://palimpsest.info/news/china/situation/" in sitemap
+    assert "https://palimpsest.info/news/china/situation/" in news_sitemap
+    for url in (
+        "https://palimpsest.info/news/china/situation/",
+        "https://palimpsest.info/news/china/situation/feed.json",
+        "https://palimpsest.info/news/china/situation/feed.xml",
+        "https://palimpsest.info/readings/china-situation-latest.json",
+        "https://palimpsest.info/readings/social-observations-latest.json",
+        "https://palimpsest.info/readings/social-observations-versions.jsonl",
+        "https://palimpsest.info/protocol/china-situation-v1.schema.json",
+        "https://palimpsest.info/protocol/social-observations-v1.schema.json",
+    ):
+        assert url in llms
     assert robots.splitlines().count("Sitemap: https://palimpsest.info/sitemap.xml") == 1
     assert robots.splitlines().count(
         "Sitemap: https://palimpsest.info/news/sitemap.xml"
@@ -418,6 +474,8 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "/news/china/feed.xml",
         "/news/china/analysis/feed.json",
         "/news/china/analysis/feed.xml",
+        "/news/china/situation/feed.json",
+        "/news/china/situation/feed.xml",
         "/news/china/whispers/feed.json",
         "/news/china/whispers/feed.xml",
     ):
@@ -442,6 +500,9 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert '"/readings/china-econ-observations.jsonl"' in worker
     assert '"/readings/china-econ-forecast-latest.json"' in worker
     assert '"/readings/china-index-latest.json"' in worker
+    assert '"/readings/china-situation-latest.json"' in worker
+    assert '"/readings/social-observations-latest.json"' in worker
+    assert '"/readings/social-observations-versions.jsonl"' in worker
     for name in (
         "primary-documents",
         "corroboration",
@@ -558,6 +619,38 @@ def test_openapi_discovers_the_evidence_mesh_and_machine_analysis_contracts():
     for name, (schema_name, path, operation_id) in expected.items():
         assert spec["components"]["schemas"][name] == {
             "$ref": f"https://palimpsest.info/protocol/{schema_name}"
+        }
+        assert spec["components"]["responses"][name]["content"][
+            "application/json"
+        ]["schema"] == {"$ref": f"#/components/schemas/{name}"}
+        operation = spec["paths"][path]["get"]
+        assert operation["operationId"] == operation_id
+        assert operation["responses"]["200"] == {
+            "$ref": f"#/components/responses/{name}"
+        }
+
+
+def test_openapi_publishes_social_observations_and_china_situation_contracts():
+    spec = _load(os.path.join(ROOT, "openapi.json"))
+    expected = {
+        "SocialObservations": (
+            "social-observations-v1.schema.json",
+            "/readings/social-observations-latest.json",
+            "getSocialObservations",
+        ),
+        "ChinaSituation": (
+            "china-situation-v1.schema.json",
+            "/readings/china-situation-latest.json",
+            "getChinaSituation",
+        ),
+    }
+
+    for name, (schema_name, path, operation_id) in expected.items():
+        protocol = _load(os.path.join(ROOT, "protocol", schema_name))
+        assert protocol["$id"] == f"https://palimpsest.info/protocol/{schema_name}"
+        assert protocol["additionalProperties"] is False
+        assert spec["components"]["schemas"][name] == {
+            "$ref": protocol["$id"]
         }
         assert spec["components"]["responses"][name]["content"][
             "application/json"
