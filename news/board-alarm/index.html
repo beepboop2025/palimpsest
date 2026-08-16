@@ -148,7 +148,7 @@
     <div class="nw-article__layout">
       <div class="nw-article__body">
 <div class="nw-metric-block" aria-label="Headline metric"><strong>31.141 e-value</strong><span>board e-value</span></div>        <h2>What the record says</h2>
-        <p><strong>Observation.</strong> Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 31.141; the predeclared board alarm threshold is 20.</p>
+        <p><strong>Observation.</strong> Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 31.141; the predeclared board alarm threshold is 20.</p>
         <p>This report is scoped to <strong>board-alarm</strong>. It does not merge unlike instruments or infer a cause from co-movement.</p>
         <h2>How it was measured</h2>
         <p>per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite&#x27;s own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e &gt;= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings</p>
@@ -172,7 +172,7 @@
     <dt>SHA-256</dt>
     <dd><code>150d38eaa6b51a361c0ad3e2a1339719854f8f30ec0896646c69d83f99e97633</code></dd>
     <dt>Claim seal</dt>
-    <dd><code>sha256:4d377a30f20c834926b5ee3623c3df4f3fa718b7f071b1b4e3e6a7d8331bad89</code></dd>
+    <dd><code>sha256:244ecff10eaa86b356ce75d05cce1c7b5d01c707e728f220208b61a1bd18e783</code></dd>
   </dl>
 </aside>
         <div class="nw-related"><p class="nw-receipt__label">Related dispatches</p><a href="/news/event-flags/">12 of 15 configured signals are reporting to the event board</a>
