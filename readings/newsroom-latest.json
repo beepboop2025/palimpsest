@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T18:00:11Z",
+  "generated_at": "2026-08-16T18:08:16Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "6453d6150ec9b08e33be2ce1f0f4bc6595bad9aa",
+  "source_commit": "3a260307d9d3bee32890ccc4361e913dd7e02262",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 31,
+    "live": 32,
     "status": "healthy",
     "counts": {
-      "live": 31,
+      "live": 32,
       "degraded": 1,
-      "stale": 1,
+      "stale": 0,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-16T13:21:48Z",
       "modified_at": "2026-08-16T13:21:48Z",
-      "claim_fingerprint": "sha256:2981027279d0c891225ede005006f8ac2f307d173c5e858d4a80b89d810acef6",
+      "claim_fingerprint": "sha256:024f12ac5be60534b7427ef0bffd92c330f361fedb4f972a126caf75890ff05d",
       "metric": {
         "label": "board e-value",
         "value": 25.929,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 25.929; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 25.929; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -1741,20 +1741,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "Private runtime bridge: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The sanitized intelligence bridge ranks 192 aggregate topics",
+      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-16T16:59:16Z",
-      "modified_at": "2026-08-16T16:59:16Z",
-      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
+      "status": "live",
+      "published_at": "2026-08-16T17:59:16Z",
+      "modified_at": "2026-08-16T17:59:16Z",
+      "claim_fingerprint": "sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "topics ranked",
+        "value": 192,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -1762,25 +1762,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
+          "type": "observation",
+          "statement": "The current sanitized optional export contains 192 ranked aggregate topics."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "94cfde4e4f59761c03097c1eefb964f1fd489b2a169c8f4792302b769fbe0eb0",
-          "bytes": 168520
+          "sha256": "92a95e4d659307db6830b629f8456bdb4c4faf9a7947733731ce11da7fdbfb5b",
+          "bytes": 168517
         },
-        "source_timestamp": "2026-08-16T16:59:16Z"
+        "source_timestamp": "2026-08-16T17:59:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
         "version": "nemesis-public-v2"
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
