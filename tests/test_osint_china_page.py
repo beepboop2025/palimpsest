@@ -197,7 +197,7 @@ listeners.fetch({
 
 def test_route_is_present_on_every_discovery_surface():
     assert '"osint-china.html": "/osint-china.html"' in _text("scripts/sync_nav.py")
-    assert '("/osint-china.html", "OSINT China"' in _text("scripts/site_nav.py")
+    assert '("/osint-china.html", "Signal board"' in _text("scripts/site_nav.py")
     assert "https://palimpsest.info/osint-china.html" in _text("sitemap.xml")
     assert "https://palimpsest.info/osint-china.html" in _text("llms.txt")
     assert '"/osint-china.html"' in _text("sw.js")

@@ -16,6 +16,9 @@ def test_home_has_one_heading_and_clear_publication_routes():
         "/china/",
         "/readings/eval-registry.html",
         "/developers.html",
+        "/feeds/",
+        "/updates/2026-08-17-listening-pass/",
+        "/guides/telegram-scam-message-checker/",
         "/fund.html",
     ):
         assert f'href="{route}"' in page
@@ -24,9 +27,12 @@ def test_home_has_one_heading_and_clear_publication_routes():
         "data-home-registry",
         "data-home-osint",
         "data-home-wire",
-        "data-narcoscope-relay",
     ):
         assert marker in page
+    assert "Open the result." in page
+    assert "Then open the proof." in page
+    assert "Not a newspaper" in page
+    assert "AI assistance, named" in page
     assert 'id="main"' in page
     assert 'class="ps home"' in page
     assert 'rel="icon" type="image/svg+xml"' in page
@@ -48,7 +54,9 @@ def test_home_visual_system_is_responsive_and_motion_safe():
     assert "@media (max-width: 560px)" in css
     assert "@media (prefers-reduced-motion: reduce)" in css
     assert ":focus-visible" in css
-    assert "--hm-oxide: #d8704a" in css
+    assert "--hm-blue: #245dff" in css
+    assert "--hm-teal: #087e8b" in css
+    assert "--hm-paper: #f4f8fb" in css
 
 
 def test_new_home_copy_avoids_typographic_dashes():

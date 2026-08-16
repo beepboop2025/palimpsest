@@ -9,6 +9,7 @@
   }
 
   function setText(selector, value) {
+    if (value === undefined || value === null || value === "") return;
     document.querySelectorAll(selector).forEach(function (node) {
       node.textContent = String(value);
     });
@@ -41,19 +42,27 @@
   read("/readings/eval-articles-latest.json").then(function (edition) {
     var articles = Array.isArray(edition.articles) ? edition.articles : [];
     var lead = articles[0];
-    if (!lead) throw new Error("empty journal edition");
+    var numbers;
+    var limitations;
+    if (!lead) throw new Error("empty findings edition");
+
+    numbers = Array.isArray(lead.key_numbers) ? lead.key_numbers : [];
+    limitations = Array.isArray(lead.limitations) ? lead.limitations : [];
     setText("[data-home-journal-title]", lead.title);
     setText("[data-home-journal-dek]", lead.dek);
-    setText("[data-home-journal-date]", "Updated " + dateLabel(lead.updated_at));
+    setText("[data-home-journal-state]", "Verified " + dateLabel(lead.updated_at));
+    setText("[data-home-journal-revision]", lead.revision_id);
+    setText("[data-home-journal-disclosure]", lead.disclosure);
+    if (limitations[0]) setText("[data-home-journal-limit]", limitations[0].text);
+    if (numbers[0]) {
+      setText('[data-home-journal-number="0"]', numbers[0].value);
+      setText('[data-home-journal-label="0"]', numbers[0].label);
+    }
     setHref("[data-home-journal-link]", lead.url);
-    lead.key_numbers.slice(0, 3).forEach(function (number, index) {
-      setText('[data-home-journal-number="' + index + '"]', number.value);
-      setText('[data-home-journal-label="' + index + '"]', number.label);
-    });
     mark("[data-home-journal]", "live");
   }).catch(function () {
     mark("[data-home-journal]", "unavailable");
-    setText("[data-home-journal-date]", "Structured edition unavailable");
+    setText("[data-home-journal-state]", "Live check unavailable; dated result shown");
   });
 
   read("/readings/eval-registry-latest.json").then(function (registry) {
@@ -74,8 +83,10 @@
   });
 
   read("/readings/newswire-latest.json").then(function (wire) {
+    var coverage = wire.coverage || {};
     setText("[data-home-wire-events]", wire.n_events);
-    setText("[data-home-wire-date]", dateLabel(wire.generated_at));
+    setText("[data-home-wire-sources]", coverage.successful_sources);
+    setText("[data-home-wire-total-sources]", coverage.registry_sources);
     mark("[data-home-wire]", "live");
   }).catch(function () {
     mark("[data-home-wire]", "unavailable");

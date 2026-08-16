@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="FrEE2TEw-orJte17BLZ9M5E-y5dyWyUn-vov7FfgSD8">
-  <title>Palimpsest | Evidence that survives its author</title>
-  <meta name="description" content="Palimpsest publishes evidence-bound AI evaluation analysis, a public-source wire, and China observatory records whose claims remain attached to their receipts, limits, and revisions.">
-  <meta name="keywords" content="AI evaluation journal, verifiable evals, refusal drift, censorship observatory, evidence receipts, China censorship, public-source intelligence">
+  <title>Palimpsest | Open a result. Inspect its evidence.</title>
+  <meta name="description" content="Use Palimpsest to inspect sealed AI evaluation results, live China-facing measurements, source receipts, public feeds, data and read-only tools.">
+  <meta name="keywords" content="AI evaluation results, verifiable evals, China censorship measurements, public evidence, RSS feeds, evidence receipts">
   <meta name="author" content="Palimpsest">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <link rel="canonical" href="https://palimpsest.info/">
@@ -16,7 +16,7 @@
   <link rel="alternate" type="application/feed+json" title="Palimpsest Live Eval Findings" href="/journal/feed.json">
   <link rel="service-desc" type="application/vnd.oai.openapi+json" href="/openapi.json">
 
-  <meta name="theme-color" content="#08110f">
+  <meta name="theme-color" content="#14212b">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/brand/palimpsest-icon-512.png">
   <meta name="mobile-web-app-capable" content="yes">
@@ -26,17 +26,17 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Palimpsest">
-  <meta property="og:title" content="Palimpsest | Evidence that survives its author">
-  <meta property="og:description" content="AI evaluation analysis, public-source reporting, and observatory records with their evidence and uncertainty intact.">
+  <meta property="og:title" content="Palimpsest | Open a result. Inspect its evidence.">
+  <meta property="og:description" content="Real measurements, source receipts, public feeds and read-only tools. Every result keeps its limit in view.">
   <meta property="og:url" content="https://palimpsest.info/">
   <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Palimpsest, a verifiable public evidence observatory">
+  <meta property="og:image:alt" content="Palimpsest public evidence workbench">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Palimpsest | Evidence that survives its author">
-  <meta name="twitter:description" content="Every analytical claim keeps its receipt, limitation, and revision history.">
+  <meta name="twitter:title" content="Palimpsest | Open a result. Inspect its evidence.">
+  <meta name="twitter:description" content="Real measurements, source receipts, public feeds and read-only tools.">
   <meta name="twitter:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 
   <script type="application/ld+json">
@@ -49,7 +49,7 @@
         "name": "Palimpsest",
         "url": "https://palimpsest.info/",
         "sameAs": ["https://github.com/beepboop2025/palimpsest"],
-        "description": "An open-source public-good observatory and evidence publication."
+        "description": "An open-source public evidence workbench."
       },
       {
         "@type": "WebSite",
@@ -60,19 +60,12 @@
         "inLanguage": "en"
       },
       {
-        "@type": "CollectionPage",
-        "@id": "https://palimpsest.info/#publication",
-        "url": "https://palimpsest.info/",
-        "name": "Palimpsest evidence publication",
-        "description": "A structured evidence commons for sealed AI evaluations, public-source reporting, and China observatory records.",
-        "publisher": {"@id": "https://palimpsest.info/#org"},
-        "hasPart": [
-          {"@id": "https://palimpsest.info/evals/"},
-          {"@id": "https://palimpsest.info/journal/"},
-          {"@id": "https://palimpsest.info/news/"},
-          {"@id": "https://palimpsest.info/china/"},
-          {"@id": "https://palimpsest.info/readings/eval-registry.html"}
-        ]
+        "@type": "Dataset",
+        "@id": "https://palimpsest.info/#public-evidence",
+        "name": "Palimpsest public evidence",
+        "url": "https://palimpsest.info/data.html",
+        "description": "Sealed AI evaluation records and China-facing public measurements with source receipts, freshness and limitations.",
+        "creator": {"@id": "https://palimpsest.info/#org"}
       },
       {
         "@type": "Dataset",
@@ -80,7 +73,7 @@
         "name": "Palimpsest ScamShield Intelligence Pack",
         "url": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
         "version": "2026-08-08.2",
-        "description": "A human-reviewed, privacy-minimized map of public sources and scam typologies."
+        "description": "A human-reviewed, privacy-minimized map of 18 public sources to 8 scam typologies."
       }
     ]
   }
@@ -90,14 +83,29 @@
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": "https://palimpsest.info/#faq",
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "Why did Palimpsest's founder start doing AI evaluations?",
+        "name": "What is Palimpsest for?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. A screenshot could capture one response but could not prove the questions were fixed first, show whether the pattern persisted, or expose a later edit. That gap became the Generative Firewall and then the eval registry. The claim stays scoped to named models, prompts and dates; it is not a claim about every Chinese model and does not prove motive."
+          "text": "Palimpsest lets people inspect AI evaluation results, China-facing measurements, public-source indexes and the evidence, freshness, limits and revisions attached to them."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is Palimpsest a newspaper?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Publisher reports remain attributed source reports. Palimpsest adds measurement context, source grouping, revision records and explicit limits; it does not convert a report into independently verified fact."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why did the AI evaluation work begin?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Palimpsest's founder began with a screenshot of a state-aligned model changing or withholding an answer about criticism of the Chinese Communist Party. That observation became a frozen, repeatable evaluation because one screenshot does not prove a pattern and does not prove motive."
         }
       }
     ]
@@ -108,7 +116,6 @@
   <link rel="stylesheet" href="/assets/shell.css">
   <link rel="stylesheet" href="/assets/home.css">
   <script src="/assets/home.js" defer></script>
-  <script src="/assets/network-relay.js" defer></script>
   <script src="/assets/shell.js" defer></script>
 </head>
 <body class="ps home">
@@ -118,96 +125,60 @@
   <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
   <div class="ps-nav__spacer"></div>
   <div class="ps-nav__items">
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/evals/">Eval Journal</a></div>
-    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Wire</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/journal/">Findings</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Source index</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
-        <p class="ps-flyout__lede">China-facing economic releases and censorship measurements, separated by method and joined only by receipts.</p>
+        <p class="ps-flyout__lede">Open a current measurement. Each page shows the result, source receipt, freshness and limit.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Start</p>
-            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>What changed, what is withheld, and the evidence behind both</span></a>
-            <a href="/osint-china.html"><b>OSINT China</b><span>Censorship signals, sources and freshness in one public roll-up</span></a>
-            <a href="/china-brief.html"><b>China Brief</b><span>The six-hourly read: what moved and what it means</span></a>
+            <p class="ps-flyout__head">Current results</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>See reporting status and current evidence</span></a>
+            <a href="/osint-china.html"><b>Signal board</b><span>Inspect every signal and its freshness</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>Read the current six-hour measurement brief</span></a>
+            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the latest cross-instrument result</span></a>
           </div>
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Economic record</p>
-            <a href="/china/sources/"><b>Source ledger</b><span>Access, rights, readiness and limits for every reviewed source</span></a>
-            <a href="/china/releases/"><b>Release monitors</b><span>Publication clocks, revisions and evidence receipts</span></a>
-            <a href="/china/domains/"><b>Coverage domains</b><span>Where independent evidence exists, and where it does not</span></a>
-          </div>
-          <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Information controls</p>
-            <a href="/dashboards/ddti_observatory.html"><b>DDTI Observatory</b><span>Full command surface: fear index, topic network, ranked targets</span></a>
-            <a href="/dashboards/ddti_dashboard.html"><b>Live Monitor</b><span>The deletion tracker on its own</span></a>
-            <a href="/readings/erasure-observatory.html"><b>Erasure Observatory</b><span>Composite index across all three layers, sealed each run</span></a>
-          </div>
-          <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Signals</p>
-            <a href="/readings/inside-view.html"><b>Inside View<span class="ps-tag">new</span></b><span>DNS injection seen from probes inside China</span></a>
-            <a href="/readings/in-path-interference.html"><b>In-Path Interference<span class="ps-tag">new</span></b><span>Middlebox rewriting and transport health</span></a>
-            <a href="/readings/app-store.html"><b>App Store Layer<span class="ps-tag">new</span></b><span>What the Chinese storefront will not offer you</span></a>
-            <a href="/readings/blocklist.html"><b>Blocklist Archaeology<span class="ps-tag">new</span></b><span>The censor&#x27;s own keyword list, version by version</span></a>
-            <a href="/readings/ooni-gfw.html"><b>Great Firewall</b><span>Outside-in blocking rates, OONI and Censored Planet</span></a>
-            <a href="/readings/bleedthrough.html"><b>Bleedthrough<span class="ps-tag ps-tag--soon">soon</span></b><span>Injector-fleet tomography</span></a>
+            <p class="ps-flyout__head">Inspect the record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Check access, rights, readiness and limits</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Check publication clocks and revisions</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live deletion monitor</b><span>Open the deletion tracker</span></a>
           </div>
         </div>
       </div>
     </div>
     <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">AI Evals<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Tools + feeds<i class="ps-nav__chev" aria-hidden="true"></i></button>
       <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
-        <p class="ps-flyout__lede">China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.</p>
+        <p class="ps-flyout__lede">Go directly to something usable. These links open a tool, data file, feed or verification surface.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Read</p>
-            <a href="/journal/"><b>Live Eval Findings<span class="ps-tag">new</span></b><span>Current model-panel analysis with uncertainty and sentence receipts</span></a>
-            <a href="/readings/generative-firewall-index.html"><b>Generative Firewall Index</b><span>What state-aligned models refuse or rewrite</span></a>
-            <a href="/readings/eval-registry.html#drift"><b>Refusal Drift</b><span>Frontier models watched for what they quietly stop answering</span></a>
+            <p class="ps-flyout__head">Use a tool</p>
+            <a href="/guides/telegram-scam-message-checker/"><b>Check a scam message</b><span>Open the Telegram checker and privacy guide</span></a>
+            <a href="/readings/eval-registry.html"><b>Verify an AI eval</b><span>Inspect preregistrations, run seals and chain roots</span></a>
+            <a href="/evidence-capsules.html"><b>Verify a claim offline</b><span>Download a claim with its exact supporting bytes</span></a>
           </div>
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Verify</p>
-            <a href="/readings/eval-registry.html"><b>Verifiable Eval Registry</b><span>Preregistrations, runs, response seals and chain receipts</span></a>
-            <a href="/readings/eval-registry.html#assurance"><b>Eval Assurance<span class="ps-tag">new</span></b><span>What passes, what is partial, and what is still unproven</span></a>
-            <a href="/readings/refusal-drift-latest.json"><b>Latest panel JSON</b><span>Rates, controls, intervals and model-level labels</span></a>
-            <a href="/readings/eval-registry.html#anchors"><b>External Anchors</b><span>Chain roots deposited outside our own infrastructure</span></a>
+            <p class="ps-flyout__head">Subscribe or build</p>
+            <a href="/feeds/"><b>Feeds directory<span class="ps-tag">new</span></b><span>Choose the RSS or JSON feed for your task</span></a>
+            <a href="/evals/"><b>Eval methods journal</b><span>Read method changes, failures and falsifiers</span></a>
+            <a href="/data.html"><b>Download data</b><span>Open every public dataset and licence</span></a>
+            <a href="/developers.html"><b>API + MCP</b><span>Call the read-only tools and inspect the contracts</span></a>
           </div>
         </div>
       </div>
     </div>
-    <div class="ps-nav__item">
-      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-4">Method<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout" id="ps-fly-4">
-        <p class="ps-flyout__lede">Every number on this site is meant to be attacked. Here is what it would take.</p>
-        <div class="ps-flyout__cols">
-          <div class="ps-flyout__col">
-            <p class="ps-flyout__head">How it works</p>
-            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md" target="_blank" rel="noopener"><b>How it is measured</b><span>The estimators, and what each one refuses to claim</span></a>
-            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener"><b>Integrity model</b><span>What sealing does and does not prove</span></a>
-            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener"><b>Validation</b><span>The DDTI scorer retrodicted against six documented events</span></a>
-            <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md" target="_blank" rel="noopener"><b>Ethics and safety</b><span>Watch the censor, never the censored</span></a>
-            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Portable claims bound to exact evidence bytes, verified offline</span></a>
-            <a href="/for-researchers.html#forecast"><b>Our own misses</b><span>The forecast ledger, including where we were wrong</span></a>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Method</a></div>
     <div class="ps-nav__item">
       <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
-      <div class="ps-flyout ps-flyout--wide" id="ps-fly-5">
-        <p class="ps-flyout__lede">Use the public record, reproduce the methods, or help keep the work independent.</p>
+      <div class="ps-flyout" id="ps-fly-5">
+        <p class="ps-flyout__lede">See what changed after feedback, inspect the source, or support the public work.</p>
         <div class="ps-flyout__cols">
           <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Use Palimpsest</p>
-            <a href="/data.html"><b>Data</b><span>Every public dataset, format and licence</span></a>
-            <a href="/developers.html"><b>Developers</b><span>REST, MCP and machine-readable contracts</span></a>
-            <a href="/for-researchers.html"><b>For researchers</b><span>Methods, validation and citation guidance</span></a>
-            <a href="/evidence-capsules.html"><b>Evidence Capsules</b><span>Carry exact claims and supporting bytes elsewhere</span></a>
-          </div>
-          <div class="ps-flyout__col">
-            <p class="ps-flyout__head">Public good</p>
-            <a href="/fund.html"><b>Fund the work</b><span>No paywall, no supporter-only evidence</span></a>
+            <p class="ps-flyout__head">Project</p>
+            <a href="/updates/2026-08-17-listening-pass/"><b>What changed after feedback<span class="ps-tag">new</span></b><span>Read the criticism-to-change ledger</span></a>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall and no supporter-only evidence</span></a>
             <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
           </div>
         </div>
@@ -220,203 +191,173 @@
 <!--/PS_NAV-->
 
 <main id="main">
-
-  <header class="hero hm-hero">
+  <header class="hm-hero">
     <div class="hm-wrap">
-      <div class="hm-hero__edition">
+      <div class="hm-utility-line">
         <span>Independent public evidence</span>
-        <span>New Delhi / UTC record</span>
         <span>Open source · no paywall</span>
       </div>
-
       <div class="hm-hero__grid">
-        <div>
-          <p class="hm-kicker">Palimpsest / A publication with memory</p>
-          <h1>Evidence should <span>survive its author.</span></h1>
-          <p class="hm-hero__lede">We publish what AI evaluations and public records can support, keep the counterevidence beside the claim, and make every revision inspectable.</p>
-          <div class="hm-actions">
-            <a class="hm-action hm-action--primary" href="https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero" target="_blank" rel="noopener noreferrer">Get the daily observatory read</a>
-            <a class="hm-action" href="/evals/">Read the Eval Journal</a>
-            <a class="hm-action" href="/data.html">Inspect the data</a>
-          </div>
+        <div class="hm-hero__copy">
+          <p class="hm-kicker">A public evidence workbench</p>
+          <h1>Open the result. <span>Then open the proof.</span></h1>
         </div>
 
-        <aside class="hm-hero__rail" aria-label="Live publication status">
-          <p>Live desks</p>
-          <div class="hm-live-row" data-home-registry data-feed-state="loading">
-            <i class="hm-live-row__dot" aria-hidden="true"></i>
-            <span>Sealed eval runs</span>
-            <strong data-home-registry-runs>...</strong>
+        <div class="hm-hero__details">
+          <p class="hm-hero__lede">Palimpsest publishes sealed AI evaluation results and China-facing measurements. It also maintains a labeled source index. Those are different products, and neither asks you to trust a conclusion without seeing its receipt and limit.</p>
+          <div class="hm-actions">
+            <a class="hm-button hm-button--primary" href="#latest-result">See a current result</a>
+            <a class="hm-button" href="#use-it">Use a tool</a>
+            <a class="hm-button" href="/feeds/">Choose a feed</a>
           </div>
-          <div class="hm-live-row" data-home-osint data-feed-state="loading">
-            <i class="hm-live-row__dot" aria-hidden="true"></i>
-            <span>Observatory signals</span>
-            <strong><span data-home-osint-live>...</span>/<span data-home-osint-total>...</span></strong>
-          </div>
-          <div class="hm-live-row" data-home-wire data-feed-state="loading">
-            <i class="hm-live-row__dot" aria-hidden="true"></i>
-            <span>Wire events</span>
-            <strong data-home-wire-events>...</strong>
-          </div>
-        </aside>
-      </div>
+          <p class="hm-plain-boundary"><strong>Not a newspaper.</strong> A publisher report remains a publisher report. Palimpsest only labels what its own evidence adds.</p>
+        </div>
 
-      <div class="hm-hero__undertext" aria-label="Palimpsest editorial principle">
-        <span>A corrected claim disappears.</span>
-        <strong>A corrected claim leaves its prior wording, evidence, and reason for change in view.</strong>
+        <article class="hm-proof" id="latest-result" data-home-journal data-feed-state="loading" aria-labelledby="latest-result-title">
+          <header class="hm-proof__head">
+            <p>Latest verified result</p>
+            <span data-home-journal-state>Checking current edition</span>
+          </header>
+          <div class="hm-proof__body">
+            <p class="hm-proof__label">Result</p>
+            <h2 id="latest-result-title" data-home-journal-title>A clean run does not erase a failed one</h2>
+            <p data-home-journal-dek>Mistral Nemo passed all 41 prompt arms in the latest canonical run. The full record still retains its failed controls.</p>
+            <div class="hm-proof__metric">
+              <strong data-home-journal-number="0">0%</strong>
+              <span data-home-journal-label="0">family refusal rate</span>
+            </div>
+          </div>
+          <dl class="hm-proof__ledger">
+            <div><dt>Receipt</dt><dd><a data-home-journal-link href="/journal/before-reading-the-score-read-the-controls/">Open article and evidence</a><code data-home-journal-revision>evalarticlev-eb2c680b</code></dd></div>
+            <div><dt>Limit</dt><dd data-home-journal-limit>The refusal label uses a published lexical rule, not a completed independent human-coder study.</dd></div>
+            <div><dt>Authorship</dt><dd data-home-journal-disclosure>Generated from sealed artifacts with a deterministic editorial template. No free-form model prose.</dd></div>
+          </dl>
+        </article>
       </div>
     </div>
   </header>
 
-  <section class="hm-journal" aria-labelledby="journal-title" data-home-journal data-feed-state="loading">
+  <section class="hm-use" id="use-it" aria-labelledby="use-title">
     <div class="hm-wrap">
       <header class="hm-section-head">
-        <p>01 / Live Eval Findings</p>
-        <h2 id="journal-title">The result is only the beginning.</h2>
-        <a href="/journal/">All analysis</a>
+        <p class="hm-kicker">Start with a task</p>
+        <h2 id="use-title">Do something with the work.</h2>
+        <p>No tour required. Each link opens the tool or artifact itself.</p>
       </header>
-
-      <article class="hm-journal__feature">
-        <div class="hm-journal__spine" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-        <div class="hm-journal__copy">
-          <p class="hm-kicker">Latest evidence-bound article</p>
-          <h3 data-home-journal-title>Read the score. Then read what could break it.</h3>
-          <p data-home-journal-dek>The live edition loads from the same verified artifact that supplies its citations and revision record.</p>
-          <p class="hm-journal__date" data-home-journal-date>Loading current edition</p>
-          <a data-home-journal-link href="/journal/">Read with evidence receipts →</a>
-        </div>
-        <ol class="hm-journal__numbers" aria-label="Article key numbers">
-          <li><strong data-home-journal-number="0">...</strong><span data-home-journal-label="0">current measure</span></li>
-          <li><strong data-home-journal-number="1">...</strong><span data-home-journal-label="1">control result</span></li>
-          <li><strong data-home-journal-number="2">...</strong><span data-home-journal-label="2">panel evidence</span></li>
-        </ol>
-      </article>
+      <div class="hm-task-list">
+        <a href="/guides/telegram-scam-message-checker/"><span>Check</span><strong>A suspicious Telegram message</strong><b>Open checker →</b></a>
+        <a href="/readings/eval-registry.html"><span>Verify</span><strong>A sealed AI evaluation run</strong><b>Open registry →</b></a>
+        <a href="/china/"><span>Inspect</span><strong>Live China-facing measurements</strong><b>Open observatory →</b></a>
+        <a href="/developers.html"><span>Build</span><strong>With the read-only API or MCP server</strong><b>Open developer tools →</b></a>
+        <a href="/feeds/"><span>Follow</span><strong>Only the feed you actually need</strong><b>Choose RSS or JSON →</b></a>
+      </div>
+      <nav class="hm-task-support" aria-label="More direct routes">
+        <a href="/china/">Open China Observatory</a>
+        <a href="https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero" target="_blank" rel="noopener noreferrer">Get the daily observatory read</a>
+        <a href="/osint-china.html#commons">Open the structured evidence commons</a>
+      </nav>
     </div>
   </section>
 
-  <section class="hm-map" aria-labelledby="map-title">
+  <section class="hm-results" aria-labelledby="results-title">
     <div class="hm-wrap">
-      <header class="hm-section-head">
-        <p>02 / Publication map</p>
-        <h2 id="map-title">Five desks. One evidentiary standard.</h2>
-        <a href="/developers.html">Machine access</a>
+      <header class="hm-section-head hm-section-head--split">
+        <div><p class="hm-kicker">Live publication state</p><h2 id="results-title">Current results, not product claims.</h2></div>
+        <p>Each row separates what the system currently reports from the file that supports it and the sentence that keeps it bounded.</p>
       </header>
-      <div class="hm-map__rows">
-        <a class="hm-map__row" href="/evals/">
-          <span>Explain</span><h3>Eval Journal</h3><p>Evidence-bound essays on what the lab can claim, how the method changed, and where it can still fail.</p><b aria-hidden="true">→</b>
-        </a>
-        <a class="hm-map__row" href="/journal/">
-          <span>Interpret</span><h3>Live Findings</h3><p>Automatically refreshed analysis of sealed evaluation runs, with counterreadings and uncertainty attached.</p><b aria-hidden="true">→</b>
-        </a>
-        <a class="hm-map__row" href="/news/">
-          <span>Report</span><h3>Wire</h3><p>Fast public-source dossiers that separate observed fact, analysis, and open questions.</p><b aria-hidden="true">→</b>
-        </a>
-        <a class="hm-map__row" href="/china/">
-          <span>Observe</span><h3>China Observatory</h3><p>Economic release records and information-control signals, kept distinct by method.</p><b aria-hidden="true">→</b>
-        </a>
-        <a class="hm-map__row" href="/readings/eval-registry.html">
-          <span>Verify</span><h3>AI Registry</h3><p>Pre-registered runs, chained attestations, transcript checks, and external roots.</p><b aria-hidden="true">→</b>
-        </a>
-      </div>
-      <div class="hm-actions">
-        <a class="hm-action hm-action--primary" href="/china/">Open China Observatory</a>
-        <a class="hm-action" href="/osint-china.html#commons">Open the structured evidence commons</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="hm-live" aria-labelledby="live-title">
-    <div class="hm-wrap">
-      <header class="hm-section-head">
-        <p>03 / Current record</p>
-        <h2 id="live-title">Live status without a painted-on pulse.</h2>
-        <a href="/data.html">Every public file</a>
-      </header>
-      <div class="hm-live__grid">
-        <article class="hm-live__item" data-home-registry data-feed-state="loading">
-          <p>Eval registry</p>
-          <strong data-home-registry-runs>...</strong>
-          <h3>Sealed runs</h3>
-          <p>Chain head <code data-home-registry-root>loading</code>. A changed result creates a new record.</p>
-          <a href="/readings/eval-registry.html">Verify the chain</a>
+      <div class="hm-ledger">
+        <article class="hm-ledger__row" data-home-registry data-feed-state="loading">
+          <div class="hm-ledger__name"><span>AI eval registry</span><h3><strong data-home-registry-runs>423</strong> sealed runs</h3></div>
+          <div><span>Receipt</span><p><a href="/readings/eval-registry.html">Verify the chain</a><code data-home-registry-root>c8c55cff12a8</code></p></div>
+          <div><span>Limit</span><p>A valid chain makes later edits detectable. It does not prove that an evaluation construct is valid.</p></div>
         </article>
-        <article class="hm-live__item" data-home-osint data-feed-state="loading">
-          <p>China observatory</p>
-          <strong><span data-home-osint-live>...</span>/<span data-home-osint-total>...</span></strong>
-          <h3>Reporting signals</h3>
-          <p>Roll-up health: <span data-home-osint-state>loading</span>. Stale and degraded inputs remain visible.</p>
-          <a href="/osint-china.html">Read the signal board</a>
+        <article class="hm-ledger__row" data-home-osint data-feed-state="loading">
+          <div class="hm-ledger__name"><span>China observatory</span><h3><strong><span data-home-osint-live>32</span>/<span data-home-osint-total>33</span></strong> signals live</h3></div>
+          <div><span>Receipt</span><p><a href="/osint-china.html">Inspect every signal</a><code data-home-osint-state>healthy</code></p></div>
+          <div><span>Limit</span><p>These are measurements of defined public signals. Movement is not proof of intent or a single cause.</p></div>
         </article>
-        <article class="hm-live__item" data-home-wire data-feed-state="loading">
-          <p>Evidence wire</p>
-          <strong data-home-wire-events>...</strong>
-          <h3>Public events</h3>
-          <p>Edition dated <span data-home-wire-date>loading</span>. Events are grouped by evidence, not drama.</p>
-          <a href="/news/">Enter the Wire</a>
+        <article class="hm-ledger__row" data-home-wire data-feed-state="loading">
+          <div class="hm-ledger__name"><span>Source index</span><h3><strong data-home-wire-events>308</strong> grouped reports</h3></div>
+          <div><span>Receipt</span><p><a href="/news/">Open the labeled index</a><code><span data-home-wire-sources>30</span>/<span data-home-wire-total-sources>31</span> feeds answered</code></p></div>
+          <div><span>Limit</span><p>A publisher report is not a Palimpsest finding. Single-source entries are labeled and link back to the original.</p></div>
         </article>
       </div>
     </div>
   </section>
 
-  <section class="hm-method" aria-labelledby="method-title">
+  <section class="hm-boundaries" aria-labelledby="boundaries-title">
+    <div class="hm-wrap hm-boundaries__grid">
+      <div>
+        <p class="hm-kicker">Product boundary</p>
+        <h2 id="boundaries-title">What this is for.</h2>
+        <p>If you only need a newspaper article, read the publisher. Use Palimpsest when you need a measurement, a source relationship, a revision trail, a machine-readable record, or a clear statement of what remains unknown.</p>
+      </div>
+      <div class="hm-boundary-table" role="table" aria-label="What Palimpsest does and does not do">
+        <div role="row"><strong role="cell">Publishes</strong><span role="cell">Own measurements, scoped analysis, receipts and public data</span></div>
+        <div role="row"><strong role="cell">Indexes</strong><span role="cell">Attributed publisher reports without relabeling them as verified facts</span></div>
+        <div role="row"><strong role="cell">Does not</strong><span role="cell">Replace original reporting, infer motive from co-movement, or hide failed inputs</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hm-feeds" aria-labelledby="feeds-title">
     <div class="hm-wrap">
-      <header class="hm-section-head">
-        <p>04 / Publishing gate</p>
-        <h2 id="method-title">How an eval becomes an article.</h2>
-        <a href="https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md" target="_blank" rel="noopener">Full integrity model</a>
+      <header class="hm-section-head hm-section-head--split">
+        <div><p class="hm-kicker">Syndication</p><h2 id="feeds-title">Every feed has one job.</h2></div>
+        <p>The directory states who each feed is for, what it adds, and what it cannot establish before you subscribe.</p>
       </header>
-      <ol class="hm-method__steps">
-        <li><span>00</span><div><h3>Why the founder started this work</h3><p>Palimpsest's founder began testing AI systems after seeing Chinese and state-aligned language models change, withhold or replace answers when prompts criticised the Chinese Communist Party or asked about documented events. A screenshot could capture one response, but it could not show whether the questions were fixed first, whether the pattern persisted, or whether the record was later edited. That observation became a repeatable eval and then a registry. It does not prove motive or describe every Chinese model. <a href="/evals/a-censored-answer-is-not-evidence/">Read the full account</a>, then inspect the current <a href="/readings/eval-assurance-latest.json">machine-readable assurance report</a>.</p></div></li>
-        <li><span>01</span><div><h3>Freeze the test</h3><p>The probe set is hashed before any model response exists. A result without a prior registration does not enter the publication path.</p></div></li>
-        <li><span>02</span><div><h3>Recompute the record</h3><p>Published transcripts must reproduce the sealed response hash, labels, controls, and reported metrics.</p></div></li>
-        <li><span>03</span><div><h3>Write from receipts</h3><p>Article sentences are assembled from typed findings. Every analytical sentence points to an exact selector and value.</p></div></li>
-        <li><span>04</span><div><h3>Keep the attack surface</h3><p>Limitations, a counterreading, and a falsifier ship with the conclusion. Failed gates produce a visible warning or abstention.</p></div></li>
-        <li><span>05</span><div><h3>Revise without erasing</h3><p>A later run creates a content-addressed revision. The previous revision remains retrievable and linked.</p></div></li>
-      </ol>
+      <div class="hm-feed-list">
+        <a href="/journal/feed.xml"><strong>Live eval results</strong><span>New sealed-run findings and revisions</span><code>RSS</code></a>
+        <a href="/evals/feed.xml"><strong>Eval methods journal</strong><span>Human-readable method changes and failures</span><code>RSS</code></a>
+        <a href="/news/instruments/feed.xml"><strong>Measurement updates</strong><span>Palimpsest's own current instrument results</span><code>RSS</code></a>
+        <a href="/news/feed.xml"><strong>Source index + measurements</strong><span>Clearly labeled publisher reports and instrument updates</span><code>RSS</code></a>
+      </div>
+      <div class="hm-inline-links">
+        <a class="hm-text-link" href="/feeds/">Compare all RSS and JSON feeds →</a>
+        <a class="hm-text-link" href="/evals/">Read the eval methods journal →</a>
+      </div>
     </div>
   </section>
 
   <section class="hm-relay" id="narcoscope-relay" data-narcoscope-relay data-relay-state="dated-fallback" aria-labelledby="narcoscope-relay-title">
     <div class="hm-wrap hm-relay__grid">
-      <p class="hm-relay__label">05 / Evidence relay<br><span data-ns-feed-state>Dated fallback</span></p>
-      <div class="hm-relay__copy">
+      <div>
+        <p class="hm-kicker">External evidence relay · <span data-ns-feed-state>Dated fallback</span></p>
         <h2 id="narcoscope-relay-title" data-ns-title>What the 2025 INCB precursor report says about China-linked incidents: and what it does not prove</h2>
-        <p data-ns-dek>Nine reported incidents, nearly five tonnes, and one crucial limit: reported origin is not causal attribution.</p>
-        <p>Data as of <time data-ns-data-as-of datetime="2026-08-12">12 Aug 2026</time>. <span data-ns-incidents>9</span> incidents. <span data-ns-tonnes>nearly 5 t</span>. Visual citation coverage: <span data-ns-citations>100%</span>.</p>
-        <p><a data-ns-story-link href="https://narcoscope.com/news/china-linked-precursor-incidents-official-record.html?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Read the NarcoScope investigation</a> · <a href="https://narcoscope.com/?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Enter the evidence atlas</a></p>
       </div>
-      <aside class="hm-relay__boundary">
-        <strong>Boundary</strong>
-        Reported origin is not causal attribution. This dossier does not become evidence for a Palimpsest censorship claim. The relay is a route between publications, not a merged score.
-      </aside>
+      <div class="hm-relay__record">
+        <p data-ns-dek>Nine reported incidents, nearly five tonnes, and one crucial limit: reported origin is not causal attribution.</p>
+        <dl><div><dt>Data as of</dt><dd><time data-ns-data-as-of datetime="2026-08-12">12 Aug 2026</time></dd></div><div><dt>Incidents</dt><dd data-ns-incidents>9</dd></div><div><dt>Upper-bound mass</dt><dd data-ns-tonnes>nearly 5 t</dd></div><div><dt>Visual citation coverage</dt><dd data-ns-citations>100%</dd></div></dl>
+        <p><a data-ns-story-link href="https://narcoscope.com/news/china-linked-precursor-incidents-official-record.html?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Read the NarcoScope investigation</a> · <a href="https://narcoscope.com/?ref=palimpsest_signal_relay" target="_blank" rel="noopener">Open NarcoScope</a></p>
+      </div>
+      <aside class="hm-relay__boundary"><strong>Boundary</strong><p>Reported origin is not causal attribution. This dossier does not become evidence for a Palimpsest censorship claim. The relay is a route between publications, not a merged score.</p></aside>
     </div>
   </section>
 
-  <section class="hm-method hm-network" id="scamshield" aria-labelledby="network-title">
+  <section class="hm-network" id="scamshield" aria-labelledby="network-title">
     <div class="hm-wrap">
-      <header class="hm-section-head">
-        <p>06 / Evidence network</p>
-        <h2 id="network-title">Useful together. Never collapsed together.</h2>
-        <a href="/evidence-capsules.html">Evidence Capsules</a>
+      <header class="hm-section-head hm-section-head--split">
+        <div><p class="hm-kicker">Evidence network</p><h2 id="network-title">Useful together. Never collapsed together.</h2></div>
+        <p>These are direct routes to separate public tools. A relationship between records is not a merged claim.</p>
       </header>
-      <ol class="hm-method__steps">
-        <li><span>PS</span><div><h3>Palimpsest</h3><p>Public observatory readings and citations. <a href="https://t.me/palimpsest_watch_bot" target="_blank" rel="noopener">Daily bot</a> · <a href="https://t.me/EvidenceSignalDesk" target="_blank" rel="noopener">Signal desk</a></p></div></li>
-        <li><span>NS</span><div><h3>NarcoScope</h3><p>Official-record evidence on illicit-market infrastructure. <a href="https://narcoscope.com/" target="_blank" rel="noopener">Website</a> · <a href="https://t.me/NarcoScopeEvidenceBot" target="_blank" rel="noopener">Evidence bot</a></p></div></li>
-        <li><span>SS</span><div><h3>ScamShield reviewed bridge</h3><p><code>scamshield-intelligence-pack/v1</code>, release <code>2026-08-08.2</code>, maps 18 public sources to 8 typologies. <code>HUMAN_REVIEW_REQUIRED</code> is mandatory. The levels describe evidence relationships, not guilt, and privacy-minimized candidates are never auto-published. <a href="/integrations/scamshield/intelligence-pack-v1.json">Public pack</a> · <a href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">ScamShield bot</a></p></div></li>
-      </ol>
+      <div class="hm-network__grid">
+        <article><span>PS</span><h3>Palimpsest</h3><p>Public observatory readings and citations.</p><p><a href="https://t.me/palimpsest_watch_bot" target="_blank" rel="noopener">Daily bot</a> · <a href="https://t.me/EvidenceSignalDesk" target="_blank" rel="noopener">Signal desk</a></p></article>
+        <article><span>NS</span><h3>NarcoScope</h3><p>Official-record evidence on illicit-market infrastructure.</p><p><a href="https://narcoscope.com/" target="_blank" rel="noopener">Website</a> · <a href="https://t.me/NarcoScopeEvidenceBot" target="_blank" rel="noopener">Evidence bot</a></p></article>
+        <article><span>SS</span><h3>ScamShield reviewed bridge</h3><p><code>scamshield-intelligence-pack/v1</code>, release <code>2026-08-08.2</code>, maps 18 public sources to 8 typologies. <code>HUMAN_REVIEW_REQUIRED</code> is mandatory. The levels describe evidence relationships, not guilt. Raw Telegram text is hashed and privacy-minimized candidates are never auto-published.</p><p><a href="/integrations/scamshield/intelligence-pack-v1.json">Public pack</a> · <a href="https://t.me/Scamshield_2_bot" target="_blank" rel="noopener">ScamShield bot</a></p></article>
+      </div>
     </div>
   </section>
 
-  <section class="hm-wrap hm-public-good" aria-labelledby="public-good-title">
-    <div>
-      <p class="hm-kicker">07 / Public good</p>
-      <h2 id="public-good-title">No paywall between a claim and the evidence needed to challenge it.</h2>
-    </div>
-    <div class="hm-public-good__copy">
-      <p>Palimpsest is free to read and open source. Funding supports collection, verification, maintenance, and durable public access. It does not buy a conclusion.</p>
-      <div class="hm-actions">
-        <a class="hm-action hm-action--primary" href="/fund.html">Fund the work</a>
-        <a class="hm-action" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Inspect the source</a>
+  <section class="hm-build-note" aria-labelledby="build-note-title">
+    <div class="hm-wrap hm-build-note__grid">
+      <div><p class="hm-kicker">AI assistance, named</p><h2 id="build-note-title">Automation is useful when its responsibility is visible.</h2></div>
+      <div>
+        <p>AI assistance accelerated this rebuild and supports parts of the development workflow. It is not presented as evidence. Published surfaces distinguish original sources, deterministic analysis, machine-authored text and human review; the code and tests are public.</p>
+        <p>Palimpsest's founder began the evaluation work after a screenshot showed a state-aligned model changing or withholding an answer about criticism of the Chinese Communist Party. One screenshot could not show a repeatable pattern and does not prove motive, so the observation became a frozen evaluation and a revision-safe registry. <a href="/readings/eval-assurance-latest.json">Inspect the machine-readable assurance report</a>.</p>
+        <div class="hm-actions">
+          <a class="hm-button hm-button--primary" href="/updates/2026-08-17-listening-pass/">See what changed after feedback</a>
+          <a class="hm-button" href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener">Inspect the source</a>
+        </div>
       </div>
     </div>
   </section>
@@ -427,14 +368,16 @@
     <span>PALIMPSEST · PUBLIC EVIDENCE</span>
     <p>Watch the censor. Never the censored.</p>
     <nav aria-label="Footer">
-      <a href="/developers.html">Developers</a>
-      <a href="/data.html#rights">Rights</a>
+      <a href="/feeds/">Feeds</a>
+      <a href="/developers.html">API + MCP</a>
+      <a href="/data.html">Data</a>
       <a href="#scamshield">ScamShield</a>
-      <a href="/llms.txt">llms.txt</a>
+      <a href="/fund.html">Fund</a>
     </nav>
   </div>
 </footer>
 
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}</script>
+<script src="/assets/network-relay.js" defer></script>
 </body>
 </html>

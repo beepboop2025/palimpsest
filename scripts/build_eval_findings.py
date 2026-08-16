@@ -506,7 +506,11 @@ def render_article(
 def build_json_feed(collection: Mapping[str, Any]) -> dict[str, Any]:
     items = []
     for article in collection["articles"]:
-        text = [article["thesis"]]
+        text = [
+            "ITEM TYPE: PALIMPSEST AI EVALUATION FINDING",
+            "Authorship: " + article["authorship"]["mode"],
+            article["thesis"],
+        ]
         for section in article["sections"]:
             text.append(section["heading"])
             for paragraph in section["paragraphs"]:
@@ -519,27 +523,30 @@ def build_json_feed(collection: Mapping[str, Any]) -> dict[str, Any]:
                 # a changing canonical page as the same old post forever.
                 "id": article["revision_id"],
                 "url": _absolute(article["url"]),
-                "title": article["title"],
-                "summary": article["dek"],
+                "title": "[Palimpsest eval finding] " + article["title"],
+                "summary": "Palimpsest AI evaluation finding. " + article["dek"],
                 "content_text": "\n\n".join(text),
                 "date_published": article["updated_at"],
                 "date_modified": article["updated_at"],
                 "authors": [{"name": article["authorship"]["byline"], "url": f"{SITE}/journal/"}],
                 "tags": ["AI evaluation", article["finding_state"]],
                 "_palimpsest": {
+                    "kind": "eval_finding",
                     "article_id": article["article_id"],
                     "revision_id": article["revision_id"],
                     "finding_state": article["finding_state"],
                     "citation_coverage": article["evaluation_receipt"]["citation_coverage"],
+                    "authorship_mode": article["authorship"]["mode"],
                 },
             }
         )
     return {
         "version": "https://jsonfeed.org/version/1.1",
-        "title": "Palimpsest Live Eval Findings",
+        "title": "Palimpsest AI eval results",
         "home_page_url": f"{SITE}/journal/",
         "feed_url": f"{SITE}/journal/feed.json",
-        "description": "Dated analysis from sealed AI evaluations, with controls and uncertainty attached.",
+        "description": "Palimpsest's own dated AI evaluation results, with controls, uncertainty, deterministic authorship and revision identity attached.",
+        "language": "en",
         "items": items,
     }
 
@@ -550,20 +557,23 @@ def build_rss(collection: Mapping[str, Any]) -> bytes:
         published = eval_articles._timestamp(article["updated_at"], "updated_at")
         items.append(
             "<item>"
-            f"<title>{xml_escape(article['title'])}</title>"
+            f"<title>{xml_escape('[Palimpsest eval finding] ' + article['title'])}</title>"
             f"<link>{xml_escape(_absolute(article['url']))}</link>"
             f"<guid isPermaLink=\"false\">{xml_escape(article['revision_id'])}</guid>"
             f"<pubDate>{email.utils.format_datetime(published)}</pubDate>"
-            f"<description>{xml_escape(article['dek'])}</description>"
+            f"<description>{xml_escape('Palimpsest AI evaluation finding. ' + article['dek'] + ' Authorship: ' + article['authorship']['mode'] + '.')}</description>"
+            "<category>palimpsest-eval-finding</category>"
             "</item>"
         )
     raw = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        '<rss version="2.0"><channel>'
-        "<title>Palimpsest Live Eval Findings</title>"
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
+        "<title>Palimpsest AI eval results</title>"
         f"<link>{SITE}/journal/</link>"
-        "<description>Dated analysis from sealed AI evaluations.</description>"
+        "<description>Palimpsest's own dated AI evaluation results, with controls, uncertainty, deterministic authorship and revision identity attached.</description>"
+        "<language>en</language>"
         f"<lastBuildDate>{email.utils.format_datetime(eval_articles._timestamp(collection['generated_at'], 'generated_at'))}</lastBuildDate>"
+        f'<atom:link href="{SITE}/journal/feed.xml" rel="self" type="application/rss+xml" />'
         + "".join(items)
         + "</channel></rss>"
     )

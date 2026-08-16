@@ -181,7 +181,8 @@ def test_rss_json_feed_and_html_publish_every_entry_with_analysis(publication):
     assert page.startswith("<!doctype html>")
     assert '<main id="main">' in page
     assert page.count('class="cs-entry"') == 40
-    assert "Why Palimpsest says that" in page
+    assert "What Palimpsest adds" in page
+    assert "Why this is the bounded position" in page
     assert "Next verification moves" in page
     assert "Known unknowns and method limits" in page
     assert "/news/china/feed.xml" in page
@@ -242,8 +243,9 @@ def test_build_outputs_adds_paginated_stream_and_machine_formats(publication):
     assert Path("news/china/analysis/feed.json") in outputs
     assert Path("readings/china-censorship-analysis-latest.json") in outputs
     newsroom_index = outputs[Path("news/index.html")].decode()
-    assert 'href="/news/china/analysis/">Today\'s censorship analysis</a>' in newsroom_index
-    assert 'href="/news/china/analysis/">Censorship analysis</a>' in newsroom_index
+    assert 'href="/news/china/analysis/"' in newsroom_index
+    assert "Open the latest cross-instrument result" in newsroom_index
+    assert '<b>Censorship analysis</b>' in newsroom_index
     for page in range(2, n_pages + 1):
         assert Path("news/china/page") / str(page) / "index.html" in outputs
     sitemap = outputs[Path("news/sitemap.xml")].decode()

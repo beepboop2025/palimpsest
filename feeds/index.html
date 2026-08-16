@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feeds by job | Palimpsest</title>
+  <meta name="description" content="Compare every Palimpsest RSS and JSON feed by purpose, added value and evidence limit before subscribing.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://palimpsest.info/feeds/">
+  <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+  <link rel="stylesheet" href="/dashboards/assets/tikto.css">
+  <link rel="stylesheet" href="/assets/shell.css">
+  <link rel="stylesheet" href="/assets/public-notes.css">
+</head>
+<body class="ps public-note feeds-page">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/journal/">Findings</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Source index</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">Open a current measurement. Each page shows the result, source receipt, freshness and limit.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Current results</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>See reporting status and current evidence</span></a>
+            <a href="/osint-china.html"><b>Signal board</b><span>Inspect every signal and its freshness</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>Read the current six-hour measurement brief</span></a>
+            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the latest cross-instrument result</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Inspect the record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Check access, rights, readiness and limits</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Check publication clocks and revisions</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live deletion monitor</b><span>Open the deletion tracker</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3" data-within="">Tools + feeds<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">Go directly to something usable. These links open a tool, data file, feed or verification surface.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use a tool</p>
+            <a href="/guides/telegram-scam-message-checker/"><b>Check a scam message</b><span>Open the Telegram checker and privacy guide</span></a>
+            <a href="/readings/eval-registry.html"><b>Verify an AI eval</b><span>Inspect preregistrations, run seals and chain roots</span></a>
+            <a href="/evidence-capsules.html"><b>Verify a claim offline</b><span>Download a claim with its exact supporting bytes</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Subscribe or build</p>
+            <a href="/feeds/" aria-current="page"><b>Feeds directory<span class="ps-tag">new</span></b><span>Choose the RSS or JSON feed for your task</span></a>
+            <a href="/evals/"><b>Eval methods journal</b><span>Read method changes, failures and falsifiers</span></a>
+            <a href="/data.html"><b>Download data</b><span>Open every public dataset and licence</span></a>
+            <a href="/developers.html"><b>API + MCP</b><span>Call the read-only tools and inspect the contracts</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Method</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-5">
+        <p class="ps-flyout__lede">See what changed after feedback, inspect the source, or support the public work.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Project</p>
+            <a href="/updates/2026-08-17-listening-pass/"><b>What changed after feedback<span class="ps-tag">new</span></b><span>Read the criticism-to-change ledger</span></a>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall and no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main">
+  <header class="pn-hero">
+    <div class="pn-wrap pn-hero__grid">
+      <div>
+        <p class="pn-kicker">RSS + JSON Feed directory</p>
+        <h1>Follow the work, not the product map.</h1>
+        <p class="pn-hero__lede">Seven feed pairs serve seven different jobs. This page says what each one adds and what it cannot establish before you subscribe.</p>
+      </div>
+      <aside class="pn-hero__aside" aria-label="Feed audit summary">
+        <dl>
+          <div><dt>Public endpoints</dt><dd>7 RSS + 7 JSON Feed</dd></div>
+          <div><dt>Formats</dt><dd>RSS 2.0 and JSON Feed 1.1</dd></div>
+          <div><dt>Cache policy</dt><dd>Network-only for current editions</dd></div>
+          <div><dt>Last audit</dt><dd>17 August 2026</dd></div>
+        </dl>
+      </aside>
+    </div>
+  </header>
+
+  <section class="pn-section" aria-labelledby="feed-list-title">
+    <div class="pn-wrap">
+      <header class="pn-section__head">
+        <div><p class="pn-kicker">Choose by purpose</p><h2 id="feed-list-title">Every public feed</h2></div>
+        <p>RSS is for ordinary readers. JSON Feed carries additional typed Palimpsest metadata for software and agents.</p>
+      </header>
+      <div class="pn-feed-grid">
+        <article class="pn-feed">
+          <div><h3>Live AI eval findings</h3><p class="pn-feed__kind">Palimpsest result</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You want each newly verified run or changed finding.</dd></div><div><dt>Adds</dt><dd>Controls, uncertainty, revision identity and sentence-level evidence coverage.</dd></div><div><dt>Does not</dt><dd>Turn a clean control or sealed hash into proof that the evaluation construct is valid.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/journal/feed.xml">RSS</a><a class="pn-chip" href="/journal/feed.json">JSON Feed</a><a class="pn-chip" href="/journal/">Reader view</a></div></div>
+        </article>
+        <article class="pn-feed">
+          <div><h3>AI eval methods journal</h3><p class="pn-feed__kind">Palimpsest method</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You want method changes, failed assumptions and longer explanations.</dd></div><div><dt>Adds</dt><dd>Named claims, falsifiers, evidence attachments and a content hash.</dd></div><div><dt>Does not</dt><dd>Replace the live findings feed when you need the current run state.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/evals/feed.xml">RSS</a><a class="pn-chip" href="/evals/feed.json">JSON Feed</a><a class="pn-chip" href="/evals/">Reader view</a></div></div>
+        </article>
+        <article class="pn-feed">
+          <div><h3>Instrument measurements</h3><p class="pn-feed__kind">Palimpsest result</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You only want Palimpsest's own observatory measurements.</dd></div><div><dt>Adds</dt><dd>Current metric, denominator, source receipt, status and explicit limitation.</dd></div><div><dt>Does not</dt><dd>Include the external publisher source index or infer a cause from co-movement.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/instruments/feed.xml">RSS</a><a class="pn-chip" href="/news/instruments/feed.json">JSON Feed</a><a class="pn-chip" href="/news/#instruments">Reader view</a></div></div>
+        </article>
+        <article class="pn-feed">
+          <div><h3>Source index + measurements</h3><p class="pn-feed__kind">Mixed and explicitly labeled</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You need one machine-readable stream of indexed publisher reports and Palimpsest measurements.</dd></div><div><dt>Adds</dt><dd>Source grouping, revision identity, evidence-strength labels and measurement updates.</dd></div><div><dt>Does not</dt><dd>Independently verify a publisher report. Single-source entries stay labeled as source reports.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/feed.xml">RSS</a><a class="pn-chip" href="/news/feed.json">JSON Feed</a><a class="pn-chip" href="/news/">Reader view</a></div></div>
+        </article>
+        <article class="pn-feed">
+          <div><h3>China source index</h3><p class="pn-feed__kind">Publisher report + next checks</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You want China-relevant publisher items with the next verification move attached.</dd></div><div><dt>Adds</dt><dd>A source relationship, bounded position, known unknowns and direct evidence-dossier link.</dd></div><div><dt>Does not</dt><dd>Republish an article as a Palimpsest conclusion or guarantee the source report is true.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/china/feed.xml">RSS</a><a class="pn-chip" href="/news/china/feed.json">JSON Feed</a><a class="pn-chip" href="/news/china/">Reader view</a></div></div>
+        </article>
+        <article class="pn-feed">
+          <div><h3>China censorship analysis</h3><p class="pn-feed__kind">Palimpsest analysis</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You want the latest cross-instrument China censorship finding.</dd></div><div><dt>Adds</dt><dd>Sentence-level receipts, citation coverage, finding state and a revision ID.</dd></div><div><dt>Does not</dt><dd>Collapse unlike instruments or convert missing data into evidence of calm.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/china/analysis/feed.xml">RSS</a><a class="pn-chip" href="/news/china/analysis/feed.json">JSON Feed</a><a class="pn-chip" href="/news/china/analysis/">Reader view</a></div></div>
+        </article>
+        <article class="pn-feed">
+          <div><h3>Reviewed Telegram context</h3><p class="pn-feed__kind">Unverified context</p></div>
+          <div><dl><div><dt>Use when</dt><dd>You want sanitized, human-reviewed context that may suggest a later check.</dd></div><div><dt>Adds</dt><dd>Uncertainty, privacy boundary and next checks without raw messages or identifiers.</dd></div><div><dt>Does not</dt><dd>Count as evidence or corroboration, establish prevalence, or identify a person or network.</dd></div></dl><div class="pn-feed__links"><a class="pn-chip pn-chip--primary" href="/news/china/whispers/feed.xml">RSS</a><a class="pn-chip" href="/news/china/whispers/feed.json">JSON Feed</a><a class="pn-chip" href="/news/china/whispers/">Reader view</a></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="pn-section" aria-labelledby="labels-title">
+    <div class="pn-wrap">
+      <header class="pn-section__head"><div><p class="pn-kicker">Reading labels</p><h2 id="labels-title">Four kinds of item</h2></div><p>The label tells you what kind of responsibility Palimpsest takes for the item.</p></header>
+      <div class="pn-legend">
+        <div><strong>Palimpsest result</strong><p>A reproducible output from a named instrument or sealed eval.</p></div>
+        <div><strong>Palimpsest analysis</strong><p>A bounded interpretation with citations, countercases and limits.</p></div>
+        <div><strong>Source report</strong><p>A publisher's claim, kept attributed and linked to the original.</p></div>
+        <div><strong>Unverified context</strong><p>A reviewed lead for follow-up that does not count as corroboration.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="pn-footer"><div class="pn-wrap"><span>Palimpsest feed directory</span><span><a href="/developers.html">API + MCP</a> · <a href="/data.html">All data</a> · <a href="/">Home</a></span></div></footer>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

@@ -81,7 +81,9 @@ def test_home_is_bounded_but_keeps_economic_and_accountability_context(publicati
     assert pulse["economic_state"]["claim"] in text
     assert "The composite still abstains" in text
     assert "Every feed answered for" in text
-    assert f"{feed['n_stories']} instruments" in text
+    assert f"{feed['n_stories']} measurements" in text
+    assert "Measurements first. Source reports clearly labeled." in text
+    assert "This is not a replacement newspaper." in text
 
 
 def test_lead_selection_prefers_evidence_then_explicit_release_then_recency() -> None:
@@ -150,8 +152,9 @@ def test_every_event_has_a_human_page_current_json_and_immutable_revision(public
         text = page.decode("utf-8")
         assert _one_h1(page)
         assert "Evidence matrix" in text
-        assert "Palimpsest analysis" in text
-        assert "What Palimpsest concludes" in text
+        assert "Palimpsest addition" in text
+        assert "What Palimpsest adds to this source report" in text
+        assert "Publisher reports · attributed, not adopted" in text
         assert "What this dossier cannot establish" in text
         assert "cannot establish cause" in text
         assert json.loads(outputs[base / "story.json"]) == event
@@ -178,7 +181,7 @@ def test_every_event_has_a_human_page_current_json_and_immutable_revision(public
                 / f"{analysis['analysis_id']}.json"
             ]
         ) == analysis
-        assert "Palimpsest analysis JSON" in text
+        assert "Palimpsest addition JSON" in text
 
     # Existing instrument briefs remain first-class and revision-addressable.
     for story in feed["stories"]:
@@ -251,7 +254,7 @@ def test_chinese_feed_text_has_script_specific_language_metadata(publication) ->
     assert f'<small lang="zh-Hant">{dek}</small>' in rendered
     assert '"inLanguage":"zh-Hant"' in rendered
     assert '<h3 lang="zh-Hant">' in card
-    assert '<h1 id="lead-headline" lang="zh-Hant">' in lead
+    assert '<h2 id="source-index-headline" lang="zh-Hant">' in lead
 
 
 def test_language_inference_does_not_mislabel_english_translation() -> None:
@@ -294,7 +297,15 @@ def test_unified_machine_feeds_have_stable_unique_dossier_ids(publication) -> No
     assert len(ids) == len(set(ids)) == wire["n_events"] + feed["n_stories"]
     assert event_ids <= set(ids)
     event_items = [item for item in json_feed["items"] if item["id"] in event_ids]
-    assert all(item["_palimpsest"]["kind"] == "event_dossier" for item in event_items)
+    assert all(
+        item["_palimpsest"]["kind"] == "publisher_source_record"
+        for item in event_items
+    )
+    assert all(
+        item["title"].startswith("[Source report]")
+        or item["title"].startswith("[Corroborated source report]")
+        for item in event_items
+    )
 
     rss = ElementTree.fromstring(outputs[Path("news/feed.xml")])
     guids = [node.text for node in rss.findall("./channel/item/guid")]

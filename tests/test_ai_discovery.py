@@ -212,8 +212,8 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert "https://t.me/NarcoScopeEvidenceBot" in home
     assert "https://t.me/palimpsest_watch_bot" in home
     assert "https://t.me/EvidenceSignalDesk" in home
-    assert '("/developers.html", "Developers"' in nav
-    assert '"Eval Journal", "href": "/evals/"' in nav
+    assert '("/developers.html", "API + MCP"' in nav
+    assert '("/evals/", "Eval methods journal"' in nav
 
     card = _json("product-card.json")
     assert card["access"]["narcoscope_website"] == "https://narcoscope.com/"
@@ -224,16 +224,17 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
 
 def test_home_exposes_an_attributed_daily_observatory_read():
     home = (ROOT / "index.html").read_text(encoding="utf-8")
-    hero = home[home.index('<header class="hero'):
-                home.index('</header>', home.index('<header class="hero'))]
     telegram = (
         "https://t.me/palimpsest_watch_bot?start=palimpsest_home_hero"
     )
 
-    assert f'href="{telegram}"' in hero
-    assert "Get the daily observatory read" in hero
-    assert 'target="_blank" rel="noopener noreferrer"' in hero
-    assert hero.index(telegram) < hero.index('href="/data.html"')
+    assert f'href="{telegram}"' in home
+    assert "Get the daily observatory read" in home
+    assert 'target="_blank" rel="noopener noreferrer"' in home
+    task_section = home[home.index('<section class="hm-use"'):
+                        home.index('</section>', home.index('<section class="hm-use"'))]
+    assert telegram in task_section
+    assert 'href="/china/">Open China Observatory' in task_section
 
 
 def test_evidence_atlas_is_discoverable_by_humans_and_agents():
