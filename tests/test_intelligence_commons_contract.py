@@ -343,7 +343,7 @@ def test_narcoscope_pin_receipt_binds_current_bytes_and_keeps_prior_revision() -
     }
     assert receipt["schema"] == "palimpsest-partner-pin/v1"
     assert schema["properties"]["schema"]["const"] == receipt["schema"]
-    assert receipt["current"]["data_as_of"] == "2026-08-15"
+    assert receipt["current"]["data_as_of"] == "2026-08-16"
     assert receipt["current"]["sha256"] == hashlib.sha256(artifact_bytes).hexdigest()
     assert receipt["superseded"][0]["data_as_of"] == "2026-08-03"
 
