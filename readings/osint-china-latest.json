@@ -25,7 +25,7 @@
       "title": "Baike redaction: degraded"
     }
   ],
-  "generated_at": "2026-08-16T13:09:20Z",
+  "generated_at": "2026-08-16T13:25:33Z",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "health": {
     "counts": {
@@ -42,7 +42,7 @@
     "required_total": 29,
     "status": "healthy"
   },
-  "input_commit": "b026dc23321d091ad5f1404b79f8b43b77ca1098",
+  "input_commit": "e6b8ba002d6f5f7be884919b23c7b283abad61e4",
   "layers": [
     {
       "id": "command",
@@ -176,9 +176,9 @@
   "signals": [
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:12:13Z",
+      "freshness_deadline": "2026-08-17T03:21:48Z",
       "health": {
-        "age_hours": 10.952,
+        "age_hours": 0.062,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -188,9 +188,9 @@
       },
       "id": "board-alarm",
       "input": {
-        "bytes": 10154,
+        "bytes": 10259,
         "filename": "board-alarm-latest.json",
-        "sha256": "150d38eaa6b51a361c0ad3e2a1339719854f8f30ec0896646c69d83f99e97633"
+        "sha256": "2caaa6fd71725d5f50338384bb2548402992e43e9dea629595bcd09f0bb45dae"
       },
       "layer": "command",
       "live": true,
@@ -200,11 +200,11 @@
         "denominator": null,
         "label": "board e-value",
         "unit": "e-value",
-        "value": 31.141
+        "value": 25.929
       },
       "optional": false,
       "payload": {
-        "board_e_value": 31.141,
+        "board_e_value": 25.929,
         "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
         "caveats": [
           "layer co-movement is evidence of CO-MOVEMENT, not of a common cause: two layers can rise together under one directive or under one holiday; this reading reports the coincidence and does not name a cause",
@@ -219,27 +219,27 @@
         "fdr_selection": {
           "alpha": 0.1,
           "k": 1,
-          "n_tested": 8,
+          "n_tested": 10,
           "selected": [
             "censored_planet"
           ],
-          "threshold": 80.0
+          "threshold": 100.0
         },
-        "generated_at": "2026-08-16T02:12:13.277025+00:00",
+        "generated_at": "2026-08-16T13:21:48.944923+00:00",
         "headline": "single layer elevated: network",
         "layer_coincidence": 1,
         "layers": {
           "content": {
             "corroborated": true,
-            "e": 7.346,
+            "e": 7.656,
             "n_signals": 6,
             "recent_alarms": [],
             "signals": {
-              "data_darkness": 17.942,
-              "ddti_novelty": 15.739,
-              "ddti_threat": 4.416,
-              "gdelt_containment": 2.757,
-              "github_refuge": 2.225,
+              "data_darkness": 31.062,
+              "ddti_novelty": 7.08,
+              "ddti_threat": 2.124,
+              "gdelt_containment": 2.749,
+              "github_refuge": 1.921,
               "weibo_suppression": 1.0
             },
             "state": "calm"
@@ -254,14 +254,16 @@
           },
           "network": {
             "corroborated": true,
-            "e": 102.525,
-            "n_signals": 2,
+            "e": 53.338,
+            "n_signals": 4,
             "recent_alarms": [
               "ooni_gfw"
             ],
             "signals": {
               "censored_planet": 204.051,
-              "ioda_outages": 1.0
+              "ioda_outages": 1.0,
+              "ooni_gfw": 0.771,
+              "tor_bridge_cn": 7.531
             },
             "state": "elevated"
           }
@@ -323,53 +325,53 @@
           "data_darkness": {
             "direction": "up",
             "driver_side": "up",
-            "e": 17.9416,
+            "e": 31.0619,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
-            "n": 14,
+            "n": 15,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
-            "robust_z": 1.43,
+            "robust_z": 1.36,
             "state": "calm"
           },
           "ddti_novelty": {
             "direction": "down",
             "driver_side": "down",
-            "e": 15.7389,
+            "e": 7.0805,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 288,
+            "n": 292,
             "n_alarms_in_history": 2,
-            "readings_since_alarm": 30,
+            "readings_since_alarm": 34,
             "robust_z": -12.14,
             "state": "calm"
           },
           "ddti_threat": {
             "direction": "down",
-            "driver_side": "up",
-            "e": 4.4159,
+            "driver_side": "down",
+            "e": 2.1238,
             "meaning": "peak censor attention on one term",
-            "n": 288,
+            "n": 292,
             "n_alarms_in_history": 4,
-            "readings_since_alarm": 49,
-            "robust_z": -0.52,
+            "readings_since_alarm": 53,
+            "robust_z": -0.71,
             "state": "calm"
           },
           "gdelt_containment": {
-            "direction": "up",
-            "driver_side": "up",
-            "e": 2.7574,
+            "direction": "down",
+            "driver_side": "down",
+            "e": 2.7494,
             "meaning": "terms loud abroad while censored at home",
-            "n": 161,
+            "n": 162,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
-            "robust_z": 0.67,
+            "robust_z": -1.01,
             "state": "calm"
           },
           "github_refuge": {
             "direction": "flat",
             "driver_side": "down",
-            "e": 2.2246,
+            "e": 1.9206,
             "meaning": "takedown/pressure events on refuge repositories",
-            "n": 80,
+            "n": 81,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": 0.0,
@@ -380,7 +382,7 @@
             "driver_side": "up",
             "e": 1.0,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 111,
+            "n": 113,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": null,
@@ -388,17 +390,17 @@
           },
           "ooni_gfw": {
             "direction": "down",
-            "driver_side": null,
-            "e": 0.0,
+            "driver_side": "up",
+            "e": 0.7714,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 154,
+            "n": 156,
             "n_alarms_in_history": 2,
-            "readings_since_alarm": 7,
-            "robust_z": -0.27,
-            "state": "warming_up"
+            "readings_since_alarm": 9,
+            "robust_z": -0.22,
+            "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 7.5,
+            "age_hours": 7.6,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -412,7 +414,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -421,7 +423,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -430,7 +432,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -439,14 +441,14 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               }
             },
             "n_models": 4,
-            "n_rows": 8,
-            "reason": "burn-in in progress: furthest model has 2 of 21 adjacent-run pairs",
+            "n_rows": 16,
+            "reason": "burn-in in progress: furthest model has 4 of 21 adjacent-run pairs",
             "state": "calibrating"
           },
           "refusal_drift": {
@@ -461,19 +463,22 @@
             "state": "no_data"
           },
           "tor_bridge_cn": {
-            "age_hours": 122.2,
-            "bound_hours": 120.0,
+            "direction": "up",
+            "driver_side": "down",
+            "e": 7.5306,
             "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
-            "n": 400,
-            "reason": "newest row is 122.2h old, past the 120h bound",
-            "state": "stale"
+            "n": 402,
+            "n_alarms_in_history": 6,
+            "readings_since_alarm": 97,
+            "robust_z": 0.72,
+            "state": "calm"
           },
           "weibo_suppression": {
             "direction": "flat",
             "driver_side": "up",
             "e": 1.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 110,
+            "n": 111,
             "n_alarms_in_history": 0,
             "readings_since_alarm": null,
             "robust_z": null,
@@ -484,16 +489,16 @@
       "raw_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "scope": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T02:12:13Z",
+      "source_timestamp": "2026-08-16T13:21:48Z",
       "status": "live",
-      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: single layer elevated: network. Latest payload reports board e-value at 31.141 e-value.",
+      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: single layer elevated: network. Latest payload reports board e-value at 25.929 e-value.",
       "title": "Board alarm"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:10:25Z",
+      "freshness_deadline": "2026-08-17T03:19:40Z",
       "health": {
-        "age_hours": 10.982,
+        "age_hours": 0.098,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -503,9 +508,9 @@
       },
       "id": "event-flags",
       "input": {
-        "bytes": 6334,
+        "bytes": 6268,
         "filename": "event-flags-latest.json",
-        "sha256": "89bd596347de22807420316e28cc7f6989b3ce89ed15899b87a9ee958b51e599"
+        "sha256": "03466f48097842eaa6fd88e9d368190f5fdfc797921402a62b2174f186a593f2"
       },
       "layer": "command",
       "live": true,
@@ -518,7 +523,7 @@
         },
         "label": "signals reporting",
         "unit": "count",
-        "value": 12
+        "value": 13
       },
       "optional": false,
       "payload": {
@@ -528,19 +533,19 @@
         "closed": [
           "refusal_drift"
         ],
-        "generated_at": "2026-08-16T02:10:25.547570+00:00",
+        "generated_at": "2026-08-16T13:19:40.534543+00:00",
         "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
         "headline": "elevated: censored_planet",
         "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
         "n_open": 14,
-        "n_reporting": 12,
+        "n_reporting": 13,
         "n_signals": 15,
         "no_data": [
           "silence_blackouts"
         ],
         "signals": {
           "bleedthrough_capacity": {
-            "age_hours": 16.2,
+            "age_hours": 27.3,
             "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity",
             "n": 8,
             "n_alarms_in_history": 0,
@@ -548,7 +553,7 @@
             "state": "warming_up"
           },
           "bleedthrough_pools": {
-            "age_hours": 71.8,
+            "age_hours": 82.9,
             "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
             "n": 1,
             "n_alarms_in_history": 0,
@@ -556,7 +561,7 @@
             "state": "warming_up"
           },
           "censored_planet": {
-            "age_hours": 43.2,
+            "age_hours": 54.4,
             "meaning": "remote-vantage interference rate",
             "n": 26,
             "n_alarms_in_history": 0,
@@ -564,49 +569,49 @@
             "state": "watch"
           },
           "data_darkness": {
-            "age_hours": 26.2,
+            "age_hours": 13.3,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
-            "n": 14,
+            "n": 15,
             "n_alarms_in_history": 0,
-            "stat": 17.9416,
+            "stat": 31.0619,
             "state": "calm"
           },
           "ddti_novelty": {
-            "age_hours": 0.2,
+            "age_hours": 0.3,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 288,
+            "n": 292,
             "n_alarms_in_history": 2,
-            "stat": 15.7389,
+            "stat": 7.0805,
             "state": "calm"
           },
           "ddti_threat": {
-            "age_hours": 0.2,
+            "age_hours": 0.3,
             "meaning": "peak censor attention on one term",
-            "n": 288,
+            "n": 292,
             "n_alarms_in_history": 4,
-            "stat": 4.4159,
+            "stat": 2.1238,
             "state": "calm"
           },
           "gdelt_containment": {
-            "age_hours": 7.1,
+            "age_hours": 11.1,
             "meaning": "terms loud abroad while censored at home",
-            "n": 161,
+            "n": 162,
             "n_alarms_in_history": 0,
-            "stat": 2.7574,
+            "stat": 2.7494,
             "state": "calm"
           },
           "github_refuge": {
-            "age_hours": 0.0,
+            "age_hours": 0.1,
             "meaning": "takedown/pressure events on refuge repositories",
-            "n": 80,
+            "n": 81,
             "n_alarms_in_history": 0,
-            "stat": 2.2246,
+            "stat": 1.9206,
             "state": "calm"
           },
           "ioda_outages": {
             "age_hours": 0.2,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 111,
+            "n": 113,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
@@ -614,13 +619,13 @@
           "ooni_gfw": {
             "age_hours": 0.2,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 154,
+            "n": 156,
             "n_alarms_in_history": 2,
-            "stat": 0.0,
-            "state": "warming_up"
+            "stat": 0.7714,
+            "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 7.5,
+            "age_hours": 7.6,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -634,7 +639,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -643,7 +648,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -652,7 +657,7 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               },
@@ -661,14 +666,14 @@
                 "monitored_comparisons": null,
                 "p0": null,
                 "pairs_needed": 21,
-                "pairs_seen": 2,
+                "pairs_seen": 4,
                 "state": "calibrating",
                 "undetectable_at_or_below": null
               }
             },
             "n_models": 4,
-            "n_rows": 8,
-            "reason": "burn-in in progress: furthest model has 2 of 21 adjacent-run pairs",
+            "n_rows": 16,
+            "reason": "burn-in in progress: furthest model has 4 of 21 adjacent-run pairs",
             "state": "calibrating"
           },
           "refusal_drift": {
@@ -683,39 +688,37 @@
             "state": "no_data"
           },
           "tor_bridge_cn": {
-            "age_hours": 122.2,
-            "bound_hours": 120.0,
+            "age_hours": 85.3,
             "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
-            "n": 400,
-            "reason": "newest row is 122.2h old, past the 120h bound",
-            "state": "stale"
+            "n": 402,
+            "n_alarms_in_history": 6,
+            "stat": 7.5306,
+            "state": "calm"
           },
           "weibo_suppression": {
             "age_hours": 0.0,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 110,
+            "n": 111,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
           }
         },
-        "stale": [
-          "tor_bridge_cn"
-        ]
+        "stale": []
       },
       "raw_url": "https://palimpsest.info/readings/event-flags-latest.json",
       "scope": "Per-signal conformal event states, including non-reporting and stale series.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T02:10:25Z",
+      "source_timestamp": "2026-08-16T13:19:40Z",
       "status": "live",
-      "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: elevated: censored_planet. Latest payload reports signals reporting at 12 count across 15 signals configured.",
+      "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: elevated: censored_planet. Latest payload reports signals reporting at 13 count across 15 signals configured.",
       "title": "Event flags"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:12:13Z",
+      "freshness_deadline": "2026-08-17T03:21:49Z",
       "health": {
-        "age_hours": 10.952,
+        "age_hours": 0.062,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -725,9 +728,9 @@
       },
       "id": "coverage-guard",
       "input": {
-        "bytes": 4505,
+        "bytes": 4507,
         "filename": "coverage-guard-latest.json",
-        "sha256": "bb952949044eb329cdefaa9d3366e10cc8b1f51703fbae7fe83ce59ad32cce24"
+        "sha256": "1dc96b5904539fdf023f842c5186bfe792befc9b264031e28ba40fd03bf63445"
       },
       "layer": "command",
       "live": true,
@@ -749,7 +752,7 @@
         "confounded": [
           "ddti_novelty"
         ],
-        "generated_at": "2026-08-16T02:12:13.347526+00:00",
+        "generated_at": "2026-08-16T13:21:49.025507+00:00",
         "headline": "coverage-confounded, do not read as censorship change: ddti_novelty",
         "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
         "signals": {
@@ -758,9 +761,9 @@
             "denominator_is": "official surfaces reachable from this vantage this round — the index is a mean over whichever surfaces answered, so a vantage losing one surface shifts composition and the guard must own that",
             "denominator_now": 6.0,
             "denominator_robust_z": null,
-            "metric_now": 0.5753,
-            "metric_robust_z": 1.43,
-            "n_pairs": 14,
+            "metric_now": 0.5968,
+            "metric_robust_z": 1.36,
+            "n_pairs": 15,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -770,15 +773,15 @@
             "denominator_now": 207.0,
             "denominator_robust_z": 1.35,
             "fit": {
-              "correlation": -0.774,
-              "intercept": 69.3798,
-              "slope": -0.256528
+              "correlation": -0.782,
+              "intercept": 70.2677,
+              "slope": -0.261973
             },
             "metric_now": 11.0,
             "metric_robust_z": -12.14,
-            "n_pairs": 288,
-            "note": "the measurement base moved 19.7% at the same time and tracks this metric historically (r=-0.77); conditioning on it shrinks the departure from z=-12.1 to z=-1.5. This reading is NOT evidence of a censorship change.",
-            "residual_robust_z": -1.47,
+            "n_pairs": 292,
+            "note": "the measurement base moved 19.7% at the same time and tracks this metric historically (r=-0.78); conditioning on it shrinks the departure from z=-12.1 to z=-1.5. This reading is NOT evidence of a censorship change.",
+            "residual_robust_z": -1.52,
             "verdict": "COVERAGE_CONFOUNDED"
           },
           "ddti_threat": {
@@ -786,9 +789,9 @@
             "denominator_is": "distinct terms extracted from the CDT deletion stream",
             "denominator_now": 207.0,
             "denominator_robust_z": 1.35,
-            "metric_now": 1.187,
-            "metric_robust_z": -0.52,
-            "n_pairs": 288,
+            "metric_now": 1.0121,
+            "metric_robust_z": -0.71,
+            "n_pairs": 292,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -797,9 +800,9 @@
             "denominator_is": "terms carried into the GDELT cross-signal",
             "denominator_now": 25.0,
             "denominator_robust_z": null,
-            "metric_now": 7.0,
-            "metric_robust_z": 0.67,
-            "n_pairs": 161,
+            "metric_now": 2.0,
+            "metric_robust_z": -1.01,
+            "n_pairs": 162,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -810,18 +813,18 @@
             "denominator_robust_z": null,
             "metric_now": 1.0,
             "metric_robust_z": 0.0,
-            "n_pairs": 80,
+            "n_pairs": 81,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
           "ooni_gfw": {
-            "denominator_change_pct": 1.8,
+            "denominator_change_pct": 1.9,
             "denominator_is": "OONI probe measurements in the rolling window",
-            "denominator_now": 274826.0,
-            "denominator_robust_z": 0.15,
+            "denominator_now": 275574.0,
+            "denominator_robust_z": 0.17,
             "metric_now": 58.8,
-            "metric_robust_z": -0.27,
-            "n_pairs": 154,
+            "metric_robust_z": -0.22,
+            "n_pairs": 156,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -838,7 +841,7 @@
             "denominator_robust_z": null,
             "metric_now": 0.0,
             "metric_robust_z": null,
-            "n_pairs": 110,
+            "n_pairs": 111,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           }
@@ -847,16 +850,16 @@
       "raw_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
       "scope": "Checks whether apparent movement is confounded by changing measurement coverage.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T02:12:13Z",
+      "source_timestamp": "2026-08-16T13:21:49Z",
       "status": "live",
       "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: coverage-confounded, do not read as censorship change: ddti_novelty. Latest payload reports confounded signals at 1 count.",
       "title": "Coverage guard"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:12:13Z",
+      "freshness_deadline": "2026-08-17T03:21:49Z",
       "health": {
-        "age_hours": 10.952,
+        "age_hours": 0.062,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -868,7 +871,7 @@
       "input": {
         "bytes": 13304,
         "filename": "forecast-ledger-latest.json",
-        "sha256": "b987b276fb9ccf742afa02787322d5afb4f4db3d7ccb6a06de8af27f27547175"
+        "sha256": "1513fbfb7224b6648b3769dc3d8fe091c910f51bd2e5497d57138061f76b026c"
       },
       "layer": "command",
       "live": true,
@@ -877,7 +880,7 @@
       "metric": {
         "denominator": {
           "label": "forecasts",
-          "value": 1390
+          "value": 1404
         },
         "label": "empirical coverage",
         "unit": "ratio",
@@ -894,16 +897,16 @@
         "excluded": {
           "bleedthrough_capacity": "needs 20 readings, has 8",
           "bleedthrough_pools": "needs 20 readings, has 1",
-          "data_darkness": "needs 20 readings, has 14",
+          "data_darkness": "needs 20 readings, has 15",
           "ioda_outages": "history logs state transitions, not a regular series",
           "silence_blackouts": "needs 20 readings, has 0",
           "weibo_suppression": "history logs state transitions, not a regular series"
         },
-        "generated_at": "2026-08-16T02:12:13.381441+00:00",
-        "headline": "8 signals scored over 1390 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
+        "generated_at": "2026-08-16T13:21:49.062918+00:00",
+        "headline": "8 signals scored over 1404 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
         "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
         "n_beating_baseline": 3,
-        "n_forecasts": 1390,
+        "n_forecasts": 1404,
         "n_signals_scored": 8,
         "nominal_coverage": 0.8,
         "not_yet_scoreable": "term-level escalation calls from processors/forecaster.py are not scored here: resolving them needs the full ranked term list preserved at each reading, and readings/ddti-history.jsonl currently stores only the top term. Scoring them requires that list to start being written; it cannot be reconstructed.",
@@ -947,13 +950,13 @@
             "beats_baseline": true,
             "coverage_gap_pp": 16.4,
             "empirical_coverage": 0.964,
-            "n_forecasts": 277,
+            "n_forecasts": 281,
             "n_misses": 10,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.002,
-            "wis": 0.1012,
-            "wis_baseline_fixed_quantile": 0.1014,
+            "wis": 0.0998,
+            "wis_baseline_fixed_quantile": 0.0999,
             "worst_misses": [
               {
                 "actual": 21.0,
@@ -1009,15 +1012,15 @@
           },
           "ddti_threat": {
             "beats_baseline": true,
-            "coverage_gap_pp": 3.8,
-            "empirical_coverage": 0.838,
-            "n_forecasts": 277,
+            "coverage_gap_pp": 4.0,
+            "empirical_coverage": 0.84,
+            "n_forecasts": 281,
             "n_misses": 45,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": 0.015,
-            "wis": 0.1264,
-            "wis_baseline_fixed_quantile": 0.1283,
+            "skill_vs_baseline": 0.016,
+            "wis": 0.1249,
+            "wis_baseline_fixed_quantile": 0.1269,
             "worst_misses": [
               {
                 "actual": 3.369,
@@ -1073,15 +1076,15 @@
           },
           "gdelt_containment": {
             "beats_baseline": false,
-            "coverage_gap_pp": 1.3,
-            "empirical_coverage": 0.813,
-            "n_forecasts": 150,
-            "n_misses": 28,
+            "coverage_gap_pp": 0.8,
+            "empirical_coverage": 0.808,
+            "n_forecasts": 151,
+            "n_misses": 29,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": -0.012,
-            "wis": 1.2371,
-            "wis_baseline_fixed_quantile": 1.2227,
+            "wis": 1.2477,
+            "wis_baseline_fixed_quantile": 1.2324,
             "worst_misses": [
               {
                 "actual": 1.0,
@@ -1137,15 +1140,15 @@
           },
           "github_refuge": {
             "beats_baseline": false,
-            "coverage_gap_pp": 7.0,
-            "empirical_coverage": 0.87,
-            "n_forecasts": 69,
+            "coverage_gap_pp": 7.1,
+            "empirical_coverage": 0.871,
+            "n_forecasts": 70,
             "n_misses": 9,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": -0.045,
-            "wis": 0.5729,
-            "wis_baseline_fixed_quantile": 0.5481,
+            "skill_vs_baseline": -0.039,
+            "wis": 0.5659,
+            "wis_baseline_fixed_quantile": 0.5446,
             "worst_misses": [
               {
                 "actual": 0.0,
@@ -1201,15 +1204,15 @@
           },
           "ooni_gfw": {
             "beats_baseline": true,
-            "coverage_gap_pp": 0.4,
-            "empirical_coverage": 0.804,
-            "n_forecasts": 143,
+            "coverage_gap_pp": 0.7,
+            "empirical_coverage": 0.807,
+            "n_forecasts": 145,
             "n_misses": 28,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.02,
-            "wis": 0.4801,
-            "wis_baseline_fixed_quantile": 0.4897,
+            "wis": 0.4744,
+            "wis_baseline_fixed_quantile": 0.4841,
             "worst_misses": [
               {
                 "actual": 58.4,
@@ -1329,15 +1332,15 @@
           },
           "tor_bridge_cn": {
             "beats_baseline": false,
-            "coverage_gap_pp": -0.6,
-            "empirical_coverage": 0.794,
-            "n_forecasts": 389,
-            "n_misses": 80,
+            "coverage_gap_pp": -0.7,
+            "empirical_coverage": 0.793,
+            "n_forecasts": 391,
+            "n_misses": 81,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": -0.015,
-            "wis": 54.3259,
-            "wis_baseline_fixed_quantile": 53.5488,
+            "skill_vs_baseline": -0.014,
+            "wis": 54.5331,
+            "wis_baseline_fixed_quantile": 53.7924,
             "worst_misses": [
               {
                 "actual": 2330.0,
@@ -1396,16 +1399,16 @@
       "raw_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
       "scope": "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T02:12:13Z",
+      "source_timestamp": "2026-08-16T13:21:49Z",
       "status": "live",
-      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1390 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1390 forecasts.",
+      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1404 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1404 forecasts.",
       "title": "Forecast ledger"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:12:13Z",
+      "freshness_deadline": "2026-08-17T03:21:49Z",
       "health": {
-        "age_hours": 10.952,
+        "age_hours": 0.062,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1415,9 +1418,9 @@
       },
       "id": "cross-layer",
       "input": {
-        "bytes": 10191,
+        "bytes": 10190,
         "filename": "cross-layer-latest.json",
-        "sha256": "539fbad811f2fe45797acf9b5ab217cd6a8e50fdd0c2aeaa666471897da31a55"
+        "sha256": "1af7cad744381a979a3524f5bc46f4eafc5ac9d0340430f813ab2289d76e3fe9"
       },
       "layer": "command",
       "live": true,
@@ -1440,7 +1443,7 @@
           "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
           "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
         ],
-        "generated_at": "2026-08-16T02:12:13.450688+00:00",
+        "generated_at": "2026-08-16T13:21:49.137973+00:00",
         "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
         "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
         "method_version": 1,
@@ -1448,9 +1451,31 @@
         "n_pairs_tested": 8,
         "pairs": [
           {
+            "correlation": 0.473,
+            "first_day": "2026-07-06",
+            "holm_threshold": 0.00625,
+            "lag_days": -4,
+            "last_day": "2026-08-13",
+            "layers": [
+              "content",
+              "network"
+            ],
+            "n_shifts": 23,
+            "null_median_abs_r": 0.458,
+            "ok": true,
+            "overlap_days": 38,
+            "p_value": 0.1667,
+            "pair": [
+              "github_refuge",
+              "tor_bridge_cn"
+            ],
+            "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
+            "survives_multiplicity": false
+          },
+          {
             "correlation": 0.484,
             "first_day": "2026-07-11",
-            "holm_threshold": 0.00625,
+            "holm_threshold": 0.00714,
             "lag_days": -5,
             "last_day": "2026-08-16",
             "layers": [
@@ -1472,7 +1497,7 @@
           {
             "correlation": 0.707,
             "first_day": "2026-07-11",
-            "holm_threshold": 0.00714,
+            "holm_threshold": 0.00833,
             "lag_days": 7,
             "last_day": "2026-08-16",
             "layers": [
@@ -1492,42 +1517,42 @@
             "survives_multiplicity": false
           },
           {
-            "correlation": 0.522,
-            "first_day": "2026-07-06",
-            "holm_threshold": 0.00833,
-            "lag_days": -4,
-            "last_day": "2026-08-11",
+            "correlation": 0.312,
+            "first_day": "2026-07-11",
+            "holm_threshold": 0.01,
+            "lag_days": -7,
+            "last_day": "2026-08-16",
             "layers": [
               "content",
               "network"
             ],
             "n_shifts": 21,
-            "null_median_abs_r": 0.502,
+            "null_median_abs_r": 0.373,
             "ok": true,
             "overlap_days": 36,
-            "p_value": 0.3182,
+            "p_value": 0.6364,
             "pair": [
-              "github_refuge",
-              "tor_bridge_cn"
+              "gdelt_containment",
+              "ooni_gfw"
             ],
-            "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
+            "reading": "ooni_gfw moves 7d BEFORE gdelt_containment",
             "survives_multiplicity": false
           },
           {
-            "correlation": -0.32,
+            "correlation": -0.326,
             "first_day": "2026-07-05",
-            "holm_threshold": 0.01,
+            "holm_threshold": 0.0125,
             "lag_days": -3,
-            "last_day": "2026-08-11",
+            "last_day": "2026-08-13",
             "layers": [
               "content",
               "network"
             ],
-            "n_shifts": 22,
-            "null_median_abs_r": 0.46,
+            "n_shifts": 24,
+            "null_median_abs_r": 0.353,
             "ok": true,
-            "overlap_days": 37,
-            "p_value": 0.6957,
+            "overlap_days": 39,
+            "p_value": 0.84,
             "pair": [
               "ddti_threat",
               "tor_bridge_cn"
@@ -1536,69 +1561,47 @@
             "survives_multiplicity": false
           },
           {
-            "correlation": -0.316,
-            "first_day": "2026-07-11",
-            "holm_threshold": 0.0125,
-            "lag_days": 0,
-            "last_day": "2026-08-15",
-            "layers": [
-              "content",
-              "network"
-            ],
-            "n_shifts": 20,
-            "null_median_abs_r": 0.567,
-            "ok": true,
-            "overlap_days": 35,
-            "p_value": 0.7143,
-            "pair": [
-              "gdelt_containment",
-              "ooni_gfw"
-            ],
-            "reading": "gdelt_containment and ooni_gfw move the same day",
-            "survives_multiplicity": false
-          },
-          {
-            "correlation": -0.247,
+            "correlation": -0.235,
             "first_day": "2026-07-06",
             "holm_threshold": 0.01667,
-            "lag_days": -4,
-            "last_day": "2026-08-11",
+            "lag_days": 0,
+            "last_day": "2026-08-13",
             "layers": [
               "content",
               "network"
             ],
-            "n_shifts": 21,
-            "null_median_abs_r": 0.41,
+            "n_shifts": 23,
+            "null_median_abs_r": 0.363,
             "ok": true,
-            "overlap_days": 36,
-            "p_value": 0.9091,
+            "overlap_days": 38,
+            "p_value": 0.875,
             "pair": [
               "gdelt_containment",
               "tor_bridge_cn"
             ],
-            "reading": "tor_bridge_cn moves 4d BEFORE gdelt_containment",
+            "reading": "gdelt_containment and tor_bridge_cn move the same day",
             "survives_multiplicity": false
           },
           {
-            "correlation": 0.148,
+            "correlation": 0.205,
             "first_day": "2026-07-05",
             "holm_threshold": 0.025,
-            "lag_days": -1,
-            "last_day": "2026-08-11",
+            "lag_days": 6,
+            "last_day": "2026-08-13",
             "layers": [
               "content",
               "network"
             ],
-            "n_shifts": 22,
-            "null_median_abs_r": 0.248,
+            "n_shifts": 24,
+            "null_median_abs_r": 0.256,
             "ok": true,
-            "overlap_days": 37,
-            "p_value": 1.0,
+            "overlap_days": 39,
+            "p_value": 0.92,
             "pair": [
               "ddti_novelty",
               "tor_bridge_cn"
             ],
-            "reading": "tor_bridge_cn moves 1d BEFORE ddti_novelty",
+            "reading": "ddti_novelty moves 6d BEFORE tor_bridge_cn",
             "survives_multiplicity": false
           },
           {
@@ -1612,7 +1615,7 @@
               "network"
             ],
             "n_shifts": 21,
-            "null_median_abs_r": 0.438,
+            "null_median_abs_r": 0.434,
             "ok": true,
             "overlap_days": 36,
             "p_value": 1.0,
@@ -1783,7 +1786,7 @@
       "raw_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "scope": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T02:12:13Z",
+      "source_timestamp": "2026-08-16T13:21:49Z",
       "status": "live",
       "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. Upstream reading: 8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established. Latest payload reports confirmed pairs at 0 count across 8 pairs tested.",
       "title": "Cross-layer lead/lag"
@@ -1792,7 +1795,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-16T20:00:17Z",
       "health": {
-        "age_hours": 0.151,
+        "age_hours": 0.421,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2523,9 +2526,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:16:02Z",
+      "freshness_deadline": "2026-08-17T03:24:22Z",
       "health": {
-        "age_hours": 10.888,
+        "age_hours": 0.019,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2535,9 +2538,9 @@
       },
       "id": "gdelt",
       "input": {
-        "bytes": 6743,
+        "bytes": 6735,
         "filename": "gdelt-latest.json",
-        "sha256": "99733b8e7da0aa01992fe295d4fd75628f70ada4fe075f5eaecb49bad09ae717"
+        "sha256": "5c41765b7dd5b8553291fae09533ac971c0dfdc89c01a7000f624456ea84f1d1"
       },
       "layer": "attention",
       "live": true,
@@ -2550,31 +2553,85 @@
         },
         "label": "terms with global data",
         "unit": "count",
-        "value": 2
+        "value": 7
       },
       "optional": false,
       "payload": {
-        "ddti_generated_at": "2026-08-16T01:58:00.302224+00:00",
-        "generated_at": "2026-08-16T02:16:02.975713+00:00",
+        "ddti_generated_at": "2026-08-16T13:00:17.339548+00:00",
+        "generated_at": "2026-08-16T13:24:22.836183+00:00",
         "method_version": 1,
         "n_blackout": 0,
-        "n_containment": 2,
+        "n_containment": 7,
         "n_terms": 25,
-        "n_with_global_data": 2,
+        "n_with_global_data": 7,
         "ranked": [
           {
-            "cross_score": 0.0249,
-            "domestic_attention": 0.6783,
+            "cross_score": 0.3664,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
-            "global_norm": 0.0617,
-            "global_volume_intensity": 0.30845060975609756,
+            "global_norm": 1.0,
+            "global_volume_intensity": 6.17071686746988,
             "label": "containment",
-            "term": "higher education"
+            "term": "United States"
+          },
+          {
+            "cross_score": 0.173,
+            "domestic_attention": 0.5783,
+            "domestic_present": true,
+            "global_norm": 0.4722,
+            "global_volume_intensity": 2.3612331325301206,
+            "label": "containment",
+            "term": "France"
+          },
+          {
+            "cross_score": 0.0088,
+            "domestic_attention": 0.4229,
+            "domestic_present": true,
+            "global_norm": 0.0295,
+            "global_volume_intensity": 0.1472814371257485,
+            "label": "containment",
+            "term": "censorship"
+          },
+          {
+            "cross_score": 0.0079,
+            "domestic_attention": 0.5783,
+            "domestic_present": true,
+            "global_norm": 0.0215,
+            "global_volume_intensity": 0.10737604790419161,
+            "label": "containment",
+            "term": "Academia"
+          },
+          {
+            "cross_score": 0.0034,
+            "domestic_attention": 0.5783,
+            "domestic_present": true,
+            "global_norm": 0.0093,
+            "global_volume_intensity": 0.0463210843373494,
+            "label": "containment",
+            "term": "Peking University"
+          },
+          {
+            "cross_score": 0.0003,
+            "domestic_attention": 0.5783,
+            "domestic_present": true,
+            "global_norm": 0.0008,
+            "global_volume_intensity": 0.004191566265060241,
+            "label": "containment",
+            "term": "foreign universities"
+          },
+          {
+            "cross_score": 0.0,
+            "domestic_attention": 0.4255,
+            "domestic_present": true,
+            "global_norm": 0.0001,
+            "global_volume_intensity": 0.0003131736526946108,
+            "label": "containment",
+            "term": "social media censorship"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2584,27 +2641,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "France"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.6783,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "Peking University"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2614,7 +2651,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2624,17 +2661,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "foreign universities"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2644,7 +2671,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2654,7 +2681,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2664,7 +2691,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 1.1748,
+            "domestic_attention": 1.0017,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2674,7 +2701,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6834,
+            "domestic_attention": 0.5827,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2684,17 +2711,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "United States"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.6714,
+            "domestic_attention": 0.5724,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2704,17 +2721,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "Academia"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.492,
+            "domestic_attention": 0.4195,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2724,7 +2731,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2734,7 +2741,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.492,
+            "domestic_attention": 0.4195,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2744,7 +2751,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6834,
+            "domestic_attention": 0.5827,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2754,17 +2761,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.496,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "censorship"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2772,18 +2769,29 @@
             "term": "Weibo censorship"
           },
           {
+            "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
-            "global_norm": 0.0,
-            "global_volume_intensity": 0.00010426829268292683,
-            "label": "containment",
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "higher education"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.5783,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
             "term": "netizen comments"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2793,22 +2801,12 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.6783,
+            "domestic_attention": 0.5783,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
             "label": "unknown",
             "term": "universities"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.499,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "social media censorship"
           }
         ],
         "scope": "cross-signal: domestic censorship attention vs global coverage volume",
@@ -2817,16 +2815,16 @@
       "raw_url": "https://palimpsest.info/readings/gdelt-latest.json",
       "scope": "cross-signal: domestic censorship attention vs global coverage volume",
       "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
-      "source_timestamp": "2026-08-16T02:16:02Z",
+      "source_timestamp": "2026-08-16T13:24:22Z",
       "status": "live",
-      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 2 count across 25 terms compared.",
+      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 7 count across 25 terms compared.",
       "title": "Global coverage cross-signal"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:08:56Z",
+      "freshness_deadline": "2026-08-17T03:17:41Z",
       "health": {
-        "age_hours": 11.007,
+        "age_hours": 0.131,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2836,9 +2834,9 @@
       },
       "id": "weibo-hotsearch",
       "input": {
-        "bytes": 5594,
+        "bytes": 5735,
         "filename": "weibo-hotsearch-latest.json",
-        "sha256": "82ac70331360b8ff1987426e9df281babe10bf8c4ef94e25a3d9203a53fafe7e"
+        "sha256": "9034f243a00290e6abe3cfa1deeee51cd96091d2d57bc6d53990215c5ce52570"
       },
       "layer": "attention",
       "live": true,
@@ -2848,11 +2846,11 @@
         "denominator": null,
         "label": "board entries",
         "unit": "count",
-        "value": 2531
+        "value": 2742
       },
       "optional": false,
       "payload": {
-        "board_entries": 2531,
+        "board_entries": 2742,
         "ddti_terms_joined": 0,
         "gazetteer_breakthroughs": [
           {
@@ -2971,7 +2969,7 @@
             "term": "方方"
           }
         ],
-        "generated_at": "2026-08-16T02:08:56Z",
+        "generated_at": "2026-08-16T13:17:41Z",
         "join": [],
         "method_note": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
         "method_version": 2,
@@ -3040,6 +3038,9 @@
           {
             "date": "2026-08-16",
             "pinned": [
+              "切实担负起管党治党政治责任",
+              "习近平种下的三棵杉树",
+              "总书记对生态文明建设的牵挂和嘱托",
               "总书记始终牵挂绿水青山"
             ]
           }
@@ -3061,7 +3062,7 @@
         ],
         "withdrawal_watch": {
           "baseline_note": "pooled across all top-rank topics: the archive stores only title and url, no genre field, so entertainment and sports churn cannot be deterministically stratified out. The pooled rate reads low for hard-news topics, making a fast exit look more normal than it is; the bias runs toward missing withdrawals, not inventing them.",
-          "baseline_persist_rate": 0.2633,
+          "baseline_persist_rate": 0.2658,
           "candidates": [
             {
               "best_rank": 7,
@@ -3072,7 +3073,7 @@
               "title": "情侣平潭翻墙拍日出坠崖"
             }
           ],
-          "one_day_exits": 291,
+          "one_day_exits": 290,
           "sense_filtered": [],
           "top_topics_considered": 395
         }
@@ -3080,16 +3081,16 @@
       "raw_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
       "scope": "Joins deletion-stream terms to archived Weibo hot-search board captures.",
       "source": "Sina Weibo hot-search board via the MIT-licensed archive github.com/justjavac/weibo-trending-hot-search (hourly captures, per-day union; keyless raw fetch)",
-      "source_timestamp": "2026-08-16T02:08:56Z",
+      "source_timestamp": "2026-08-16T13:17:41Z",
       "status": "live",
-      "summary": "Joins deletion-stream terms to archived Weibo hot-search board captures. Latest payload reports board entries at 2531 count.",
+      "summary": "Joins deletion-stream terms to archived Weibo hot-search board captures. Latest payload reports board entries at 2742 count.",
       "title": "Weibo hot-search join"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T16:17:29Z",
       "health": {
-        "age_hours": 10.864,
+        "age_hours": 11.134,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3396,7 +3397,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 151.281,
+        "age_hours": 151.552,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3705,9 +3706,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-17T04:09:22Z",
+      "freshness_deadline": "2026-08-17T15:16:07Z",
       "health": {
-        "age_hours": 10.999,
+        "age_hours": 0.157,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3717,9 +3718,9 @@
       },
       "id": "net4people",
       "input": {
-        "bytes": 7309,
+        "bytes": 7346,
         "filename": "net4people-latest.json",
-        "sha256": "f4a436673ecc7b72633b0a411d0b87a2f5c3a79fa8f614b1a9313d50b51842d3"
+        "sha256": "7b165e650de0f8982eb5bf3cfe7a0b17b98c4db92553697c67871a513e5903c4"
       },
       "layer": "attention",
       "live": true,
@@ -3729,11 +3730,21 @@
         "denominator": null,
         "label": "recent events",
         "unit": "count",
-        "value": 7
+        "value": 8
       },
       "optional": false,
       "payload": {
         "events": [
+          {
+            "china_tagged": false,
+            "comments": 0,
+            "created_at": "2026-08-16T09:00:52Z",
+            "kind": "circumvention",
+            "labels": [],
+            "number": 649,
+            "title": "Hedioum Pool Tunnel: open-source anti-DPI tunnel in Go (SSH/TLS/SMTP/IMAP/DirectAdmin mimicry, dynamic pools) — feedback welcome",
+            "url": "https://github.com/net4people/bbs/issues/649"
+          },
           {
             "china_tagged": false,
             "comments": 0,
@@ -3950,46 +3961,34 @@
             "number": 626,
             "title": "Internet analysis in the shutdown in iran",
             "url": "https://github.com/net4people/bbs/issues/626"
-          },
-          {
-            "china_tagged": false,
-            "comments": 0,
-            "created_at": "2026-05-29T16:36:16Z",
-            "kind": "blocking",
-            "labels": [
-              "reading group"
-            ],
-            "number": 621,
-            "title": "DNS-sly: Avoiding Censorship through Network Complexity (FOCI 2016)",
-            "url": "https://github.com/net4people/bbs/issues/621"
           }
         ],
-        "generated_at": "2026-08-16T02:09:22.364952+00:00",
-        "last_changed_at": "2026-08-15T02:02:44.102184+00:00",
+        "generated_at": "2026-08-16T13:16:07.159358+00:00",
+        "last_changed_at": "2026-08-16T13:16:07.159358+00:00",
         "method": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
         "method_version": 1,
         "n_blocking": 1,
-        "n_circumvention": 1,
-        "n_recent": 7,
+        "n_circumvention": 2,
+        "n_recent": 8,
         "recent_days": 30,
         "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
         "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
-        "velocity": 0.67,
-        "velocity_reading": "0.67x normal — typical"
+        "velocity": 0.77,
+        "velocity_reading": "0.77x normal — typical"
       },
       "raw_url": "https://palimpsest.info/readings/net4people-latest.json",
       "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
       "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
-      "source_timestamp": "2026-08-16T02:09:22Z",
+      "source_timestamp": "2026-08-16T13:16:07Z",
       "status": "live",
-      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 7 count.",
+      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 8 count.",
       "title": "Community blocking log"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T03:05:09Z",
       "health": {
-        "age_hours": 0.069,
+        "age_hours": 0.34,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4319,7 +4318,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T03:07:33Z",
       "health": {
-        "age_hours": 0.03,
+        "age_hours": 0.3,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4490,7 +4489,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:57:34Z",
       "health": {
-        "age_hours": 7.196,
+        "age_hours": 7.466,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4664,9 +4663,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T21:10:45Z",
+      "freshness_deadline": "2026-08-17T03:15:07Z",
       "health": {
-        "age_hours": 5.976,
+        "age_hours": 0.174,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4676,9 +4675,9 @@
       },
       "id": "inside-view",
       "input": {
-        "bytes": 69784,
+        "bytes": 59698,
         "filename": "inside-view-latest.json",
-        "sha256": "3ba8b0263037e7f704538b99af968df62c284ddfeb79a88b0aa2b89c8f63cf4e"
+        "sha256": "31eac8713ff75e87f05d9519917831aaaf3543a7ce3aabd3ff9a5fcb548c6b14"
       },
       "layer": "network",
       "live": true,
@@ -4687,7 +4686,7 @@
       "metric": {
         "denominator": {
           "label": "qualifying answered measurement domains",
-          "value": 5
+          "value": 4
         },
         "label": "blocked share",
         "unit": "ratio",
@@ -4701,22 +4700,22 @@
           {
             "domain": "en.wikipedia.org",
             "geo_variable": false,
-            "n_clean": 3,
-            "n_forged": 11,
+            "n_clean": 1,
+            "n_forged": 4,
             "state": "split across vantages"
           },
           {
             "domain": "archive.org",
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 11,
+            "n_forged": 7,
             "state": "blocked from every answering vantage"
           },
           {
             "domain": "duckduckgo.com",
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 10,
+            "n_forged": 6,
             "state": "blocked from every answering vantage"
           },
           {
@@ -4730,12 +4729,11 @@
         "boundary_note": "domains whose treatment is reported to vary, measured beside the headline panel and deliberately excluded from the block rate. They are where a REGIONAL verdict can appear at all; the measurement set is long-blocked by design and saturates at uniform",
         "control": {
           "state": "SIGHTED",
-          "why": "injection observed on 5 censored domain(s): torproject.org, rsf.org, www.hrw.org, zh.wikipedia.org, wikileaks.org"
+          "why": "injection observed on 4 censored domain(s): rsf.org, www.hrw.org, zh.wikipedia.org, wikileaks.org"
         },
         "domains": [
           {
             "control_answers": [
-              "0.0.0.0",
               "116.202.120.165",
               "116.202.120.166",
               "204.8.99.144",
@@ -4754,50 +4752,22 @@
             "ddti": "CIRCUMVENTION",
             "domain": "torproject.org",
             "expected_censored": true,
-            "forged_fraction": 1.0,
+            "forged_fraction": null,
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 2,
+            "n_forged": 0,
             "n_geo_variable": 0,
             "n_silent": 0,
             "n_undetermined": 12,
-            "n_vantages": 14,
+            "n_vantages": 12,
             "ownership_resolved": true,
             "pool_evidence": [],
             "role": "measurement",
             "vantages": [
               {
-                "answer_owners": [
-                  "EXPERT-AS-AP"
-                ],
+                "answer_owners": [],
                 "answers": [
-                  "202.181.7.85"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "BOOST-MOBILE"
-                ],
-                "answers": [
-                  "216.234.179.13"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "CONTABO-40021"
-                ],
-                "answers": [
-                  "209.145.54.50"
+                  "118.193.202.219"
                 ],
                 "asn": 45090,
                 "city": "Tianjin",
@@ -4807,16 +4777,55 @@
               },
               {
                 "answer_owners": [
-                  "TWITTER"
+                  "HKTDCS-AS-AP"
                 ],
                 "answers": [
-                  "104.244.46.57"
+                  "203.161.230.171"
                 ],
                 "asn": 45090,
-                "city": "Chongqing",
+                "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "HKBNESL-AS-AP"
+                ],
+                "answers": [
+                  "210.209.84.142"
+                ],
+                "asn": 45090,
+                "city": "Shenzhen",
+                "network": "Shenzhen Tencent Computer Systems Company",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "CHINA169-BJ"
+                ],
+                "answers": [
+                  "202.106.1.2"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MIDCO-NET"
+                ],
+                "answers": [
+                  "64.33.88.161"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -4826,7 +4835,7 @@
                   "209.145.54.50"
                 ],
                 "asn": 37963,
-                "city": "Beijing",
+                "city": "Shanghai",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
@@ -4839,99 +4848,8 @@
                   "203.161.230.171"
                 ],
                 "asn": 37963,
-                "city": "Shenzhen",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "HINET"
-                ],
-                "answers": [
-                  "111.243.214.169"
-                ],
-                "asn": 37963,
                 "city": "Chengdu",
                 "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "108.160.166.253"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
-              },
-              {
-                "answer_owners": [
-                  "HostRoyale"
-                ],
-                "answers": [
-                  "128.242.240.149"
-                ],
-                "asn": 55990,
-                "city": "Shanghai",
-                "network": "Huawei Cloud Service data center",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "LEVEL3"
-                ],
-                "answers": [
-                  "4.36.66.178"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "LEVEL3"
-                ],
-                "answers": [
-                  "4.36.66.178"
-                ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "LEVEL3"
-                ],
-                "answers": [
-                  "4.36.66.178"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MIDCO-NET"
-                ],
-                "answers": [
-                  "64.33.88.161"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
@@ -4942,9 +4860,61 @@
                 "answers": [
                   "209.145.54.50"
                 ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 55990,
+                "city": "Beijing",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "BOOST-MOBILE"
+                ],
+                "answers": [
+                  "216.234.179.13"
+                ],
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "BOOST-MOBILE"
+                ],
+                "answers": [
+                  "216.234.179.13"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MIDCO-NET"
+                ],
+                "answers": [
+                  "64.33.88.161"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "AS-VULTR"
+                ],
+                "answers": [
+                  "202.182.98.125"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               }
@@ -4967,120 +4937,54 @@
             "ddti": "INFORMATION",
             "domain": "rsf.org",
             "expected_censored": true,
-            "forged_fraction": 0.909,
+            "forged_fraction": 1.0,
             "geo_variable": false,
-            "n_clean": 1,
-            "n_forged": 10,
+            "n_clean": 0,
+            "n_forged": 6,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 3,
-            "n_vantages": 14,
+            "n_undetermined": 6,
+            "n_vantages": 12,
             "ownership_resolved": true,
             "pool_evidence": [],
             "role": "measurement",
             "vantages": [
               {
                 "answer_owners": [
-                  "CLOUDFLARENET"
+                  "DROPBOX"
                 ],
                 "answers": [
-                  "104.25.93.108",
-                  "104.25.94.108",
-                  "172.67.66.183"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [
-                  "FASTLY"
-                ],
-                "answers": [
-                  "104.244.43.136"
+                  "108.160.170.39"
                 ],
                 "asn": 45090,
                 "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.86.21"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
               },
               {
                 "answer_owners": [
-                  "FACEBOOK"
+                  "AMAZON-AES"
                 ],
                 "answers": [
-                  "31.13.86.21"
+                  "54.89.135.129"
                 ],
                 "asn": 45090,
                 "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "YISUCLOUDLTD-HK"
-                ],
-                "answers": [
-                  "154.92.16.97"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.96.194"
-                ],
-                "asn": 37963,
-                "city": "Shenzhen",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "199.59.150.40"
-                ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
                   "DROPBOX"
                 ],
                 "answers": [
-                  "108.160.165.62"
+                  "162.125.32.9"
                 ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
+                "asn": 45090,
+                "city": "Shenzhen",
+                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (DROPBOX)"
               },
@@ -5089,10 +4993,62 @@
                   "TWITTER"
                 ],
                 "answers": [
-                  "104.244.46.17"
+                  "104.244.46.57"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (TWITTER)"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "157.240.3.8"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "108.160.169.174"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
+              },
+              {
+                "answer_owners": [
+                  "HostRoyale"
+                ],
+                "answers": [
+                  "128.242.250.157"
+                ],
+                "asn": 37963,
+                "city": "Shanghai",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "202.160.128.203"
                 ],
                 "asn": 55990,
-                "city": "Shanghai",
+                "city": "Guiyang",
                 "network": "Huawei Cloud Service data center",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
@@ -5102,63 +5058,50 @@
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.83.2"
+                  "69.171.247.71"
                 ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "SOFTLAYER"
-                ],
-                "answers": [
-                  "74.86.12.173"
-                ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (SOFTLAYER)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.75.5"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "asn": 55990,
+                "city": "Beijing",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "TWITTER"
                 ],
                 "answers": [
-                  "199.59.149.204"
+                  "192.133.77.145"
                 ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
-                  "LEASEWEB-USA-LAX"
+                  "FASTLY"
                 ],
                 "answers": [
-                  "173.234.53.168"
+                  "104.244.43.35"
                 ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "AS-GLOBALTELEHOST"
+                ],
+                "answers": [
+                  "98.159.108.71"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               }
@@ -5182,14 +5125,14 @@
             "forged_fraction": 1.0,
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 12,
+            "n_forged": 4,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 2,
-            "n_vantages": 14,
+            "n_undetermined": 8,
+            "n_vantages": 12,
             "ownership_resolved": true,
             "pool_evidence": [
-              "199.96.63.53"
+              "108.160.167.158"
             ],
             "role": "measurement",
             "vantages": [
@@ -5198,127 +5141,23 @@
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.67.33"
-                ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "199.59.148.97"
+                  "31.13.94.41"
                 ],
                 "asn": 45090,
                 "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "157.240.10.36"
+                  "31.13.94.41"
                 ],
                 "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.67.33"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.80.54"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "108.160.169.181"
-                ],
-                "asn": 37963,
                 "city": "Shenzhen",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.90.33"
-                ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "162.125.32.6"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "108.160.165.9"
-                ],
-                "asn": 55990,
-                "city": "Shanghai",
-                "network": "Huawei Cloud Service data center",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
-              },
-              {
-                "answer_owners": [
-                  "AMAZON-AES"
-                ],
-                "answers": [
-                  "54.89.135.129"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
@@ -5328,48 +5167,124 @@
                   "HostRoyale"
                 ],
                 "answers": [
-                  "128.242.240.91"
+                  "128.242.240.157"
                 ],
                 "asn": 45090,
-                "city": "Shenzhen",
+                "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
-                  "SOFTLAYER"
+                  "HostRoyale"
                 ],
                 "answers": [
-                  "67.228.235.93"
+                  "128.242.240.244"
                 ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (SOFTLAYER)"
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [],
                 "answers": [
-                  "199.96.63.53"
+                  "104.31.142.88"
                 ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for duckduckgo.com"
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "TWITTER"
                 ],
                 "answers": [
-                  "202.160.128.203"
+                  "199.59.149.204"
                 ],
-                "asn": 45090,
+                "asn": 37963,
                 "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (TWITTER)"
+              },
+              {
+                "answer_owners": [
+                  "HOSTROYALETECHNOLOGIES-AS-AP"
+                ],
+                "answers": [
+                  "103.240.182.55"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "199.96.59.61"
+                ],
+                "asn": 55990,
+                "city": "Beijing",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.96.192"
+                ],
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "108.160.170.33"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "108.160.167.158"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered with an address the same round returned for archive.org, duckduckgo.com"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "202.160.130.117"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
               }
@@ -5390,60 +5305,33 @@
             "ddti": "INFORMATION",
             "domain": "zh.wikipedia.org",
             "expected_censored": true,
-            "forged_fraction": 0.692,
+            "forged_fraction": 0.6,
             "geo_variable": false,
-            "n_clean": 4,
-            "n_forged": 9,
+            "n_clean": 2,
+            "n_forged": 3,
             "n_geo_variable": 0,
-            "n_silent": 1,
-            "n_undetermined": 0,
-            "n_vantages": 14,
+            "n_silent": 0,
+            "n_undetermined": 7,
+            "n_vantages": 12,
             "ownership_resolved": true,
             "pool_evidence": [
               "103.102.166.224",
-              "31.13.106.4",
-              "31.13.88.169",
-              "31.13.94.37"
+              "199.16.158.12",
+              "199.59.148.229"
             ],
             "role": "measurement",
             "vantages": [
               {
                 "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.88.169"
-                ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for en.wikipedia.org"
-              },
-              {
-                "answer_owners": [
                   "WIKIMEDIA"
                 ],
                 "answers": [
                   "103.102.166.224"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.94.37"
                 ],
                 "asn": 45090,
                 "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for en.wikipedia.org"
+                "state": "clean"
               },
               {
                 "answer_owners": [
@@ -5453,9 +5341,22 @@
                   "103.102.166.224"
                 ],
                 "asn": 45090,
-                "city": "Beijing",
+                "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "clean"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.88.26"
+                ],
+                "asn": 45090,
+                "city": "Shenzhen",
+                "network": "Shenzhen Tencent Computer Systems Company",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -5468,7 +5369,46 @@
                 "city": "Beijing",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
+                "why": "answered with an address the same round returned for en.wikipedia.org"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.68.169"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.94.49"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.112.9"
+                ],
+                "asn": 37963,
+                "city": "Shanghai",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -5477,108 +5417,63 @@
                 "answers": [
                   "31.13.88.26"
                 ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.94.36"
-                ],
-                "asn": 37963,
-                "city": "Shenzhen",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.106.4"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered with an address the same round returned for en.wikipedia.org"
-              },
-              {
-                "answer_owners": [],
-                "answers": [],
                 "asn": 55990,
-                "city": "Shanghai",
+                "city": "Beijing",
                 "network": "Huawei Cloud Service data center",
-                "state": "silent"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.68.169"
+                  "31.13.88.169"
                 ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "TWITTER"
                 ],
                 "answers": [
-                  "199.16.158.182"
+                  "199.59.148.20"
                 ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
-                  "WIKIMEDIA"
+                  "TWITTER"
                 ],
                 "answers": [
-                  "103.102.166.224"
+                  "199.59.148.229"
                 ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [
-                  "WIKIMEDIA"
-                ],
-                "answers": [
-                  "103.102.166.224"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered with an address the same round returned for en.wikipedia.org"
               },
               {
                 "answer_owners": [
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.68.169"
+                  "31.13.94.37"
                 ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               }
             ]
           },
@@ -5602,73 +5497,73 @@
             "forged_fraction": 1.0,
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 11,
+            "n_forged": 4,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 3,
-            "n_vantages": 14,
+            "n_undetermined": 8,
+            "n_vantages": 12,
             "ownership_resolved": true,
             "pool_evidence": [],
             "role": "measurement",
             "vantages": [
               {
                 "answer_owners": [
-                  "FACEBOOK"
+                  "DROPBOX"
                 ],
                 "answers": [
-                  "31.13.87.33"
+                  "108.160.165.139"
                 ],
                 "asn": 45090,
                 "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
               },
               {
                 "answer_owners": [
-                  "TWITTER"
+                  "FACEBOOK"
                 ],
                 "answers": [
-                  "199.59.148.229"
+                  "69.171.228.74"
                 ],
                 "asn": 45090,
-                "city": "Beijing",
+                "city": "Shenzhen",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
-                  "TWITTER"
+                  "FACEBOOK"
                 ],
                 "answers": [
-                  "103.252.114.11"
+                  "31.13.76.65"
                 ],
                 "asn": 45090,
                 "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "TWITTER"
                 ],
                 "answers": [
-                  "104.244.46.52"
+                  "202.160.128.14"
                 ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
-                  "TFN-TW"
+                  "LibertyGlobal"
                 ],
                 "answers": [
-                  "124.11.210.175"
+                  "103.228.130.61"
                 ],
                 "asn": 37963,
                 "city": "Beijing",
@@ -5678,16 +5573,55 @@
               },
               {
                 "answer_owners": [
-                  "DROPBOX"
+                  "TWITTER"
                 ],
                 "answers": [
-                  "162.125.32.15"
+                  "199.59.149.201"
                 ],
                 "asn": 37963,
-                "city": "Shenzhen",
+                "city": "Shanghai",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
+                "why": "answered from a network this round's injector drew from (TWITTER)"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.96.194"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "SOFTLAYER"
+                ],
+                "answers": [
+                  "75.126.150.210"
+                ],
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "SOFTLAYER"
+                ],
+                "answers": [
+                  "208.101.21.43"
+                ],
+                "asn": 55990,
+                "city": "Beijing",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -5697,101 +5631,36 @@
                   "104.244.43.228"
                 ],
                 "asn": 37963,
-                "city": "Chengdu",
+                "city": "Shenzhen",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
-                  "TWITTER"
+                  "HostRoyale"
                 ],
                 "answers": [
-                  "199.59.149.230"
+                  "128.242.245.253"
                 ],
                 "asn": 37963,
                 "city": "Beijing",
                 "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.70.13"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.87.33"
-                ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.91.6"
-                ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "DROPBOX"
                 ],
                 "answers": [
-                  "108.160.165.211"
+                  "108.160.161.83"
                 ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (DROPBOX)"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "199.59.148.229"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
-              },
-              {
-                "answer_owners": [
-                  "HVC-AS"
-                ],
-                "answers": [
-                  "199.193.116.105"
-                ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               }
             ]
           },
@@ -5810,21 +5679,19 @@
             "ddti": "INFORMATION",
             "domain": "en.wikipedia.org",
             "expected_censored": true,
-            "forged_fraction": 0.786,
+            "forged_fraction": 0.8,
             "geo_variable": false,
-            "n_clean": 3,
-            "n_forged": 11,
+            "n_clean": 1,
+            "n_forged": 4,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 0,
-            "n_vantages": 14,
+            "n_undetermined": 6,
+            "n_vantages": 11,
             "ownership_resolved": true,
             "pool_evidence": [
               "103.102.166.224",
-              "199.59.148.96",
-              "31.13.106.4",
-              "31.13.88.169",
-              "31.13.94.37"
+              "199.16.158.12",
+              "199.59.148.229"
             ],
             "role": "boundary",
             "vantages": [
@@ -5833,13 +5700,13 @@
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.94.37"
+                  "31.13.73.9"
                 ],
                 "asn": 45090,
-                "city": "Beijing",
+                "city": "Shenzhen",
                 "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for zh.wikipedia.org"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -5849,7 +5716,7 @@
                   "103.102.166.224"
                 ],
                 "asn": 45090,
-                "city": "Tianjin",
+                "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "clean"
               },
@@ -5858,11 +5725,24 @@
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.94.37"
+                  "31.13.73.9"
                 ],
                 "asn": 45090,
-                "city": "Guangzhou",
+                "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "199.16.158.12"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered with an address the same round returned for zh.wikipedia.org"
               },
@@ -5871,11 +5751,37 @@
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "31.13.88.169"
+                  "31.13.106.4"
                 ],
-                "asn": 45090,
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "199.16.158.9"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (TWITTER)"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "199.59.148.229"
+                ],
+                "asn": 37963,
                 "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered with an address the same round returned for zh.wikipedia.org"
               },
@@ -5886,11 +5792,11 @@
                 "answers": [
                   "157.240.17.35"
                 ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -5902,47 +5808,8 @@
                 "asn": 37963,
                 "city": "Shenzhen",
                 "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.106.4"
-                ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered with an address the same round returned for zh.wikipedia.org"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.94.49"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.106.4"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for zh.wikipedia.org"
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
@@ -5951,61 +5818,24 @@
                 "answers": [
                   "31.13.73.169"
                 ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "TWITTER"
                 ],
                 "answers": [
-                  "199.59.148.96"
+                  "199.16.158.9"
                 ],
-                "asn": 45090,
+                "asn": 37963,
                 "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
-                "why": "answered with an address the same round returned for archive.org"
-              },
-              {
-                "answer_owners": [
-                  "WIKIMEDIA"
-                ],
-                "answers": [
-                  "103.102.166.224"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [
-                  "WIKIMEDIA"
-                ],
-                "answers": [
-                  "103.102.166.224"
-                ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.94.37"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for zh.wikipedia.org"
+                "why": "answered from a network this round's injector drew from (TWITTER)"
               }
             ]
           },
@@ -6027,67 +5857,26 @@
             "forged_fraction": 1.0,
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 11,
+            "n_forged": 7,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 3,
-            "n_vantages": 14,
+            "n_undetermined": 4,
+            "n_vantages": 11,
             "ownership_resolved": true,
             "pool_evidence": [
-              "108.160.167.158",
-              "199.59.148.96",
-              "74.86.226.234"
+              "108.160.167.158"
             ],
             "role": "boundary",
             "vantages": [
               {
                 "answer_owners": [
-                  "FACEBOOK"
+                  "AS-GLOBALTELEHOST"
                 ],
                 "answers": [
-                  "69.171.224.36"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "31.13.83.34"
+                  "98.159.108.57"
                 ],
                 "asn": 45090,
                 "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "108.160.163.108"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
-              },
-              {
-                "answer_owners": [
-                  "HostRoyale"
-                ],
-                "answers": [
-                  "128.242.240.20"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
@@ -6097,11 +5886,24 @@
                   "DROPBOX"
                 ],
                 "answers": [
-                  "108.160.169.178"
+                  "162.125.7.1"
                 ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
+                "asn": 45090,
+                "city": "Shenzhen",
+                "network": "Shenzhen Tencent Computer Systems Company",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "162.125.32.6"
+                ],
+                "asn": 45090,
+                "city": "Guangzhou",
+                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (DROPBOX)"
               },
@@ -6110,10 +5912,10 @@
                   "TWITTER"
                 ],
                 "answers": [
-                  "202.160.130.145"
+                  "199.59.149.238"
                 ],
                 "asn": 37963,
-                "city": "Chengdu",
+                "city": "Beijing",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
@@ -6129,96 +5931,83 @@
                 "city": "Shenzhen",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
-                "why": "answered with an address the same round returned for duckduckgo.com"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "199.59.148.96"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered with an address the same round returned for en.wikipedia.org"
-              },
-              {
-                "answer_owners": [
-                  "AS-GLOBALTELEHOST"
-                ],
-                "answers": [
-                  "98.159.108.61"
-                ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "108.160.169.185"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (DROPBOX)"
+                "why": "answered with an address the same round returned for duckduckgo.com, www.hrw.org"
               },
               {
                 "answer_owners": [
                   "HostRoyale"
                 ],
                 "answers": [
-                  "128.242.245.43"
+                  "168.143.171.189"
                 ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shanghai",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
-                  "SOFTLAYER"
+                  "TWITTER"
                 ],
                 "answers": [
-                  "74.86.226.234"
+                  "104.244.46.52"
                 ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
-                "why": "answered with an address the same round returned for duckduckgo.com"
+                "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "69.171.224.36"
+                  "157.240.17.41"
                 ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "FACEBOOK"
+                ],
+                "answers": [
+                  "31.13.95.169"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
               {
                 "answer_owners": [
                   "DROPBOX"
                 ],
                 "answers": [
-                  "108.160.163.108"
+                  "108.160.170.44"
                 ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "108.160.170.43"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (DROPBOX)"
               }
@@ -6243,129 +6032,64 @@
             "forged_fraction": 1.0,
             "geo_variable": false,
             "n_clean": 0,
-            "n_forged": 10,
+            "n_forged": 6,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 4,
-            "n_vantages": 14,
+            "n_undetermined": 5,
+            "n_vantages": 11,
             "ownership_resolved": true,
             "pool_evidence": [
-              "108.160.167.158",
-              "199.96.63.53",
-              "74.86.226.234"
+              "108.160.167.158"
             ],
             "role": "boundary",
             "vantages": [
               {
                 "answer_owners": [],
                 "answers": [
-                  "199.96.63.53"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for www.hrw.org"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "202.160.128.96"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
-              },
-              {
-                "answer_owners": [
-                  "DROPBOX"
-                ],
-                "answers": [
-                  "108.160.167.158"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered with an address the same round returned for archive.org"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "199.16.158.190"
+                  "174.37.243.85"
                 ],
                 "asn": 45090,
                 "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "192.133.77.197"
+                ],
+                "asn": 45090,
+                "city": "Shenzhen",
+                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "forged",
                 "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
-                  "SOFTLAYER"
+                  "TWITTER"
                 ],
                 "answers": [
-                  "74.86.226.234"
+                  "199.59.150.13"
                 ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
+                "asn": 45090,
+                "city": "Guangzhou",
+                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "forged",
-                "why": "answered with an address the same round returned for archive.org"
+                "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
-                  "DXTL-HK"
+                  "HostRoyale"
                 ],
                 "answers": [
-                  "23.234.30.58"
-                ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "199.96.61.1"
+                  "128.121.146.228"
                 ],
                 "asn": 37963,
                 "city": "Shenzhen",
                 "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "FACEBOOK"
-                ],
-                "answers": [
-                  "173.252.105.21"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "FASTLY"
-                ],
-                "answers": [
-                  "104.244.43.234"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
@@ -6376,68 +6100,95 @@
                 "answers": [
                   "108.160.167.158"
                 ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "forged",
-                "why": "answered with an address the same round returned for archive.org"
+                "why": "answered with an address the same round returned for archive.org, www.hrw.org"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "108.160.172.232"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
+              },
+              {
+                "answer_owners": [
+                  "RU-JSCIOT"
+                ],
+                "answers": [
+                  "80.87.199.46"
+                ],
+                "asn": 37963,
+                "city": "Shanghai",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "TWITTER"
+                ],
+                "answers": [
+                  "199.16.158.8"
+                ],
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (TWITTER)"
               },
               {
                 "answer_owners": [
                   "FACEBOOK"
                 ],
                 "answers": [
-                  "66.220.149.18"
+                  "173.252.88.133"
                 ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (FACEBOOK)"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "103.252.115.221"
-                ],
-                "asn": 45090,
-                "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
-              },
-              {
-                "answer_owners": [
-                  "TWITTER"
-                ],
-                "answers": [
-                  "199.16.158.190"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "forged",
-                "why": "answered from a network this round's injector drew from (TWITTER)"
-              },
-              {
-                "answer_owners": [
-                  "GO-DADDY-COM-LLC"
-                ],
-                "answers": [
-                  "205.186.152.122"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "CLOUDFLARENET"
+                ],
+                "answers": [
+                  "104.16.251.55"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "DROPBOX"
+                ],
+                "answers": [
+                  "108.160.172.200"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "forged",
+                "why": "answered from a network this round's injector drew from (DROPBOX)"
               }
             ]
           },
           {
             "control_answers": [
+              "140.82.121.3",
               "140.82.121.4"
             ],
             "control_countries": [
@@ -6457,8 +6208,8 @@
             "n_forged": 0,
             "n_geo_variable": 0,
             "n_silent": 0,
-            "n_undetermined": 13,
-            "n_vantages": 14,
+            "n_undetermined": 10,
+            "n_vantages": 11,
             "ownership_resolved": true,
             "pool_evidence": [],
             "role": "boundary",
@@ -6484,6 +6235,19 @@
                   "20.205.243.166"
                 ],
                 "asn": 45090,
+                "city": "Shenzhen",
+                "network": "Shenzhen Tencent Computer Systems Company",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MICROSOFT-CORP-MSN-AS-BLOCK"
+                ],
+                "answers": [
+                  "20.205.243.166"
+                ],
+                "asn": 45090,
                 "city": "Guangzhou",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
@@ -6496,9 +6260,9 @@
                 "answers": [
                   "20.205.243.166"
                 ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
@@ -6509,9 +6273,61 @@
                 "answers": [
                   "20.205.243.166"
                 ],
-                "asn": 45090,
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MICROSOFT-CORP-MSN-AS-BLOCK"
+                ],
+                "answers": [
+                  "20.205.243.166"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MICROSOFT-CORP-MSN-AS-BLOCK"
+                ],
+                "answers": [
+                  "20.205.243.166"
+                ],
+                "asn": 37963,
                 "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MICROSOFT-CORP-MSN-AS-BLOCK"
+                ],
+                "answers": [
+                  "20.205.243.166"
+                ],
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "undetermined",
+                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+              },
+              {
+                "answer_owners": [
+                  "MICROSOFT-CORP-MSN-AS-BLOCK"
+                ],
+                "answers": [
+                  "20.205.243.166"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               },
@@ -6535,112 +6351,8 @@
                   "20.205.243.166"
                 ],
                 "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 37963,
                 "city": "Shenzhen",
                 "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "undetermined",
-                "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-              },
-              {
-                "answer_owners": [
-                  "MICROSOFT-CORP-MSN-AS-BLOCK"
-                ],
-                "answers": [
-                  "20.205.243.166"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "undetermined",
                 "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
               }
@@ -6662,12 +6374,12 @@
             "expected_censored": false,
             "forged_fraction": 0.0,
             "geo_variable": false,
-            "n_clean": 14,
+            "n_clean": 11,
             "n_forged": 0,
             "n_geo_variable": 0,
             "n_silent": 0,
             "n_undetermined": 0,
-            "n_vantages": 14,
+            "n_vantages": 11,
             "ownership_resolved": false,
             "pool_evidence": [],
             "role": "control",
@@ -6679,7 +6391,7 @@
                   "1.1.1.1"
                 ],
                 "asn": 45090,
-                "city": "Shanghai",
+                "city": "Shenzhen",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "clean"
               },
@@ -6711,39 +6423,6 @@
                   "1.0.0.1",
                   "1.1.1.1"
                 ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "1.0.0.1",
-                  "1.1.1.1"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "1.0.0.1",
-                  "1.1.1.1"
-                ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "1.0.0.1",
-                  "1.1.1.1"
-                ],
                 "asn": 37963,
                 "city": "Shenzhen",
                 "network": "Hangzhou Alibaba Advertising",
@@ -6766,42 +6445,9 @@
                   "1.0.0.1",
                   "1.1.1.1"
                 ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "1.0.0.1",
-                  "1.1.1.1"
-                ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "1.0.0.1",
-                  "1.1.1.1"
-                ],
-                "asn": 45090,
-                "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "1.0.0.1",
-                  "1.1.1.1"
-                ],
-                "asn": 45090,
+                "asn": 37963,
                 "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "clean"
               },
               {
@@ -6810,9 +6456,9 @@
                   "1.0.0.1",
                   "1.1.1.1"
                 ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "clean"
               },
               {
@@ -6821,9 +6467,42 @@
                   "1.0.0.1",
                   "1.1.1.1"
                 ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
+                "state": "clean"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "1.0.0.1",
+                  "1.1.1.1"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "clean"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "1.0.0.1",
+                  "1.1.1.1"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "clean"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "1.0.0.1",
+                  "1.1.1.1"
+                ],
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "clean"
               }
             ]
@@ -6844,12 +6523,12 @@
             "expected_censored": false,
             "forged_fraction": 0.0,
             "geo_variable": false,
-            "n_clean": 14,
+            "n_clean": 11,
             "n_forged": 0,
             "n_geo_variable": 0,
             "n_silent": 0,
             "n_undetermined": 0,
-            "n_vantages": 14,
+            "n_vantages": 11,
             "ownership_resolved": false,
             "pool_evidence": [],
             "role": "control",
@@ -6861,7 +6540,7 @@
                   "8.8.8.8"
                 ],
                 "asn": 45090,
-                "city": "Beijing",
+                "city": "Tianjin",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "clean"
               },
@@ -6872,7 +6551,7 @@
                   "8.8.8.8"
                 ],
                 "asn": 45090,
-                "city": "Tianjin",
+                "city": "Shenzhen",
                 "network": "Shenzhen Tencent Computer Systems Company",
                 "state": "clean"
               },
@@ -6893,19 +6572,41 @@
                   "8.8.4.4",
                   "8.8.8.8"
                 ],
-                "asn": 45090,
+                "asn": 37963,
+                "city": "Shenzhen",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "clean"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "8.8.4.4",
+                  "8.8.8.8"
+                ],
+                "asn": 37963,
+                "city": "Beijing",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "clean"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "8.8.4.4",
+                  "8.8.8.8"
+                ],
+                "asn": 37963,
+                "city": "Chengdu",
+                "network": "Hangzhou Alibaba Advertising",
+                "state": "clean"
+              },
+              {
+                "answer_owners": [],
+                "answers": [
+                  "8.8.4.4",
+                  "8.8.8.8"
+                ],
+                "asn": 37963,
                 "city": "Shanghai",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "8.8.4.4",
-                  "8.8.8.8"
-                ],
-                "asn": 37963,
-                "city": "Beijing",
                 "network": "Hangzhou Alibaba Advertising",
                 "state": "clean"
               },
@@ -6915,9 +6616,9 @@
                   "8.8.4.4",
                   "8.8.8.8"
                 ],
-                "asn": 37963,
-                "city": "Chengdu",
-                "network": "Hangzhou Alibaba Advertising",
+                "asn": 55990,
+                "city": "Guiyang",
+                "network": "Huawei Cloud Service data center",
                 "state": "clean"
               },
               {
@@ -6948,122 +6649,61 @@
                   "8.8.4.4",
                   "8.8.8.8"
                 ],
-                "asn": 45090,
-                "city": "Chongqing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "8.8.4.4",
-                  "8.8.8.8"
-                ],
-                "asn": 45090,
+                "asn": 37963,
                 "city": "Shenzhen",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "8.8.4.4",
-                  "8.8.8.8"
-                ],
-                "asn": 45090,
-                "city": "Chengdu",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "8.8.4.4",
-                  "8.8.8.8"
-                ],
-                "asn": 45090,
-                "city": "Beijing",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "8.8.4.4",
-                  "8.8.8.8"
-                ],
-                "asn": 45090,
-                "city": "Tianjin",
-                "network": "Shenzhen Tencent Computer Systems Company",
-                "state": "clean"
-              },
-              {
-                "answer_owners": [],
-                "answers": [
-                  "8.8.4.4",
-                  "8.8.8.8"
-                ],
-                "asn": 45090,
-                "city": "Guangzhou",
-                "network": "Shenzhen Tencent Computer Systems Company",
+                "network": "Hangzhou Alibaba Advertising",
                 "state": "clean"
               }
             ]
           }
         ],
-        "generated_at": "2026-08-16T07:10:45.992334+00:00",
-        "last_changed_at": "2026-08-14T13:58:34.966238+00:00",
+        "generated_at": "2026-08-16T13:15:07.652213+00:00",
+        "last_changed_at": "2026-08-16T13:15:07.652213+00:00",
         "method": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
         "method_version": 2,
-        "n_censored_answered": 5,
-        "n_censored_blocked": 5,
+        "n_censored_answered": 4,
+        "n_censored_blocked": 4,
         "panel_size": 11,
         "reading": "the panel is comprehensively blocked from inside",
         "regional": [
           {
-            "detail": "forged from all 2 answering vantages [Beijing (AS37963), Chongqing (AS45090)]",
-            "domain": "torproject.org",
-            "role": "measurement",
-            "verdict": "UNIFORM_BLOCKED"
-          },
-          {
-            "detail": "blocked from 10/11 vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS37963), Chongqing (AS45090), Guangzhou (AS45090), Shanghai (AS45090), Shanghai (AS55990), Shenzhen (AS37963), Shenzhen (AS45090), Tianjin (AS45090)] but resolving correctly from [Shanghai (AS45090)] — filtering is not uniform",
+            "detail": "forged from all 6 answering vantages [Beijing (AS37963), Chengdu (AS37963), Guangzhou (AS45090), Guiyang (AS55990), Shenzhen (AS45090)]",
             "domain": "rsf.org",
             "role": "measurement",
-            "verdict": "REGIONAL"
-          },
-          {
-            "detail": "forged from all 12 answering vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS37963), Guangzhou (AS45090), Shanghai (AS45090), Shanghai (AS55990), Shenzhen (AS37963), Tianjin (AS45090)]",
-            "domain": "www.hrw.org",
-            "role": "measurement",
             "verdict": "UNIFORM_BLOCKED"
           },
           {
-            "detail": "blocked from 9/13 vantages [Beijing (AS37963), Chengdu (AS37963), Chongqing (AS45090), Guangzhou (AS45090), Shenzhen (AS37963), Shenzhen (AS45090), Tianjin (AS45090)] but resolving correctly from [Beijing (AS45090), Shanghai (AS45090), Tianjin (AS45090)] — filtering is not uniform",
+            "detail": "forged from all 4 answering vantages but only AS37963 is represented; one operator's resolver behaviour is not distinguishable from national filtering at this width",
+            "domain": "www.hrw.org",
+            "role": "measurement",
+            "verdict": "SINGLE_OPERATOR"
+          },
+          {
+            "detail": "blocked from 3/5 vantages [Beijing (AS37963), Shenzhen (AS37963)] but resolving correctly from [Guangzhou (AS45090), Tianjin (AS45090)] — filtering is not uniform",
             "domain": "zh.wikipedia.org",
             "role": "measurement",
             "verdict": "REGIONAL"
           },
           {
-            "detail": "forged from all 11 answering vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS45090), Shanghai (AS45090), Shenzhen (AS37963), Shenzhen (AS45090), Tianjin (AS45090)]",
+            "detail": "forged from all 4 answering vantages [Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963)]",
             "domain": "wikileaks.org",
             "role": "measurement",
             "verdict": "UNIFORM_BLOCKED"
           },
           {
-            "detail": "blocked from 11/14 vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS37963), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS45090), Shanghai (AS45090), Shenzhen (AS37963), Shenzhen (AS45090)] but resolving correctly from [Beijing (AS45090), Tianjin (AS45090)] — filtering is not uniform",
+            "detail": "blocked from 4/5 vantages [Chengdu (AS37963), Shanghai (AS37963), Shenzhen (AS37963)] but resolving correctly from [Guangzhou (AS45090)] — filtering is not uniform",
             "domain": "en.wikipedia.org",
             "role": "boundary",
             "verdict": "REGIONAL"
           },
           {
-            "detail": "forged from all 11 answering vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS37963), Chongqing (AS45090), Shanghai (AS45090), Shenzhen (AS37963), Tianjin (AS45090)]",
+            "detail": "forged from all 7 answering vantages [Beijing (AS37963), Chengdu (AS37963), Guangzhou (AS45090), Shenzhen (AS37963), Shenzhen (AS45090)]",
             "domain": "archive.org",
             "role": "boundary",
             "verdict": "UNIFORM_BLOCKED"
           },
           {
-            "detail": "forged from all 10 answering vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS45090), Guangzhou (AS45090), Shanghai (AS45090), Shenzhen (AS45090), Tianjin (AS45090)]",
+            "detail": "forged from all 6 answering vantages [Beijing (AS37963), Chengdu (AS37963), Guangzhou (AS45090), Guiyang (AS55990), Shenzhen (AS37963), Shenzhen (AS45090)]",
             "domain": "duckduckgo.com",
             "role": "boundary",
             "verdict": "UNIFORM_BLOCKED"
@@ -7083,16 +6723,16 @@
       "raw_url": "https://palimpsest.info/readings/inside-view-latest.json",
       "scope": "DNS answers received by probes INSIDE China for a fixed panel of censored and benign domains, classified against a same-round control arm outside China",
       "source": "Globalping (api.globalping.io) volunteer probes inside mainland China",
-      "source_timestamp": "2026-08-16T07:10:45Z",
+      "source_timestamp": "2026-08-16T13:15:07Z",
       "status": "live",
-      "summary": "Classifies DNS answers from volunteer probes inside China against a same-round external control. Upstream reading: the panel is comprehensively blocked from inside. Latest payload reports blocked share at 1 ratio across 5 qualifying answered measurement domains.",
+      "summary": "Classifies DNS answers from volunteer probes inside China against a same-round external control. Upstream reading: the panel is comprehensively blocked from inside. Latest payload reports blocked share at 1 ratio across 4 qualifying answered measurement domains.",
       "title": "Inside-China view"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T03:08:18Z",
       "health": {
-        "age_hours": 0.017,
+        "age_hours": 0.287,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7142,7 +6782,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:43:40Z",
       "health": {
-        "age_hours": 7.428,
+        "age_hours": 7.698,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7213,9 +6853,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:11:29Z",
+      "freshness_deadline": "2026-08-17T03:22:11Z",
       "health": {
-        "age_hours": 10.964,
+        "age_hours": 0.056,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7227,7 +6867,7 @@
       "input": {
         "bytes": 2093,
         "filename": "vantage-fusion-latest.json",
-        "sha256": "72f35784307725a43e0a6586fa23453c46ec2715e16734b5965470ce6e01fcb8"
+        "sha256": "c598209f44f571240a3628703779b028fa75eda7386b3a3800f44faad89049f0"
       },
       "layer": "network",
       "live": true,
@@ -7253,7 +6893,7 @@
         "divergence_pp": 54.4,
         "excluded_vantages": {},
         "fused_index": 28.9,
-        "generated_at": "2026-08-16T02:11:29.390526+00:00",
+        "generated_at": "2026-08-16T13:22:11.968819+00:00",
         "interval": [
           4.4,
           58.8
@@ -7263,9 +6903,9 @@
         "method": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
         "method_version": 1,
         "net4people": {
-          "blocking_share": 0.143,
+          "blocking_share": 0.125,
           "n_blocking": 1,
-          "n_recent": 7,
+          "n_recent": 8,
           "present": true
         },
         "ok": true,
@@ -7284,7 +6924,7 @@
       "raw_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
       "scope": "Fuses only reporting network vantages and names excluded or divergent inputs.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T02:11:29Z",
+      "source_timestamp": "2026-08-16T13:22:11Z",
       "status": "live",
       "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 28.9 percent.",
       "title": "Network vantage fusion"
@@ -7293,7 +6933,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T02:57:15Z",
       "health": {
-        "age_hours": 0.201,
+        "age_hours": 0.472,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7414,7 +7054,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T20:01:48Z",
       "health": {
-        "age_hours": 7.125,
+        "age_hours": 7.396,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7545,7 +7185,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:06:24Z",
       "health": {
-        "age_hours": 0.049,
+        "age_hours": 0.319,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8120,7 +7760,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 400.634,
+        "age_hours": 400.904,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -8272,9 +7912,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-17T04:09:15Z",
+      "freshness_deadline": "2026-08-17T15:11:21Z",
       "health": {
-        "age_hours": 11.001,
+        "age_hours": 0.237,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8284,9 +7924,9 @@
       },
       "id": "github-refuge",
       "input": {
-        "bytes": 3745,
+        "bytes": 3742,
         "filename": "github-refuge-latest.json",
-        "sha256": "c52cce71520253ac2d0e7750e80792cdebae5cb59bab21412906255a1634e8a4"
+        "sha256": "a64f6255efb2bafcd4ade4e55761180319bfc839591ac1df8fe96b85d53ed010"
       },
       "layer": "erasure",
       "live": true,
@@ -8304,7 +7944,7 @@
       "optional": false,
       "payload": {
         "first_run": false,
-        "generated_at": "2026-08-16T02:09:15.067776+00:00",
+        "generated_at": "2026-08-16T13:11:21.194199+00:00",
         "method_version": 1,
         "n_present": 7,
         "n_pressure_events": 1,
@@ -8358,14 +7998,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.865",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.885",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "Terminus2049/Terminus2049.github.io",
             "kind": "preservation",
             "pressure_likelihood": 0.0,
             "severity": "medium",
-            "star_novelty": 0.8652,
+            "star_novelty": 0.8846,
             "status": "present",
             "topic_terms": [
               "Terminus2049",
@@ -8410,14 +8050,14 @@
             ]
           },
           {
-            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.4",
+            "detail": "status=present pressure_likelihood=0.0 fork_novelty=0.0 star_novelty=0.0",
             "dmca": [],
             "fork_novelty": 0.0,
             "full_name": "github/dmca",
             "kind": "quiet",
             "pressure_likelihood": 0.0,
             "severity": "low",
-            "star_novelty": 0.3995,
+            "star_novelty": 0.0,
             "status": "present",
             "topic_terms": [
               "transparency",
@@ -8444,16 +8084,16 @@
       "raw_url": "https://palimpsest.info/readings/github-refuge-latest.json",
       "scope": "pressure on censored-material refuge repos: takedowns, legal blocks, visibility drops, preservation bursts",
       "source": "GitHub REST API (public pressure metadata only)",
-      "source_timestamp": "2026-08-16T02:09:15Z",
+      "source_timestamp": "2026-08-16T13:11:21Z",
       "status": "live",
       "summary": "Watches public pressure metadata for repositories preserving censored material. Latest payload reports pressure events at 1 count across 7 repositories watched.",
       "title": "GitHub refuge watch"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T16:14:21Z",
+      "freshness_deadline": "2026-08-17T03:21:10Z",
       "health": {
-        "age_hours": 10.916,
+        "age_hours": 0.073,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8465,7 +8105,7 @@
       "input": {
         "bytes": 3519,
         "filename": "app-storefront-latest.json",
-        "sha256": "1a072311de8d9afb308edd4d1e4b72480c5016f632dd435204ece6be0356eace"
+        "sha256": "08775bfd460c5aebb6b85d2abca6004d5c84043edabbbb743211abc15b2447b1"
       },
       "layer": "erasure",
       "live": true,
@@ -8607,7 +8247,7 @@
           "The New York Times"
         ],
         "delisting_rate": 0.6,
-        "generated_at": "2026-08-16T02:14:21.454655+00:00",
+        "generated_at": "2026-08-16T13:21:10.178456+00:00",
         "last_changed_at": "2026-07-31T04:15:37.987842+00:00",
         "method_version": 1,
         "n_delisted": 6,
@@ -8620,7 +8260,7 @@
       "raw_url": "https://palimpsest.info/readings/app-storefront-latest.json",
       "scope": "app-layer availability: which apps are offered in the Chinese App Store storefront versus the US one",
       "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
-      "source_timestamp": "2026-08-16T02:14:21Z",
+      "source_timestamp": "2026-08-16T13:21:10Z",
       "status": "live",
       "summary": "Compares a fixed app panel in the China and US Apple storefronts. Upstream reading: much of the tracked catalogue is unavailable in the Chinese storefront. Latest payload reports delisting rate at 0.6 ratio across 10 apps tracked.",
       "title": "App Storefront panel"
@@ -8629,7 +8269,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:55:28Z",
       "health": {
-        "age_hours": 7.231,
+        "age_hours": 7.501,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8733,7 +8373,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T15:23:31Z",
       "health": {
-        "age_hours": 11.764,
+        "age_hours": 12.034,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8800,7 +8440,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T19:18:54Z",
       "health": {
-        "age_hours": 19.841,
+        "age_hours": 20.111,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8852,7 +8492,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 46.674,
+        "age_hours": 46.944,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8910,7 +8550,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T12:31:35Z",
       "health": {
-        "age_hours": 2.629,
+        "age_hours": 2.899,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9043,7 +8683,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 267.981,
+        "age_hours": 268.251,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9111,7 +8751,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T09:18:18Z",
       "health": {
-        "age_hours": 29.85,
+        "age_hours": 30.121,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14587,7 +14227,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T21:30:10Z",
       "health": {
-        "age_hours": 5.653,
+        "age_hours": 5.923,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14635,9 +14275,9 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-16T13:59:16Z",
+      "freshness_deadline": "2026-08-16T14:14:16Z",
       "health": {
-        "age_hours": 0.168,
+        "age_hours": 0.188,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14647,9 +14287,9 @@
       },
       "id": "nemesis",
       "input": {
-        "bytes": 168516,
+        "bytes": 168514,
         "filename": "nemesis-latest.json",
-        "sha256": "00122089905d330c9cc675273efdf36d9d071f4b29b104c3439a5a2009d77f00"
+        "sha256": "feffa2c4ae135c572ea54e8f5a55325b7a348e7ca33fbb31f40fe7952e4d3ceb"
       },
       "layer": "nemesis",
       "live": true,
@@ -14707,7 +14347,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786885156.329,
+        "data_timestamp": 1786886056.33,
         "ddti": {
           "by_domain": {
             "ECONOMY": 5,
@@ -14719,13 +14359,13 @@
             "SOCIETY": 10,
             "UNREST": 7
           },
-          "generated_at": 1786885156.329,
+          "generated_at": 1786886056.33,
           "n_posts": 16,
           "n_posts_scored": 16,
           "n_terms": 192,
           "ranked": [
             {
-              "attention": 1.97,
+              "attention": 1.96,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -14881,7 +14521,7 @@
               "total": 8
             },
             {
-              "attention": 1.39,
+              "attention": 1.38,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -15484,11 +15124,11 @@
               "tag_observations": 2,
               "term": "migrant workers",
               "text_observations": 0,
-              "threat": 1.65,
+              "threat": 1.64,
               "total": 2
             },
             {
-              "attention": 0.92,
+              "attention": 0.91,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -19480,7 +19120,7 @@
           ]
         },
         "economic": {
-          "generated_at": 1786885156.35,
+          "generated_at": 1786886056.355,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 22,
@@ -19528,33 +19168,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786885156.385,
+        "generated_at": 1786886056.368,
         "health": {
           "freshness": {
-            "age_seconds": 0.056,
-            "core_data_at": 1786885156.329,
+            "age_seconds": 0.038,
+            "core_data_at": 1786886056.33,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.28,
-            "finished_at": 1786885156.385,
+            "duration_s": 0.27,
+            "finished_at": 1786886056.367,
             "healthy": true,
-            "id": 1130,
-            "started_at": 1786885156.1,
+            "id": 1131,
+            "started_at": 1786886056.1,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.28,
-            "finished_at": 1786885156.385,
+            "duration_s": 0.27,
+            "finished_at": 1786886056.367,
             "healthy": true,
-            "id": 1130,
-            "started_at": 1786885156.1,
+            "id": 1131,
+            "started_at": 1786886056.1,
             "status": "ok"
           },
-          "last_successful_run_at": 1786885156.385,
+          "last_successful_run_at": 1786886056.367,
           "live": true,
           "posts": 30,
           "ready": true,
@@ -19839,10 +19479,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786885156.385,
-          "ddti_generated_at": 1786885156.329,
-          "economic_generated_at": 1786885156.35,
-          "last_successful_run_at": 1786885156.385,
+          "data_updated_at": 1786886056.367,
+          "ddti_generated_at": 1786886056.33,
+          "economic_generated_at": 1786886056.355,
+          "last_successful_run_at": 1786886056.367,
           "latest_fetched_at": 1786751056.142,
           "latest_published_at": 1786748696.0
         }
@@ -19850,7 +19490,7 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-16T12:59:16Z",
+      "source_timestamp": "2026-08-16T13:14:16Z",
       "status": "live",
       "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 192 count.",
       "title": "Private runtime bridge"
