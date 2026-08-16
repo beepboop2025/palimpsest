@@ -171,14 +171,17 @@ def test_total_attempt_failure_preserves_last_good(monkeypatch, tmp_path):
     assert ledger_path.read_bytes() == before_ledger
 
 
-def test_disabled_run_migrates_checked_seven_source_zero_state_additively(tmp_path):
+def test_disabled_run_migrates_explicit_seven_source_zero_state_additively(tmp_path):
     latest_path, ledger_path, lock_path = _paths(tmp_path)
-    latest_path.write_bytes(
-        (
-            instagram_pull.ROOT / "readings" / "social-observations-latest.json"
-        ).read_bytes()
+    old_registry = _registry_without_cgtn(tmp_path)
+    old_latest, old_ledger = social.build_latest(
+        [],
+        registry=old_registry,
+        generated_at="2026-08-16T17:00:00Z",
     )
-    ledger_path.write_bytes(b"")
+    assert old_ledger == ()
+    latest_path.write_bytes(social.canonical_json_bytes(old_latest))
+    ledger_path.write_bytes(social.ledger_jsonl_bytes(old_ledger, old_registry))
 
     assert (
         instagram_pull.run(
