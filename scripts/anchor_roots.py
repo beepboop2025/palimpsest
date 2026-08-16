@@ -240,6 +240,27 @@ def _wayback_cdx_snapshot(capture_target: str, *, opener, timeout: int) -> str |
     return None
 
 
+def _eventual_cdx_snapshot(capture_target: str, *, opener, timeout: int,
+                           attempts: int, sleeper) -> str | None:
+    """Poll boundedly for a newly accepted Save Page Now capture.
+
+    The save endpoint can return HTTP 200 on a queue/status URL before any
+    replay URL exists. Only the exact hash-qualified target is queried, and a
+    later byte-for-byte replay check still decides whether it counts.
+    """
+    if attempts < 1:
+        raise ValueError("Wayback CDX attempts must be positive")
+    for attempt in range(attempts):
+        snapshot = _wayback_cdx_snapshot(
+            capture_target, opener=opener, timeout=timeout
+        )
+        if snapshot is not None:
+            return snapshot
+        if attempt + 1 < attempts:
+            sleeper(min(2 ** attempt, 4))
+    return None
+
+
 def _wayback_replay_evidence(snapshot: str, *, expected_bytes: int, opener,
                              timeout: int, replay_attempts: int, sleeper) -> dict:
     if replay_attempts < 1:
@@ -273,7 +294,8 @@ def _wayback_replay_evidence(snapshot: str, *, expected_bytes: int, opener,
 
 def wayback_save(url: str, *, expected_sha256: str, expected_bytes: int,
                  opener=urllib.request.urlopen, timeout: int = 90,
-                 replay_attempts: int = 3, sleeper=time.sleep) -> dict:
+                 replay_attempts: int = 3, cdx_attempts: int = 4,
+                 sleeper=time.sleep) -> dict:
     """Deposit and byte-verify one artifact with the Internet Archive.
 
     Save Page Now may redirect to an older replay while still returning HTTP
@@ -341,6 +363,20 @@ def wayback_save(url: str, *, expected_sha256: str, expected_bytes: int,
                         raise
                     capture_source = "cdx"
                 http_status = exc.code
+        try:
+            _raw_wayback_url(snapshot)
+        except ValueError as path_error:
+            indexed_snapshot = _eventual_cdx_snapshot(
+                capture_target,
+                opener=opener,
+                timeout=timeout,
+                attempts=cdx_attempts,
+                sleeper=sleeper,
+            )
+            if indexed_snapshot is None:
+                raise path_error
+            snapshot = indexed_snapshot
+            capture_source = "cdx"
         try:
             replay_evidence = _wayback_replay_evidence(
                 snapshot,
