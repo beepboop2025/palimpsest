@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T10:11:25Z",
+  "generated_at": "2026-08-16T10:32:33Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "9b8c9ddf4a9113577928b07d6e535e5e354c4192",
+  "source_commit": "ce499d2750395078ad10fea85e96ce7583b27cdf",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -1534,19 +1534,19 @@
       "slug": "official-data-darkness",
       "url": "https://palimpsest.info/news/official-data-darkness/",
       "signal_id": "data-darkness",
-      "headline": "The official-data darkness index is 0.5753 across 7 watched series",
+      "headline": "The official-data darkness index is 0.5968 across 7 watched series",
       "dek": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
       "section": "economy",
       "order": 4,
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T13:25:20Z",
-      "modified_at": "2026-08-15T13:25:20Z",
-      "claim_fingerprint": "sha256:d9b2d20a92fa5c1742b6f461816178a7d62c2ddb3d0296eb73966de9ab5bbc9e",
+      "published_at": "2026-08-16T10:31:35Z",
+      "modified_at": "2026-08-16T10:31:35Z",
+      "claim_fingerprint": "sha256:ae152d450cf61d0603c8e19be83e113d0ae7be9571a140f2081f7abd0fd63cb4",
       "metric": {
         "label": "darkness index",
-        "value": 0.5753,
+        "value": 0.5968,
         "unit": "index",
         "denominator": {
           "label": "series watched",
@@ -1556,17 +1556,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current publication-cadence darkness index is 0.5753 across 7 watched official series."
+          "statement": "The current publication-cadence darkness index is 0.5968 across 7 watched official series."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/data-darkness-latest.json",
         "input": {
           "filename": "data-darkness-latest.json",
-          "sha256": "f2756702573f2e6a25b4196357c55652bec1d230166d868cf07d80df40a97182",
-          "bytes": 3434
+          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "bytes": 3437
         },
-        "source_timestamp": "2026-08-15T13:25:20Z"
+        "source_timestamp": "2026-08-16T10:31:35Z"
       },
       "method": {
         "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
