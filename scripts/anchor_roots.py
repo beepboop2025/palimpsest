@@ -730,6 +730,114 @@ def reusable_ots(prev: dict | None) -> dict | None:
     return dict(ots) if os.path.isfile(proof_path) else None
 
 
+def summarize_anchor_record(record: dict) -> dict:
+    """Return the stable public summary for one append-only anchor record."""
+    roots = record["roots"]
+    wayback = record["wayback"]
+    ots = record["ots"]
+    latest = {
+        "ts": record["ts"],
+        "registry_root": roots["registry_root"],
+        "erasure_root": roots["erasure_root"],
+        "readings_root": roots["readings_root"],
+        "readings_chain": (
+            "broken" if roots.get("readings_problems") else "verified"
+        ),
+        "readings_problems": roots.get("readings_problems", []),
+        "wayback_ok": sum(1 for item in wayback if item["ok"]),
+        "wayback_snapshots": [
+            item.get("snapshot") for item in wayback if item["ok"]
+        ],
+        "wayback_reused": sum(
+            1 for item in wayback if item.get("reused") is True
+        ),
+        "ots": ots.get("proof") if ots["ok"] else None,
+        "ots_status": "stamped" if ots["ok"] else ots.get("reason", "failed"),
+        "ots_reused": ots.get("reused") is True,
+    }
+    if record.get("retry_of"):
+        latest["retry_of"] = record["retry_of"]
+    return latest
+
+
+def serialize_anchor_summary(record: dict) -> str:
+    """Serialize a summary exactly as ``anchors-latest.json`` is published."""
+    return json.dumps(
+        summarize_anchor_record(record), ensure_ascii=False, indent=1
+    )
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON constant: {value}")
+
+
+def anchor_state_at(log_path, as_of: datetime) -> dict | None:
+    """Reconstruct the append-only anchor state that existed at ``as_of``.
+
+    Anchor timestamps are required to be monotonic because the historical file state is
+    a byte prefix, not an unordered set.  The returned sizes therefore describe the exact
+    public summary and JSONL prefix available at that publication clock.
+    """
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise ValueError("anchor history clock must include a timezone")
+    cutoff = as_of.astimezone(timezone.utc)
+    selected = None
+    selected_at = None
+    last_at = None
+    history_bytes = 0
+    history_rows = 0
+    with open(log_path, "rb") as history:
+        for line_number, raw_line in enumerate(history, start=1):
+            if not raw_line.strip():
+                raise ValueError(
+                    f"anchor history line {line_number} is empty"
+                )
+            try:
+                record = json.loads(
+                    raw_line, parse_constant=_reject_json_constant
+                )
+                text = record["ts"]
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError("timestamp is absent")
+                normalized = text.strip()
+                if normalized.endswith(("Z", "z")):
+                    normalized = normalized[:-1] + "+00:00"
+                record_at = datetime.fromisoformat(normalized)
+                if record_at.tzinfo is None or record_at.utcoffset() is None:
+                    raise ValueError("timestamp has no timezone")
+                record_at = record_at.astimezone(timezone.utc)
+            except (
+                KeyError,
+                TypeError,
+                UnicodeError,
+                json.JSONDecodeError,
+                ValueError,
+            ) as exc:
+                raise ValueError(
+                    f"anchor history line {line_number} is invalid"
+                ) from exc
+            if last_at is not None and record_at < last_at:
+                raise ValueError("anchor history timestamps are not monotonic")
+            last_at = record_at
+            if record_at <= cutoff:
+                selected = record
+                selected_at = record_at
+                history_bytes += len(raw_line)
+                history_rows += raw_line.count(b"\n")
+
+    if selected is None:
+        return None
+    summary_text = serialize_anchor_summary(selected)
+    return {
+        "record": selected,
+        "recorded_at": selected_at,
+        "summary": summarize_anchor_record(selected),
+        "summary_bytes": summary_text.encode("utf-8"),
+        "history_bytes": history_bytes,
+        "history_rows": history_rows,
+    }
+
+
 def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
            run=subprocess.run, log_path: str = ANCHOR_LOG,
            latest_path: str = ANCHOR_LATEST) -> dict | None:
@@ -792,25 +900,8 @@ def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     ok_wayback = sum(1 for w in record["wayback"] if w["ok"])
-    latest = {
-        "ts": ts,
-        "registry_root": roots["registry_root"],
-        "erasure_root": roots["erasure_root"],
-        "readings_root": roots["readings_root"],
-        "readings_chain": "broken" if roots.get("readings_problems") else "verified",
-        "readings_problems": roots.get("readings_problems", []),
-        "wayback_ok": ok_wayback,
-        "wayback_snapshots": [w.get("snapshot") for w in record["wayback"] if w["ok"]],
-        "wayback_reused": sum(1 for w in record["wayback"] if w.get("reused") is True),
-        "ots": record["ots"].get("proof") if record["ots"]["ok"] else None,
-        "ots_status": "stamped" if record["ots"]["ok"]
-                      else record["ots"].get("reason", "failed"),
-        "ots_reused": record["ots"].get("reused") is True,
-    }
-    if record.get("retry_of"):
-        latest["retry_of"] = record["retry_of"]
     with open(latest_path, "w", encoding="utf-8") as f:
-        json.dump(latest, f, ensure_ascii=False, indent=1)
+        f.write(serialize_anchor_summary(record))
 
     readings_line = (f"readings {roots['readings_root'][:16]}… "
                      f"({roots['readings_entries']} entries)"

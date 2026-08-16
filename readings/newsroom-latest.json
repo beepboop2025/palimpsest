@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T07:01:02Z",
+  "generated_at": "2026-08-16T07:19:29Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "a9629ea3c188d0a168c4f0df776ef19fec00ec93",
+  "source_commit": "34145d1e0a4af1a66994ea8efc913aa3489dc940",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -649,39 +649,39 @@
       "slug": "ooni-great-firewall-index",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "signal_id": "ooni-gfw",
-      "headline": "OONI's China anomaly index is 58.8% across 273,293 completed measurements",
+      "headline": "OONI's China anomaly index is 58.8% across 273,432 completed measurements",
       "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
       "section": "network",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-16T02:00:11Z",
-      "modified_at": "2026-08-16T02:00:11Z",
-      "claim_fingerprint": "sha256:728766731e78923fe0913c0c28f6053531d6503806a3b77a779cff73b005573b",
+      "published_at": "2026-08-16T07:04:12Z",
+      "modified_at": "2026-08-16T07:04:12Z",
+      "claim_fingerprint": "sha256:433a80a83e294bfbfddae0068a2f0d1b68097a7cf6834d1e126f8d2c67adc8e1",
       "metric": {
         "label": "GFW anomaly index",
         "value": 58.8,
         "unit": "percent",
         "denominator": {
           "label": "completed measurements",
-          "value": 273293
+          "value": 273432
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current OONI aggregate reports a 58.8% anomaly index across 273,293 completed China measurements."
+          "statement": "The current OONI aggregate reports a 58.8% anomaly index across 273,432 completed China measurements."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
         "input": {
           "filename": "ooni-gfw-latest.json",
-          "sha256": "8201ceadc0d94491e9dd7545a007078117a198380dbf917c65cfdca0d30ffa22",
-          "bytes": 7898
+          "sha256": "f7a4b99a77f01dceac49bcb7c77dd50e85a6563e0e5f351762434943e35ecd52",
+          "bytes": 7894
         },
-        "source_timestamp": "2026-08-16T02:00:11Z"
+        "source_timestamp": "2026-08-16T07:04:12Z"
       },
       "method": {
         "summary": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -709,16 +709,16 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-16T02:02:43Z",
-      "modified_at": "2026-08-16T02:02:43Z",
-      "claim_fingerprint": "sha256:71d716cc2f46d3a0bd97e00f9b5b2d29496dd78ed28359bb2b1b6507940eb3c5",
+      "published_at": "2026-08-16T07:07:27Z",
+      "modified_at": "2026-08-16T07:07:27Z",
+      "claim_fingerprint": "sha256:4305b025f1c0a4844794490d775f9faf35dc7443f52977da8a99f2436bfce2bd",
       "metric": {
         "label": "middlebox index",
         "value": 1.32,
         "unit": "percent",
         "denominator": {
           "label": "completed middlebox tests",
-          "value": 9565
+          "value": 9576
         }
       },
       "claims": [
@@ -731,10 +731,10 @@
         "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
         "input": {
           "filename": "in-path-interference-latest.json",
-          "sha256": "c9aff028cd2fd8b6c7f2cf46c6cc08599e5fe2a38425747ceaafdb42449782d3",
+          "sha256": "6671dc3242d8f93ab26735f1008d71ee0dc7cf3f96dd715386823477adac17b0",
           "bytes": 4322
         },
-        "source_timestamp": "2026-08-16T02:02:43Z"
+        "source_timestamp": "2026-08-16T07:07:27Z"
       },
       "method": {
         "summary": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
@@ -813,8 +813,8 @@
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-16T02:08:14Z",
-      "modified_at": "2026-08-16T02:08:14Z",
+      "published_at": "2026-08-16T07:10:45Z",
+      "modified_at": "2026-08-16T07:10:45Z",
       "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
       "metric": {
         "label": "blocked share",
@@ -835,10 +835,10 @@
         "url": "https://palimpsest.info/readings/inside-view-latest.json",
         "input": {
           "filename": "inside-view-latest.json",
-          "sha256": "6f139502f7b60fab6a6be223a2c5d380ff92fca68ca56faff849e2e551c15d30",
-          "bytes": 70967
+          "sha256": "3ba8b0263037e7f704538b99af968df62c284ddfeb79a88b0aa2b89c8f63cf4e",
+          "bytes": 69784
         },
-        "source_timestamp": "2026-08-16T02:08:14Z"
+        "source_timestamp": "2026-08-16T07:10:45Z"
       },
       "method": {
         "summary": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
@@ -866,8 +866,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-16T02:00:24Z",
-      "modified_at": "2026-08-16T02:00:24Z",
+      "published_at": "2026-08-16T07:05:42Z",
+      "modified_at": "2026-08-16T07:05:42Z",
       "claim_fingerprint": "sha256:d11298f4540771d4f8f5b0489d93b613a353431d3c905c97f68eaca532a53560",
       "metric": {
         "label": "instruments firing",
@@ -888,10 +888,10 @@
         "url": "https://palimpsest.info/readings/ioda-outages-latest.json",
         "input": {
           "filename": "ioda-outages-latest.json",
-          "sha256": "cb613ebbe799a40754926cd7ff18a8b03c0e1f5834b46a338644debf4bc24a4f",
+          "sha256": "628614c2b0a00e7ec00e39203c41665b696c45a3439fa4080843fceb632b871c",
           "bytes": 668
         },
-        "source_timestamp": "2026-08-16T02:00:24Z"
+        "source_timestamp": "2026-08-16T07:05:42Z"
       },
       "method": {
         "summary": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
@@ -1696,8 +1696,8 @@
       "type": "integrity",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-16T06:41:11Z",
-      "modified_at": "2026-08-16T06:41:11Z",
+      "published_at": "2026-08-16T07:18:46Z",
+      "modified_at": "2026-08-16T07:18:46Z",
       "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
       "metric": {
         "label": null,
@@ -1718,10 +1718,10 @@
         "url": "https://palimpsest.info/readings/anchors-latest.json",
         "input": {
           "filename": "anchors-latest.json",
-          "sha256": "2e2bf0dd8e70d166b6211b88e91ad06905dda10c673501fffbd8c4bca6c14848",
+          "sha256": "9eaf0916c66d7b0b0b4df7952c12970e5c90cf15762929ae91e098642b18cfb4",
           "bytes": 1223
         },
-        "source_timestamp": "2026-08-16T06:41:11Z"
+        "source_timestamp": "2026-08-16T07:18:46Z"
       },
       "method": {
         "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
