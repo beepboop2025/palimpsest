@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:ddti",
+  "slug": "deletion-directive-term-index",
+  "url": "https://palimpsest.info/news/deletion-directive-term-index/",
+  "signal_id": "ddti",
+  "headline": "The directive index now tracks 207 censorship terms",
+  "dek": "The index ranks provenance-bound terms found in documented directives and reports of scrubbed material.",
+  "section": "attention",
+  "order": 1,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-16T07:00:02Z",
+  "modified_at": "2026-08-16T07:00:02Z",
+  "claim_fingerprint": "sha256:315b61a2a6698dba120ec8827e6000babff869e174dfb0375cdd9af356f0105e",
+  "metric": {
+    "label": "terms ranked",
+    "value": 207,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current deletion-directive index ranks 207 terms with documented censorship provenance."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/ddti-latest.json",
+    "input": {
+      "filename": "ddti-latest.json",
+      "sha256": "f94f0907e38d865642395dd2611ceeeef46998b9b6cea47e6e64db14bddf4adc",
+      "bytes": 26584
+    },
+    "source_timestamp": "2026-08-16T07:00:02Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": null
+  },
+  "limitations": [
+    "The index reflects documented and collected directives; it is not a census of every censored term."
+  ],
+  "related_signal_ids": [
+    "gdelt",
+    "weibo-hotsearch",
+    "silence-index",
+    "coverage-guard"
+  ]
+}

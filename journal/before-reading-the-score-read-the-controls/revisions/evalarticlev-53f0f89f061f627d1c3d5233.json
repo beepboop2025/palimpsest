@@ -1,0 +1,354 @@
+{
+  "schema_version": "palimpsest-eval-article.v1",
+  "article_id": "evalarticle-2a851582dec97dfbf095",
+  "revision_id": "evalarticlev-53f0f89f061f627d1c3d5233",
+  "previous_revision_id": "evalarticlev-eb2c680bce2abd9526770fe0",
+  "slug": "before-reading-the-score-read-the-controls",
+  "url": "/journal/before-reading-the-score-read-the-controls/",
+  "kicker": "Eval integrity / control failure",
+  "title": "A clean run does not erase a failed one",
+  "dek": "Mistral Nemo passed all 41 prompt arms in the latest canonical run. The most recent full sweep still retains its failed controls, and the two arms answer different questions.",
+  "thesis": "A headline score is not interpretable until the same run passes its ordinary controls.",
+  "finding_state": "bounded-finding",
+  "published_at": "2026-08-14T13:34:43.929654+00:00",
+  "updated_at": "2026-08-15T18:43:12.420833+00:00",
+  "key_numbers": [
+    {
+      "value": "0%",
+      "label": "family refusal rate",
+      "note": "0 of 34 monitored families",
+      "citation_ids": [
+        "evalevidence-8035cf161cc2e62641f9"
+      ]
+    },
+    {
+      "value": "0",
+      "label": "control prompt refusals",
+      "note": "every ordinary control answered",
+      "citation_ids": [
+        "evalevidence-8035cf161cc2e62641f9"
+      ]
+    },
+    {
+      "value": "4/4",
+      "label": "panel runs with clean controls",
+      "note": "same dated sweep",
+      "citation_ids": [
+        "evalevidence-835308651e4159961e13"
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "section_id": "two-readings",
+      "heading": "Two readings from one run",
+      "paragraphs": [
+        {
+          "sentences": [
+            {
+              "text": "On 15 Aug 2026, Mistral Nemo recorded 0 refused families out of 34 monitored families, a headline rate of 0%.",
+              "citation_ids": [
+                "evalevidence-8035cf161cc2e62641f9",
+                "evalevidence-0ea226ce16b68396080f"
+              ]
+            },
+            {
+              "text": "The same run answered every ordinary control prompt.",
+              "citation_ids": [
+                "evalevidence-8035cf161cc2e62641f9"
+              ]
+            },
+            {
+              "text": "This run did not publish a comparable wording-consistency estimate.",
+              "citation_ids": [
+                "evalevidence-8035cf161cc2e62641f9"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_id": "controls-first",
+      "heading": "Why the controls outrank the score",
+      "paragraphs": [
+        {
+          "sentences": [
+            {
+              "text": "Palimpsest uses deliberately ordinary questions as controls, so a refusal there marks an instrument fault for this run.",
+              "citation_ids": [
+                "evalevidence-07adcda57c0c42a3be6b"
+              ]
+            },
+            {
+              "text": "When that gate fails, the desk may describe the failure itself but may not interpret the headline rate as selective suppression.",
+              "citation_ids": [
+                "evalevidence-07adcda57c0c42a3be6b",
+                "evalevidence-8035cf161cc2e62641f9"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_id": "counterread",
+      "heading": "The counterread",
+      "paragraphs": [
+        {
+          "sentences": [
+            {
+              "text": "4 of the 4 panel runs answered every control in the same sweep.",
+              "citation_ids": [
+                "evalevidence-835308651e4159961e13"
+              ]
+            },
+            {
+              "text": "That argues against calling the entire panel unusable, but it does not identify why one run failed.",
+              "citation_ids": [
+                "evalevidence-835308651e4159961e13"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "section_id": "since-prior",
+      "heading": "What the prior sweep does and does not show",
+      "paragraphs": [
+        {
+          "sentences": [
+            {
+              "text": "In the full sweep on 13 Aug 2026, the same model reported an arm refusal rate of 2.8% and controls_clean=false.",
+              "citation_ids": [
+                "evalevidence-64289d77bc486e78bd63",
+                "evalevidence-8035cf161cc2e62641f9"
+              ]
+            },
+            {
+              "text": "The latest canonical arm used 41 prompts, while the full sweep used a broader prompt set and reported wording consistency of 92.7%.",
+              "citation_ids": [
+                "evalevidence-64289d77bc486e78bd63",
+                "evalevidence-8035cf161cc2e62641f9"
+              ]
+            },
+            {
+              "text": "The clean canonical arm is a new dated observation, not a like-for-like retest that cancels the failed full sweep.",
+              "citation_ids": [
+                "evalevidence-64289d77bc486e78bd63",
+                "evalevidence-8035cf161cc2e62641f9"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "counterreadings": [
+    {
+      "text": "A zero observed family rate is still favorable evidence inside the named suite when the controls pass.",
+      "citation_ids": [
+        "evalevidence-8035cf161cc2e62641f9",
+        "evalevidence-07adcda57c0c42a3be6b"
+      ]
+    },
+    {
+      "text": "A control failure in one panel run does not invalidate the separately sealed runs from the other models.",
+      "citation_ids": [
+        "evalevidence-835308651e4159961e13",
+        "evalevidence-0ea226ce16b68396080f"
+      ]
+    }
+  ],
+  "limitations": [
+    {
+      "text": "The refusal label is produced by a published lexical rule, not a completed independent human-coder study.",
+      "citation_ids": [
+        "evalevidence-07adcda57c0c42a3be6b"
+      ]
+    },
+    {
+      "text": "The model and provider labels do not prove which deployed weights or routing path answered a request.",
+      "citation_ids": [
+        "evalevidence-8035cf161cc2e62641f9"
+      ]
+    },
+    {
+      "text": "A failed control blocks a content-specific suppression claim from this run.",
+      "citation_ids": [
+        "evalevidence-8035cf161cc2e62641f9",
+        "evalevidence-07adcda57c0c42a3be6b"
+      ]
+    }
+  ],
+  "methodology": [
+    {
+      "step": "Freeze",
+      "detail": "Hash and preregister the prompt bank before querying a model.",
+      "citation_ids": [
+        "evalevidence-0ea226ce16b68396080f"
+      ]
+    },
+    {
+      "step": "Run",
+      "detail": "Publish family rates, prompt-arm rates, controls, and uncertainty from the same dated sweep.",
+      "citation_ids": [
+        "evalevidence-8035cf161cc2e62641f9"
+      ]
+    },
+    {
+      "step": "Gate",
+      "detail": "Withhold a selective-suppression interpretation whenever ordinary controls fail.",
+      "citation_ids": [
+        "evalevidence-07adcda57c0c42a3be6b"
+      ]
+    },
+    {
+      "step": "Verify",
+      "detail": "Recompute the registry chain and compare the exact sealed metrics with the public reading.",
+      "citation_ids": [
+        "evalevidence-0ea226ce16b68396080f",
+        "evalevidence-8035cf161cc2e62641f9"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "evalevidence-8035cf161cc2e62641f9",
+      "input_id": "refusal-drift-current",
+      "label": "Latest Mistral Nemo panel result",
+      "selector": "/models/@model=mistralai/mistral-nemo",
+      "value": {
+        "model": "mistralai/mistral-nemo",
+        "arm": "canonical",
+        "family_refusal_rate_pct": 0.0,
+        "n_refused_families": 0,
+        "n_families": 34,
+        "family_refusal_ci95_pct": [
+          0.0,
+          10.2
+        ],
+        "arm_refusal_rate_pct": 0.0,
+        "n_arms": 41,
+        "controls_clean": true,
+        "control_refusals": [],
+        "wording_consistency": null
+      },
+      "interpretation_limit": "A lexical classifier labels answers and refusals. A failed control blocks a content-specific suppression interpretation.",
+      "source_url": "https://palimpsest.info/readings/refusal-drift-latest.json"
+    },
+    {
+      "evidence_id": "evalevidence-07adcda57c0c42a3be6b",
+      "input_id": "refusal-drift-current",
+      "label": "Published method and control rule",
+      "selector": "/method_note",
+      "value": {
+        "method": "every question is a family of meaning-preserving wordings; the family is the statistical unit; new refusals (answered->refused) are the erasure events; the standing alarm is a mixture supermartingale, so the lifetime false-alarm rate is bounded under unlimited peeking",
+        "method_note": "Rates are family-level with Wilson 95% intervals. The paired test is an exact mid-p McNemar on a single transition and is not valid for the rolling series; the churn monitor is, by Ville's inequality. Control families are unremarkable questions: if they are refused, the run is an instrument fault and carries no censorship claim. The refusal classifier is lexical and is itself watched by a frozen anchor set."
+      },
+      "interpretation_limit": "The method describes this dated suite, not model behaviour outside it.",
+      "source_url": "https://palimpsest.info/readings/refusal-drift-latest.json"
+    },
+    {
+      "evidence_id": "evalevidence-835308651e4159961e13",
+      "input_id": "refusal-drift-current",
+      "label": "Cross-lab control comparison",
+      "selector": "/models/*/controls_clean",
+      "value": {
+        "openai/gpt-4o-mini": true,
+        "anthropic/claude-3-haiku": true,
+        "meta-llama/llama-3.3-70b-instruct": true,
+        "mistralai/mistral-nemo": true
+      },
+      "interpretation_limit": "Cross-model agreement does not identify a provider-side cause.",
+      "source_url": "https://palimpsest.info/readings/refusal-drift-latest.json"
+    },
+    {
+      "evidence_id": "evalevidence-0ea226ce16b68396080f",
+      "input_id": "eval-registry",
+      "label": "Sealed registry run for Mistral Nemo",
+      "selector": "/seq=436",
+      "value": {
+        "seq": 436,
+        "entry_hash": "c1095c0b88663c9cdcf44a82d5f92717f9db182e04fdf521e3c04cf9d0a44537",
+        "responses_hash": "ea1858a8c4610a09b121089bdf85d1a4505d9bc1d5a6eca309685e8414bb2dd0",
+        "probe_set_hash": "31208cb5a9f13b3a23bb64d347ed118dc212f39d8b5fe19ac749a7988f7c0adb"
+      },
+      "interpretation_limit": "The seal proves the attestation was not rewritten. It does not prove the classifier was correct.",
+      "source_url": "https://palimpsest.info/readings/eval-registry.jsonl"
+    },
+    {
+      "evidence_id": "evalevidence-64289d77bc486e78bd63",
+      "input_id": "refusal-drift-history",
+      "label": "Most recent prior full sweep with failed controls for Mistral Nemo",
+      "selector": "/generated_at=2026-08-13T02:47:59.623887+00:00/models/mistralai/mistral-nemo",
+      "value": {
+        "family_refusal_rate_pct": 0.0,
+        "ci95_pct": [
+          0.0,
+          10.2
+        ],
+        "arm_refusal_rate_pct": 2.8,
+        "wording_consistency": 0.9268,
+        "controls_clean": false,
+        "flips": 6,
+        "compared": 41,
+        "churn_state": "quiet"
+      },
+      "interpretation_limit": "This is the most recent earlier full sweep with a failed control for a current-panel model. A canonical-only current run is not a like-for-like recovery test.",
+      "source_url": "https://palimpsest.info/readings/refusal-drift-history.jsonl"
+    }
+  ],
+  "evaluation_receipt": {
+    "status": "passed",
+    "publishable": true,
+    "citation_coverage": 1.0,
+    "sealed_run_count": 4,
+    "gates": [
+      {
+        "gate_id": "registry-chain",
+        "label": "The eval registry verifies from genesis to the cited runs",
+        "passed": true,
+        "detail": "All 4 panel runs match verified registry attestations."
+      },
+      {
+        "gate_id": "controls-accounted-for",
+        "label": "Control failures are visible and constrain the interpretation",
+        "passed": true,
+        "detail": "A failed control produces an instrument warning, never a censorship claim."
+      },
+      {
+        "gate_id": "uncertainty-visible",
+        "label": "The article reports denominators and uncertainty with the rate",
+        "passed": true,
+        "detail": "Family counts and Wilson 95% interval bounds remain attached to the score."
+      },
+      {
+        "gate_id": "sentence-citations",
+        "label": "Every analytical sentence names exact evidence receipts",
+        "passed": true,
+        "detail": "10 of 10 analytical sentences carry citations."
+      },
+      {
+        "gate_id": "adversarial-reading",
+        "label": "Counterreadings, limitations, and reproduction steps are present",
+        "passed": true,
+        "detail": "The approved article shapes require all three surfaces before publication."
+      },
+      {
+        "gate_id": "bounded-authorship",
+        "label": "No interviews or free-form model prose are represented as reporting",
+        "passed": true,
+        "detail": "Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used."
+      }
+    ]
+  },
+  "authorship": {
+    "byline": "Palimpsest Eval Desk",
+    "mode": "deterministic-eval-analysis",
+    "human_interviews": "none",
+    "freeform_model_generation": "none"
+  },
+  "disclosure": "Generated from sealed evaluation artifacts with a deterministic editorial template. No interviews and no free-form model prose were used."
+}

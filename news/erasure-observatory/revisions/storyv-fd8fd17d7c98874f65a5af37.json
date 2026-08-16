@@ -1,0 +1,54 @@
+{
+  "id": "palimpsest-news:erasure-observatory",
+  "slug": "erasure-observatory",
+  "url": "https://palimpsest.info/news/erasure-observatory/",
+  "signal_id": "erasure-observatory",
+  "headline": "The composite erasure index stands at 39.9",
+  "dek": "The roll-up keeps archive, redaction, repository and distribution evidence separate beneath one directional index.",
+  "section": "erasure",
+  "order": 1,
+  "type": "analysis",
+  "priority": "lead",
+  "status": "live",
+  "published_at": "2026-08-16T03:11:24Z",
+  "modified_at": "2026-08-16T03:11:24Z",
+  "claim_fingerprint": "sha256:74e4f2277000b759b4b7097a575cde3995e306fa1fdb765bcced67b4ed10bd47",
+  "metric": {
+    "label": "erasure index",
+    "value": 39.9,
+    "unit": "index",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current cross-layer erasure index is 39.9."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
+    "input": {
+      "filename": "erasure-observatory-latest.json",
+      "sha256": "68503155ffb5a46625b2274248d6da7f596463437d272de9d1aa0a22e838db22",
+      "bytes": 3911
+    },
+    "source_timestamp": "2026-08-16T03:11:24Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 4
+  },
+  "limitations": [
+    "The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items."
+  ],
+  "related_signal_ids": [
+    "wayback",
+    "baike-redaction",
+    "github-refuge",
+    "app-storefront",
+    "apple-censorship"
+  ]
+}

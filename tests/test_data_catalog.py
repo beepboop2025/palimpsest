@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from scripts import build_data_catalog as catalog
+from scripts import anchor_roots
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -359,6 +360,53 @@ def test_count_extraction_is_explicit_and_does_not_walk_evidence_payloads():
     )
     assert catalog._bounded_count(catalog._value_at(doc, "events")) == 3
     assert catalog._value_at(doc, "missing.value") is None
+
+
+def test_anchor_metadata_replays_the_summary_and_log_prefix_at_its_clock(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(catalog, "ROOT", tmp_path)
+    readings = tmp_path / "readings"
+    readings.mkdir()
+
+    def record(ts: str, character: str) -> dict:
+        return {
+            "ts": ts,
+            "roots": {
+                "registry_root": character * 64,
+                "erasure_root": character * 64,
+                "readings_root": character * 64,
+                "readings_problems": [],
+            },
+            "wayback": [{"ok": True, "snapshot": f"https://example/{character}"}],
+            "ots": {"ok": True, "proof": f"{character}.txt.ots"},
+        }
+
+    historical = record("2026-08-04T11:00:00Z", "a")
+    future = record("2026-08-04T12:30:00Z", "b")
+    historical_line = (json.dumps(historical) + "\n").encode()
+    (readings / "anchors.jsonl").write_bytes(
+        historical_line + (json.dumps(future) + "\n").encode()
+    )
+    (readings / "anchors-latest.json").write_text(
+        anchor_roots.serialize_anchor_summary(future), encoding="utf-8"
+    )
+
+    metadata = catalog._artifact_metadata({
+        "id": "anchors",
+        "latest": "readings/anchors-latest.json",
+        "history": "readings/anchors.jsonl",
+        "cadence": "PT6H",
+        "status": "live",
+        "count_fields": ["wayback_snapshots"],
+    }, now=datetime(2026, 8, 4, 12, tzinfo=timezone.utc))
+
+    expected_latest = anchor_roots.serialize_anchor_summary(historical).encode()
+    assert metadata["observed_at"] == "2026-08-04T11:00:00Z"
+    assert metadata["latest_bytes"] == len(expected_latest)
+    assert metadata["history_bytes"] == len(historical_line)
+    assert metadata["history_rows"] == 1
+    assert metadata["counts"] == {"wayback_snapshots": 1}
 
 
 def test_generated_files_match_builder_under_source_date_epoch(monkeypatch, tmp_path):

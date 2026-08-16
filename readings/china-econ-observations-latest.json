@@ -1,13 +1,13 @@
 {
  "artifact": {
-  "bytes": 921255,
+  "bytes": 1185578,
   "media_type": "application/x-ndjson",
   "path": "readings/china-econ-observations.jsonl",
-  "records": 1049,
-  "sha256": "bba35cc102c9a2ab1249895f27bb7f1574722bcfa2ac21c0c82d1929d74e5a61",
+  "records": 1350,
+  "sha256": "6023ab08473d16a2d14b82b3f7fc5e573db23a9278ff2dc06eb523f6517fd193",
   "url": "https://palimpsest.info/readings/china-econ-observations.jsonl"
  },
- "as_of": "2026-08-15T10:27:05.819112Z",
+ "as_of": "2026-08-16T01:23:31.816425Z",
  "contract": {
   "aggregate_only": true,
   "bitemporal": true,
@@ -34,15 +34,15 @@
    "CN"
   ],
   "geography_count": 1,
-  "last_collected_at": "2026-08-15T10:27:05.819112Z",
-  "last_released_at": "2026-08-15T10:27:05.819112Z",
+  "last_collected_at": "2026-08-16T01:23:31.816425Z",
+  "last_released_at": "2026-08-16T01:23:31.816425Z",
   "ownership_count": 1,
   "ownerships": [
    "all"
   ],
   "period_end": "2026-08-14",
   "period_start": "2026-07-06",
-  "provenance_only_vintages": 614,
+  "provenance_only_vintages": 915,
   "sector_count": 1,
   "sectors": [
    "all"
@@ -75,7 +75,7 @@
   ],
   "value_revision_events": 0
  },
- "generated_at": "2026-08-15T10:27:05.819112Z",
+ "generated_at": "2026-08-16T01:23:31.816425Z",
  "integrity": {
   "exact_byte_digest": true,
   "monotonic_source_revisions": true,
@@ -89,7 +89,7 @@
   "Where a source omits a release timestamp, released_at may be a conservative first-observed upper bound declared in row metadata."
  ],
  "method": "Validate every aggregate observation and observation_id, enforce append order and source revision invariants, then hash the exact published JSONL bytes.",
- "n_observations": 1049,
+ "n_observations": 1350,
  "schema_version": "palimpsest-economic-observation-manifest.v1",
  "scope": "Aggregate China economic observations actually collected by Palimpsest; this is a bitemporal evidence ledger, not a GDP estimate or a claim of complete source coverage.",
  "source": "Palimpsest aggregate collectors; each observation retains its own source_id, evidence_url, and raw response digest"

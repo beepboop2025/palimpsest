@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:app-storefront",
+  "slug": "app-storefront-panel",
+  "url": "https://palimpsest.info/news/app-storefront-panel/",
+  "signal_id": "app-storefront",
+  "headline": "60% of the 10-app panel is unavailable in China's storefront",
+  "dek": "The fixed panel compares China and US storefront results in the same round, with transient lookup failures separated.",
+  "section": "erasure",
+  "order": 5,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-16T02:14:21Z",
+  "modified_at": "2026-08-16T02:14:21Z",
+  "claim_fingerprint": "sha256:9f931cb4bc4e94265c2edaf659cc8bf95fba045fafb1bf0ecf77a55d256fd1a3",
+  "metric": {
+    "label": "delisting rate",
+    "value": 0.6,
+    "unit": "ratio",
+    "denominator": {
+      "label": "apps tracked",
+      "value": 10
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current panel finds 60% of 10 tracked apps unavailable in the China storefront."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/app-storefront-latest.json",
+    "input": {
+      "filename": "app-storefront-latest.json",
+      "sha256": "1a072311de8d9afb308edd4d1e4b72480c5016f632dd435204ece6be0356eace",
+      "bytes": 3519
+    },
+    "source_timestamp": "2026-08-16T02:14:21Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "A fixed app panel is transparent but not representative of the entire App Store catalogue."
+  ],
+  "related_signal_ids": [
+    "apple-censorship",
+    "erasure-observatory"
+  ]
+}

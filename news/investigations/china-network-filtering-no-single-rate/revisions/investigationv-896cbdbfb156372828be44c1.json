@@ -1,0 +1,470 @@
+{
+  "case_id": "investigation-cd196dfff93a0065d419",
+  "claims": [
+    {
+      "claim_id": "current-round-diverges",
+      "confidence": "corroborated",
+      "counterevidence_ids": [
+        "no-country-scale-outage"
+      ],
+      "evidence_ids": [
+        "ooni-anomaly-rate",
+        "censored-planet-rate",
+        "inside-view-panel"
+      ],
+      "hypothesis_ids": [
+        "selective-vantage-dependent"
+      ],
+      "limitation_ids": [
+        "incompatible-denominators",
+        "single-round"
+      ],
+      "publication_state": "draft",
+      "statement": "The current structured round is consistent with selective and vantage-dependent interference, because independent instruments report materially different scoped measurements.",
+      "type": "analytical_finding"
+    },
+    {
+      "claim_id": "no-honest-single-rate",
+      "confidence": "insufficient",
+      "counterevidence_ids": [],
+      "evidence_ids": [
+        "ooni-anomaly-rate",
+        "ooni-measurement-count",
+        "in-path-rate",
+        "censored-planet-rate",
+        "inside-view-panel",
+        "inside-view-panel-size",
+        "vantage-fusion-rate"
+      ],
+      "hypothesis_ids": [
+        "common-national-rate",
+        "selective-vantage-dependent"
+      ],
+      "limitation_ids": [
+        "incompatible-denominators",
+        "derived-fusion"
+      ],
+      "publication_state": "draft",
+      "statement": "These percentages cannot honestly be collapsed into a prevalence rate for China's population, households, or the whole internet.",
+      "type": "methodological_limitation"
+    },
+    {
+      "claim_id": "not-a-broad-outage",
+      "confidence": "insufficient",
+      "counterevidence_ids": [],
+      "evidence_ids": [
+        "ioda-instruments-firing"
+      ],
+      "hypothesis_ids": [
+        "selective-vantage-dependent"
+      ],
+      "limitation_ids": [
+        "outage-scope"
+      ],
+      "publication_state": "draft",
+      "statement": "The current IODA record reports zero country-scale outage instruments firing; that narrows, but does not erase, the selective-interference evidence.",
+      "type": "artifact_observation"
+    }
+  ],
+  "collection_targets": [
+    {
+      "blocker": "No validated longitudinal artifact has crossed the publication boundary; one round would not establish persistence.",
+      "data_level": "aggregate_only",
+      "evidence_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+      "question_answered": "Does a controlled external vantage observe stable or changing DNS-injector response processes across repeated rounds?",
+      "source_id": "bleedthrough-longitudinal",
+      "status": "collecting"
+    },
+    {
+      "blocker": "Three frozen, comparable rounds are required.",
+      "data_level": "aggregate_only",
+      "evidence_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "question_answered": "Do independent normalized measurements converge when their collection windows are aligned?",
+      "source_id": "aligned-network-rounds",
+      "status": "planned"
+    }
+  ],
+  "correction": {
+    "last_corrected_at": null,
+    "note": "No correction has been issued for this open research lead.",
+    "policy_url": "https://palimpsest.info/methodology/",
+    "status": "none"
+  },
+  "counterevidence": [
+    {
+      "counterevidence_id": "no-country-scale-outage",
+      "disposition": "narrows_claim",
+      "evidence_ids": [
+        "ioda-instruments-firing"
+      ],
+      "review_status": "reviewed",
+      "statement": "IODA reports no current country-scale outage instrument firing, which argues against describing the scoped filtering measurements as a broad shutdown."
+    }
+  ],
+  "dek": "A research lead comparing incompatible measurement denominators, independent vantages, and the counterevidence against treating selective filtering as a country-scale outage.",
+  "evidence": [
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "ooni-anomaly-rate",
+      "freshness": "current",
+      "independence_group": "ooni-open-measurements",
+      "integrity": "verified",
+      "interpretation_limit": "The value is a share of accepted OONI measurements in its test mix, not a share of people, households, websites, or the internet.",
+      "label": "OONI China anomaly index",
+      "role": "support",
+      "selector": "/signals/@id=ooni-gfw/payload/gfw_index",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T13:02:46Z",
+      "source_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+      "value": 58.6,
+      "value_type": "number"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "ooni-measurement-count",
+      "freshness": "current",
+      "independence_group": "ooni-open-measurements",
+      "integrity": "verified",
+      "interpretation_limit": "Measurement count is not a probability sample of China's population or network endpoints.",
+      "label": "OONI accepted-measurement denominator",
+      "role": "context",
+      "selector": "/signals/@id=ooni-gfw/payload/n_completed_measurements",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T13:02:46Z",
+      "source_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+      "value": 275134,
+      "value_type": "integer"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "in-path-rate",
+      "freshness": "current",
+      "independence_group": "ooni-open-measurements",
+      "integrity": "verified",
+      "interpretation_limit": "This shares OONI provenance with the anomaly index and therefore is not independent corroboration; its denominator is completed tests only.",
+      "label": "OONI-derived completed-test middlebox index",
+      "role": "context",
+      "selector": "/signals/@id=in-path-interference/payload/middlebox_index",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T13:05:35Z",
+      "source_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
+      "value": 1.28,
+      "value_type": "number"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "censored-planet-rate",
+      "freshness": "current",
+      "independence_group": "censored-planet-remote",
+      "integrity": "verified",
+      "interpretation_limit": "The remote side-channel method and denominator differ from OONI and cannot be compared as if both sampled the same population.",
+      "label": "Censored Planet remote interference rate",
+      "role": "support",
+      "selector": "/signals/@id=censored-planet/payload/cn_interference_rate_pct",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T05:55:40Z",
+      "source_url": "https://palimpsest.info/readings/censored-planet-latest.json",
+      "value": 4.38,
+      "value_type": "number"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "inside-view-panel",
+      "freshness": "current",
+      "independence_group": "globalping-inside-view",
+      "integrity": "verified",
+      "interpretation_limit": "This is a deliberately selected panel and cannot estimate prevalence outside that panel.",
+      "label": "Inside-China fixed-panel blocked share",
+      "role": "support",
+      "selector": "/signals/@id=inside-view/payload/block_rate",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T13:10:35Z",
+      "source_url": "https://palimpsest.info/readings/inside-view-latest.json",
+      "value": 1.0,
+      "value_type": "number"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "inside-view-panel-size",
+      "freshness": "current",
+      "independence_group": "globalping-inside-view",
+      "integrity": "verified",
+      "interpretation_limit": "The panel size is small and deliberately scoped; it is not a national sample.",
+      "label": "Inside-China fixed-panel size",
+      "role": "context",
+      "selector": "/signals/@id=inside-view/payload/n_censored_answered",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T13:10:35Z",
+      "source_url": "https://palimpsest.info/readings/inside-view-latest.json",
+      "value": 5,
+      "value_type": "integer"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "ioda-instruments-firing",
+      "freshness": "current",
+      "independence_group": "ioda-country-outages",
+      "integrity": "verified",
+      "interpretation_limit": "Absence of a broad routing or reachability outage does not imply absence of selective DNS, HTTP, or application filtering.",
+      "label": "IODA country-scale outage instruments firing",
+      "role": "counter",
+      "selector": "/signals/@id=ioda-outages/payload/instruments_firing",
+      "source_class": "research",
+      "source_timestamp": "2026-08-15T13:04:13Z",
+      "source_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
+      "value": 0,
+      "value_type": "integer"
+    },
+    {
+      "artifact_generated_at": "2026-08-15T16:44:18Z",
+      "artifact_id": "osint-china",
+      "artifact_sha256": "b5a01467e30ec9d8513facb67a31a09e285f43340440c2d201f0f9e1e29a635a",
+      "artifact_url": "https://palimpsest.info/readings/osint-china-latest.json",
+      "evidence_id": "vantage-fusion-rate",
+      "freshness": "current",
+      "independence_group": "palimpsest-derived-fusion",
+      "integrity": "verified",
+      "interpretation_limit": "A weighted synthesis is not a new independent vantage and is not a population-prevalence estimate.",
+      "label": "Palimpsest derived vantage-fusion index",
+      "role": "context",
+      "selector": "/signals/@id=vantage-fusion/payload/fused_index",
+      "source_class": "derived",
+      "source_timestamp": "2026-08-15T13:18:35Z",
+      "source_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
+      "value": 28.8,
+      "value_type": "number"
+    }
+  ],
+  "falsification_conditions": [
+    {
+      "condition_id": "country-scale-ioda-event",
+      "evidence_needed": "Aligned IODA, OONI, Censored Planet, and inside-view collection clocks.",
+      "statement": "A temporally overlapping multi-instrument IODA country event would falsify the current narrow statement that the round is not a broad outage.",
+      "status": "untested"
+    },
+    {
+      "condition_id": "three-round-convergence",
+      "evidence_needed": "Three aligned rounds with frozen panels, denominator definitions, and source-group labels.",
+      "statement": "Three preregistered comparable rounds in which independent normalized estimates converge within twenty percentage points would weaken the vantage-dependent hypothesis.",
+      "status": "untested"
+    },
+    {
+      "condition_id": "three-round-clean-panel",
+      "evidence_needed": "Three independent aggregate groups and a versioned fixed panel.",
+      "statement": "Three rounds in which at least three independent source groups report no interference across the frozen test panel would falsify the current selective-interference finding for that panel.",
+      "status": "untested"
+    }
+  ],
+  "hypotheses": [
+    {
+      "falsification_condition_ids": [
+        "three-round-convergence"
+      ],
+      "hypothesis_id": "common-national-rate",
+      "statement": "Comparable independent instruments converge closely enough to support one bounded national interference estimate.",
+      "status": "open"
+    },
+    {
+      "falsification_condition_ids": [
+        "three-round-convergence",
+        "three-round-clean-panel"
+      ],
+      "hypothesis_id": "selective-vantage-dependent",
+      "statement": "Instrument scope and vantage continue to produce materially different rates even when collection windows are aligned.",
+      "status": "open"
+    }
+  ],
+  "limitations": [
+    {
+      "consequence": "Their percentages may be compared as scoped signals, but not averaged into a national prevalence rate.",
+      "limitation_id": "incompatible-denominators",
+      "statement": "The instruments sample different protocols, targets, probes, and completed-test populations."
+    },
+    {
+      "consequence": "It cannot yet call the observed divergence persistent.",
+      "limitation_id": "single-round",
+      "statement": "The present lead has not completed three preregistered comparable rounds."
+    },
+    {
+      "consequence": "It is context, not another independent vote.",
+      "limitation_id": "derived-fusion",
+      "statement": "Vantage fusion reuses upstream measurements."
+    },
+    {
+      "consequence": "It is counterevidence to a shutdown claim, not a clean bill of health for selective filtering.",
+      "limitation_id": "outage-scope",
+      "statement": "IODA is designed for country-scale connectivity events."
+    }
+  ],
+  "methodology": [
+    {
+      "description": "Record each instrument's target population, completed-test rule, panel, time window, and independence group before comparing values.",
+      "reproducible": true,
+      "step_id": "freeze-denominators"
+    },
+    {
+      "description": "Count shared OONI-derived products once and keep remote, inside-China, and country-outage vantages separate.",
+      "reproducible": true,
+      "step_id": "separate-vantages"
+    },
+    {
+      "description": "Check country-scale outage telemetry before describing selective failures as broad connectivity loss.",
+      "reproducible": true,
+      "step_id": "test-counterevidence"
+    }
+  ],
+  "opened_at": "2026-08-11T00:00:00Z",
+  "publication_gate": {
+    "checks": [
+      {
+        "check_id": "analytical-claims",
+        "detail": "Observed 1; requires at least 1.",
+        "label": "Analytical claims present",
+        "minimum": 1,
+        "observed": 1,
+        "passed": true
+      },
+      {
+        "check_id": "independent-groups",
+        "detail": "Observed 3; requires at least 2.",
+        "label": "Independent groups per analytical claim",
+        "minimum": 2,
+        "observed": 3,
+        "passed": true
+      },
+      {
+        "check_id": "analytical-counterevidence",
+        "detail": "Observed 1; requires at least 1.",
+        "label": "Analytical claims with counterevidence",
+        "minimum": 1,
+        "observed": 1,
+        "passed": true
+      },
+      {
+        "check_id": "analytical-limitations",
+        "detail": "Observed 1; requires at least 1.",
+        "label": "Analytical claims with explicit limitations",
+        "minimum": 1,
+        "observed": 1,
+        "passed": true
+      },
+      {
+        "check_id": "analytical-hypotheses",
+        "detail": "Observed 1; requires at least 1.",
+        "label": "Analytical claims linked to hypotheses",
+        "minimum": 1,
+        "observed": 1,
+        "passed": true
+      },
+      {
+        "check_id": "counterevidence-review",
+        "detail": "Observed 1; requires at least 1.",
+        "label": "Counterevidence records reviewed",
+        "minimum": 1,
+        "observed": 1,
+        "passed": true
+      },
+      {
+        "check_id": "current-evidence",
+        "detail": "Observed 8; requires at least 8.",
+        "label": "Evidence receipts current",
+        "minimum": 8,
+        "observed": 8,
+        "passed": true
+      },
+      {
+        "check_id": "verified-integrity",
+        "detail": "Observed 8; requires at least 8.",
+        "label": "Evidence receipts integrity-verified",
+        "minimum": 8,
+        "observed": 8,
+        "passed": true
+      },
+      {
+        "check_id": "right-to-reply",
+        "detail": "Observed 1; requires at least 1.",
+        "label": "Right-to-reply disposition complete",
+        "minimum": 1,
+        "observed": 1,
+        "passed": true
+      },
+      {
+        "check_id": "falsification-assessed",
+        "detail": "Observed 0; requires at least 2.",
+        "label": "Every linked falsification condition assessed with the claim surviving",
+        "minimum": 2,
+        "observed": 0,
+        "passed": false
+      },
+      {
+        "check_id": "falsification-per-claim",
+        "detail": "Observed 0; requires at least 1.",
+        "label": "Survived falsification conditions per analytical claim",
+        "minimum": 1,
+        "observed": 0,
+        "passed": false
+      },
+      {
+        "check_id": "claims-reviewed",
+        "detail": "Observed 0; requires at least 3.",
+        "label": "Claims editorially reviewed",
+        "minimum": 3,
+        "observed": 0,
+        "passed": false
+      }
+    ],
+    "failed_check_ids": [
+      "falsification-assessed",
+      "falsification-per-claim",
+      "claims-reviewed"
+    ],
+    "publishable": false,
+    "status": "blocked"
+  },
+  "published_at": null,
+  "right_to_reply": {
+    "applicability_reason": "This open methods investigation makes no allegation about a person or institution.",
+    "parties": [],
+    "status": "not_applicable"
+  },
+  "safety": {
+    "allegations": [],
+    "data_level": "aggregate_only",
+    "inferred_motives": [],
+    "person_level_data": false,
+    "prohibited_interpretations": [
+      "Do not describe the OONI anomaly index as a percentage of China's people, households, websites, or the internet.",
+      "Do not infer an actor, party, intent, motive, or causal mechanism from these aggregate measurements.",
+      "Do not describe one current round as persistent or nationally representative."
+    ]
+  },
+  "slug": "china-network-filtering-no-single-rate",
+  "status": "evidence_gathering",
+  "status_reason": "The research lead remains open while its public collection and falsification targets are incomplete.",
+  "testable_question": "Across three preregistered comparable rounds, do independent China network-measurement groups converge within twenty percentage points, or does measured interference remain selective and vantage-dependent?",
+  "title": "China's Network Filtering Has No Honest Single Rate",
+  "updated_at": "2026-08-15T13:18:35Z",
+  "url": "/news/investigations/china-network-filtering-no-single-rate/",
+  "version_id": "investigationv-896cbdbfb156372828be44c1"
+}

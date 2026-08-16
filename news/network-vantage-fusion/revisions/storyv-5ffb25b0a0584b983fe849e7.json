@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:vantage-fusion",
+  "slug": "network-vantage-fusion",
+  "url": "https://palimpsest.info/news/network-vantage-fusion/",
+  "signal_id": "vantage-fusion",
+  "headline": "Reporting network vantages combine to a 28.8% interference index",
+  "dek": "The fusion names excluded and divergent inputs instead of silently averaging away disagreement.",
+  "section": "network",
+  "order": 7,
+  "type": "analysis",
+  "priority": "lead",
+  "status": "live",
+  "published_at": "2026-08-15T19:05:44Z",
+  "modified_at": "2026-08-15T19:05:44Z",
+  "claim_fingerprint": "sha256:c49e5d5701bf39cb7f38c8cb516e554412dc353cf3e7d7179b5ff6fe05f9ffab",
+  "metric": {
+    "label": "fused network index",
+    "value": 28.8,
+    "unit": "percent",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current coverage-weighted fusion of reporting vantages is 28.8%."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
+    "input": {
+      "filename": "vantage-fusion-latest.json",
+      "sha256": "03bbc12761679f294fd3f1c9bfffcfdabfa4e784d7acebe25bd056141fa44753",
+      "bytes": 2093
+    },
+    "source_timestamp": "2026-08-15T19:05:44Z"
+  },
+  "method": {
+    "summary": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
+    "version": 1
+  },
+  "limitations": [
+    "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic."
+  ],
+  "related_signal_ids": [
+    "ooni-gfw",
+    "censored-planet",
+    "inside-view",
+    "net4people"
+  ]
+}

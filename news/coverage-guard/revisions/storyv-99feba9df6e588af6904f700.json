@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:coverage-guard",
+  "slug": "coverage-guard",
+  "url": "https://palimpsest.info/news/coverage-guard/",
+  "signal_id": "coverage-guard",
+  "headline": "Coverage changes confound 1 current signal",
+  "dek": "The guard withholds a censorship interpretation when movement can be explained by a changing measurement base.",
+  "section": "command",
+  "order": 3,
+  "type": "methodology",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-15T19:09:39Z",
+  "modified_at": "2026-08-15T19:09:39Z",
+  "claim_fingerprint": "sha256:0b4f2b4a9174d70d94134b476ed0099a76951538d13e80329949df70422245ad",
+  "metric": {
+    "label": "confounded signals",
+    "value": 1,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "method",
+      "statement": "The current coverage audit marks 1 signal as confounded by its measurement coverage."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
+    "input": {
+      "filename": "coverage-guard-latest.json",
+      "sha256": "37556b9cf0e281bb75f91293560d1e6dfc29b7344539c973e33609014013c0f2",
+      "bytes": 4507
+    },
+    "source_timestamp": "2026-08-15T19:09:39Z"
+  },
+  "method": {
+    "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
+    "version": null
+  },
+  "limitations": [
+    "A coverage-confounded signal is inconclusive about substantive change, not evidence that no change occurred."
+  ],
+  "related_signal_ids": [
+    "board-alarm",
+    "event-flags",
+    "ddti"
+  ]
+}

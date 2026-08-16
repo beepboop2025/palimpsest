@@ -1,0 +1,103 @@
+{
+  "schema_version": "palimpsest-event-analysis.v1",
+  "analysis_id": "analysisv-bf16638a3ced88900e8936f9",
+  "event_id": "event-2c67e19a0f4ed244b1dc4f86",
+  "event_version_id": "eventv-75d692f709a80f10b787964b",
+  "event_url": "https://palimpsest.info/news/wire/event-2c67e19a0f4ed244b1dc4f86/",
+  "url": "https://palimpsest.info/news/wire/event-2c67e19a0f4ed244b1dc4f86/analysis.json",
+  "generated_at": "2026-08-15T18:47:58Z",
+  "disposition": "collector-context",
+  "scope_status": "in-scope",
+  "position": "Palimpsest's view: current collectors add relevant measured context, but they do not independently verify or refute this article.",
+  "rationale": [
+    "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
+    "All 3 declared collector surfaces are live. Their normalized findings are published below as topical context, not article-specific confirmation."
+  ],
+  "evidence_assessment": {
+    "strength": "single-source",
+    "independent_groups": 1,
+    "source_count": 1,
+    "conclusion": "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration."
+  },
+  "collector_context": [
+    {
+      "signal_id": "ddti",
+      "status": "live",
+      "headline": "The directive index now tracks 207 censorship terms",
+      "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
+      "metric": {
+        "label": "terms ranked",
+        "value": 207,
+        "unit": "count",
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "source_timestamp": "2026-08-15T18:47:58Z",
+      "story_url": "https://palimpsest.info/news/deletion-directive-term-index/",
+      "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
+      "input_sha256": "17cdfe8f044baf285521a7eaab78efc344f22e3fc47cff6650e54a562dd7902f",
+      "claim_fingerprint": "sha256:315b61a2a6698dba120ec8827e6000babff869e174dfb0375cdd9af356f0105e",
+      "method_summary": "See the complete embedded upstream payload and its raw feed",
+      "method_version": null,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    },
+    {
+      "signal_id": "silence-index",
+      "status": "live",
+      "headline": "0 of 25 considered topics meet the blackout rule",
+      "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
+      "metric": {
+        "label": "blackout topics",
+        "value": 0,
+        "unit": "count",
+        "denominator": {
+          "label": "topics considered",
+          "value": 25
+        }
+      },
+      "source_timestamp": "2026-08-15T13:18:30Z",
+      "story_url": "https://palimpsest.info/news/silence-index/",
+      "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
+      "input_sha256": "1ba36dfcbfb6b12a4d56a0b74a418a5820810c817f804fadd9183b810469f758",
+      "claim_fingerprint": "sha256:db8ea3175b55f16e75cb8cd5cee3264f56078e38b2b6c5c9a79156779c59988c",
+      "method_summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
+      "method_version": 1,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    },
+    {
+      "signal_id": "wayback",
+      "status": "live",
+      "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
+      "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
+      "metric": {
+        "label": "reconstructed deletions",
+        "value": 0,
+        "unit": "count",
+        "denominator": {
+          "label": "URLs watched",
+          "value": 4
+        }
+      },
+      "source_timestamp": "2026-08-15T13:04:33Z",
+      "story_url": "https://palimpsest.info/news/wayback-reconstruction/",
+      "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
+      "input_sha256": "bc7a6bd13f0e2620d16ddc41669dced7f71dc96b837fb11a1891c9e59390a641",
+      "claim_fingerprint": "sha256:63b339789a2037f6e03cf980055b236978487d78122b67024ea1248bc0cda8a4",
+      "method_summary": "See the complete embedded upstream payload and its raw feed",
+      "method_version": 1,
+      "relation": "topic-surface-only",
+      "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join."
+    }
+  ],
+  "limitations": [
+    "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+    "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+    "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+    "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+  ],
+  "method": "Deterministic assessment of one validated newswire event against its independent-source structure and only the collector stories explicitly declared by that event. Collector joins remain topic-surface-only: no article body is fetched, no generative model is used, and no current measurement is represented as article-specific verification or causation."
+}

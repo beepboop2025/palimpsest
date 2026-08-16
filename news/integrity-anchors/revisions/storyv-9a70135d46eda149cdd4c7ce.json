@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:anchors",
+  "slug": "integrity-anchors",
+  "url": "https://palimpsest.info/news/integrity-anchors/",
+  "signal_id": "anchors",
+  "headline": "Integrity anchors: no current finding",
+  "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "section": "integrity",
+  "order": 1,
+  "type": "integrity",
+  "priority": "high",
+  "status": "degraded",
+  "published_at": "2026-08-16T03:11:35Z",
+  "modified_at": "2026-08-16T03:11:35Z",
+  "claim_fingerprint": "sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "availability",
+      "statement": "No current finding is published for Integrity anchors because the source status is degraded."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/anchors-latest.json",
+    "input": {
+      "filename": "anchors-latest.json",
+      "sha256": "3c533ee7fffcfb5e84e6652eebc5173e01e2f4a9f4e8d2a7d7e1ccf55b2349e7",
+      "bytes": 532
+    },
+    "source_timestamp": "2026-08-16T03:11:35Z"
+  },
+  "method": {
+    "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
+    "version": null
+  },
+  "limitations": [
+    "Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
+    "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
+  ],
+  "related_signal_ids": [
+    "wayback",
+    "github-refuge",
+    "erasure-observatory"
+  ]
+}

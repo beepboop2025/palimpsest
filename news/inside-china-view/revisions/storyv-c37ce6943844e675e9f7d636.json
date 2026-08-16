@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:inside-view",
+  "slug": "inside-china-view",
+  "url": "https://palimpsest.info/news/inside-china-view/",
+  "signal_id": "inside-view",
+  "headline": "100% of the 5-domain mainland panel is blocked",
+  "dek": "Volunteer probes inside China are compared with a same-round external control before an answer is classified.",
+  "section": "network",
+  "order": 4,
+  "type": "measurement",
+  "priority": "lead",
+  "status": "live",
+  "published_at": "2026-08-15T18:59:17Z",
+  "modified_at": "2026-08-15T18:59:17Z",
+  "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
+  "metric": {
+    "label": "blocked share",
+    "value": 1.0,
+    "unit": "ratio",
+    "denominator": {
+      "label": "qualifying answered measurement domains",
+      "value": 5
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current controlled panel reports 100% blocked responses across 5 tested domains."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/inside-view-latest.json",
+    "input": {
+      "filename": "inside-view-latest.json",
+      "sha256": "d7760c3155c60e610f4f01174e3d6e2364e743ecb80c29333c9124f85657104e",
+      "bytes": 70058
+    },
+    "source_timestamp": "2026-08-15T18:59:17Z"
+  },
+  "method": {
+    "summary": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
+    "version": 2
+  },
+  "limitations": [
+    "The volunteer panel is small and availability varies by region; it does not represent every mainland network."
+  ],
+  "related_signal_ids": [
+    "ooni-gfw",
+    "in-path-interference",
+    "censored-planet",
+    "vantage-fusion"
+  ]
+}

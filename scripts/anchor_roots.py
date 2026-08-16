@@ -13,10 +13,13 @@ control, so rewriting history would require defeating them too:
      loudly). The resulting .ots files are committed and verify with the
      standard client against the Bitcoin blockchain, not against us.
 
-Idempotent by the house convention: if none of the three roots moved since the
-last anchor record, nothing is anchored and nothing grows. All three are
-compared, because a root that is published but never re-anchored goes stale
-against the chain it claims to fingerprint.
+Idempotent by the house convention: if none of the three roots moved and the
+last anchor record completed every external deposit, nothing is anchored and
+nothing grows. An incomplete external attempt is resumed selectively: proven
+Wayback snapshots and a present OpenTimestamps proof are reused, while only
+the missing evidence is retried. All three roots are compared, because a root
+that is published but never re-anchored goes stale against the chain it claims
+to fingerprint.
 
 A broken chain is never anchored, because anchoring a bad root would launder
 it, but the three chains do not fail together:
@@ -40,11 +43,17 @@ is a visible gap in the log, never a fabricated success.
 """
 from __future__ import annotations
 
+import gzip
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -72,6 +81,11 @@ WAYBACK_TARGETS = (
     f"{SITE}/readings/erasure-ledger.jsonl",
     f"{SITE}/readings/readings-ledger.jsonl",
 )
+ROOT_KEYS = ("registry_root", "erasure_root", "readings_root")
+WAYBACK_CAPTURE_VERSION = "3"
+WAYBACK_SAVE_URL = "https://web.archive.org/save/"
+WAYBACK_STATUS_URL = "https://web.archive.org/save/status/"
+WAYBACK_RESPONSE_LIMIT = 1024 * 1024
 UA = "palimpsest-anchor/1.0 (+https://palimpsest.info)"
 
 
@@ -137,17 +151,523 @@ def last_anchor(path: str = ANCHOR_LOG) -> dict | None:
     return last
 
 
-def wayback_save(url: str, opener=urllib.request.urlopen, timeout: int = 90) -> dict:
-    """Ask the Internet Archive to snapshot one URL. Returns the snapshot
-    reference on success, or the failure reason — never raises."""
-    req = urllib.request.Request(f"https://web.archive.org/save/{url}",
-                                 headers={"User-Agent": UA})
+def _file_evidence(path: str) -> dict:
+    digest = hashlib.sha256()
+    size = 0
+    with open(path, "rb") as source:
+        while chunk := source.read(64 * 1024):
+            digest.update(chunk)
+            size += len(chunk)
+    return {"sha256": digest.hexdigest(), "bytes": size}
+
+
+def wayback_expectations() -> dict[str, dict]:
+    """Bind each public target to the exact local bytes it must replay."""
+    sources = (REGISTRY, ERASURE, READINGS_LEDGER)
+    return {
+        target: _file_evidence(source)
+        for target, source in zip(WAYBACK_TARGETS, sources, strict=True)
+    }
+
+
+def _raw_wayback_url(snapshot: str) -> str:
+    """Convert a human Wayback replay URL to its unmodified byte replay."""
+    parsed = urllib.parse.urlsplit(snapshot)
+    if parsed.scheme != "https" or parsed.hostname != "web.archive.org":
+        raise ValueError("Wayback returned a snapshot outside web.archive.org")
+    parts = parsed.path.split("/", 3)
+    if len(parts) != 4 or parts[1] != "web":
+        raise ValueError("Wayback returned an unrecognized snapshot path")
+    marker = re.fullmatch(r"(\d{14})(?:[a-z_]+)?", parts[2])
+    if marker is None:
+        raise ValueError("Wayback returned an invalid snapshot timestamp")
+    raw_path = f"/web/{marker.group(1)}id_/{parts[3]}"
+    return urllib.parse.urlunsplit(
+        (parsed.scheme, parsed.netloc, raw_path, parsed.query, "")
+    )
+
+
+def _hash_stream(stream, expected_bytes: int) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    size = 0
+    while chunk := stream.read(64 * 1024):
+        digest.update(chunk)
+        size += len(chunk)
+        if size > expected_bytes:
+            break
+    return digest.hexdigest(), size
+
+
+def _hash_replay(response, expected_bytes: int) -> tuple[str, int, str]:
+    headers = getattr(response, "headers", None)
+    encoding = (headers.get("Content-Encoding", "") if headers else "").casefold()
+    if encoding in {"", "identity"}:
+        digest, size = _hash_stream(response, expected_bytes)
+        return digest, size, encoding or "identity"
+    if encoding not in {"gzip", "x-gzip"}:
+        raise ValueError(f"unsupported Wayback content encoding: {encoding}")
+    with gzip.GzipFile(fileobj=response, mode="rb") as decoded:
+        digest, size = _hash_stream(decoded, expected_bytes)
+    return digest, size, "gzip"
+
+
+def _wayback_cdx_snapshots(capture_target: str, *, opener,
+                           timeout: int) -> list[str]:
+    """Return newest-first exact successful captures indexed by Wayback CDX."""
+    query = urllib.parse.urlencode([
+        ("url", capture_target),
+        ("output", "json"),
+        ("fl", "timestamp,original,statuscode"),
+        ("filter", "statuscode:200"),
+        # A negative CDX limit selects from the end of the time-ordered index.
+        # Sorting locally as well makes the newest-first contract independent
+        # of the order in which a CDX node serializes those rows.
+        ("limit", "-5"),
+    ])
+    request = urllib.request.Request(
+        f"https://web.archive.org/cdx/search/cdx?{query}",
+        headers={"User-Agent": UA, "Accept-Encoding": "identity"},
+    )
+    with opener(request, timeout=timeout) as response:
+        raw = response.read(64 * 1024 + 1)
+    if len(raw) > 64 * 1024:
+        raise ValueError("Wayback CDX response is too large")
+    payload = json.loads(raw)
+    if not isinstance(payload, list) or not payload:
+        return []
+    header = payload[0]
+    if header != ["timestamp", "original", "statuscode"]:
+        raise ValueError("Wayback CDX response has an unexpected schema")
+    timestamps = set()
+    for row in payload[1:]:
+        if (not isinstance(row, list) or len(row) != 3
+                or row[1] != capture_target or row[2] != "200"
+                or re.fullmatch(r"\d{14}", row[0]) is None):
+            continue
+        timestamps.add(row[0])
+    return [
+        f"https://web.archive.org/web/{timestamp}/{capture_target}"
+        for timestamp in sorted(timestamps, reverse=True)
+    ]
+
+
+def _wayback_cdx_snapshot(capture_target: str, *, opener,
+                          timeout: int) -> str | None:
+    """Return the newest exact successful capture indexed by Wayback CDX."""
+    snapshots = _wayback_cdx_snapshots(
+        capture_target, opener=opener, timeout=timeout
+    )
+    return snapshots[0] if snapshots else None
+
+
+def _wayback_replay_evidence(snapshot: str, *, expected_bytes: int, opener,
+                             timeout: int, replay_attempts: int, sleeper) -> dict:
+    if replay_attempts < 1:
+        raise ValueError("Wayback replay attempts must be positive")
+    raw_snapshot = _raw_wayback_url(snapshot)
+    replay_req = urllib.request.Request(
+        raw_snapshot,
+        headers={"User-Agent": UA, "Accept-Encoding": "identity"},
+    )
+    for attempt in range(replay_attempts):
+        try:
+            with opener(replay_req, timeout=timeout) as replay:
+                replay_http = getattr(replay, "status", None)
+                actual_sha256, actual_bytes, replay_encoding = _hash_replay(
+                    replay, expected_bytes
+                )
+            return {
+                "raw_snapshot": raw_snapshot,
+                "replay_http": replay_http,
+                "replay_content_encoding": replay_encoding,
+                "snapshot_sha256": actual_sha256,
+                "snapshot_bytes": actual_bytes,
+            }
+        except urllib.error.HTTPError as exc:
+            transient = exc.code in {404, 429, 503}
+            if not transient or attempt + 1 == replay_attempts:
+                raise
+            sleeper(min(2 ** attempt, 4))
+    raise AssertionError("unreachable Wayback replay loop")
+
+
+def _evidence_matches(evidence: dict, *, expected_sha256: str,
+                      expected_bytes: int) -> bool:
+    return (
+        evidence.get("snapshot_sha256") == expected_sha256
+        and evidence.get("snapshot_bytes") == expected_bytes
+    )
+
+
+def _matching_cdx_snapshot(capture_target: str, *, expected_sha256: str,
+                           expected_bytes: int, opener, timeout: int,
+                           replay_attempts: int, sleeper) -> tuple[str, dict] | None:
+    """Find an indexed capture whose replay is the exact expected artifact."""
+    for snapshot in _wayback_cdx_snapshots(
+        capture_target, opener=opener, timeout=timeout
+    ):
+        try:
+            evidence = _wayback_replay_evidence(
+                snapshot,
+                expected_bytes=expected_bytes,
+                opener=opener,
+                timeout=timeout,
+                replay_attempts=replay_attempts,
+                sleeper=sleeper,
+            )
+        except (OSError, TimeoutError, ValueError):
+            # One corrupt, unavailable, or not-yet-replicated replay must not
+            # hide another valid capture returned by the same CDX query.
+            continue
+        if _evidence_matches(
+            evidence,
+            expected_sha256=expected_sha256,
+            expected_bytes=expected_bytes,
+        ):
+            return snapshot, evidence
+    return None
+
+
+def _eventual_matching_cdx_snapshot(
+        capture_target: str, *, expected_sha256: str, expected_bytes: int,
+        opener, timeout: int, attempts: int, replay_attempts: int,
+        sleeper) -> tuple[str, dict] | None:
+    """Poll boundedly until CDX exposes a byte-matching accepted capture."""
+    if attempts < 1:
+        raise ValueError("Wayback CDX attempts must be positive")
+    for attempt in range(attempts):
+        match = _matching_cdx_snapshot(
+            capture_target,
+            expected_sha256=expected_sha256,
+            expected_bytes=expected_bytes,
+            opener=opener,
+            timeout=timeout,
+            replay_attempts=replay_attempts,
+            sleeper=sleeper,
+        )
+        if match is not None:
+            return match
+        if attempt + 1 < attempts:
+            sleeper(min(2 ** attempt, 4))
+    return None
+
+
+def _wayback_auth_headers(access_key: str | None,
+                          secret_key: str | None) -> dict[str, str]:
+    """Build SPN2's LOW auth header without ever logging either credential."""
+    if access_key is None:
+        access_key = os.environ.get("PALIMPSEST_WAYBACK_ACCESS_KEY", "")
+    if secret_key is None:
+        secret_key = os.environ.get("PALIMPSEST_WAYBACK_SECRET_KEY", "")
+    if bool(access_key) != bool(secret_key):
+        raise ValueError(
+            "both PALIMPSEST_WAYBACK_ACCESS_KEY and "
+            "PALIMPSEST_WAYBACK_SECRET_KEY are required together"
+        )
+    if not access_key:
+        return {}
+    if "\r" in access_key or "\n" in access_key or "\r" in secret_key or "\n" in secret_key:
+        raise ValueError("Wayback credentials may not contain newlines")
+    return {"Authorization": f"LOW {access_key}:{secret_key}"}
+
+
+def _bounded_body(response, limit: int = WAYBACK_RESPONSE_LIMIT) -> bytes:
+    raw = response.read(limit + 1)
+    if len(raw) > limit:
+        raise ValueError("Wayback response is too large")
+    return raw
+
+
+def _json_object(raw: bytes) -> dict | None:
+    if not raw.strip():
+        return None
     try:
-        with opener(req, timeout=timeout) as resp:
-            return {"target": url, "ok": True, "snapshot": resp.geturl(),
-                    "http": getattr(resp, "status", None)}
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _snapshot_from_url(candidate: str | None) -> str | None:
+    if not candidate:
+        return None
+    try:
+        _raw_wayback_url(candidate)
+    except ValueError:
+        return None
+    return candidate
+
+
+def _job_id_from_url(candidate: str | None) -> str | None:
+    if not candidate:
+        return None
+    parsed = urllib.parse.urlsplit(candidate)
+    if parsed.scheme != "https" or parsed.hostname != "web.archive.org":
+        return None
+    prefix = "/save/status/"
+    if not parsed.path.startswith(prefix):
+        return None
+    job_id = parsed.path[len(prefix):].strip("/")
+    return job_id or None
+
+
+def _valid_job_id(value) -> str | None:
+    if not isinstance(value, str):
+        return None
+    return value if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", value) else None
+
+
+def _poll_wayback_job(job_id: str, capture_target: str, *, auth_headers: dict,
+                      opener, timeout: int, attempts: int, sleeper) -> str:
+    """Poll SPN2's authenticated job endpoint for its exact replay URL."""
+    if attempts < 1:
+        raise ValueError("Wayback status attempts must be positive")
+    for attempt in range(attempts):
+        body = urllib.parse.urlencode({"job_id": job_id}).encode()
+        headers = {
+            "User-Agent": UA,
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            **auth_headers,
+        }
+        request = urllib.request.Request(
+            WAYBACK_STATUS_URL, data=body, headers=headers, method="POST"
+        )
+        with opener(request, timeout=timeout) as response:
+            payload = _json_object(_bounded_body(response))
+        if payload is None:
+            raise ValueError("Wayback status returned a non-JSON response")
+        if payload.get("status") == "pending":
+            if attempt + 1 < attempts:
+                sleeper(3)
+                continue
+            raise TimeoutError("Wayback capture job remained pending")
+        timestamp = payload.get("timestamp")
+        original_url = payload.get("original_url")
+        if (isinstance(timestamp, str) and re.fullmatch(r"\d{14}", timestamp)
+                and original_url == capture_target):
+            return f"https://web.archive.org/web/{timestamp}/{original_url}"
+        message = payload.get("message")
+        if isinstance(message, str) and message:
+            raise ValueError(f"Wayback capture failed: {message}")
+        raise ValueError("Wayback status omitted the completed capture URL")
+    raise AssertionError("unreachable Wayback status loop")
+
+
+def _http_error_detail(exc: urllib.error.HTTPError) -> str:
+    try:
+        raw = exc.read(4097)
+    except OSError:
+        raw = b""
+    if len(raw) > 4096:
+        raw = raw[:4096]
+    payload = _json_object(raw)
+    if payload is not None and isinstance(payload.get("message"), str):
+        return payload["message"][:400]
+    text = raw.decode("utf-8", errors="replace").strip()
+    return text[:400] or str(exc.reason)
+
+
+def wayback_save(url: str, *, expected_sha256: str, expected_bytes: int,
+                 opener=urllib.request.urlopen, timeout: int = 90,
+                 replay_attempts: int = 3, cdx_attempts: int = 4,
+                 status_attempts: int = 20, sleeper=time.sleep,
+                 access_key: str | None = None,
+                 secret_key: str | None = None) -> dict:
+    """Deposit and byte-verify one artifact with the Internet Archive.
+
+    Save Page Now may redirect to an older replay while still returning HTTP
+    200. The content digest, not that status code, decides whether the witness
+    is valid.
+    """
+    separator = "&" if "?" in url else "?"
+    capture_target = (
+        f"{url}{separator}"
+        + urllib.parse.urlencode([
+            ("palimpsest_sha256", expected_sha256),
+            ("palimpsest_capture_version", WAYBACK_CAPTURE_VERSION),
+        ])
+    )
+    result = {
+        "target": url,
+        "capture_target": capture_target,
+        "expected_sha256": expected_sha256,
+        "expected_bytes": expected_bytes,
+    }
+    try:
+        auth_headers = _wayback_auth_headers(access_key, secret_key)
+        try:
+            indexed = _matching_cdx_snapshot(
+                capture_target,
+                expected_sha256=expected_sha256,
+                expected_bytes=expected_bytes,
+                opener=opener,
+                timeout=timeout,
+                replay_attempts=replay_attempts,
+                sleeper=sleeper,
+            )
+        except (OSError, TimeoutError, ValueError):
+            indexed = None
+        if indexed is not None:
+            snapshot, replay_evidence = indexed
+            result.update({
+                "snapshot": snapshot,
+                "capture_source": "cdx",
+                "http": None,
+                **replay_evidence,
+                "ok": True,
+            })
+            return result
+
+        form = urllib.parse.urlencode({"url": capture_target}).encode()
+        save_url = WAYBACK_SAVE_URL + "?" + urllib.parse.urlencode(
+            {"url": capture_target}
+        )
+        save_headers = {
+            "User-Agent": UA,
+            "Accept": "application/json" if auth_headers else
+                      "text/html,application/xhtml+xml,application/xml",
+            "Content-Type": "application/x-www-form-urlencoded",
+            **auth_headers,
+        }
+        request = urllib.request.Request(
+            save_url, data=form, headers=save_headers, method="POST"
+        )
+        http_status = None
+        save_error = None
+        status_error = None
+        candidates: list[tuple[str, str]] = []
+        job_id = None
+        try:
+            with opener(request, timeout=timeout) as response:
+                http_status = getattr(response, "status", None)
+                headers = getattr(response, "headers", None)
+                location = headers.get("Content-Location") if headers else None
+                response_url = response.geturl()
+                raw = _bounded_body(response)
+            payload = _json_object(raw)
+            if payload is not None:
+                job_id = _valid_job_id(payload.get("job_id"))
+            job_id = job_id or _valid_job_id(_job_id_from_url(location))
+            job_id = job_id or _valid_job_id(_job_id_from_url(response_url))
+            for candidate in (
+                urllib.parse.urljoin("https://web.archive.org", location)
+                if location else None,
+                response_url,
+            ):
+                snapshot = _snapshot_from_url(candidate)
+                if snapshot is not None:
+                    candidates.append((snapshot, "save"))
+        except urllib.error.HTTPError as exc:
+            http_status = exc.code
+            if exc.code == 401:
+                raise
+            if exc.code not in {404, 429, 500, 502, 503, 504}:
+                raise
+            save_error = exc
+            snapshot = _snapshot_from_url(exc.geturl())
+            if snapshot is not None:
+                candidates.append((snapshot, "save"))
+
+        if job_id is not None:
+            try:
+                status_snapshot = _poll_wayback_job(
+                    job_id,
+                    capture_target,
+                    auth_headers=auth_headers,
+                    opener=opener,
+                    timeout=timeout,
+                    attempts=status_attempts,
+                    sleeper=sleeper,
+                )
+                candidates.append((status_snapshot, "status"))
+            except (OSError, TimeoutError, ValueError) as exc:
+                status_error = exc
+
+        mismatch = None
+        for snapshot, capture_source in candidates:
+            try:
+                replay_evidence = _wayback_replay_evidence(
+                    snapshot,
+                    expected_bytes=expected_bytes,
+                    opener=opener,
+                    timeout=timeout,
+                    replay_attempts=replay_attempts,
+                    sleeper=sleeper,
+                )
+            except (OSError, TimeoutError, ValueError):
+                continue
+            if _evidence_matches(
+                replay_evidence,
+                expected_sha256=expected_sha256,
+                expected_bytes=expected_bytes,
+            ):
+                result.update({
+                    "snapshot": snapshot,
+                    "capture_source": capture_source,
+                    "http": http_status,
+                    **replay_evidence,
+                    "ok": True,
+                })
+                return result
+            mismatch = snapshot, capture_source, replay_evidence
+
+        indexed = _eventual_matching_cdx_snapshot(
+            capture_target,
+            expected_sha256=expected_sha256,
+            expected_bytes=expected_bytes,
+            opener=opener,
+            timeout=timeout,
+            attempts=cdx_attempts,
+            replay_attempts=replay_attempts,
+            sleeper=sleeper,
+        )
+        if indexed is not None:
+            snapshot, replay_evidence = indexed
+            result.update({
+                "snapshot": snapshot,
+                "capture_source": "cdx",
+                "http": http_status,
+                **replay_evidence,
+                "ok": True,
+            })
+            return result
+        if mismatch is not None:
+            snapshot, capture_source, replay_evidence = mismatch
+            result.update({
+                "snapshot": snapshot,
+                "capture_source": capture_source,
+                "http": http_status,
+                **replay_evidence,
+                "ok": False,
+                "reason": "Wayback replay does not match the served artifact",
+            })
+            return result
+        if status_error is not None:
+            raise status_error
+        if save_error is not None:
+            raise save_error
+        raise ValueError(
+            "Wayback accepted the save request but no byte-matching snapshot appeared"
+        )
+    except urllib.error.HTTPError as exc:
+        detail = _http_error_detail(exc)
+        if exc.code == 401:
+            reason = (
+                "Wayback authentication required (HTTP 401): " + detail
+                + "; configure PALIMPSEST_WAYBACK_ACCESS_KEY and "
+                  "PALIMPSEST_WAYBACK_SECRET_KEY"
+            )
+        else:
+            reason = f"HTTPError {exc.code}: {detail}"
+        result.update({"ok": False, "reason": reason})
+        return result
     except Exception as exc:  # noqa: BLE001 — anchoring must degrade loudly, not crash
-        return {"target": url, "ok": False, "reason": f"{type(exc).__name__}: {exc}"}
+        result.update({
+            "ok": False,
+            "reason": f"{type(exc).__name__}: {exc}",
+        })
+        return result
 
 
 def ots_stamp(roots: dict, ts: str, run=subprocess.run) -> dict:
@@ -178,50 +698,210 @@ def ots_stamp(roots: dict, ts: str, run=subprocess.run) -> dict:
         return {"ok": False, "reason": f"{type(exc).__name__}: {exc}"}
 
 
+def reusable_wayback(prev: dict | None,
+                     expectations: dict[str, dict]) -> dict[str, dict]:
+    """Return snapshots already byte-verified for the current artifacts."""
+    if not isinstance(prev, dict):
+        return {}
+    reusable = {}
+    for item in prev.get("wayback", []):
+        if not isinstance(item, dict):
+            continue
+        target = item.get("target")
+        snapshot = item.get("snapshot")
+        expected = expectations.get(target)
+        if (expected and item.get("ok") is True
+                and isinstance(snapshot, str) and snapshot
+                and item.get("snapshot_sha256") == expected["sha256"]
+                and item.get("snapshot_bytes") == expected["bytes"]):
+            reusable[target] = dict(item)
+    return reusable
+
+
+def reusable_ots(prev: dict | None) -> dict | None:
+    """Return the prior stamp only when its referenced proof still exists."""
+    if not isinstance(prev, dict) or not isinstance(prev.get("ots"), dict):
+        return None
+    ots = prev["ots"]
+    proof = ots.get("proof")
+    if ots.get("ok") is not True or not isinstance(proof, str) or not proof:
+        return None
+    proof_path = proof if os.path.isabs(proof) else os.path.join(ROOT, proof)
+    return dict(ots) if os.path.isfile(proof_path) else None
+
+
+def summarize_anchor_record(record: dict) -> dict:
+    """Return the stable public summary for one append-only anchor record."""
+    roots = record["roots"]
+    wayback = record["wayback"]
+    ots = record["ots"]
+    latest = {
+        "ts": record["ts"],
+        "registry_root": roots["registry_root"],
+        "erasure_root": roots["erasure_root"],
+        "readings_root": roots["readings_root"],
+        "readings_chain": (
+            "broken" if roots.get("readings_problems") else "verified"
+        ),
+        "readings_problems": roots.get("readings_problems", []),
+        "wayback_ok": sum(1 for item in wayback if item["ok"]),
+        "wayback_snapshots": [
+            item.get("snapshot") for item in wayback if item["ok"]
+        ],
+        "wayback_reused": sum(
+            1 for item in wayback if item.get("reused") is True
+        ),
+        "ots": ots.get("proof") if ots["ok"] else None,
+        "ots_status": "stamped" if ots["ok"] else ots.get("reason", "failed"),
+        "ots_reused": ots.get("reused") is True,
+    }
+    if record.get("retry_of"):
+        latest["retry_of"] = record["retry_of"]
+    return latest
+
+
+def serialize_anchor_summary(record: dict) -> str:
+    """Serialize a summary exactly as ``anchors-latest.json`` is published."""
+    return json.dumps(
+        summarize_anchor_record(record), ensure_ascii=False, indent=1
+    )
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON constant: {value}")
+
+
+def anchor_state_at(log_path, as_of: datetime) -> dict | None:
+    """Reconstruct the append-only anchor state that existed at ``as_of``.
+
+    Anchor timestamps are required to be monotonic because the historical file state is
+    a byte prefix, not an unordered set.  The returned sizes therefore describe the exact
+    public summary and JSONL prefix available at that publication clock.
+    """
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise ValueError("anchor history clock must include a timezone")
+    cutoff = as_of.astimezone(timezone.utc)
+    selected = None
+    selected_at = None
+    last_at = None
+    history_bytes = 0
+    history_rows = 0
+    with open(log_path, "rb") as history:
+        for line_number, raw_line in enumerate(history, start=1):
+            if not raw_line.strip():
+                raise ValueError(
+                    f"anchor history line {line_number} is empty"
+                )
+            try:
+                record = json.loads(
+                    raw_line, parse_constant=_reject_json_constant
+                )
+                text = record["ts"]
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError("timestamp is absent")
+                normalized = text.strip()
+                if normalized.endswith(("Z", "z")):
+                    normalized = normalized[:-1] + "+00:00"
+                record_at = datetime.fromisoformat(normalized)
+                if record_at.tzinfo is None or record_at.utcoffset() is None:
+                    raise ValueError("timestamp has no timezone")
+                record_at = record_at.astimezone(timezone.utc)
+            except (
+                KeyError,
+                TypeError,
+                UnicodeError,
+                json.JSONDecodeError,
+                ValueError,
+            ) as exc:
+                raise ValueError(
+                    f"anchor history line {line_number} is invalid"
+                ) from exc
+            if last_at is not None and record_at < last_at:
+                raise ValueError("anchor history timestamps are not monotonic")
+            last_at = record_at
+            if record_at <= cutoff:
+                selected = record
+                selected_at = record_at
+                history_bytes += len(raw_line)
+                history_rows += raw_line.count(b"\n")
+
+    if selected is None:
+        return None
+    summary_text = serialize_anchor_summary(selected)
+    return {
+        "record": selected,
+        "recorded_at": selected_at,
+        "summary": summarize_anchor_record(selected),
+        "summary_bytes": summary_text.encode("utf-8"),
+        "history_bytes": history_bytes,
+        "history_rows": history_rows,
+    }
+
+
 def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
            run=subprocess.run, log_path: str = ANCHOR_LOG,
            latest_path: str = ANCHOR_LATEST) -> dict | None:
     roots = current_roots()
+    expectations = wayback_expectations()
     prev = last_anchor(log_path)
     # Every root we publish is compared. Leaving readings_root out meant a
     # refresh where the erasure inputs and the eval registry both sat still,
     # while the other readings moved, anchored nothing and kept republishing a
     # readings_root that no longer fingerprinted readings-ledger.jsonl, for as
     # many consecutive quiet rounds as it took.
-    if prev and all(prev.get("roots", {}).get(k) == roots.get(k)
-                    for k in ("registry_root", "erasure_root", "readings_root")):
+    same_roots = bool(prev) and all(
+        prev.get("roots", {}).get(key) == roots.get(key) for key in ROOT_KEYS
+    )
+    # Each Wayback witness is bound to one artifact's exact digest and length,
+    # so an unchanged artifact remains valid even when another root moves.
+    prior_wayback = reusable_wayback(prev, expectations)
+    prior_ots = reusable_ots(prev) if same_roots else None
+    missing_wayback = [target for target in WAYBACK_TARGETS
+                       if target not in prior_wayback]
+    if same_roots and not missing_wayback and prior_ots is not None:
         print("roots unchanged since last anchor — nothing to do")
         return None
-    ts = datetime.now(timezone.utc).isoformat()
     if dry_run:
-        print(json.dumps({"would_anchor": roots}, indent=2))
+        action = "would_retry" if same_roots else "would_anchor"
+        print(json.dumps({action: {
+            "roots": roots,
+            "wayback_targets": missing_wayback,
+            "opentimestamps": "reuse" if prior_ots is not None else "stamp",
+        }}, indent=2))
         return None
+    ts = datetime.now(timezone.utc).isoformat()
 
     record = {
         "ts": ts,
         "roots": roots,
-        "wayback": [wayback_save(u, opener=opener) for u in WAYBACK_TARGETS],
-        "ots": ots_stamp(roots, ts, run=run),
+        "wayback": [],
     }
+    if same_roots:
+        record["retry_of"] = prev.get("ts")
+    for target in WAYBACK_TARGETS:
+        if target in prior_wayback:
+            reused = dict(prior_wayback[target])
+            reused["reused"] = True
+            record["wayback"].append(reused)
+        else:
+            expected = expectations[target]
+            record["wayback"].append(wayback_save(
+                target,
+                expected_sha256=expected["sha256"],
+                expected_bytes=expected["bytes"],
+                opener=opener,
+            ))
+    if prior_ots is not None:
+        record["ots"] = dict(prior_ots)
+        record["ots"]["reused"] = True
+    else:
+        record["ots"] = ots_stamp(roots, ts, run=run)
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     ok_wayback = sum(1 for w in record["wayback"] if w["ok"])
-    latest = {
-        "ts": ts,
-        "registry_root": roots["registry_root"],
-        "erasure_root": roots["erasure_root"],
-        "readings_root": roots["readings_root"],
-        "readings_chain": "broken" if roots.get("readings_problems") else "verified",
-        "readings_problems": roots.get("readings_problems", []),
-        "wayback_ok": ok_wayback,
-        "wayback_snapshots": [w.get("snapshot") for w in record["wayback"] if w["ok"]],
-        "ots": record["ots"].get("proof") if record["ots"]["ok"] else None,
-        "ots_status": "stamped" if record["ots"]["ok"]
-                      else record["ots"].get("reason", "failed"),
-    }
     with open(latest_path, "w", encoding="utf-8") as f:
-        json.dump(latest, f, ensure_ascii=False, indent=1)
+        f.write(serialize_anchor_summary(record))
 
     readings_line = (f"readings {roots['readings_root'][:16]}… "
                      f"({roots['readings_entries']} entries)"

@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:ooni-gfw",
+  "slug": "ooni-great-firewall-index",
+  "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
+  "signal_id": "ooni-gfw",
+  "headline": "OONI's China anomaly index is 58.8% across 273,432 completed measurements",
+  "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
+  "section": "network",
+  "order": 1,
+  "type": "measurement",
+  "priority": "lead",
+  "status": "live",
+  "published_at": "2026-08-16T07:04:12Z",
+  "modified_at": "2026-08-16T07:04:12Z",
+  "claim_fingerprint": "sha256:433a80a83e294bfbfddae0068a2f0d1b68097a7cf6834d1e126f8d2c67adc8e1",
+  "metric": {
+    "label": "GFW anomaly index",
+    "value": 58.8,
+    "unit": "percent",
+    "denominator": {
+      "label": "completed measurements",
+      "value": 273432
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current OONI aggregate reports a 58.8% anomaly index across 273,432 completed China measurements."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+    "input": {
+      "filename": "ooni-gfw-latest.json",
+      "sha256": "f7a4b99a77f01dceac49bcb7c77dd50e85a6563e0e5f351762434943e35ecd52",
+      "bytes": 7894
+    },
+    "source_timestamp": "2026-08-16T07:04:12Z"
+  },
+  "method": {
+    "summary": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
+    "version": 2
+  },
+  "limitations": [
+    "Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship."
+  ],
+  "related_signal_ids": [
+    "in-path-interference",
+    "censored-planet",
+    "inside-view",
+    "vantage-fusion"
+  ]
+}

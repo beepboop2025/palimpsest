@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:bleedthrough",
+  "slug": "bleedthrough-injector-tomography",
+  "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
+  "signal_id": "bleedthrough",
+  "headline": "Controlled external probes publish a current injector-tomography round",
+  "dek": "The optional, rate-limited measurement runs only from a declared controlled deployment.",
+  "section": "network",
+  "order": 8,
+  "type": "measurement",
+  "priority": "background",
+  "status": "live",
+  "published_at": "2026-08-16T06:57:17Z",
+  "modified_at": "2026-08-16T06:57:17Z",
+  "claim_fingerprint": "sha256:7190da75589e6491b290240598c8bf219c4079f70a8d5798c9318190bfcaef4a",
+  "metric": {
+    "label": "injector response-process floor",
+    "value": 2,
+    "unit": "count",
+    "denominator": {
+      "label": "injecting target IPs",
+      "value": 216
+    }
+  },
+  "claims": [
+    {
+      "type": "observation",
+      "statement": "A current controlled DNS-probe round is available for injector-tomography analysis."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+    "input": {
+      "filename": "bleedthrough-latest.json",
+      "sha256": "fafc5dc4023016a77213e3f83daca0183b904eac114199a4963f385edc38556c",
+      "bytes": 2760
+    },
+    "source_timestamp": "2026-08-16T06:57:17Z"
+  },
+  "method": {
+    "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
+    "version": 3
+  },
+  "limitations": [
+    "This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading."
+  ],
+  "related_signal_ids": [
+    "in-path-interference",
+    "vantage-fusion"
+  ]
+}

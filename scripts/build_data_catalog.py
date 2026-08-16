@@ -28,6 +28,13 @@ from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urljoin, urlsplit
 
+try:
+    from scripts.anchor_roots import anchor_state_at
+except ModuleNotFoundError as exc:
+    if exc.name != "scripts":
+        raise
+    from anchor_roots import anchor_state_at
+
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config" / "public_data_catalog.json"
@@ -152,6 +159,9 @@ def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]
     history_exists = bool(history_path and history_path.is_file())
     document: dict[str, Any] | None = None
     invalid = False
+    latest_bytes = latest_path.stat().st_size if latest_exists and latest_path else 0
+    history_bytes = history_path.stat().st_size if history_exists and history_path else 0
+    history_rows = _line_count(history_path) if history_exists and history_path else 0
     if latest_exists and latest_path is not None:
         try:
             loaded = json.loads(latest_path.read_text(encoding="utf-8"))
@@ -159,6 +169,26 @@ def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]
             invalid = document is None
         except (OSError, UnicodeError, ValueError, TypeError):
             invalid = True
+
+    if (
+        spec.get("id") == "anchors"
+        and document is not None
+        and history_path is not None
+        and history_exists
+    ):
+        latest_at = _parse_time(document.get("ts"))
+        if latest_at is not None and latest_at > now:
+            try:
+                historical = anchor_state_at(history_path, now)
+            except (OSError, ValueError):
+                document = None
+                invalid = True
+            else:
+                if historical is not None:
+                    document = historical["summary"]
+                    latest_bytes = len(historical["summary_bytes"])
+                    history_bytes = historical["history_bytes"]
+                    history_rows = historical["history_rows"]
 
     observed = max(_walk_timestamps(document), default=None) if document else None
     age_seconds = max(0, int((now - observed).total_seconds())) if observed else None
@@ -199,9 +229,9 @@ def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]
         "observed_at": _iso(observed) if observed else None,
         "age_seconds": age_seconds,
         "counts": counts,
-        "latest_bytes": latest_path.stat().st_size if latest_exists and latest_path else 0,
-        "history_bytes": history_path.stat().st_size if history_exists and history_path else 0,
-        "history_rows": _line_count(history_path) if history_exists and history_path else 0,
+        "latest_bytes": latest_bytes,
+        "history_bytes": history_bytes,
+        "history_rows": history_rows,
         "latest_available": latest_exists,
         "history_available": history_exists,
     }
@@ -325,7 +355,7 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
                 "path": path,
                 "format": "jsonl" if kind == "history" else "json",
                 "mediatype": media,
-                "bytes": local.stat().st_size,
+                "bytes": item["artifacts"][f"{kind}_bytes"],
             })
         jsonld_datasets.append({
             "@type": "Dataset",

@@ -264,6 +264,9 @@ jobs:
         # stamps the exact NEW roots. This must run after reconciliation: the
         # previous workflow anchored a local candidate and then lost it in a
         # rebase conflict six runs in a row.
+        env:
+          PALIMPSEST_WAYBACK_ACCESS_KEY: ${{ secrets.PALIMPSEST_WAYBACK_ACCESS_KEY }}
+          PALIMPSEST_WAYBACK_SECRET_KEY: ${{ secrets.PALIMPSEST_WAYBACK_SECRET_KEY }}
         run: |
           pip install --quiet opentimestamps-client
           python -m scripts.anchor_roots
@@ -317,6 +320,8 @@ jobs:
         if: steps.push_attempt.outcome == 'failure'
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+          PALIMPSEST_WAYBACK_ACCESS_KEY: ${{ secrets.PALIMPSEST_WAYBACK_ACCESS_KEY }}
+          PALIMPSEST_WAYBACK_SECRET_KEY: ${{ secrets.PALIMPSEST_WAYBACK_SECRET_KEY }}
         run: |
           measurement_commit=$(git rev-parse HEAD)
           for attempt in 1 2 3 4; do

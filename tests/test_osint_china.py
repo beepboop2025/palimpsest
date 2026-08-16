@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts import anchor_roots
+
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "build_osint_china.py"
@@ -428,6 +430,51 @@ def _valid_anchor_payload(ots_status="stamped") -> dict:
         "readings_problems": [],
         "ots_status": ots_status,
         "wayback_ok": 1,
+    }
+
+
+def _valid_anchor_record(ts: str, root_character: str) -> dict:
+    return {
+        "ts": ts,
+        "roots": {
+            "registry_root": root_character * 64,
+            "erasure_root": root_character * 64,
+            "readings_root": root_character * 64,
+            "readings_problems": [],
+        },
+        "wayback": [{
+            "ok": True,
+            "snapshot": f"https://web.archive.org/web/20260804000000/{root_character}",
+        }],
+        "ots": {
+            "ok": True,
+            "proof": f"readings/anchors/{root_character}.txt.ots",
+        },
+    }
+
+
+def test_replay_selects_the_latest_anchor_not_after_its_clock(mod, tmp_path):
+    historical = _valid_anchor_record("2026-08-04T11:00:00Z", "a")
+    future = _valid_anchor_record("2026-08-04T12:30:00Z", "b")
+    (tmp_path / "anchors.jsonl").write_text(
+        "\n".join(json.dumps(record) for record in (historical, future)) + "\n",
+        encoding="utf-8",
+    )
+    _write_json(
+        tmp_path / "anchors-latest.json",
+        anchor_roots.summarize_anchor_record(future),
+    )
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "anchors")
+    historical_bytes = anchor_roots.serialize_anchor_summary(historical).encode()
+
+    assert signal["payload"] == anchor_roots.summarize_anchor_record(historical)
+    assert signal["source_timestamp"] == "2026-08-04T11:00:00Z"
+    assert signal["status"] == "live"
+    assert signal["input"] == {
+        "filename": "anchors-latest.json",
+        "sha256": hashlib.sha256(historical_bytes).hexdigest(),
+        "bytes": len(historical_bytes),
     }
 
 

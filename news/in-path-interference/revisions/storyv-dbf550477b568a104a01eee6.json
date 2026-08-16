@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:in-path-interference",
+  "slug": "in-path-interference",
+  "url": "https://palimpsest.info/news/in-path-interference/",
+  "signal_id": "in-path-interference",
+  "headline": "Middlebox signatures register at 1.32% in the current OONI window",
+  "dek": "The decomposition separates interference signatures from transport failure and tests that could not execute.",
+  "section": "network",
+  "order": 2,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-16T02:02:43Z",
+  "modified_at": "2026-08-16T02:02:43Z",
+  "claim_fingerprint": "sha256:71d716cc2f46d3a0bd97e00f9b5b2d29496dd78ed28359bb2b1b6507940eb3c5",
+  "metric": {
+    "label": "middlebox index",
+    "value": 1.32,
+    "unit": "percent",
+    "denominator": {
+      "label": "completed middlebox tests",
+      "value": 9565
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current measurement-weighted middlebox index is 1.32%."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
+    "input": {
+      "filename": "in-path-interference-latest.json",
+      "sha256": "c9aff028cd2fd8b6c7f2cf46c6cc08599e5fe2a38425747ceaafdb42449782d3",
+      "bytes": 4322
+    },
+    "source_timestamp": "2026-08-16T02:02:43Z"
+  },
+  "method": {
+    "summary": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
+    "version": 1
+  },
+  "limitations": [
+    "The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories."
+  ],
+  "related_signal_ids": [
+    "ooni-gfw",
+    "inside-view",
+    "vantage-fusion"
+  ]
+}

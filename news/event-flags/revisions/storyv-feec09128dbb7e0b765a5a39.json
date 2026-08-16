@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:event-flags",
+  "slug": "event-flags",
+  "url": "https://palimpsest.info/news/event-flags/",
+  "signal_id": "event-flags",
+  "headline": "12 of 15 configured signals are reporting to the event board",
+  "dek": "The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
+  "section": "command",
+  "order": 2,
+  "type": "methodology",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-16T02:10:25Z",
+  "modified_at": "2026-08-16T02:10:25Z",
+  "claim_fingerprint": "sha256:ebe72284a57b119cf89b9c7cb9a3dd5fcd449dc551505d91aa7e70c064c020f1",
+  "metric": {
+    "label": "signals reporting",
+    "value": 12,
+    "unit": "count",
+    "denominator": {
+      "label": "signals configured",
+      "value": 15
+    }
+  },
+  "claims": [
+    {
+      "type": "observation",
+      "statement": "12 signals are reporting out of 15 configured signals in the current event-flags reading."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/event-flags-latest.json",
+    "input": {
+      "filename": "event-flags-latest.json",
+      "sha256": "89bd596347de22807420316e28cc7f6989b3ce89ed15899b87a9ee958b51e599",
+      "bytes": 6334
+    },
+    "source_timestamp": "2026-08-16T02:10:25Z"
+  },
+  "method": {
+    "summary": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
+    "version": null
+  },
+  "limitations": [
+    "Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity."
+  ],
+  "related_signal_ids": [
+    "board-alarm",
+    "forecast-ledger",
+    "coverage-guard"
+  ]
+}
