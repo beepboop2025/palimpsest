@@ -402,8 +402,8 @@ def build_json_feed(journal: Mapping[str, Any]) -> dict[str, Any]:
             {
                 "id": article["content_sha256"],
                 "url": article["url"],
-                "title": article["title"],
-                "summary": article["dek"],
+                "title": "[Palimpsest method article] " + article["title"],
+                "summary": "Palimpsest evaluation method article. " + article["dek"],
                 "content_text": _article_text(article),
                 "date_published": article["published_at"],
                 "date_modified": article["modified_at"],
@@ -419,6 +419,7 @@ def build_json_feed(journal: Mapping[str, Any]) -> dict[str, Any]:
                     for receipt in article["evidence"]
                 ],
                 "_palimpsest": {
+                    "kind": "eval_method_article",
                     "schema": article["schema"],
                     "claim": article["claim"],
                     "falsifier": article["falsifier"],
@@ -438,10 +439,11 @@ def build_rss(journal: Mapping[str, Any]) -> bytes:
         items.append(
             f"""  <item>
     <guid isPermaLink="false">urn:sha256:{article['content_sha256']}</guid>
-    <title>{xml_escape(article['title'])}</title>
+    <title>{xml_escape('[Palimpsest method article] ' + article['title'])}</title>
     <link>{xml_escape(article['url'])}</link>
     <pubDate>{_rfc2822(article['published_at'])}</pubDate>
-    <description>{xml_escape(article['dek'])}</description>
+    <description>{xml_escape('Palimpsest evaluation method article. ' + article['dek'])}</description>
+    <category>palimpsest-eval-method</category>
     <content:encoded><![CDATA[{text.replace(']]>', ']]]]><![CDATA[>')}]]></content:encoded>
   </item>"""
         )

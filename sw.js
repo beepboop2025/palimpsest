@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v15";
+const CACHE = "palimpsest-v16";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
@@ -30,7 +30,18 @@ const LIVE_EVIDENCE_READINGS = new Set([
 const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
 const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;
 const LIVE_EVENT_ANALYSIS = /^\/news\/wire\/event-[0-9a-f]{24}\/analysis\.json$/;
-const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", "/news/feed.xml"]);
+const LIVE_NEWSROOM_SYNDICATION = new Set([
+  "/news/feed.json",
+  "/news/feed.xml",
+  "/news/instruments/feed.json",
+  "/news/instruments/feed.xml",
+  "/news/china/feed.json",
+  "/news/china/feed.xml",
+  "/news/china/analysis/feed.json",
+  "/news/china/analysis/feed.xml",
+  "/news/china/whispers/feed.json",
+  "/news/china/whispers/feed.xml",
+]);
 const LIVE_JOURNAL_SYNDICATION = new Set([
   "/evals/feed.json",
   "/evals/feed.xml",
@@ -50,6 +61,8 @@ const SHELL = [
   "/dashboards/assets/tikto.css",
   "/assets/shell.css",
   "/assets/shell.js",
+  "/assets/home.css",
+  "/assets/home.js",
   "/assets/china.css",
   "/assets/china.js",
   "/brand/palimpsest-icon.svg",

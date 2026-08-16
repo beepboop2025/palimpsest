@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 """The site's navigation, defined once.
 
-Palimpsest is a publication plus three evidence surfaces, and the navigation
-has to say so on every page rather than making readers reverse-engineer it:
-
-  1. a journal for evidence-bound evaluation writing
-  2. an evidence wire for fast public-source dossiers
-  3. a China censorship and economic observatory
-  4. a verifiable AI evaluation registry
-  5. a funded public good
+Palimpsest is an evidence workbench, not a menu of internal project names. The
+navigation therefore starts with things a visitor can do: read a finding,
+inspect a source index, open a measurement, use a tool, or review the method.
 
 Before this module there were five different hand-maintained navs across twelve
 pages and four pages with no nav at all, because every page carried its own copy.
@@ -34,136 +29,83 @@ END = "<!--/PS_NAV-->"
 # It is a hand-maintained editorial claim, not a timestamp — clear it when it
 # stops being true rather than letting it rot into furniture.
 NAV = [
-    {"label": "Eval Journal", "href": "/evals/"},
-    {"label": "Wire", "href": "/news/"},
+    {"label": "Findings", "href": "/journal/"},
+    {"label": "Source index", "href": "/news/"},
     {
         "label": "Observatory",
-        "lede": "China-facing economic releases and censorship measurements, separated by method and joined only by receipts.",
+        "lede": "Open a current measurement. Each page shows the result, source receipt, freshness and limit.",
         "match_prefixes": ["/china/", "/dashboards/"],
         "columns": [
             {
-                "head": "Start",
+                "head": "Current results",
                 "links": [
                     ("/china/", "China Observatory",
-                     "What changed, what is withheld, and the evidence behind both", "new"),
-                    ("/osint-china.html", "OSINT China",
-                     "Censorship signals, sources and freshness in one public roll-up"),
+                     "See reporting status and current evidence", "new"),
+                    ("/osint-china.html", "Signal board",
+                     "Inspect every signal and its freshness"),
                     ("/china-brief.html", "China Brief",
-                     "The six-hourly read: what moved and what it means"),
+                     "Read the current six-hour measurement brief"),
+                    ("/news/china/analysis/", "Censorship analysis",
+                     "Open the latest cross-instrument result"),
                 ],
             },
             {
-                "head": "Economic record",
+                "head": "Inspect the record",
                 "links": [
                     ("/china/sources/", "Source ledger",
-                     "Access, rights, readiness and limits for every reviewed source"),
+                     "Check access, rights, readiness and limits"),
                     ("/china/releases/", "Release monitors",
-                     "Publication clocks, revisions and evidence receipts"),
-                    ("/china/domains/", "Coverage domains",
-                     "Where independent evidence exists, and where it does not"),
-                ],
-            },
-            {
-                "head": "Information controls",
-                "links": [
-                    ("/dashboards/ddti_observatory.html", "DDTI Observatory",
-                     "Full command surface: fear index, topic network, ranked targets"),
-                    ("/dashboards/ddti_dashboard.html", "Live Monitor",
-                     "The deletion tracker on its own"),
-                    ("/readings/erasure-observatory.html", "Erasure Observatory",
-                     "Composite index across all three layers, sealed each run"),
-                ],
-            },
-            {
-                "head": "Signals",
-                "links": [
-                    ("/readings/inside-view.html", "Inside View",
-                     "DNS injection seen from probes inside China", "new"),
-                    ("/readings/in-path-interference.html", "In-Path Interference",
-                     "Middlebox rewriting and transport health", "new"),
-                    ("/readings/app-store.html", "App Store Layer",
-                     "What the Chinese storefront will not offer you", "new"),
-                    ("/readings/blocklist.html", "Blocklist Archaeology",
-                     "The censor's own keyword list, version by version", "new"),
-                    ("/readings/ooni-gfw.html", "Great Firewall",
-                     "Outside-in blocking rates, OONI and Censored Planet"),
-                    ("/readings/bleedthrough.html", "Bleedthrough",
-                     "Injector-fleet tomography", "soon"),
+                     "Check publication clocks and revisions"),
+                    ("/dashboards/ddti_dashboard.html", "Live deletion monitor",
+                     "Open the deletion tracker"),
                 ],
             },
         ],
     },
     {
-        "label": "AI Evals",
-        "lede": "China-focused and frontier-model evaluations with frozen questions, response evidence, uncertainty, and a live claim ceiling.",
+        "label": "Tools + feeds",
+        "lede": "Go directly to something usable. These links open a tool, data file, feed or verification surface.",
         "columns": [
             {
-                "head": "Read",
+                "head": "Use a tool",
                 "links": [
-                    ("/journal/", "Live Eval Findings",
-                     "Current model-panel analysis with uncertainty and sentence receipts", "new"),
-                    ("/readings/generative-firewall-index.html", "Generative Firewall Index",
-                     "What state-aligned models refuse or rewrite"),
-                    ("/readings/eval-registry.html#drift", "Refusal Drift",
-                     "Frontier models watched for what they quietly stop answering"),
+                    ("/guides/telegram-scam-message-checker/", "Check a scam message",
+                     "Open the Telegram checker and privacy guide"),
+                    ("/readings/eval-registry.html", "Verify an AI eval",
+                     "Inspect preregistrations, run seals and chain roots"),
+                    ("/evidence-capsules.html", "Verify a claim offline",
+                     "Download a claim with its exact supporting bytes"),
                 ],
             },
             {
-                "head": "Verify",
+                "head": "Subscribe or build",
                 "links": [
-                    ("/readings/eval-registry.html", "Verifiable Eval Registry",
-                     "Preregistrations, runs, response seals and chain receipts"),
-                    ("/readings/eval-registry.html#assurance", "Eval Assurance",
-                     "What passes, what is partial, and what is still unproven", "new"),
-                    ("/readings/refusal-drift-latest.json", "Latest panel JSON",
-                     "Rates, controls, intervals and model-level labels"),
-                    ("/readings/eval-registry.html#anchors", "External Anchors",
-                     "Chain roots deposited outside our own infrastructure"),
+                    ("/feeds/", "Feeds directory",
+                     "Choose the RSS or JSON feed for your task", "new"),
+                    ("/evals/", "Eval methods journal",
+                     "Read method changes, failures and falsifiers"),
+                    ("/data.html", "Download data",
+                     "Open every public dataset and licence"),
+                    ("/developers.html", "API + MCP",
+                     "Call the read-only tools and inspect the contracts"),
                 ],
             },
         ],
     },
-    {
-        "label": "Method",
-        "lede": "Every number on this site is meant to be attacked. Here is what it would take.",
-        "columns": [
-            {
-                "head": "How it works",
-                "links": [
-                    ("https://github.com/beepboop2025/palimpsest/blob/main/docs/NEW-METHODS.md",
-                     "How it is measured", "The estimators, and what each one refuses to claim"),
-                    ("https://github.com/beepboop2025/palimpsest/blob/main/docs/INTEGRITY.md",
-                     "Integrity model", "What sealing does and does not prove"),
-                    ("https://github.com/beepboop2025/palimpsest/blob/main/docs/VALIDATION.md",
-                     "Validation", "The DDTI scorer retrodicted against six documented events"),
-                    ("https://github.com/beepboop2025/palimpsest/blob/main/docs/ETHICS.md",
-                     "Ethics and safety", "Watch the censor, never the censored"),
-                    ("/evidence-capsules.html", "Evidence Capsules",
-                     "Portable claims bound to exact evidence bytes, verified offline"),
-                    ("/for-researchers.html#forecast", "Our own misses",
-                     "The forecast ledger, including where we were wrong"),
-                ],
-            },
-        ],
-    },
+    {"label": "Method", "href": "/for-researchers.html"},
     {
         "label": "About",
-        "lede": "Use the public record, reproduce the methods, or help keep the work independent.",
+        "lede": "See what changed after feedback, inspect the source, or support the public work.",
         "columns": [
             {
-                "head": "Use Palimpsest",
+                "head": "Project",
                 "links": [
-                    ("/data.html", "Data", "Every public dataset, format and licence"),
-                    ("/developers.html", "Developers", "REST, MCP and machine-readable contracts"),
-                    ("/for-researchers.html", "For researchers", "Methods, validation and citation guidance"),
-                    ("/evidence-capsules.html", "Evidence Capsules", "Carry exact claims and supporting bytes elsewhere"),
-                ],
-            },
-            {
-                "head": "Public good",
-                "links": [
-                    ("/fund.html", "Fund the work", "No paywall, no supporter-only evidence"),
-                    ("https://github.com/beepboop2025/palimpsest", "Source repository", "Clone, verify and inspect the complete record"),
+                    ("/updates/2026-08-17-listening-pass/", "What changed after feedback",
+                     "Read the criticism-to-change ledger", "new"),
+                    ("/fund.html", "Fund the work",
+                     "No paywall and no supporter-only evidence"),
+                    ("https://github.com/beepboop2025/palimpsest", "Source repository",
+                     "Clone, verify and inspect the complete record"),
                 ],
             },
         ],

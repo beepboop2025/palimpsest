@@ -1178,19 +1178,28 @@ def _story_card(story: Mapping[str, Any], section_title: str) -> str:
 </article>"""
 
 
-def _lead(story: Mapping[str, Any], section_title: str) -> str:
+def _lead(
+    story: Mapping[str, Any],
+    section_title: str,
+    *,
+    heading_level: int = 1,
+    heading_id: str = "lead-headline",
+) -> str:
+    if heading_level not in {1, 2}:
+        raise ValueError("lead heading level must be 1 or 2")
+    heading = f"h{heading_level}"
     qualifier = story["limitations"][0]
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
-    return f"""<section class="nw-lead" aria-labelledby="lead-headline">
+    return f"""<section class="nw-lead" aria-labelledby="{_h(heading_id)}">
   <div>
-    <p class="nw-kicker{status_class}">{_h(section_title)} · {_h(_status_label(story['status']))}</p>
-    <h1 id="lead-headline">{_h(story['headline'])}</h1>
+    <p class="nw-kicker{status_class}">Palimpsest measurement · {_h(section_title)} · {_h(_status_label(story['status']))}</p>
+    <{heading} id="{_h(heading_id)}">{_h(story['headline'])}</{heading}>
     <p class="nw-lead__dek">{_h(story['dek'])}</p>
     <p class="nw-lead__qualifier"><strong>Read with this qualifier:</strong> {_h(qualifier)}</p>
     <div class="nw-actions">
-      <a class="nw-actions__primary" href="/{_h(story['url'].removeprefix(SITE).lstrip('/'))}">Read the evidence-linked report</a>
+      <a class="nw-actions__primary" href="/{_h(story['url'].removeprefix(SITE).lstrip('/'))}">Open result and receipt</a>
       <a href="/readings/newsroom-latest.json">Structured edition</a>
-      <a href="/osint-china.html">Open evidence desk</a>
+      <a href="/news/instruments/feed.xml">Measurements-only RSS</a>
     </div>
   </div>
   {_receipt(story)}
@@ -1233,8 +1242,11 @@ def _wire_index_json_ld(
                 "@type": "CollectionPage",
                 "@id": feed["url"],
                 "url": feed["url"],
-                "name": "Palimpsest Wire",
-                "description": wire["scope"],
+                "name": "Palimpsest evidence desk",
+                "description": (
+                    "Palimpsest measurements and an attributed publisher source "
+                    "index kept in separate, labeled sections."
+                ),
                 "dateModified": max(feed["generated_at"], wire["generated_at"]),
                 "publisher": {"@id": f"{SITE}/#organization"},
                 "mainEntity": {
@@ -1289,6 +1301,27 @@ def _event_braid(
     return '<ol class="nw-braid" aria-label="Evidence braid">' + "".join(rows) + "</ol>"
 
 
+def _event_source_label(event: Mapping[str, Any]) -> str:
+    groups = len(event["evidence_groups"])
+    if groups > 1:
+        return f"Source report · {groups} independent publisher groups"
+    return "Single-source report · not independently verified by Palimpsest"
+
+
+def _event_source_boundary(event: Mapping[str, Any]) -> str:
+    groups = len(event["evidence_groups"])
+    if groups > 1:
+        return (
+            f"{groups} independent publisher groups reported related facts. "
+            "That is corroborated reporting, not proof of truth, intent, impact "
+            "or causation."
+        )
+    return (
+        "This record indexes one publisher group. Palimpsest has not "
+        "independently verified or refuted the publisher's claims."
+    )
+
+
 def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
     groups = len(event["evidence_groups"])
     coverage = wire["coverage"]
@@ -1297,23 +1330,23 @@ def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
     dek_language = _text_language(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
     )
-    return f"""<section class="nw-wire-lead" id="lead-dossier" aria-labelledby="lead-headline">
+    return f"""<section class="nw-wire-lead" id="source-index" aria-labelledby="source-index-headline">
   <div class="nw-wire-lead__copy">
-    <p class="nw-kicker">{_h(EVENT_DESKS[event['desk']])} · {_h(EVIDENCE_LABELS[event['evidence_strength']])}</p>
-    <h1 id="lead-headline" lang="{_h(language)}">{_h(event['headline'])}</h1>
+    <p class="nw-kicker">Source index · {_h(_event_source_label(event))}</p>
+    <h2 id="source-index-headline" lang="{_h(language)}">{_h(event['headline'])}</h2>
     <p class="nw-lead__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
-    <p class="nw-lead__qualifier"><strong>Evidence boundary:</strong> {_h(event['lead_reason'])} {_h(event['limitations'][1])}</p>
+    <p class="nw-lead__qualifier"><strong>Verification status:</strong> {_h(_event_source_boundary(event))}</p>
     <div class="nw-actions">
-      <a class="nw-actions__primary" href="{_h(_site_path(event['url']))}">Open the evidence dossier</a>
-      <a href="/readings/newswire-latest.json">Structured wire</a>
-      <a href="/news/economy/">Economic state</a>
+      <a class="nw-actions__primary" href="{_h(event['evidence_refs'][0]['url'])}">Read the original report</a>
+      <a href="{_h(_site_path(event['url']))}">Open Palimpsest source record</a>
+      <a href="/readings/newswire-latest.json">Structured source index</a>
     </div>
   </div>
   <aside class="nw-wire-lead__rail">
-    <div class="nw-receipt" aria-label="Dossier receipt">
-      <p class="nw-receipt__label">Dossier receipt</p>
+    <div class="nw-receipt" aria-label="Source index receipt">
+      <p class="nw-receipt__label">Source index receipt</p>
       <dl>
-        <dt>Strength</dt><dd>{_h(EVIDENCE_LABELS[event['evidence_strength']])}</dd>
+        <dt>Record</dt><dd>{_h(_event_source_label(event))}</dd>
         <dt>Groups</dt><dd>{groups} independent evidence group{'s' if groups != 1 else ''}</dd>
         <dt>Published</dt><dd>{_h(_human_time(event['published_at']))}</dd>
         <dt>Version</dt><dd><code>{_h(event['version_id'])}</code></dd>
@@ -1327,13 +1360,13 @@ def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
 
 def _event_card(event: Mapping[str, Any]) -> str:
     group_count = len(event["evidence_groups"])
-    state = "lead" if event["lead"] else "attributed"
+    state = "multiple source groups" if group_count > 1 else "not independently verified"
     language = _event_language(event)
     dek_language = _text_language(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
     )
     return f"""<article class="nw-event-card" data-strength="{_h(event['evidence_strength'])}" data-lead="{_h(str(event['lead']).lower())}">
-  <p class="nw-card__kicker">{_h(EVIDENCE_LABELS[event['evidence_strength']])}</p>
+  <p class="nw-card__kicker">{_h(_event_source_label(event))}</p>
   <h3 lang="{_h(language)}"><a class="nw-card__link" href="{_h(_site_path(event['url']))}">{_h(event['headline'])}</a></h3>
   <p class="nw-card__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
   <div class="nw-event-card__facts">
@@ -1396,12 +1429,12 @@ def _event_sections(
         if len(events) > len(visible_events):
             archive_link = (
                 '<p class="nw-section__more"><a href="/news/wire/">'
-                f'View all {len(events)} { _h(title).lower() } dossiers →</a></p>'
+                f'View all {len(events)} { _h(title).lower() } source records →</a></p>'
             )
         blocks.append(f"""<section class="nw-section nw-section--events" id="wire-{_h(desk_id)}">
   <div class="nw-section__head">
-    <div><p class="nw-section__label">{order:02d} / Evidence desk</p><h2>{_h(title)}</h2></div>
-    <p class="nw-section__dek">Every accepted item is accounted for. Single-source items remain attributed; corroboration counts independent evidence groups, not mirrors.</p>
+    <div><p class="nw-section__label">Source index · {_h(title)}</p><h2>{_h(title)}</h2></div>
+    <p class="nw-section__dek">These are attributed publisher reports. Single-source records are not independently verified by Palimpsest; corroboration counts independent source groups, not mirrors.</p>
   </div>
   <div class="nw-event-grid">{cards}</div>{archive_link}
 </section>""")
@@ -1668,14 +1701,22 @@ def _accountability_tape(wire: Mapping[str, Any]) -> str:
 </aside>"""
 
 
-def _instrument_sections(feed: Mapping[str, Any]) -> str:
+def _instrument_sections(
+    feed: Mapping[str, Any], *, exclude_signal_id: str | None = None
+) -> str:
     blocks = []
     for section in feed["sections"]:
-        stories = [story for story in feed["stories"] if story["section"] == section["id"]]
+        stories = [
+            story for story in feed["stories"]
+            if story["section"] == section["id"]
+            and story["signal_id"] != exclude_signal_id
+        ]
+        if not stories:
+            continue
         cards = "".join(_story_card(story, section["title"]) for story in stories)
         blocks.append(f"""<section class="nw-section nw-section--instruments" id="instrument-{_h(section['id'])}">
   <div class="nw-section__head">
-    <div><p class="nw-section__label">Instrument desk</p><h2>{_h(section['title'])}</h2></div>
+    <div><p class="nw-section__label">Palimpsest measurements</p><h2>{_h(section['title'])}</h2></div>
     <p class="nw-section__dek">{_h(section['dek'])}</p>
   </div>
   <div class="nw-grid">{cards}</div>
@@ -1693,8 +1734,12 @@ def render_evidence_index(
     events = wire["events"]
     if not events:
         return render_index(feed)
-    lead = _select_lead(events)
-    event_navigation, event_blocks = _event_sections(wire, lead_event_id=lead["event_id"])
+    source_lead = _select_lead(events)
+    instrument_lead = _select_instrument_lead(feed["stories"])
+    sections = {section["id"]: section for section in feed["sections"]}
+    event_navigation, event_blocks = _event_sections(
+        wire, lead_event_id=source_lead["event_id"]
+    )
     coverage = wire["coverage"]
     instrument_coverage = feed["coverage"]
     investigations_nav = (
@@ -1718,36 +1763,39 @@ def render_evidence_index(
 <main id="main" class="nw-shell">
   <header class="nw-masthead">
     <div class="nw-masthead__top">
-      <p class="nw-wordmark">Palimpsest <span>Wire</span></p>
-      <p class="nw-edition"><strong>Evidence edition</strong>{_h(_human_time(wire['generated_at']))}<br>{wire['n_events']} event dossiers · {feed['n_stories']} instruments{investigations_count}{analysis_count}</p>
+      <p class="nw-wordmark">Palimpsest <span>Evidence desk</span></p>
+      <p class="nw-edition"><strong>Current edition</strong>{_h(_human_time(wire['generated_at']))}<br>{feed['n_stories']} measurements · {wire['n_events']} source records{investigations_count}{analysis_count}</p>
     </div>
-    <p class="nw-masthead__dek">China intelligence that keeps reported facts, measured facts, corroboration, revisions and unknowns structurally separate.</p>
+    <h1 class="nw-masthead__headline">Measurements first. Source reports clearly labeled.</h1>
+    <p class="nw-masthead__dek">This is not a replacement newspaper. Palimpsest publishes its own measured results, then keeps publisher reports in a separate source index with attribution, source structure, revisions and unknowns visible.</p>
   </header>
-  <div class="nw-meta-line"><span>China · economy · politics · censorship · networks</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/china/analysis/">Today's censorship analysis</a><a href="/news/china/">China article stream</a><a href="/news/feed.xml">Dossier RSS</a><a href="/readings/newswire-latest.json">Structured wire</a></div>
+  <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/instruments/feed.xml">Measurements-only RSS</a><a href="/feeds/">All feeds</a><a href="/readings/newswire-latest.json">Structured source index</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
-    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{wire['n_events']}</strong> dossiers</span>
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> measurements live</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage['successful_sources']}/{coverage['registry_sources']}</strong> feeds answered</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
-    <span><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> live instruments</span>
+    <span><strong>{wire['n_events']}</strong> attributed source records</span>
   </div>
-  <nav aria-label="News desks"><ul class="nw-section-nav"><li><a href="/news/china/analysis/">Censorship analysis</a></li><li><a href="/news/china/">Article stream</a></li><li><a href="#lead-dossier">Lead dossier</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}{event_navigation}<li><a href="#instruments">Instruments</a></li><li><a href="#tape-title">Coverage tape</a></li></ul></nav>
-  {_event_lead(lead, wire)}
+  <nav class="nw-task-strip" aria-label="Start with a task"><a href="#latest-measurement"><strong>See a Palimpsest result</strong><span>Measurement + receipt + limit</span></a><a href="#source-index"><strong>Look up a publisher report</strong><span>Attributed source index</span></a><a href="/feeds/"><strong>Choose a feed</strong><span>Purpose and boundary first</span></a><a href="/developers.html"><strong>Use the data</strong><span>API + MCP + files</span></a></nav>
+  <nav aria-label="Evidence desk sections"><ul class="nw-section-nav"><li><a href="#latest-measurement">Latest measurement</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}<li><a href="#instruments">More measurements</a></li><li><a href="#source-index">Source index</a></li>{event_navigation}<li><a href="#tape-title">Feed coverage</a></li></ul></nav>
+  <div id="latest-measurement">{_lead(instrument_lead, sections[instrument_lead['section']]['title'], heading_level=2, heading_id='latest-measurement-title')}</div>
   {_economic_panel(pulse)}
   {_machine_analysis_feature(machine_analyses)}
   {_investigations_feature(investigations)}
+  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Palimpsest results</p><h2>More current measurements</h2><p>These are Palimpsest's own mutable latest-state briefs. Each one names its source bytes, freshness, denominator and limitation.</p></div>
+  {_instrument_sections(feed, exclude_signal_id=instrument_lead['signal_id'])}
+  {_event_lead(source_lead, wire)}
   {event_blocks}
-  <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Measurement layer</p><h2>Current Palimpsest instruments</h2><p>These are mutable latest-state briefs. Event dossiers above preserve the news and revision timeline.</p></div>
-  {_instrument_sections(feed)}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell">Palimpsest Wire publishes metadata-only event dossiers from a closed source registry and presents declared measurement surfaces as topical pointers, never causal joins. <a href="/news/china/">Every China article + analysis</a> · <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/docs/EVIDENCE-WIRE.md">Method and architecture</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Palimpsest publishes measurements and maintains an attributed publisher source index. A source record is not an independent finding. <a href="/feeds/">Feeds by purpose</a> · <a href="/news/analysis/">Machine analysis</a> · <a href="/news/investigations/">Investigations register</a> · <a href="/news/standards/">Reporting standards</a> · <a href="https://github.com/beepboop2025/palimpsest">Source code</a>.</div></footer>
 {site_nav.FOOT}
 </body>
 </html>
 """
     return _head(
-        title="Palimpsest Wire · hard-facts China intelligence",
-        description="Evidence dossiers across China's economy, politics, censorship, networks and technology, with source independence, measurements, revisions and unknowns visible.",
+        title="Palimpsest evidence desk · measurements and attributed source reports",
+        description="Palimpsest measurements first, plus a clearly labeled publisher source index with receipts, revisions, source independence and limits.",
         canonical=feed["url"],
         page_type="website",
         modified_at=max(feed["generated_at"], wire["generated_at"]),
@@ -2844,20 +2892,19 @@ def _event_json_ld(
         keywords.append("China")
     return {
         "@context": "https://schema.org",
-        "@type": "NewsArticle",
+        "@type": "WebPage",
         "@id": event["url"],
-        "mainEntityOfPage": {"@type": "WebPage", "@id": event["url"]},
-        "headline": event["headline"],
+        "name": event["headline"],
         "description": event["dek"],
         "datePublished": event["published_at"],
         "dateModified": max(event["updated_at"], analysis["generated_at"]),
-        "articleSection": EVENT_DESKS[event["desk"]],
         "inLanguage": _event_language(event),
         "isAccessibleForFree": True,
-        "author": _organization(),
-        "publisher": _organization(),
+        "creator": _organization(),
+        "isPartOf": {"@type": "CollectionPage", "url": f"{SITE}/news/"},
         "image": [OG_IMAGE],
         "citation": list(dict.fromkeys(citations)),
+        "about": EVENT_DESKS[event["desk"]],
         "keywords": keywords,
     }
 
@@ -2910,14 +2957,25 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
         )
     )
     evidence = analysis["evidence_assessment"]
+    if collector_cards:
+        added_value = (
+            "Palimpsest adds current measurement context from the named collector "
+            "records below. Those measurements do not verify the publisher's article."
+        )
+    else:
+        added_value = (
+            "Palimpsest adds attribution, independent-source grouping, a revision "
+            "receipt and follow-up boundaries. It adds no independent factual finding."
+        )
     return f"""<section class="nw-dossier__section nw-assessment" data-disposition="{_h(analysis['disposition'])}" aria-labelledby="assessment-title">
-  <p class="nw-section__label">Palimpsest analysis</p><h2 id="assessment-title">What Palimpsest concludes</h2>
+  <p class="nw-section__label">Palimpsest addition</p><h2 id="assessment-title">What Palimpsest adds to this source report</h2>
   <div class="nw-assessment__verdict">
     <p class="nw-assessment__status">{_h(_ANALYSIS_DISPOSITION_LABELS[analysis['disposition']])} · as of <time datetime="{_h(analysis['generated_at'])}">{_h(_human_time(analysis['generated_at']))}</time></p>
-    <p class="nw-assessment__position">{_h(analysis['position'])}</p>
-    <p>{_h(evidence['conclusion'])}</p>
+    <p class="nw-assessment__position"><strong>Added value:</strong> {_h(added_value)}</p>
+    <p><strong>Verification status:</strong> {_h(analysis['position'])}</p>
+    <p><strong>Source structure:</strong> {_h(evidence['conclusion'])}</p>
   </div>
-  <h3 class="nw-assessment__subhead">Why Palimpsest takes this position</h3>
+  <h3 class="nw-assessment__subhead">Why this is the bounded position</h3>
   <ul class="nw-assessment__rationale">{rationale}</ul>
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   {collector_context}
@@ -2970,6 +3028,11 @@ def render_event(
     )
     mutation = event["mutation"]
     previous = mutation["previous_version_id"] or "none — first retained version"
+    publisher_names = list(dict.fromkeys(
+        ref["source_name"] for ref in event["evidence_refs"]
+    ))
+    publisher_label = ", ".join(publisher_names)
+    primary_ref = event["evidence_refs"][0]
     language = _event_language(event)
     dek_language = _text_language(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
@@ -2979,18 +3042,19 @@ def render_event(
 <main id="main" class="nw-shell">
   <article class="nw-article nw-dossier">
     <header class="nw-article__header">
-      <p class="nw-article__kicker">{_h(EVENT_DESKS[event['desk']])} · {_h(EVIDENCE_LABELS[event['evidence_strength']])}</p>
+      <p class="nw-article__kicker">Source index record · {_h(_event_source_label(event))}</p>
       <h1 lang="{_h(language)}">{_h(event['headline'])}</h1>
       <p class="nw-article__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
-      <p class="nw-article__meta"><span>By {PUBLISHER}</span><time datetime="{_h(event['published_at'])}">{_h(_human_time(event['published_at']))}</time><span>{_h(mutation['kind'])} dossier version</span></p>
+      <p class="nw-article__meta"><span>Published by {_h(publisher_label)}</span><time datetime="{_h(event['published_at'])}">{_h(_human_time(event['published_at']))}</time><span>Indexed by Palimpsest · {_h(mutation['kind'])} record version</span></p>
+      <div class="nw-source-origin"><a class="nw-actions__primary" href="{_h(primary_ref['url'])}">Read the original at {_h(primary_ref['source_name'])} ↗</a><p>Palimpsest did not write or independently verify this publisher report. The record below adds source structure, measurement context when available, revision history and limits.</p></div>
     </header>
     <div class="nw-dossier__summary">
-      <div><p class="nw-receipt__label">Editorial disposition</p><p>{_h(event['lead_reason'])}</p></div>
-      <div><p class="nw-receipt__label">Evidence strength</p><strong>{_h(EVIDENCE_LABELS[event['evidence_strength']])}</strong><p>{len(event['evidence_groups'])} independent group{'s' if len(event['evidence_groups']) != 1 else ''}; this is source structure, not a truth probability.</p></div>
+      <div><p class="nw-receipt__label">Record type</p><strong>{_h(_event_source_label(event))}</strong><p>{_h(_event_source_boundary(event))}</p></div>
+      <div><p class="nw-receipt__label">What Palimpsest adds</p><p>Attribution, {len(event['evidence_groups'])} independent source group{'s' if len(event['evidence_groups']) != 1 else ''}, topic links, a revision receipt and explicit unknowns. The group count is not a truth probability.</p></div>
       <div><p class="nw-receipt__label">Revision receipt</p><code>{_h(event['version_id'])}</code><p>Previous: <code>{_h(previous)}</code></p><a href="revisions/{_h(event['version_id'])}.json">Immutable revision JSON</a></div>
     </div>
     <section class="nw-dossier__section" aria-labelledby="reported-title">
-      <p class="nw-section__label">Reported facts</p><h2 id="reported-title">What the registered sources published</h2>
+      <p class="nw-section__label">Publisher reports · attributed, not adopted</p><h2 id="reported-title">What the registered sources published</h2>
       <ol class="nw-fact-list">{facts}</ol>
     </section>
     {_event_analysis_html(analysis)}
@@ -3014,16 +3078,16 @@ def render_event(
     </section>
   </article>
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Latest evidence wire</a> · <a href="/readings/newswire-latest.json">Structured wire</a> · <a href="story.json">Current dossier JSON</a> · <a href="analysis.json">Palimpsest analysis JSON</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Publisher source index</a> · <a href="{_h(primary_ref['url'])}">Original report</a> · <a href="/readings/newswire-latest.json">Structured source index</a> · <a href="story.json">Current record JSON</a> · <a href="analysis.json">Palimpsest addition JSON</a></div></footer>
 {site_nav.FOOT}
 </body>
 </html>
 """
     return _head(
-        title=f"{event['headline']} · Palimpsest Wire",
-        description=event["dek"],
+        title=f"{event['headline']} · attributed source record · Palimpsest",
+        description=f"Attributed source record from {publisher_label}. {_event_source_boundary(event)}",
         canonical=event["url"],
-        page_type="article",
+        page_type="website",
         published_at=event["published_at"],
         modified_at=max(event["updated_at"], analysis["generated_at"]),
         json_ld=_event_json_ld(event, analysis),
@@ -3048,12 +3112,12 @@ def render_wire_archive(
     next_href = f"/news/wire/page/{page + 1}/" if page < n_pages else ""
     pagination_links = []
     if previous_href:
-        pagination_links.append(f'<a rel="prev" href="{previous_href}">← Newer dossiers</a>')
+        pagination_links.append(f'<a rel="prev" href="{previous_href}">← Newer source records</a>')
     pagination_links.append(f'<span>Page {page} of {n_pages}</span>')
     if next_href:
-        pagination_links.append(f'<a rel="next" href="{next_href}">Older dossiers →</a>')
+        pagination_links.append(f'<a rel="next" href="{next_href}">Older source records →</a>')
     pagination = (
-        '<nav class="nw-pagination" aria-label="Dossier archive pages">'
+        '<nav class="nw-pagination" aria-label="Source index pages">'
         + "".join(pagination_links)
         + "</nav>"
     )
@@ -3064,18 +3128,18 @@ def render_wire_archive(
     body = f"""<body class="ps newsroom-page newsroom-page--archive">
 {site_nav.render('/news/')}
 <main id="main" class="nw-shell">
-  <header class="nw-article__header nw-archive-head"><p class="nw-article__kicker">Receipt-complete event wire{_h(page_suffix)}</p><h1>China evidence dossiers</h1><p class="nw-article__dek">Every accepted current-window feed item is partitioned into exactly one dossier. Corroborated leads and single-source attributed records remain visibly different.</p></header>
+  <header class="nw-article__header nw-archive-head"><p class="nw-article__kicker">Attributed publisher records{_h(page_suffix)}</p><h1>Publisher source index</h1><p class="nw-article__dek">This is not independent Palimpsest reporting. Every accepted current-window publisher item is assigned to one source record; single-source and multiple-independent-group records remain visibly different.</p></header>
   {pagination}
   <div class="nw-event-grid nw-event-grid--archive">{cards}</div>
   {pagination}
   {_accountability_tape(wire)}
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/news/china/">Every article + analysis</a> · <a href="/readings/newswire-latest.json">Structured wire</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Evidence desk</a> · <a href="/news/instruments/feed.xml">Measurements-only RSS</a> · <a href="/readings/newswire-latest.json">Structured source index</a></div></footer>
 {site_nav.FOOT}
 </body></html>"""
     return _head(
-        title=f"China evidence dossiers{page_suffix} · Palimpsest Wire",
-        description=wire["scope"],
+        title=f"Publisher source index{page_suffix} · Palimpsest",
+        description="Attributed publisher reports with source grouping, revision receipts and explicit verification boundaries.",
         canonical=canonical,
         page_type="website",
         modified_at=wire["generated_at"],
@@ -3083,7 +3147,7 @@ def render_wire_archive(
             "@context": "https://schema.org",
             "@type": "CollectionPage",
             "url": canonical,
-            "name": f"China evidence dossiers{page_suffix}",
+            "name": f"Publisher source index{page_suffix}",
             "dateModified": wire["generated_at"],
         },
     ) + "\n" + body
@@ -3250,21 +3314,26 @@ def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]
             {
                 "id": article["revision_id"],
                 "url": f"{SITE}{article['url']}",
-                "title": article["title"],
-                "summary": article["dek"],
-                "content_text": "\n\n".join(text),
+                "title": "[Palimpsest analysis] " + article["title"],
+                "summary": "Palimpsest cross-instrument analysis. " + article["dek"],
+                "content_text": "\n\n".join(
+                    ["ITEM TYPE: PALIMPSEST CROSS-INSTRUMENT ANALYSIS"] + text
+                ),
                 "date_published": article["published_at"],
                 "date_modified": article["updated_at"],
                 "authors": [{"name": article["authorship"]["byline"], "url": f"{SITE}/news/china/analysis/"}],
                 "tags": ["China", "censorship", "internet filtering", "information controls"],
                 "_palimpsest": {
+                    "kind": "china_censorship_analysis",
                     "article_id": article["article_id"],
                     "revision_id": article["revision_id"],
                     "finding_state": article["finding_state"],
                     "citation_coverage": article["publication_receipt"]["citation_coverage"],
+                    "verification_status": "palimpsest_bounded_analysis",
                 },
             }
         ],
+        "language": "en",
     }
 
 
@@ -3278,7 +3347,7 @@ def build_china_analysis_rss(article: Mapping[str, Any]) -> bytes:
   <language>en</language>
   <lastBuildDate>{_rfc2822(article['updated_at'])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/analysis/feed.xml" rel="self" type="application/rss+xml" />
-  <item><title>{xml_escape(article['title'])}</title><link>{SITE}{xml_escape(article['url'])}</link><guid isPermaLink="false">{xml_escape(article['revision_id'])}</guid><pubDate>{_rfc2822(article['updated_at'])}</pubDate><description>{xml_escape(article['dek'])}</description><category>China censorship analysis</category></item>
+  <item><title>{xml_escape('[Palimpsest analysis] ' + article['title'])}</title><link>{SITE}{xml_escape(article['url'])}</link><guid isPermaLink="false">{xml_escape(article['revision_id'])}</guid><pubDate>{_rfc2822(article['updated_at'])}</pubDate><description>{xml_escape('Palimpsest cross-instrument analysis. ' + article['dek'])}</description><category>palimpsest-analysis</category><category>China censorship analysis</category></item>
 </channel>
 </rss>
 """
@@ -3318,6 +3387,11 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
     analysis = entry["analysis"]
     dossier = entry["dossier"]
     publisher = entry["publisher"]
+    source_status = (
+        f"Source report · {dossier['independent_groups']} independent groups"
+        if dossier["independent_groups"] > 1
+        else "Single-source report · not independently verified"
+    )
     excerpt = entry["excerpt"] or "The publisher supplied no feed excerpt. Open the original for the report itself."
     topics = "".join(f"<span>{_h(topic)}</span>" for topic in entry["topics"])
     rationale = "".join(f"<li>{_h(value)}</li>" for value in analysis["rationale"])
@@ -3339,16 +3413,16 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
     return f"""<article class="cs-entry" id="dispatch-{_h(entry['entry_id'])}" data-desk="{_h(entry['desk'])}" data-search="{_h(search_text)}">
   <div class="cs-entry__rail"><time datetime="{_h(entry['published_at'])}">{_h(_human_time(entry['published_at']))}</time><span>{_h(publisher['name'])}</span><i aria-hidden="true"></i></div>
   <div class="cs-entry__body">
-    <div class="cs-entry__flags"><span data-strength="{_h(dossier['evidence_strength'])}">{_h(EVIDENCE_LABELS[dossier['evidence_strength']])}</span><span>{_h(publisher['role'])}</span><span>{dossier['source_items']} item{'s' if dossier['source_items'] != 1 else ''} / {dossier['independent_groups']} independent group{'s' if dossier['independent_groups'] != 1 else ''}</span></div>
+    <div class="cs-entry__flags"><span data-strength="{_h(dossier['evidence_strength'])}">{_h(source_status)}</span><span>{_h(publisher['role'])}</span><span>{dossier['source_items']} item{'s' if dossier['source_items'] != 1 else ''} / {dossier['independent_groups']} independent group{'s' if dossier['independent_groups'] != 1 else ''}</span></div>
     <h2 lang="{_h(entry['language'])}"><a href="{_h(entry['original_url'])}" rel="external">{_h(entry['headline'])}</a></h2>
     <p class="cs-entry__excerpt" lang="{_h(entry['language'])}">{_h(excerpt)}</p>
     <div class="cs-entry__topics"><span>{_h(EVENT_DESKS[entry['desk']])}</span>{topics}</div>
     <details class="cs-analysis"{expanded_attr}>
-      <summary><span>Palimpsest analysis</span><strong>{_h(analysis['disposition'].replace('-', ' '))}</strong><small>Open the evidence read, unknowns, and next checks</small></summary>
+      <summary><span>What Palimpsest adds</span><strong>{_h(analysis['disposition'].replace('-', ' '))}</strong><small>Open source structure, measurement context, unknowns and next checks</small></summary>
       <div class="cs-analysis__inside">
-        <p class="cs-analysis__position">{_h(analysis['position'])}</p>
+        <p class="cs-analysis__position"><strong>Verification status:</strong> {_h(analysis['position'])}</p>
         <div class="cs-analysis__grid">
-          <div><h3>Why Palimpsest says that</h3><ol>{rationale}</ol></div>
+          <div><h3>Why this is the bounded position</h3><ol>{rationale}</ol></div>
           <div><h3>Next verification moves</h3><ol>{checks}</ol></div>
         </div>
         {collector}
@@ -3398,30 +3472,30 @@ def render_china_article_stream(
 {site_nav.render('/news/')}
 <main id="main">
   <header class="cs-hero">
-    <div class="cs-hero__grid"><div><p class="cs-eyebrow">Palimpsest / China dispatch stream{_h(suffix)}</p><h1>Every dispatch.<br><em>Evidence<br>attached.</em></h1></div><p class="cs-hero__dek">A chronological feed of every China/Hong Kong item retained from the monitored publisher registry. Each report carries Palimpsest’s evidence position, collector boundary, unknowns, and next verification moves.</p></div>
+    <div class="cs-hero__grid"><div><p class="cs-eyebrow">Palimpsest / China publisher index{_h(suffix)}</p><h1>Publisher reports.<br><em>Our additions<br>labeled.</em></h1></div><p class="cs-hero__dek">A chronological index of China/Hong Kong items retained from the monitored publisher registry. Read the publisher for the report; open Palimpsest's panel for source structure, measurement context, unknowns and next verification moves.</p></div>
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China stream formats"><a href="/news/china/analysis/">Today’s censorship analysis</a><a href="/news/">Evidence edition</a><a href="/news/wire/">Event dossiers</a><a href="/news/china/whispers/">Whispers · reviewed Telegram context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured stream</a></nav>
+    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
       <div class="cs-controls__desks"><button class="is-active" type="button" data-desk-filter="all">All desks</button>{desk_buttons}</div>
-      <p id="china-stream-count" role="status" aria-live="polite">Showing {len(page_entries)} dispatches on this page</p>
+      <p id="china-stream-count" role="status" aria-live="polite">Showing {len(page_entries)} publisher records on this page</p>
     </section>
     {pagination}
-    <section class="cs-stream" aria-label="China publisher dispatches">{articles}<p class="cs-no-results" id="china-stream-empty" hidden>No dispatches on this page match that filter.</p></section>
+    <section class="cs-stream" aria-label="China publisher source records">{articles}<p class="cs-no-results" id="china-stream-empty" hidden>No source records on this page match that filter.</p></section>
     {pagination}
     <aside class="cs-method"><p class="cs-eyebrow">What “every” means here</p><h2>Complete across the declared feeds—not the entire internet.</h2><div><p>{_h(stream['scope'])}</p><p>{_h(stream['method']['analysis'])} {_h(stream['method']['rights'])}</p></div></aside>
   </div>
 </main>
-<footer class="nw-footer"><div class="nw-shell">Publisher metadata remains attributed. Telegram aggregates remain context-only. <a href="/docs/EVIDENCE-WIRE.md">Method</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Publisher reports remain attributed and are not converted into Palimpsest findings. Telegram aggregates remain unverified context. <a href="/feeds/">Feed directory</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
 <script src="/assets/china-stream.js" defer></script>
 {site_nav.FOOT}
 </body></html>"""
     return _head(
-        title=f"China dispatch stream{suffix} · Palimpsest Wire",
-        description=stream["scope"],
+        title=f"China publisher source index{suffix} · Palimpsest",
+        description="Attributed China and Hong Kong publisher reports with Palimpsest source structure, measurement context, unknowns and next checks clearly labeled.",
         canonical=canonical,
         page_type="website",
         modified_at=stream["generated_at"],
@@ -3431,7 +3505,7 @@ def render_china_article_stream(
             "@context": "https://schema.org",
             "@type": "CollectionPage",
             "url": canonical,
-            "name": f"Palimpsest China dispatch stream{suffix}",
+            "name": f"Palimpsest China publisher source index{suffix}",
             "dateModified": stream["generated_at"],
             "numberOfItems": len(page_entries),
             "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
@@ -3444,31 +3518,47 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
     for entry in stream["entries"]:
         analysis = entry["analysis"]
         dossier = entry["dossier"]
+        source_label = (
+            f"Source report with {dossier['independent_groups']} independent groups"
+            if dossier["independent_groups"] > 1
+            else "Single-source report not independently verified by Palimpsest"
+        )
         content = [
-            entry["excerpt"] or "No feed excerpt supplied by the publisher.",
-            analysis["position"],
-            "Why: " + " ".join(analysis["rationale"]),
+            "ITEM TYPE: " + source_label,
+            "Published by: " + entry["publisher"]["name"],
+            "Palimpsest verification status: " + analysis["position"],
+            "Palimpsest adds: " + " ".join(analysis["rationale"]),
             "Next checks: " + " ".join(analysis["next_checks"]),
             "Known unknowns: " + " ".join(analysis["known_unknowns"]),
+            "Read the original: " + entry["original_url"],
         ]
         items.append({
             "id": entry["entry_id"],
-            "url": entry["original_url"],
+            "url": dossier["url"],
             "external_url": entry["original_url"],
-            "title": entry["headline"],
-            "summary": entry["excerpt"],
+            "title": "[Source report] " + entry["headline"],
+            "summary": source_label + ". " + analysis["position"],
             "content_text": "\n\n".join(content),
             "date_published": entry["published_at"],
             "date_modified": entry["collected_at"],
             "language": entry["language"],
             "authors": [{"name": entry["publisher"]["name"]}],
-            "tags": [entry["desk"], *entry["topics"]],
+            "tags": [
+                "source-report",
+                (
+                    "multiple-independent-source-groups"
+                    if dossier["independent_groups"] > 1
+                    else "not-independently-verified"
+                ),
+                entry["desk"],
+                *entry["topics"],
+            ],
             "attachments": [
                 {"url": dossier["url"], "mime_type": "text/html", "title": "Palimpsest evidence dossier"},
                 {"url": analysis["url"], "mime_type": "application/json", "title": "Palimpsest structured analysis"},
             ],
             "_palimpsest": {
-                "kind": "publisher_item_with_event_analysis",
+                "kind": "publisher_source_record_with_analysis",
                 "item_version_id": entry["version_id"],
                 "event_id": dossier["event_id"],
                 "event_version_id": dossier["version_id"],
@@ -3477,14 +3567,23 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
                 "independent_groups": dossier["independent_groups"],
                 "position": analysis["position"],
                 "next_checks": analysis["next_checks"],
+                "verification_status": (
+                    "multiple_independent_source_groups"
+                    if dossier["independent_groups"] > 1
+                    else "not_independently_verified"
+                ),
             },
         })
     return {
         "version": "https://jsonfeed.org/version/1.1",
-        "title": "Palimpsest · China dispatch stream",
+        "title": "Palimpsest China publisher source index",
         "home_page_url": stream["url"],
         "feed_url": stream["json_feed_url"],
-        "description": stream["scope"],
+        "description": (
+            "Attributed China and Hong Kong publisher reports with Palimpsest "
+            "source structure, measurement context, unknowns and next checks. "
+            "Publisher reports are not converted into Palimpsest findings."
+        ),
         "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
         "items": items,
     }
@@ -3494,17 +3593,25 @@ def build_china_stream_rss(stream: Mapping[str, Any]) -> bytes:
     rows = []
     for entry in stream["entries"]:
         analysis = entry["analysis"]
+        dossier = entry["dossier"]
+        source_label = (
+            f"Source report with {dossier['independent_groups']} independent groups"
+            if dossier["independent_groups"] > 1
+            else "Single-source report not independently verified by Palimpsest"
+        )
         description = "\n\n".join([
-            entry["excerpt"] or "No feed excerpt supplied by the publisher.",
-            analysis["position"],
-            "Why: " + " ".join(analysis["rationale"]),
+            "Item type: " + source_label,
+            "Published by: " + entry["publisher"]["name"],
+            "Palimpsest verification status: " + analysis["position"],
+            "Palimpsest adds: " + " ".join(analysis["rationale"]),
             "Next checks: " + " ".join(analysis["next_checks"]),
             "Known unknowns: " + " ".join(analysis["known_unknowns"]),
-            "Evidence dossier: " + entry["dossier"]["url"],
+            "Read original: " + entry["original_url"],
+            "Palimpsest source record: " + dossier["url"],
         ])
         rows.append(f"""  <item>
-    <title>{xml_escape(entry['headline'])}</title>
-    <link>{xml_escape(entry['original_url'])}</link>
+    <title>{xml_escape('[Source report] ' + entry['headline'])}</title>
+    <link>{xml_escape(dossier['url'])}</link>
     <guid isPermaLink="false">{xml_escape(entry['entry_id'])}</guid>
     <pubDate>{_rfc2822(entry['published_at'])}</pubDate>
     <description>{xml_escape(description)}</description>
@@ -3514,9 +3621,9 @@ def build_china_stream_rss(stream: Mapping[str, Any]) -> bytes:
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>Palimpsest · China dispatch stream</title>
+  <title>Palimpsest China publisher source index</title>
   <link>{xml_escape(stream['url'])}</link>
-  <description>{xml_escape(stream['scope'])}</description>
+  <description>Attributed China and Hong Kong publisher reports with Palimpsest source structure, measurement context, unknowns and next checks. Publisher reports are not converted into Palimpsest findings.</description>
   <language>en</language>
   <lastBuildDate>{_rfc2822(stream['generated_at'])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/feed.xml" rel="self" type="application/rss+xml" />
@@ -3675,8 +3782,8 @@ def build_dragon_whispers_json_feed(document: Mapping[str, Any]) -> dict[str, An
         items.append({
             "id": entry["whisper_id"],
             "url": f"{SITE}/news/china/whispers/#{entry['whisper_id']}",
-            "title": analysis["headline"],
-            "summary": analysis["summary"],
+            "title": "[Unverified context] " + analysis["headline"],
+            "summary": "Unverified context only; not evidence or corroboration. " + analysis["summary"],
             "content_text": "\n\n".join([
                 disclaimer,
                 analysis["summary"],
@@ -3696,10 +3803,11 @@ def build_dragon_whispers_json_feed(document: Mapping[str, Any]) -> dict[str, An
         })
     return {
         "version": "https://jsonfeed.org/version/1.1",
-        "title": "Whispers from the Dragon Den · reviewed Palimpsest context",
+        "title": "Palimpsest reviewed Telegram context",
         "home_page_url": f"{SITE}/news/china/whispers/",
         "feed_url": f"{SITE}/news/china/whispers/feed.json",
-        "description": document["scope"],
+        "description": "Sanitized, human-reviewed and unverified Telegram context. Items do not count as evidence or corroboration and expose no raw messages or identifiers.",
+        "language": "en",
         "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
         "items": items,
     }
@@ -3719,19 +3827,20 @@ def build_dragon_whispers_rss(document: Mapping[str, Any]) -> bytes:
         ])
         url = f"{SITE}/news/china/whispers/#{entry['whisper_id']}"
         rows.append(f"""  <item>
-    <title>{xml_escape(analysis['headline'])}</title>
+    <title>{xml_escape('[Unverified context] ' + analysis['headline'])}</title>
     <link>{xml_escape(url)}</link>
     <guid isPermaLink="false">{xml_escape(entry['whisper_id'])}</guid>
     <pubDate>{_rfc2822(entry['published_at'])}</pubDate>
     <description>{xml_escape(description)}</description>
+    <category>unverified-context</category>
     <category>{xml_escape(entry['signal']['tier'])}</category>
   </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>Whispers from the Dragon Den · reviewed Palimpsest context</title>
+  <title>Palimpsest reviewed Telegram context</title>
   <link>{SITE}/news/china/whispers/</link>
-  <description>{xml_escape(document['scope'])}</description>
+  <description>Sanitized, human-reviewed and unverified Telegram context. Items do not count as evidence or corroboration and expose no raw messages or identifiers.</description>
   <language>en</language>
   <lastBuildDate>{_rfc2822(document['generated_at'])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/whispers/feed.xml" rel="self" type="application/rss+xml" />
@@ -3811,6 +3920,24 @@ def build_json_feed(
     feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
 ) -> dict[str, Any]:
     sections = {section["id"]: section["title"] for section in feed["sections"]}
+    mixed = wire is not None
+    feed_url = (
+        f"{SITE}/news/feed.json" if mixed
+        else f"{SITE}/news/instruments/feed.json"
+    )
+    home_page_url = feed["url"] if mixed else f"{SITE}/news/#instruments"
+    title = (
+        "Palimpsest source index + measurements" if mixed
+        else "Palimpsest instrument measurements"
+    )
+    description = (
+        "Palimpsest measurements followed by clearly labeled publisher source "
+        "records. Source reports remain attributed and are not independently "
+        "verified unless the item states otherwise."
+        if mixed else
+        "Only Palimpsest's own current instrument measurements, with a result, "
+        "source receipt, freshness state and limitation attached."
+    )
     event_items = []
     if wire is not None:
         event_items = [
@@ -3818,15 +3945,35 @@ def build_json_feed(
                 "id": event["event_id"],
                 "url": event["url"],
                 "external_url": event["evidence_refs"][0]["url"],
-                "title": event["headline"],
-                "summary": event["dek"],
+                "title": (
+                    "[Corroborated source report] "
+                    if len(event["evidence_groups"]) > 1
+                    else "[Source report] "
+                ) + event["headline"],
+                "summary": _event_source_boundary(event),
                 "content_text": "\n\n".join(
-                    [fact["statement"] for fact in event["reported_facts"]]
-                    + ["Evidence boundary: " + " ".join(event["limitations"])]
+                    [
+                        "ITEM TYPE: " + _event_source_label(event),
+                        "Published by: " + ", ".join(dict.fromkeys(
+                            ref["source_name"] for ref in event["evidence_refs"]
+                        )),
+                        (
+                            "Palimpsest adds: source grouping, timestamps, topic "
+                            "classification and a revision record."
+                        ),
+                        "Verification status: " + _event_source_boundary(event),
+                        "Read the original: " + event["evidence_refs"][0]["url"],
+                    ]
                 ),
                 "date_published": event["published_at"],
                 "date_modified": event["updated_at"],
                 "tags": [
+                    "source-report",
+                    (
+                        "multiple-independent-source-groups"
+                        if len(event["evidence_groups"]) > 1
+                        else "not-independently-verified"
+                    ),
                     EVENT_DESKS[event["desk"]],
                     event["evidence_strength"],
                     *event["topics"],
@@ -3840,28 +3987,42 @@ def build_json_feed(
                     for ref in event["evidence_refs"]
                 ],
                 "_palimpsest": {
-                    "kind": "event_dossier",
+                    "kind": "publisher_source_record",
                     "version_id": event["version_id"],
                     "evidence_strength": event["evidence_strength"],
                     "independent_groups": len(event["evidence_groups"]),
+                    "verification_status": (
+                        "multiple_independent_source_groups"
+                        if len(event["evidence_groups"]) > 1
+                        else "not_independently_verified"
+                    ),
                 },
             }
             for event in wire["events"]
         ]
     instrument_items = [
         {
-            "id": story["id"] if wire is not None else story["id"] + ":" + story["claim_fingerprint"],
+            "id": story["id"] + ":" + story["claim_fingerprint"],
             "url": story["url"],
             "external_url": story["evidence"]["url"],
-            "title": story["headline"],
-            "summary": story["dek"],
+            "title": "[Palimpsest measurement] " + story["headline"],
+            "summary": "Palimpsest measurement. " + story["dek"],
             "content_text": "\n\n".join(
-                [claim["statement"] for claim in story["claims"]]
-                + ["Limitations: " + " ".join(story["limitations"])]
+                ["ITEM TYPE: PALIMPSEST MEASUREMENT"]
+                + ["Result: " + claim["statement"] for claim in story["claims"]]
+                + [
+                    "Limit: " + " ".join(story["limitations"]),
+                    "Evidence: " + story["evidence"]["url"],
+                ]
             ),
             "date_published": story["published_at"],
             "date_modified": story["modified_at"],
-            "tags": [sections[story["section"]], story["signal_id"], story["status"]],
+            "tags": [
+                "palimpsest-measurement",
+                sections[story["section"]],
+                story["signal_id"],
+                story["status"],
+            ],
             "attachments": [{
                 "url": story["evidence"]["url"],
                 "mime_type": "application/json",
@@ -3872,25 +4033,23 @@ def build_json_feed(
                     else {}
                 ),
             }],
-            **(
-                {"_palimpsest": {
-                    "kind": "instrument_brief",
-                    "revision_id": _revision_id(story, "storyv"),
-                }}
-                if wire is not None else {}
-            ),
+            "_palimpsest": {
+                "kind": "instrument_measurement",
+                "revision_id": _revision_id(story, "storyv"),
+                "verification_status": "palimpsest_measurement",
+            },
         }
         for story in feed["stories"]
     ]
     return {
         "version": "https://jsonfeed.org/version/1.1",
-        "title": "Palimpsest Wire" if wire is not None else feed["title"],
-        "home_page_url": feed["url"],
-        "feed_url": f"{SITE}/news/feed.json",
-        "description": wire["scope"] if wire is not None else feed["scope"],
+        "title": title,
+        "home_page_url": home_page_url,
+        "feed_url": feed_url,
+        "description": description,
         "language": "en",
         "authors": [{"name": PUBLISHER, "url": f"{SITE}/"}],
-        "items": event_items + instrument_items,
+        "items": instrument_items + event_items,
     }
 
 
@@ -3898,29 +4057,36 @@ def build_rss(
     feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
 ) -> bytes:
     items = []
-    if wire is not None:
-        for event in wire["events"]:
-            description = (
-                event["dek"]
-                + " Evidence boundary: "
-                + event["limitations"][1]
-                + " Sources: "
-                + ", ".join(ref["url"] for ref in event["evidence_refs"])
-            )
-            items.append(f"""  <item>
-    <title>{xml_escape(event['headline'])}</title>
-    <link>{xml_escape(event['url'])}</link>
-    <guid isPermaLink="false">{xml_escape(event['event_id'])}</guid>
-    <pubDate>{_rfc2822(event['published_at'])}</pubDate>
-    <description>{xml_escape(description)}</description>
-    <category>{xml_escape(event['desk'])}</category>
-    <source url={xml_quoteattr(event['evidence_refs'][0]['url'])}>{xml_escape(event['evidence_refs'][0]['source_name'])}</source>
-  </item>""")
+    mixed = wire is not None
+    channel_title = (
+        "Palimpsest source index + measurements" if mixed
+        else "Palimpsest instrument measurements"
+    )
+    channel_link = feed["url"] if mixed else f"{SITE}/news/#instruments"
+    channel_description = (
+        "Palimpsest measurements followed by clearly labeled publisher source "
+        "records. Source reports remain attributed and are not independently "
+        "verified unless stated."
+        if mixed else
+        "Only Palimpsest's own current instrument measurements, each with its "
+        "source receipt, freshness state and limitation."
+    )
+    self_url = (
+        f"{SITE}/news/feed.xml" if mixed
+        else f"{SITE}/news/instruments/feed.xml"
+    )
     for story in feed["stories"]:
-        description = story["dek"] + " Evidence: " + story["evidence"]["url"]
-        guid = story["id"] if wire is not None else story["id"] + ":" + story["claim_fingerprint"]
+        description = (
+            "Item type: Palimpsest measurement. Result: "
+            + " ".join(claim["statement"] for claim in story["claims"])
+            + " Limit: "
+            + " ".join(story["limitations"])
+            + " Evidence: "
+            + story["evidence"]["url"]
+        )
+        guid = story["id"] + ":" + story["claim_fingerprint"]
         items.append(f"""  <item>
-    <title>{xml_escape(story['headline'])}</title>
+    <title>{xml_escape('[Palimpsest measurement] ' + story['headline'])}</title>
     <link>{xml_escape(story['url'])}</link>
     <guid isPermaLink="false">{xml_escape(guid)}</guid>
     <pubDate>{_rfc2822(story['published_at'])}</pubDate>
@@ -3928,15 +4094,46 @@ def build_rss(
     <category>{xml_escape(story['section'])}</category>
     <source url={xml_quoteattr(story['evidence']['url'])}>{xml_escape(story['signal_id'])}</source>
   </item>""")
+    if wire is not None:
+        for event in wire["events"]:
+            prefix = (
+                "[Corroborated source report] "
+                if len(event["evidence_groups"]) > 1
+                else "[Source report] "
+            )
+            publishers = ", ".join(dict.fromkeys(
+                ref["source_name"] for ref in event["evidence_refs"]
+            ))
+            description = (
+                "Item type: "
+                + _event_source_label(event)
+                + ". Published by: "
+                + publishers
+                + ". Palimpsest adds source grouping, timestamps, topic "
+                "classification and a revision record. Verification status: "
+                + _event_source_boundary(event)
+                + " Read original: "
+                + event["evidence_refs"][0]["url"]
+            )
+            items.append(f"""  <item>
+    <title>{xml_escape(prefix + event['headline'])}</title>
+    <link>{xml_escape(event['url'])}</link>
+    <guid isPermaLink="false">{xml_escape(event['event_id'])}</guid>
+    <pubDate>{_rfc2822(event['published_at'])}</pubDate>
+    <description>{xml_escape(description)}</description>
+    <category>source-report</category>
+    <category>{xml_escape(event['desk'])}</category>
+    <source url={xml_quoteattr(event['evidence_refs'][0]['url'])}>{xml_escape(event['evidence_refs'][0]['source_name'])}</source>
+  </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>{xml_escape('Palimpsest Wire' if wire is not None else feed['title'])}</title>
-  <link>{xml_escape(feed['url'])}</link>
-  <description>{xml_escape(wire['scope'] if wire is not None else feed['scope'])}</description>
+  <title>{xml_escape(channel_title)}</title>
+  <link>{xml_escape(channel_link)}</link>
+  <description>{xml_escape(channel_description)}</description>
   <language>en</language>
   <lastBuildDate>{_rfc2822(max(feed['generated_at'], wire['generated_at']) if wire is not None else feed['generated_at'])}</lastBuildDate>
-  <atom:link href="{SITE}/news/feed.xml" rel="self" type="application/rss+xml" />
+  <atom:link href="{self_url}" rel="self" type="application/rss+xml" />
 {chr(10).join(items)}
 </channel>
 </rss>

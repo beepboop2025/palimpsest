@@ -406,13 +406,22 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v15"' in worker
+    assert 'const CACHE = "palimpsest-v16"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
-    assert (
-        'const LIVE_NEWSROOM_SYNDICATION = new Set(["/news/feed.json", '
-        '"/news/feed.xml"])'
-    ) in worker
+    for endpoint in (
+        "/news/feed.json",
+        "/news/feed.xml",
+        "/news/instruments/feed.json",
+        "/news/instruments/feed.xml",
+        "/news/china/feed.json",
+        "/news/china/feed.xml",
+        "/news/china/analysis/feed.json",
+        "/news/china/analysis/feed.xml",
+        "/news/china/whispers/feed.json",
+        "/news/china/whispers/feed.xml",
+    ):
+        assert f'"{endpoint}"' in worker
     assert "if (url.pathname === LIVE_NEWSROOM)" in worker
     newsroom_branch = worker[worker.index("if (url.pathname === LIVE_NEWSROOM)"):]
     newsroom_branch = newsroom_branch[:newsroom_branch.index("return;")]
