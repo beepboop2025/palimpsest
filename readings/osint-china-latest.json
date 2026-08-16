@@ -25,7 +25,7 @@
       "title": "Baike redaction: degraded"
     }
   ],
-  "generated_at": "2026-08-16T19:15:11Z",
+  "generated_at": "2026-08-16T19:38:33Z",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "health": {
     "counts": {
@@ -42,7 +42,7 @@
     "required_total": 29,
     "status": "healthy"
   },
-  "input_commit": "296315876e83b810d16c88aef00a7bb9bfd01611",
+  "input_commit": "63bddb21a1c8c6bba1d3a7d1cd4ea5c72976b1a6",
   "layers": [
     {
       "id": "command",
@@ -178,7 +178,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.088,
+        "age_hours": 0.477,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -498,7 +498,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:04:10Z",
       "health": {
-        "age_hours": 0.184,
+        "age_hours": 0.573,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -718,7 +718,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.088,
+        "age_hours": 0.477,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -859,7 +859,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.088,
+        "age_hours": 0.477,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1408,7 +1408,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.088,
+        "age_hours": 0.477,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1795,7 +1795,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-17T01:46:44Z",
       "health": {
-        "age_hours": 0.474,
+        "age_hours": 0.864,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2528,7 +2528,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:08:31Z",
       "health": {
-        "age_hours": 0.111,
+        "age_hours": 0.5,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2826,7 +2826,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:01:14Z",
       "health": {
-        "age_hours": 0.233,
+        "age_hours": 0.622,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3090,9 +3090,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-17T03:21:48Z",
+      "freshness_deadline": "2026-08-17T09:10:01Z",
       "health": {
-        "age_hours": 5.89,
+        "age_hours": 0.476,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3102,9 +3102,9 @@
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6632,
+        "bytes": 6634,
         "filename": "silence-index-latest.json",
-        "sha256": "386052467c7fdc67ee7b02ee96a5e0f727c57a9e21f04b908ccea7a30375a85e"
+        "sha256": "a7e8084c7d82baf7517e3ef420c2d3f905791df04935f688b636197025bb396d"
       },
       "layer": "attention",
       "live": true,
@@ -3122,7 +3122,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-16T13:21:48Z",
+        "generated_at": "2026-08-16T19:10:01Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -3149,7 +3149,17 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0609,
+            "global_norm": 0.0677,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "mathematics"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": 0.0625,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -3159,11 +3169,21 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0032,
+            "global_norm": 0.0191,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "WeChat"
+            "topic": "tech companies"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": 0.0093,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "Peking University"
           },
           {
             "abstained": true,
@@ -3193,16 +3213,6 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "Peking University"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
             "topic": "U.S. universities"
           },
           {
@@ -3223,16 +3233,6 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "mathematics"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
             "topic": "overseas Chinese"
           },
           {
@@ -3244,6 +3244,16 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "science education"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "WeChat"
           },
           {
             "abstained": true,
@@ -3303,16 +3313,6 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "tech companies"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
             "topic": "translation excerpt"
           },
           {
@@ -3349,7 +3349,7 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": null,
+            "global_norm": 0.0,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -3359,7 +3359,7 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": null,
+            "global_norm": 0.0,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -3390,7 +3390,7 @@
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-16T13:21:48Z",
+      "source_timestamp": "2026-08-16T19:10:01Z",
       "status": "live",
       "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously. Latest payload reports blackout topics at 0 count across 25 topics considered.",
       "title": "Silence index"
@@ -3399,7 +3399,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 157.379,
+        "age_hours": 157.768,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3710,7 +3710,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:16:07Z",
       "health": {
-        "age_hours": 5.984,
+        "age_hours": 6.374,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3990,7 +3990,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:51:16Z",
       "health": {
-        "age_hours": 0.398,
+        "age_hours": 0.788,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4320,7 +4320,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:52:48Z",
       "health": {
-        "age_hours": 0.373,
+        "age_hours": 0.762,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4491,7 +4491,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:57:34Z",
       "health": {
-        "age_hours": 13.293,
+        "age_hours": 13.683,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4667,7 +4667,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:58:40Z",
       "health": {
-        "age_hours": 0.275,
+        "age_hours": 0.664,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7091,7 +7091,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:53:33Z",
       "health": {
-        "age_hours": 0.361,
+        "age_hours": 0.75,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7141,7 +7141,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:43:40Z",
       "health": {
-        "age_hours": 13.525,
+        "age_hours": 13.915,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7214,7 +7214,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:10:33Z",
       "health": {
-        "age_hours": 0.077,
+        "age_hours": 0.466,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7292,7 +7292,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:57:15Z",
       "health": {
-        "age_hours": 0.299,
+        "age_hours": 0.688,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7413,7 +7413,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T20:01:48Z",
       "health": {
-        "age_hours": 13.223,
+        "age_hours": 13.612,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7544,7 +7544,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:06:24Z",
       "health": {
-        "age_hours": 6.146,
+        "age_hours": 6.536,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8119,7 +8119,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 406.732,
+        "age_hours": 407.121,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -8273,7 +8273,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:11:21Z",
       "health": {
-        "age_hours": 6.064,
+        "age_hours": 6.453,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8452,7 +8452,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:10:37Z",
       "health": {
-        "age_hours": 0.076,
+        "age_hours": 0.465,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8628,7 +8628,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:55:28Z",
       "health": {
-        "age_hours": 13.329,
+        "age_hours": 13.718,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8732,7 +8732,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T05:32:28Z",
       "health": {
-        "age_hours": 3.712,
+        "age_hours": 4.101,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8799,7 +8799,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T19:26:16Z",
       "health": {
-        "age_hours": 1.815,
+        "age_hours": 2.205,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8851,7 +8851,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 52.771,
+        "age_hours": 53.161,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8909,7 +8909,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T12:31:35Z",
       "health": {
-        "age_hours": 8.727,
+        "age_hours": 9.116,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9042,7 +9042,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 274.078,
+        "age_hours": 274.467,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9110,7 +9110,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T09:18:18Z",
       "health": {
-        "age_hours": 35.948,
+        "age_hours": 36.337,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14586,7 +14586,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-16T21:30:10Z",
       "health": {
-        "age_hours": 11.75,
+        "age_hours": 12.14,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14636,7 +14636,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-16T20:14:16Z",
       "health": {
-        "age_hours": 0.015,
+        "age_hours": 0.405,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
