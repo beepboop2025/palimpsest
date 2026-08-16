@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T01:24:18Z",
+  "generated_at": "2026-08-16T02:05:10Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "2db470188ce82cca3fec32d0d5e2ef2700dcf2a6",
+  "source_commit": "6d030e159ff4f7d091846c76503f5e72cc16cea7",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 32,
+    "live": 31,
     "status": "healthy",
     "counts": {
-      "live": 32,
+      "live": 31,
       "degraded": 1,
-      "stale": 0,
+      "stale": 1,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-15T19:09:39Z",
       "modified_at": "2026-08-15T19:09:39Z",
-      "claim_fingerprint": "sha256:e35e66107a8f59761cf9fd4efbc8b429f6e48e16bd35499b42f16049c7774fa9",
+      "claim_fingerprint": "sha256:5d9e8f6ad99f36a4c7d7caf3ef699eeace298ef7821aee836af982f3df2f4a22",
       "metric": {
         "label": "board e-value",
         "value": 30.028,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 30.028; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 30.028; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -344,8 +344,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T21:35:46Z",
-      "modified_at": "2026-08-15T21:35:46Z",
+      "published_at": "2026-08-16T01:58:00Z",
+      "modified_at": "2026-08-16T01:58:00Z",
       "claim_fingerprint": "sha256:315b61a2a6698dba120ec8827e6000babff869e174dfb0375cdd9af356f0105e",
       "metric": {
         "label": "terms ranked",
@@ -366,10 +366,10 @@
         "url": "https://palimpsest.info/readings/ddti-latest.json",
         "input": {
           "filename": "ddti-latest.json",
-          "sha256": "b932c53c5e3d4bd2415f04c3afe589fedccf6359f173af972d3e2ee0ef87594b",
-          "bytes": 26584
+          "sha256": "d3bbc8816aff371c4c9108659a738805eb47159e25b969e5a6bad71d5fcc6d72",
+          "bytes": 26568
         },
-        "source_timestamp": "2026-08-15T21:35:46Z"
+        "source_timestamp": "2026-08-16T01:58:00Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -649,39 +649,39 @@
       "slug": "ooni-great-firewall-index",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "signal_id": "ooni-gfw",
-      "headline": "OONI's China anomaly index is 58.6% across 275,801 completed measurements",
+      "headline": "OONI's China anomaly index is 58.8% across 273,293 completed measurements",
       "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
       "section": "network",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-15T18:51:09Z",
-      "modified_at": "2026-08-15T18:51:09Z",
-      "claim_fingerprint": "sha256:26d55252a99bc2484b2ceb8966803714066a1d9cb65ddb82f0ab35a781eb2e5c",
+      "published_at": "2026-08-16T02:00:11Z",
+      "modified_at": "2026-08-16T02:00:11Z",
+      "claim_fingerprint": "sha256:728766731e78923fe0913c0c28f6053531d6503806a3b77a779cff73b005573b",
       "metric": {
         "label": "GFW anomaly index",
-        "value": 58.6,
+        "value": 58.8,
         "unit": "percent",
         "denominator": {
           "label": "completed measurements",
-          "value": 275801
+          "value": 273293
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current OONI aggregate reports a 58.6% anomaly index across 275,801 completed China measurements."
+          "statement": "The current OONI aggregate reports a 58.8% anomaly index across 273,293 completed China measurements."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
         "input": {
           "filename": "ooni-gfw-latest.json",
-          "sha256": "976d06b913601d161521dcfa83fc985f753093320f67e69dcf583554e6555462",
-          "bytes": 7892
+          "sha256": "8201ceadc0d94491e9dd7545a007078117a198380dbf917c65cfdca0d30ffa22",
+          "bytes": 7898
         },
-        "source_timestamp": "2026-08-15T18:51:09Z"
+        "source_timestamp": "2026-08-16T02:00:11Z"
       },
       "method": {
         "summary": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -709,16 +709,16 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T18:53:43Z",
-      "modified_at": "2026-08-15T18:53:43Z",
-      "claim_fingerprint": "sha256:cb3b685ef85fe4cc35b4c70e22fe7e1f0fe71fc451ff6719e08df826aa419fb0",
+      "published_at": "2026-08-16T02:02:43Z",
+      "modified_at": "2026-08-16T02:02:43Z",
+      "claim_fingerprint": "sha256:71d716cc2f46d3a0bd97e00f9b5b2d29496dd78ed28359bb2b1b6507940eb3c5",
       "metric": {
         "label": "middlebox index",
         "value": 1.32,
         "unit": "percent",
         "denominator": {
           "label": "completed middlebox tests",
-          "value": 9675
+          "value": 9565
         }
       },
       "claims": [
@@ -731,10 +731,10 @@
         "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
         "input": {
           "filename": "in-path-interference-latest.json",
-          "sha256": "95098e357056439088c644c130ee61b107edabd78a34473ca88ce9f60145acb2",
-          "bytes": 4262
+          "sha256": "c9aff028cd2fd8b6c7f2cf46c6cc08599e5fe2a38425747ceaafdb42449782d3",
+          "bytes": 4322
         },
-        "source_timestamp": "2026-08-15T18:53:43Z"
+        "source_timestamp": "2026-08-16T02:02:43Z"
       },
       "method": {
         "summary": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
@@ -866,8 +866,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T18:52:07Z",
-      "modified_at": "2026-08-15T18:52:07Z",
+      "published_at": "2026-08-16T02:00:24Z",
+      "modified_at": "2026-08-16T02:00:24Z",
       "claim_fingerprint": "sha256:d11298f4540771d4f8f5b0489d93b613a353431d3c905c97f68eaca532a53560",
       "metric": {
         "label": "instruments firing",
@@ -888,10 +888,10 @@
         "url": "https://palimpsest.info/readings/ioda-outages-latest.json",
         "input": {
           "filename": "ioda-outages-latest.json",
-          "sha256": "6dd31a2e1e7e85985e61aa9bfb05a80e9bf06165067989f7cb28640804c9da1b",
+          "sha256": "cb613ebbe799a40754926cd7ff18a8b03c0e1f5834b46a338644debf4bc24a4f",
           "bytes": 668
         },
-        "source_timestamp": "2026-08-15T18:52:07Z"
+        "source_timestamp": "2026-08-16T02:00:24Z"
       },
       "method": {
         "summary": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
@@ -1127,8 +1127,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-15T13:04:33Z",
-      "modified_at": "2026-08-15T13:04:33Z",
+      "published_at": "2026-08-16T02:01:19Z",
+      "modified_at": "2026-08-16T02:01:19Z",
       "claim_fingerprint": "sha256:63b339789a2037f6e03cf980055b236978487d78122b67024ea1248bc0cda8a4",
       "metric": {
         "label": "reconstructed deletions",
@@ -1149,10 +1149,10 @@
         "url": "https://palimpsest.info/readings/wayback-latest.json",
         "input": {
           "filename": "wayback-latest.json",
-          "sha256": "bc7a6bd13f0e2620d16ddc41669dced7f71dc96b837fb11a1891c9e59390a641",
-          "bytes": 1453
+          "sha256": "6c801eb1343c15c5f8b84cefd8f522126d1ae5f9dc8a515ae081931f2604c858",
+          "bytes": 1364
         },
-        "source_timestamp": "2026-08-15T13:04:33Z"
+        "source_timestamp": "2026-08-16T02:01:19Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1741,20 +1741,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "The sanitized intelligence bridge ranks 192 aggregate topics",
-      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
+      "headline": "Private runtime bridge: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-16T00:29:16Z",
       "modified_at": "2026-08-16T00:29:16Z",
-      "claim_fingerprint": "sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
+      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "metric": {
-        "label": "topics ranked",
-        "value": 192,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1762,8 +1762,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current sanitized optional export contains 192 ranked aggregate topics."
+          "type": "availability",
+          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
         }
       ],
       "evidence": {
@@ -1780,6 +1780,7 @@
         "version": "nemesis-public-v2"
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
