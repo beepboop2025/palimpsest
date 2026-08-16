@@ -120,6 +120,11 @@ CHINA_ANALYSIS_READING = ROOT / "readings" / "china-censorship-analysis-latest.j
 
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
 _ANALYSIS_ROOT = Path("news/analysis")
+_PAGINATION_LAYOUTS = {
+    Path("news/wire/page"): b'<body class="ps newsroom-page newsroom-page--archive">',
+    Path("news/china/page"): b'<body class="ps newsroom-page china-stream-page">',
+}
+_PAGINATION_PAGE_NUMBER = re.compile(r"(?:[2-9]|[1-9][0-9]+)")
 _MACHINE_REVISION_FILENAME = re.compile(r"machinev-[0-9a-f]{24}\.json")
 _EVENT_ANALYSIS_REVISION_FILENAME = re.compile(r"analysisv-[0-9a-f]{24}\.json")
 _EVENT_REVISION_FILENAME = re.compile(r"eventv-[0-9a-f]{24}\.json")
@@ -5141,6 +5146,101 @@ def _extra_managed_analysis_paths(
     }
 
 
+def _is_managed_pagination_path(relative: Path) -> bool:
+    """Return whether ``relative`` is one reserved numbered archive page."""
+
+    if relative.is_absolute() or ".." in relative.parts or relative.name != "index.html":
+        return False
+    return any(
+        relative.parent.parent == archive_root
+        and _PAGINATION_PAGE_NUMBER.fullmatch(relative.parent.name) is not None
+        for archive_root in _PAGINATION_LAYOUTS
+    )
+
+
+def _generated_pagination_page(raw: bytes, *, relative: Path) -> bool:
+    """Prove a numbered page has this renderer's path-bound HTML identity."""
+
+    if not _is_managed_pagination_path(relative) or not raw.startswith(b"<!doctype html>\n"):
+        return False
+    archive_root = relative.parent.parent
+    body_marker = _PAGINATION_LAYOUTS.get(archive_root)
+    if body_marker is None:
+        return False
+    canonical = f'{SITE}/{relative.parent.as_posix()}/'.encode("ascii")
+    return all(
+        marker in raw
+        for marker in (
+            b'<meta name="author" content="Palimpsest Observatory">',
+            b'<link rel="canonical" href="' + canonical + b'">',
+            b'<meta property="og:url" content="' + canonical + b'">',
+            body_marker,
+            b"</body></html>",
+        )
+    )
+
+
+def _managed_pagination_inventory(*, root: Path) -> dict[Path, bool]:
+    """Inventory exact numeric archive pages without following directory symlinks."""
+
+    flags = _directory_open_flags()
+    discovered: dict[Path, bool] = {}
+    for archive_root in _PAGINATION_LAYOUTS:
+        try:
+            archive_fd = os.open(root / archive_root, flags)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise newsroom.NewsroomError(
+                f"cannot safely inspect {archive_root}: {exc}"
+            ) from exc
+        try:
+            with os.scandir(archive_fd) as pages:
+                page_entries = list(pages)
+            for page in page_entries:
+                if (
+                    _PAGINATION_PAGE_NUMBER.fullmatch(page.name) is None
+                    or not page.is_dir(follow_symlinks=False)
+                ):
+                    continue
+                try:
+                    page_fd = os.open(page.name, flags, dir_fd=archive_fd)
+                except FileNotFoundError:
+                    continue
+                except OSError as exc:
+                    raise newsroom.NewsroomError(
+                        f"cannot safely inspect {archive_root / page.name}: {exc}"
+                    ) from exc
+                try:
+                    with os.scandir(page_fd) as files:
+                        index = next((entry for entry in files if entry.name == "index.html"), None)
+                    if index is None:
+                        continue
+                    relative = archive_root / page.name / "index.html"
+                    raw = _read_scanned_file(page_fd, index)
+                    discovered[relative] = raw is not None and _generated_pagination_page(
+                        raw, relative=relative
+                    )
+                finally:
+                    os.close(page_fd)
+        finally:
+            os.close(archive_fd)
+    return discovered
+
+
+def _extra_managed_pagination_paths(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> dict[Path, bool]:
+    expected = {Path(relative) for relative in outputs}
+    if _GENERATED_MANIFEST_PATH not in expected:
+        return {}
+    return {
+        relative: proven
+        for relative, proven in _managed_pagination_inventory(root=root).items()
+        if relative not in expected
+    }
+
+
 def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
     """Unlink one generated file without following any parent symlink."""
 
@@ -5184,17 +5284,61 @@ def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
         os.close(directory_fd)
 
 
+def _safe_unlink_managed_pagination(relative: Path, *, root: Path) -> bool:
+    """Unlink one proven numbered archive page without following parent symlinks."""
+
+    if not _is_managed_pagination_path(relative):
+        raise newsroom.NewsroomError(
+            f"refusing to remove non-generated pagination path: {relative}"
+        )
+    flags = _directory_open_flags()
+    try:
+        directory_fd = os.open(root, flags)
+    except OSError as exc:
+        raise newsroom.NewsroomError(f"cannot safely open publication root: {exc}") from exc
+    try:
+        for component in relative.parts[:-1]:
+            try:
+                child_fd = os.open(component, flags, dir_fd=directory_fd)
+            except FileNotFoundError:
+                return False
+            except OSError as exc:
+                raise newsroom.NewsroomError(
+                    f"refusing unsafe pagination cleanup for {relative}: {exc}"
+                ) from exc
+            os.close(directory_fd)
+            directory_fd = child_fd
+        try:
+            entry = os.stat(relative.name, dir_fd=directory_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return False
+        if not stat.S_ISREG(entry.st_mode):
+            raise newsroom.NewsroomError(
+                f"refusing to remove non-file pagination path: {relative}"
+            )
+        os.unlink(relative.name, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+        return True
+    finally:
+        os.close(directory_fd)
+
+
 def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, int]:
     changed = unchanged = 0
     stale_analysis = _extra_managed_analysis_paths(outputs, root=root)
+    stale_pagination = _extra_managed_pagination_paths(outputs, root=root)
     unverified = sorted(
-        (relative for relative, proven in stale_analysis.items() if not proven),
+        (
+            relative
+            for relative, proven in {**stale_analysis, **stale_pagination}.items()
+            if not proven
+        ),
         key=str,
     )
     if unverified:
         paths = ", ".join(str(relative) for relative in unverified)
         raise newsroom.NewsroomError(
-            "refusing to remove unverified files in the managed analysis layout: "
+            "refusing to remove unverified files in the managed layout: "
             f"{paths}"
         )
     ordered = sorted(
@@ -5236,6 +5380,9 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
     ):
         if _safe_unlink_managed_analysis(relative, root=root):
             changed += 1
+    for relative in sorted(stale_pagination, key=str):
+        if _safe_unlink_managed_pagination(relative, root=root):
+            changed += 1
     if manifest_item is not None:
         relative, payload = manifest_item
         destination = root / relative
@@ -5274,7 +5421,11 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
                 continue
         if current != payload:
             drift.append(f"stale {relative}")
-    for relative in sorted(_extra_managed_analysis_paths(outputs, root=root), key=str):
+    extras = {
+        **_extra_managed_analysis_paths(outputs, root=root),
+        **_extra_managed_pagination_paths(outputs, root=root),
+    }
+    for relative in sorted(extras, key=str):
         drift.append(f"extra {relative}")
     return drift
 
