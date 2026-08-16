@@ -17,29 +17,37 @@
       "title": "Coverage qualifier"
     },
     {
-      "id": "health-erasure-observatory",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "erasure-observatory",
-      "summary": "freshness deadline has passed",
-      "title": "Erasure observatory: stale"
-    },
-    {
       "id": "health-baike-redaction",
       "kind": "health",
       "severity": "notice",
       "source_id": "baike-redaction",
       "summary": "optional collector is disabled pending authorized access; no current Baike measurement is claimed",
       "title": "Baike redaction: degraded"
+    },
+    {
+      "id": "health-anchors",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "anchors",
+      "summary": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
+      "title": "Integrity anchors: degraded"
+    },
+    {
+      "id": "health-nemesis",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "nemesis",
+      "summary": "freshness deadline has passed",
+      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-16T20:04:30Z",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "generated_at": "2026-08-16T21:02:09Z",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 30 are live. Health qualifiers: 2 degraded, 1 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
-      "degraded": 1,
-      "live": 31,
+      "degraded": 2,
+      "live": 30,
       "missing": 0,
       "stale": 1
     },
@@ -50,7 +58,7 @@
     "required_total": 29,
     "status": "degraded"
   },
-  "input_commit": "0231b2b0230a19e631a2978027373bc880dbd31f",
+  "input_commit": "116f52cebdc74d796b8525702c016ffbe741e8dc",
   "layers": [
     {
       "id": "command",
@@ -106,8 +114,8 @@
     },
     {
       "id": "erasure",
-      "n_degraded": 2,
-      "n_live": 4,
+      "n_degraded": 1,
+      "n_live": 5,
       "n_reporting": 6,
       "n_total": 6,
       "signal_ids": [
@@ -151,32 +159,32 @@
     },
     {
       "id": "integrity",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "anchors"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Integrity and witnessing"
     },
     {
       "id": "nemesis",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Complete valid payloads are embedded; freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 31,
+  "n_signals_live": 30,
   "n_signals_reporting": 33,
   "n_signals_total": 33,
   "schema_version": "osint-china.v1",
@@ -186,7 +194,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.91,
+        "age_hours": 1.87,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -506,7 +514,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:04:10Z",
       "health": {
-        "age_hours": 1.006,
+        "age_hours": 1.966,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -726,7 +734,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.91,
+        "age_hours": 1.87,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -867,7 +875,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.909,
+        "age_hours": 1.87,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1416,7 +1424,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:09:55Z",
       "health": {
-        "age_hours": 0.909,
+        "age_hours": 1.87,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1803,7 +1811,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-17T01:46:44Z",
       "health": {
-        "age_hours": 1.296,
+        "age_hours": 2.257,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2536,7 +2544,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:08:31Z",
       "health": {
-        "age_hours": 0.933,
+        "age_hours": 1.894,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2834,7 +2842,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:01:14Z",
       "health": {
-        "age_hours": 1.054,
+        "age_hours": 2.015,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3100,7 +3108,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:10:01Z",
       "health": {
-        "age_hours": 0.908,
+        "age_hours": 1.869,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3407,7 +3415,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-18T05:52:27Z",
       "health": {
-        "age_hours": 158.201,
+        "age_hours": 159.162,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3718,7 +3726,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:16:07Z",
       "health": {
-        "age_hours": 6.806,
+        "age_hours": 7.767,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3998,7 +4006,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:51:16Z",
       "health": {
-        "age_hours": 1.22,
+        "age_hours": 2.181,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4328,7 +4336,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:52:48Z",
       "health": {
-        "age_hours": 1.195,
+        "age_hours": 2.156,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4499,7 +4507,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:57:34Z",
       "health": {
-        "age_hours": 14.115,
+        "age_hours": 15.076,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4675,7 +4683,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:58:40Z",
       "health": {
-        "age_hours": 1.097,
+        "age_hours": 2.058,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7099,7 +7107,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:53:33Z",
       "health": {
-        "age_hours": 1.183,
+        "age_hours": 2.143,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7149,7 +7157,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:43:40Z",
       "health": {
-        "age_hours": 14.347,
+        "age_hours": 15.308,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7222,7 +7230,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:10:33Z",
       "health": {
-        "age_hours": 0.899,
+        "age_hours": 1.86,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7300,7 +7308,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T08:57:15Z",
       "health": {
-        "age_hours": 1.121,
+        "age_hours": 2.081,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7419,24 +7427,24 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T20:01:48Z",
+      "freshness_deadline": "2026-08-17T10:34:21Z",
       "health": {
-        "age_hours": 14.045,
+        "age_hours": 0.463,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "erasure-observatory",
       "input": {
-        "bytes": 3917,
+        "bytes": 4074,
         "filename": "erasure-observatory-latest.json",
-        "sha256": "ca883983960efa8701728b6725a3bc51ae44b05b5320197017c56dadb9392f7b"
+        "sha256": "0cf976c084dd1253e00e06e7b0509d7b5ac8facacf12ea7288ac2c26ba0b27ce"
       },
       "layer": "erasure",
-      "live": false,
+      "live": true,
       "method": "See the complete embedded upstream payload and its raw feed",
       "method_version": 4,
       "metric": {
@@ -7449,7 +7457,7 @@
       "payload": {
         "cross_checks": [
           {
-            "age_hours": 0.1,
+            "age_hours": 14.6,
             "as_of": "2026-08-16T05:57:34.988244+00:00",
             "name": "Censored Planet interference",
             "note": "independent DNS/HTTP side-channel, confirms network layer",
@@ -7457,57 +7465,62 @@
             "value": 4.38
           },
           {
-            "age_hours": 3.9,
-            "as_of": "2026-08-16T02:09:22.364952+00:00",
+            "age_hours": 7.3,
+            "as_of": "2026-08-16T13:16:07.159358+00:00",
             "name": "Firewall event velocity",
             "note": "community-logged blocking/circumvention rate vs baseline",
             "unit": "x",
-            "value": 0.67
+            "value": 0.77
           }
         ],
         "cross_checks_withheld": [],
         "erasure_index": 39.9,
-        "generated_at": "2026-08-16T06:01:48.922077+00:00",
+        "generated_at": "2026-08-16T20:34:21.349761+00:00",
         "index_scale": "0-100; higher = more of the observed record removed or rewritten",
         "integrity": {
           "by_source": {
-            "baike-redaction": 37,
+            "baike-redaction": 38,
             "censored-planet": 31,
             "generative-firewall": 17,
-            "ooni-gfw": 131
+            "ooni-gfw": 132
           },
-          "entries": 216,
+          "entries": 218,
           "first_ts": "2026-07-11T15:18:29.250178+00:00",
-          "head_hash": "c1172b7939fc8422045212ea532a2961d8bd5727c1e027109c02511254490f73",
-          "head_ts": "2026-08-16T06:01:48.922077+00:00",
+          "head_hash": "0ba3aa5e2da01561a687411921ee21753153e546e268bc0a89f878de5fdb9589",
+          "head_ts": "2026-08-16T20:34:21.349761+00:00",
           "ledger": "readings/erasure-ledger.jsonl",
-          "merkle_root": "82cad64eaaedf259b117babb1d82a77787218e5c8774e89555fae3c512450483",
+          "merkle_root": "aca8243bfb232f9046cabe6b58c292ddaebca5990d525216596585208e9d50f4",
           "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped",
           "sealed_this_run": [
             {
-              "entry_hash": "c1172b7939fc8422045212ea532a2961d8bd5727c1e027109c02511254490f73",
-              "seq": 215,
-              "source": "censored-planet"
+              "entry_hash": "d17d70a6d981518b894ea1d13a21a89133d4bfc258e6a263a79ba21e68da238c",
+              "seq": 216,
+              "source": "ooni-gfw"
+            },
+            {
+              "entry_hash": "0ba3aa5e2da01561a687411921ee21753153e546e268bc0a89f878de5fdb9589",
+              "seq": 217,
+              "source": "baike-redaction"
             }
           ],
           "verified": true,
           "verify_cmd": "python3 scripts/verify_ledger.py"
         },
-        "last_changed_at": "2026-08-16T06:01:48.922077+00:00",
+        "last_changed_at": "2026-08-16T20:34:21.349761+00:00",
         "layers": [
           {
-            "age_days": 0.17,
-            "age_hours": 4.0,
-            "as_of": "2026-08-16T02:00:11.090733+00:00",
+            "age_days": 0.07,
+            "age_hours": 1.7,
+            "as_of": "2026-08-16T18:51:16.875744+00:00",
             "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
             "layer": "network",
             "reading": "ooni-gfw-latest.json",
             "source": "OONI aggregation (probe_cc=CN)",
             "title": "Network erasure",
-            "value": 58.8
+            "value": 58.7
           },
           {
-            "age_days": 0.95,
+            "age_days": 1.55,
             "as_of": "2026-08-15T07:18:18.646293+00:00",
             "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
             "layer": "model",
@@ -7517,15 +7530,15 @@
             "value": 21.0
           },
           {
-            "age_hours": 393.5,
+            "age_hours": 408.1,
             "as_of": "2026-07-30T20:31:16.856256+00:00",
             "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
             "collector_status": "disabled_no_authorized_access",
             "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
             "layer": "narrative",
-            "pipeline_checked_at": "2026-08-16T05:44:28.369844+00:00",
+            "pipeline_checked_at": "2026-08-16T20:34:21.300325+00:00",
             "reading": "baike-redaction-latest.json",
-            "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 16.4 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
+            "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 17.0 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
             "status": "STALE",
             "title": "Narrative erasure",
             "value": null
@@ -7543,16 +7556,16 @@
       "raw_url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
       "scope": "Rolls up contributing erasure layers while retaining cross-checks and integrity state.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-16T06:01:48Z",
-      "status": "stale",
-      "summary": "Rolls up contributing erasure layers while retaining cross-checks and integrity state. The retained payload is stale: source timestamp 2026-08-16T06:01:48Z passed its freshness deadline 2026-08-16T20:01:48Z, so it is not labelled live. Latest payload reports erasure index at 39.9 index.",
+      "source_timestamp": "2026-08-16T20:34:21Z",
+      "status": "live",
+      "summary": "Rolls up contributing erasure layers while retaining cross-checks and integrity state. Latest payload reports erasure index at 39.9 index.",
       "title": "Erasure observatory"
     },
     {
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:06:24Z",
       "health": {
-        "age_hours": 6.968,
+        "age_hours": 7.929,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8127,11 +8140,11 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 407.554,
+        "age_hours": 408.514,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
-        "pipeline_checked_at": "2026-08-16T05:44:28.369844+00:00",
+        "pipeline_checked_at": "2026-08-16T20:34:21.300325+00:00",
         "reason": "optional collector is disabled pending authorized access; no current Baike measurement is claimed",
         "upstream_status": "disabled"
       },
@@ -8139,7 +8152,7 @@
       "input": {
         "bytes": 4205,
         "filename": "baike-redaction-latest.json",
-        "sha256": "822dc623c7891515d4adcaccfe21d5b6c44551de7d053e71177a95c6648e68a6"
+        "sha256": "faa18eb0c642832e1c1a55e39aa8f35038d4396b2e8eeb0df53d9fc5ed788304"
       },
       "layer": "erasure",
       "live": false,
@@ -8252,7 +8265,7 @@
         "n_forked": 0,
         "observation_reason": "only 0/10 entities were comparable (fetch_failed×10). A 403 here is the source refusing this client, which is not by itself evidence about geography",
         "observation_status": "insufficient_data",
-        "pipeline_checked_at": "2026-08-16T05:44:28.369844+00:00",
+        "pipeline_checked_at": "2026-08-16T20:34:21.300325+00:00",
         "quarantined_history": [
           {
             "generated_at": "2026-07-30T20:25:46.041900+00:00",
@@ -8281,7 +8294,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-17T15:11:21Z",
       "health": {
-        "age_hours": 6.886,
+        "age_hours": 7.847,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8460,7 +8473,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T09:10:37Z",
       "health": {
-        "age_hours": 0.898,
+        "age_hours": 1.859,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8636,7 +8649,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T07:55:28Z",
       "health": {
-        "age_hours": 14.151,
+        "age_hours": 15.111,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8740,7 +8753,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T05:32:28Z",
       "health": {
-        "age_hours": 4.534,
+        "age_hours": 5.495,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8807,7 +8820,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T19:26:16Z",
       "health": {
-        "age_hours": 2.637,
+        "age_hours": 3.598,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8859,7 +8872,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T16:28:55Z",
       "health": {
-        "age_hours": 53.593,
+        "age_hours": 54.554,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8917,7 +8930,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-18T12:31:35Z",
       "health": {
-        "age_hours": 9.549,
+        "age_hours": 10.509,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9050,7 +9063,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-09-20T05:10:30Z",
       "health": {
-        "age_hours": 274.9,
+        "age_hours": 275.861,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9118,7 +9131,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-17T09:18:18Z",
       "health": {
-        "age_hours": 36.77,
+        "age_hours": 37.731,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14592,64 +14605,60 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-16T21:30:10Z",
+      "freshness_deadline": "2026-08-17T10:54:58Z",
       "health": {
-        "age_hours": 12.572,
+        "age_hours": 0.12,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
         "upstream_status": null
       },
       "id": "anchors",
       "input": {
-        "bytes": 1175,
+        "bytes": 532,
         "filename": "anchors-latest.json",
-        "sha256": "b47af874f1fb2ac8daf7aa2deac956b7317a51cf78b1dbbddae11ef143553c9c"
+        "sha256": "58e1c7a10b428ce1166221aa0452a7ad5e2b95ff120daca1306fc259cb27d5b1"
       },
       "layer": "integrity",
-      "live": true,
+      "live": false,
       "method": "Merkle roots over committed ledgers with external timestamp witnesses",
       "method_version": null,
       "metric": null,
       "optional": false,
       "payload": {
-        "erasure_root": "82cad64eaaedf259b117babb1d82a77787218e5c8774e89555fae3c512450483",
-        "ots": "readings/anchors/roots-20260816T073010Z.txt.ots",
+        "erasure_root": "aca8243bfb232f9046cabe6b58c292ddaebca5990d525216596585208e9d50f4",
+        "ots": "readings/anchors/roots-20260816T205458Z.txt.ots",
         "ots_reused": false,
         "ots_status": "stamped",
         "readings_chain": "verified",
         "readings_problems": [],
-        "readings_root": "9d280f5bf761e91c6d16f70e9f1c3ecaef26b3adf9c47128bf2cb69d6f31ffef",
-        "registry_root": "0fec3884ad77e1e167d422356563059862e0333fe9e814aacf96e1bf259a8f0c",
-        "ts": "2026-08-16T07:30:10.690587+00:00",
-        "wayback_ok": 3,
-        "wayback_reused": 2,
-        "wayback_snapshots": [
-          "https://web.archive.org/web/20260816063458/https://palimpsest.info/readings/eval-registry.jsonl?palimpsest_sha256=0d94f1c48a5bfc2c15dde3df1c8b0ee6dad4de5642cc2d2d1690eb1508202f90&palimpsest_capture_version=3",
-          "https://web.archive.org/web/20260816063528/https://palimpsest.info/readings/erasure-ledger.jsonl?palimpsest_sha256=3c3f58ee5f42e8b475b35c7cb2b8a652bb4e39239093e60e132920e927a19045&palimpsest_capture_version=3",
-          "https://web.archive.org/web/20260816072943/https://palimpsest.info/readings/readings-ledger.jsonl?palimpsest_sha256=4b91f5a353f937d9fd476fd340fe65cd2d1c983d70b69e8ba224e64c35cb7335&palimpsest_capture_version=3"
-        ]
+        "readings_root": "7d8cda7076e9f20632eb26f2f46f899f56a2d1850c6df813c99cf8e767f00b32",
+        "registry_root": "e121189f16b8577cc34c0ce8504547f2a4a5e645bffc681881c92b94aef38a05",
+        "ts": "2026-08-16T20:54:58.425468+00:00",
+        "wayback_ok": 0,
+        "wayback_reused": 0,
+        "wayback_snapshots": []
       },
       "raw_url": "https://palimpsest.info/readings/anchors-latest.json",
       "scope": "Publishes ledger roots and external witness status for independent integrity checks.",
       "source": "Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
-      "source_timestamp": "2026-08-16T07:30:10Z",
-      "status": "live",
-      "summary": "Publishes ledger roots and external witness status for independent integrity checks.",
+      "source_timestamp": "2026-08-16T20:54:58Z",
+      "status": "degraded",
+      "summary": "Publishes ledger roots and external witness status for independent integrity checks. Semantic health limitation: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded.",
       "title": "Integrity anchors"
     },
     {
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-16T20:59:16Z",
       "health": {
-        "age_hours": 0.087,
+        "age_hours": 1.048,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": "ok"
       },
       "id": "nemesis",
@@ -14659,7 +14668,7 @@
         "sha256": "09c08af4e4746f434ba618430aac514e21324e5a6a33a00b86cd2c4401dfce56"
       },
       "layer": "nemesis",
-      "live": true,
+      "live": false,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -19858,8 +19867,8 @@
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
       "source_timestamp": "2026-08-16T19:59:16Z",
-      "status": "live",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 192 count.",
+      "status": "stale",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-16T19:59:16Z passed its freshness deadline 2026-08-16T20:59:16Z, so it is not labelled live. Latest payload reports topics ranked at 192 count.",
       "title": "Private runtime bridge"
     }
   ],

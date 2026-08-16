@@ -13,12 +13,12 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:4eb19aaf47a06c775ad2a470360bb612866be6e90640dd12b725d734ee6db045",
+      "id": "palimpsest-news:board-alarm:sha256:8ff81fe7b2519563e779639a6d540f79eb6880d8726c1e5f29e389d2121287ff",
       "url": "https://palimpsest.info/news/board-alarm/",
       "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "title": "[Palimpsest measurement] Network layer elevated in the latest board synthesis",
       "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 25.741; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 30 are live. Health qualifiers: 2 degraded, 1 stale. The board-wide e-value is 25.741; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
       "date_published": "2026-08-16T19:09:55Z",
       "date_modified": "2026-08-16T19:09:55Z",
       "tags": [
@@ -37,7 +37,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-62dbb50a09301744de06cb95",
+        "revision_id": "storyv-2a72514f7085c7e1b7a62f34",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -564,31 +564,31 @@
       }
     },
     {
-      "id": "palimpsest-news:erasure-observatory:sha256:1c6cd70ba85e39aba97153aac522b9d9ab1cf37bd3d04bb88509862dee62ce13",
+      "id": "palimpsest-news:erasure-observatory:sha256:74e4f2277000b759b4b7097a575cde3995e306fa1fdb765bcced67b4ed10bd47",
       "url": "https://palimpsest.info/news/erasure-observatory/",
       "external_url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
-      "title": "[Palimpsest measurement] Erasure observatory: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Erasure observatory because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items.\n\nEvidence: https://palimpsest.info/readings/erasure-observatory-latest.json",
-      "date_published": "2026-08-16T06:01:48Z",
-      "date_modified": "2026-08-16T06:01:48Z",
+      "title": "[Palimpsest measurement] The composite erasure index stands at 39.9",
+      "summary": "Palimpsest measurement. The roll-up keeps archive, redaction, repository and distribution evidence separate beneath one directional index.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current cross-layer erasure index is 39.9.\n\nLimit: The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items.\n\nEvidence: https://palimpsest.info/readings/erasure-observatory-latest.json",
+      "date_published": "2026-08-16T20:34:21Z",
+      "date_modified": "2026-08-16T20:34:21Z",
       "tags": [
         "palimpsest-measurement",
         "Erasure and Distribution",
         "erasure-observatory",
-        "stale"
+        "live"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
           "mime_type": "application/json",
           "title": "erasure-observatory-latest.json",
-          "size_in_bytes": 3917
+          "size_in_bytes": 4074
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-df6e5d5d095431e039e39ba9",
+        "revision_id": "storyv-e4f84e548718c7585f713f29",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -646,7 +646,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-deede7fa3c2da368dc9e3027",
+        "revision_id": "storyv-e646b82afc88b893684f381c",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -912,48 +912,48 @@
       }
     },
     {
-      "id": "palimpsest-news:anchors:sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
+      "id": "palimpsest-news:anchors:sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "external_url": "https://palimpsest.info/readings/anchors-latest.json",
-      "title": "[Palimpsest measurement] Palimpsest's public ledgers have a current integrity-anchor reading",
-      "summary": "Palimpsest measurement. Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: A current aggregate integrity-anchor record is published for the Palimpsest ledgers.\n\nLimit: An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim.\n\nEvidence: https://palimpsest.info/readings/anchors-latest.json",
-      "date_published": "2026-08-16T07:30:10Z",
-      "date_modified": "2026-08-16T07:30:10Z",
+      "title": "[Palimpsest measurement] Integrity anchors: no current finding",
+      "summary": "Palimpsest measurement. The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Integrity anchors because the source status is degraded.\n\nLimit: Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim.\n\nEvidence: https://palimpsest.info/readings/anchors-latest.json",
+      "date_published": "2026-08-16T20:54:58Z",
+      "date_modified": "2026-08-16T20:54:58Z",
       "tags": [
         "palimpsest-measurement",
         "Integrity and Witnessing",
         "anchors",
-        "live"
+        "degraded"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/anchors-latest.json",
           "mime_type": "application/json",
           "title": "anchors-latest.json",
-          "size_in_bytes": 1175
+          "size_in_bytes": 532
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-7f68c688e261b404c13e74ae",
+        "revision_id": "storyv-da314d45049493391649de0e",
         "verification_status": "palimpsest_measurement"
       }
     },
     {
-      "id": "palimpsest-news:nemesis:sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
+      "id": "palimpsest-news:nemesis:sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "external_url": "https://palimpsest.info/readings/nemesis-latest.json",
-      "title": "[Palimpsest measurement] The sanitized intelligence bridge ranks 192 aggregate topics",
-      "summary": "Palimpsest measurement. Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current sanitized optional export contains 192 ranked aggregate topics.\n\nLimit: This deployment-dependent export supplies analytical leads, not independently verified public-source findings.\n\nEvidence: https://palimpsest.info/readings/nemesis-latest.json",
+      "title": "[Palimpsest measurement] Private runtime bridge: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Private runtime bridge because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This deployment-dependent export supplies analytical leads, not independently verified public-source findings.\n\nEvidence: https://palimpsest.info/readings/nemesis-latest.json",
       "date_published": "2026-08-16T19:59:16Z",
       "date_modified": "2026-08-16T19:59:16Z",
       "tags": [
         "palimpsest-measurement",
         "Intelligence Bridge",
         "nemesis",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -965,7 +965,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-803bcd6fcf383be6cc6a741e",
+        "revision_id": "storyv-742caa4d2dfdb16cb6ddcd32",
         "verification_status": "palimpsest_measurement"
       }
     }

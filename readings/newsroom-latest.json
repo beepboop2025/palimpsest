@@ -2,22 +2,22 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 30 are live. Health qualifiers: 2 degraded, 1 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T20:04:30Z",
+  "generated_at": "2026-08-16T21:02:09Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "0231b2b0230a19e631a2978027373bc880dbd31f",
+  "source_commit": "116f52cebdc74d796b8525702c016ffbe741e8dc",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 31,
+    "live": 30,
     "status": "degraded",
     "counts": {
-      "live": 31,
-      "degraded": 1,
+      "live": 30,
+      "degraded": 2,
       "stale": 1,
       "missing": 0,
       "corrupt": 0
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-16T19:09:55Z",
       "modified_at": "2026-08-16T19:09:55Z",
-      "claim_fingerprint": "sha256:4eb19aaf47a06c775ad2a470360bb612866be6e90640dd12b725d734ee6db045",
+      "claim_fingerprint": "sha256:8ff81fe7b2519563e779639a6d540f79eb6880d8726c1e5f29e389d2121287ff",
       "metric": {
         "label": "board e-value",
         "value": 25.741,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 25.741; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 30 are live. Health qualifiers: 2 degraded, 1 stale. The board-wide e-value is 25.741; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -1066,20 +1066,20 @@
       "slug": "erasure-observatory",
       "url": "https://palimpsest.info/news/erasure-observatory/",
       "signal_id": "erasure-observatory",
-      "headline": "Erasure observatory: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The composite erasure index stands at 39.9",
+      "dek": "The roll-up keeps archive, redaction, repository and distribution evidence separate beneath one directional index.",
       "section": "erasure",
       "order": 1,
       "type": "analysis",
       "priority": "lead",
-      "status": "stale",
-      "published_at": "2026-08-16T06:01:48Z",
-      "modified_at": "2026-08-16T06:01:48Z",
-      "claim_fingerprint": "sha256:1c6cd70ba85e39aba97153aac522b9d9ab1cf37bd3d04bb88509862dee62ce13",
+      "status": "live",
+      "published_at": "2026-08-16T20:34:21Z",
+      "modified_at": "2026-08-16T20:34:21Z",
+      "claim_fingerprint": "sha256:74e4f2277000b759b4b7097a575cde3995e306fa1fdb765bcced67b4ed10bd47",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "erasure index",
+        "value": 39.9,
+        "unit": "index",
         "denominator": {
           "label": null,
           "value": null
@@ -1087,25 +1087,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Erasure observatory because the source status is stale."
+          "type": "finding",
+          "statement": "The current cross-layer erasure index is 39.9."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/erasure-observatory-latest.json",
         "input": {
           "filename": "erasure-observatory-latest.json",
-          "sha256": "ca883983960efa8701728b6725a3bc51ae44b05b5320197017c56dadb9392f7b",
-          "bytes": 3917
+          "sha256": "0cf976c084dd1253e00e06e7b0509d7b5ac8facacf12ea7288ac2c26ba0b27ce",
+          "bytes": 4074
         },
-        "source_timestamp": "2026-08-16T06:01:48Z"
+        "source_timestamp": "2026-08-16T20:34:21Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
         "version": 4
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "The index combines heterogeneous erasure layers and indicates co-movement, not a count of deleted items."
       ],
       "related_signal_ids": [
@@ -1202,7 +1201,7 @@
         "url": "https://palimpsest.info/readings/baike-redaction-latest.json",
         "input": {
           "filename": "baike-redaction-latest.json",
-          "sha256": "822dc623c7891515d4adcaccfe21d5b6c44551de7d053e71177a95c6648e68a6",
+          "sha256": "faa18eb0c642832e1c1a55e39aa8f35038d4396b2e8eeb0df53d9fc5ed788304",
           "bytes": 4205
         },
         "source_timestamp": "2026-07-30T20:31:16Z"
@@ -1690,16 +1689,16 @@
       "slug": "integrity-anchors",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "signal_id": "anchors",
-      "headline": "Palimpsest's public ledgers have a current integrity-anchor reading",
-      "dek": "Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
+      "headline": "Integrity anchors: no current finding",
+      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "integrity",
       "order": 1,
       "type": "integrity",
       "priority": "high",
-      "status": "live",
-      "published_at": "2026-08-16T07:30:10Z",
-      "modified_at": "2026-08-16T07:30:10Z",
-      "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
+      "status": "degraded",
+      "published_at": "2026-08-16T20:54:58Z",
+      "modified_at": "2026-08-16T20:54:58Z",
+      "claim_fingerprint": "sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
       "metric": {
         "label": null,
         "value": null,
@@ -1711,24 +1710,25 @@
       },
       "claims": [
         {
-          "type": "integrity",
-          "statement": "A current aggregate integrity-anchor record is published for the Palimpsest ledgers."
+          "type": "availability",
+          "statement": "No current finding is published for Integrity anchors because the source status is degraded."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/anchors-latest.json",
         "input": {
           "filename": "anchors-latest.json",
-          "sha256": "b47af874f1fb2ac8daf7aa2deac956b7317a51cf78b1dbbddae11ef143553c9c",
-          "bytes": 1175
+          "sha256": "58e1c7a10b428ce1166221aa0452a7ad5e2b95ff120daca1306fc259cb27d5b1",
+          "bytes": 532
         },
-        "source_timestamp": "2026-08-16T07:30:10Z"
+        "source_timestamp": "2026-08-16T20:54:58Z"
       },
       "method": {
         "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
         "version": null
       },
       "limitations": [
+        "Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
         "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
       ],
       "related_signal_ids": [
@@ -1742,20 +1742,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "The sanitized intelligence bridge ranks 192 aggregate topics",
-      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
+      "headline": "Private runtime bridge: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-16T19:59:16Z",
       "modified_at": "2026-08-16T19:59:16Z",
-      "claim_fingerprint": "sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
+      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "metric": {
-        "label": "topics ranked",
-        "value": 192,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1763,8 +1763,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current sanitized optional export contains 192 ranked aggregate topics."
+          "type": "availability",
+          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
         }
       ],
       "evidence": {
@@ -1781,6 +1781,7 @@
         "version": "nemesis-public-v2"
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
