@@ -2,22 +2,22 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 2 degraded.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T06:23:36Z",
+  "generated_at": "2026-08-16T06:45:32Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "a38ba3a0d1ffe46ae352ed7b39c427de1bf352ab",
+  "source_commit": "8225bc7bd3284c3bbfc66cd2fa5f8d64ab2a15fe",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 31,
-    "status": "degraded",
+    "live": 32,
+    "status": "healthy",
     "counts": {
-      "live": 31,
-      "degraded": 2,
+      "live": 32,
+      "degraded": 1,
       "stale": 0,
       "missing": 0,
       "corrupt": 0
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-16T02:12:13Z",
       "modified_at": "2026-08-16T02:12:13Z",
-      "claim_fingerprint": "sha256:7b44e7242892917cb208a93d7b5d224541a67ebeec65a79cd3c6f79400fdcc24",
+      "claim_fingerprint": "sha256:244ecff10eaa86b356ce75d05cce1c7b5d01c707e728f220208b61a1bd18e783",
       "metric": {
         "label": "board e-value",
         "value": 31.141,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 2 degraded. The board-wide e-value is 31.141; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 31.141; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -1689,16 +1689,16 @@
       "slug": "integrity-anchors",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "signal_id": "anchors",
-      "headline": "Integrity anchors: no current finding",
-      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Palimpsest's public ledgers have a current integrity-anchor reading",
+      "dek": "Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
       "section": "integrity",
       "order": 1,
       "type": "integrity",
       "priority": "high",
-      "status": "degraded",
-      "published_at": "2026-08-16T06:01:59Z",
-      "modified_at": "2026-08-16T06:01:59Z",
-      "claim_fingerprint": "sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
+      "status": "live",
+      "published_at": "2026-08-16T06:41:11Z",
+      "modified_at": "2026-08-16T06:41:11Z",
+      "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
       "metric": {
         "label": null,
         "value": null,
@@ -1710,25 +1710,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Integrity anchors because the source status is degraded."
+          "type": "integrity",
+          "statement": "A current aggregate integrity-anchor record is published for the Palimpsest ledgers."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/anchors-latest.json",
         "input": {
           "filename": "anchors-latest.json",
-          "sha256": "4dc2c4ae156ef1cec77127b460a15347a830f2a22302861edadf907a490c3081",
-          "bytes": 532
+          "sha256": "2e2bf0dd8e70d166b6211b88e91ad06905dda10c673501fffbd8c4bca6c14848",
+          "bytes": 1223
         },
-        "source_timestamp": "2026-08-16T06:01:59Z"
+        "source_timestamp": "2026-08-16T06:41:11Z"
       },
       "method": {
         "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
         "version": null
       },
       "limitations": [
-        "Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
         "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
       ],
       "related_signal_ids": [
