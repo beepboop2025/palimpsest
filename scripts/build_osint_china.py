@@ -284,7 +284,9 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # and editorial gates are parallel/derived publication planes (including them would recurse
 # or double count); the compact China index, forecast audit and observation manifest are derived
 # publication/query heads over economic evidence already represented here; the research
-# corpus is mixed-scope; and the remaining files are generic model evaluation surfaces.
+# corpus is mixed-scope; the social ledger is attributed publisher context rather than a
+# measurement; the Situation index consumes this roll-up and therefore cannot be fed back
+# into it; and the remaining files are generic model evaluation surfaces.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-article-stream-latest.json",
     "china-censorship-analysis-latest.json",
@@ -292,6 +294,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "china-econ-observations-latest.json",
     "china-economic-pulse-latest.json",
     "china-index-latest.json",
+    "china-situation-latest.json",
     "dragon-whispers-latest.json",
     "corroboration-latest.json",
     "editorial-readiness-latest.json",
@@ -310,6 +313,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "research-corpus-latest.json",
     "refusal-drift-latest.json",
     "source-workflow-latest.json",
+    "social-observations-latest.json",
 })
 
 

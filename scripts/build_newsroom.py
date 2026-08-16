@@ -120,6 +120,11 @@ CHINA_ANALYSIS_READING = ROOT / "readings" / "china-censorship-analysis-latest.j
 
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
 _ANALYSIS_ROOT = Path("news/analysis")
+_PAGINATION_LAYOUTS = {
+    Path("news/wire/page"): b'<body class="ps newsroom-page newsroom-page--archive">',
+    Path("news/china/page"): b'<body class="ps newsroom-page china-stream-page">',
+}
+_PAGINATION_PAGE_NUMBER = re.compile(r"(?:[2-9]|[1-9][0-9]+)")
 _MACHINE_REVISION_FILENAME = re.compile(r"machinev-[0-9a-f]{24}\.json")
 _EVENT_ANALYSIS_REVISION_FILENAME = re.compile(r"analysisv-[0-9a-f]{24}\.json")
 _EVENT_REVISION_FILENAME = re.compile(r"eventv-[0-9a-f]{24}\.json")
@@ -3476,7 +3481,7 @@ def render_china_article_stream(
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
+    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
@@ -3489,7 +3494,7 @@ def render_china_article_stream(
     <aside class="cs-method"><p class="cs-eyebrow">What “every” means here</p><h2>Complete across the declared feeds—not the entire internet.</h2><div><p>{_h(stream['scope'])}</p><p>{_h(stream['method']['analysis'])} {_h(stream['method']['rights'])}</p></div></aside>
   </div>
 </main>
-<footer class="nw-footer"><div class="nw-shell">Publisher reports remain attributed and are not converted into Palimpsest findings. Telegram aggregates remain unverified context. <a href="/feeds/">Feed directory</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
+<footer class="nw-footer"><div class="nw-shell">Publisher reports remain attributed and are not converted into Palimpsest findings. Telegram aggregates remain unverified context. <a href="/news/china/situation/">Combine reports with Observatory measurements</a> · <a href="/feeds/">Feed directory</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
 <script src="/assets/china-stream.js" defer></script>
 {site_nav.FOOT}
 </body></html>"""
@@ -3725,7 +3730,7 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
     </div>
   </header>
   <div class="dw-shell">
-    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
+    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
     <aside class="dw-warning" aria-labelledby="dw-warning-title">
       <div><p class="dw-kicker">Read before the ledger</p><h2 id="dw-warning-title">This is not verified news.</h2></div>
       <div><p>Entries are sanitized interpretations of automated signals from configured public Telegram sources. The underlying post may be false, incomplete, manipulated, illegal, or malicious.</p><p>Do not use this page to accuse, identify, contact, pay, or investigate a person. Raw wording, source identity, Telegram coordinates, live links, named parties, and exact indicators are withheld. No entry counts as evidence or corroboration.</p></div>
@@ -4202,6 +4207,9 @@ def build_sitemap(
         urls.extend(
             f"  <url><loc>{SITE}/news/china/page/{page}/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
             for page in range(2, stream_pages + 1)
+        )
+        urls.append(
+            f"  <url><loc>{SITE}/news/china/situation/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority></url>"
         )
     if china_analysis is not None:
         news_markup = f"""<news:news><news:publication><news:name>Palimpsest China Desk</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(china_analysis['published_at'])}</news:publication_date><news:title>{xml_escape(china_analysis['title'])}</news:title></news:news>"""
@@ -5138,6 +5146,101 @@ def _extra_managed_analysis_paths(
     }
 
 
+def _is_managed_pagination_path(relative: Path) -> bool:
+    """Return whether ``relative`` is one reserved numbered archive page."""
+
+    if relative.is_absolute() or ".." in relative.parts or relative.name != "index.html":
+        return False
+    return any(
+        relative.parent.parent == archive_root
+        and _PAGINATION_PAGE_NUMBER.fullmatch(relative.parent.name) is not None
+        for archive_root in _PAGINATION_LAYOUTS
+    )
+
+
+def _generated_pagination_page(raw: bytes, *, relative: Path) -> bool:
+    """Prove a numbered page has this renderer's path-bound HTML identity."""
+
+    if not _is_managed_pagination_path(relative) or not raw.startswith(b"<!doctype html>\n"):
+        return False
+    archive_root = relative.parent.parent
+    body_marker = _PAGINATION_LAYOUTS.get(archive_root)
+    if body_marker is None:
+        return False
+    canonical = f'{SITE}/{relative.parent.as_posix()}/'.encode("ascii")
+    return all(
+        marker in raw
+        for marker in (
+            b'<meta name="author" content="Palimpsest Observatory">',
+            b'<link rel="canonical" href="' + canonical + b'">',
+            b'<meta property="og:url" content="' + canonical + b'">',
+            body_marker,
+            b"</body></html>",
+        )
+    )
+
+
+def _managed_pagination_inventory(*, root: Path) -> dict[Path, bool]:
+    """Inventory exact numeric archive pages without following directory symlinks."""
+
+    flags = _directory_open_flags()
+    discovered: dict[Path, bool] = {}
+    for archive_root in _PAGINATION_LAYOUTS:
+        try:
+            archive_fd = os.open(root / archive_root, flags)
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise newsroom.NewsroomError(
+                f"cannot safely inspect {archive_root}: {exc}"
+            ) from exc
+        try:
+            with os.scandir(archive_fd) as pages:
+                page_entries = list(pages)
+            for page in page_entries:
+                if (
+                    _PAGINATION_PAGE_NUMBER.fullmatch(page.name) is None
+                    or not page.is_dir(follow_symlinks=False)
+                ):
+                    continue
+                try:
+                    page_fd = os.open(page.name, flags, dir_fd=archive_fd)
+                except FileNotFoundError:
+                    continue
+                except OSError as exc:
+                    raise newsroom.NewsroomError(
+                        f"cannot safely inspect {archive_root / page.name}: {exc}"
+                    ) from exc
+                try:
+                    with os.scandir(page_fd) as files:
+                        index = next((entry for entry in files if entry.name == "index.html"), None)
+                    if index is None:
+                        continue
+                    relative = archive_root / page.name / "index.html"
+                    raw = _read_scanned_file(page_fd, index)
+                    discovered[relative] = raw is not None and _generated_pagination_page(
+                        raw, relative=relative
+                    )
+                finally:
+                    os.close(page_fd)
+        finally:
+            os.close(archive_fd)
+    return discovered
+
+
+def _extra_managed_pagination_paths(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> dict[Path, bool]:
+    expected = {Path(relative) for relative in outputs}
+    if _GENERATED_MANIFEST_PATH not in expected:
+        return {}
+    return {
+        relative: proven
+        for relative, proven in _managed_pagination_inventory(root=root).items()
+        if relative not in expected
+    }
+
+
 def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
     """Unlink one generated file without following any parent symlink."""
 
@@ -5181,17 +5284,61 @@ def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
         os.close(directory_fd)
 
 
+def _safe_unlink_managed_pagination(relative: Path, *, root: Path) -> bool:
+    """Unlink one proven numbered archive page without following parent symlinks."""
+
+    if not _is_managed_pagination_path(relative):
+        raise newsroom.NewsroomError(
+            f"refusing to remove non-generated pagination path: {relative}"
+        )
+    flags = _directory_open_flags()
+    try:
+        directory_fd = os.open(root, flags)
+    except OSError as exc:
+        raise newsroom.NewsroomError(f"cannot safely open publication root: {exc}") from exc
+    try:
+        for component in relative.parts[:-1]:
+            try:
+                child_fd = os.open(component, flags, dir_fd=directory_fd)
+            except FileNotFoundError:
+                return False
+            except OSError as exc:
+                raise newsroom.NewsroomError(
+                    f"refusing unsafe pagination cleanup for {relative}: {exc}"
+                ) from exc
+            os.close(directory_fd)
+            directory_fd = child_fd
+        try:
+            entry = os.stat(relative.name, dir_fd=directory_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return False
+        if not stat.S_ISREG(entry.st_mode):
+            raise newsroom.NewsroomError(
+                f"refusing to remove non-file pagination path: {relative}"
+            )
+        os.unlink(relative.name, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+        return True
+    finally:
+        os.close(directory_fd)
+
+
 def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, int]:
     changed = unchanged = 0
     stale_analysis = _extra_managed_analysis_paths(outputs, root=root)
+    stale_pagination = _extra_managed_pagination_paths(outputs, root=root)
     unverified = sorted(
-        (relative for relative, proven in stale_analysis.items() if not proven),
+        (
+            relative
+            for relative, proven in {**stale_analysis, **stale_pagination}.items()
+            if not proven
+        ),
         key=str,
     )
     if unverified:
         paths = ", ".join(str(relative) for relative in unverified)
         raise newsroom.NewsroomError(
-            "refusing to remove unverified files in the managed analysis layout: "
+            "refusing to remove unverified files in the managed layout: "
             f"{paths}"
         )
     ordered = sorted(
@@ -5233,6 +5380,9 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
     ):
         if _safe_unlink_managed_analysis(relative, root=root):
             changed += 1
+    for relative in sorted(stale_pagination, key=str):
+        if _safe_unlink_managed_pagination(relative, root=root):
+            changed += 1
     if manifest_item is not None:
         relative, payload = manifest_item
         destination = root / relative
@@ -5271,7 +5421,11 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
                 continue
         if current != payload:
             drift.append(f"stale {relative}")
-    for relative in sorted(_extra_managed_analysis_paths(outputs, root=root), key=str):
+    extras = {
+        **_extra_managed_analysis_paths(outputs, root=root),
+        **_extra_managed_pagination_paths(outputs, root=root),
+    }
+    for relative in sorted(extras, key=str):
         drift.append(f"extra {relative}")
     return drift
 

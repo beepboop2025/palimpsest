@@ -45,6 +45,26 @@ the method is on [`bleedthrough.html`](bleedthrough.html) and the code is open.
 | Weibo hot-search (allowed-attention denominator) | Every 6h | [`weibo-hotsearch-latest.json`](weibo-hotsearch-latest.json) | [`weibo-hotsearch-history.jsonl`](weibo-hotsearch-history.jsonl) |
 | Baike redaction-diff | Disabled pending authorized access; retained artifact only | [`baike-redaction-latest.json`](baike-redaction-latest.json) | [`baike-redaction-history.jsonl`](baike-redaction-history.jsonl) |
 | Wayback reconstruction | Every 12h | [`wayback-latest.json`](wayback-latest.json) | [`wayback-history.jsonl`](wayback-history.jsonl) |
+| Bounded institutional social observations | Hourly, credential-gated | [`social-observations-latest.json`](social-observations-latest.json) | [`social-observations-versions.jsonl`](social-observations-versions.jsonl) |
+| Human-reviewed Dragon Whispers | Review-driven | [`dragon-whispers-latest.json`](dragon-whispers-latest.json) | No raw-message history is published |
+
+After the first successful authenticated Telegram handoff,
+`social-observations-import-state.json` records the opaque remote bundle ID,
+remote timestamp, and exact artifact digests. It is a commit receipt—not another
+observation feed—and is written only after both social publication artifacts. Its
+contract is [`social-observations-import-state-v1.schema.json`](../protocol/social-observations-import-state-v1.schema.json).
+
+**Evidence-bound reporting and synthesis**
+
+| Product | Cadence | Latest | Public view |
+| --- | --- | --- | --- |
+| Evidence Wire | Every 30m | [`newswire-latest.json`](newswire-latest.json) | [source dossiers](../news/wire/) |
+| China Article Stream | Every 30m | [`china-article-stream-latest.json`](china-article-stream-latest.json) | [publisher chronology](../news/china/) |
+| China Situation synthesis | Hourly | [`china-situation-latest.json`](china-situation-latest.json) | [reports + social context + measurements](../news/china/situation/) |
+
+The Situation document preserves the distinct proof roles of its inputs. Social
+observations and reviewed Telegram context cannot increase an event's independent-source
+count, and Observatory rows remain topic-level context rather than article verification.
 
 **Model layer and the sealed record**
 

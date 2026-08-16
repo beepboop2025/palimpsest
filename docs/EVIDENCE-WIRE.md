@@ -40,9 +40,12 @@ controls, mirror article bodies, or claim to estimate a hidden “true GDP”.
                               └─> private ScamShield capsules ──────┤
  reviewed ScamShield aggregate ─> context-only Telegram watch ──────┤
  human-reviewed capsule ─> sanitized individual whisper ────────────┤
+ official Instagram API ─> sanitized social-version ledger ─────────┤
+ authenticated Telegram export ─> same social-version ledger ───────┤
                                                                     v
-                                server-rendered wire + receipt tape
-                                + declared topic pointers (not joins)
+                                event-bound China Situation desk
+                                + exact publisher-URL social joins
+                                + declared topic pointers (not verification)
                                                                     │
                                                                     v
                                                   sealed static publication
@@ -58,6 +61,50 @@ document at `/readings/china-article-stream-latest.json`. “Every” means ever
 in-scope item from the declared, measured registry window—not the entire web.
 Global feeds must contain an explicit China/Hong Kong term in retained title or
 excerpt metadata; reviewed China-specific desks are included item by item.
+
+## China Situation synthesis
+
+The Situation desk at `/news/china/situation/` is the combined view requested by
+readers who want reporting, circulation context and measurements in one place. Its
+strict document is `/readings/china-situation-latest.json`; its RSS and JSON Feed
+are `/news/china/situation/feed.xml` and `/news/china/situation/feed.json`.
+
+The join rules are intentionally narrow:
+
+1. Evidence Wire events supply attributed publisher reports and the only independent-
+   publisher count.
+2. Institutional Telegram or Instagram observations join an event only when their
+   sanitized record carries an exact canonical URL already present in that event.
+3. Dragon Whispers appear in a separate human-reviewed, source-free Telegram briefing;
+   the builder does not guess which event they describe.
+4. Observatory rows come only from the event's predeclared `topic-surface-only`
+   context. They do not verify the publisher's article or establish causation.
+
+This means a cross-platform repost from one newsroom remains one publisher lineage.
+An unmatched social post remains visible in coverage as unmatched rather than being
+forced into the nearest-looking story.
+
+## Social observation intake
+
+`config/social_sources.json` is a second closed registry. It currently binds seven
+institutional Instagram professional accounts whose identities are linked from their
+publishers' official sites. `collectors/instagram_graph.py` uses Meta's official Graph
+API v26 Business Discovery surface, sends the token only in an authorization header,
+requests metadata fields only, reconstructs bounded cursor pages, and never requests or
+stores media binaries, comments, engagement, followers, locations or direct messages.
+
+The connector is dormant unless `PALIMPSEST_INSTAGRAM_ENABLED=1`,
+`META_INSTAGRAM_ACCESS_TOKEN`, and `META_INSTAGRAM_BUSINESS_ACCOUNT_ID` are configured.
+Until then, every source has a `not-attempted` receipt; the absence of records is not
+presented as social silence.
+
+An optional ScamShield runtime can publish the same strict Telegram social contract.
+`scripts/import_social_observations.py` fetches its latest view, immutable JSONL versions,
+and HMAC manifest with redirects disabled. It verifies the exact bytes before parsing,
+requires the local registry digest, and permits the remote runtime to append Telegram
+versions only. Local Instagram observations and history cannot be overwritten by that
+handoff. The full security and rollout design is in
+`docs/SOCIAL-OBSERVATION-PIPELINE.md`.
 
 ## Telegram and ScamShield context
 

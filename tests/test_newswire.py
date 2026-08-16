@@ -115,7 +115,7 @@ def _all_live_mapping(registry: SourceRegistry, *, title_prefix: str = "Source u
 def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
     registry = load_source_registry()
 
-    assert len(registry.sources) == 31
+    assert len(registry.sources) == 47
     assert {source.id for source in registry.sources} == set(nw._CLOSED_SOURCES)
     assert all(source.feed_url.startswith("https://") for source in registry.sources)
     assert all(source.rights_policy == "metadata-link-only" for source in registry.sources)
@@ -132,6 +132,17 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "economist-china",
         "foreign-policy-china",
         "asia-times-china",
+        "rthk-greater-china",
+        "rthk-finance",
+        "china-news-service-politics",
+        "china-news-service-finance",
+        "cgtn-china",
+        "dw-chinese",
+        "rfi-chinese",
+        "global-voices-china",
+        "pandaily",
+        "new-bloom",
+        "taipei-times",
     }
     assert all(_source(source_id).role == "media" for source_id in secondary_ids)
     assert all(_source(source_id).rights_policy == "metadata-link-only" for source_id in secondary_ids)
@@ -141,7 +152,22 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         _source("scmp-china-economy").independence_group,
         _source("scmp-china-tech").independence_group,
     } == {"south-china-morning-post-editorial"}
+    assert {
+        _source("rthk-greater-china").independence_group,
+        _source("rthk-finance").independence_group,
+    } == {"rthk-editorial"}
+    assert {
+        _source("china-news-service-politics").independence_group,
+        _source("china-news-service-finance").independence_group,
+    } == {"china-news-service-state-media"}
+    assert {
+        _source("hksar-releases").independence_group,
+        _source("hk-censtat-releases").independence_group,
+    } == {"hksar-government"}
     assert registry.max_events >= registry.max_items_per_source * len(registry.sources)
+    schema = json.loads((ROOT / "protocol" / "newswire-v1.schema.json").read_text())
+    assert schema["properties"]["items"]["maxItems"] == registry.max_events
+    assert schema["properties"]["events"]["maxItems"] == registry.max_events
     assert {
         _source("bbc-chinese").feed_url,
         _source("hong-kong-free-press").feed_url,
@@ -157,6 +183,22 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         _source("china-media-project").feed_url,
         _source("china-power-csis").feed_url,
         _source("asia-times-china").feed_url,
+        _source("rthk-greater-china").feed_url,
+        _source("rthk-finance").feed_url,
+        _source("hk-censtat-releases").feed_url,
+        _source("china-news-service-politics").feed_url,
+        _source("china-news-service-finance").feed_url,
+        _source("cgtn-china").feed_url,
+        _source("dw-chinese").feed_url,
+        _source("rfi-chinese").feed_url,
+        _source("global-voices-china").feed_url,
+        _source("pandaily").feed_url,
+        _source("new-bloom").feed_url,
+        _source("taiwan-insight").feed_url,
+        _source("taipei-times").feed_url,
+        _source("cecc").feed_url,
+        _source("made-in-china-journal").feed_url,
+        _source("chrd").feed_url,
     } == {
         "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
         "https://hongkongfp.com/feed/",
@@ -172,7 +214,54 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "https://chinamediaproject.org/feed/",
         "https://chinapower.csis.org/feed/",
         "https://asiatimes.com/category/china/feed/",
+        "https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_egreaterchina.xml",
+        "https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_efinance.xml",
+        "https://www.censtatd.gov.hk/data/en/press_release/rss.xml",
+        "https://www.chinanews.com.cn/rss/china.xml",
+        "https://www.chinanews.com.cn/rss/finance.xml",
+        "https://www.cgtn.com/subscribe/rss/section/china.xml",
+        "https://rss.dw.com/rdf/rss-chi-all",
+        "https://www.rfi.fr/cn/rss",
+        "https://globalvoices.org/-/world/east-asia/china/feed/",
+        "https://pandaily.com/feed",
+        "https://newbloommag.net/feed/",
+        "https://taiwaninsight.org/feed/",
+        "https://www.taipeitimes.com/xml/index.rss",
+        "https://www.cecc.gov/rss.xml",
+        "https://madeinchinajournal.com/feed/",
+        "https://www.nchrd.org/feed/",
     }
+
+
+def test_new_china_source_desks_topics_and_publisher_groups_are_locked():
+    expected = {
+        "rthk-greater-china": ("media", "rthk-editorial", "politics", ("politics", "rights", "economy")),
+        "rthk-finance": ("media", "rthk-editorial", "economy", ("economy",)),
+        "hk-censtat-releases": ("primary", "hksar-government", "economy", ("economy", "government", "measurement")),
+        "china-news-service-politics": ("media", "china-news-service-state-media", "politics", ("government", "politics")),
+        "china-news-service-finance": ("media", "china-news-service-state-media", "economy", ("economy", "technology")),
+        "cgtn-china": ("media", "china-media-group-state-media", "politics", ("government", "politics", "economy")),
+        "dw-chinese": ("media", "deutsche-welle-chinese-editorial", "politics", ("politics", "rights", "economy")),
+        "rfi-chinese": ("media", "france-medias-monde-rfi-editorial", "politics", ("politics", "rights", "economy")),
+        "global-voices-china": ("media", "global-voices-editorial", "rights", ("rights", "censorship", "politics")),
+        "pandaily": ("media", "pandaily-editorial", "technology", ("technology", "economy")),
+        "new-bloom": ("media", "new-bloom-editorial", "politics", ("politics", "rights", "economy")),
+        "taiwan-insight": ("research", "taiwan-insight-editorial", "politics", ("politics", "security", "economy")),
+        "taipei-times": ("media", "liberty-times-group-editorial", "politics", ("politics", "economy", "rights")),
+        "cecc": ("documentation", "us-cecc-government", "rights", ("rights", "censorship", "politics")),
+        "made-in-china-journal": ("research", "made-in-china-journal-editorial", "rights", ("rights", "politics", "economy")),
+        "chrd": ("documentation", "chrd-documentation", "rights", ("rights", "censorship", "politics")),
+    }
+
+    assert {
+        source_id: (
+            _source(source_id).role,
+            _source(source_id).independence_group,
+            _source(source_id).default_desk,
+            _source(source_id).default_topics,
+        )
+        for source_id in expected
+    } == expected
 
 
 def test_registry_rejects_duplicate_json_keys_and_nonfinite_numbers():
@@ -238,6 +327,70 @@ def test_atom_parser_prefers_alternate_link_and_reads_categories():
     assert item["url"] == "https://github.com/research/example"
     assert item["excerpt"] == "A short Atom summary."
     assert {"measurement", "security"}.issubset(item["topics"])
+
+
+@pytest.mark.parametrize("source_id", ["dw-chinese", "taipei-times"])
+def test_rdf_rss_parser_accepts_reviewed_chinese_language_feeds(source_id: str):
+    source = _source(source_id)
+    article_url = f"https://{source.article_hosts[0]}/News/example"
+    raw = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+        'xmlns="http://purl.org/rss/1.0/" '
+        'xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        f'<item rdf:about="{article_url}"><title>中国政策报道</title>'
+        f'<link>{article_url}</link><description>Metadata summary.</description>'
+        '<dc:date>2026-08-11T10:00:00Z</dc:date></item></rdf:RDF>'
+    ).encode()
+
+    item = parse_feed(source, raw, now=NOW).items[0]
+
+    assert item["url"] == article_url
+    assert item["published_at"] == "2026-08-11T10:00:00Z"
+
+
+def test_censtat_relative_item_links_resolve_on_the_reviewed_https_host():
+    source = _source("hk-censtat-releases")
+    raw = _rss(
+        source,
+        title="Revised figures on Gross Domestic Product for 2nd Quarter 2026",
+        url="/en/press_release_detail.html?id=5791&r=rss",
+    )
+
+    item = parse_feed(source, raw, now=NOW).items[0]
+
+    assert item["url"] == (
+        "https://www.censtatd.gov.hk/en/press_release_detail.html?id=5791&r=rss"
+    )
+    assert item["desk"] == "economy"
+    assert item["declared_economic_ids"]
+
+
+def test_broad_chinese_language_feeds_still_require_item_level_china_relevance():
+    source = _source("dw-chinese")
+    generic = parse_feed(
+        source,
+        _rss(
+            source,
+            title="European parliament approves a new policy",
+            excerpt="The vote concerns member states in Europe.",
+        ),
+        now=NOW,
+    ).items[0]
+    china = parse_feed(
+        source,
+        _rss(
+            source,
+            title="China publishes a new economic policy",
+            excerpt="The announcement was made in Beijing.",
+        ),
+        now=NOW,
+    ).items[0]
+
+    assert not nw.is_china_relevant_item(generic)
+    assert generic["declared_economic_ids"] == []
+    assert nw.is_china_relevant_item(china)
+    assert china["declared_economic_ids"]
 
 
 def test_article_body_elements_are_not_used_as_the_excerpt():
@@ -350,6 +503,17 @@ def test_article_url_rejects_credentials_self_recursion_private_hosts_and_wrong_
     private_source = replace(source, article_hosts=("127.0.0.1",))
     with pytest.raises(FeedParseError, match="non-public"):
         canonicalize_article_url("https://127.0.0.1/admin", private_source)
+
+
+def test_only_cecc_legacy_item_links_receive_an_exact_host_https_upgrade():
+    cecc = _source("cecc")
+    assert canonicalize_article_url("http://www.cecc.gov/node/13575", cecc) == (
+        "https://www.cecc.gov/node/13575"
+    )
+
+    unrelated = _source("ooni")
+    with pytest.raises(FeedParseError, match="allowlist"):
+        canonicalize_article_url("http://ooni.org/post", unrelated)
 
 
 def test_default_desk_is_stable_and_economic_links_activate_only_for_economic_items():

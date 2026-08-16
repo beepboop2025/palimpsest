@@ -27,6 +27,17 @@ trackers.
    openly. Censorship data is shrinking and going silent. Decade old academic baselines are
    re-measured rather than assumed. Diaspora feeds are treated as carrying their own slant.
 
+6. **Social metadata is not public opinion or proof.** Telegram and Instagram collection is
+   restricted to reviewed public institutional sources. Palimpsest stores no private messages,
+   comments, follower graphs, engagement counts, locations, media binaries, or consumer-account
+   profiles. A social post is an attributed observation and never increases corroboration simply
+   because the same publisher repeated a report on another platform.
+
+7. **Source-free Telegram context stays source-free.** Dragon Whispers can reach the website only
+   after human review removes channel identity, message coordinates, raw wording, exact indicators
+   and named allegations. The China Situation desk displays those signals in a separate briefing
+   and does not guess which news event or person they concern.
+
 ## A note on the sensitive-terms gazetteer
 
 The components that decide what counts as a censorship signal — the deletion-notice

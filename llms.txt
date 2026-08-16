@@ -87,9 +87,19 @@ Agents can consume the complete strict feed at
 [mixed RSS 2.0 edition](https://palimpsest.info/news/feed.xml), or the
 [measurements-only RSS feed](https://palimpsest.info/news/instruments/feed.xml).
 Every item begins with a plain-language type label. The
-[feed directory](https://palimpsest.info/feeds/) lists all seven RSS and seven JSON Feed
+[feed directory](https://palimpsest.info/feeds/) lists all eight RSS and eight JSON Feed
 endpoints by job, added value and evidence boundary. Stable source-record pages and
 structured records are listed in the [news sitemap](https://palimpsest.info/news/sitemap.xml).
+
+For the combined operational picture, use the
+[China Situation desk](https://palimpsest.info/news/china/situation/), its
+[Situation RSS feed](https://palimpsest.info/news/china/situation/feed.xml),
+[JSON Feed](https://palimpsest.info/news/china/situation/feed.json), or the
+[strict situation index](https://palimpsest.info/readings/china-situation-latest.json).
+It places attributed publisher reporting, exact-link institutional social observations,
+reviewed source-free Telegram signals, and declared Observatory measurements together.
+These layers retain separate relationships: social context and topic-level measurements
+never increase the independent-publisher count or become article verification.
 
 For a literal publisher-by-publisher reading rhythm, use the
 [China Article Stream](https://palimpsest.info/news/china/), its
@@ -155,6 +165,9 @@ Machine-readable contracts:
 
 - [Evidence Wire latest](https://palimpsest.info/readings/newswire-latest.json)
 - [China Article Stream latest](https://palimpsest.info/readings/china-article-stream-latest.json)
+- [China Situation latest](https://palimpsest.info/readings/china-situation-latest.json)
+- [Bounded Social Observations latest](https://palimpsest.info/readings/social-observations-latest.json)
+- [Bounded Social Observation versions](https://palimpsest.info/readings/social-observations-versions.jsonl)
 - [China Economic Pulse latest](https://palimpsest.info/readings/china-economic-pulse-latest.json)
 - [China named-series forecast and backtest latest](https://palimpsest.info/readings/china-econ-forecast-latest.json)
 - [Investigations Desk latest](https://palimpsest.info/readings/investigations-latest.json)
@@ -170,6 +183,8 @@ Machine-readable contracts:
 - [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
 - [Per-event Analysis JSON Schema](https://palimpsest.info/protocol/event-analysis-v1.schema.json)
 - [China Article Stream JSON Schema](https://palimpsest.info/protocol/china-article-stream-v1.schema.json)
+- [China Situation JSON Schema](https://palimpsest.info/protocol/china-situation-v1.schema.json)
+- [Bounded Social Observations JSON Schema](https://palimpsest.info/protocol/social-observations-v1.schema.json)
 - [Reviewed Telegram Watch JSON Schema](https://palimpsest.info/protocol/telegram-watch-v1.schema.json)
 - [Reviewed Dragon Whispers JSON Schema](https://palimpsest.info/protocol/dragon-whispers-v1.schema.json)
 - [Economic Pulse JSON Schema](https://palimpsest.info/protocol/economic-pulse-v1.schema.json)
@@ -332,6 +347,7 @@ one score or imply that temporal co-movement is corroboration.
 - [Newsroom](https://palimpsest.info/news/): hourly, deterministic news dispatches with structured claims, explicit denominators, limitations and links to the exact public evidence
 - [Evidence Wire](https://palimpsest.info/news/wire/): versioned RSS/Atom event dossiers with per-source coverage receipts, source independence and scan-linked corroboration
 - [China Article Stream](https://palimpsest.info/news/china/): every in-scope monitored publisher item in chronological order, with detailed Palimpsest analysis and a separate reviewed Telegram context lane
+- [China Situation desk](https://palimpsest.info/news/china/situation/): publisher reports, exact-link institutional social observations, reviewed Telegram context and Observatory measurements in one deterministic view with evidence roles preserved
 - [Whispers from the Dragon Den](https://palimpsest.info/news/china/whispers/): reviewed, sanitized individual Telegram pattern context with uncertainty and verification moves; never raw, verified news, evidence or corroboration
 - [China Economic Pulse](https://palimpsest.info/news/economy/): revision-safe official, market and physical-telemetry state with coverage gates and honest abstention
 - [Investigations Desk](https://palimpsest.info/news/investigations/): review-gated research leads with source receipts, counterevidence, limitations, falsifiers and explicit publication gates

@@ -45,6 +45,7 @@ PROJECT_IDS = ("palimpsest", "seiche", "liquilens", "scamshield", "narcoscope")
 PUBLICATION_PLANE_IDS = frozenset({
     "china-article-stream",
     "china-censorship-analysis",
+    "china-situation",
     "evidence-mesh",
     "machine-investigations",
     "newsroom",

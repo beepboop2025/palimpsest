@@ -143,12 +143,12 @@ def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(mesh: d
         if row["project_id"] == "palimpsest" and row["namespace"] == "osint"
     }
 
-    assert len(catalog_ids) == 56
+    assert len(catalog_ids) == 59
     assert len(signal_ids) == 33
     assert mesh_catalog_ids == catalog_ids
     assert mesh_signal_ids == signal_ids
     assert mesh["summary"]["palimpsest_catalog"] == {
-        "expected": 56, "accounted": 56, "complete": True,
+        "expected": 59, "accounted": 59, "complete": True,
     }
     assert mesh["summary"]["palimpsest_osint"] == {
         "expected": 33, "accounted": 33, "complete": True,
@@ -271,6 +271,7 @@ def test_mirrors_and_derived_views_do_not_manufacture_independence(mesh: dict) -
     ), "a derived pipeline must not appear as an ultimate upstream group"
 
     for resource_id in (
+        "palimpsest:catalog:china-situation",
         "palimpsest:catalog:evidence-mesh",
         "palimpsest:catalog:machine-investigations",
     ):
@@ -449,6 +450,7 @@ def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -
     publication_paths = {
         "china-article-stream": root / "readings/china-article-stream-latest.json",
         "china-censorship-analysis": root / "readings/china-censorship-analysis-latest.json",
+        "china-situation": root / "readings/china-situation-latest.json",
         "evidence-mesh": root / "readings/evidence-mesh-latest.json",
         "machine-investigations": root / "readings/machine-investigations-latest.json",
         "newsroom": root / "readings/newsroom-latest.json",

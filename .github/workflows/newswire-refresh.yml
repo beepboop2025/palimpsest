@@ -97,6 +97,8 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation
+          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -129,6 +131,8 @@ jobs:
             tests/test_structured_newsroom.py \
             tests/test_event_analysis.py \
             tests/test_china_article_stream.py \
+            tests/test_china_situation.py \
+            tests/test_china_situation_renderer.py \
             tests/test_evidence_wire_renderer.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
@@ -164,6 +168,7 @@ jobs:
             readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
+            readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
@@ -220,6 +225,8 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation
+          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -253,6 +260,8 @@ jobs:
             tests/test_structured_newsroom.py \
             tests/test_event_analysis.py \
             tests/test_china_article_stream.py \
+            tests/test_china_situation.py \
+            tests/test_china_situation_renderer.py \
             tests/test_evidence_wire_renderer.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
@@ -289,6 +298,7 @@ jobs:
             readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
+            readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
@@ -346,6 +356,8 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation
+          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -379,6 +391,8 @@ jobs:
             tests/test_structured_newsroom.py \
             tests/test_event_analysis.py \
             tests/test_china_article_stream.py \
+            tests/test_china_situation.py \
+            tests/test_china_situation_renderer.py \
             tests/test_evidence_wire_renderer.py \
             tests/test_evidence_wire_publication.py \
             tests/test_ai_discovery.py \
@@ -415,6 +429,7 @@ jobs:
             readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
+            readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \

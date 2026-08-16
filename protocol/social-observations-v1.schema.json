@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/social-observations-v1.schema.json",
+  "title": "Palimpsest publication-safe social observations v1",
+  "description": "A bounded-registry latest view of attributed Telegram and Instagram source reports. These observations are never corroboration by themselves.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_registry",
+    "source_registry_sha256",
+    "scope",
+    "relation",
+    "coverage",
+    "n_observations",
+    "observations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-social-observations.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "source_registry": {"const": "https://palimpsest.info/config/social_sources.json"},
+    "source_registry_sha256": {"$ref": "#/$defs/sha256"},
+    "scope": {"const": "bounded-registry-not-global"},
+    "relation": {"const": "attributed-source-report-not-corroboration"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "n_observations": {"$ref": "#/$defs/count"},
+    "observations": {
+      "type": "array",
+      "maxItems": 1000000,
+      "items": {"$ref": "#/$defs/observation"}
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,79}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "configured", "successful", "failed", "rejected", "receipts"],
+      "properties": {
+        "scope": {"const": "bounded-registry-not-global"},
+        "configured": {"$ref": "#/$defs/count"},
+        "successful": {"$ref": "#/$defs/count"},
+        "failed": {"$ref": "#/$defs/count"},
+        "rejected": {"$ref": "#/$defs/count"},
+        "receipts": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/receipt"}
+        }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "platform", "status", "accepted", "rejected", "error_code"],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "platform": {"enum": ["telegram", "instagram"]},
+        "status": {"enum": ["success", "failure", "not-attempted"]},
+        "accepted": {"$ref": "#/$defs/count"},
+        "rejected": {"$ref": "#/$defs/count"},
+        "error_code": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/identifier"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "failure"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "accepted": {"const": 0},
+              "error_code": {"$ref": "#/$defs/identifier"}
+            }
+          },
+          "else": {"properties": {"error_code": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "not-attempted"}}, "required": ["status"]},
+          "then": {"properties": {"accepted": {"const": 0}}}
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "version_id",
+        "supersedes_version_id",
+        "platform",
+        "source_id",
+        "source_name",
+        "source_type",
+        "independence_group",
+        "relation",
+        "rights_policy",
+        "permalink",
+        "published_at",
+        "first_observed_at",
+        "title",
+        "excerpt",
+        "content_type",
+        "content_sha256",
+        "state",
+        "china_relevance_labels",
+        "related_urls"
+      ],
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "pattern": "^social-[0-9a-f]{32}$"
+        },
+        "version_id": {
+          "type": "string",
+          "pattern": "^socialv-[0-9a-f]{32}$"
+        },
+        "supersedes_version_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^socialv-[0-9a-f]{32}$"}
+          ]
+        },
+        "platform": {"enum": ["telegram", "instagram"]},
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "source_name": {"type": "string", "minLength": 1, "maxLength": 120},
+        "source_type": {
+          "enum": ["telegram_channel", "instagram_professional", "instagram_hashtag"]
+        },
+        "independence_group": {"$ref": "#/$defs/identifier"},
+        "relation": {"const": "attributed-source-report-not-corroboration"},
+        "rights_policy": {"const": "metadata-bounded-excerpt-link-only"},
+        "permalink": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https://(?:t\\.me|www\\.instagram\\.com)/"
+        },
+        "published_at": {"$ref": "#/$defs/timestamp"},
+        "first_observed_at": {"$ref": "#/$defs/timestamp"},
+        "title": {"type": "string", "maxLength": 240},
+        "excerpt": {"type": "string", "maxLength": 640},
+        "content_type": {
+          "enum": [
+            "text",
+            "link",
+            "image",
+            "video",
+            "audio",
+            "document",
+            "carousel",
+            "other",
+            "unavailable"
+          ]
+        },
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "state": {"enum": ["published", "edited", "tombstone"]},
+        "china_relevance_labels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "related_urls": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^https://"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "tombstone"}}, "required": ["state"]},
+          "then": {
+            "properties": {
+              "title": {"const": ""},
+              "excerpt": {"const": ""},
+              "content_type": {"const": "unavailable"},
+              "related_urls": {"maxItems": 0}
+            }
+          },
+          "else": {
+            "properties": {
+              "title": {"minLength": 1},
+              "content_type": {"not": {"const": "unavailable"}}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

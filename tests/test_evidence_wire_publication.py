@@ -379,6 +379,8 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         r"\s*python -m core\.machine_investigations --check\n"
         r"\s*python -m scripts\.build_newsroom\n"
         r"\s*python -m scripts\.build_newsroom --check\n"
+        r"\s*python -m scripts\.build_china_situation\n"
+        r"\s*python -m scripts\.build_china_situation --check\n"
         r"\s*python -m scripts\.build_data_catalog\n"
         r"\s*python scripts/seal_readings\.py",
         workflow,
@@ -401,6 +403,7 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         "readings/source-workflow-latest.json",
         "readings/editorial-readiness-latest.json",
         "readings/newsroom-latest.json",
+        "readings/china-situation-latest.json",
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
         "readings/catalog.jsonld",

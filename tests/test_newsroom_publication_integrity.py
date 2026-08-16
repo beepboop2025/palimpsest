@@ -42,6 +42,22 @@ def _outputs(*paths: Path) -> dict[Path, bytes]:
     return payloads
 
 
+def _pagination_page(relative: Path) -> bytes:
+    canonical = f"https://palimpsest.info/{relative.parent.as_posix()}/"
+    body_class = (
+        "ps newsroom-page newsroom-page--archive"
+        if relative.parts[1] == "wire"
+        else "ps newsroom-page china-stream-page"
+    )
+    return f"""<!doctype html>
+<html lang="en"><head>
+<meta name="author" content="Palimpsest Observatory">
+<link rel="canonical" href="{canonical}">
+<meta property="og:url" content="{canonical}">
+</head><body class="{body_class}">Generated archive page</body></html>
+""".encode()
+
+
 def _machine_case(slug: str, *, title: str) -> dict:
     case = {field: None for field in machine_investigations._CASE_FIELDS}
     case.update(
@@ -187,6 +203,39 @@ def test_manifest_cannot_authorize_deleting_an_unverified_manual_page(
     ):
         build_newsroom.publish(new_outputs, root=tmp_path)
     assert manual_path.read_bytes() == b"hand-authored page\n"
+
+
+def test_pagination_cleanup_removes_generated_stale_pages_but_preserves_collisions(
+    tmp_path: Path,
+) -> None:
+    outputs = _outputs(Path("news/wire/index.html"))
+    build_newsroom.publish(outputs, root=tmp_path)
+    stale_relative = Path("news/wire/page/10/index.html")
+    collision_relative = Path("news/china/page/98/index.html")
+    stale = tmp_path / stale_relative
+    collision = tmp_path / collision_relative
+    stale.parent.mkdir(parents=True)
+    collision.parent.mkdir(parents=True)
+    stale.write_bytes(_pagination_page(stale_relative))
+    collision.write_bytes(b"hand-authored collision\n")
+
+    assert build_newsroom.check(outputs, root=tmp_path) == [
+        f"extra {collision_relative}",
+        f"extra {stale_relative}",
+    ]
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="refusing to remove unverified files",
+    ):
+        build_newsroom.publish(outputs, root=tmp_path)
+    assert collision.read_bytes() == b"hand-authored collision\n"
+    assert stale.is_file()
+
+    collision.unlink()
+    changed, _unchanged = build_newsroom.publish(outputs, root=tmp_path)
+    assert changed == 1
+    assert not stale.exists()
+    assert build_newsroom.check(outputs, root=tmp_path) == []
 
 
 def test_history_independent_development_revision_is_proven_for_cleanup(

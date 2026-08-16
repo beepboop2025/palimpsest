@@ -85,6 +85,15 @@ the [catch-all feed](https://t.me/DragonDenWhispers), [cyber and technology](htt
 and [regional and borderlands](https://t.me/DragonDenBorderlands). They never enter the website
 artifact without the separate human-review and sanitization path.
 
+The [China Situation desk](https://palimpsest.info/news/china/situation/) now places
+publisher reports, exact-link institutional Instagram/Telegram observations, reviewed
+source-free Dragon Whispers, and Palimpsest Observatory measurements in one auditable
+view. It is not a generic aggregator: each layer keeps its own source relationship,
+coverage receipt, revision identity, and limitation. The social registry is closed and
+public; Instagram uses Meta's official API only, and the authenticated Telegram handoff
+can append sanitized versions without gaining authority over Instagram or corroboration.
+Its structured index and dedicated RSS/JSON feeds are linked from the public feed directory.
+
 > **Or watch it run live:** the [observatory](https://palimpsest.info/dashboards/ddti_observatory.html)
 > (the live censorship signals), the [Verifiable Eval Registry](https://palimpsest.info/readings/eval-registry.html),
 > the [AI Eval Journal](https://palimpsest.info/evals/),
