@@ -27,6 +27,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+try:
+    from scripts.anchor_roots import anchor_state_at
+except ModuleNotFoundError as exc:
+    if exc.name != "scripts":
+        raise
+    from anchor_roots import anchor_state_at
+
 
 ROOT = Path(__file__).resolve().parent.parent
 READINGS = ROOT / "readings"
@@ -675,17 +682,59 @@ def _source_fingerprint(path: Path) -> dict[str, Any]:
         data = path.read_bytes()
     except OSError:
         return {"filename": path.name, "sha256": None, "bytes": None}
+    return _source_bytes_fingerprint(path.name, data)
+
+
+def _source_bytes_fingerprint(filename: str, data: bytes) -> dict[str, Any]:
+    """Bind a logical source name to bytes, including reconstructed history."""
     return {
-        "filename": path.name,
+        "filename": filename,
         "sha256": hashlib.sha256(data).hexdigest(),
         "bytes": len(data),
     }
 
 
+def _anchor_source_at(
+    path: Path, now: datetime
+) -> tuple[dict[str, Any] | None, dict[str, Any], str | None]:
+    """Load the newest anchor that existed at the roll-up's publication clock.
+
+    ``anchors-latest.json`` is mutable by design.  Replaying an older roll-up after a
+    new anchor lands must therefore recover the appropriate record from the append-only
+    log and reconstruct the exact public-summary bytes used at that time.
+    """
+    current, load_error = _load_object(path)
+    current_fingerprint = _source_fingerprint(path)
+    if current is None:
+        return current, current_fingerprint, load_error
+    try:
+        current_at = parse_timestamp(current.get("ts"))
+    except (OverflowError, OSError, ValueError):
+        return current, current_fingerprint, None
+    if current_at <= now:
+        return current, current_fingerprint, None
+
+    try:
+        historical = anchor_state_at(path.with_name("anchors.jsonl"), now)
+    except (OSError, ValueError):
+        return None, current_fingerprint, "anchor history is not valid UTF-8 JSONL"
+
+    if historical is None:
+        return current, current_fingerprint, None
+    return (
+        historical["summary"],
+        _source_bytes_fingerprint(path.name, historical["summary_bytes"]),
+        None,
+    )
+
+
 def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, Any]:
     path = readings_dir / spec.filename
-    input_fingerprint = _source_fingerprint(path)
-    payload, load_error = _load_object(path)
+    if spec.id == "anchors":
+        payload, input_fingerprint, load_error = _anchor_source_at(path, now)
+    else:
+        input_fingerprint = _source_fingerprint(path)
+        payload, load_error = _load_object(path)
     raw_url = PUBLIC_BASE + spec.filename
 
     if payload is None:

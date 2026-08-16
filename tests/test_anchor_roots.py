@@ -127,6 +127,9 @@ def test_anchor_records_success(monkeypatch):
     assert len(summary["registry_root"]) == 64
     # All three chains are anchored: registry, erasure, and the readings record.
     assert len(summary["readings_root"]) == 64
+    assert open(latest, encoding="utf-8").read() == (
+        anchor_roots.serialize_anchor_summary(rec)
+    )
 
 
 def test_idempotent_when_roots_and_external_evidence_are_complete(monkeypatch, tmp_path):
