@@ -38,6 +38,8 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
     assert text.count("python -m scripts.anchor_roots") == 2
     assert text.count("python -m scripts.verify_eval_registry") == 3
     assert text.count("python scripts/verify_public_surface.py") == 3
+    assert text.count("\n          PALIMPSEST_WAYBACK_ACCESS_KEY:") == 2
+    assert text.count("\n          PALIMPSEST_WAYBACK_SECRET_KEY:") == 2
 
     race = text.index("Recollect, reverify, and retry after a push race")
     refresh = text.index("git fetch origin main", race)
