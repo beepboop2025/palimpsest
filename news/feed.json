@@ -13,12 +13,12 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:024f12ac5be60534b7427ef0bffd92c330f361fedb4f972a126caf75890ff05d",
+      "id": "palimpsest-news:board-alarm:sha256:2981027279d0c891225ede005006f8ac2f307d173c5e858d4a80b89d810acef6",
       "url": "https://palimpsest.info/news/board-alarm/",
       "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "title": "[Palimpsest measurement] Network layer elevated in the latest board synthesis",
       "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded. The board-wide e-value is 25.929; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 31 are live. Health qualifiers: 1 degraded, 1 stale. The board-wide e-value is 25.929; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
       "date_published": "2026-08-16T13:21:48Z",
       "date_modified": "2026-08-16T13:21:48Z",
       "tags": [
@@ -37,7 +37,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-6e2bc2fe2307e1695031bef1",
+        "revision_id": "storyv-941039bc10e901f9f7ad1be6",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -941,19 +941,19 @@
       }
     },
     {
-      "id": "palimpsest-news:nemesis:sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
+      "id": "palimpsest-news:nemesis:sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "external_url": "https://palimpsest.info/readings/nemesis-latest.json",
-      "title": "[Palimpsest measurement] The sanitized intelligence bridge ranks 192 aggregate topics",
-      "summary": "Palimpsest measurement. Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current sanitized optional export contains 192 ranked aggregate topics.\n\nLimit: This deployment-dependent export supplies analytical leads, not independently verified public-source findings.\n\nEvidence: https://palimpsest.info/readings/nemesis-latest.json",
+      "title": "[Palimpsest measurement] Private runtime bridge: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Private runtime bridge because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This deployment-dependent export supplies analytical leads, not independently verified public-source findings.\n\nEvidence: https://palimpsest.info/readings/nemesis-latest.json",
       "date_published": "2026-08-16T13:59:16Z",
       "date_modified": "2026-08-16T13:59:16Z",
       "tags": [
         "palimpsest-measurement",
         "Intelligence Bridge",
         "nemesis",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -965,8 +965,40 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-233a57f1c3624335431e7511",
+        "revision_id": "storyv-756271e33ed57cabf72b9476",
         "verification_status": "palimpsest_measurement"
+      }
+    },
+    {
+      "id": "event-4ef96706ab9aeead5aeb4403",
+      "url": "https://palimpsest.info/news/wire/event-4ef96706ab9aeead5aeb4403/",
+      "external_url": "https://www.theguardian.com/australia-news/2026/aug/17/fbi-investigation-china-alleged-espionage-fake-websites-defence-intelligence-australia",
+      "title": "[Source report] A fake website and a deluge of CVs: the Australian firm embroiled in an FBI probe into alleged Chinese espionage",
+      "summary": "This record indexes one publisher group. Palimpsest has not independently verified or refuted the publisher's claims.",
+      "content_text": "ITEM TYPE: Single-source report · not independently verified by Palimpsest\n\nPublished by: The Guardian — China\n\nPalimpsest adds: source grouping, timestamps, topic classification and a revision record.\n\nVerification status: This record indexes one publisher group. Palimpsest has not independently verified or refuted the publisher's claims.\n\nRead the original: https://www.theguardian.com/australia-news/2026/aug/17/fbi-investigation-china-alleged-espionage-fake-websites-defence-intelligence-australia",
+      "date_published": "2026-08-16T15:00:30Z",
+      "date_modified": "2026-08-16T15:00:30Z",
+      "tags": [
+        "source-report",
+        "not-independently-verified",
+        "Security",
+        "single-source",
+        "politics",
+        "security"
+      ],
+      "attachments": [
+        {
+          "url": "https://www.theguardian.com/australia-news/2026/aug/17/fbi-investigation-china-alleged-espionage-fake-websites-defence-intelligence-australia",
+          "mime_type": "text/html",
+          "title": "The Guardian — China: A fake website and a deluge of CVs: the Australian firm embroiled in an FBI probe into alleged Chinese espionage"
+        }
+      ],
+      "_palimpsest": {
+        "kind": "publisher_source_record",
+        "version_id": "eventv-e6f899473fd91cab04c8097e",
+        "evidence_strength": "single-source",
+        "independent_groups": 1,
+        "verification_status": "not_independently_verified"
       }
     },
     {
@@ -10993,38 +11025,6 @@
       "_palimpsest": {
         "kind": "publisher_source_record",
         "version_id": "eventv-6180bf8a63fff737a1ef8069",
-        "evidence_strength": "single-source",
-        "independent_groups": 1,
-        "verification_status": "not_independently_verified"
-      }
-    },
-    {
-      "id": "event-d08afadcfbb67ee91b56126b",
-      "url": "https://palimpsest.info/news/wire/event-d08afadcfbb67ee91b56126b/",
-      "external_url": "https://www.theguardian.com/australia-news/2026/aug/10/woman-who-took-her-own-life-in-melbourne-detention-centre-was-known-suicide-risk-documents-reveal-ntwnfb",
-      "title": "[Source report] China expresses ‘grave concern’ as internal documents reveal suicide warning before death in Melbourne immigration detention",
-      "summary": "This record indexes one publisher group. Palimpsest has not independently verified or refuted the publisher's claims.",
-      "content_text": "ITEM TYPE: Single-source report · not independently verified by Palimpsest\n\nPublished by: The Guardian — China\n\nPalimpsest adds: source grouping, timestamps, topic classification and a revision record.\n\nVerification status: This record indexes one publisher group. Palimpsest has not independently verified or refuted the publisher's claims.\n\nRead the original: https://www.theguardian.com/australia-news/2026/aug/10/woman-who-took-her-own-life-in-melbourne-detention-centre-was-known-suicide-risk-documents-reveal-ntwnfb",
-      "date_published": "2026-08-09T15:00:18Z",
-      "date_modified": "2026-08-09T15:00:18Z",
-      "tags": [
-        "source-report",
-        "not-independently-verified",
-        "Rights",
-        "single-source",
-        "politics",
-        "rights"
-      ],
-      "attachments": [
-        {
-          "url": "https://www.theguardian.com/australia-news/2026/aug/10/woman-who-took-her-own-life-in-melbourne-detention-centre-was-known-suicide-risk-documents-reveal-ntwnfb",
-          "mime_type": "text/html",
-          "title": "The Guardian — China: China expresses ‘grave concern’ as internal documents reveal suicide warning before death in Melbourne immigration detention"
-        }
-      ],
-      "_palimpsest": {
-        "kind": "publisher_source_record",
-        "version_id": "eventv-30e2ef355bdf20549a2b02d5",
         "evidence_strength": "single-source",
         "independent_groups": 1,
         "verification_status": "not_independently_verified"
