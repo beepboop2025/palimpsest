@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-16T13:21:49.137973+00:00",
+  "generated_at": "2026-08-16T19:09:55.956304+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
@@ -33,7 +33,7 @@
       "correlation": 0.484,
       "p_value": 0.2273,
       "n_shifts": 21,
-      "null_median_abs_r": 0.298,
+      "null_median_abs_r": 0.297,
       "pair": [
         "ddti_novelty",
         "ooni_gfw"
@@ -73,11 +73,11 @@
     {
       "ok": true,
       "overlap_days": 36,
-      "lag_days": -7,
-      "correlation": 0.312,
-      "p_value": 0.6364,
+      "lag_days": 0,
+      "correlation": -0.317,
+      "p_value": 0.7727,
       "n_shifts": 21,
-      "null_median_abs_r": 0.373,
+      "null_median_abs_r": 0.404,
       "pair": [
         "gdelt_containment",
         "ooni_gfw"
@@ -88,7 +88,7 @@
       ],
       "first_day": "2026-07-11",
       "last_day": "2026-08-16",
-      "reading": "ooni_gfw moves 7d BEFORE gdelt_containment",
+      "reading": "gdelt_containment and ooni_gfw move the same day",
       "holm_threshold": 0.01,
       "survives_multiplicity": false
     },
@@ -165,7 +165,7 @@
       "correlation": 0.235,
       "p_value": 1.0,
       "n_shifts": 21,
-      "null_median_abs_r": 0.434,
+      "null_median_abs_r": 0.432,
       "pair": [
         "ddti_threat",
         "ooni_gfw"
