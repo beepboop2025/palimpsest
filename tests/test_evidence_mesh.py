@@ -271,6 +271,7 @@ def test_mirrors_and_derived_views_do_not_manufacture_independence(mesh: dict) -
     ), "a derived pipeline must not appear as an ultimate upstream group"
 
     for resource_id in (
+        "palimpsest:catalog:china-situation",
         "palimpsest:catalog:evidence-mesh",
         "palimpsest:catalog:machine-investigations",
     ):
@@ -449,6 +450,7 @@ def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -
     publication_paths = {
         "china-article-stream": root / "readings/china-article-stream-latest.json",
         "china-censorship-analysis": root / "readings/china-censorship-analysis-latest.json",
+        "china-situation": root / "readings/china-situation-latest.json",
         "evidence-mesh": root / "readings/evidence-mesh-latest.json",
         "machine-investigations": root / "readings/machine-investigations-latest.json",
         "newsroom": root / "readings/newsroom-latest.json",
