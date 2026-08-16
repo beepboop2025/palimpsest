@@ -377,6 +377,50 @@ def test_wayback_uses_cdx_after_direct_transient_save_failure():
     assert cdx_calls == 2
 
 
+def test_wayback_waits_for_cdx_when_save_returns_queue_url():
+    target = anchor_roots.WAYBACK_TARGETS[0]
+    expected = anchor_roots.wayback_expectations()[target]
+    timestamp = "20260816000000"
+    cdx_calls = 0
+    sleeps = []
+
+    def _eventual_cdx_opener(req, timeout=0):
+        nonlocal cdx_calls
+        if "/cdx/search/cdx?" in req.full_url:
+            cdx_calls += 1
+            if cdx_calls < 3:
+                return _FakeResponse(req.full_url, body=b"[]")
+            requested = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(req.full_url).query
+            )["url"][0]
+            payload = [
+                ["timestamp", "original", "statuscode"],
+                [timestamp, requested, "200"],
+            ]
+            return _FakeResponse(req.full_url, body=json.dumps(payload).encode())
+        if "/save/" in req.full_url:
+            return _FakeResponse(
+                "https://web.archive.org/save/status",
+                body=b"capture queued",
+            )
+        with open(anchor_roots.REGISTRY, "rb") as source:
+            return _FakeResponse(req.full_url, body=source.read())
+
+    result = anchor_roots.wayback_save(
+        target,
+        expected_sha256=expected["sha256"],
+        expected_bytes=expected["bytes"],
+        opener=_eventual_cdx_opener,
+        cdx_attempts=3,
+        sleeper=sleeps.append,
+    )
+
+    assert result["ok"] is True
+    assert result["capture_source"] == "cdx"
+    assert cdx_calls == 3
+    assert sleeps == [1]
+
+
 def test_wayback_replaces_unreadable_redirect_with_indexed_capture():
     target = anchor_roots.WAYBACK_TARGETS[1]
     expected = anchor_roots.wayback_expectations()[target]
