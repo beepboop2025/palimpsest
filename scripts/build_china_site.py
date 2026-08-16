@@ -368,7 +368,7 @@ def build_index(*, root: Path = ROOT) -> dict[str, Any]:
         if not isinstance(source.get("domains"), list) or not isinstance(source.get("dimensions"), list):
             raise ChinaSiteError(f"source {source['source_id']} domains/dimensions must be arrays")
 
-    desk_by_id = _unique_by(desk_values, "id", "desk")
+    _desk_by_id = _unique_by(desk_values, "id", "desk")
     release_by_watch = _unique_by(release_values, "watch_id", "release")
     matrix_by_domain = _unique_by(matrix_values, "domain", "domain")
     alias_by_watch = _unique_by(aliases, "watch_id", "release alias")
@@ -653,16 +653,24 @@ def _fmt_value(value: Any) -> str:
     return str(value)
 
 
-def _local_nav() -> str:
-    return (
-        '<nav class="cn-local" aria-label="China Observatory">'
-        '<a href="/china/">Current read</a>'
-        '<a href="/china/sources/">Source ledger</a>'
-        '<a href="/china/releases/">Release docket</a>'
-        '<a href="/china/domains/">Coverage domains</a>'
-        '<a href="/readings/china-index-latest.json">Machine index</a>'
-        '</nav>'
+def _local_nav(route: str) -> str:
+    links = (
+        ("/china/", "Current read"),
+        ("/china/sources/", "Source ledger"),
+        ("/china/releases/", "Release docket"),
+        ("/china/domains/", "Coverage domains"),
+        ("/readings/china-index-latest.json", "Machine index"),
     )
+    parts = ['<nav class="cn-local" aria-label="China Observatory">']
+    for href, label in links:
+        current = ""
+        if route == href:
+            current = ' aria-current="page"'
+        elif href != "/china/" and route.startswith(href):
+            current = ' aria-current="location"'
+        parts.append(f'<a href="{href}"{current}>{label}</a>')
+    parts.append("</nav>")
+    return "".join(parts)
 
 
 def _breadcrumbs(items: Sequence[tuple[str, str]]) -> str:
@@ -724,7 +732,7 @@ def _page(
 <body class="ps tk cn-page">
 {GENERATED_MARKER}
 {site_nav.render(route)}
-{_local_nav()}
+{_local_nav(route)}
 <main id="main" class="cn-main">
 {body}
 </main>
@@ -751,7 +759,7 @@ def _controls(*, statuses: Sequence[str], noun: str) -> str:
         f'<label>Find {noun}<input type="search" data-cn-search autocomplete="off" '
         f'placeholder="Search {noun}, publisher or domain"></label>'
         '<label>Evidence state<select data-cn-filter>' + "".join(options) + "</select></label>"
-        f'<p class="cn-result-count" data-cn-result-count aria-live="polite"></p>'
+        '<p class="cn-result-count" data-cn-result-count aria-live="polite"></p>'
         '</div>'
     )
 

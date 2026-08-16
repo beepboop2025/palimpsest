@@ -105,6 +105,32 @@ def test_every_page_has_compact_versioned_head_real_nav_and_unique_ids():
         assert len(parsed.ids) == len(set(parsed.ids)), path
         assert len(parsed.json_ld) == 1
         assert parsed.json_ld[0]["url"] == parsed.canonicals[0]
+        assert page.count('aria-current="page"') + page.count(
+            'aria-current="location"'
+        ) >= 1
+
+
+def test_local_navigation_wins_the_shell_cascade_and_has_touch_targets():
+    css = (ROOT / "assets" / "china.css").read_text(encoding="utf-8")
+
+    assert "html[data-cn-schema-version] { overflow-x: clip; }" in css
+    assert "body.ps.cn-page > .cn-local" in css
+    assert "position: sticky" in css
+    assert "z-index: calc(var(--ps-z-nav) - 1)" in css
+    assert ".cn-local a[aria-current]" in css
+    assert "min-height: 44px" in css
+    assert ".cn-page .ps-share button" in css
+    assert ".cn-page .ps-share__dot" in css
+
+    root = (CHINA / "index.html").read_text(encoding="utf-8")
+    source = (
+        CHINA / "sources" / "cfets_benchmarks" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert '<a href="/china/" aria-current="page">Current read</a>' in root
+    assert (
+        '<a href="/china/sources/" aria-current="location">Source ledger</a>'
+        in source
+    )
 
 
 def test_every_internal_china_link_resolves_to_an_ssr_page():

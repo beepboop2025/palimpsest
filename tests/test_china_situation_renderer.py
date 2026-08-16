@@ -61,6 +61,26 @@ def test_page_makes_each_relation_and_zero_state_visible():
     assert len(page) < 700_000
 
 
+def test_situation_styles_preserve_dark_contrast_and_readable_headlines():
+    css = (builder.ROOT / "assets" / "china-situation.css").read_text(
+        encoding="utf-8"
+    )
+
+    assert "body.ps.newsroom-page.situation-page" in css
+    assert "color-scheme: dark" in css
+    assert "var(--nw-display" in css
+    assert "var(--nw-mono" in css
+    assert "var(--display" not in css
+    assert "var(--mono" not in css
+    assert "overflow-wrap: normal" in css
+    assert "word-break: normal" in css
+    assert "@media (max-width: 1100px)" in css
+    assert "17vw" not in css
+    assert "min-height: 44px" in css
+    assert ".situation-page .ps-share button" in css
+    assert ".situation-page .ps-share__dot" in css
+
+
 def test_archive_pages_are_bounded_linked_and_canonical() -> None:
     outputs, document = builder.build_outputs()
     expected_pages = max(

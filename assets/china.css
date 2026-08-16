@@ -18,6 +18,10 @@
   --cn-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* Wide evidence tables scroll inside their labelled wrappers.  Keep their
+   intrinsic width from becoming a second, page-level horizontal scroller. */
+html[data-cn-schema-version] { overflow-x: clip; }
+
 body.cn-page {
   background: var(--cn-paper);
   color: var(--cn-ink);
@@ -38,14 +42,19 @@ body.cn-page::before { background: none; opacity: 0; }
   outline-offset: 3px;
 }
 
-.cn-local {
+/* The shell promotes all top-level children into its content plane.  Match
+   that selector's specificity here so this second-level navigation remains
+   sticky instead of being offset over the breadcrumb. */
+body.ps.cn-page > .cn-local {
   position: sticky;
   top: var(--ps-nav-h);
-  z-index: 800;
+  z-index: calc(var(--ps-z-nav) - 1);
   display: flex;
+  align-items: center;
   gap: clamp(12px, 3vw, 28px);
   overflow-x: auto;
-  padding: 10px max(18px, calc((100vw - 1180px) / 2));
+  min-height: 48px;
+  padding: 0 max(18px, calc((100vw - 1180px) / 2));
   background: var(--cn-porcelain);
   border-bottom: 1px solid var(--cn-rule);
   font: 650 11px/1.4 var(--cn-mono);
@@ -53,7 +62,18 @@ body.cn-page::before { background: none; opacity: 0; }
   scrollbar-width: thin;
 }
 
-.cn-local a { color: var(--cn-ink); text-decoration: none; white-space: nowrap; }
+.cn-local a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--cn-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cn-local a[aria-current] {
+  color: var(--cn-teal);
+  box-shadow: inset 0 -3px 0 var(--cn-teal);
+}
 .cn-local a:last-child { margin-left: auto; color: var(--cn-teal); }
 
 .cn-main { width: min(1180px, calc(100% - 36px)); margin: 0 auto; }
@@ -75,17 +95,21 @@ body.cn-page::before { background: none; opacity: 0; }
   grid-template-columns: minmax(0, 1fr) minmax(250px, .34fr);
   gap: clamp(28px, 7vw, 90px);
   align-items: end;
-  padding: clamp(52px, 9vw, 112px) 0 clamp(42px, 6vw, 74px);
+  padding: clamp(44px, 6vw, 80px) 0 clamp(38px, 4.5vw, 62px);
 }
 
 .cn-hero h1,
 .cn-pagehead h1 {
-  max-width: 900px;
   margin-top: 13px;
   color: var(--cn-ink);
-  font: 650 clamp(44px, 7.6vw, 102px)/.91 var(--cn-serif);
-  letter-spacing: -.06em;
+  font-family: var(--cn-serif);
+  font-weight: 650;
+  line-height: .96;
+  letter-spacing: -.045em;
 }
+
+.cn-hero h1 { max-width: 880px; font-size: clamp(42px, 6.1vw, 88px); }
+.cn-pagehead h1 { max-width: 1000px; font-size: clamp(40px, 5.7vw, 82px); }
 
 .cn-hero h1 em { color: var(--cn-cinnabar); font-style: normal; }
 .cn-hero__claim {
@@ -93,6 +117,22 @@ body.cn-page::before { background: none; opacity: 0; }
   margin-top: 28px;
   color: var(--cn-muted);
   font: 400 clamp(18px, 2.2vw, 26px)/1.48 var(--cn-serif);
+}
+
+.cn-page .ps-share {
+  color: var(--cn-muted);
+  font-size: 11px;
+}
+
+.cn-page .ps-share button {
+  min-height: 44px;
+  padding: 9px 1px;
+  color: var(--cn-muted);
+}
+
+.cn-page .ps-share button:hover { color: var(--cn-ink); }
+.cn-page .ps-share button:focus-visible {
+  outline: 2px solid var(--cn-brass);
 }
 
 .cn-abstain {
@@ -289,11 +329,10 @@ body.cn-page::before { background: none; opacity: 0; }
 .cn-limit li,
 .cn-limit > p:not(.cn-kicker) { margin-top: 9px; font: 400 14px/1.55 var(--cn-serif); }
 
-.cn-pagehead { padding: clamp(52px, 9vw, 108px) 0 clamp(42px, 7vw, 78px); border-bottom: 1px solid var(--cn-ink); }
-.cn-pagehead h1 { max-width: 1000px; }
+.cn-pagehead { padding: clamp(42px, 6vw, 80px) 0 clamp(34px, 5vw, 62px); border-bottom: 1px solid var(--cn-ink); }
 .cn-pagehead > p:not(.cn-kicker) { max-width: 800px; margin-top: 20px; color: var(--cn-muted); font: 400 clamp(17px, 2vw, 23px)/1.55 var(--cn-serif); }
 .cn-pagehead > .cn-status { margin-top: 25px; }
-.cn-pagehead--detail h1 { font-size: clamp(40px, 6.4vw, 78px); }
+.cn-pagehead--detail h1 { font-size: clamp(38px, 5.2vw, 72px); }
 
 .cn-controls { align-items: end; grid-template-columns: minmax(0, 1fr) minmax(170px, .3fr) auto; gap: 14px; padding: 22px 0; border-bottom: 1px solid var(--cn-rule); }
 .cn-controls { display: none; }
@@ -369,7 +408,6 @@ body.cn-page::before { background: none; opacity: 0; }
 }
 
 @media (max-width: 820px) {
-  .cn-local { top: var(--ps-nav-h); }
   .cn-local a:last-child { margin-left: 0; }
   .cn-hero { grid-template-columns: 1fr; align-items: start; }
   .cn-abstain { max-width: 420px; }
@@ -405,7 +443,8 @@ body.cn-page::before { background: none; opacity: 0; }
 @media (max-width: 540px) {
   .cn-main { width: min(100% - 28px, 1180px); }
   .cn-hero h1,
-  .cn-pagehead h1 { font-size: clamp(39px, 14vw, 62px); }
+  .cn-pagehead h1 { font-size: clamp(38px, 12vw, 54px); }
+  .cn-page .ps-share__dot { display: none; }
   .cn-gate { grid-template-columns: 1fr auto; }
   .cn-gate small { grid-column: 2; }
   .cn-desk header { grid-template-columns: 1fr; }
