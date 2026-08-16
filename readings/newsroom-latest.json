@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 32 are live. Health qualifiers: 1 degraded.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-16T13:01:18Z",
+  "generated_at": "2026-08-16T13:09:20Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "087d33ce103f29764b79a2b14e58e162c60ff6f5",
+  "source_commit": "b026dc23321d091ad5f1404b79f8b43b77ca1098",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -649,39 +649,39 @@
       "slug": "ooni-great-firewall-index",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "signal_id": "ooni-gfw",
-      "headline": "OONI's China anomaly index is 58.8% across 273,432 completed measurements",
+      "headline": "OONI's China anomaly index is 58.8% across 274,022 completed measurements",
       "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
       "section": "network",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-16T07:04:12Z",
-      "modified_at": "2026-08-16T07:04:12Z",
-      "claim_fingerprint": "sha256:433a80a83e294bfbfddae0068a2f0d1b68097a7cf6834d1e126f8d2c67adc8e1",
+      "published_at": "2026-08-16T13:05:09Z",
+      "modified_at": "2026-08-16T13:05:09Z",
+      "claim_fingerprint": "sha256:fe411ab5ee5fb3c11418f759b5a44ed89bcadea10a25ea5c22d053f7185a0698",
       "metric": {
         "label": "GFW anomaly index",
         "value": 58.8,
         "unit": "percent",
         "denominator": {
           "label": "completed measurements",
-          "value": 273432
+          "value": 274022
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current OONI aggregate reports a 58.8% anomaly index across 273,432 completed China measurements."
+          "statement": "The current OONI aggregate reports a 58.8% anomaly index across 274,022 completed China measurements."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
         "input": {
           "filename": "ooni-gfw-latest.json",
-          "sha256": "f7a4b99a77f01dceac49bcb7c77dd50e85a6563e0e5f351762434943e35ecd52",
-          "bytes": 7894
+          "sha256": "bd1ee6611987dfd9a94599419465da4352eaa7eae4638a29820f2dc30526f0f1",
+          "bytes": 7914
         },
-        "source_timestamp": "2026-08-16T07:04:12Z"
+        "source_timestamp": "2026-08-16T13:05:09Z"
       },
       "method": {
         "summary": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -702,39 +702,39 @@
       "slug": "in-path-interference",
       "url": "https://palimpsest.info/news/in-path-interference/",
       "signal_id": "in-path-interference",
-      "headline": "Middlebox signatures register at 1.32% in the current OONI window",
+      "headline": "Middlebox signatures register at 1.31% in the current OONI window",
       "dek": "The decomposition separates interference signatures from transport failure and tests that could not execute.",
       "section": "network",
       "order": 2,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-16T07:07:27Z",
-      "modified_at": "2026-08-16T07:07:27Z",
-      "claim_fingerprint": "sha256:4305b025f1c0a4844794490d775f9faf35dc7443f52977da8a99f2436bfce2bd",
+      "published_at": "2026-08-16T13:07:33Z",
+      "modified_at": "2026-08-16T13:07:33Z",
+      "claim_fingerprint": "sha256:a930646d41118e5d65deaa0f11e40b958db454ef67a49cacaf4332048977652e",
       "metric": {
         "label": "middlebox index",
-        "value": 1.32,
+        "value": 1.31,
         "unit": "percent",
         "denominator": {
           "label": "completed middlebox tests",
-          "value": 9576
+          "value": 9594
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current measurement-weighted middlebox index is 1.32%."
+          "statement": "The current measurement-weighted middlebox index is 1.31%."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
         "input": {
           "filename": "in-path-interference-latest.json",
-          "sha256": "6671dc3242d8f93ab26735f1008d71ee0dc7cf3f96dd715386823477adac17b0",
-          "bytes": 4322
+          "sha256": "626ee6ef55bcaea878fd13b686a36b2d2a7aebdb8cbdb61412fe27323a4845d1",
+          "bytes": 4323
         },
-        "source_timestamp": "2026-08-16T07:07:27Z"
+        "source_timestamp": "2026-08-16T13:07:33Z"
       },
       "method": {
         "summary": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
@@ -866,8 +866,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-16T07:05:42Z",
-      "modified_at": "2026-08-16T07:05:42Z",
+      "published_at": "2026-08-16T13:08:18Z",
+      "modified_at": "2026-08-16T13:08:18Z",
       "claim_fingerprint": "sha256:d11298f4540771d4f8f5b0489d93b613a353431d3c905c97f68eaca532a53560",
       "metric": {
         "label": "instruments firing",
@@ -888,10 +888,10 @@
         "url": "https://palimpsest.info/readings/ioda-outages-latest.json",
         "input": {
           "filename": "ioda-outages-latest.json",
-          "sha256": "628614c2b0a00e7ec00e39203c41665b696c45a3439fa4080843fceb632b871c",
+          "sha256": "acc5e460cb19d2181b02dbd28f190e33bed9ecf5aedb1aa1bc1ce53ba9df46d1",
           "bytes": 668
         },
-        "source_timestamp": "2026-08-16T07:05:42Z"
+        "source_timestamp": "2026-08-16T13:08:18Z"
       },
       "method": {
         "summary": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
@@ -1127,8 +1127,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-16T02:01:19Z",
-      "modified_at": "2026-08-16T02:01:19Z",
+      "published_at": "2026-08-16T13:06:24Z",
+      "modified_at": "2026-08-16T13:06:24Z",
       "claim_fingerprint": "sha256:63b339789a2037f6e03cf980055b236978487d78122b67024ea1248bc0cda8a4",
       "metric": {
         "label": "reconstructed deletions",
@@ -1149,10 +1149,10 @@
         "url": "https://palimpsest.info/readings/wayback-latest.json",
         "input": {
           "filename": "wayback-latest.json",
-          "sha256": "6c801eb1343c15c5f8b84cefd8f522126d1ae5f9dc8a515ae081931f2604c858",
-          "bytes": 1364
+          "sha256": "33e91dd90b2b5a9d6ebc2f87e248668c7ceb474b3ddeda5cfb8de81ecebbf032",
+          "bytes": 17639
         },
-        "source_timestamp": "2026-08-16T02:01:19Z"
+        "source_timestamp": "2026-08-16T13:06:24Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
