@@ -5,7 +5,35 @@ from __future__ import annotations
 import json
 from xml.etree import ElementTree as ET
 
+from core import social_observations
 from scripts import build_china_situation as builder
+
+
+def _social_state_path(tmp_path, *, active: bool):
+    registry = social_observations.load_source_registry()
+    receipts = [
+        {
+            "source_id": source.id,
+            "status": (
+                "success"
+                if active and source.id == "cgtn-telegram"
+                else "not-attempted"
+            ),
+            "rejected": 0,
+            "error_code": None,
+        }
+        for source in registry.sources
+    ]
+    latest, ledger = social_observations.build_latest(
+        [],
+        registry=registry,
+        generated_at="2026-08-16T18:00:00Z",
+        collection_receipts=receipts,
+    )
+    assert ledger == ()
+    path = tmp_path / ("social-active.json" if active else "social-zero.json")
+    path.write_bytes(social_observations.canonical_json_bytes(latest))
+    return path
 
 
 def test_builder_emits_structured_index_page_and_two_feed_views():
@@ -40,8 +68,10 @@ def test_builder_emits_structured_index_page_and_two_feed_views():
     assert len(json_feed["items"]) <= builder.FEED_LIMIT
 
 
-def test_page_makes_each_relation_and_zero_state_visible():
-    outputs, document = builder.build_outputs()
+def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
+    outputs, document = builder.build_outputs(
+        social_path=_social_state_path(tmp_path, active=False)
+    )
     page = outputs[builder.PAGE_PATH].decode("utf-8")
 
     assert "Reports." in page
@@ -59,6 +89,18 @@ def test_page_makes_each_relation_and_zero_state_visible():
     assert "Page 1 of " in page
     assert "Search this archive page" in page
     assert len(page) < 700_000
+
+
+def test_page_makes_active_social_state_visible(tmp_path):
+    outputs, document = builder.build_outputs(
+        social_path=_social_state_path(tmp_path, active=True)
+    )
+    page = outputs[builder.PAGE_PATH].decode("utf-8")
+
+    assert document["inputs"]["social_status"] == "active"
+    assert "Social observations are connected." in page
+    assert "0 sanitized observations are present" in page
+    assert "credentials and reviewed sources are not active yet" not in page
 
 
 def test_situation_styles_preserve_dark_contrast_and_readable_headlines():
