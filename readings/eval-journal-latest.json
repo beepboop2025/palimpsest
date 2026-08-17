@@ -3,7 +3,7 @@
     {
       "author": "Palimpsest Eval Lab",
       "claim": "The current eval record supports a provisional measurement claim; it does not yet support calling the lexical construct human-validated or the findings independently replicated.",
-      "content_sha256": "56cb62cbf339f484d3f43e6b3db61917b796ffdd14192b849ca363c27b0f4986",
+      "content_sha256": "f4393f9f3f3c6b397b7c10628f955846e11c0a8df6be5b0eb5e8ea546ca074b3",
       "dek": "Palimpsest now publishes a machine-readable assurance ladder that keeps chain integrity, exact-prompt commitment, response recomputation, statistical design, human validation, and independent replication on separate axes.",
       "evidence": [
         {
@@ -11,7 +11,7 @@
           "label": "AI Eval Assurance",
           "path": "readings/eval-assurance-latest.json",
           "role": "Live dimensions, checks, claim ceiling, limitations, and verification commands",
-          "sha256": "0a65634e2e2e15f22a4c1ea33cc0f54ae2362c966f28d21395f327b10a042ac8",
+          "sha256": "1f61d3385a5a36da7c2582015431dcaf5a8a9d869025911fbf9f283417e19ea7",
           "url": "/readings/eval-assurance-latest.json"
         },
         {
@@ -82,7 +82,7 @@
         "url": "/readings/eval-assurance-latest.json",
         "value": "provisional measurement"
       },
-      "modified_at": "2026-08-17T07:12:39.625368Z",
+      "modified_at": "2026-08-17T07:47:07.930842Z",
       "published_at": "2026-08-14T17:54:00Z",
       "schema": "palimpsest.eval-journal-article.v1",
       "sections": [
@@ -148,7 +148,7 @@
     {
       "author": "Palimpsest Eval Lab",
       "claim": "The v4 judge removes a demonstrated quote-and-mention false positive while preserving a deterministic, inspectable rule; it does not replace the pending human-validation study.",
-      "content_sha256": "2ac31dc8eb3da4277871fd99ec3e86aadbcd7e20692737109ad11131c83f2605",
+      "content_sha256": "281d08d8a0d5464e6c3ddd8f7b4ac84b606b27d3f04625d75ed37991382b9db1",
       "dek": "A transparent lexical judge can still make a basic category error: finding refusal words inside a quotation and calling the whole response a refusal. Method v4 narrows the decision to the model's own speech act and forces a new baseline.",
       "evidence": [
         {
@@ -196,7 +196,7 @@
           "label": "Current assurance report",
           "path": "readings/eval-assurance-latest.json",
           "role": "Prevents a code fix from being presented as completed construct validation",
-          "sha256": "0a65634e2e2e15f22a4c1ea33cc0f54ae2362c966f28d21395f327b10a042ac8",
+          "sha256": "1f61d3385a5a36da7c2582015431dcaf5a8a9d869025911fbf9f283417e19ea7",
           "url": "/readings/eval-assurance-latest.json"
         }
       ],
@@ -216,7 +216,7 @@
         "url": "/readings/refusal-drift-latest.json",
         "value": "method v4"
       },
-      "modified_at": "2026-08-17T07:12:39.625368Z",
+      "modified_at": "2026-08-17T07:47:07.930842Z",
       "published_at": "2026-08-14T17:50:00Z",
       "schema": "palimpsest.eval-journal-article.v1",
       "sections": [
@@ -272,7 +272,7 @@
     {
       "author": "Palimpsest Eval Lab",
       "claim": "GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.",
-      "content_sha256": "15093f1c8d7f96446faeb41e8ca1435f8dfa7e91da3532dd3cdeef3c06ccd3a7",
+      "content_sha256": "e914a0aa98b51e1f20b5fff19b1852fe078d4a7cf361b6c318527cb9a941204c",
       "dek": "The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.",
       "evidence": [
         {
@@ -320,7 +320,7 @@
           "label": "Current assurance state",
           "path": "readings/eval-assurance-latest.json",
           "role": "Keeps GFI at legacy partial evidence until the v2 artifacts actually exist",
-          "sha256": "0a65634e2e2e15f22a4c1ea33cc0f54ae2362c966f28d21395f327b10a042ac8",
+          "sha256": "1f61d3385a5a36da7c2582015431dcaf5a8a9d869025911fbf9f283417e19ea7",
           "url": "/readings/eval-assurance-latest.json"
         }
       ],
@@ -346,7 +346,7 @@
         "url": "/readings/gfi-evaluation-protocol-v2.json",
         "value": "sealed evidence live"
       },
-      "modified_at": "2026-08-17T07:12:39.625368Z",
+      "modified_at": "2026-08-17T07:47:07.930842Z",
       "published_at": "2026-08-14T17:45:00Z",
       "schema": "palimpsest.eval-journal-article.v1",
       "sections": [
@@ -412,7 +412,7 @@
     {
       "author": "Palimpsest's founder",
       "claim": "The initial observation justified a controlled research question—not a verdict about every Chinese model, every political topic, or the motive behind any one output.",
-      "content_sha256": "68af5b5fc11a946d1d9fb161ef326f41e6a88c6925ab30e6b3d3f7b18fc095ff",
+      "content_sha256": "cb42619138cd82a55a8b2f423b1075f7445a77c396c636eb4901b7db79dd1438",
       "dek": "Palimpsest began when its founder saw Chinese and state-aligned language models change, withhold, or replace answers to criticism of the Chinese Communist Party. The harder question was what one disturbing answer could actually prove.",
       "evidence": [
         {
@@ -424,11 +424,11 @@
           "url": "/readings/eval-registry.html"
         },
         {
-          "bytes": 323461,
+          "bytes": 325912,
           "label": "Evaluation registry chain",
           "path": "readings/eval-registry.jsonl",
           "role": "Preregistrations and run attestations in publication order",
-          "sha256": "513ed3710d33614ba02b0606abb3bb651695a7e0f19538071b3b396d69f7bd57",
+          "sha256": "ba6852fd682a657f5a88dc703ca4898fa7ecd9ab1a98f5fdf0226bc1fc9ed688",
           "url": "/readings/eval-registry.jsonl"
         },
         {
@@ -444,7 +444,7 @@
           "label": "AI Eval Assurance",
           "path": "readings/eval-assurance-latest.json",
           "role": "Machine-readable ceiling on what the current evidence can support",
-          "sha256": "0a65634e2e2e15f22a4c1ea33cc0f54ae2362c966f28d21395f327b10a042ac8",
+          "sha256": "1f61d3385a5a36da7c2582015431dcaf5a8a9d869025911fbf9f283417e19ea7",
           "url": "/readings/eval-assurance-latest.json"
         },
         {
@@ -483,7 +483,7 @@
         "url": "/readings/eval-assurance-latest.json",
         "value": "provisional measurement"
       },
-      "modified_at": "2026-08-17T07:12:39.625368Z",
+      "modified_at": "2026-08-17T07:47:07.930842Z",
       "published_at": "2026-08-14T17:40:00Z",
       "schema": "palimpsest.eval-journal-article.v1",
       "sections": [
@@ -538,7 +538,7 @@
   ],
   "description": "Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.",
   "feed_url": "https://palimpsest.info/evals/feed.json",
-  "generated_at": "2026-08-17T07:12:39.625368Z",
+  "generated_at": "2026-08-17T07:47:07.930842Z",
   "home_page_url": "https://palimpsest.info/evals/",
   "method": "Deterministic rendering with a closed editorial contract and fresh SHA-256 receipts for every local evidence citation.",
   "n_articles": 4,
