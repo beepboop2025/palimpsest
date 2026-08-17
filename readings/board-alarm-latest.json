@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-17T07:40:17.973719+00:00",
-  "board_e_value": 51.165,
+  "generated_at": "2026-08-17T13:28:34.829837+00:00",
+  "board_e_value": 51.375,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,31 +13,29 @@
   },
   "layers": {
     "network": {
-      "e": 117.404,
+      "e": 117.53,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 459.278,
         "ioda_outages": 1.0,
-        "ooni_gfw": 4.218,
+        "ooni_gfw": 4.721,
         "tor_bridge_cn": 5.121
       },
-      "recent_alarms": [
-        "ooni_gfw"
-      ]
+      "recent_alarms": []
     },
     "content": {
-      "e": 7.006,
+      "e": 7.272,
       "n_signals": 6,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 2.643,
-        "ddti_threat": 3.756,
-        "gdelt_containment": 1.986,
-        "github_refuge": 1.587,
+        "ddti_novelty": 2.219,
+        "ddti_threat": 4.952,
+        "gdelt_containment": 2.889,
+        "github_refuge": 1.511,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
@@ -55,40 +53,38 @@
     "network"
   ],
   "layer_coincidence": 1,
-  "recently_fired": [
-    "ooni_gfw"
-  ],
+  "recently_fired": [],
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 4.2178,
-      "n": 159,
+      "e": 4.721,
+      "n": 160,
       "direction": "up",
-      "robust_z": 0.15,
+      "robust_z": 0.07,
       "driver_side": "up",
-      "readings_since_alarm": 12,
+      "readings_since_alarm": 13,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 3.7561,
-      "n": 298,
+      "e": 4.9522,
+      "n": 300,
       "direction": "down",
-      "robust_z": -0.93,
+      "robust_z": -0.98,
       "driver_side": "down",
-      "readings_since_alarm": 59,
+      "readings_since_alarm": 61,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 2.6435,
-      "n": 298,
+      "e": 2.2193,
+      "n": 300,
       "direction": "down",
       "robust_z": -12.14,
       "driver_side": "down",
-      "readings_since_alarm": 40,
+      "readings_since_alarm": 42,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -105,10 +101,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 1.9862,
-      "n": 165,
-      "direction": "down",
-      "robust_z": -0.34,
+      "e": 2.8887,
+      "n": 166,
+      "direction": "up",
+      "robust_z": 0.67,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -116,11 +112,11 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 1.5865,
-      "n": 82,
-      "direction": "up",
-      "robust_z": 0.67,
-      "driver_side": "up",
+      "e": 1.5111,
+      "n": 83,
+      "direction": "flat",
+      "robust_z": 0.0,
+      "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "takedown/pressure events on refuge repositories"
@@ -167,7 +163,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 114,
+      "n": 115,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -178,7 +174,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 116,
+      "n": 117,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -249,7 +245,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 0.5,
+      "age_hours": 6.3,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 7 of 21 adjacent-run pairs"
