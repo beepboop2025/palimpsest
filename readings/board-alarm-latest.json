@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-17T13:28:34.829837+00:00",
-  "board_e_value": 51.375,
+  "generated_at": "2026-08-17T19:18:46.800680+00:00",
+  "board_e_value": 51.343,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,28 +13,28 @@
   },
   "layers": {
     "network": {
-      "e": 117.53,
+      "e": 117.107,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 459.278,
         "ioda_outages": 1.0,
-        "ooni_gfw": 4.721,
+        "ooni_gfw": 3.029,
         "tor_bridge_cn": 5.121
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 7.272,
+      "e": 7.501,
       "n_signals": 6,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 2.219,
-        "ddti_threat": 4.952,
-        "gdelt_containment": 2.889,
+        "ddti_novelty": 1.975,
+        "ddti_threat": 7.007,
+        "gdelt_containment": 2.452,
         "github_refuge": 1.511,
         "weibo_suppression": 1.0
       },
@@ -57,34 +57,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 4.721,
-      "n": 160,
-      "direction": "up",
-      "robust_z": 0.07,
+      "e": 3.0286,
+      "n": 161,
+      "direction": "down",
+      "robust_z": -0.44,
       "driver_side": "up",
-      "readings_since_alarm": 13,
+      "readings_since_alarm": 14,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 4.9522,
-      "n": 300,
+      "e": 7.0074,
+      "n": 302,
       "direction": "down",
-      "robust_z": -0.98,
+      "robust_z": -1.02,
       "driver_side": "down",
-      "readings_since_alarm": 61,
+      "readings_since_alarm": 63,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 2.2193,
-      "n": 300,
+      "e": 1.9751,
+      "n": 302,
       "direction": "down",
       "robust_z": -12.14,
       "driver_side": "down",
-      "readings_since_alarm": 42,
+      "readings_since_alarm": 44,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -101,10 +101,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.8887,
-      "n": 166,
-      "direction": "up",
-      "robust_z": 0.67,
+      "e": 2.4517,
+      "n": 167,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -163,7 +163,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 115,
+      "n": 116,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -174,7 +174,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 117,
+      "n": 118,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -207,7 +207,7 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 7,
+          "pairs_seen": 8,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
@@ -216,7 +216,7 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 7,
+          "pairs_seen": 8,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
@@ -225,7 +225,7 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 7,
+          "pairs_seen": 8,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
@@ -234,13 +234,13 @@
           "state": "calibrating",
           "evalue": null,
           "p0": null,
-          "pairs_seen": 7,
+          "pairs_seen": 8,
           "pairs_needed": 21,
           "undetectable_at_or_below": null,
           "monitored_comparisons": null
         }
       },
-      "n_rows": 28,
+      "n_rows": 32,
       "instrument": {
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
@@ -248,7 +248,7 @@
       "age_hours": 6.3,
       "bound_hours": 30.0,
       "state": "calibrating",
-      "reason": "burn-in in progress: furthest model has 7 of 21 adjacent-run pairs"
+      "reason": "burn-in in progress: furthest model has 8 of 21 adjacent-run pairs"
     }
   },
   "headline": "single layer elevated: network",
