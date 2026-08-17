@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-17T13:24:02.933676+00:00",
+  "generated_at": "2026-08-17T19:09:39.264998+00:00",
   "method_version": 2,
   "source": "Globalping (api.globalping.io) volunteer probes inside mainland China",
   "scope": "DNS answers received by probes INSIDE China for a fixed panel of censored and benign domains, classified against a same-round control arm outside China",
@@ -20,70 +20,76 @@
     {
       "domain": "torproject.org",
       "role": "measurement",
-      "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 2 answering vantages [Chengdu (AS37963), Guangzhou (AS45090)]"
+      "verdict": "INSUFFICIENT",
+      "detail": "only 1 vantage(s) answered; regional variation cannot be judged below 2"
     },
     {
       "domain": "rsf.org",
       "role": "measurement",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 7 answering vantages [Beijing (AS37963), Beijing (AS45090), Chengdu (AS37963), Chongqing (AS45090), Guangzhou (AS37963), Guangzhou (AS55990), Shanghai (AS45090)]"
+      "detail": "forged from all 8 answering vantages [Beijing (AS45090), Beijing (AS55990), Chengdu (AS37963), Guangzhou (AS37963), Guangzhou (AS45090), Shanghai (AS37963), Shenzhen (AS37963), Shenzhen (AS45090)]"
     },
     {
       "domain": "www.hrw.org",
       "role": "measurement",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 7 answering vantages [Beijing (AS45090), Beijing (AS55990), Chengdu (AS45090), Guangzhou (AS37963), Guangzhou (AS45090), Hangzhou (AS37963)]"
+      "detail": "forged from all 6 answering vantages [Beijing (AS55990), Chengdu (AS37963), Chengdu (AS45090), Shanghai (AS37963), Shanghai (AS45090), Shenzhen (AS37963)]"
     },
     {
       "domain": "zh.wikipedia.org",
       "role": "measurement",
       "verdict": "REGIONAL",
-      "detail": "blocked from 10/14 vantages [Beijing (AS37963), Beijing (AS55990), Chengdu (AS37963), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS37963), Guangzhou (AS55990), Shanghai (AS45090), Shanghai (AS55990), Shenzhen (AS37963)] but resolving correctly from [Beijing (AS45090), Guangzhou (AS45090), Hangzhou (AS37963)] — filtering is not uniform"
+      "detail": "blocked from 13/14 vantages [Beijing (AS37963), Beijing (AS55990), Chengdu (AS37963), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS37963), Guangzhou (AS45090), Hangzhou (AS37963), Nanjing (AS45090), Shanghai (AS37963), Shanghai (AS45090), Shenzhen (AS37963), Shenzhen (AS45090)] but resolving correctly from [Beijing (AS45090)] — filtering is not uniform"
     },
     {
       "domain": "wikileaks.org",
       "role": "measurement",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 6 answering vantages [Beijing (AS55990), Chengdu (AS37963), Chongqing (AS45090), Guangzhou (AS45090), Guangzhou (AS55990), Shanghai (AS45090)]"
+      "detail": "forged from all 7 answering vantages [Beijing (AS45090), Chengdu (AS45090), Guangzhou (AS45090), Hangzhou (AS37963), Nanjing (AS45090), Shenzhen (AS45090), Wuhan (AS37963)]"
     },
     {
       "domain": "en.wikipedia.org",
       "role": "boundary",
       "verdict": "REGIONAL",
-      "detail": "blocked from 13/14 vantages [Beijing (AS37963), Beijing (AS45090), Beijing (AS55990), Chengdu (AS37963), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS37963), Guangzhou (AS45090), Guangzhou (AS55990), Hangzhou (AS37963), Shanghai (AS55990), Shenzhen (AS37963)] but resolving correctly from [Shanghai (AS45090)] — filtering is not uniform"
+      "detail": "blocked from 10/14 vantages [Beijing (AS37963), Beijing (AS55990), Chengdu (AS37963), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS37963), Guangzhou (AS45090), Hangzhou (AS37963), Nanjing (AS45090), Shenzhen (AS37963)] but resolving correctly from [Beijing (AS45090), Shanghai (AS37963), Shanghai (AS45090), Shenzhen (AS45090)] — filtering is not uniform"
     },
     {
       "domain": "archive.org",
       "role": "boundary",
-      "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 6 answering vantages [Beijing (AS45090), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS45090), Shanghai (AS45090), Shanghai (AS55990)]"
+      "verdict": "INSUFFICIENT",
+      "detail": "only 1 vantage(s) answered; regional variation cannot be judged below 2"
     },
     {
       "domain": "duckduckgo.com",
       "role": "boundary",
       "verdict": "UNIFORM_BLOCKED",
-      "detail": "forged from all 8 answering vantages [Beijing (AS37963), Beijing (AS55990), Chengdu (AS37963), Chongqing (AS45090), Guangzhou (AS45090), Guangzhou (AS55990), Hangzhou (AS37963), Shenzhen (AS37963)]"
+      "detail": "forged from all 7 answering vantages [Beijing (AS45090), Chengdu (AS45090), Chongqing (AS45090), Guangzhou (AS45090), Nanjing (AS45090), Shenzhen (AS37963), Shenzhen (AS45090)]"
+    },
+    {
+      "domain": "github.com",
+      "role": "boundary",
+      "verdict": "INSUFFICIENT",
+      "detail": "only 1 vantage(s) answered; regional variation cannot be judged below 2"
     }
   ],
   "boundary": [
     {
       "domain": "en.wikipedia.org",
-      "n_forged": 13,
-      "n_clean": 1,
+      "n_forged": 10,
+      "n_clean": 4,
       "geo_variable": false,
       "state": "split across vantages"
     },
     {
       "domain": "archive.org",
-      "n_forged": 6,
+      "n_forged": 1,
       "n_clean": 0,
       "geo_variable": false,
       "state": "blocked from every answering vantage"
     },
     {
       "domain": "duckduckgo.com",
-      "n_forged": 8,
+      "n_forged": 7,
       "n_clean": 0,
       "geo_variable": false,
       "state": "blocked from every answering vantage"
@@ -91,9 +97,9 @@
     {
       "domain": "github.com",
       "n_forged": 0,
-      "n_clean": 0,
+      "n_clean": 1,
       "geo_variable": false,
-      "state": "no classifiable answer this round"
+      "state": "clean from every answering vantage"
     }
   ],
   "boundary_note": "domains whose treatment is reported to vary, measured beside the headline panel and deliberately excluded from the block rate. They are where a REGIONAL verdict can appear at all; the measurement set is long-blocked by design and saturates at uniform",
@@ -122,38 +128,51 @@
       "ownership_resolved": true,
       "geo_variable": false,
       "n_vantages": 14,
-      "n_forged": 2,
+      "n_forged": 1,
       "n_clean": 0,
       "n_silent": 0,
       "n_geo_variable": 0,
-      "n_undetermined": 12,
+      "n_undetermined": 13,
       "forged_fraction": 1.0,
       "vantages": [
         {
           "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
+          "state": "undetermined",
           "answers": [
-            "104.244.46.21"
+            "216.234.179.13"
           ],
           "answer_owners": [
-            "TWITTER"
+            "BOOST-MOBILE"
           ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "64.33.88.161"
+          ],
+          "answer_owners": [
+            "MIDCO-NET"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
           "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
+          "state": "forged",
           "answers": [
-            "202.106.1.2"
+            "31.13.95.34"
           ],
           "answer_owners": [
-            "CHINA169-BJ"
+            "FACEBOOK"
           ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
         },
         {
           "city": "Nanjing",
@@ -161,36 +180,23 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "4.36.66.178"
+            "202.181.7.85"
           ],
           "answer_owners": [
-            "LEVEL3"
+            "EXPERT-AS-AP"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Chongqing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "4.36.66.178"
-          ],
-          "answer_owners": [
-            "LEVEL3"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "64.33.88.161"
+            "4.36.66.178"
           ],
           "answer_owners": [
-            "MIDCO-NET"
+            "LEVEL3"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
@@ -208,28 +214,28 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Chengdu",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "69.63.184.14"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Guangzhou",
+          "city": "Beijing",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "202.181.7.85"
+            "203.161.230.171"
           ],
           "answer_owners": [
-            "EXPERT-AS-AP"
+            "HKTDCS-AS-AP"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Hangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "98.159.108.61"
+          ],
+          "answer_owners": [
+            "AS-GLOBALTELEHOST"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
@@ -247,48 +253,9 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "4.36.66.178"
-          ],
-          "answer_owners": [
-            "LEVEL3"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "216.234.179.13"
-          ],
-          "answer_owners": [
-            "BOOST-MOBILE"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
           "city": "Chengdu",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "64.33.88.161"
-          ],
-          "answer_owners": [
-            "MIDCO-NET"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
             "203.161.230.171"
@@ -299,15 +266,54 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Shanghai",
+          "city": "Shenzhen",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "4.36.66.178"
+            "216.234.179.13"
           ],
           "answer_owners": [
-            "LEVEL3"
+            "BOOST-MOBILE"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "202.106.1.2"
+          ],
+          "answer_owners": [
+            "CHINA169-BJ"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "216.234.179.13"
+          ],
+          "answer_owners": [
+            "BOOST-MOBILE"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Chongqing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "216.234.179.13"
+          ],
+          "answer_owners": [
+            "BOOST-MOBILE"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         }
@@ -335,9 +341,9 @@
       "ownership_resolved": true,
       "geo_variable": false,
       "n_vantages": 14,
-      "n_forged": 7,
+      "n_forged": 8,
       "n_clean": 0,
-      "n_silent": 1,
+      "n_silent": 0,
       "n_geo_variable": 0,
       "n_undetermined": 6,
       "forged_fraction": 1.0,
@@ -346,22 +352,14 @@
           "city": "Guangzhou",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
+          "state": "forged",
           "answers": [
-            "69.162.134.178"
+            "199.59.149.239"
           ],
           "answer_owners": [
-            "HVC-AS"
+            "TWITTER"
           ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Nanjing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "silent",
-          "answers": [],
-          "answer_owners": []
+          "why": "answered from a network this round's injector drew from (TWITTER)"
         },
         {
           "city": "Chengdu",
@@ -369,72 +367,59 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "128.242.240.125"
+            "65.49.26.98"
           ],
           "answer_owners": [
-            "HostRoyale"
+            "connectria-asn-1"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Beijing",
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "98.159.108.57"
+          ],
+          "answer_owners": [
+            "AS-GLOBALTELEHOST"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Shenzhen",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "157.240.12.5"
+            "31.13.88.169"
           ],
           "answer_owners": [
             "FACEBOOK"
           ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "69.63.181.12"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+          "why": "answered with an address the same round returned for zh.wikipedia.org"
         },
         {
           "city": "Shenzhen",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
+          "state": "forged",
           "answers": [
-            "128.242.250.148"
+            "103.97.176.73"
           ],
           "answer_owners": [
-            "HostRoyale"
+            "COGNETCLOUD"
           ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+          "why": "answered with an address the same round returned for wikileaks.org"
         },
         {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "69.50.221.20"
-          ],
-          "answer_owners": [
-            "CRYSTALTECH"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Chengdu",
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.112.4"
+            "31.13.112.9"
           ],
           "answer_owners": [
             "FACEBOOK"
@@ -442,38 +427,77 @@
           "why": "answered from a network this round's injector drew from (FACEBOOK)"
         },
         {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
+          "city": "Beijing",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "108.160.165.147"
+            "159.138.20.20"
           ],
           "answer_owners": [
-            "DROPBOX"
+            "HWCLOUDS-AS-AP"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
           "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.85.34"
+            "157.240.7.5"
           ],
           "answer_owners": [
             "FACEBOOK"
           ],
-          "why": "answered with an address the same round returned for wikileaks.org"
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
         },
         {
           "city": "Beijing",
           "asn": 55990,
           "network": "Huawei Cloud Service data center",
+          "state": "forged",
+          "answers": [
+            "103.97.176.73"
+          ],
+          "answer_owners": [
+            "COGNETCLOUD"
+          ],
+          "why": "answered with an address the same round returned for wikileaks.org"
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "31.13.80.169"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for www.hrw.org"
+        },
+        {
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "108.160.165.48"
+            "174.37.54.20"
+          ],
+          "answer_owners": [
+            "SOFTLAYER"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "108.160.166.148"
           ],
           "answer_owners": [
             "DROPBOX"
@@ -481,9 +505,9 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
+          "city": "Chengdu",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
             "104.244.45.246"
@@ -494,34 +518,23 @@
           "why": "answered from a network this round's injector drew from (TWITTER)"
         },
         {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "199.16.158.8"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Chongqing",
+          "city": "Tianjin",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
+          "state": "undetermined",
           "answers": [
-            "199.59.149.238"
+            "108.160.162.31"
           ],
           "answer_owners": [
-            "TWITTER"
+            "DROPBOX"
           ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         }
       ],
       "pool_evidence": [
-        "31.13.85.34"
+        "103.97.176.73",
+        "31.13.80.169",
+        "31.13.88.169"
       ]
     },
     {
@@ -543,431 +556,6 @@
       "ownership_resolved": true,
       "geo_variable": false,
       "n_vantages": 14,
-      "n_forged": 7,
-      "n_clean": 0,
-      "n_silent": 0,
-      "n_geo_variable": 0,
-      "n_undetermined": 7,
-      "forged_fraction": 1.0,
-      "vantages": [
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.16.158.190"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Chongqing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "182.50.139.56"
-          ],
-          "answer_owners": [
-            "AS-26496-GO-DADDY-COM-LLC"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "74.86.17.48"
-          ],
-          "answer_owners": [
-            "SOFTLAYER"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "31.13.95.18"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "50.23.209.199"
-          ],
-          "answer_owners": [],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Shenzhen",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "128.242.240.61"
-          ],
-          "answer_owners": [
-            "HostRoyale"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "199.59.149.207"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "31.13.94.7"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "98.159.108.61"
-          ],
-          "answer_owners": [
-            "AS-GLOBALTELEHOST"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "185.45.7.185"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "104.244.46.165"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Chengdu",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "173.252.108.3"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Chengdu",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "162.125.6.1"
-          ],
-          "answer_owners": [
-            "DROPBOX"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.16.158.190"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        }
-      ],
-      "pool_evidence": []
-    },
-    {
-      "domain": "zh.wikipedia.org",
-      "expected_censored": true,
-      "role": "measurement",
-      "ddti": "INFORMATION",
-      "control_answers": [
-        "185.15.59.224"
-      ],
-      "control_probes": 2,
-      "control_countries": [
-        "DE",
-        "NL"
-      ],
-      "control_owners": [
-        "WIKIMEDIA"
-      ],
-      "ownership_resolved": true,
-      "geo_variable": false,
-      "n_vantages": 14,
-      "n_forged": 10,
-      "n_clean": 4,
-      "n_silent": 0,
-      "n_geo_variable": 0,
-      "n_undetermined": 0,
-      "forged_fraction": 0.714,
-      "vantages": [
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "103.102.166.224"
-          ],
-          "answer_owners": [
-            "WIKIMEDIA"
-          ]
-        },
-        {
-          "city": "Chengdu",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "31.13.106.4"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Chongqing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.16.158.12"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered with an address the same round returned for en.wikipedia.org"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.59.148.96"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered with an address the same round returned for en.wikipedia.org"
-        },
-        {
-          "city": "Shenzhen",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "31.13.73.169"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered with an address the same round returned for en.wikipedia.org"
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "31.13.88.169"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered with an address the same round returned for en.wikipedia.org"
-        },
-        {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "clean",
-          "answers": [
-            "103.102.166.224"
-          ],
-          "answer_owners": [
-            "WIKIMEDIA"
-          ]
-        },
-        {
-          "city": "Chengdu",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "31.13.112.9"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "199.16.158.12"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered with an address the same round returned for en.wikipedia.org"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "199.59.148.20"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "31.13.106.4"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "103.102.166.224"
-          ],
-          "answer_owners": [
-            "WIKIMEDIA"
-          ]
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "31.13.94.41"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered with an address the same round returned for en.wikipedia.org"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "103.102.166.224"
-          ],
-          "answer_owners": [
-            "WIKIMEDIA"
-          ]
-        }
-      ],
-      "pool_evidence": [
-        "103.102.166.224",
-        "199.16.158.12",
-        "199.59.148.96",
-        "31.13.73.169",
-        "31.13.88.169",
-        "31.13.94.41"
-      ]
-    },
-    {
-      "domain": "wikileaks.org",
-      "expected_censored": true,
-      "role": "measurement",
-      "ddti": "INFORMATION",
-      "control_answers": [
-        "51.159.197.136",
-        "80.81.248.21"
-      ],
-      "control_probes": 2,
-      "control_countries": [
-        "DE",
-        "NL"
-      ],
-      "control_owners": [
-        "AS12876",
-        "SPEEDBONE-AS"
-      ],
-      "ownership_resolved": true,
-      "geo_variable": false,
-      "n_vantages": 14,
       "n_forged": 6,
       "n_clean": 0,
       "n_silent": 0,
@@ -981,109 +569,33 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "208.31.254.33"
+            "108.160.169.175"
           ],
           "answer_owners": [
-            "COGENT-174"
+            "DROPBOX"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Chongqing",
+          "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
+          "state": "undetermined",
           "answers": [
-            "31.13.85.34"
+            "108.160.163.116"
           ],
           "answer_owners": [
-            "FACEBOOK"
+            "DROPBOX"
           ],
-          "why": "answered with an address the same round returned for rsf.org"
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
           "city": "Chengdu",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "185.45.7.97"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "162.125.2.6"
-          ],
-          "answer_owners": [
-            "DROPBOX"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Shenzhen",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "65.49.26.98"
-          ],
-          "answer_owners": [
-            "connectria-asn-1"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "108.160.166.9"
-          ],
-          "answer_owners": [
-            "DROPBOX"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "128.242.245.93"
-          ],
-          "answer_owners": [
-            "HostRoyale"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "184.173.136.86"
-          ],
-          "answer_owners": [],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
           "state": "forged",
           "answers": [
-            "104.244.46.17"
+            "202.160.129.37"
           ],
           "answer_owners": [
             "TWITTER"
@@ -1091,43 +603,56 @@
           "why": "answered from a network this round's injector drew from (TWITTER)"
         },
         {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "154.83.14.134"
+            "23.225.141.210"
           ],
           "answer_owners": [
-            "YISUCLOUDLTD-HK"
+            "CNSERVERS"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "31.13.76.65"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
           "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "202.160.128.16"
+            "199.59.150.43"
           ],
           "answer_owners": [
             "TWITTER"
           ],
-          "why": "answered with an address the same round returned for duckduckgo.com"
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "199.59.148.247"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "108.160.170.41"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
           "city": "Chengdu",
@@ -1135,7 +660,7 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.64.7"
+            "69.63.190.26"
           ],
           "answer_owners": [
             "FACEBOOK"
@@ -1143,28 +668,92 @@
           "why": "answered from a network this round's injector drew from (FACEBOOK)"
         },
         {
-          "city": "Guangzhou",
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "forged",
+          "answers": [
+            "31.13.80.169"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for rsf.org"
+        },
+        {
+          "city": "Shanghai",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "157.240.7.5"
+            "69.63.181.12"
           ],
           "answer_owners": [
             "FACEBOOK"
           ],
           "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "108.160.169.175"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "162.125.18.129"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "4.78.139.54"
+          ],
+          "answer_owners": [
+            "LEVEL3"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Tianjin",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "108.160.163.116"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         }
       ],
       "pool_evidence": [
-        "202.160.128.16",
-        "31.13.85.34"
+        "31.13.80.169"
       ]
     },
     {
-      "domain": "en.wikipedia.org",
+      "domain": "zh.wikipedia.org",
       "expected_censored": true,
-      "role": "boundary",
+      "role": "measurement",
       "ddti": "INFORMATION",
       "control_answers": [
         "185.15.59.224"
@@ -1193,15 +782,27 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "31.13.94.41"
+            "157.240.17.35"
           ],
           "answer_owners": [
             "FACEBOOK"
           ],
-          "why": "answered with an address the same round returned for zh.wikipedia.org"
+          "why": "answered with an address the same round returned for en.wikipedia.org"
         },
         {
-          "city": "Chongqing",
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "clean",
+          "answers": [
+            "103.102.166.224"
+          ],
+          "answer_owners": [
+            "WIKIMEDIA"
+          ]
+        },
+        {
+          "city": "Nanjing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
@@ -1211,7 +812,98 @@
           "answer_owners": [
             "FACEBOOK"
           ],
-          "why": "answered with an address the same round returned for zh.wikipedia.org"
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "31.13.106.4"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "31.13.88.169"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for rsf.org"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "199.59.148.20"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "31.13.94.37"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Hangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "199.16.158.182"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "forged",
+          "answers": [
+            "31.13.73.9"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for en.wikipedia.org"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "31.13.88.26"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for en.wikipedia.org"
         },
         {
           "city": "Chengdu",
@@ -1220,6 +912,308 @@
           "state": "forged",
           "answers": [
             "199.16.158.12"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Chengdu",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "199.59.148.96"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered with an address the same round returned for en.wikipedia.org"
+        },
+        {
+          "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "31.13.88.169"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for rsf.org"
+        },
+        {
+          "city": "Chongqing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "31.13.88.169"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for rsf.org"
+        }
+      ],
+      "pool_evidence": [
+        "103.102.166.224",
+        "157.240.17.35",
+        "199.59.148.96",
+        "31.13.73.9",
+        "31.13.88.169",
+        "31.13.88.26"
+      ]
+    },
+    {
+      "domain": "wikileaks.org",
+      "expected_censored": true,
+      "role": "measurement",
+      "ddti": "INFORMATION",
+      "control_answers": [
+        "51.159.197.136",
+        "80.81.248.21"
+      ],
+      "control_probes": 2,
+      "control_countries": [
+        "DE",
+        "NL"
+      ],
+      "control_owners": [
+        "AS12876",
+        "SPEEDBONE-AS"
+      ],
+      "ownership_resolved": true,
+      "geo_variable": false,
+      "n_vantages": 14,
+      "n_forged": 7,
+      "n_clean": 0,
+      "n_silent": 0,
+      "n_geo_variable": 0,
+      "n_undetermined": 7,
+      "forged_fraction": 1.0,
+      "vantages": [
+        {
+          "city": "Guangzhou",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "69.171.234.48"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "185.60.219.36"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for duckduckgo.com"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "69.171.234.48"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "202.160.128.40"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "75.126.164.178"
+          ],
+          "answer_owners": [
+            "SOFTLAYER"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "108.160.170.45"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Beijing",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "122.10.85.4"
+          ],
+          "answer_owners": [
+            "DXTL-HK"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Hangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "157.240.1.33"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "undetermined",
+          "answers": [
+            "173.236.212.42"
+          ],
+          "answer_owners": [
+            "DREAMHOST-AS"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Chengdu",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "69.63.186.30"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "199.96.58.105"
+          ],
+          "answer_owners": [],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "103.97.176.73"
+          ],
+          "answer_owners": [
+            "COGNETCLOUD"
+          ],
+          "why": "answered with an address the same round returned for rsf.org"
+        },
+        {
+          "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "108.160.169.185"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Chongqing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "128.242.245.125"
+          ],
+          "answer_owners": [
+            "HostRoyale"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        }
+      ],
+      "pool_evidence": [
+        "103.97.176.73",
+        "185.60.219.36"
+      ]
+    },
+    {
+      "domain": "en.wikipedia.org",
+      "expected_censored": true,
+      "role": "boundary",
+      "ddti": "INFORMATION",
+      "control_answers": [
+        "185.15.59.224"
+      ],
+      "control_probes": 2,
+      "control_countries": [
+        "DE",
+        "NL"
+      ],
+      "control_owners": [
+        "WIKIMEDIA"
+      ],
+      "ownership_resolved": true,
+      "geo_variable": false,
+      "n_vantages": 14,
+      "n_forged": 10,
+      "n_clean": 4,
+      "n_silent": 0,
+      "n_geo_variable": 0,
+      "n_undetermined": 0,
+      "forged_fraction": 0.714,
+      "vantages": [
+        {
+          "city": "Guangzhou",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "199.59.148.96"
           ],
           "answer_owners": [
             "TWITTER"
@@ -1239,12 +1233,24 @@
           ]
         },
         {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "clean",
+          "answers": [
+            "103.102.166.224"
+          ],
+          "answer_owners": [
+            "WIKIMEDIA"
+          ]
+        },
+        {
+          "city": "Chengdu",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "199.59.148.229"
+            "199.16.158.9"
           ],
           "answer_owners": [
             "TWITTER"
@@ -1252,12 +1258,24 @@
           "why": "answered from a network this round's injector drew from (TWITTER)"
         },
         {
+          "city": "Shanghai",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "103.102.166.224"
+          ],
+          "answer_owners": [
+            "WIKIMEDIA"
+          ]
+        },
+        {
           "city": "Shenzhen",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.94.41"
+            "31.13.88.26"
           ],
           "answer_owners": [
             "FACEBOOK"
@@ -1265,12 +1283,63 @@
           "why": "answered with an address the same round returned for zh.wikipedia.org"
         },
         {
-          "city": "Guangzhou",
+          "city": "Beijing",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.94.10"
+            "31.13.73.9"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered with an address the same round returned for zh.wikipedia.org"
+        },
+        {
+          "city": "Hangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "31.13.94.36"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "forged",
+          "answers": [
+            "31.13.94.36"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "clean",
+          "answers": [
+            "103.102.166.224"
+          ],
+          "answer_owners": [
+            "WIKIMEDIA"
+          ]
+        },
+        {
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "31.13.68.169"
           ],
           "answer_owners": [
             "FACEBOOK"
@@ -1283,19 +1352,6 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.73.169"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered with an address the same round returned for zh.wikipedia.org"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
             "199.59.148.96"
           ],
           "answer_owners": [
@@ -1305,77 +1361,37 @@
         },
         {
           "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "forged",
           "answers": [
-            "31.13.88.169"
+            "31.13.68.169"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Chongqing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "157.240.17.35"
           ],
           "answer_owners": [
             "FACEBOOK"
           ],
           "why": "answered with an address the same round returned for zh.wikipedia.org"
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "31.13.88.26"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.16.158.182"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "199.16.158.182"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "31.13.94.10"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
         }
       ],
       "pool_evidence": [
         "103.102.166.224",
-        "199.16.158.12",
+        "157.240.17.35",
         "199.59.148.96",
-        "31.13.73.169",
-        "31.13.88.169",
-        "31.13.94.41"
+        "31.13.73.9",
+        "31.13.88.26"
       ]
     },
     {
@@ -1397,11 +1413,11 @@
       "ownership_resolved": true,
       "geo_variable": false,
       "n_vantages": 14,
-      "n_forged": 6,
+      "n_forged": 1,
       "n_clean": 0,
       "n_silent": 0,
       "n_geo_variable": 0,
-      "n_undetermined": 8,
+      "n_undetermined": 13,
       "forged_fraction": 1.0,
       "vantages": [
         {
@@ -1410,7 +1426,46 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
           "answers": [
-            "108.160.169.185"
+            "116.89.243.8"
+          ],
+          "answer_owners": [
+            "HKZTCL-AS-AP"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "103.252.114.11"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered with an address the same round returned for duckduckgo.com"
+        },
+        {
+          "city": "Chengdu",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "173.244.209.150"
+          ],
+          "answer_owners": [
+            "UK2NET-AS"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "108.160.162.98"
           ],
           "answer_owners": [
             "DROPBOX"
@@ -1418,43 +1473,15 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Chengdu",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "31.13.87.33"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
-        },
-        {
           "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
           "answers": [
-            "199.16.156.38"
+            "199.96.59.19"
           ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Chongqing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "157.240.2.36"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+          "answer_owners": [],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
           "city": "Shenzhen",
@@ -1462,9 +1489,11 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "104.23.125.189"
+            "198.44.185.131"
           ],
-          "answer_owners": [],
+          "answer_owners": [
+            "HKCLOUDX"
+          ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
@@ -1473,7 +1502,7 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "74.86.151.162"
+            "74.86.12.172"
           ],
           "answer_owners": [
             "SOFTLAYER"
@@ -1486,10 +1515,60 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "108.160.167.165"
+            "75.126.33.156"
           ],
           "answer_owners": [
-            "DROPBOX"
+            "SOFTLAYER"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "undetermined",
+          "answers": [
+            "69.197.153.180"
+          ],
+          "answer_owners": [
+            "WII"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "199.96.58.177"
+          ],
+          "answer_owners": [],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "116.89.243.8"
+          ],
+          "answer_owners": [
+            "HKZTCL-AS-AP"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "103.200.30.143"
+          ],
+          "answer_owners": [
+            "RAINBOWIDC-AS-AP"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
@@ -1499,93 +1578,26 @@
           "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "128.242.245.125"
+            "118.184.78.78"
           ],
-          "answer_owners": [
-            "HostRoyale"
-          ],
+          "answer_owners": [],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "104.244.46.85"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "128.242.240.93"
-          ],
-          "answer_owners": [
-            "HostRoyale"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "88.191.249.182"
-          ],
-          "answer_owners": [
-            "PROXAD"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
+          "city": "Tianjin",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "199.59.148.102"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "122.248.226.57"
+            "199.96.58.177"
           ],
-          "answer_owners": [
-            "AMAZON-02"
-          ],
+          "answer_owners": [],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "forged",
-          "answers": [
-            "31.13.84.2"
-          ],
-          "answer_owners": [
-            "FACEBOOK"
-          ],
-          "why": "answered from a network this round's injector drew from (FACEBOOK)"
         }
       ],
-      "pool_evidence": []
+      "pool_evidence": [
+        "103.252.114.11"
+      ]
     },
     {
       "domain": "duckduckgo.com",
@@ -1607,11 +1619,11 @@
       "ownership_resolved": true,
       "geo_variable": false,
       "n_vantages": 14,
-      "n_forged": 8,
+      "n_forged": 7,
       "n_clean": 0,
       "n_silent": 0,
       "n_geo_variable": 0,
-      "n_undetermined": 6,
+      "n_undetermined": 7,
       "forged_fraction": 1.0,
       "vantages": [
         {
@@ -1620,7 +1632,59 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "157.240.17.14"
+            "173.252.108.3"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "199.59.150.39"
+          ],
+          "answer_owners": [
+            "TWITTER"
+          ],
+          "why": "answered from a network this round's injector drew from (TWITTER)"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "108.160.163.117"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "157.240.20.8"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
+          ],
+          "why": "answered from a network this round's injector drew from (FACEBOOK)"
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "forged",
+          "answers": [
+            "31.13.91.6"
           ],
           "answer_owners": [
             "FACEBOOK"
@@ -1629,40 +1693,14 @@
         },
         {
           "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "162.125.32.13"
+            "54.234.18.200"
           ],
           "answer_owners": [
-            "DROPBOX"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Chengdu",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "108.160.165.189"
-          ],
-          "answer_owners": [
-            "DROPBOX"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "108.160.165.11"
-          ],
-          "answer_owners": [
-            "DROPBOX"
+            "AMAZON-AES"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
@@ -1670,38 +1708,12 @@
           "city": "Beijing",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "199.59.149.204"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Shenzhen",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "104.244.46.246"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
-            "108.160.172.1"
+            "154.83.15.20"
           ],
           "answer_owners": [
-            "DROPBOX"
+            "YISUCLOUDLTD-HK"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
@@ -1709,53 +1721,79 @@
           "city": "Chengdu",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "192.133.77.189"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
           "state": "undetermined",
           "answers": [
-            "74.86.3.208"
+            "104.244.43.234"
           ],
           "answer_owners": [
-            "SOFTLAYER"
+            "FASTLY"
           ],
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "forged",
-          "answers": [
-            "104.244.46.52"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
         },
         {
           "city": "Beijing",
           "asn": 55990,
           "network": "Huawei Cloud Service data center",
+          "state": "undetermined",
+          "answers": [
+            "128.242.240.91"
+          ],
+          "answer_owners": [
+            "HostRoyale"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Beijing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "202.160.128.16"
+            "103.252.114.11"
           ],
           "answer_owners": [
             "TWITTER"
+          ],
+          "why": "answered with an address the same round returned for archive.org"
+        },
+        {
+          "city": "Chengdu",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "forged",
+          "answers": [
+            "185.60.219.36"
+          ],
+          "answer_owners": [
+            "FACEBOOK"
           ],
           "why": "answered with an address the same round returned for wikileaks.org"
+        },
+        {
+          "city": "Hangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "128.121.146.228"
+          ],
+          "answer_owners": [
+            "HostRoyale"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "108.160.167.147"
+          ],
+          "answer_owners": [
+            "DROPBOX"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
           "city": "Chongqing",
@@ -1763,42 +1801,17 @@
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "forged",
           "answers": [
-            "199.59.148.246"
+            "199.59.149.207"
           ],
           "answer_owners": [
             "TWITTER"
           ],
           "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Hangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "forged",
-          "answers": [
-            "103.252.115.221"
-          ],
-          "answer_owners": [
-            "TWITTER"
-          ],
-          "why": "answered from a network this round's injector drew from (TWITTER)"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "108.160.162.109"
-          ],
-          "answer_owners": [
-            "DROPBOX"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         }
       ],
       "pool_evidence": [
-        "202.160.128.16"
+        "103.252.114.11",
+        "185.60.219.36"
       ]
     },
     {
@@ -1821,11 +1834,11 @@
       "geo_variable": false,
       "n_vantages": 14,
       "n_forged": 0,
-      "n_clean": 0,
+      "n_clean": 1,
       "n_silent": 0,
       "n_geo_variable": 0,
-      "n_undetermined": 14,
-      "forged_fraction": null,
+      "n_undetermined": 13,
+      "forged_fraction": 0.0,
       "vantages": [
         {
           "city": "Guangzhou",
@@ -1841,7 +1854,7 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Chengdu",
+          "city": "Nanjing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
@@ -1854,7 +1867,20 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Chongqing",
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "20.205.243.166"
+          ],
+          "answer_owners": [
+            "MICROSOFT-CORP-MSN-AS-BLOCK"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
@@ -1868,8 +1894,8 @@
         },
         {
           "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
             "20.205.243.166"
@@ -1896,6 +1922,70 @@
           "city": "Beijing",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "140.82.121.3"
+          ],
+          "answer_owners": [
+            "GITHUB"
+          ]
+        },
+        {
+          "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "undetermined",
+          "answers": [
+            "20.205.243.166"
+          ],
+          "answer_owners": [
+            "MICROSOFT-CORP-MSN-AS-BLOCK"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "undetermined",
+          "answers": [
+            "20.205.243.166"
+          ],
+          "answer_owners": [
+            "MICROSOFT-CORP-MSN-AS-BLOCK"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Chengdu",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "20.205.243.166"
+          ],
+          "answer_owners": [
+            "MICROSOFT-CORP-MSN-AS-BLOCK"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "undetermined",
+          "answers": [
+            "20.205.243.166"
+          ],
+          "answer_owners": [
+            "MICROSOFT-CORP-MSN-AS-BLOCK"
+          ],
+          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "undetermined",
           "answers": [
             "20.205.243.166"
@@ -1919,85 +2009,7 @@
           "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
         },
         {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "20.205.243.166"
-          ],
-          "answer_owners": [
-            "MICROSOFT-CORP-MSN-AS-BLOCK"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "20.205.243.166"
-          ],
-          "answer_owners": [
-            "MICROSOFT-CORP-MSN-AS-BLOCK"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "20.205.243.166"
-          ],
-          "answer_owners": [
-            "MICROSOFT-CORP-MSN-AS-BLOCK"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "undetermined",
-          "answers": [
-            "20.205.243.166"
-          ],
-          "answer_owners": [
-            "MICROSOFT-CORP-MSN-AS-BLOCK"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "undetermined",
-          "answers": [
-            "20.205.243.166"
-          ],
-          "answer_owners": [
-            "MICROSOFT-CORP-MSN-AS-BLOCK"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Chengdu",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "undetermined",
-          "answers": [
-            "20.205.243.166"
-          ],
-          "answer_owners": [
-            "MICROSOFT-CORP-MSN-AS-BLOCK"
-          ],
-          "why": "differs from the control and shows no sign of the injector's pool; a regional edge cannot be ruled out"
-        },
-        {
-          "city": "Guangzhou",
+          "city": "Tianjin",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "undetermined",
@@ -2018,7 +2030,6 @@
       "role": "control",
       "ddti": null,
       "control_answers": [
-        "0.0.0.0",
         "1.0.0.1",
         "1.1.1.1"
       ],
@@ -2029,7 +2040,7 @@
       ],
       "control_owners": [],
       "ownership_resolved": false,
-      "geo_variable": true,
+      "geo_variable": false,
       "n_vantages": 14,
       "n_forged": 0,
       "n_clean": 14,
@@ -2050,7 +2061,18 @@
           "answer_owners": []
         },
         {
-          "city": "Chongqing",
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "clean",
+          "answers": [
+            "1.0.0.1",
+            "1.1.1.1"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Shenzhen",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -2062,17 +2084,6 @@
         },
         {
           "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "1.0.0.1",
-            "1.1.1.1"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -2094,42 +2105,31 @@
           "answer_owners": []
         },
         {
-          "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "clean",
-          "answers": [
-            "1.0.0.1",
-            "1.1.1.1"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Chengdu",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "clean",
-          "answers": [
-            "1.0.0.1",
-            "1.1.1.1"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Guangzhou",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
-          "state": "clean",
-          "answers": [
-            "1.0.0.1",
-            "1.1.1.1"
-          ],
-          "answer_owners": []
-        },
-        {
           "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "1.0.0.1",
+            "1.1.1.1"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Beijing",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "1.0.0.1",
+            "1.1.1.1"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
           "state": "clean",
           "answers": [
             "1.0.0.1",
@@ -2149,9 +2149,9 @@
           "answer_owners": []
         },
         {
-          "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
+          "city": "Chengdu",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
           "answers": [
             "1.0.0.1",
@@ -2160,7 +2160,7 @@
           "answer_owners": []
         },
         {
-          "city": "Chengdu",
+          "city": "Beijing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -2183,6 +2183,17 @@
         },
         {
           "city": "Guangzhou",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "1.0.0.1",
+            "1.1.1.1"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Chongqing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
@@ -2232,28 +2243,6 @@
           "answer_owners": []
         },
         {
-          "city": "Beijing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "8.8.4.4",
-            "8.8.8.8"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Chongqing",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "8.8.4.4",
-            "8.8.8.8"
-          ],
-          "answer_owners": []
-        },
-        {
           "city": "Chengdu",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
@@ -2266,8 +2255,19 @@
         },
         {
           "city": "Beijing",
-          "asn": 37963,
-          "network": "Hangzhou Alibaba Advertising",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "clean",
+          "answers": [
+            "8.8.4.4",
+            "8.8.8.8"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Shanghai",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
           "answers": [
             "8.8.4.4",
@@ -2287,9 +2287,64 @@
           "answer_owners": []
         },
         {
-          "city": "Chengdu",
+          "city": "Shanghai",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "8.8.4.4",
+            "8.8.8.8"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Beijing",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "8.8.4.4",
+            "8.8.8.8"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Wuhan",
+          "asn": 37963,
+          "network": "Hangzhou Alibaba Advertising",
+          "state": "clean",
+          "answers": [
+            "8.8.4.4",
+            "8.8.8.8"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Beijing",
+          "asn": 55990,
+          "network": "Huawei Cloud Service data center",
+          "state": "clean",
+          "answers": [
+            "8.8.4.4",
+            "8.8.8.8"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Nanjing",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
+          "state": "clean",
+          "answers": [
+            "8.8.4.4",
+            "8.8.8.8"
+          ],
+          "answer_owners": []
+        },
+        {
+          "city": "Shenzhen",
+          "asn": 45090,
+          "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
           "answers": [
             "8.8.4.4",
@@ -2310,50 +2365,6 @@
         },
         {
           "city": "Guangzhou",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "clean",
-          "answers": [
-            "8.8.4.4",
-            "8.8.8.8"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Beijing",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "clean",
-          "answers": [
-            "8.8.4.4",
-            "8.8.8.8"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Shanghai",
-          "asn": 55990,
-          "network": "Huawei Cloud Service data center",
-          "state": "clean",
-          "answers": [
-            "8.8.4.4",
-            "8.8.8.8"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Shanghai",
-          "asn": 45090,
-          "network": "Shenzhen Tencent Computer Systems Company",
-          "state": "clean",
-          "answers": [
-            "8.8.4.4",
-            "8.8.8.8"
-          ],
-          "answer_owners": []
-        },
-        {
-          "city": "Guangzhou",
           "asn": 37963,
           "network": "Hangzhou Alibaba Advertising",
           "state": "clean",
@@ -2364,7 +2375,7 @@
           "answer_owners": []
         },
         {
-          "city": "Guangzhou",
+          "city": "Chongqing",
           "asn": 45090,
           "network": "Shenzhen Tencent Computer Systems Company",
           "state": "clean",
