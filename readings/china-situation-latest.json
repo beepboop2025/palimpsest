@@ -13,13 +13,13 @@
     "social_observations_unmatched": 20,
     "wire_events": 524
   },
-  "generated_at": "2026-08-17T00:24:29Z",
+  "generated_at": "2026-08-17T02:14:05Z",
   "inputs": {
-    "analysis_sha256": "c2e071806403f331e5fbae33fa1823e07eb2be1421c0fc33d51d531426006424",
+    "analysis_sha256": "63bdc1fa15304e1f823512f3d22f6471a2853a8ca25b5ebe71a6a5b228de891a",
     "newswire_generated_at": "2026-08-16T23:59:23Z",
     "newswire_sha256": "33832ab68cf1615b68a0ba371fe90e8711facae3ca141b00163bff9965b016a6",
-    "social_generated_at": "2026-08-17T00:24:29Z",
-    "social_sha256": "7e94e8cfe09541e941e5c3dc56e626f157ea4bcf3797418fed4776d08f73f837",
+    "social_generated_at": "2026-08-17T02:14:05Z",
+    "social_sha256": "e6dd3113414bf5d1f96b2ea9c35b7956bc2a3ff48b02c1f11819f0554254b544",
     "social_status": "active",
     "telegram_generated_at": "2026-08-15T08:16:38Z",
     "telegram_sha256": "d363933d2c51392e214f7fadc65782e6658d29b04083915d2d7f5f35a7ecb77a",
@@ -30,6 +30,584 @@
   "schema_version": "palimpsest-china-situation.v1",
   "scope": "Every in-scope current-window Evidence Wire event, its predeclared Observatory context, and social observations joined by exact allowlisted publisher article URL, plus a separate briefing of human-reviewed, source-free Telegram signals. Coverage is bounded by declared registries, review receipts, and APIs.",
   "situations": [
+    {
+      "analysis_id": "analysisv-acebcbbe09214602282ea536",
+      "dek": "AI anchors and AI-generated dramas are growing rapidly in China. But how far can a generative persona go before the illusion is broken? Meet Peach Fang. The post The Problem With Peach appeared first on China Media Project .",
+      "desk": "technology",
+      "event_id": "event-61d45f28df8af68e13be971b",
+      "event_version_id": "eventv-6a2ca4826221b1acc211a4b1",
+      "headline": "The Problem With Peach",
+      "measurement_context": [
+        {
+          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
+          "headline": "The directive index now tracks 207 censorship terms",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": null,
+              "value": null
+            },
+            "label": "terms ranked",
+            "unit": "count",
+            "value": 207
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "ddti",
+          "source_timestamp": "2026-08-17T01:54:55Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
+          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
+          "headline": "0 of 25 considered topics meet the blackout rule",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "topics considered",
+              "value": 25
+            },
+            "label": "blackout topics",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "silence-index",
+          "source_timestamp": "2026-08-16T19:10:01Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/silence-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
+          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
+          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "URLs watched",
+              "value": 4
+            },
+            "label": "reconstructed deletions",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "wayback",
+          "source_timestamp": "2026-08-17T01:59:08Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
+        }
+      ],
+      "measurement_state": "live",
+      "posture": "report-plus-measurement-context",
+      "published_at": "2026-08-14T03:14:21Z",
+      "reporting": {
+        "evidence_strength": "single-source",
+        "independent_groups": 1,
+        "relation": "attributed-publisher-reporting",
+        "source_count": 1,
+        "sources": [
+          {
+            "independence_group": "china-media-project-research",
+            "item_id": "item-7169d4ef6ceea07c9d000de9",
+            "published_at": "2026-08-14T03:14:21Z",
+            "role": "research",
+            "source_id": "china-media-project",
+            "source_name": "China Media Project",
+            "title": "The Problem With Peach",
+            "url": "https://chinamediaproject.org/2026/08/14/the-problem-with-peach/",
+            "version_id": "itemv-fe37e7b9a2f6982cb43f2b4a"
+          }
+        ]
+      },
+      "situation_id": "situation-e04138d1a1174f7299c3b2e4",
+      "social_context": [],
+      "synthesis": {
+        "known_unknowns": [
+          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+        ],
+        "next_checks": [
+          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
+          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
+          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
+        ],
+        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
+      },
+      "topics": [
+        "censorship",
+        "politics",
+        "technology"
+      ],
+      "updated_at": "2026-08-17T01:59:08Z",
+      "url": "https://palimpsest.info/news/china/situation/#situation-e04138d1a1174f7299c3b2e4",
+      "version_id": "situationv-1f6aea32b41c8f3bd9ae2453"
+    },
+    {
+      "analysis_id": "analysisv-48dddaa9ce2f0e65ba31675a",
+      "dek": "The announcement that two Chinese mathematicians have won the Fields Medal, awarded every four years to outstanding mathematicians under 40, has been met with an outpouring of national pride on Chinese social media, as well as debate about the state of Chinese academia and whether there is enough domestic support and e",
+      "desk": "censorship",
+      "event_id": "event-9933c92529df18c725064ca6",
+      "event_version_id": "eventv-43b97ba5bd11c7f58258bd66",
+      "headline": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "measurement_context": [
+        {
+          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
+          "headline": "The directive index now tracks 207 censorship terms",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": null,
+              "value": null
+            },
+            "label": "terms ranked",
+            "unit": "count",
+            "value": 207
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "ddti",
+          "source_timestamp": "2026-08-17T01:54:55Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
+          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
+          "headline": "0 of 25 considered topics meet the blackout rule",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "topics considered",
+              "value": 25
+            },
+            "label": "blackout topics",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "silence-index",
+          "source_timestamp": "2026-08-16T19:10:01Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/silence-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
+          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
+          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "URLs watched",
+              "value": 4
+            },
+            "label": "reconstructed deletions",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "wayback",
+          "source_timestamp": "2026-08-17T01:59:08Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
+        }
+      ],
+      "measurement_state": "live",
+      "posture": "report-plus-measurement-context",
+      "published_at": "2026-08-14T23:04:56Z",
+      "reporting": {
+        "evidence_strength": "single-source",
+        "independent_groups": 1,
+        "relation": "attributed-publisher-reporting",
+        "source_count": 1,
+        "sources": [
+          {
+            "independence_group": "china-digital-times",
+            "item_id": "item-d119f13fd428db083818cf40",
+            "published_at": "2026-08-14T23:04:56Z",
+            "role": "documentation",
+            "source_id": "china-digital-times",
+            "source_name": "China Digital Times",
+            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+            "version_id": "itemv-71d893989565c051740d3adc"
+          }
+        ]
+      },
+      "situation_id": "situation-9c24ced74a3cd907d92f6601",
+      "social_context": [],
+      "synthesis": {
+        "known_unknowns": [
+          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+        ],
+        "next_checks": [
+          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
+          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
+          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
+        ],
+        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
+      },
+      "topics": [
+        "censorship",
+        "politics"
+      ],
+      "updated_at": "2026-08-17T01:59:08Z",
+      "url": "https://palimpsest.info/news/china/situation/#situation-9c24ced74a3cd907d92f6601",
+      "version_id": "situationv-80c7c6def63a28ea71983b74"
+    },
+    {
+      "analysis_id": "analysisv-a917d75a21074c686409e039",
+      "dek": "The post translated below, from WeChat account “Summer Flavors,” argues that keyword-based censorship on Chinese online platforms is missing the mark, both unnecessarily restricting harmless speech and failing to address the problems it is meant to target. This leaves users struggling to articulate even relatively inno",
+      "desk": "censorship",
+      "event_id": "event-2b56e05eb2fdc56714f80b72",
+      "event_version_id": "eventv-675d253723774ec3aaaad607",
+      "headline": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "measurement_context": [
+        {
+          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
+          "headline": "The directive index now tracks 207 censorship terms",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": null,
+              "value": null
+            },
+            "label": "terms ranked",
+            "unit": "count",
+            "value": 207
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "ddti",
+          "source_timestamp": "2026-08-17T01:54:55Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
+          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
+          "headline": "0 of 25 considered topics meet the blackout rule",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "topics considered",
+              "value": 25
+            },
+            "label": "blackout topics",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "silence-index",
+          "source_timestamp": "2026-08-16T19:10:01Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/silence-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
+          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
+          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "URLs watched",
+              "value": 4
+            },
+            "label": "reconstructed deletions",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "wayback",
+          "source_timestamp": "2026-08-17T01:59:08Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
+        }
+      ],
+      "measurement_state": "live",
+      "posture": "report-plus-measurement-context",
+      "published_at": "2026-08-14T00:51:23Z",
+      "reporting": {
+        "evidence_strength": "single-source",
+        "independent_groups": 1,
+        "relation": "attributed-publisher-reporting",
+        "source_count": 1,
+        "sources": [
+          {
+            "independence_group": "china-digital-times",
+            "item_id": "item-4d7b84b6cd42eaf83759e7fb",
+            "published_at": "2026-08-14T00:51:23Z",
+            "role": "documentation",
+            "source_id": "china-digital-times",
+            "source_name": "China Digital Times",
+            "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+            "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+            "version_id": "itemv-09f3dd27c244cabf01ff3a48"
+          }
+        ]
+      },
+      "situation_id": "situation-80cd7f63efcec2a45e8b9717",
+      "social_context": [],
+      "synthesis": {
+        "known_unknowns": [
+          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+        ],
+        "next_checks": [
+          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
+          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
+          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
+        ],
+        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
+      },
+      "topics": [
+        "censorship",
+        "connectivity",
+        "politics"
+      ],
+      "updated_at": "2026-08-17T01:59:08Z",
+      "url": "https://palimpsest.info/news/china/situation/#situation-80cd7f63efcec2a45e8b9717",
+      "version_id": "situationv-3fa8e80db5b060090ad6e2bf"
+    },
+    {
+      "analysis_id": "analysisv-da02479f2a6f0b327d3bf61e",
+      "dek": "Feed metadata published by China Digital Times.",
+      "desk": "censorship",
+      "event_id": "event-2ad90d1644cdceddd6f791dc",
+      "event_version_id": "eventv-ee476cda7725ba543d20d41e",
+      "headline": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+      "measurement_context": [
+        {
+          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
+          "headline": "The directive index now tracks 207 censorship terms",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": null,
+              "value": null
+            },
+            "label": "terms ranked",
+            "unit": "count",
+            "value": 207
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "ddti",
+          "source_timestamp": "2026-08-17T01:54:55Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
+          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
+          "headline": "0 of 25 considered topics meet the blackout rule",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "topics considered",
+              "value": 25
+            },
+            "label": "blackout topics",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "silence-index",
+          "source_timestamp": "2026-08-16T19:10:01Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/silence-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
+          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
+          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "URLs watched",
+              "value": 4
+            },
+            "label": "reconstructed deletions",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "wayback",
+          "source_timestamp": "2026-08-17T01:59:08Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
+        }
+      ],
+      "measurement_state": "live",
+      "posture": "report-plus-measurement-context",
+      "published_at": "2026-08-14T21:45:24Z",
+      "reporting": {
+        "evidence_strength": "single-source",
+        "independent_groups": 1,
+        "relation": "attributed-publisher-reporting",
+        "source_count": 1,
+        "sources": [
+          {
+            "independence_group": "china-digital-times",
+            "item_id": "item-ee489719a8a5300d102f5c3b",
+            "published_at": "2026-08-14T21:45:24Z",
+            "role": "documentation",
+            "source_id": "china-digital-times",
+            "source_name": "China Digital Times",
+            "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+            "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+            "version_id": "itemv-dbc82814c346a4ab92aee1bd"
+          }
+        ]
+      },
+      "situation_id": "situation-7cb3a94bcb5852a124e416b8",
+      "social_context": [],
+      "synthesis": {
+        "known_unknowns": [
+          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+        ],
+        "next_checks": [
+          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
+          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
+          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
+        ],
+        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
+      },
+      "topics": [
+        "censorship",
+        "politics"
+      ],
+      "updated_at": "2026-08-17T01:59:08Z",
+      "url": "https://palimpsest.info/news/china/situation/#situation-7cb3a94bcb5852a124e416b8",
+      "version_id": "situationv-9863857c958ed30cf407364f"
+    },
+    {
+      "analysis_id": "analysisv-b48ddebc9a582696b5cc934b",
+      "dek": "Late last month, Caixin published an update on the case, prompting commentator and former investigative journalist Chu Chaoxin to post a belated but heartfelt plea for Jing Shuren’s release. He emphasizes that Jing was for the most part only reposting others’ content, and there is no sign that he took payment for this.",
+      "desk": "politics",
+      "event_id": "event-2c67e19a0f4ed244b1dc4f86",
+      "event_version_id": "eventv-75d692f709a80f10b787964b",
+      "headline": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "measurement_context": [
+        {
+          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
+          "headline": "The directive index now tracks 207 censorship terms",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": null,
+              "value": null
+            },
+            "label": "terms ranked",
+            "unit": "count",
+            "value": 207
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "ddti",
+          "source_timestamp": "2026-08-17T01:54:55Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
+          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
+          "headline": "0 of 25 considered topics meet the blackout rule",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "topics considered",
+              "value": 25
+            },
+            "label": "blackout topics",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "silence-index",
+          "source_timestamp": "2026-08-16T19:10:01Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/silence-index/"
+        },
+        {
+          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
+          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
+          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
+          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+          "metric": {
+            "denominator": {
+              "label": "URLs watched",
+              "value": 4
+            },
+            "label": "reconstructed deletions",
+            "unit": "count",
+            "value": 0
+          },
+          "relation": "topic-surface-only",
+          "signal_id": "wayback",
+          "source_timestamp": "2026-08-17T01:59:08Z",
+          "status": "live",
+          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
+        }
+      ],
+      "measurement_state": "live",
+      "posture": "report-plus-measurement-context",
+      "published_at": "2026-08-11T02:57:16Z",
+      "reporting": {
+        "evidence_strength": "single-source",
+        "independent_groups": 1,
+        "relation": "attributed-publisher-reporting",
+        "source_count": 1,
+        "sources": [
+          {
+            "independence_group": "china-digital-times",
+            "item_id": "item-7b4cdb605edf20e027518082",
+            "published_at": "2026-08-11T02:57:16Z",
+            "role": "documentation",
+            "source_id": "china-digital-times",
+            "source_name": "China Digital Times",
+            "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+            "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+            "version_id": "itemv-0f14c83a3eb6eaa0f5070ef1"
+          }
+        ]
+      },
+      "situation_id": "situation-4bf891e2da7441c181f4ee42",
+      "social_context": [],
+      "synthesis": {
+        "known_unknowns": [
+          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
+          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
+        ],
+        "next_checks": [
+          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
+          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
+          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
+        ],
+        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
+      },
+      "topics": [
+        "censorship",
+        "politics",
+        "rights"
+      ],
+      "updated_at": "2026-08-17T01:59:08Z",
+      "url": "https://palimpsest.info/news/china/situation/#situation-4bf891e2da7441c181f4ee42",
+      "version_id": "situationv-b6426eada94ed567a99b2656"
+    },
     {
       "analysis_id": "analysisv-9840df47c422303ac80207db",
       "dek": "The police force has launched an internal investigation into an officer who appeared in a viral video dancing in uniform with a dog-ear filter. The clip gained traction on platforms in mainland China, including Douyin, the mainland’s version of TikTok. It was captioned “It’s too hot. Let me fan some wind.” “The police",
@@ -256,584 +834,6 @@
       "updated_at": "2026-08-16T22:00:12Z",
       "url": "https://palimpsest.info/news/china/situation/#situation-471fcda85dfe866a91745c88",
       "version_id": "situationv-6e759ebc35f937dc0aa30fed"
-    },
-    {
-      "analysis_id": "analysisv-17c3cc9c555619691404746e",
-      "dek": "AI anchors and AI-generated dramas are growing rapidly in China. But how far can a generative persona go before the illusion is broken? Meet Peach Fang. The post The Problem With Peach appeared first on China Media Project .",
-      "desk": "technology",
-      "event_id": "event-61d45f28df8af68e13be971b",
-      "event_version_id": "eventv-6a2ca4826221b1acc211a4b1",
-      "headline": "The Problem With Peach",
-      "measurement_context": [
-        {
-          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
-          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
-          "headline": "The directive index now tracks 207 censorship terms",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": null,
-              "value": null
-            },
-            "label": "terms ranked",
-            "unit": "count",
-            "value": 207
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "ddti",
-          "source_timestamp": "2026-08-16T21:34:40Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
-          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
-          "headline": "0 of 25 considered topics meet the blackout rule",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "topics considered",
-              "value": 25
-            },
-            "label": "blackout topics",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "silence-index",
-          "source_timestamp": "2026-08-16T19:10:01Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/silence-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
-          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
-          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "URLs watched",
-              "value": 4
-            },
-            "label": "reconstructed deletions",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "wayback",
-          "source_timestamp": "2026-08-16T13:06:24Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
-        }
-      ],
-      "measurement_state": "live",
-      "posture": "report-plus-measurement-context",
-      "published_at": "2026-08-14T03:14:21Z",
-      "reporting": {
-        "evidence_strength": "single-source",
-        "independent_groups": 1,
-        "relation": "attributed-publisher-reporting",
-        "source_count": 1,
-        "sources": [
-          {
-            "independence_group": "china-media-project-research",
-            "item_id": "item-7169d4ef6ceea07c9d000de9",
-            "published_at": "2026-08-14T03:14:21Z",
-            "role": "research",
-            "source_id": "china-media-project",
-            "source_name": "China Media Project",
-            "title": "The Problem With Peach",
-            "url": "https://chinamediaproject.org/2026/08/14/the-problem-with-peach/",
-            "version_id": "itemv-fe37e7b9a2f6982cb43f2b4a"
-          }
-        ]
-      },
-      "situation_id": "situation-e04138d1a1174f7299c3b2e4",
-      "social_context": [],
-      "synthesis": {
-        "known_unknowns": [
-          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
-          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
-          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
-          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
-        ],
-        "next_checks": [
-          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
-          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
-          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
-        ],
-        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
-      },
-      "topics": [
-        "censorship",
-        "politics",
-        "technology"
-      ],
-      "updated_at": "2026-08-16T21:34:40Z",
-      "url": "https://palimpsest.info/news/china/situation/#situation-e04138d1a1174f7299c3b2e4",
-      "version_id": "situationv-e5337fd231b45a32ee9a9fd9"
-    },
-    {
-      "analysis_id": "analysisv-b132d6da2ba8971fa9f0fdd4",
-      "dek": "The announcement that two Chinese mathematicians have won the Fields Medal, awarded every four years to outstanding mathematicians under 40, has been met with an outpouring of national pride on Chinese social media, as well as debate about the state of Chinese academia and whether there is enough domestic support and e",
-      "desk": "censorship",
-      "event_id": "event-9933c92529df18c725064ca6",
-      "event_version_id": "eventv-43b97ba5bd11c7f58258bd66",
-      "headline": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-      "measurement_context": [
-        {
-          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
-          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
-          "headline": "The directive index now tracks 207 censorship terms",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": null,
-              "value": null
-            },
-            "label": "terms ranked",
-            "unit": "count",
-            "value": 207
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "ddti",
-          "source_timestamp": "2026-08-16T21:34:40Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
-          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
-          "headline": "0 of 25 considered topics meet the blackout rule",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "topics considered",
-              "value": 25
-            },
-            "label": "blackout topics",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "silence-index",
-          "source_timestamp": "2026-08-16T19:10:01Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/silence-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
-          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
-          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "URLs watched",
-              "value": 4
-            },
-            "label": "reconstructed deletions",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "wayback",
-          "source_timestamp": "2026-08-16T13:06:24Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
-        }
-      ],
-      "measurement_state": "live",
-      "posture": "report-plus-measurement-context",
-      "published_at": "2026-08-14T23:04:56Z",
-      "reporting": {
-        "evidence_strength": "single-source",
-        "independent_groups": 1,
-        "relation": "attributed-publisher-reporting",
-        "source_count": 1,
-        "sources": [
-          {
-            "independence_group": "china-digital-times",
-            "item_id": "item-d119f13fd428db083818cf40",
-            "published_at": "2026-08-14T23:04:56Z",
-            "role": "documentation",
-            "source_id": "china-digital-times",
-            "source_name": "China Digital Times",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "version_id": "itemv-71d893989565c051740d3adc"
-          }
-        ]
-      },
-      "situation_id": "situation-9c24ced74a3cd907d92f6601",
-      "social_context": [],
-      "synthesis": {
-        "known_unknowns": [
-          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
-          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
-          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
-          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
-        ],
-        "next_checks": [
-          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
-          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
-          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
-        ],
-        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
-      },
-      "topics": [
-        "censorship",
-        "politics"
-      ],
-      "updated_at": "2026-08-16T21:34:40Z",
-      "url": "https://palimpsest.info/news/china/situation/#situation-9c24ced74a3cd907d92f6601",
-      "version_id": "situationv-42b7ac779d2bfc5e8b724945"
-    },
-    {
-      "analysis_id": "analysisv-1b462b79239b5e139160511a",
-      "dek": "The post translated below, from WeChat account “Summer Flavors,” argues that keyword-based censorship on Chinese online platforms is missing the mark, both unnecessarily restricting harmless speech and failing to address the problems it is meant to target. This leaves users struggling to articulate even relatively inno",
-      "desk": "censorship",
-      "event_id": "event-2b56e05eb2fdc56714f80b72",
-      "event_version_id": "eventv-675d253723774ec3aaaad607",
-      "headline": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-      "measurement_context": [
-        {
-          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
-          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
-          "headline": "The directive index now tracks 207 censorship terms",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": null,
-              "value": null
-            },
-            "label": "terms ranked",
-            "unit": "count",
-            "value": 207
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "ddti",
-          "source_timestamp": "2026-08-16T21:34:40Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
-          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
-          "headline": "0 of 25 considered topics meet the blackout rule",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "topics considered",
-              "value": 25
-            },
-            "label": "blackout topics",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "silence-index",
-          "source_timestamp": "2026-08-16T19:10:01Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/silence-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
-          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
-          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "URLs watched",
-              "value": 4
-            },
-            "label": "reconstructed deletions",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "wayback",
-          "source_timestamp": "2026-08-16T13:06:24Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
-        }
-      ],
-      "measurement_state": "live",
-      "posture": "report-plus-measurement-context",
-      "published_at": "2026-08-14T00:51:23Z",
-      "reporting": {
-        "evidence_strength": "single-source",
-        "independent_groups": 1,
-        "relation": "attributed-publisher-reporting",
-        "source_count": 1,
-        "sources": [
-          {
-            "independence_group": "china-digital-times",
-            "item_id": "item-4d7b84b6cd42eaf83759e7fb",
-            "published_at": "2026-08-14T00:51:23Z",
-            "role": "documentation",
-            "source_id": "china-digital-times",
-            "source_name": "China Digital Times",
-            "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-            "version_id": "itemv-09f3dd27c244cabf01ff3a48"
-          }
-        ]
-      },
-      "situation_id": "situation-80cd7f63efcec2a45e8b9717",
-      "social_context": [],
-      "synthesis": {
-        "known_unknowns": [
-          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
-          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
-          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
-          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
-        ],
-        "next_checks": [
-          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
-          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
-          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
-        ],
-        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
-      },
-      "topics": [
-        "censorship",
-        "connectivity",
-        "politics"
-      ],
-      "updated_at": "2026-08-16T21:34:40Z",
-      "url": "https://palimpsest.info/news/china/situation/#situation-80cd7f63efcec2a45e8b9717",
-      "version_id": "situationv-214094a061647f571dc5a825"
-    },
-    {
-      "analysis_id": "analysisv-c412893386b6fa13199a4205",
-      "dek": "Feed metadata published by China Digital Times.",
-      "desk": "censorship",
-      "event_id": "event-2ad90d1644cdceddd6f791dc",
-      "event_version_id": "eventv-ee476cda7725ba543d20d41e",
-      "headline": "Photo: CHINA – PINGYAO, by Pierre Doyen",
-      "measurement_context": [
-        {
-          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
-          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
-          "headline": "The directive index now tracks 207 censorship terms",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": null,
-              "value": null
-            },
-            "label": "terms ranked",
-            "unit": "count",
-            "value": 207
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "ddti",
-          "source_timestamp": "2026-08-16T21:34:40Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
-          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
-          "headline": "0 of 25 considered topics meet the blackout rule",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "topics considered",
-              "value": 25
-            },
-            "label": "blackout topics",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "silence-index",
-          "source_timestamp": "2026-08-16T19:10:01Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/silence-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
-          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
-          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "URLs watched",
-              "value": 4
-            },
-            "label": "reconstructed deletions",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "wayback",
-          "source_timestamp": "2026-08-16T13:06:24Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
-        }
-      ],
-      "measurement_state": "live",
-      "posture": "report-plus-measurement-context",
-      "published_at": "2026-08-14T21:45:24Z",
-      "reporting": {
-        "evidence_strength": "single-source",
-        "independent_groups": 1,
-        "relation": "attributed-publisher-reporting",
-        "source_count": 1,
-        "sources": [
-          {
-            "independence_group": "china-digital-times",
-            "item_id": "item-ee489719a8a5300d102f5c3b",
-            "published_at": "2026-08-14T21:45:24Z",
-            "role": "documentation",
-            "source_id": "china-digital-times",
-            "source_name": "China Digital Times",
-            "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
-            "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
-            "version_id": "itemv-dbc82814c346a4ab92aee1bd"
-          }
-        ]
-      },
-      "situation_id": "situation-7cb3a94bcb5852a124e416b8",
-      "social_context": [],
-      "synthesis": {
-        "known_unknowns": [
-          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
-          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
-          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
-          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
-        ],
-        "next_checks": [
-          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
-          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
-          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
-        ],
-        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
-      },
-      "topics": [
-        "censorship",
-        "politics"
-      ],
-      "updated_at": "2026-08-16T21:34:40Z",
-      "url": "https://palimpsest.info/news/china/situation/#situation-7cb3a94bcb5852a124e416b8",
-      "version_id": "situationv-afcb4b998c0b65cc2d97ba74"
-    },
-    {
-      "analysis_id": "analysisv-fcc5c63116932db28f4f8532",
-      "dek": "Late last month, Caixin published an update on the case, prompting commentator and former investigative journalist Chu Chaoxin to post a belated but heartfelt plea for Jing Shuren’s release. He emphasizes that Jing was for the most part only reposting others’ content, and there is no sign that he took payment for this.",
-      "desk": "politics",
-      "event_id": "event-2c67e19a0f4ed244b1dc4f86",
-      "event_version_id": "eventv-75d692f709a80f10b787964b",
-      "headline": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
-      "measurement_context": [
-        {
-          "evidence_url": "https://palimpsest.info/readings/ddti-latest.json",
-          "finding": "The current deletion-directive index ranks 207 terms with documented censorship provenance.",
-          "headline": "The directive index now tracks 207 censorship terms",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": null,
-              "value": null
-            },
-            "label": "terms ranked",
-            "unit": "count",
-            "value": 207
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "ddti",
-          "source_timestamp": "2026-08-16T21:34:40Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/deletion-directive-term-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/silence-index-latest.json",
-          "finding": "0 blackout topics meet the predeclared rule among 25 topics considered in this round.",
-          "headline": "0 of 25 considered topics meet the blackout rule",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "topics considered",
-              "value": 25
-            },
-            "label": "blackout topics",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "silence-index",
-          "source_timestamp": "2026-08-16T19:10:01Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/silence-index/"
-        },
-        {
-          "evidence_url": "https://palimpsest.info/readings/wayback-latest.json",
-          "finding": "Wayback evidence reconstructs 0 deletions among 4 watched URLs in the current reading.",
-          "headline": "Archive witnesses reconstruct 0 deletions across 4 watched URLs",
-          "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
-          "metric": {
-            "denominator": {
-              "label": "URLs watched",
-              "value": 4
-            },
-            "label": "reconstructed deletions",
-            "unit": "count",
-            "value": 0
-          },
-          "relation": "topic-surface-only",
-          "signal_id": "wayback",
-          "source_timestamp": "2026-08-16T13:06:24Z",
-          "status": "live",
-          "story_url": "https://palimpsest.info/news/wayback-reconstruction/"
-        }
-      ],
-      "measurement_state": "live",
-      "posture": "report-plus-measurement-context",
-      "published_at": "2026-08-11T02:57:16Z",
-      "reporting": {
-        "evidence_strength": "single-source",
-        "independent_groups": 1,
-        "relation": "attributed-publisher-reporting",
-        "source_count": 1,
-        "sources": [
-          {
-            "independence_group": "china-digital-times",
-            "item_id": "item-7b4cdb605edf20e027518082",
-            "published_at": "2026-08-11T02:57:16Z",
-            "role": "documentation",
-            "source_id": "china-digital-times",
-            "source_name": "China Digital Times",
-            "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
-            "version_id": "itemv-0f14c83a3eb6eaa0f5070ef1"
-          }
-        ]
-      },
-      "situation_id": "situation-4bf891e2da7441c181f4ee42",
-      "social_context": [],
-      "synthesis": {
-        "known_unknowns": [
-          "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
-          "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
-          "Collector links are predeclared topical surfaces, not a timed or claim-specific match to this event.",
-          "A current collector value may post-date the article and cannot by itself establish cause, coordination, impact, verification, or refutation."
-        ],
-        "next_checks": [
-          "Find an independently produced publisher or primary record before treating the reported claim as corroborated.",
-          "Check the reviewed social-source registry for an exact publisher link; absence is a coverage gap, not evidence of silence.",
-          "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
-        ],
-        "summary": "This dossier places 1 attributed publisher report, 3 declared Observatory surfaces in one view. The reporting represents 1 independent publisher group; social and measurement rows remain context-only and do not increase that count."
-      },
-      "topics": [
-        "censorship",
-        "politics",
-        "rights"
-      ],
-      "updated_at": "2026-08-16T21:34:40Z",
-      "url": "https://palimpsest.info/news/china/situation/#situation-4bf891e2da7441c181f4ee42",
-      "version_id": "situationv-b6b862dc32b10e1dd66cd6ad"
     },
     {
       "analysis_id": "analysisv-c84160fcc64285954334a60c",
