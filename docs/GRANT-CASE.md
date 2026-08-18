@@ -13,6 +13,15 @@ and a machine-readable ceiling on what the evidence can claim. Funding would com
 remaining human-validation and independent-replication layers rather than merely make the
 dashboard larger.
 
+## House boundary
+
+Palimpsest, Evidence Signal, and NarcoScope are the public-good house. A grant
+pays for observation, sealing, and public evidence. It does not buy financial
+authority, a named-list software seat, or a post on the Liquidity Lab morning
+channel. Liquidity Lab (Seiche, LiquiLens, Undertow) is a sibling software
+company with a separate invoice path. ScamShield triage, when funded, stays
+inside this house.
+
 ## Why this matters
 
 AI systems increasingly mediate access to historical and political information. In a
