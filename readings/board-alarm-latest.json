@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T07:26:25.961299+00:00",
-  "board_e_value": 79.313,
+  "generated_at": "2026-08-18T13:31:58.168556+00:00",
+  "board_e_value": 79.723,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,29 +13,29 @@
   },
   "layers": {
     "network": {
-      "e": 185.704,
+      "e": 185.482,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 728.6,
         "ioda_outages": 1.0,
-        "ooni_gfw": 9.131,
+        "ooni_gfw": 8.244,
         "tor_bridge_cn": 4.083
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 8.387,
+      "e": 9.218,
       "n_signals": 6,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 1.725,
-        "ddti_threat": 12.857,
-        "gdelt_containment": 2.183,
-        "github_refuge": 1.494,
+        "ddti_novelty": 1.652,
+        "ddti_threat": 16.838,
+        "gdelt_containment": 2.409,
+        "github_refuge": 2.345,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
@@ -57,34 +57,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 9.131,
-      "n": 163,
+      "e": 8.2441,
+      "n": 164,
       "direction": "up",
-      "robust_z": 0.2,
+      "robust_z": 0.08,
       "driver_side": "up",
-      "readings_since_alarm": 16,
+      "readings_since_alarm": 17,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 12.8568,
-      "n": 306,
+      "e": 16.8382,
+      "n": 308,
       "direction": "down",
-      "robust_z": -1.12,
+      "robust_z": -1.17,
       "driver_side": "down",
-      "readings_since_alarm": 67,
+      "readings_since_alarm": 69,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 1.7248,
-      "n": 306,
+      "e": 1.652,
+      "n": 308,
       "direction": "down",
       "robust_z": -12.14,
       "driver_side": "down",
-      "readings_since_alarm": 48,
+      "readings_since_alarm": 50,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -101,21 +101,21 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.1827,
-      "n": 169,
-      "direction": "up",
-      "robust_z": 0.34,
-      "driver_side": "up",
+      "e": 2.4095,
+      "n": 170,
+      "direction": "down",
+      "robust_z": -0.67,
+      "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
       "state": "calm",
-      "e": 1.4944,
-      "n": 84,
-      "direction": "flat",
-      "robust_z": 0.0,
+      "e": 2.3452,
+      "n": 85,
+      "direction": "down",
+      "robust_z": -0.67,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -163,7 +163,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 118,
+      "n": 119,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -174,7 +174,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 120,
+      "n": 121,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -245,7 +245,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 18.4,
+      "age_hours": 24.5,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 8 of 21 adjacent-run pairs"
