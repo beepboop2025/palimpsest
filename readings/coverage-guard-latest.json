@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-08-18T13:31:58.276557+00:00",
+  "generated_at": "2026-08-18T19:18:21.777971+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 164,
-      "metric_now": 59.3,
-      "denominator_now": 275715.0,
-      "metric_robust_z": 0.08,
-      "denominator_robust_z": 0.17,
-      "denominator_change_pct": 1.9,
+      "n_pairs": 165,
+      "metric_now": 59.5,
+      "denominator_now": 313185.0,
+      "metric_robust_z": 0.25,
+      "denominator_robust_z": 1.45,
+      "denominator_change_pct": 15.7,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 308,
-      "metric_now": 0.5051,
+      "n_pairs": 310,
+      "metric_now": 0.4645,
       "denominator_now": 193.0,
-      "metric_robust_z": -1.17,
+      "metric_robust_z": -1.21,
       "denominator_robust_z": 0.79,
       "denominator_change_pct": 11.6,
       "verdict": "NO_MOVE",
@@ -24,27 +24,27 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 308,
+      "n_pairs": 310,
       "metric_now": 11.0,
       "denominator_now": 193.0,
       "metric_robust_z": -12.14,
       "denominator_robust_z": 0.79,
       "denominator_change_pct": 11.6,
       "fit": {
-        "slope": -0.279568,
-        "intercept": 73.0735,
-        "correlation": -0.799
+        "slope": -0.281454,
+        "intercept": 73.3564,
+        "correlation": -0.798
       },
-      "residual_robust_z": -1.0,
+      "residual_robust_z": -1.02,
       "verdict": "COVERAGE_CONFOUNDED",
       "note": "the measurement base moved 11.6% at the same time and tracks this metric historically (r=-0.80); conditioning on it shrinks the departure from z=-12.1 to z=-1.0. This reading is NOT evidence of a censorship change.",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 170,
-      "metric_now": 3.0,
+      "n_pairs": 171,
+      "metric_now": 4.0,
       "denominator_now": 25.0,
-      "metric_robust_z": -0.67,
+      "metric_robust_z": -0.34,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -69,7 +69,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 119,
+      "n_pairs": 120,
       "metric_now": 0.0,
       "denominator_now": 0.0,
       "metric_robust_z": null,
