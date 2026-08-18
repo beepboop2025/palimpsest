@@ -220,6 +220,7 @@ def test_discovery_files_and_home_link_to_the_developer_surface():
     assert card["access"]["narcoscope_bot"] == "https://t.me/NarcoScopeEvidenceBot"
     assert card["access"]["palimpsest_bot"] == "https://t.me/palimpsest_watch_bot"
     assert card["access"]["evidence_signal_channel"] == "https://t.me/EvidenceSignalDesk"
+    assert card["access"]["fund"] == "https://palimpsest.info/fund.html"
 
 
 def test_home_exposes_an_attributed_daily_observatory_read():

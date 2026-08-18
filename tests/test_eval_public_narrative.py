@@ -83,4 +83,29 @@ def test_grant_case_exposes_falsifiers_and_the_current_claim_ceiling():
     assert "alpha below 0.667" in grant_case
     assert "precision below 0.80" in grant_case
     assert "unaffiliated replication" in grant_case
+    assert "public-good house" in grant_case
+    assert "named-list software seat" in grant_case
+    assert "Liquidity Lab" in grant_case
     assert assurance["claim_ceiling"]["level"] == "provisional-measurement"
+
+
+def test_fund_page_names_the_public_good_house_and_keeps_it_off_the_money_channel():
+    fund = _text("fund.html")
+    card = json.loads(_text("product-card.json"))
+    llms = _text("llms.txt")
+
+    assert 'id="public-good-house"' in fund
+    assert "Evidence Signal" in fund
+    assert "NarcoScope" in fund
+    assert "no financial authority" in fund.lower()
+    assert "named-list" in fund
+    assert "Liquidity Lab morning channel" in fund
+    assert "https://t.me/EvidenceSignalDesk" in fund
+    assert "https://narcoscope.com/" in fund
+    house = fund[fund.index('id="public-good-house"'):fund.index("Individual donors")]
+    assert "—" not in house
+    assert "–" not in house
+
+    assert card["access"]["fund"] == "https://palimpsest.info/fund.html"
+    assert any("named-list seat" in item for item in card["do_not_use_for"])
+    assert "public-good house" in llms
