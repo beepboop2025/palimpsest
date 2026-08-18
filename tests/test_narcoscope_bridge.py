@@ -66,16 +66,16 @@ def test_current_pin_is_fresh_hash_bound_and_preserves_supersession() -> None:
     document, raw = load_artifact()
     receipt = load_receipt(artifact=raw)
 
-    assert document["dataAsOf"] == "2026-08-16"
+    assert document["dataAsOf"] == "2026-08-18"
     assert artifact_sha256(raw) == (
-        "8aba024ff1667dece0c782996b020ff5863c0dcd1d5bcf128ba4da4a8f119d6c"
+        "21bfe95308ceb1141acf212b84ebde7405296fac57146b3708ce1c607da1208c"
     )
     assert receipt["current"]["sha256"] == artifact_sha256(raw)
     assert receipt["current"]["data_as_of"] == document["dataAsOf"]
     assert receipt["superseded"][-1] == {
-        "admitted_at": "2026-08-15T06:14:30Z",
-        "data_as_of": "2026-08-15",
-        "sha256": "b0d3b36031051515510c4e575650518a6fffffe243babc0a22ef494b9b3945f9",
+        "admitted_at": "2026-08-16T06:08:02Z",
+        "data_as_of": "2026-08-16",
+        "sha256": "8aba024ff1667dece0c782996b020ff5863c0dcd1d5bcf128ba4da4a8f119d6c",
         "superseded_at": receipt["current"]["admitted_at"],
     }
 
