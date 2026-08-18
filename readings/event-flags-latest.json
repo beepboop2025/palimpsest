@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-08-18T13:30:20.529967+00:00",
+  "generated_at": "2026-08-18T19:16:38.740860+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 8.2441,
-      "n": 164,
+      "stat": 11.7449,
+      "n": 165,
       "n_alarms_in_history": 2,
-      "age_hours": 0.3,
+      "age_hours": 0.2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 16.8382,
-      "n": 308,
+      "stat": 21.9337,
+      "n": 310,
       "n_alarms_in_history": 4,
-      "age_hours": 0.4,
+      "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 1.652,
-      "n": 308,
+      "stat": 1.5955,
+      "n": 310,
       "n_alarms_in_history": 2,
-      "age_hours": 0.4,
+      "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -32,15 +32,15 @@
       "stat": 728.5998,
       "n": 28,
       "n_alarms_in_history": 0,
-      "age_hours": 7.5,
+      "age_hours": 13.3,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.4095,
-      "n": 170,
+      "stat": 2.297,
+      "n": 171,
       "n_alarms_in_history": 0,
-      "age_hours": 6.0,
+      "age_hours": 5.7,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 2.3452,
       "n": 85,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 5.9,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -62,7 +62,7 @@
       "stat": 0.0,
       "n": 1,
       "n_alarms_in_history": 0,
-      "age_hours": 131.1,
+      "age_hours": 136.9,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation"
     },
     "bleedthrough_capacity": {
@@ -70,7 +70,7 @@
       "stat": 0.0,
       "n": 8,
       "n_alarms_in_history": 0,
-      "age_hours": 75.5,
+      "age_hours": 81.3,
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
@@ -78,7 +78,7 @@
       "stat": 4.0835,
       "n": 404,
       "n_alarms_in_history": 6,
-      "age_hours": 85.5,
+      "age_hours": 91.3,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
@@ -86,15 +86,15 @@
       "stat": 1.0,
       "n": 119,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 5.8,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 121,
+      "n": 122,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
@@ -102,7 +102,7 @@
       "stat": 31.0619,
       "n": 15,
       "n_alarms_in_history": 0,
-      "age_hours": 61.5,
+      "age_hours": 67.3,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -113,67 +113,32 @@
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
       "e": null,
-      "n_models": 4,
-      "models": {
-        "anthropic/claude-3-haiku": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 8,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
-        },
-        "meta-llama/llama-3.3-70b-instruct": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 8,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
-        },
-        "mistralai/mistral-nemo": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 8,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
-        },
-        "openai/gpt-4o-mini": {
-          "state": "calibrating",
-          "evalue": null,
-          "p0": null,
-          "pairs_seen": 8,
-          "pairs_needed": 21,
-          "undetectable_at_or_below": null,
-          "monitored_comparisons": null
-        }
-      },
+      "n_models": 0,
+      "models": {},
       "n_rows": 32,
       "instrument": {
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 24.5,
+      "age_hours": 30.2,
       "bound_hours": 30.0,
-      "state": "calibrating",
-      "reason": "burn-in in progress: furthest model has 8 of 21 adjacent-run pairs"
+      "state": "stale",
+      "reason": "newest churn row is 30.2h old, past the 30h bound"
     }
   },
   "active": [
     "censored_planet"
   ],
-  "stale": [],
+  "stale": [
+    "refusal_churn"
+  ],
   "no_data": [
     "silence_blackouts"
   ],
   "closed": [
     "refusal_drift"
   ],
-  "n_reporting": 13,
+  "n_reporting": 12,
   "n_signals": 15,
   "n_open": 14,
   "headline": "elevated: censored_planet"
