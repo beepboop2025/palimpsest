@@ -1,50 +1,50 @@
 {
-  "generated_at": "2026-08-17T19:18:46.849987+00:00",
+  "generated_at": "2026-08-18T02:07:43.088409+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 161,
-      "metric_now": 58.6,
-      "denominator_now": 289312.0,
-      "metric_robust_z": -0.44,
-      "denominator_robust_z": 0.61,
-      "denominator_change_pct": 6.9,
+      "n_pairs": 162,
+      "metric_now": 59.5,
+      "denominator_now": 274076.0,
+      "metric_robust_z": 0.3,
+      "denominator_robust_z": 0.11,
+      "denominator_change_pct": 1.3,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 302,
-      "metric_now": 0.6567,
-      "denominator_now": 207.0,
-      "metric_robust_z": -1.02,
-      "denominator_robust_z": 1.35,
-      "denominator_change_pct": 19.7,
+      "n_pairs": 304,
+      "metric_now": 0.5945,
+      "denominator_now": 193.0,
+      "metric_robust_z": -1.08,
+      "denominator_robust_z": 0.79,
+      "denominator_change_pct": 11.6,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 302,
+      "n_pairs": 304,
       "metric_now": 11.0,
-      "denominator_now": 207.0,
+      "denominator_now": 193.0,
       "metric_robust_z": -12.14,
-      "denominator_robust_z": 1.35,
-      "denominator_change_pct": 19.7,
+      "denominator_robust_z": 0.79,
+      "denominator_change_pct": 11.6,
       "fit": {
-        "slope": -0.273645,
-        "intercept": 72.1713,
-        "correlation": -0.8
+        "slope": -0.27568,
+        "intercept": 72.4902,
+        "correlation": -0.801
       },
-      "residual_robust_z": -0.48,
+      "residual_robust_z": -0.99,
       "verdict": "COVERAGE_CONFOUNDED",
-      "note": "the measurement base moved 19.7% at the same time and tracks this metric historically (r=-0.80); conditioning on it shrinks the departure from z=-12.1 to z=-0.5. This reading is NOT evidence of a censorship change.",
+      "note": "the measurement base moved 11.6% at the same time and tracks this metric historically (r=-0.80); conditioning on it shrinks the departure from z=-12.1 to z=-1.0. This reading is NOT evidence of a censorship change.",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 167,
-      "metric_now": 5.0,
+      "n_pairs": 168,
+      "metric_now": 2.0,
       "denominator_now": 25.0,
-      "metric_robust_z": 0.0,
+      "metric_robust_z": -1.01,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -69,7 +69,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 116,
+      "n_pairs": 117,
       "metric_now": 0.0,
       "denominator_now": 0.0,
       "metric_robust_z": null,
@@ -80,7 +80,7 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 83,
+      "n_pairs": 84,
       "metric_now": 1.0,
       "denominator_now": 7.0,
       "metric_robust_z": 0.0,
