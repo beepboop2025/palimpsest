@@ -1,28 +1,28 @@
 {
-  "generated_at": "2026-08-19T02:08:13.526507+00:00",
+  "generated_at": "2026-08-19T07:25:35.192741+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 12.014,
-      "n": 166,
+      "stat": 9.301,
+      "n": 167,
       "n_alarms_in_history": 2,
       "age_hours": 0.2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 29.9251,
-      "n": 312,
+      "stat": 18.6633,
+      "n": 314,
       "n_alarms_in_history": 4,
       "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 1.5495,
-      "n": 312,
+      "stat": 6.7713,
+      "n": 314,
       "n_alarms_in_history": 2,
       "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
@@ -32,15 +32,15 @@
       "stat": 728.5998,
       "n": 28,
       "n_alarms_in_history": 0,
-      "age_hours": 20.2,
+      "age_hours": 25.4,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.2151,
-      "n": 172,
+      "stat": 2.1543,
+      "n": 173,
       "n_alarms_in_history": 0,
-      "age_hours": 6.8,
+      "age_hours": 5.2,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 1.7508,
       "n": 86,
       "n_alarms_in_history": 0,
-      "age_hours": 0.1,
+      "age_hours": 5.4,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -62,7 +62,7 @@
       "stat": 0.0,
       "n": 1,
       "n_alarms_in_history": 0,
-      "age_hours": 143.7,
+      "age_hours": 149.0,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation"
     },
     "bleedthrough_capacity": {
@@ -70,21 +70,21 @@
       "stat": 0.0,
       "n": 8,
       "n_alarms_in_history": 0,
-      "age_hours": 88.1,
+      "age_hours": 93.4,
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "stat": 4.0835,
-      "n": 404,
+      "stat": 3.2493,
+      "n": 405,
       "n_alarms_in_history": 6,
-      "age_hours": 98.1,
+      "age_hours": 79.4,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 121,
+      "n": 122,
       "n_alarms_in_history": 0,
       "age_hours": 0.0,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
@@ -92,7 +92,7 @@
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 123,
+      "n": 124,
       "n_alarms_in_history": 0,
       "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
@@ -102,7 +102,7 @@
       "stat": 31.0619,
       "n": 15,
       "n_alarms_in_history": 0,
-      "age_hours": 74.1,
+      "age_hours": 79.4,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -120,10 +120,10 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 37.1,
+      "age_hours": 42.4,
       "bound_hours": 30.0,
       "state": "stale",
-      "reason": "newest churn row is 37.1h old, past the 30h bound"
+      "reason": "newest churn row is 42.4h old, past the 30h bound"
     }
   },
   "active": [
