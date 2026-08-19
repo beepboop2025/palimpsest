@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T19:18:21.694505+00:00",
-  "board_e_value": 80.566,
+  "generated_at": "2026-08-19T02:09:55.262084+00:00",
+  "board_e_value": 81.32,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,29 +13,29 @@
   },
   "layers": {
     "network": {
-      "e": 186.357,
+      "e": 186.424,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 728.6,
         "ioda_outages": 1.0,
-        "ooni_gfw": 11.745,
+        "ooni_gfw": 12.014,
         "tor_bridge_cn": 4.083
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 10.039,
+      "e": 11.25,
       "n_signals": 6,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 1.595,
-        "ddti_threat": 21.934,
-        "gdelt_containment": 2.297,
-        "github_refuge": 2.345,
+        "ddti_novelty": 1.55,
+        "ddti_threat": 29.925,
+        "gdelt_containment": 2.215,
+        "github_refuge": 1.751,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
@@ -57,34 +57,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 11.7449,
-      "n": 165,
+      "e": 12.014,
+      "n": 166,
       "direction": "up",
-      "robust_z": 0.25,
+      "robust_z": 0.17,
       "driver_side": "up",
-      "readings_since_alarm": 18,
+      "readings_since_alarm": 19,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 21.9337,
-      "n": 310,
+      "e": 29.9251,
+      "n": 312,
       "direction": "down",
-      "robust_z": -1.21,
+      "robust_z": -1.24,
       "driver_side": "down",
-      "readings_since_alarm": 71,
+      "readings_since_alarm": 73,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 1.5955,
-      "n": 310,
+      "e": 1.5495,
+      "n": 312,
       "direction": "down",
       "robust_z": -12.14,
       "driver_side": "down",
-      "readings_since_alarm": 52,
+      "readings_since_alarm": 54,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -101,8 +101,8 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.297,
-      "n": 171,
+      "e": 2.2151,
+      "n": 172,
       "direction": "down",
       "robust_z": -0.34,
       "driver_side": "down",
@@ -112,10 +112,10 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 2.3452,
-      "n": 85,
-      "direction": "down",
-      "robust_z": -0.67,
+      "e": 1.7508,
+      "n": 86,
+      "direction": "up",
+      "robust_z": 0.67,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -163,7 +163,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 120,
+      "n": 121,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -174,7 +174,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 122,
+      "n": 123,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -208,10 +208,10 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 30.3,
+      "age_hours": 37.1,
       "bound_hours": 30.0,
       "state": "stale",
-      "reason": "newest churn row is 30.3h old, past the 30h bound"
+      "reason": "newest churn row is 37.1h old, past the 30h bound"
     }
   },
   "headline": "single layer elevated: network",
