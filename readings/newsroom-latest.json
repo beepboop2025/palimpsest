@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 26 are live. Health qualifiers: 2 degraded, 5 stale.",
+  "headline": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 24 are live. Health qualifiers: 2 degraded, 7 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-18T11:54:42Z",
+  "generated_at": "2026-08-19T07:32:00Z",
   "n_stories": 33,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "98162fc837df6d79bf25e3ba8f445dc6524ce58a",
+  "source_commit": "884f4e67c11a227eb0f4de72c71f2c97cb37050d",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 33,
     "reporting": 33,
-    "live": 26,
+    "live": 24,
     "status": "degraded",
     "counts": {
-      "live": 26,
+      "live": 24,
       "degraded": 2,
-      "stale": 5,
+      "stale": 7,
       "missing": 0,
       "corrupt": 0
     }
@@ -86,12 +86,12 @@
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-18T07:26:25Z",
-      "modified_at": "2026-08-18T07:26:25Z",
-      "claim_fingerprint": "sha256:4de5d059740598b1d9cc518892513b0e7aa88c4527183e87ddc5acecc72eacd3",
+      "published_at": "2026-08-19T07:27:09Z",
+      "modified_at": "2026-08-19T07:27:09Z",
+      "claim_fingerprint": "sha256:e311e5396647c07688dcacbb4fb4747f5db684723c837902e4a686bc79099167",
       "metric": {
         "label": "board e-value",
-        "value": 79.313,
+        "value": 80.355,
         "unit": "e-value",
         "denominator": {
           "label": null,
@@ -101,17 +101,17 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 26 are live. Health qualifiers: 2 degraded, 5 stale. The board-wide e-value is 79.313; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 33 of 33 configured sources report; 24 are live. Health qualifiers: 2 degraded, 7 stale. The board-wide e-value is 80.355; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/board-alarm-latest.json",
         "input": {
           "filename": "board-alarm-latest.json",
-          "sha256": "c2b1801bbd0af08c0765efdb5c819e5ab7cef29ee04b34a9f270bba229b6e0dd",
-          "bytes": 10209
+          "sha256": "dd5145345e0f9178252ee7e22e6b1e9db7cfaa10f32c44e7da59073c8feac33f",
+          "bytes": 9092
         },
-        "source_timestamp": "2026-08-18T07:26:25Z"
+        "source_timestamp": "2026-08-19T07:27:09Z"
       },
       "method": {
         "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
@@ -131,19 +131,19 @@
       "slug": "event-flags",
       "url": "https://palimpsest.info/news/event-flags/",
       "signal_id": "event-flags",
-      "headline": "13 of 15 configured signals are reporting to the event board",
+      "headline": "12 of 15 configured signals are reporting to the event board",
       "dek": "The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
       "section": "command",
       "order": 2,
       "type": "methodology",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:24:56Z",
-      "modified_at": "2026-08-18T07:24:56Z",
-      "claim_fingerprint": "sha256:289b7d19351323dafa1c0178f6a84f4bba0796d50f493a83ae7baeb1e6f38a95",
+      "published_at": "2026-08-19T07:25:35Z",
+      "modified_at": "2026-08-19T07:25:35Z",
+      "claim_fingerprint": "sha256:ebe72284a57b119cf89b9c7cb9a3dd5fcd449dc551505d91aa7e70c064c020f1",
       "metric": {
         "label": "signals reporting",
-        "value": 13,
+        "value": 12,
         "unit": "count",
         "denominator": {
           "label": "signals configured",
@@ -153,17 +153,17 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "13 signals are reporting out of 15 configured signals in the current event-flags reading."
+          "statement": "12 signals are reporting out of 15 configured signals in the current event-flags reading."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/event-flags-latest.json",
         "input": {
           "filename": "event-flags-latest.json",
-          "sha256": "42b6647f9759a1aa2106b7f1e91c72f8c508fdad656e1f59f29d1b6feb9dd7cb",
-          "bytes": 6268
+          "sha256": "fb85663ac7ac77b088b552a2b6722ee863cc96ab0260bd8479a5439c001a349b",
+          "bytes": 5174
         },
-        "source_timestamp": "2026-08-18T07:24:56Z"
+        "source_timestamp": "2026-08-19T07:25:35Z"
       },
       "method": {
         "summary": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
@@ -190,8 +190,8 @@
       "type": "methodology",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:26:26Z",
-      "modified_at": "2026-08-18T07:26:26Z",
+      "published_at": "2026-08-19T07:27:09Z",
+      "modified_at": "2026-08-19T07:27:09Z",
       "claim_fingerprint": "sha256:0b4f2b4a9174d70d94134b476ed0099a76951538d13e80329949df70422245ad",
       "metric": {
         "label": "confounded signals",
@@ -212,10 +212,10 @@
         "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
         "input": {
           "filename": "coverage-guard-latest.json",
-          "sha256": "d277164cad171a636a826a738581514437f108b8738e7310c23192c352a674f7",
-          "bytes": 4502
+          "sha256": "5545dfc0c5eccf1af764cd7d8e991f22cc9af85c47cda4c4595d57d972e96d0b",
+          "bytes": 4501
         },
-        "source_timestamp": "2026-08-18T07:26:26Z"
+        "source_timestamp": "2026-08-19T07:27:09Z"
       },
       "method": {
         "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
@@ -235,39 +235,39 @@
       "slug": "forecast-ledger",
       "url": "https://palimpsest.info/news/forecast-ledger/",
       "signal_id": "forecast-ledger",
-      "headline": "Forecast bands covered 84.4% of 1,453 scored readings",
+      "headline": "Forecast bands covered 84.5% of 1,480 scored readings",
       "dek": "Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
       "section": "command",
       "order": 4,
       "type": "methodology",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-18T07:26:26Z",
-      "modified_at": "2026-08-18T07:26:26Z",
-      "claim_fingerprint": "sha256:be7540e2633c81e0976c628e1944cc9573536b4b70ff12553e79d79a8a83f220",
+      "published_at": "2026-08-19T07:27:09Z",
+      "modified_at": "2026-08-19T07:27:09Z",
+      "claim_fingerprint": "sha256:47929b62fe178304c016e2abeda14c3ce69dcd6d61c8d6e64b1acc4578cc980b",
       "metric": {
         "label": "empirical coverage",
-        "value": 0.844,
+        "value": 0.845,
         "unit": "ratio",
         "denominator": {
           "label": "forecasts",
-          "value": 1453
+          "value": 1480
         }
       },
       "claims": [
         {
           "type": "method",
-          "statement": "Empirical forecast coverage is 84.4% across 1,453 scored forecasts."
+          "statement": "Empirical forecast coverage is 84.5% across 1,480 scored forecasts."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
         "input": {
           "filename": "forecast-ledger-latest.json",
-          "sha256": "f41adbc5bc495a39992724c2fa04275bc6a019cb5544970fa9ee8bdad671d76b",
-          "bytes": 13746
+          "sha256": "0364608b7d5f8714552d674ac0553cf363a06daab63dea17ff3f4060a6e0ef18",
+          "bytes": 13743
         },
-        "source_timestamp": "2026-08-18T07:26:26Z"
+        "source_timestamp": "2026-08-19T07:27:09Z"
       },
       "method": {
         "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
@@ -293,8 +293,8 @@
       "type": "methodology",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-18T07:26:26Z",
-      "modified_at": "2026-08-18T07:26:26Z",
+      "published_at": "2026-08-19T07:27:09Z",
+      "modified_at": "2026-08-19T07:27:09Z",
       "claim_fingerprint": "sha256:34322e87371fe1daa4ce37dcf6f8aad06cc59c8361cd0f941f874010e72ca2fa",
       "metric": {
         "label": "confirmed pairs",
@@ -315,10 +315,10 @@
         "url": "https://palimpsest.info/readings/cross-layer-latest.json",
         "input": {
           "filename": "cross-layer-latest.json",
-          "sha256": "5c13ac9982cdf38c0eba65311aaaf6a48ce462680c3d6fb0425494880461db9f",
-          "bytes": 10145
+          "sha256": "7ec2458ef6adb95a376cdbb9bd4a78cbbbef85bf1c3a8e93ff477b24b1492468",
+          "bytes": 10131
         },
-        "source_timestamp": "2026-08-18T07:26:26Z"
+        "source_timestamp": "2026-08-19T07:27:09Z"
       },
       "method": {
         "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
@@ -337,19 +337,19 @@
       "slug": "deletion-directive-term-index",
       "url": "https://palimpsest.info/news/deletion-directive-term-index/",
       "signal_id": "ddti",
-      "headline": "The directive index now tracks 193 censorship terms",
+      "headline": "The directive index now tracks 204 censorship terms",
       "dek": "The index ranks provenance-bound terms found in documented directives and reports of scrubbed material.",
       "section": "attention",
       "order": 1,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T09:48:57Z",
-      "modified_at": "2026-08-18T09:48:57Z",
-      "claim_fingerprint": "sha256:a9311a0da42bf576a9d1acb110121e7ffbbf6ea4ee80d697d71421ad7cde950b",
+      "published_at": "2026-08-19T07:05:01Z",
+      "modified_at": "2026-08-19T07:05:01Z",
+      "claim_fingerprint": "sha256:ff65795617b2a6f1ce4b1edd1e91da5da2b4a84a21530800bb9bdc7e1637c9e7",
       "metric": {
         "label": "terms ranked",
-        "value": 193,
+        "value": 204,
         "unit": "count",
         "denominator": {
           "label": null,
@@ -359,17 +359,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current deletion-directive index ranks 193 terms with documented censorship provenance."
+          "statement": "The current deletion-directive index ranks 204 terms with documented censorship provenance."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/ddti-latest.json",
         "input": {
           "filename": "ddti-latest.json",
-          "sha256": "acdd2a212fe1ebd422e8d452c75963880025ebc1efe481e9d3b100180dc3fa32",
-          "bytes": 26289
+          "sha256": "c4a811cc6220edc44abbd73b44f4f47328e57cd6b8bf08c194b5b54c3f07813d",
+          "bytes": 24991
         },
-        "source_timestamp": "2026-08-18T09:48:57Z"
+        "source_timestamp": "2026-08-19T07:05:01Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -390,19 +390,19 @@
       "slug": "global-coverage-cross-signal",
       "url": "https://palimpsest.info/news/global-coverage-cross-signal/",
       "signal_id": "gdelt",
-      "headline": "Global coverage is measurable for 3 of 25 compared terms",
+      "headline": "Global coverage is measurable for 5 of 25 compared terms",
       "dek": "The cross-signal supplies an outside-China attention baseline without treating a missing result as proof of silence.",
       "section": "attention",
       "order": 2,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-18T07:30:03Z",
-      "modified_at": "2026-08-18T07:30:03Z",
-      "claim_fingerprint": "sha256:a462c8969effbb856d92d73dfa544024cb463503e28396b62cb934eaf4d759d6",
+      "published_at": "2026-08-19T07:30:41Z",
+      "modified_at": "2026-08-19T07:30:41Z",
+      "claim_fingerprint": "sha256:2e41f5e2cc84d65129d52592d92d88c2d51eef4be2594ba137fc9977437bba4a",
       "metric": {
         "label": "terms with global data",
-        "value": 3,
+        "value": 5,
         "unit": "count",
         "denominator": {
           "label": "terms compared",
@@ -412,17 +412,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "GDELT returned usable global coverage for 3 of 25 compared terms."
+          "statement": "GDELT returned usable global coverage for 5 of 25 compared terms."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/gdelt-latest.json",
         "input": {
           "filename": "gdelt-latest.json",
-          "sha256": "d1f217b2a5881e1636bc2417086c8c89b180b2a662dbe8d0d381f8bae1ef968c",
-          "bytes": 6726
+          "sha256": "d806729dbcf2edaa3339cdfb52a2d333e43b105aed3366797ef5fece8d638f6f",
+          "bytes": 6717
         },
-        "source_timestamp": "2026-08-18T07:30:03Z"
+        "source_timestamp": "2026-08-19T07:30:41Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -442,19 +442,19 @@
       "slug": "weibo-hot-search-join",
       "url": "https://palimpsest.info/news/weibo-hot-search-join/",
       "signal_id": "weibo-hotsearch",
-      "headline": "The latest Weibo archive contains 2,687 hot-search board entries",
+      "headline": "The latest Weibo archive contains 2,742 hot-search board entries",
       "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
       "section": "attention",
       "order": 3,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:23:53Z",
-      "modified_at": "2026-08-18T07:23:53Z",
-      "claim_fingerprint": "sha256:5b3f8f24404cd8eeb33d11902cf0900966e97931db9dc86505d4b421cad35493",
+      "published_at": "2026-08-19T07:24:16Z",
+      "modified_at": "2026-08-19T07:24:16Z",
+      "claim_fingerprint": "sha256:4c971940559366daba4e8566b99f22a29c646aaca03ce125953bba8805c1e14c",
       "metric": {
         "label": "board entries",
-        "value": 2687,
+        "value": 2742,
         "unit": "count",
         "denominator": {
           "label": null,
@@ -464,17 +464,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current archive window contains 2,687 Weibo hot-search board entries available for joining."
+          "statement": "The current archive window contains 2,742 Weibo hot-search board entries available for joining."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
         "input": {
           "filename": "weibo-hotsearch-latest.json",
-          "sha256": "3a8025affb3b9237f5282e3055c37bc816fb3c6d123a10acb58c9b3f0ee3f2f0",
-          "bytes": 5122
+          "sha256": "c1cbc36c6180560d3ff4cc54d311a5d9918a78e7d63d0d6470c8203f23cbea48",
+          "bytes": 5036
         },
-        "source_timestamp": "2026-08-18T07:23:53Z"
+        "source_timestamp": "2026-08-19T07:24:16Z"
       },
       "method": {
         "summary": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
@@ -501,8 +501,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:32:39Z",
-      "modified_at": "2026-08-18T07:32:39Z",
+      "published_at": "2026-08-19T02:15:22Z",
+      "modified_at": "2026-08-19T02:15:22Z",
       "claim_fingerprint": "sha256:db8ea3175b55f16e75cb8cd5cee3264f56078e38b2b6c5c9a79156779c59988c",
       "metric": {
         "label": "blackout topics",
@@ -523,10 +523,10 @@
         "url": "https://palimpsest.info/readings/silence-index-latest.json",
         "input": {
           "filename": "silence-index-latest.json",
-          "sha256": "68715fbee9cae9993123ee9f06c7d98f16d70549b25749352586bcf9a8408239",
-          "bytes": 6633
+          "sha256": "318da8baf2c1d21f5279dfff253afb82c33261ac9e70845b653df51bf989b88f",
+          "bytes": 6630
         },
-        "source_timestamp": "2026-08-18T07:32:39Z"
+        "source_timestamp": "2026-08-19T02:15:22Z"
       },
       "method": {
         "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in the history, never zeros",
@@ -604,8 +604,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-18T02:03:35Z",
-      "modified_at": "2026-08-18T02:03:35Z",
+      "published_at": "2026-08-19T02:05:22Z",
+      "modified_at": "2026-08-19T02:05:22Z",
       "claim_fingerprint": "sha256:e9382578ae1c0f58a9461d8ec6275fc9bb7fbccd75329d2bdbca5b9d62c222a4",
       "metric": {
         "label": "recent events",
@@ -626,10 +626,10 @@
         "url": "https://palimpsest.info/readings/net4people-latest.json",
         "input": {
           "filename": "net4people-latest.json",
-          "sha256": "3ef85b81a4f8060d8c1085d6840e7ad10a7096f49b4fc6e4a03bc602feeb2f67",
+          "sha256": "0f585998cf8076e601963e5a703705c6bb6f252b19d31a01e577e6e1b760fc44",
           "bytes": 7346
         },
-        "source_timestamp": "2026-08-18T02:03:35Z"
+        "source_timestamp": "2026-08-19T02:05:22Z"
       },
       "method": {
         "summary": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
@@ -649,39 +649,39 @@
       "slug": "ooni-great-firewall-index",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "signal_id": "ooni-gfw",
-      "headline": "OONI's China anomaly index is 59.4% across 273,000 completed measurements",
+      "headline": "OONI's China anomaly index is 59.3% across 271,841 completed measurements",
       "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
       "section": "network",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-18T07:10:29Z",
-      "modified_at": "2026-08-18T07:10:29Z",
-      "claim_fingerprint": "sha256:d43f712ffddfc92083c9937feeac7801f259dc3fd54abb4f7f18087e6cd952fa",
+      "published_at": "2026-08-19T07:11:04Z",
+      "modified_at": "2026-08-19T07:11:04Z",
+      "claim_fingerprint": "sha256:31d552ace6e74a78fba7e89aa9668135b47ea4b053ddac2b583155135c367436",
       "metric": {
         "label": "GFW anomaly index",
-        "value": 59.4,
+        "value": 59.3,
         "unit": "percent",
         "denominator": {
           "label": "completed measurements",
-          "value": 273000
+          "value": 271841
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current OONI aggregate reports a 59.4% anomaly index across 273,000 completed China measurements."
+          "statement": "The current OONI aggregate reports a 59.3% anomaly index across 271,841 completed China measurements."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
         "input": {
           "filename": "ooni-gfw-latest.json",
-          "sha256": "973672d11d5a2da20497bbbb363ebc84da088c6a4c700d07ded60ecc8c8ce30e",
-          "bytes": 7894
+          "sha256": "8c3885e033587918394135751d64bf86878fd1200a06bddac76e0c6ab602fe03",
+          "bytes": 7898
         },
-        "source_timestamp": "2026-08-18T07:10:29Z"
+        "source_timestamp": "2026-08-19T07:11:04Z"
       },
       "method": {
         "summary": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
@@ -702,39 +702,39 @@
       "slug": "in-path-interference",
       "url": "https://palimpsest.info/news/in-path-interference/",
       "signal_id": "in-path-interference",
-      "headline": "Middlebox signatures register at 1.28% in the current OONI window",
+      "headline": "Middlebox signatures register at 1.3% in the current OONI window",
       "dek": "The decomposition separates interference signatures from transport failure and tests that could not execute.",
       "section": "network",
       "order": 2,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:12:51Z",
-      "modified_at": "2026-08-18T07:12:51Z",
-      "claim_fingerprint": "sha256:65ba706f2e5c0749fd5b431530cd908c618a259c65a21d30bfe8b40203894de8",
+      "published_at": "2026-08-19T07:13:05Z",
+      "modified_at": "2026-08-19T07:13:05Z",
+      "claim_fingerprint": "sha256:35c099664fd49a5938049eb2e06be92c55744ecde353ff1acdefea97a85af3e7",
       "metric": {
         "label": "middlebox index",
-        "value": 1.28,
+        "value": 1.3,
         "unit": "percent",
         "denominator": {
           "label": "completed middlebox tests",
-          "value": 9616
+          "value": 9643
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current measurement-weighted middlebox index is 1.28%."
+          "statement": "The current measurement-weighted middlebox index is 1.3%."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/in-path-interference-latest.json",
         "input": {
           "filename": "in-path-interference-latest.json",
-          "sha256": "50111697cd8732f1a1ff870ee3e09621eccc475fb10ef6dc78c60c5aba3a84e1",
-          "bytes": 4264
+          "sha256": "0fabf2bdd97984f8401438b1096655d2d90354d6b92089251aecc154544bf8ce",
+          "bytes": 4262
         },
-        "source_timestamp": "2026-08-18T07:12:51Z"
+        "source_timestamp": "2026-08-19T07:13:05Z"
       },
       "method": {
         "summary": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
@@ -761,8 +761,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T05:58:39Z",
-      "modified_at": "2026-08-18T05:58:39Z",
+      "published_at": "2026-08-19T06:00:00Z",
+      "modified_at": "2026-08-19T06:00:00Z",
       "claim_fingerprint": "sha256:5aa137ca4ec557bf9f9f57c93d42137ae82252da3ad7712f5d68cda3507decbf",
       "metric": {
         "label": "CN interference rate",
@@ -783,10 +783,10 @@
         "url": "https://palimpsest.info/readings/censored-planet-latest.json",
         "input": {
           "filename": "censored-planet-latest.json",
-          "sha256": "6dbf648e4db6b0ecc1ada02323b7fef00303761aa43971cf0fba718ecf8c056d",
+          "sha256": "f83d1605c611c84fc3c69ad0b2ce31699ff7ac33cdc6b4073e1f6639f6881f56",
           "bytes": 3374
         },
-        "source_timestamp": "2026-08-18T05:58:39Z"
+        "source_timestamp": "2026-08-19T06:00:00Z"
       },
       "method": {
         "summary": "ingests Censored Planet's public aggregated data; probes nothing (vantage-insensitive)",
@@ -813,8 +813,8 @@
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-18T07:22:26Z",
-      "modified_at": "2026-08-18T07:22:26Z",
+      "published_at": "2026-08-19T07:22:50Z",
+      "modified_at": "2026-08-19T07:22:50Z",
       "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
       "metric": {
         "label": "blocked share",
@@ -835,10 +835,10 @@
         "url": "https://palimpsest.info/readings/inside-view-latest.json",
         "input": {
           "filename": "inside-view-latest.json",
-          "sha256": "e07f5932b77e79bad218f5c795cd30c1e09b4ba581c9b28b268a49c5e77182c0",
-          "bytes": 53135
+          "sha256": "bd8de37a0a74272fe3cc466075dd0a15f780527dfa617b7a2cbe2037a742492f",
+          "bytes": 70597
         },
-        "source_timestamp": "2026-08-18T07:22:26Z"
+        "source_timestamp": "2026-08-19T07:22:50Z"
       },
       "method": {
         "summary": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
@@ -866,8 +866,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:12:49Z",
-      "modified_at": "2026-08-18T07:12:49Z",
+      "published_at": "2026-08-19T07:13:22Z",
+      "modified_at": "2026-08-19T07:13:22Z",
       "claim_fingerprint": "sha256:d11298f4540771d4f8f5b0489d93b613a353431d3c905c97f68eaca532a53560",
       "metric": {
         "label": "instruments firing",
@@ -888,10 +888,10 @@
         "url": "https://palimpsest.info/readings/ioda-outages-latest.json",
         "input": {
           "filename": "ioda-outages-latest.json",
-          "sha256": "1c0b0f769447e2ff6edbf411635bfed98047434f683388ad5b40cde18acd4817",
+          "sha256": "3c793d366fe3f5d142a7dfc9320ac6987d197fa435455865d86f338fa8a488f9",
           "bytes": 668
         },
-        "source_timestamp": "2026-08-18T07:12:49Z"
+        "source_timestamp": "2026-08-19T07:13:22Z"
       },
       "method": {
         "summary": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
@@ -910,19 +910,19 @@
       "slug": "circumvention-demand",
       "url": "https://palimpsest.info/news/circumvention-demand/",
       "signal_id": "circumvention-demand",
-      "headline": "Tor Metrics estimates 2,480 bridge users connecting from China",
+      "headline": "Tor Metrics estimates 2,468 bridge users connecting from China",
       "dek": "Bridge and transport estimates show demand for alternate routes without identifying individual users.",
       "section": "network",
       "order": 6,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-18T05:44:00Z",
-      "modified_at": "2026-08-18T05:44:00Z",
-      "claim_fingerprint": "sha256:bf63f1683b5fd8a649a0bd0fc5fef9902e3d491aadb1621d70d04b9aba3667f2",
+      "published_at": "2026-08-19T05:45:54Z",
+      "modified_at": "2026-08-19T05:45:54Z",
+      "claim_fingerprint": "sha256:dea032fa128d32f816bf13ffc58017b520ced81445a89a4f9c6c9ecf66e441b0",
       "metric": {
         "label": "bridge users",
-        "value": 2480,
+        "value": 2468,
         "unit": "estimated users",
         "denominator": {
           "label": null,
@@ -932,17 +932,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "Tor Metrics estimates 2,480 bridge users for China in the current reading."
+          "statement": "Tor Metrics estimates 2,468 bridge users for China in the current reading."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/circumvention-demand-latest.json",
         "input": {
           "filename": "circumvention-demand-latest.json",
-          "sha256": "e4ed20acf4915bd5ff66288c9939bb13b3f9d41187e0dd1276601873eb544663",
-          "bytes": 1075
+          "sha256": "421a6ade134603a6eaa57e881d4754fb7f8fc301368780d061e6ab923df2bc62",
+          "bytes": 1077
         },
-        "source_timestamp": "2026-08-18T05:44:00Z"
+        "source_timestamp": "2026-08-19T05:45:54Z"
       },
       "method": {
         "summary": "Bridge users = demand for unlisted entry points (the demand-to-circumvent series). Relay users = direct reachability, structurally near-floor behind the GFW. A transport halving while another surges (transport_shifts) is the public fingerprint of a new GFW classifier deployment. Estimates are Tor's, from sampled directory requests; transport rows keep Tor's low/high bounds. No probe traffic is generated by this collector.",
@@ -969,8 +969,8 @@
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-18T07:27:21Z",
-      "modified_at": "2026-08-18T07:27:21Z",
+      "published_at": "2026-08-19T07:26:33Z",
+      "modified_at": "2026-08-19T07:26:33Z",
       "claim_fingerprint": "sha256:6bab65ee408a5b36608c35089674a2dd3f2b0c01b49b7fbfd2452effa2e1b65b",
       "metric": {
         "label": "fused network index",
@@ -991,10 +991,10 @@
         "url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
         "input": {
           "filename": "vantage-fusion-latest.json",
-          "sha256": "a11eb16f8166c7937fd223f4ada207943871aecc8beb88791ef94e8846caee81",
+          "sha256": "c85b7d9c86d740d74abe31a746cb6e67dc3e7fd55d5902113f8c7da164ba6708",
           "bytes": 2093
         },
-        "source_timestamp": "2026-08-18T07:27:21Z"
+        "source_timestamp": "2026-08-19T07:26:33Z"
       },
       "method": {
         "summary": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
@@ -1129,8 +1129,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T01:55:01Z",
-      "modified_at": "2026-08-18T01:55:01Z",
+      "published_at": "2026-08-19T01:58:18Z",
+      "modified_at": "2026-08-19T01:58:18Z",
       "claim_fingerprint": "sha256:63b339789a2037f6e03cf980055b236978487d78122b67024ea1248bc0cda8a4",
       "metric": {
         "label": "reconstructed deletions",
@@ -1151,10 +1151,10 @@
         "url": "https://palimpsest.info/readings/wayback-latest.json",
         "input": {
           "filename": "wayback-latest.json",
-          "sha256": "fc3699db9cc67d19d0681546b533fa0136a862c0a9d46a724ac891e6fc8ab08f",
-          "bytes": 1388
+          "sha256": "9b740d0866b5c006e3b6cbbd48d6117bebade09659ab66a819070d5ff8dc949f",
+          "bytes": 1429
         },
-        "source_timestamp": "2026-08-18T01:55:01Z"
+        "source_timestamp": "2026-08-19T01:58:18Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1226,19 +1226,19 @@
       "slug": "github-refuge-watch",
       "url": "https://palimpsest.info/news/github-refuge-watch/",
       "signal_id": "github-refuge",
-      "headline": "Public metadata records 1 pressure event across 7 watched repositories",
+      "headline": "Public metadata records 2 pressure event across 7 watched repositories",
       "dek": "The watch preserves public repository-level pressure signals without collecting contributor identities.",
       "section": "erasure",
       "order": 4,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-18T02:01:05Z",
-      "modified_at": "2026-08-18T02:01:05Z",
-      "claim_fingerprint": "sha256:37d96190b31fb48e06be8d5cf1f000aada165a2a2529f16d8c84de1939181b24",
+      "published_at": "2026-08-19T02:04:06Z",
+      "modified_at": "2026-08-19T02:04:06Z",
+      "claim_fingerprint": "sha256:3b7df6596a427d69b3242ffe899b1364b825133a2a967e91d692e11c52c19a6b",
       "metric": {
         "label": "pressure events",
-        "value": 1,
+        "value": 2,
         "unit": "count",
         "denominator": {
           "label": "repositories watched",
@@ -1248,17 +1248,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current public-metadata watch records 1 pressure event among 7 configured repositories."
+          "statement": "The current public-metadata watch records 2 pressure event among 7 configured repositories."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/github-refuge-latest.json",
         "input": {
           "filename": "github-refuge-latest.json",
-          "sha256": "fab5a090f221752dd19475a68dbdce0b5d2ebfa069f78bbc2e23f475e76231b0",
-          "bytes": 3747
+          "sha256": "6648c67ffedc62c29a2a49ab7392ea5017daeb30e6e1f215297159dfbc369f73",
+          "bytes": 3757
         },
-        "source_timestamp": "2026-08-18T02:01:05Z"
+        "source_timestamp": "2026-08-19T02:04:06Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1285,8 +1285,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T07:26:28Z",
-      "modified_at": "2026-08-18T07:26:28Z",
+      "published_at": "2026-08-19T07:26:45Z",
+      "modified_at": "2026-08-19T07:26:45Z",
       "claim_fingerprint": "sha256:9f931cb4bc4e94265c2edaf659cc8bf95fba045fafb1bf0ecf77a55d256fd1a3",
       "metric": {
         "label": "delisting rate",
@@ -1307,10 +1307,10 @@
         "url": "https://palimpsest.info/readings/app-storefront-latest.json",
         "input": {
           "filename": "app-storefront-latest.json",
-          "sha256": "050cbe7a9d24b6c0e058b2bc092bdc8dfefe2549fe762d16ded2babf640939b6",
+          "sha256": "3d5ed7aecc602478f5cf5506d009dce6330d9660a6d75ed5f7d520d50d481545",
           "bytes": 3519
         },
-        "source_timestamp": "2026-08-18T07:26:28Z"
+        "source_timestamp": "2026-08-19T07:26:45Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1329,39 +1329,39 @@
       "slug": "apple-censorship-corpus",
       "url": "https://palimpsest.info/news/apple-censorship-corpus/",
       "signal_id": "apple-censorship",
-      "headline": "28.15% of 109,506 tested apps are unavailable in mainland China",
+      "headline": "28.14% of 109,541 tested apps are unavailable in mainland China",
       "dek": "The corpus-scale storefront comparison complements the smaller fixed panel with a much broader catalogue.",
       "section": "erasure",
       "order": 6,
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-18T05:58:43Z",
-      "modified_at": "2026-08-18T05:58:43Z",
-      "claim_fingerprint": "sha256:671299053f744a6f6a803f80cb9d3fe7073b9b66d07f2c251ff71db458bde4a0",
+      "published_at": "2026-08-19T05:59:54Z",
+      "modified_at": "2026-08-19T05:59:54Z",
+      "claim_fingerprint": "sha256:7d8fe9cbdcefb5caeee34d3fea86cc8d47fd800473f04fb8c539edbaf8eefe55",
       "metric": {
         "label": "apps unavailable",
-        "value": 28.15,
+        "value": 28.14,
         "unit": "percent",
         "denominator": {
           "label": "apps tested",
-          "value": 109506
+          "value": 109541
         }
       },
       "claims": [
         {
           "type": "finding",
-          "statement": "The current AppleCensorship corpus reports 28.15% unavailable among 109,506 tested apps for mainland China."
+          "statement": "The current AppleCensorship corpus reports 28.14% unavailable among 109,541 tested apps for mainland China."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/apple-censorship-latest.json",
         "input": {
           "filename": "apple-censorship-latest.json",
-          "sha256": "af4354d2dde13a33fcbb0aa39de946c55df89873d5765478330583dd69160722",
-          "bytes": 1910
+          "sha256": "ffca729acdaf27d0feef8792cfe5c41e2697c6f14a68569b89f5a695c6394528",
+          "bytes": 1909
         },
-        "source_timestamp": "2026-08-18T05:58:43Z"
+        "source_timestamp": "2026-08-19T05:59:54Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1434,20 +1434,20 @@
       "slug": "cny-fix-gap",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
       "signal_id": "cny-fix-gap",
-      "headline": "The official yuan fix gap is -0.6846% against the independent reference",
-      "dek": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
+      "headline": "CNY fix gap: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "economy",
       "order": 2,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-16T17:26:16Z",
       "modified_at": "2026-08-16T17:26:16Z",
-      "claim_fingerprint": "sha256:4b7244e10cdf17a59b1d8f98170dfacde6845b5383ebc4a5ddf5e1f3e6a950cf",
+      "claim_fingerprint": "sha256:f0054990170a4e2ad21ecb3bd7acf2d3290d0ce72dc1d9f3081fa19bd76c41b7",
       "metric": {
-        "label": "fix gap",
-        "value": -0.6846,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1455,8 +1455,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current official-fix minus independent-reference gap is -0.6846%."
+          "type": "availability",
+          "statement": "No current finding is published for CNY fix gap because the source status is stale."
         }
       ],
       "evidence": {
@@ -1473,6 +1473,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The comparison is onshore and same-day but not simultaneous; it is economic context, not direct evidence of censorship."
       ],
       "related_signal_ids": [
@@ -1486,19 +1487,19 @@
       "slug": "stock-connect",
       "url": "https://palimpsest.info/news/stock-connect/",
       "signal_id": "stock-connect",
-      "headline": "Southbound Stock Connect net flow is 3.077 billion Hong Kong dollars",
+      "headline": "Southbound Stock Connect net flow is 14.001 billion Hong Kong dollars",
       "dek": "The newsroom reports HKEX's official daily print and leaves discontinued northbound net-flow fields unestimated.",
       "section": "economy",
       "order": 3,
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-17T13:57:11Z",
-      "modified_at": "2026-08-17T13:57:11Z",
-      "claim_fingerprint": "sha256:d590c79c9d24516424bce15db0f19e3b948f90021fda0b145d03020cc18e7f26",
+      "published_at": "2026-08-18T14:01:39Z",
+      "modified_at": "2026-08-18T14:01:39Z",
+      "claim_fingerprint": "sha256:97b425bfbfd3b322224393c2eeb58031f38bb61326755cae2a6665d3d858703d",
       "metric": {
         "label": "southbound net flow",
-        "value": 3.077,
+        "value": 14.001,
         "unit": "HKD billions",
         "denominator": {
           "label": null,
@@ -1508,17 +1509,17 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "HKEX reports current southbound Stock Connect net flow of 3.077 billion Hong Kong dollars."
+          "statement": "HKEX reports current southbound Stock Connect net flow of 14.001 billion Hong Kong dollars."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/stock-connect-latest.json",
         "input": {
           "filename": "stock-connect-latest.json",
-          "sha256": "3586cd778f25be5eafb58db516381c52b27903be5977a6fc47bd960514832f1a",
+          "sha256": "db235c70134b3532f5539e78048b21cca81e5eccb0fb1128207d3ad37b4733a4",
           "bytes": 736
         },
-        "source_timestamp": "2026-08-17T13:57:11Z"
+        "source_timestamp": "2026-08-18T14:01:39Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1537,29 +1538,29 @@
       "slug": "official-data-darkness",
       "url": "https://palimpsest.info/news/official-data-darkness/",
       "signal_id": "data-darkness",
-      "headline": "The official-data darkness index is 0.5968 across 7 watched series",
-      "dek": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
+      "headline": "Official-data darkness: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "economy",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-16T10:31:35Z",
       "modified_at": "2026-08-16T10:31:35Z",
-      "claim_fingerprint": "sha256:ae152d450cf61d0603c8e19be83e113d0ae7be9571a140f2081f7abd0fd63cb4",
+      "claim_fingerprint": "sha256:0b041b3529018c1ffc1dc78c1516d4244abbe9831be11cc783f6a7111f3bc7a6",
       "metric": {
-        "label": "darkness index",
-        "value": 0.5968,
-        "unit": "index",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "series watched",
-          "value": 7
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current publication-cadence darkness index is 0.5968 across 7 watched official series."
+          "type": "availability",
+          "statement": "No current finding is published for Official-data darkness because the source status is stale."
         }
       ],
       "evidence": {
@@ -1576,6 +1577,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation."
       ],
       "related_signal_ids": [
@@ -1641,19 +1643,19 @@
       "slug": "generative-firewall-index",
       "url": "https://palimpsest.info/news/generative-firewall-index/",
       "signal_id": "generative-firewall",
-      "headline": "The Generative Firewall Index reads 15 across 20 evaluated cells",
+      "headline": "The Generative Firewall Index reads 23 across 20 evaluated cells",
       "dek": "A controlled prompt bank measures answer, refusal and party-line behaviour by model and concept.",
       "section": "models",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-17T07:45:00Z",
-      "modified_at": "2026-08-17T07:45:00Z",
-      "claim_fingerprint": "sha256:d06357ab72bd173ad610126c2869a6c6f12516ffaa0da230249441b20aaefca7",
+      "published_at": "2026-08-19T07:30:06Z",
+      "modified_at": "2026-08-19T07:30:06Z",
+      "claim_fingerprint": "sha256:1d54460a7b770a63875941abb70aa7e587bd6dc27f03c8c44f916e6156dddd7e",
       "metric": {
         "label": "GFI",
-        "value": 15.0,
+        "value": 23.0,
         "unit": "index",
         "denominator": {
           "label": "evaluated cells",
@@ -1663,17 +1665,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current controlled evaluation reports a Generative Firewall Index of 15 across 20 cells."
+          "statement": "The current controlled evaluation reports a Generative Firewall Index of 23 across 20 cells."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/latest.json",
         "input": {
           "filename": "latest.json",
-          "sha256": "c209c22ac6e99c440aa4650246f82622f9b53c13354d3e0636854baf4e5f39fa",
-          "bytes": 199706
+          "sha256": "58276fd0156b91b26ff563965e5075580df053f363fac3057fdbf5c6f2ecaece",
+          "bytes": 197733
         },
-        "source_timestamp": "2026-08-17T07:45:00Z"
+        "source_timestamp": "2026-08-19T07:30:06Z"
       },
       "method": {
         "summary": "k5-wilson95",

@@ -1,0 +1,82 @@
+{
+  "schema_version": "palimpsest-machine-evidence-capsule.v1",
+  "capsule_type": "redacted-aggregate-evidence",
+  "content_address": {
+    "algorithm": "sha256",
+    "scope": "original-input-bytes",
+    "sha256": "bd8de37a0a74272fe3cc466075dd0a15f780527dfa617b7a2cbe2037a742492f"
+  },
+  "original_input": {
+    "artifact_id": "inside-view-latest.json",
+    "generated_at": "2026-08-19T07:22:50Z",
+    "sha256": "bd8de37a0a74272fe3cc466075dd0a15f780527dfa617b7a2cbe2037a742492f",
+    "integrity": "embedded-receipt-verified"
+  },
+  "citations": [
+    {
+      "evidence_id": "evidence-inside-view",
+      "title": "Inside-China fixed DNS panel",
+      "role": "support",
+      "source_class": "RESEARCH_DATASET",
+      "source_id": "inside-view",
+      "selector": "json-pointer:/block_rate;denominator-json-pointer:/n_censored_answered",
+      "source_timestamp": "2026-08-19T07:22:50Z",
+      "independence_group": "pipeline:palimpsest-inside-view",
+      "upstream_groups": [
+        "publisher:globalping",
+        "publisher:team-cymru"
+      ],
+      "value": {
+        "type": "ratio",
+        "value": 1.0
+      },
+      "denominator": {
+        "type": "aggregate-count",
+        "label": "qualifying answered measurement domains",
+        "value": 5
+      },
+      "interpretation_limit": "The ratio is for a fixed, deliberately censorship-sensitive domain panel and consented cloud probes; it is not a representative domain or user sample.",
+      "freshness": "fresh",
+      "rights": {
+        "redistribution": "ATTRIBUTION_REQUIRED",
+        "reuse": "derived_only",
+        "training": "prohibited"
+      },
+      "attribution": {
+        "attribution_required": true,
+        "providers": [
+          {
+            "name": "Globalping",
+            "source_url": "https://globalping.io/docs/api.globalping.io",
+            "terms_url": "https://globalping.io/terms"
+          },
+          {
+            "name": "Team Cymru",
+            "source_url": "https://www.team-cymru.com/ip-asn-mapping",
+            "terms_url": "https://www.team-cymru.com/terms"
+          }
+        ],
+        "upstream_groups": [
+          "publisher:globalping",
+          "publisher:team-cymru"
+        ],
+        "public_source_url": "https://palimpsest.info/readings/inside-view-latest.json",
+        "upstream_source_urls": [
+          "https://globalping.io/docs/api.globalping.io"
+        ],
+        "source_statement": "Globalping (api.globalping.io) volunteer probes inside mainland China",
+        "license": {
+          "name": "MIT for Palimpsest output; provider terms apply",
+          "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "aggregate_only": true,
+    "raw_input_included": false,
+    "person_level_data_included": false,
+    "contact_data_included": false,
+    "ip_addresses_included": false
+  }
+}
