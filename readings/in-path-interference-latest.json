@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-19T07:13:05.405363+00:00",
+  "generated_at": "2026-08-19T13:23:32.359301+00:00",
   "method_version": 1,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "window_days": 90,
@@ -9,16 +9,16 @@
     "state": "OK",
     "why": "5 of 7 tests have enough completed measurements to support a rate"
   },
-  "middlebox_index": 1.3,
-  "middlebox_completed_count": 9643,
+  "middlebox_index": 1.29,
+  "middlebox_completed_count": 9672,
   "middlebox_reading": "1.3% of completed probes saw their HTTP rewritten in transit — in-path devices present and active",
-  "transport_index": 34.08,
+  "transport_index": 34.09,
   "transport_reading": "34.1% anomalous — transports partly degraded",
   "execution_blackouts": [
     {
       "test": "dnscheck",
       "label": "DNS-integrity test completion",
-      "measurement_count": 68111
+      "measurement_count": 68342
     },
     {
       "test": "echcheck",
@@ -34,11 +34,11 @@
       "label": "HTTP headers rewritten in transit",
       "available": true,
       "why": null,
-      "measurement_count": 4780,
-      "completed_count": 4780,
+      "measurement_count": 4794,
+      "completed_count": 4794,
       "failure_count": 0,
       "anomaly_count": 74,
-      "anomaly_rate": 0.0155,
+      "anomaly_rate": 0.0154,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -48,8 +48,8 @@
       "label": "malformed request lines normalised in transit",
       "available": true,
       "why": null,
-      "measurement_count": 4863,
-      "completed_count": 4863,
+      "measurement_count": 4878,
+      "completed_count": 4878,
       "failure_count": 0,
       "anomaly_count": 51,
       "anomaly_rate": 0.0105,
@@ -62,11 +62,11 @@
       "label": "STUN servers unreachable (real-time voice / WebRTC)",
       "available": true,
       "why": null,
-      "measurement_count": 36988,
-      "completed_count": 36988,
+      "measurement_count": 37085,
+      "completed_count": 37085,
       "failure_count": 0,
-      "anomaly_count": 12322,
-      "anomaly_rate": 0.3331,
+      "anomaly_count": 12358,
+      "anomaly_rate": 0.3332,
       "execution_failure_rate": 0.0,
       "never_completes": false
     },
@@ -104,9 +104,9 @@
       "label": "DNS-integrity test completion",
       "available": false,
       "why": "only 0 completed measurement(s); below the 100 floor for a rate",
-      "measurement_count": 68111,
+      "measurement_count": 68342,
       "completed_count": 0,
-      "failure_count": 68111,
+      "failure_count": 68342,
       "anomaly_count": 0,
       "anomaly_rate": null,
       "execution_failure_rate": 1.0,
@@ -127,5 +127,5 @@
       "never_completes": true
     }
   ],
-  "last_changed_at": "2026-08-19T07:13:05.405363+00:00"
+  "last_changed_at": "2026-08-19T13:23:32.359301+00:00"
 }
