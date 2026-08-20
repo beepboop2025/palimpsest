@@ -1,10 +1,9 @@
-"""Search-result differential scorer — anomalies, not censorship.
+"""Frozen SERP vocabulary runner — method 6. Anomalies, not censorship.
 
-Fixed human-reviewed vocabulary (the gazetteer + a reviewed variant panel).
-A rank/count/snippet difference is a ``visibility_anomaly``. The scorer never
-emits a censorship label. It abstains without repeated observations *and* an
-unaffected control query. It refuses to discover new terms by watching what
-gets blocked.
+Fixed human-reviewed vocabulary. The runner cannot mutate terms to hunt
+blocks. A rank/count/snippet difference is a ``visibility_anomaly``. The
+scorer never emits a censorship label. It abstains without repeated
+observations *and* an unaffected control query.
 """
 
 from __future__ import annotations
@@ -14,13 +13,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from core.governance import KillSwitch, RateCeiling
 from core.observer_class import refuse_forbidden
 from core.visibility_event import stamp_visibility_event
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_PANEL = ROOT / "config" / "search_differential_panel.json"
-SCHEMA_VERSION = "palimpsest-search-differential.v1"
+DEFAULT_PANEL = ROOT / "config" / "greyball_serp.json"
+SCHEMA_VERSION = "palimpsest-greyball-serp.v1"
 METHOD_VERSION = 1
 MIN_REPEATS = 2
 
@@ -34,23 +34,38 @@ VARIANT_KINDS = (
 )
 
 
-class SearchDifferentialError(ValueError):
-    """The panel or the observations cannot support a comparison."""
+class GreyballSerpError(ValueError):
+    """The frozen panel or the observations cannot support a comparison."""
 
 
 def load_panel(path: Path | str = DEFAULT_PANEL) -> dict[str, Any]:
     doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    if doc.get("frozen") is not True or doc.get("mutable") is True:
+        raise GreyballSerpError("SERP vocabulary must be frozen")
     if not isinstance(doc.get("controls"), list) or not doc["controls"]:
-        raise SearchDifferentialError("search panel requires an unaffected control query")
+        raise GreyballSerpError("search panel requires an unaffected control query")
     if not isinstance(doc.get("terms"), list) or not doc["terms"]:
-        raise SearchDifferentialError("search panel requires human-reviewed terms")
+        raise GreyballSerpError("search panel requires human-reviewed terms")
     return doc
+
+
+def frozen_queries(panel: Mapping[str, Any] | None = None) -> set[str]:
+    spec = dict(panel or load_panel())
+    found: set[str] = set()
+    for item in spec.get("controls") or []:
+        query = str(item.get("query") or "").strip()
+        if query:
+            found.add(query)
+    for term in spec.get("terms") or []:
+        for variant in expand_variants(term):
+            found.add(variant["query"])
+    return found
 
 
 def expand_variants(term: Mapping[str, Any]) -> list[dict[str, str]]:
     canonical = str(term.get("canonical") or "").strip()
     if not canonical:
-        raise SearchDifferentialError("panel term missing canonical form")
+        raise GreyballSerpError("panel term missing canonical form")
     out = [{"kind": "zh-Hans", "query": canonical, "canonical": canonical}]
     variants = term.get("variants") if isinstance(term.get("variants"), dict) else {}
     for kind in VARIANT_KINDS:
@@ -60,6 +75,17 @@ def expand_variants(term: Mapping[str, Any]) -> list[dict[str, str]]:
                 continue
             out.append({"kind": kind, "query": text, "canonical": canonical})
     return out
+
+
+def mutate_terms(*_args, **_kwargs) -> None:
+    refuse_forbidden(
+        "automated_blocked_term_discovery",
+        detail="frozen SERP vocabulary cannot be mutated to hunt blocks",
+    )
+
+
+def discover_blocked_terms(*_args, **_kwargs) -> None:
+    mutate_terms()
 
 
 def _group_key(row: Mapping[str, Any]) -> tuple[str, str]:
@@ -73,9 +99,8 @@ def _unaffected(control_rows: Sequence[Mapping[str, Any]]) -> bool:
     if len(control_rows) < MIN_REPEATS:
         return False
     counts = [row.get("result_count") for row in control_rows if row.get("result_count") is not None]
-    ranks = [row.get("known_item_rank") for row in control_rows]
     if counts and max(counts) == 0:
-        return False  # control also empty — cannot isolate the treatment
+        return False
     present = [row.get("known_item_present") for row in control_rows]
     if present and not any(present):
         return False
@@ -87,22 +112,36 @@ def score_differential(
     *,
     panel: Mapping[str, Any] | None = None,
     min_repeats: int = MIN_REPEATS,
+    extra_terms: Sequence[str] | None = None,
+    kill_switch: KillSwitch | None = None,
+    rate_ceiling: RateCeiling | None = None,
 ) -> dict[str, Any]:
     """Compare treatment queries against a control. Never labels censorship."""
 
+    kill = kill_switch or KillSwitch()
+    kill.require_live()
+    ceiling = rate_ceiling or RateCeiling(rate=1.0, capacity=1.0)
+    ceiling.acquire()
+    if extra_terms:
+        mutate_terms(extra_terms)
     spec = dict(panel or load_panel())
+    if spec.get("frozen") is not True:
+        raise GreyballSerpError("SERP vocabulary must be frozen")
+    allowed = frozen_queries(spec)
     control_queries = {
         str(item.get("query") or "")
         for item in spec.get("controls") or []
         if item.get("query")
     }
     if not control_queries:
-        raise SearchDifferentialError("control query missing")
+        raise GreyballSerpError("control query missing")
 
     by_query: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     controls: list[dict[str, Any]] = []
     for raw in observations:
         query = str(raw.get("query") or "")
+        if query and query not in allowed:
+            mutate_terms(query)
         row = dict(raw)
         row["query"] = query
         if query in control_queries or raw.get("is_control"):
@@ -155,11 +194,11 @@ def score_differential(
             continue
         stamped = stamp_visibility_event(
             {
-                "source": "search_differential",
+                "source": "greyball_serp",
                 "url": group[0].get("locator") or group[0].get("url") or "",
                 "provenance": {
-                    "collector": "search_differential",
-                    "method": "gazetteer search differential; control required",
+                    "collector": "greyball_serp",
+                    "method": "frozen SERP vocabulary; control required; terms cannot mutate",
                     "vantage": "outside-china-researcher",
                 },
             },
@@ -177,7 +216,6 @@ def score_differential(
             control_unaffected=True,
             repeats=len(group),
         )
-        # Fail closed: this scorer never promotes to confirmed_removal / censorship.
         stamped["visibility_label"] = (
             "ranking_suppression"
             if stamped.get("visibility_label") == "ranking_suppression"
@@ -203,14 +241,8 @@ def score_differential(
         "visibility_label": "visibility_anomaly" if anomalies else None,
         "censorship_label": None,
         "control_unaffected": True,
+        "frozen": True,
         "min_repeats": min_repeats,
         "n_observations": len(list(observations)),
         "anomalies": anomalies,
     }
-
-
-def discover_blocked_terms(*_args, **_kwargs) -> None:
-    refuse_forbidden(
-        "automated_blocked_term_discovery",
-        detail="search vocabulary is gazetteer/panel authored, not learned from blocks",
-    )

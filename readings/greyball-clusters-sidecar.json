@@ -1,0 +1,19 @@
+{
+  "schema_version": "palimpsest-greyball-clusters-sidecar.v1",
+  "method_version": 1,
+  "relation": "semantic-event-cluster-not-corroboration",
+  "publication_policy": {
+    "counts_as_corroboration": false,
+    "increments_independent_groups": false,
+    "semantic_match_score_raises_corroboration": false,
+    "join": "probabilistic-sidecar",
+    "exact_key_join_unchanged": true,
+    "same_post_claim": false,
+    "attaches_warehouse_slots": false,
+    "exact_keys": ["host", "url_path", "term", "asn"]
+  },
+  "n_records": null,
+  "n_clusters": null,
+  "clusters": [],
+  "note": "Policy sidecar, not a measured zero. semantic_match_score cannot raise corroboration. Absent is not confirmed_removal. Published join stays exact-key."
+}

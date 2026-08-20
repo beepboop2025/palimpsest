@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from collectors.browser_capture import (
+from collectors.greyball_browser import (
     BrowserCaptureError,
     capture_manifest,
+    ingest_confirmed_upload,
     refuse_history_export,
     validate_capture,
 )
@@ -60,3 +61,16 @@ def test_valid_public_capture_stamps_opt_in_browser():
 def test_history_export_is_forbidden():
     with pytest.raises(ForbiddenTechniqueError):
         refuse_history_export()
+
+
+def test_server_ingest_is_confirmed_upload_only():
+    payload = {
+        "public_url": "https://www.gov.cn/",
+        "visible_text": "Official landing",
+        "captured_at": "2026-08-20T12:00:00Z",
+        "dom_hash": "c" * 64,
+    }
+    with pytest.raises(BrowserCaptureError, match="confirmed upload"):
+        ingest_confirmed_upload(payload, kill_switch=_Live())
+    row = ingest_confirmed_upload(payload, upload_confirmed=True, kill_switch=_Live())
+    assert row["upload_confirmed"] is True

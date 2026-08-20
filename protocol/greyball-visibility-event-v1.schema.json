@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/greyball-visibility-event-v1.schema.json",
+  "title": "Palimpsest Greyball visibility event v1",
+  "description": "Shared observation envelope for Greyball methods. Missingness is not censorship. confirmed_removal is never inferred from absence alone. Published join stays exact-key (host | url_path | term | asn).",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "observer_class",
+    "surface",
+    "platform",
+    "locator",
+    "timestamp",
+    "http_status",
+    "content_hash",
+    "visibility_state",
+    "evidence_hash"
+  ],
+  "properties": {
+    "observer_class": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "surface": {"type": "string", "maxLength": 80},
+    "platform": {"type": "string", "maxLength": 80},
+    "locator": {"type": "string", "maxLength": 2048},
+    "timestamp": {"type": ["string", "null"]},
+    "http_status": {"type": ["integer", "string", "null"]},
+    "content_hash": {"type": "string", "maxLength": 128},
+    "visibility_state": {
+      "type": "string",
+      "enum": [
+        "visible",
+        "unavailable",
+        "login_wall",
+        "captcha",
+        "access_denied",
+        "rate_limit",
+        "outage",
+        "ranking_suppression",
+        "unknown",
+        "abstained"
+      ]
+    },
+    "visibility_label": {
+      "description": "Locked Greyball labels. Missing is not a member of this enum.",
+      "type": ["string", "null"],
+      "enum": [
+        "visibility_anomaly",
+        "confirmed_removal",
+        "archive_gap",
+        "login_wall",
+        "rate_limit",
+        "outage",
+        "ranking_suppression",
+        null
+      ]
+    },
+    "missingness": {
+      "description": "Coverage/transport honesty. Never promoted to a censorship label.",
+      "type": ["string", "null"],
+      "enum": [
+        "coverage_gap",
+        "archive_gap",
+        "transport_failure",
+        "abstained",
+        "blocked",
+        null
+      ]
+    },
+    "evidence_hash": {"type": "string", "minLength": 16, "maxLength": 128},
+    "semantic_match_score": {
+      "description": "Sidecar-only. Must not raise corroboration or independent source-group counts.",
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

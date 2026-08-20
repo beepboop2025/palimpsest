@@ -117,13 +117,11 @@ is a hard reject.
 
 | Surface | Runner | 24/7 path | Notes |
 | --- | --- | --- | --- |
-| Synthetic calibration | `scripts/greyball_calibration_pull.py` | fleet `greyball-calibration` (inert unless `PALIMPSEST_GREYBALL_ENABLED=1`) | Offline eight-case harness. Distinguishes or withholds a censorship label. Not a substitute: data_darkness / silence-index / conformal events. |
-| Declared public endpoints | `scripts/greyball_public_endpoints_pull.py` | fleet `greyball-public-endpoints` (flagged) | HTTPS GET of reviewer-declared URLs. Login/CAPTCHA/denied records and **stops**. Empty panel / `robots_tos_permit: false` abstains. |
-| Donation ingest | `scripts/greyball_donation_pull.py` | fleet `greyball-donation` (flagged) | Hashes / transitions / counts only. Identity fields reject. Empty inbox abstains. |
-| Search differential | `scripts/greyball_search_differential_pull.py` | fleet `greyball-search-differential` (flagged) | Gazetteer panel. Anomaly, not censorship. No live term discovery. |
-| Multi-node panel | `scripts/greyball_multi_node_pull.py` | fleet `greyball-multi-node` (flagged) | Outside-China observers only. Blocked → abstain. |
+| Missingness calibration | `scripts/greyball_missingness_pull.py` | fleet `greyball-missingness` (inert unless `PALIMPSEST_GREYBALL_ENABLED=1`) | Offline eight-case fixture pack. Distinguishes or withholds a censorship label. Missing is not censorship. Not a substitute: data_darkness / silence-index / conformal events. |
+| Declared public endpoints | `scripts/greyball_endpoint_pull.py` | fleet `greyball-endpoint` (flagged) | HTTPS GET of reviewer-declared URLs. 401/403/CAPTCHA/param mutation records and **stops**. Empty panel / `robots_tos_permit: false` abstains. |
+| Donation ingest | `scripts/greyball_donation_pull.py` | fleet `greyball-donation` (flagged) | Hashes / transitions / counts only. Identity-key denylist. Empty inbox abstains. |
+| Frozen SERP | `scripts/greyball_serp_pull.py` | fleet `greyball-serp` (flagged) | Frozen gazetteer vocabulary. Anomaly, not censorship. Cannot mutate terms to hunt blocks. |
+| Outside-China observers | `scripts/greyball_observers_pull.py` | fleet `greyball-observers` (flagged) | Refuse `china_in_country`, `in_country=true`, `path_kind=residential_proxy`. AS24940 rows collapse to one backer. Blocked → abstain. |
+| Official + Telegram panel | `scripts/greyball_panel_pull.py` | fleet `greyball-panel` (flagged) | official-first-seen + Telegram previews. No followers/personal accounts. |
 
-Browser-capture protocol (`collectors/browser_capture.py`) has no fleet job
-until an extension exists. Semantic event clusters
-(`processors/event_cluster_sidecar.py`) are not a collector and must not
-attach `SLOT_IDS`.
+Browser-capture contract (`collectors/greyball_browser.py`) is confirmed-upload only and has no fleet job until an extension exists. Semantic event clusters (`readings/greyball-clusters-sidecar.json`) are a policy sidecar; `semantic_match_score` cannot raise corroboration or attach `SLOT_IDS`.

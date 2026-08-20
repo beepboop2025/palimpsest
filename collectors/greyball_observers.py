@@ -1,8 +1,12 @@
-"""Multi-node public observation — the same panel, different outside networks.
+"""Outside-China observer registry — the same panel, different outside networks.
 
 Researchers outside China compare availability, ranking, fingerprints, HTTP
 status, language variant, and time. An observer claiming to be inside China is
 invalid. A blocked vantage abstains; it does not rotate identity or path.
+
+Refuse tokens: ``china_in_country``, ``in_country=true``,
+``path_kind=residential_proxy``. Twenty rows from AS24940 (Hetzner) count as
+one independent backer, not twenty.
 """
 
 from __future__ import annotations
@@ -10,7 +14,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Mapping, Sequence
 
+from core.governance import KillSwitch, RateCeiling
 from core.observer_class import (
+    ForbiddenTechniqueError,
     ObserverClassError,
     blocked_abstention,
     refuse_forbidden,
@@ -19,8 +25,9 @@ from core.observer_class import (
 from core.visibility_event import stamp_visibility_event
 
 
-SCHEMA_VERSION = "palimpsest-multi-node-panel.v1"
+SCHEMA_VERSION = "palimpsest-greyball-observers.v1"
 METHOD_VERSION = 1
+HETZNER_ASN = 24940
 
 COMPARE_FIELDS = (
     "availability",
@@ -36,9 +43,60 @@ def _availability(row: Mapping[str, Any]) -> str:
     return str(row.get("visibility_state") or row.get("availability") or "unknown")
 
 
-def ingest_observer_row(row: Mapping[str, Any]) -> dict[str, Any]:
+def _asn(row: Mapping[str, Any]) -> int | None:
+    value = row.get("asn") or row.get("observer_asn")
+    if value is None or value == "":
+        return None
+    text = str(value).strip().upper().replace("AS", "")
+    if not text.isdigit():
+        return None
+    return int(text)
+
+
+def independent_backer_key(row: Mapping[str, Any]) -> tuple[Any, ...]:
+    """Same ASN is one backer. Hetzner AS24940 collapses to a single key."""
+
+    asn = _asn(row)
+    if asn is not None:
+        return ("asn", asn)
+    return (
+        "observer",
+        str(row.get("geo") or row.get("observer_geo") or ""),
+        str(row.get("observer_class") or ""),
+        str(row.get("vantage") or ""),
+    )
+
+
+def independent_backers(rows: Sequence[Mapping[str, Any]]) -> int:
+    return len({independent_backer_key(row) for row in rows})
+
+
+def ingest_observer_row(
+    row: Mapping[str, Any],
+    *,
+    kill_switch: KillSwitch | None = None,
+    rate_ceiling: RateCeiling | None = None,
+) -> dict[str, Any]:
     """Validate one observer's reading. China-as-sensor raises."""
 
+    kill = kill_switch or KillSwitch()
+    kill.require_live()
+    ceiling = rate_ceiling or RateCeiling(rate=1.0, capacity=1.0)
+    ceiling.acquire()
+    if row.get("china_in_country") in (True, 1, "1", "true", "yes", "on"):
+        raise ObserverClassError(
+            "observer_class rejects China-as-sensor: china_in_country is not a Palimpsest instrument"
+        )
+    if row.get("in_country") in (True, 1, "1", "true", "yes", "on"):
+        raise ObserverClassError(
+            "observer_class rejects China-as-sensor: in_country=true is not a Palimpsest instrument"
+        )
+    path_kind = str(row.get("path_kind") or "").strip().lower().replace("-", "_")
+    if path_kind == "residential_proxy":
+        refuse_forbidden(
+            "residential_proxy_rotation",
+            detail="path_kind=residential_proxy is not an outside-China observer",
+        )
     if row.get("blocked") or row.get("status") == "blocked":
         abstain = blocked_abstention("blocked")
         abstain["locator"] = row.get("locator") or row.get("url")
@@ -49,6 +107,9 @@ def ingest_observer_row(row: Mapping[str, Any]) -> dict[str, Any]:
         country=row.get("country") or row.get("observer_country"),
         vantage=row.get("vantage"),
         claimed_inside_china=row.get("inside_china") or row.get("claimed_inside_china"),
+        in_country=row.get("in_country"),
+        china_in_country=row.get("china_in_country"),
+        path_kind=row.get("path_kind"),
     )
     stamped = stamp_visibility_event(
         dict(row),
@@ -63,10 +124,17 @@ def ingest_observer_row(row: Mapping[str, Any]) -> dict[str, Any]:
     )
     stamped["language"] = row.get("language") or row.get("language_variant")
     stamped["ranking"] = row.get("ranking") or row.get("search_rank")
+    stamped["asn"] = _asn(row)
+    stamped["independent_backer"] = independent_backer_key(stamped | {"asn": stamped.get("asn") or row.get("asn")})
     return stamped
 
 
-def compare_panel(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def compare_panel(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    kill_switch: KillSwitch | None = None,
+    rate_ceiling: RateCeiling | None = None,
+) -> dict[str, Any]:
     """Compare validated outside-China observations of the same locators."""
 
     accepted: list[dict[str, Any]] = []
@@ -74,8 +142,10 @@ def compare_panel(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     abstained: list[dict[str, Any]] = []
     for raw in rows:
         try:
-            item = ingest_observer_row(raw)
-        except ObserverClassError as exc:
+            item = ingest_observer_row(
+                raw, kill_switch=kill_switch, rate_ceiling=rate_ceiling
+            )
+        except (ObserverClassError, ForbiddenTechniqueError) as exc:
             rejected.append({"reason": str(exc), "locator": raw.get("locator") or raw.get("url")})
             continue
         if item.get("status") == "abstained":
@@ -107,6 +177,7 @@ def compare_panel(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             {
                 "locator": locator,
                 "n_observers": len(group),
+                "n_independent_backers": independent_backers(group),
                 "observer_classes": sorted({row["observer_class"] for row in group}),
                 "availability": sorted(states),
                 "http_status": sorted(str(s) for s in statuses),
@@ -124,6 +195,8 @@ def compare_panel(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "n_accepted": len(accepted),
         "n_rejected_china_sensor": len(rejected),
         "n_abstained": len(abstained),
+        "n_independent_backers": independent_backers(accepted),
+        "hetzner_asn": HETZNER_ASN,
         "rejected": rejected,
         "abstained": abstained,
         "comparisons": comparisons,

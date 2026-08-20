@@ -3,18 +3,12 @@
 > Collect more observations, not more identities. Watch the censor, never the
 > censored. Public data only. Nobody inside China is asked to act.
 
-This is the canonical methods document for Palimpsest's Greyball / OTF-friend
-collection package: ten first-class ways to observe *visibility*, the labels
-those observations may carry, the join rule that keeps a fat object honest, and
-the hard-fail list that the code refuses. It does not replace
-[UNDERTEXT.md](UNDERTEXT.md), [NEW-METHODS.md](NEW-METHODS.md),
-[ETHICS.md](ETHICS.md), or [SAFETY.md](../SAFETY.md). Those documents keep their
-voice. This one is the wall those documents now point at when a collection
-path would otherwise be invented.
+This document is the locked contract. Match these names. Do not invent a
+parallel design. Labels, paths, and join rules below are canonical.
 
 The live measurement node is the German Hetzner box behind palimpsest.info.
 `PALIMPSEST_LIVE` stays off unless an operator is running a separately gated
-active-probe job. `CENSORWATCH_ENABLED` stays off. CensorWatch is **not** an
+active-probe job. Do not set `CENSORWATCH_ENABLED`. CensorWatch is **not** an
 in-country China sensor.
 
 ---
@@ -38,12 +32,13 @@ Wayback / Common Crawl ───┘                              │
 Every method below either *emits* a visibility event or *labels* an event that
 an existing collector already emits. There is no parallel warehouse.
 
-### Shared visibility-event fields
+### Protocol
 
-`observer_class`, `surface`, `platform`, `locator`, `timestamp`,
+`protocol/greyball-visibility-event-v1.schema.json` is the envelope. Runtime
+stamp: `core/visibility_event.py` + `core/observer_class.py`.
+
+Shared fields: `observer_class`, `surface`, `platform`, `locator`, `timestamp`,
 `http_status`, `content_hash`, `visibility_state`, `evidence_hash`.
-
-Code: `core/visibility_event.py`, `core/observer_class.py`.
 
 ### Label vocabulary (never jump missing → censorship)
 
@@ -57,188 +52,169 @@ Code: `core/visibility_event.py`, `core/observer_class.py`.
 | `outage` | Transport or 5xx failure. The network, not the censor, is the story. |
 | `ranking_suppression` | The item is still present; its rank moved against a control. |
 
-Missingness is a separate field (`coverage_gap`, `archive_gap`,
-`transport_failure`, `abstained`, `blocked`). A blocked observer **abstains**.
-It does not write a zero.
+**Missing is not censorship.** Missingness is a separate field (`coverage_gap`,
+`archive_gap`, `transport_failure`, `abstained`, `blocked`). A blocked observer
+**abstains**. It does not write a zero. `absent` is not `confirmed_removal`.
 
-### Published join rule (unchanged)
+### Published join rule (unchanged, exact-key)
 
 Published corroboration and fat-object interconnection remain **exact-key
-only**: same host, URL path, board term, calendar day, or ASN, inside the
-existing UTC ±24h window (`core/event_interconnection.py`). Unmatched peers
-are skipped, not fuzzy-joined. Semantic / probabilistic matches live in a
-**labeled sidecar** (`processors/event_cluster_sidecar.py`) and **must not**
-raise corroboration or independent source-group counts.
+only**: `host | url_path | term | asn`, UTC ±24h
+(`core/event_interconnection.py`). Unmatched peers are skipped, not
+fuzzy-joined. `semantic_match_score` lives in
+`readings/greyball-clusters-sidecar.json` and **cannot raise corroboration**.
 
 ---
 
-## The ten methods
+## The ten methods (locked names)
 
-### 1. Browser-side public-page capture — protocol (new)
+### 1. Browser-side public-page capture — protocol + confirmed upload
 
-**What.** An opt-in browser extension captures only pages a participant
-intentionally opens. Capture is local: visible post/page text, public URL,
-timestamp, search-result rank, public engagement counts, screenshot or DOM
-hash, later availability. The extension redacts before upload, shows the
-participant exactly the field list, and honours a kill switch.
+**Contract + ingest.** `collectors/greyball_browser.py`. No extension binary is
+shipped. Server ingest is **confirmed upload only**. No fleet job until an
+extension exists.
 
-**What is forbidden in the payload.** Cookies, tokens, history, DMs, contacts,
-follower graphs. Those keys are rejected at ingest.
+**Forbidden in the payload.** Cookies, tokens, history, DMs, contacts, follower
+graphs, `install_id`, `gps`.
 
-**Shipping.** Protocol + local redaction + ingest validator:
-`collectors/browser_capture.py`. No extension binary is shipped. No live
-upload path runs unless `PALIMPSEST_GREYBALL_ENABLED=1`.
+**Observer class.** `opt-in-browser`. A capture that claims to originate inside
+mainland China is rejected.
 
-**Observer class.** `opt-in-browser`. A capture that claims to originate
-inside mainland China is rejected.
+### 2. Public endpoint discovery — adapter with hard stop
 
-### 2. Public endpoint discovery — adapter with hard stop (new)
+**Config.** `config/greyball_endpoints.json`
 
-**What.** Document JSON endpoints a *public page itself* calls, then fetch
-those exact URLs. Allowed only when: no auth, exposed to an ordinary public
-visitor, rate-limited, robots/ToS declared as permitting, no parameter
-mutation to hidden objects, no signature/token/anti-bot bypass.
+**Adapter.** `collectors/greyball_endpoint.py`
 
-**Hard stop.** Login wall, CAPTCHA, or access-denied is recorded as a
-visibility event (`login_wall`) and the adapter **STOPS**. It does not walk
-parameters, fuzz, retry with mutated IDs, or probe neighbouring objects.
-
-**Shipping.** `collectors/public_endpoint.py`. Stores endpoint schema +
-collection version. Inert unless the Greyball flag is set.
+Fetch only the JSON a public page itself calls. Hard stop on **401 / 403 /
+CAPTCHA / param mutation**. Login wall, CAPTCHA, or access-denied is recorded
+as `login_wall` and the adapter **STOPS**. No parameter walks, fuzzing, or
+hidden-object probes.
 
 ### 3. Archive-first reconstruction — wired
 
-**What.** Prefer Common Crawl, Internet Archive CDX, public RSS archives,
-legally available search caches, and public mirrors. Reconstruct
-last-live/first-gone, mutations, removed public-account posts, changed SERPs,
-vanished official notices.
-
-**Honesty.** A missing archive capture is an `archive_gap`, never a deletion.
-The Common Crawl URL lake is not published as a censorship dump. Greyball does
-not modify the Common Crawl systemd path, lake ingest, or WARC fetchers.
-
-**Shipping.** Existing `collectors/wayback_vantage.py` / `scripts/wayback_reconstruct_pull.py`
+Existing `collectors/wayback_vantage.py` / `scripts/wayback_reconstruct_pull.py`
 are stamped `archive-crawler`; `no_baseline` is `archive_gap`. Common Crawl
 remains a documented archive-first *source*; this package does not edit the
-lake. `archive-news-context` (fleet job, already on main) is labeled
-`archive-crawler` without reimplementation.
+lake. `archive-news-context` is labeled, not reimplemented.
 
-### 4. Volunteer data donation — pipeline (new)
+### 4. Volunteer data donation
 
-**Pipeline.** Participant sees a page → extension captures selected public
-fields → local redaction → local hash and encryption → participant reviews a
-sample → aggregate upload.
+**Adapter.** `collectors/greyball_donation.py`
 
-**Accept.** Hashes, status transitions, aggregate counts.
+Accept hashes, status transitions, aggregate counts. Identity-key denylist
+rejects: `cookies`, `token`, `history`, `dm`, `contacts`, `followers`, `feed`,
+`phone`, `email`, `install_id`, `gps` (and aliases).
 
-**Reject.** Feeds, browsing history, private messages, cookies, account
-tokens, contacts, follower graphs.
+### 5. Outside-China observer registry
 
-**Shipping.** `collectors/donation_ingest.py`. The server never asks for
-identity fields and fail-closes if they appear.
+**Adapter.** `collectors/greyball_observers.py`
 
-### 5. Multi-node public observation — new, outside China
+Researchers *outside China* run the same panel from different networks.
+Refuse `china_in_country`, `in_country=true`, `path_kind=residential_proxy`.
+Twenty rows from **AS24940** (Hetzner) = **one backer**. A blocked vantage
+abstains; it does not rotate identity or path.
 
-**What.** Researchers *outside China* run the same panel from different
-networks and browsers. Compare availability, ranking, page fingerprints, HTTP
-status, language variant, time. Record `observer_class`.
+### 6. Frozen SERP vocabulary runner
 
-**Abstain when blocked.** Do not rotate identities or network paths to evade
-controls. An observer claiming to be inside China is **rejected** (invalid),
-not quietly relabelled.
+**Config.** `config/greyball_serp.json` (`frozen: true`)
 
-**Shipping.** `collectors/multi_node_panel.py` + `core/observer_class.py`.
-Live fleet job inert unless the Greyball flag is set.
+**Runner.** `collectors/greyball_serp.py`
 
-### 6. Search-result differential testing — new
+Cannot mutate terms to hunt blocks. A difference is a `visibility_anomaly`,
+never automatic censorship. Repeated observations **and** an unaffected control
+query are required; otherwise the scorer abstains.
 
-**What.** Fixed, human-reviewed vocabulary from the gazetteer — not terms
-auto-discovered by triggering moderation. Variants (zh-Hans, zh-Hant, pinyin,
-acronyms, punctuation, image-text where already public) live in
-`config/search_differential_panel.json`.
+### 7. Public-account longitudinal monitoring — official + Telegram
 
-**Scoring.** Compare result counts, ranks, snippets, known-item
-discoverability. A difference is a `visibility_anomaly`, never automatic
-censorship. Repeated observations **and** an unaffected control query are
-required; otherwise the scorer abstains.
+**Adapter.** `collectors/greyball_panel.py`
 
-**Shipping.** `processors/search_differential.py`.
+Panel monitor on **official-first-seen** + **Telegram previews**. No followers,
+no personal accounts. Existing `official_first_seen` / `telegram_public_channels`
+collectors stay the capture sources; Greyball projects them.
 
-### 7. Public-account longitudinal monitoring — wired
+### 8. Cross-platform event reconstruction — sidecar
 
-**What.** A fixed panel of already-public accounts, institutional pages,
-public channels, and official notices. Save page-level hashes, post-count
-changes, visible latest-post timestamps, public policy notices, public
-deletion or restriction messages.
+**Sidecar file.** `readings/greyball-clusters-sidecar.json`
 
-**Not collected.** Followers, comments, private groups, personal accounts,
-user-level behavioural histories.
+Builder: `processors/event_cluster_sidecar.py`.
+`semantic_match_score` cannot raise corroboration or independent source-group
+counts. Does not attach warehouse slots. Published join stays exact-key.
 
-**Shipping.** Existing `collectors/official_first_seen.py`,
-`collectors/telegram_public_channels.py`, and
-`collectors/public_hot_boards.py`, stamped and projected through
-`collectors/public_account_panel.py` so the longitudinal view cannot grow
-identity fields.
+### 9. Public deletion-report aggregation — reporter-blind
 
-### 8. Cross-platform event reconstruction — sidecar (new)
+Deduped reporter-blind aggregator **extending**
+`collectors/public_deletion_ledgers.py` (`aggregate_reporter_blind`). Retain
+platform, broad topic, timestamp bracket, public evidence receipt,
+removal-state category. Drop the reporting person. Do not republish sensitive
+original content.
 
-**What.** Connect the same *event* across Weibo, Bilibili, Douyin, Zhihu,
-Telegram public channels, news pages, and archives using public links,
-timestamps, titles, hashtags, and semantic similarity. Matches stay
-probabilistic. Similar text is never claimed to be the same post.
+### 10. Synthetic missingness calibration — scientific backbone
 
-**Recorded on the sidecar.** `event_cluster`, `platform`, `surface`,
-`time_window`, `visibility_state`, `topic_cluster`, `link_overlap`,
-`semantic_match_score`, `evidence_hash`.
+**Processor.** `processors/greyball_missingness.py`
 
-**Join rule.** Published corroboration / fat-object join remains exact-key.
-The sidecar cannot increment `independent_source_groups` or
-`n_corroborated_events`.
+**Fixture pack.** `config/greyball_missingness_cases.json`
 
-**Shipping.** `processors/event_cluster_sidecar.py`.
+Eight cases: random deletion, topic-selective deletion, cascade deletion,
+ranking suppression, temporary outage, login-wall conversion, rate limiting,
+burst deletion during an event. **One misclassification fails.** The harness
+must not emit `confirmed_removal`. `may_emit_censorship_label` stays false.
+Missing is not censorship.
 
-### 9. Public deletion-report aggregation — wired
+---
 
-**What.** Ingest publicly posted reports from journalists, researchers,
-digital-rights orgs, and voluntary reporters. Dedupe. Retain platform, broad
-topic, timestamp bracket, public evidence receipt, removal-state category.
+## Fleet
 
-**Not retained.** The reporting person. Sensitive original content is not
-republished.
+Allowlist a Greyball snapshot job **only after** its adapter and tests exist.
+Jobs stay **inert** unless `PALIMPSEST_GREYBALL_ENABLED=1`. They abstain, not
+zero, when blocked. They are not news-family jobs and do not trigger
+`_refresh_archive_news_context`. They are not join peers: no `SLOT_IDS` /
+`LIVE_SOURCES` entries.
 
-**Shipping.** Existing `collectors/public_deletion_ledgers.py` (CDT, GreatFire,
-FreeWeibo-style public RSS), projected through
-`collectors/deletion_report_agg.py`.
+Current allowlist (adapters + tests exist):
 
-### 10. Synthetic censorship calibration — new, scientific backbone
+| Job | Adapter |
+| --- | --- |
+| `greyball-endpoint` | `collectors/greyball_endpoint.py` |
+| `greyball-donation` | `collectors/greyball_donation.py` |
+| `greyball-observers` | `collectors/greyball_observers.py` |
+| `greyball-serp` | `collectors/greyball_serp.py` |
+| `greyball-panel` | `collectors/greyball_panel.py` |
+| `greyball-missingness` | `processors/greyball_missingness.py` |
 
-**What.** Before interpreting real observations, generate synthetic datasets
-containing eight known processes, then test whether Palimpsest can tell them
-apart:
+Browser ingest has no fleet job (confirmed upload only). Do not set
+`CENSORWATCH_ENABLED`.
 
-1. random deletion
-2. topic-selective deletion
-3. cascade deletion
-4. ranking suppression
-5. temporary outage
-6. login-wall conversion
-7. rate limiting
-8. burst deletion during an event
+Every new collector calls `KillSwitch.require_live()` and uses `RateCeiling`.
 
-**Fail closed.** If the harness cannot distinguish those cases, it **must not**
-emit a censorship label (`confirmed_removal` is withheld; `may_emit_censorship_label`
-is false). This is offline-testable code, not a paragraph.
+Hetzner: no extra Docker service. Same `worker-collectors` after image rebuild.
+Canonical checkout `/home/palimpsest/palimpsest`. State under
+`/var/lib/palimpsest/{readings,data}`. No hollow `*-latest.json` placeholders.
+The clusters sidecar is a **policy** file, not a measured zero.
 
-**Shipping.** `processors/synthetic_calibration.py`. Fleet job inert unless
-the Greyball flag is set; the test suite always runs the harness.
+The always-on Hetzner fleet is **42 snapshot jobs** plus the flagged Greyball
+allowlist. Already-merged jobs Greyball **labels rather than reimplements**:
+`weibo-hotsearch-terms`, `archive-news-context`, `public-board-terms`,
+`social-spread`, `reading-analysis`, `greatfire-context`, `peer-context`,
+`peer-context-rank`. Closed-schema writers keep their exact field sets.
+
+---
+
+## Required tests
+
+- `tests/test_greyball_calibration.py` — eight synthetic cases; one misclassification fails
+- `tests/test_greyball_endpoint_stops.py` — 401/403/CAPTCHA/param mutation
+- `tests/test_greyball_donation_denylist.py` — reject cookies/token/history/dm/contacts/followers/feed/phone/email/install_id/gps
+- `tests/test_greyball_observer_class.py` — reject China-as-sensor; 20 rows from AS24940 = one backer
+- Semantic match does not increment corroboration; absent ≠ `confirmed_removal`
+- CensorWatch stays off in default compose/fleet/CI
 
 ---
 
 ## Forbidden (hard fail in code and tests)
 
 The following have **no implementation path** in Greyball modules. Calling
-`core.observer_class.refuse_forbidden(...)` raises. Tests scan for the
-techniques and assert the refuse gate.
+`core.observer_class.refuse_forbidden(...)` raises.
 
 - CAPTCHA solving
 - Stolen or shared credentials
@@ -251,10 +227,6 @@ techniques and assert the refuse gate.
 - Deanonymization / identity linkage
 - Automated discovery of blocked terms by triggering moderation
 
-CensorWatch's existing politeness / UNKNOWN-on-403 detector is unchanged and
-stays gated. Greyball does not add an in-country egress helper, a proxy
-rotator, or a CAPTCHA path to that package.
-
 ---
 
 ## CensorWatch relationship
@@ -264,50 +236,8 @@ never been enabled in production. Greyball **does not live in that package**,
 does not add tasks or ingest helpers there, and **does not enable it**.
 `CENSORWATCH_ENABLED` stays off.
 
-CensorWatch is **not** an in-country China sensor. Minute-resolution in-country
-velocity remains an honest unbuilt capability. Greyball closes visibility gaps
-from *outside* the wall: archives, public ledgers, opt-in outside observers,
-hashes, and synthetic calibration in Palimpsest `core/` / `collectors/` /
-`processors/`.
-
 Greyball also does not touch BLEEDTHROUGH systemd units, Common Crawl systemd
 units, or GFI eval paths.
-
----
-
-## Shipping versus new
-
-| # | Method | Status | Code |
-| --- | --- | --- | --- |
-| 1 | Browser-side public-page capture | **new** (protocol + ingest) | `collectors/browser_capture.py` |
-| 2 | Public endpoint discovery | **new** (hard-stop adapter) | `collectors/public_endpoint.py` |
-| 3 | Archive-first reconstruction | **wired** | Wayback reconstructions; `archive-news-context` labeled, not rewritten. Common Crawl systemd/lake untouched. |
-| 4 | Volunteer data donation | **new** | `collectors/donation_ingest.py` |
-| 5 | Multi-node public observation | **new** | `collectors/multi_node_panel.py`, `core/observer_class.py` |
-| 6 | Search-result differential | **new** | `processors/search_differential.py` |
-| 7 | Public-account longitudinal | **wired** | official / telegram / hot boards + `public_account_panel.py` |
-| 8 | Cross-platform event reconstruction | **new** (sidecar) | `processors/event_cluster_sidecar.py` |
-| 9 | Public deletion-report aggregation | **wired** | ledgers + `deletion_report_agg.py` |
-| 10 | Synthetic censorship calibration | **new** | `processors/synthetic_calibration.py` |
-
-Existing live collectors keep working. The always-on Hetzner fleet is **42
-snapshot jobs** (`SNAPSHOT_OUTPUTS` on main), including the already-merged
-`weibo-hotsearch-terms`, `archive-news-context`, `public-board-terms`,
-`social-spread`, `reading-analysis`, `greatfire-context`, `peer-context`, and
-`peer-context-rank` jobs — labeled, not reimplemented. Closed-schema writers
-keep their exact field sets.
-
-New Greyball snapshot jobs register in `core/collector_fleet.py`
-(`SNAPSHOT_OUTPUTS`, `_STANDARD`, `_VIGOROUS`, `_COUNT_PATHS`, explicit
-`_invoke_snapshot` import) and stay **inert** unless
-`PALIMPSEST_GREYBALL_ENABLED=1`. They abstain, not zero, when blocked. They
-are not news-family jobs and do not trigger `_refresh_archive_news_context`.
-They are not join peers: no `SLOT_IDS` / `LIVE_SOURCES` entries. Semantic
-clusters stay a sidecar.
-
-Hetzner: no extra Docker service. Same `worker-collectors` after image rebuild.
-Canonical checkout `/home/palimpsest/palimpsest`. State under
-`/var/lib/palimpsest/{readings,data}`. No hollow `*-latest.json` placeholders.
 
 ---
 

@@ -5,27 +5,27 @@ from __future__ import annotations
 import pathlib
 import re
 
-from collectors.browser_capture import refuse_history_export
-from collectors.multi_node_panel import rotate_identity, rotate_residential_path
-from collectors.public_endpoint import probe_hidden_object
+from collectors.greyball_browser import refuse_history_export
+from collectors.greyball_observers import rotate_identity, rotate_residential_path
+from collectors.greyball_endpoint import probe_hidden_object
 from core.observer_class import FORBIDDEN_TECHNIQUES, ForbiddenTechniqueError, refuse_forbidden
-from processors.search_differential import discover_blocked_terms
-from processors.synthetic_calibration import run_calibration
+from collectors.greyball_serp import discover_blocked_terms
+from processors.greyball_missingness import run_calibration
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 GREYBALL_PATHS = [
     ROOT / "core/visibility_event.py",
     ROOT / "core/observer_class.py",
-    ROOT / "collectors/browser_capture.py",
-    ROOT / "collectors/donation_ingest.py",
-    ROOT / "collectors/public_endpoint.py",
-    ROOT / "collectors/multi_node_panel.py",
-    ROOT / "collectors/public_account_panel.py",
-    ROOT / "collectors/deletion_report_agg.py",
-    ROOT / "processors/search_differential.py",
+    ROOT / "collectors/greyball_browser.py",
+    ROOT / "collectors/greyball_donation.py",
+    ROOT / "collectors/greyball_endpoint.py",
+    ROOT / "collectors/greyball_observers.py",
+    ROOT / "collectors/greyball_serp.py",
+    ROOT / "collectors/greyball_panel.py",
+    ROOT / "collectors/public_deletion_ledgers.py",
     ROOT / "processors/event_cluster_sidecar.py",
-    ROOT / "processors/synthetic_calibration.py",
+    ROOT / "processors/greyball_missingness.py",
 ]
 
 _IMPLEMENTED = re.compile(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 pytest.importorskip("celery", reason="the fleet schedule is a Celery beat fragment")
@@ -14,11 +16,12 @@ from core.collector_fleet import (  # noqa: E402
 
 
 GREYBALL_JOBS = (
-    "greyball-search-differential",
-    "greyball-public-endpoints",
+    "greyball-endpoint",
     "greyball-donation",
-    "greyball-multi-node",
-    "greyball-calibration",
+    "greyball-observers",
+    "greyball-serp",
+    "greyball-missingness",
+    "greyball-panel",
 )
 
 
@@ -56,3 +59,20 @@ def test_greyball_jobs_schedule_only_when_flagged(monkeypatch):
         if name.startswith("collect-snapshot-")
     }
     assert set(GREYBALL_JOBS) <= names
+
+
+def test_censorwatch_stays_off_in_default_compose_fleet_and_ci(monkeypatch):
+    monkeypatch.delenv("CENSORWATCH_ENABLED", raising=False)
+    monkeypatch.delenv("PALIMPSEST_GREYBALL_ENABLED", raising=False)
+    root = Path(__file__).resolve().parent.parent
+    compose = (root / "ops/docker/docker-compose.prod.yml").read_text(encoding="utf-8")
+    env_example = (root / "ops/docker/.env.example").read_text(encoding="utf-8")
+    tests_yml = (root / ".github/workflows/tests.yml").read_text(encoding="utf-8")
+    assert "CENSORWATCH_ENABLED: 1" not in compose
+    assert "CENSORWATCH_ENABLED: \"1\"" not in compose
+    assert not any(line.strip() == "CENSORWATCH_ENABLED=1" for line in env_example.splitlines())
+    assert "CENSORWATCH_ENABLED" not in tests_yml
+    assert greyball_enabled() is False
+    fleet_src = (root / "core/collector_fleet.py").read_text(encoding="utf-8")
+    assert "CENSORWATCH_ENABLED" not in fleet_src
+

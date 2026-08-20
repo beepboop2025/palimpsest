@@ -183,6 +183,7 @@ def build_sidecar(
             "exact_key_join_unchanged": True,
             "same_post_claim": SAME_POST_CLAIM,
             "attaches_warehouse_slots": False,
+            "semantic_match_score_raises_corroboration": False,
             "exact_keys": ("host", "url_path", "term", "asn"),
         },
         "n_records": len(items),
@@ -199,6 +200,14 @@ def corroboration_increment(sidecar: Mapping[str, Any] | None) -> int:
     policy = sidecar.get("publication_policy") if isinstance(sidecar, Mapping) else None
     if isinstance(policy, Mapping) and policy.get("counts_as_corroboration"):
         raise ValueError("event-cluster sidecar must not count as corroboration")
+    if isinstance(policy, Mapping) and policy.get("semantic_match_score_raises_corroboration"):
+        raise ValueError("semantic_match_score cannot raise corroboration")
+    scores = sidecar.get("clusters") if isinstance(sidecar, Mapping) else None
+    if isinstance(scores, list):
+        for row in scores:
+            if isinstance(row, Mapping) and row.get("semantic_match_score"):
+                # A non-zero score is allowed on the sidecar; it still adds 0.
+                pass
     return 0
 
 

@@ -1,4 +1,4 @@
-"""Synthetic censorship calibration — distinguish eight processes, or stay silent.
+"""Greyball missingness calibration — distinguish eight processes, or stay silent.
 
 Before Palimpsest interprets real observations it must show, offline, that it
 can tell these cases apart:
@@ -15,16 +15,20 @@ can tell these cases apart:
 If it cannot, it must not emit a censorship label. The discriminator uses only
 observables (control fate, topic concentration, graph order, HTTP status,
 recovery, rank-with-presence). Ground-truth labels are for scoring, never for
-classification.
+classification. Missing is not censorship. ``confirmed_removal`` is withheld.
 """
 
 from __future__ import annotations
 
+import json
 import random
+from pathlib import Path
 from typing import Any, Mapping
 
 
-SCHEMA_VERSION = "palimpsest-synthetic-calibration.v1"
+ROOT = Path(__file__).resolve().parent.parent
+FIXTURE_PACK = ROOT / "config" / "greyball_missingness_cases.json"
+SCHEMA_VERSION = "palimpsest-greyball-missingness.v1"
 METHOD_VERSION = 1
 
 CASES = (
@@ -71,8 +75,6 @@ def generate_world(case: str, *, seed: int = 0, n: int = 40) -> dict[str, Any]:
                 post["present"] = False
                 post["http_status"] = 404
     elif case == "cascade_deletion":
-        # Prefix wave along the T parent chain. Later T posts remain, so this
-        # is not a whole-topic wipe and not a mid-window burst.
         t_ids = [i for i, post in enumerate(posts) if post["topic"] == "T"]
         wave = t_ids[: max(3, len(t_ids) // 2)]
         for i in wave:
@@ -115,6 +117,10 @@ def generate_world(case: str, *, seed: int = 0, n: int = 40) -> dict[str, Any]:
         "treatment_topic": "T",
         "event_t": event_t,
     }
+
+
+def load_fixture_pack(path: Path | str = FIXTURE_PACK) -> dict[str, Any]:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def _rates(posts: list[dict[str, Any]], topic: str) -> float:
@@ -194,11 +200,10 @@ def classify_world(world: Mapping[str, Any]) -> dict[str, Any]:
         label = "unknown"
         visibility = None
 
-    emit_removal = False  # calibration itself never emits confirmed_removal
     return {
         "predicted_case": label,
         "visibility_label": visibility,
-        "censorship_label": CENSORSHIP_LABEL if emit_removal else None,
+        "censorship_label": None,
         "observables": {
             "treatment_gone_rate": round(t_rate, 4),
             "control_gone_rate": round(c_rate, 4),
@@ -210,23 +215,40 @@ def classify_world(world: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_calibration(*, seed: int = 0) -> dict[str, Any]:
-    """Generate all eight worlds and score whether they distinguish."""
+def run_calibration(
+    *,
+    seed: int = 0,
+    fixture_pack: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Score the eight-case fixture pack. One misclassification fails closed."""
 
+    pack = dict(fixture_pack) if fixture_pack is not None else (
+        load_fixture_pack() if FIXTURE_PACK.exists() else None
+    )
     distinguished: dict[str, bool] = {}
     predictions: dict[str, str] = {}
     labels: dict[str, str | None] = {}
-    for i, case in enumerate(CASES):
-        world = generate_world(case, seed=seed + i * 17)
-        result = classify_world(world)
-        predictions[case] = result["predicted_case"]
-        labels[case] = result["visibility_label"]
-        distinguished[case] = result["predicted_case"] == case
+    worlds: list[Mapping[str, Any]]
+    if pack and isinstance(pack.get("cases"), list) and pack["cases"]:
+        worlds = list(pack["cases"])
+    else:
+        worlds = [generate_world(case, seed=seed + i * 17) for i, case in enumerate(CASES)]
+    if len(worlds) != 8:
+        raise ValueError("greyball missingness fixture pack must contain eight cases")
+    for world in worlds:
+        truth = str(world.get("case") or "")
+        # Classifier never receives the ground-truth key.
+        observables = {k: v for k, v in world.items() if k != "case"}
+        result = classify_world(observables)
+        predictions[truth] = result["predicted_case"]
+        labels[truth] = result["visibility_label"]
+        distinguished[truth] = result["predicted_case"] == truth
+        if result["predicted_case"] != truth:
+            distinguished[truth] = False
 
-    all_ok = all(distinguished.values())
+    all_ok = all(distinguished.get(case) for case in CASES) and set(distinguished) == set(CASES)
     predicted_set = set(predictions.values())
     collision = len(predicted_set) < len(CASES)
-    may_emit = all_ok and not collision
     return {
         "schema_version": SCHEMA_VERSION,
         "method_version": METHOD_VERSION,
@@ -235,13 +257,15 @@ def run_calibration(*, seed: int = 0) -> dict[str, Any]:
         "predictions": predictions,
         "visibility_labels": labels,
         "all_distinguished": all_ok,
-        "may_emit_censorship_label": may_emit and False,  # still withheld: eight-way ≠ intent
+        "may_emit_censorship_label": False,
         "censorship_label_emitted": None,
+        "collision": collision,
         "note": (
             "If all_distinguished is false, Palimpsest must not emit a "
             "censorship label. Even when true, this harness emits only "
             "visibility_anomaly / login_wall / rate_limit / outage / "
-            "ranking_suppression — never confirmed_removal from synthetic data."
+            "ranking_suppression — never confirmed_removal from synthetic data. "
+            "Missing is not censorship."
         ),
     }
 

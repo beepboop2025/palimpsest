@@ -1,9 +1,9 @@
-"""Declared public JSON endpoints. Hard-stop on login/CAPTCHA/denied.
+"""Declared public JSON endpoints. Hard-stop on 401/403/CAPTCHA/denied.
 
 Inert unless PALIMPSEST_GREYBALL_ENABLED=1. Empty panel or missing robots/ToS
 permit abstains. Blocked surfaces abstain, they do not write a zero.
 
-Usage:  PYTHONPATH=. python -m scripts.greyball_public_endpoints_pull
+Usage:  PYTHONPATH=. python -m scripts.greyball_endpoint_pull
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.public_endpoint import METHOD_VERSION, observe_declared_endpoints
+from collectors.greyball_endpoint import METHOD_VERSION, observe_declared_endpoints
 from core.china_observation import iso_z
 from core.governance import KillSwitch, RateCeiling
 from core.greyball_flag import greyball_enabled
@@ -21,8 +21,8 @@ from core.safe_fetch import FetchError, safe_fetch
 
 ROOT = Path(__file__).resolve().parent.parent
 READINGS = ROOT / "readings"
-OUT = READINGS / "greyball-public-endpoints-latest.json"
-CONFIG = ROOT / "config" / "public_endpoints.json"
+OUT = READINGS / "greyball-endpoint-latest.json"
+CONFIG = ROOT / "config" / "greyball_endpoints.json"
 USER_AGENT = (
     "Palimpsest/0.2 (+https://palimpsest.info; open-source censorship "
     "research; declared public JSON only)"
@@ -50,17 +50,17 @@ def _http_fetch(url: str) -> tuple[int, str]:
 def main(*, fetch=None) -> dict | None:
     kill = KillSwitch()
     if kill.is_halted():
-        print("greyball-public-endpoints: halted by kill switch — abstaining")
+        print("greyball-endpoint: halted by kill switch — abstaining")
         return None
     if not greyball_enabled():
-        print("greyball-public-endpoints: inert (set PALIMPSEST_GREYBALL_ENABLED=1) — abstaining")
+        print("greyball-endpoint: inert (set PALIMPSEST_GREYBALL_ENABLED=1) — abstaining")
         return None
 
     spec = json.loads(CONFIG.read_text(encoding="utf-8"))
     endpoints = list(spec.get("endpoints") or [])
     permit = bool(spec.get("robots_tos_permit"))
     if not endpoints or not permit:
-        print("greyball-public-endpoints: no permitted declared endpoints — abstaining")
+        print("greyball-endpoint: no permitted declared endpoints — abstaining")
         return None
 
     result = observe_declared_endpoints(
@@ -71,9 +71,6 @@ def main(*, fetch=None) -> dict | None:
         rate_ceiling=None if fetch is not None else RateCeiling(rate=0.3, capacity=1.0),
         robots_tos_permit=permit,
     )
-    if result["stopped"] and result["n_fetched"] == 1:
-        # Hard stop is an observation, not a zero-result board.
-        pass
     generated = iso_z(datetime.now(timezone.utc))
     out = {
         "generated_at": generated,
@@ -89,7 +86,7 @@ def main(*, fetch=None) -> dict | None:
     READINGS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
     print(
-        f"greyball-public-endpoints: fetched={out['n_fetched']} "
+        f"greyball-endpoint: fetched={out['n_fetched']} "
         f"stopped={out['stopped']} reason={out['stop_reason']}"
     )
     return out

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from core.observer_class import ForbiddenTechniqueError
-from processors.search_differential import discover_blocked_terms, load_panel, score_differential
+from collectors.greyball_serp import discover_blocked_terms, load_panel, score_differential
 
 
 def _obs(query, *, count, present=True, rank=1, control=False, n=2):
@@ -52,3 +52,10 @@ def test_missing_control_or_repeats_abstains():
 def test_vocabulary_is_not_discovered_by_triggering_moderation():
     with pytest.raises(ForbiddenTechniqueError, match="blocked"):
         discover_blocked_terms(["this got 404 so it must be sensitive"])
+    panel = load_panel()
+    assert panel["frozen"] is True
+    with pytest.raises(ForbiddenTechniqueError):
+        score_differential(
+            [{"query": "brand-new-block-hunt", "result_count": 0}],
+            panel=panel,
+        )

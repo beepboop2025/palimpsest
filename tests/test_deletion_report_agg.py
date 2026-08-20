@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collectors.deletion_report_agg import aggregate_reports
+from collectors.public_deletion_ledgers import aggregate_reporter_blind
 
 
 def test_reports_keep_platform_topic_bracket_receipt_category():
-    result = aggregate_reports([
+    result = aggregate_reporter_blind([
         {
             "source": "ledger:cdt_english_root",
             "ledger_kind": "cdt",

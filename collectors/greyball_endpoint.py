@@ -1,7 +1,7 @@
-"""Public endpoint adapter — fetch only the JSON a public page itself calls.
+"""Greyball public-endpoint adapter — fetch only the JSON a public page itself calls.
 
-Hard stop: login wall, CAPTCHA, or access-denied is recorded as a visibility
-event and the adapter STOP. No parameter mutation, no fuzzing, no
+Hard stop: HTTP 401, 403, login wall, CAPTCHA, or access-denied is recorded as a
+visibility event and the adapter STOP. No parameter mutation, no fuzzing, no
 signature/token/anti-bot bypass, no hidden-object walks.
 """
 
@@ -15,15 +15,16 @@ from core.observer_class import refuse_forbidden
 from core.visibility_event import classify_http, stamp_visibility_event
 
 
-SCHEMA_VERSION = "palimpsest-public-endpoint.v1"
+SCHEMA_VERSION = "palimpsest-greyball-endpoint.v1"
 METHOD_VERSION = 1
 
 Fetch = Callable[[str], tuple[int, str]]
 STOP_STATES = frozenset({"login_wall", "captcha", "access_denied"})
 ALLOWED_METHODS = frozenset({"GET"})
+HARD_STOP_STATUSES = frozenset({401, 403})
 
 
-class PublicEndpointError(ValueError):
+class GreyballEndpointError(ValueError):
     """The declared endpoint violated the public-visitor rule."""
 
 
@@ -31,21 +32,17 @@ def _no_auth_headers(headers: Mapping[str, Any] | None) -> None:
     for key in (headers or {}):
         lowered = str(key).lower()
         if lowered in {"authorization", "cookie", "x-csrf-token", "x-api-key"}:
-            raise PublicEndpointError("public endpoint adapter refuses auth headers")
+            raise GreyballEndpointError("greyball endpoint adapter refuses auth headers")
         if "token" in lowered or "secret" in lowered:
-            raise PublicEndpointError("public endpoint adapter refuses token headers")
+            raise GreyballEndpointError("greyball endpoint adapter refuses token headers")
 
 
 def _frozen_url(url: str) -> str:
     parts = urlsplit(url)
     if parts.scheme != "https":
-        raise PublicEndpointError("public endpoints must be https")
-    # Normalise but do not add, drop, or reorder query parameters — the page's
-    # own call is the only permitted form. parse_qsl round-trip without
-    # keep_blank_values would drop blanks, so we keep the URL as declared
-    # after a scheme/host sanity check.
+        raise GreyballEndpointError("greyball endpoints must be https")
     if parts.username or parts.password:
-        raise PublicEndpointError("public endpoints must not embed credentials")
+        raise GreyballEndpointError("greyball endpoints must not embed credentials")
     return urlunsplit(parts)
 
 
@@ -72,10 +69,11 @@ def observe_declared_endpoints(
     """
 
     if not robots_tos_permit:
-        raise PublicEndpointError(
-            "public endpoint adapter requires an explicit robots/ToS permit"
+        raise GreyballEndpointError(
+            "greyball endpoint adapter requires an explicit robots/ToS permit"
         )
     kill = kill_switch or KillSwitch()
+    ceiling = rate_ceiling or RateCeiling(rate=1.0, capacity=1.0)
     events: list[dict[str, Any]] = []
     stopped = False
     stop_reason: str | None = None
@@ -85,7 +83,7 @@ def observe_declared_endpoints(
         declared = _frozen_url(str(raw.get("url") or ""))
         method = str(raw.get("method") or "GET").upper()
         if method not in ALLOWED_METHODS:
-            raise PublicEndpointError(f"public endpoint method {method} is not GET")
+            raise GreyballEndpointError(f"greyball endpoint method {method} is not GET")
         _no_auth_headers(raw.get("headers") if isinstance(raw.get("headers"), dict) else None)
         extra_params = raw.get("params") or raw.get("mutate") or raw.get("probe")
         if extra_params:
@@ -115,8 +113,7 @@ def observe_declared_endpoints(
             )
             continue
         kill.require_live()
-        if rate_ceiling is not None:
-            rate_ceiling.acquire()
+        ceiling.acquire()
         requested = declared
         _reject_mutation(declared, requested)
         try:
@@ -124,24 +121,23 @@ def observe_declared_endpoints(
         except OSError as exc:
             status, body = f"error:{type(exc).__name__}", ""
         state = classify_http(status, body)
+        hard_http = isinstance(status, int) and status in HARD_STOP_STATUSES
         if state == "captcha":
             stop_state = "captcha"
-        elif state == "login_wall":
+        elif hard_http or state == "login_wall":
             stop_state = "login_wall"
-        elif state == "access_denied" or (
-            isinstance(status, int) and status in {401, 403} and state != "rate_limit"
-        ):
-            stop_state = "access_denied" if state == "access_denied" else "login_wall"
+        elif state == "access_denied":
+            stop_state = "access_denied"
         else:
             stop_state = None
         stamped = stamp_visibility_event(
             {
-                "source": "public_endpoint",
+                "source": "greyball_endpoint",
                 "url": declared,
                 "text": "",
                 "provenance": {
-                    "collector": "public_endpoint",
-                    "method": "declared public JSON endpoint; hard-stop on login/CAPTCHA/denied",
+                    "collector": "greyball_endpoint",
+                    "method": "declared public JSON endpoint; hard-stop on 401/403/CAPTCHA/denied",
                     "vantage": "outside-china-public-source",
                     "http_status": status,
                     "collection_version": str(collection_version),

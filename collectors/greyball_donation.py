@@ -1,24 +1,25 @@
 """Volunteer data donation ingest — hashes, transitions, aggregates only.
 
-Pipeline: participant sees page → extension captures selected public fields →
+Pipeline: participant sees a page → extension captures selected public fields →
 local redaction → local hash and encryption → participant reviews a sample →
 aggregate upload.
 
 The server accepts only hashes, status transitions, or aggregate counts. A
-payload that still contains a feed, browsing history, private messages,
-cookies, account tokens, contacts, or a follower graph is rejected whole.
+payload that still contains identity keys (cookies, token, history, dm,
+contacts, followers, feed, phone, email, install_id, gps, and aliases) is
+rejected whole.
 """
 
 from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from core.governance import KillSwitch
+from core.governance import KillSwitch, RateCeiling
 from core.observer_class import ObserverClassError, validate_observer_class
 from core.visibility_event import stamp_visibility_event
 
 
-SCHEMA_VERSION = "palimpsest-donation-ingest.v1"
+SCHEMA_VERSION = "palimpsest-greyball-donation.v1"
 METHOD_VERSION = 1
 ALLOWED_KINDS = frozenset({"content_hash", "status_transition", "aggregate_count"})
 ALLOWED_TRANSITIONS = frozenset(
@@ -32,6 +33,7 @@ ALLOWED_TRANSITIONS = frozenset(
     }
 )
 
+# Locked identity-key denylist. Matching is case-insensitive on every nested key.
 IDENTITY_FIELDS = frozenset(
     {
         "cookies",
@@ -61,6 +63,11 @@ IDENTITY_FIELDS = frozenset(
         "email",
         "real_name",
         "id_card",
+        "install_id",
+        "gps",
+        "latitude",
+        "longitude",
+        "geolocation",
     }
 )
 
@@ -96,11 +103,15 @@ def ingest_donation(
     payload: Mapping[str, Any],
     *,
     kill_switch: KillSwitch | None = None,
+    rate_ceiling: RateCeiling | None = None,
     reviewed_sample: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Accept a locally redacted donation or reject it whole."""
 
-    (kill_switch or KillSwitch()).require_live()
+    kill = kill_switch or KillSwitch()
+    kill.require_live()
+    ceiling = rate_ceiling or RateCeiling(rate=1.0, capacity=1.0)
+    ceiling.acquire()
     bad = identity_keys(payload)
     if bad:
         raise DonationRejected("donation rejected identity fields: " + ", ".join(bad))
@@ -115,6 +126,9 @@ def ingest_donation(
             geo=payload.get("geo"),
             country=payload.get("country"),
             claimed_inside_china=payload.get("inside_china"),
+            in_country=payload.get("in_country"),
+            china_in_country=payload.get("china_in_country"),
+            path_kind=payload.get("path_kind"),
         )
     except ObserverClassError as exc:
         raise DonationRejected(str(exc)) from exc
@@ -158,10 +172,10 @@ def ingest_donation(
     locator = str(payload.get("locator") or payload.get("public_url") or "")
     stamped = stamp_visibility_event(
         {
-            "source": "donation_ingest",
+            "source": "greyball_donation",
             "url": locator,
             "provenance": {
-                "collector": "donation_ingest",
+                "collector": "greyball_donation",
                 "method": "volunteer hash/transition/count donation; identity fields rejected",
                 "vantage": "volunteer-outside-china",
             },

@@ -123,11 +123,12 @@ SNAPSHOT_OUTPUTS = {
     "greatfire-context": "readings/greatfire-context-latest.json",
     "peer-context": "readings/peer-context-latest.json",
     "peer-context-rank": "readings/peer-context-rank-latest.json",
-    "greyball-search-differential": "readings/greyball-search-differential-latest.json",
-    "greyball-public-endpoints": "readings/greyball-public-endpoints-latest.json",
+    "greyball-endpoint": "readings/greyball-endpoint-latest.json",
     "greyball-donation": "readings/greyball-donation-latest.json",
-    "greyball-multi-node": "readings/greyball-multi-node-latest.json",
-    "greyball-calibration": "readings/greyball-calibration-latest.json",
+    "greyball-observers": "readings/greyball-observers-latest.json",
+    "greyball-serp": "readings/greyball-serp-latest.json",
+    "greyball-missingness": "readings/greyball-missingness-latest.json",
+    "greyball-panel": "readings/greyball-panel-latest.json",
 }
 
 
@@ -191,11 +192,12 @@ _STANDARD = {
     "greatfire-context": Cadence(33, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "peer-context": Cadence(48, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "peer-context-rank": Cadence(51, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "greyball-search-differential": Cadence(19, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
-    "greyball-public-endpoints": Cadence(21, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-endpoint": Cadence(21, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "greyball-donation": Cadence(23, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
-    "greyball-multi-node": Cadence(25, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
-    "greyball-calibration": Cadence(27, 3, expires_s=12 * 3600),
+    "greyball-observers": Cadence(25, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-serp": Cadence(19, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-missingness": Cadence(27, 3, expires_s=12 * 3600),
+    "greyball-panel": Cadence(29, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
 }
 
 
@@ -264,11 +266,12 @@ _VIGOROUS = {
     "greatfire-context": Cadence(33, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "peer-context": Cadence(48, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "peer-context-rank": Cadence(51, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
-    "greyball-search-differential": Cadence(19, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "greyball-public-endpoints": Cadence(21, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-endpoint": Cadence(21, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "greyball-donation": Cadence(23, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "greyball-multi-node": Cadence(25, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "greyball-calibration": Cadence(27, 3, expires_s=12 * 3600),
+    "greyball-observers": Cadence(25, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-serp": Cadence(19, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-missingness": Cadence(27, 3, expires_s=12 * 3600),
+    "greyball-panel": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -372,11 +375,12 @@ def _effective_cadences(profile: str) -> dict[str, Cadence]:
         cadences.pop("cloudflare-radar-tcp", None)
     if not greyball_enabled():
         for name in (
-            "greyball-search-differential",
-            "greyball-public-endpoints",
+            "greyball-endpoint",
             "greyball-donation",
-            "greyball-multi-node",
-            "greyball-calibration",
+            "greyball-observers",
+            "greyball-serp",
+            "greyball-missingness",
+            "greyball-panel",
         ):
             cadences.pop(name, None)
     if active_probes_enabled():
@@ -477,11 +481,12 @@ _COUNT_PATHS = {
     "greatfire-context": ("n_verdicts",),
     "peer-context": ("n_hosts",),
     "peer-context-rank": ("n_peer_series",),
-    "greyball-search-differential": ("n_observations",),
-    "greyball-public-endpoints": ("n_fetched",),
+    "greyball-endpoint": ("n_fetched",),
     "greyball-donation": ("n_accepted",),
-    "greyball-multi-node": ("n_accepted",),
-    "greyball-calibration": ("all_distinguished",),
+    "greyball-observers": ("n_accepted",),
+    "greyball-serp": ("n_observations",),
+    "greyball-missingness": ("all_distinguished",),
+    "greyball-panel": ("n_accounts",),
 }
 
 
@@ -710,20 +715,23 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         code = main([])
         if code:
             raise RuntimeError("peer-context-rank collector failed")
-    elif name == "greyball-search-differential":
-        from scripts.greyball_search_differential_pull import main
-        main()
-    elif name == "greyball-public-endpoints":
-        from scripts.greyball_public_endpoints_pull import main
+    elif name == "greyball-endpoint":
+        from scripts.greyball_endpoint_pull import main
         main()
     elif name == "greyball-donation":
         from scripts.greyball_donation_pull import main
         main()
-    elif name == "greyball-multi-node":
-        from scripts.greyball_multi_node_pull import main
+    elif name == "greyball-observers":
+        from scripts.greyball_observers_pull import main
         main()
-    elif name == "greyball-calibration":
-        from scripts.greyball_calibration_pull import main
+    elif name == "greyball-serp":
+        from scripts.greyball_serp_pull import main
+        main()
+    elif name == "greyball-missingness":
+        from scripts.greyball_missingness_pull import main
+        main()
+    elif name == "greyball-panel":
+        from scripts.greyball_panel_pull import main
         main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")

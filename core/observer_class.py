@@ -106,10 +106,16 @@ COLLECTOR_CLASS = {
     "common_crawl_lake": "archive-crawler",
     "common_crawl": "archive-crawler",
     "browser_capture": "opt-in-browser",
+    "greyball_browser": "opt-in-browser",
     "donation_ingest": "volunteer-donation",
+    "greyball_donation": "volunteer-donation",
     "multi_node_panel": "outside-china-researcher",
+    "greyball_observers": "outside-china-researcher",
     "public_endpoint": "outside-china-node",
+    "greyball_endpoint": "outside-china-node",
     "search_differential": "outside-china-researcher",
+    "greyball_serp": "outside-china-researcher",
+    "greyball_panel": "official-landing",
     "news_wire_live": "outside-china-node",
     "weibo_hotsearch": "public-board",
     "weibo_hotsearch_terms": "public-board",
@@ -144,11 +150,12 @@ FLEET_JOB_OBSERVER = {
     "reading-analysis": "outside-china-node",
     "wikipedia-gazetteer-rc": "outside-china-node",
     "baike-public-snapshot": "outside-china-node",
-    "greyball-search-differential": "outside-china-researcher",
-    "greyball-public-endpoints": "outside-china-node",
+    "greyball-serp": "outside-china-researcher",
+    "greyball-endpoint": "outside-china-node",
     "greyball-donation": "volunteer-donation",
-    "greyball-multi-node": "outside-china-researcher",
-    "greyball-calibration": "synthetic-calibration",
+    "greyball-observers": "outside-china-researcher",
+    "greyball-missingness": "synthetic-calibration",
+    "greyball-panel": "official-landing",
 }
 
 
@@ -174,10 +181,16 @@ def claims_china_sensor(
     country: str | None = None,
     vantage: str | None = None,
     claimed_inside_china: Any = None,
+    in_country: Any = None,
+    china_in_country: Any = None,
+    path_kind: str | None = None,
 ) -> bool:
     """True when the record is trying to be a live in-country China sensor."""
 
-    if claimed_inside_china in (True, 1, "1", "true", "yes", "on"):
+    truthy = (True, 1, "1", "true", "yes", "on")
+    if claimed_inside_china in truthy or in_country in truthy or china_in_country in truthy:
+        return True
+    if _norm(observer_class) in {"china-in-country", "china_in_country"}:
         return True
     blob = " ".join(
         _norm(part)
@@ -264,15 +277,27 @@ def validate_observer_class(
     country: str | None = None,
     vantage: str | None = None,
     claimed_inside_china: Any = None,
+    in_country: Any = None,
+    china_in_country: Any = None,
+    path_kind: str | None = None,
 ) -> str:
     """Return the canonical class or raise. China-as-sensor is a hard reject."""
 
+    kind = _norm(path_kind).replace("-", "_")
+    if kind == "residential_proxy":
+        refuse_forbidden(
+            "residential_proxy_rotation",
+            detail="path_kind=residential_proxy is not an outside-China observer",
+        )
     if claims_china_sensor(
         observer_class,
         geo=geo,
         country=country,
         vantage=vantage,
         claimed_inside_china=claimed_inside_china,
+        in_country=in_country,
+        china_in_country=china_in_country,
+        path_kind=path_kind,
     ):
         raise ObserverClassError(
             "observer_class rejects China-as-sensor: Palimpsest does not "
@@ -326,4 +351,7 @@ def assert_public_observer(record: Mapping[str, Any]) -> str:
         country=record.get("country") or record.get("observer_country"),
         vantage=(record.get("vantage") or (record.get("provenance") or {}).get("vantage")),
         claimed_inside_china=record.get("inside_china") or record.get("claimed_inside_china"),
+        in_country=record.get("in_country"),
+        china_in_country=record.get("china_in_country"),
+        path_kind=record.get("path_kind"),
     )

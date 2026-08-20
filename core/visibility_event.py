@@ -123,9 +123,15 @@ _SURFACE_FOR_COLLECTOR = {
     "wayback": "wayback-cdx",
     "common_crawl_lake": "common-crawl-index",
     "browser_capture": "opt-in-browser",
+    "greyball_browser": "opt-in-browser",
     "donation_ingest": "volunteer-donation",
+    "greyball_donation": "volunteer-donation",
     "public_endpoint": "public-json-endpoint",
+    "greyball_endpoint": "public-json-endpoint",
     "multi_node_panel": "multi-node-panel",
+    "greyball_observers": "multi-node-panel",
+    "greyball_serp": "search-results",
+    "greyball_panel": "official-landing",
 }
 
 _PLATFORM_HINTS = (

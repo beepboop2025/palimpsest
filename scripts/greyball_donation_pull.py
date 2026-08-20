@@ -11,9 +11,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.donation_ingest import METHOD_VERSION, DonationRejected, ingest_donation
+from collectors.greyball_donation import METHOD_VERSION, DonationRejected, ingest_donation
 from core.china_observation import iso_z
-from core.governance import KillSwitch
+from core.governance import KillSwitch, RateCeiling
 from core.greyball_flag import greyball_enabled
 
 
@@ -41,9 +41,12 @@ def main(*, payloads=None) -> dict | None:
         print("greyball-donation: empty inbox — abstaining")
         return None
     accepted, rejected = [], []
+    ceiling = RateCeiling(rate=1.0, capacity=1.0)
     for payload in rows:
         try:
-            accepted.append(ingest_donation(payload, kill_switch=kill))
+            accepted.append(
+                ingest_donation(payload, kill_switch=kill, rate_ceiling=ceiling)
+            )
         except DonationRejected as exc:
             rejected.append({"reason": str(exc)})
     generated = iso_z(datetime.now(timezone.utc))

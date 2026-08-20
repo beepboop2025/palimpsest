@@ -83,3 +83,18 @@ def test_lone_unavailable_is_not_confirmed_removal():
     assert row["visibility_state"] == "unavailable"
     assert row.get("visibility_label") != "confirmed_removal"
     assert "censorship" not in VISIBILITY_LABELS
+
+
+def test_protocol_schema_locks_the_label_enum():
+    import json
+    from pathlib import Path
+
+    schema = json.loads(
+        (Path(__file__).resolve().parent.parent / "protocol/greyball-visibility-event-v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    labels = [item for item in schema["properties"]["visibility_label"]["enum"] if item]
+    assert set(labels) == VISIBILITY_LABELS
+    assert "missing" not in labels
+    assert "censorship" not in labels

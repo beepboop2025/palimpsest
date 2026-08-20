@@ -35,6 +35,7 @@ def test_similar_text_is_not_the_same_post():
     assert sidecar["publication_policy"]["increments_independent_groups"] is False
     assert sidecar["publication_policy"]["same_post_claim"] is False
     assert sidecar["publication_policy"]["attaches_warehouse_slots"] is False
+    assert sidecar["publication_policy"]["semantic_match_score_raises_corroboration"] is False
     assert all(row["same_post"] is False for row in sidecar["clusters"])
     assert semantic_match_score("NBS releases July figures", "NBS releases July figures") > 0.9
 
@@ -47,6 +48,23 @@ def test_semantic_match_does_not_increment_corroboration():
     assert corroboration_increment(sidecar) == 0
     assert independent_group_increment(sidecar) == 0
     assert corroboration_mod.SEMANTIC_MATCH_IS_CORROBORATION is False
+
+
+def test_committed_sidecar_cannot_raise_corroboration():
+    from pathlib import Path
+    import json
+
+    sidecar = json.loads(
+        (Path(__file__).resolve().parent.parent / "readings/greyball-clusters-sidecar.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert sidecar["publication_policy"]["counts_as_corroboration"] is False
+    assert sidecar["publication_policy"]["semantic_match_score_raises_corroboration"] is False
+    assert sidecar["publication_policy"]["attaches_warehouse_slots"] is False
+    assert corroboration_increment(sidecar) == 0
+    assert sidecar["n_clusters"] is None
+    assert sidecar["clusters"] == []
 
 
 def test_exact_key_join_is_unchanged_when_sidecar_is_attached():

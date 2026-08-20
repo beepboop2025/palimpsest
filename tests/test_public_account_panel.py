@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from collectors.greyball_panel import GreyballPanelError, monitor_official_and_telegram
 from collectors.public_account_panel import project_accounts
 
 
@@ -32,3 +35,46 @@ def test_panel_strips_followers_comments_and_personal_accounts():
     assert account["post_count"] == 12
     assert "followers" not in account
     assert "comments" not in account
+
+
+class _Live:
+    def require_live(self):
+        return None
+
+
+def test_greyball_panel_is_official_and_telegram_only_and_refuses_followers():
+    with pytest.raises(GreyballPanelError, match="identity"):
+        monitor_official_and_telegram(
+            [{
+                "url": "https://www.news.cn/",
+                "source": "official_first_seen",
+                "followers": 9,
+                "provenance": {"collector": "official_first_seen"},
+            }],
+            kill_switch=_Live(),
+        )
+    with pytest.raises(GreyballPanelError, match="personal"):
+        monitor_official_and_telegram(
+            [{
+                "url": "https://weibo.com/u/person",
+                "personal_account": True,
+                "provenance": {"collector": "official_first_seen"},
+            }],
+            kill_switch=_Live(),
+        )
+    result = monitor_official_and_telegram(
+        [{
+            "url": "https://www.news.cn/",
+            "content_sha256": "f" * 64,
+            "source": "official_first_seen",
+            "provenance": {
+                "collector": "official_first_seen",
+                "vantage": "outside-china-public-source",
+                "http_status": 200,
+            },
+        }],
+        kill_switch=_Live(),
+    )
+    assert result["collects_followers"] is False
+    assert result["collects_personal_accounts"] is False
+    assert result["n_accounts"] == 1

@@ -1,9 +1,11 @@
 {
   "_meta": {
-    "purpose": "Human-reviewed search-differential panel. Vocabulary is authored, never discovered by triggering moderation.",
+    "purpose": "Frozen SERP vocabulary for Greyball method 6. Authored, never discovered by triggering moderation. The runner cannot mutate terms to hunt blocks.",
     "control": "Unaffected control queries must keep returning results or the scorer abstains.",
     "variants": "zh-Hans, zh-Hant, pinyin, acronyms, punctuation, image-text where already public."
   },
+  "frozen": true,
+  "mutable": false,
   "controls": [
     {
       "query": "天气预报",

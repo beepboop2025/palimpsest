@@ -1,9 +1,9 @@
-"""Multi-node public observation. Outside China only.
+"""Outside-China observer registry. Refuse China-as-sensor and residential proxy.
 
 Inert unless PALIMPSEST_GREYBALL_ENABLED=1. Without injected observer rows the
-runner abstains. Blocked vantages abstain; China-as-sensor rows are rejected.
+runner abstains. Blocked vantages abstain. AS24940 rows collapse to one backer.
 
-Usage:  PYTHONPATH=. python -m scripts.greyball_multi_node_pull
+Usage:  PYTHONPATH=. python -m scripts.greyball_observers_pull
 """
 
 from __future__ import annotations
@@ -12,25 +12,25 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.multi_node_panel import METHOD_VERSION, compare_panel
+from collectors.greyball_observers import METHOD_VERSION, compare_panel
 from core.china_observation import iso_z
-from core.governance import KillSwitch
+from core.governance import KillSwitch, RateCeiling
 from core.greyball_flag import greyball_enabled
 
 
 ROOT = Path(__file__).resolve().parent.parent
 READINGS = ROOT / "readings"
-OUT = READINGS / "greyball-multi-node-latest.json"
+OUT = READINGS / "greyball-observers-latest.json"
 INBOX = ROOT / "data" / "greyball-observers.jsonl"
 
 
 def main(*, rows=None) -> dict | None:
     kill = KillSwitch()
     if kill.is_halted():
-        print("greyball-multi-node: halted by kill switch — abstaining")
+        print("greyball-observers: halted by kill switch — abstaining")
         return None
     if not greyball_enabled():
-        print("greyball-multi-node: inert (set PALIMPSEST_GREYBALL_ENABLED=1) — abstaining")
+        print("greyball-observers: inert (set PALIMPSEST_GREYBALL_ENABLED=1) — abstaining")
         return None
     payload = list(rows or [])
     if not payload and INBOX.exists():
@@ -39,20 +39,25 @@ def main(*, rows=None) -> dict | None:
             if line:
                 payload.append(json.loads(line))
     if not payload:
-        print("greyball-multi-node: no observer rows — abstaining")
+        print("greyball-observers: no observer rows — abstaining")
         return None
-    result = compare_panel(payload)
+    result = compare_panel(
+        payload,
+        kill_switch=kill,
+        rate_ceiling=RateCeiling(rate=1.0, capacity=8.0),
+    )
     if result["n_accepted"] == 0 and result["n_abstained"]:
-        print("greyball-multi-node: every observer blocked — abstaining")
+        print("greyball-observers: every observer blocked — abstaining")
         return None
     generated = iso_z(datetime.now(timezone.utc))
     out = {
         "generated_at": generated,
         "method_version": METHOD_VERSION,
-        "source": "Multi-node public observation (outside China)",
+        "source": "Outside-China observer registry (Greyball)",
         "n_accepted": result["n_accepted"],
         "n_rejected_china_sensor": result["n_rejected_china_sensor"],
         "n_abstained": result["n_abstained"],
+        "n_independent_backers": result["n_independent_backers"],
         "comparisons": result["comparisons"],
         "rejected": result["rejected"],
         "abstained": result["abstained"],
@@ -60,7 +65,8 @@ def main(*, rows=None) -> dict | None:
     READINGS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
     print(
-        f"greyball-multi-node: accepted={out['n_accepted']} "
+        f"greyball-observers: accepted={out['n_accepted']} "
+        f"backers={out['n_independent_backers']} "
         f"rejected_china={out['n_rejected_china_sensor']} abstained={out['n_abstained']}"
     )
     return out
