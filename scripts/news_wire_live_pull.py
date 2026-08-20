@@ -55,7 +55,7 @@ def main(*, events=None, skip_collect: bool = False, now: datetime | None = None
     if events is None and not skip_collect:
         if LIVE_NEWSWIRE_PATH.is_file():
             events = load_wire_events(LIVE_NEWSWIRE_PATH)
-            live_collect = True
+            live_collect = False
             print(f"news-wire-live: projecting the live 30-minute wire at {LIVE_NEWSWIRE_PATH}")
         else:
             code = newswire_main()

@@ -57,10 +57,6 @@ def _load_feed(path: Path | None) -> dict | None:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    wire_path = args.wire or live_paths.resolve_newswire_path()
-    if not wire_path.is_file():
-        print(f"event-analysis-live: wire missing at {wire_path}; abstaining")
-        return 2
     output = args.output or live_paths.resolve_live_analysis_path()
     if output.resolve().is_relative_to((live_paths.ROOT / "readings").resolve()):
         print(
@@ -68,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
             "git readings/; pass --output on the live volume"
         )
         return 3
+    wire_path = args.wire or live_paths.resolve_newswire_path()
+    if not wire_path.is_file():
+        print(f"event-analysis-live: wire missing at {wire_path}; abstaining")
+        return 2
     raw = wire_path.read_bytes()
     wire = newswire_model.strict_json_loads(raw, label=str(wire_path))
     newswire_model.validate_newswire_document(wire)

@@ -574,7 +574,9 @@ def build_event_analysis(
 
     generated_candidates = [event["updated_at"]]
     generated_candidates.extend(
-        stories[row["signal_id"]]["modified_at"] for row in collector_context
+        stories[row["signal_id"]]["modified_at"]
+        for row in collector_context
+        if row["signal_id"] in stories
     )
     window_peers = window_peers_for(event, wire.get("events") or [])
     v2 = event_brief.build_v2_blocks(

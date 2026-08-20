@@ -481,7 +481,7 @@ def test_two_independence_groups_may_use_structurally_corroborated() -> None:
         archive_context=_archive_context(),
     )
     assert event_analysis.structural_quorum(event) is True
-    assert "structurally corroborated" in analysis["position"]
+    assert "structural corroboration" in analysis["evidence_assessment"]["conclusion"]
     assert analysis["publication_receipt"]["automatic_publication"] is False
 
 
