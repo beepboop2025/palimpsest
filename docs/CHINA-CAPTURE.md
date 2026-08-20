@@ -66,6 +66,10 @@ the join `topic-or-url-context-not-corroboration`.
    events by **exact publisher URL** or **topic/term overlap** (headline match
    requires a term of four or more characters). The OSINT layer now shows
    source URL, SHA-256, and Wayback snapshot/lookup. Absence is a coverage gap.
+   The social-spread desk emits the same fat-object join keys (`term`, `host`,
+   `first_seen`, `last_seen`, `board`, `rank`). A Weibo / Zhihu / Tieba title
+   joins a registered wire, CDT, or official object only on exact term plus
+   overlapping day window. It does not confirm that a person is missing.
 
 ## What this repository will not do
 

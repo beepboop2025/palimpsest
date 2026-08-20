@@ -51,6 +51,8 @@ def _wire(*headlines: str) -> dict:
                 "event_id": event_id,
                 "headline": headline,
                 "dek": f"Registered dek mentioning {headline}.",
+                "published_at": "2026-08-20T05:00:00Z",
+                "updated_at": "2026-08-20T05:00:00Z",
             }
         )
     return {"generated_at": "2026-08-20T06:00:00Z", "events": events}
@@ -213,6 +215,10 @@ def test_wire_and_hotsearch_match_emits_matched_or_circulating_row():
     assert row["automatic_publication"] is True
     assert row["spreading"]["source_ids"] == ["weibo-hotsearch"]
     assert row["spreading"]["n_surfaces"] == 1
+    assert row["join_keys"]["term"] == "杭州暴雨"
+    assert row["join_keys"]["board"] == "weibo"
+    assert row["join_keys"]["host"] == "s.weibo.com"
+    assert row["join_keys"]["first_seen"].startswith("2026-08-20")
 
 
 def test_official_page_title_match_and_person_name_stays_review_gated():
@@ -403,12 +409,126 @@ def test_weibo_terms_and_hot_boards_fold_into_one_join():
         ),
         generated_at="2026-08-20T06:00:00Z",
     )
+    rain = [item for item in document["rows"] if item["term"] == "杭州暴雨"]
+    boards = {item["join_keys"]["board"] for item in rain}
+    assert boards == {"weibo", "baidu", "zhihu"}
+    weibo = next(item for item in rain if item["join_keys"]["board"] == "weibo")
+    assert weibo["disposition"] == "matched-to-wire"
+    assert weibo["join_keys"]["host"] == "s.weibo.com"
+    assert weibo["join_keys"]["first_seen"].startswith("2026-08-19")
+    assert "weibo-hotsearch-terms" in weibo["spreading"]["source_ids"]
+    zhihu = next(item for item in rain if item["join_keys"]["board"] == "zhihu")
+    assert zhihu["join_keys"]["host"] == "www.zhihu.com"
+    assert "public-board-terms:zhihu" in zhihu["spreading"]["source_ids"]
+    baidu = next(item for item in rain if item["join_keys"]["board"] == "baidu")
+    assert "public-hot-boards:baidu" in baidu["spreading"]["source_ids"]
+
+
+def test_weibo_zhihu_tieba_do_not_join_on_substring_or_wrong_day():
+    contained = _wire("浙江杭州暴雨预警升级")
+    stale = {
+        "generated_at": "2026-08-20T06:00:00Z",
+        "events": [
+            {
+                "event_id": "event-" + "ab" * 12,
+                "headline": "杭州暴雨",
+                "dek": "Registered dek.",
+                "published_at": "2026-07-01T05:00:00Z",
+                "updated_at": "2026-07-01T05:00:00Z",
+            }
+        ],
+    }
+    substring = build_social_spread(
+        _inputs(
+            **{
+                "public-board-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [
+                        {
+                            "board": "weibo",
+                            "title": "杭州暴雨",
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 2,
+                        }
+                    ],
+                },
+                "newswire": contained,
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+    weibo = next(item for item in substring["rows"] if item["join_keys"]["board"] == "weibo")
+    assert weibo["disposition"] == "circulating-unverified"
+    assert weibo["matches"]["wire_event_ids"] == []
+
+    window_miss = build_social_spread(
+        _inputs(
+            **{
+                "public-board-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [
+                        {
+                            "board": "zhihu",
+                            "title": "杭州暴雨",
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 4,
+                        },
+                        {
+                            "board": "tieba",
+                            "title": "杭州暴雨",
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 5,
+                        },
+                    ],
+                },
+                "newswire": stale,
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+    for board in ("zhihu", "tieba"):
+        row = next(item for item in window_miss["rows"] if item["join_keys"]["board"] == board)
+        assert row["disposition"] == "circulating-unverified"
+        assert row["matches"]["wire_event_ids"] == []
+        assert row["join_keys"]["term"] == "杭州暴雨"
+        assert row["join_keys"]["rank"] >= 1
+
+
+def test_exact_term_and_day_window_joins_registered_wire_only():
+    document = build_social_spread(
+        _inputs(
+            **{
+                "public-board-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [
+                        {
+                            "board": "weibo",
+                            "title": "杭州暴雨",
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 3,
+                        }
+                    ],
+                },
+                "newswire": _wire("杭州暴雨"),
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
     row = next(item for item in document["rows"] if item["term"] == "杭州暴雨")
     assert row["disposition"] == "matched-to-wire"
-    assert "weibo-hotsearch-terms" in row["spreading"]["source_ids"]
-    assert "public-hot-boards:baidu" in row["spreading"]["source_ids"]
-    assert "public-board-terms:zhihu" in row["spreading"]["source_ids"]
-    assert row["spreading"]["n_surfaces"] == 3
+    assert row["join_keys"] == {
+        "term": "杭州暴雨",
+        "host": "s.weibo.com",
+        "first_seen": "2026-08-20T00:00:00Z",
+        "last_seen": "2026-08-20T00:00:00Z",
+        "board": "weibo",
+        "rank": 3,
+    }
+    assert row["names_a_person"] is False
 
 
 def test_json_schema_accepts_a_live_document():

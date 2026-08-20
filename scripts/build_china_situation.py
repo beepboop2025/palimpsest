@@ -146,14 +146,23 @@ def _spread_panel(spread: Mapping[str, Any] | None) -> str:
             items = []
             for row in rows[:24]:
                 spreading = row.get("spreading") if isinstance(row.get("spreading"), Mapping) else {}
+                keys = row.get("join_keys") if isinstance(row.get("join_keys"), Mapping) else {}
                 sources = spreading.get("source_ids") if isinstance(spreading.get("source_ids"), list) else []
                 matches = row.get("matches") if isinstance(row.get("matches"), Mapping) else {}
                 wire_ids = matches.get("wire_event_ids") if isinstance(matches.get("wire_event_ids"), list) else []
+                board = keys.get("board") or spreading.get("board") or ""
+                rank = keys.get("rank") if keys.get("rank") is not None else spreading.get("rank")
+                host = keys.get("host") or spreading.get("host") or ""
+                first = keys.get("first_seen") or spreading.get("first_seen") or ""
+                last = keys.get("last_seen") or spreading.get("last_seen") or ""
                 items.append(
                     "<li><strong>"
                     f"{_h(row.get('term') or row.get('topic') or '')}</strong>"
                     f"<span>{_h(row.get('disposition') or 'abstain')}</span>"
-                    f"<small>surfaces {_h(', '.join(str(item) for item in sources))} · "
+                    f"<small>board {_h(board) or '—'} · rank {_h(rank) if rank is not None else '—'} · "
+                    f"host {_h(host) or '—'} · {_h(first[:10] if isinstance(first, str) else '')}"
+                    f"–{_h(last[:10] if isinstance(last, str) else '')} · "
+                    f"surfaces {_h(', '.join(str(item) for item in sources))} · "
                     f"wire {len(wire_ids)} · {_h(row.get('relation') or SOCIAL_SPREAD_RELATION)}</small></li>"
                 )
             rows_html = "<ul>" + "".join(items) + "</ul>"

@@ -20,10 +20,11 @@ Hard boundaries (do not weaken):
 * Telegram handles are the in-tree public set only: DragonDenWhispers,
   DragonDenCyber, DragonDenBorderlands.
 
-Match rule: a spreading term joins capture only when the same string already
-appears in (a) a China-scoped newswire headline or dek from a registered
-source, (b) an official-first-seen / last-alive official page title already
-stored, or (c) a deletion-ledger title. Missing collectors abstain.
+Match rule: a spreading term joins a wire / CDT / official object only when
+the same exact term already appears in a registered public source and the
+day windows overlap. Weibo, Zhihu, and Tieba titles never join on a
+substring. Missing collectors abstain. This desk does not confirm that a
+person is missing, detained, or dead.
 """
 
 from __future__ import annotations
@@ -36,6 +37,8 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+
+from urllib.parse import urlparse
 
 from collectors.telegram_public_channels import load_channels
 from collectors.weibo_hotsearch import _SENSE_RULES, carries_sensitive_sense
@@ -198,6 +201,7 @@ _ROW_FIELDS = frozenset(
         "disposition",
         "relation",
         "disclaimer",
+        "join_keys",
         "spreading",
         "matches",
         "names_a_person",
@@ -205,9 +209,31 @@ _ROW_FIELDS = frozenset(
         "human_review_required",
     }
 )
-_SPREAD_FIELDS = frozenset(
-    {"source_ids", "n_surfaces", "first_seen", "last_seen"}
+_JOIN_KEY_FIELDS = frozenset(
+    {"term", "host", "first_seen", "last_seen", "board", "rank"}
 )
+_SPREAD_FIELDS = frozenset(
+    {"source_ids", "n_surfaces", "first_seen", "last_seen", "board", "rank", "host"}
+)
+DAY_WINDOW_BOARDS = frozenset({"weibo", "zhihu", "tieba"})
+BOARD_HOSTS = {
+    "weibo": "s.weibo.com",
+    "zhihu": "www.zhihu.com",
+    "tieba": "tieba.baidu.com",
+    "baidu": "top.baidu.com",
+    "toutiao": "www.toutiao.com",
+    "douyin": "www.iesdouyin.com",
+    "bilibili": "www.bilibili.com",
+    "douban": "www.douban.com",
+    "sogou": "www.sogou.com",
+    "thepaper": "www.thepaper.cn",
+    "cctv": "news.cctv.com",
+    "people": "www.people.com.cn",
+    "36kr": "36kr.com",
+    "zh-wikipedia": "zh.wikipedia.org",
+}
+_HOST = re.compile(r"^[a-z0-9][a-z0-9.-]{0,252}$")
+_BOARD = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 _MATCH_FIELDS = frozenset(
     {"wire_event_ids", "official_page_last_alive", "ledger_hits"}
 )
@@ -368,33 +394,108 @@ def _timestamp_soft(value: str) -> str | None:
     return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _public_host(url: str | None) -> str | None:
+    if not url:
+        return None
+    host = (urlparse(str(url)).hostname or "").strip().casefold()
+    if not host or not _HOST.fullmatch(host):
+        return None
+    return host
+
+
+def _board_from_source(source_id: str, explicit: str | None = None) -> str | None:
+    if explicit:
+        name = explicit.strip().casefold()
+        return name if _BOARD.fullmatch(name) else None
+    if source_id in {"weibo-hotsearch", "weibo-hotsearch-terms"}:
+        return "weibo"
+    if source_id.startswith("public-board-terms:") or source_id.startswith("public-hot-boards:"):
+        name = source_id.split(":", 1)[1].strip().casefold()
+        return name if _BOARD.fullmatch(name) else None
+    return None
+
+
+def _host_for_board(board: str | None, url: str | None = None) -> str | None:
+    return _public_host(url) or (BOARD_HOSTS.get(board) if board else None)
+
+
+def _day_token(value: Any) -> str | None:
+    stamp = _iso_or_none(value)
+    if stamp:
+        return stamp[:10]
+    if type(value) is str and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value.strip()):
+        return value.strip()
+    return None
+
+
+def _date_stamp(value: Any, fallback: str | None) -> str | None:
+    if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value.strip()):
+        return f"{value.strip()}T00:00:00Z"
+    return _iso_or_none(value) or fallback
+
+
+def _windows_overlap(first_a: Any, last_a: Any, first_b: Any, last_b: Any) -> bool:
+    start_a = _day_token(first_a)
+    end_a = _day_token(last_a) or start_a
+    start_b = _day_token(first_b)
+    end_b = _day_token(last_b) or start_b
+    if not start_a or not end_a or not start_b or not end_b:
+        return False
+    return not (end_a < start_b or end_b < start_a)
+
+
+def _exact_term(term: str, candidate: str) -> bool:
+    left = normalize_term(term)
+    right = normalize_term(candidate)
+    return bool(left) and left == right
+
+
 def _add_term(
-    bucket: dict[str, dict[str, Any]],
+    bucket: dict[tuple[str, str], dict[str, Any]],
     term: str,
     *,
     source_id: str,
     seen_at: str | None,
+    board: str | None = None,
+    rank: int | None = None,
+    host: str | None = None,
+    first_seen: str | None = None,
+    last_seen: str | None = None,
+    url: str | None = None,
 ) -> None:
     term = normalize_term(term)
     if not term_is_usable(term):
         return
     if len(term) > MAX_TERM:
         term = term[:MAX_TERM].rstrip()
-    row = bucket.get(term)
-    stamp = seen_at or "1970-01-01T00:00:00Z"
+    board = _board_from_source(source_id, board)
+    host = host or _host_for_board(board, url)
+    first = first_seen or seen_at or "1970-01-01T00:00:00Z"
+    last = last_seen or seen_at or first
+    key = (term, board or "")
+    row = bucket.get(key)
     if row is None:
-        bucket[term] = {
+        bucket[key] = {
             "term": term,
             "source_ids": {source_id},
-            "first_seen": stamp,
-            "last_seen": stamp,
+            "first_seen": first,
+            "last_seen": last,
+            "board": board,
+            "rank": rank if isinstance(rank, int) and rank >= 1 else None,
+            "host": host,
         }
         return
     row["source_ids"].add(source_id)
-    if stamp < row["first_seen"]:
-        row["first_seen"] = stamp
-    if stamp > row["last_seen"]:
-        row["last_seen"] = stamp
+    if first < row["first_seen"]:
+        row["first_seen"] = first
+    if last > row["last_seen"]:
+        row["last_seen"] = last
+    if isinstance(rank, int) and rank >= 1 and (
+        row["rank"] is None or rank < row["rank"]
+    ):
+        row["rank"] = rank
+    if host and not row["host"]:
+        row["host"] = host
 
 
 def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
@@ -507,12 +608,23 @@ def _extract_hot_boards(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]
         if not isinstance(record, Mapping) or not record.get("title"):
             continue
         source = str(record.get("source") or "public-hot-boards")
+        provenance = record.get("provenance") if isinstance(record.get("provenance"), Mapping) else {}
+        rank = provenance.get("rank") if isinstance(provenance, Mapping) else None
+        board = None
+        if isinstance(provenance, Mapping) and provenance.get("board"):
+            board = str(provenance["board"])
+        first = _date_stamp(record.get("first_seen") or record.get("detected_at"), generated)
+        last = _date_stamp(record.get("last_seen"), generated) or first
         _add_term(
             bucket,
             str(record["title"]),
             source_id=source if source.startswith("public-hot-boards") else "public-hot-boards",
-            seen_at=_iso_or_none(record.get("first_seen") or record.get("detected_at"))
-            or generated,
+            seen_at=first or generated,
+            board=board,
+            rank=rank if isinstance(rank, int) else None,
+            first_seen=first,
+            last_seen=last,
+            url=str(record.get("url") or record.get("source_url") or ""),
         )
 
 
@@ -528,7 +640,18 @@ def _wire_targets(doc: Mapping[str, Any]) -> list[dict[str, Any]]:
             continue
         if not headline:
             continue
-        targets.append({"event_id": event_id, "headline": headline, "dek": dek})
+        first = _date_stamp(event.get("published_at") or event.get("first_seen"), None)
+        last = _date_stamp(event.get("updated_at") or event.get("last_seen"), first)
+        generated = _iso_or_none(doc.get("generated_at"))
+        targets.append(
+            {
+                "event_id": event_id,
+                "headline": headline,
+                "dek": dek,
+                "first_seen": first or generated,
+                "last_seen": last or generated,
+            }
+        )
     return targets
 
 
@@ -541,12 +664,20 @@ def _live_wire_targets(doc: Mapping[str, Any]) -> list[dict[str, Any]]:
         text = normalize_term(str(record.get("text") or ""))
         if not title:
             continue
+        generated = _iso_or_none(doc.get("generated_at"))
+        first = _date_stamp(
+            record.get("first_seen") or record.get("published_at") or record.get("detected_at"),
+            generated,
+        )
+        last = _date_stamp(record.get("last_seen") or record.get("updated_at"), first)
         targets.append(
             {
                 "event_id": None,
                 "headline": title,
                 "dek": text,
                 "live": True,
+                "first_seen": first or generated,
+                "last_seen": last or generated,
             }
         )
     return targets
@@ -563,12 +694,16 @@ def _title_targets(doc: Mapping[str, Any], *, kind: str) -> list[dict[str, Any]]
             title = normalize_term(str(page.get("term") or page.get("title") or ""))
             if not title:
                 continue
+            last_alive = _iso_or_none(page.get("last_confirmed_alive")) or generated
+            first = _date_stamp(page.get("first_seen"), last_alive)
             targets.append(
                 {
                     "kind": kind,
                     "title": title,
                     "url": str(url),
-                    "last_alive": _iso_or_none(page.get("last_confirmed_alive")) or generated,
+                    "last_alive": last_alive,
+                    "first_seen": first or last_alive,
+                    "last_seen": last_alive,
                 }
             )
     for record in doc.get("observations") or []:
@@ -577,22 +712,41 @@ def _title_targets(doc: Mapping[str, Any], *, kind: str) -> list[dict[str, Any]]
         title = normalize_term(str(record.get("title") or ""))
         if not title:
             continue
+        last_alive = _iso_or_none(
+            record.get("last_confirmed_alive") or record.get("last_seen")
+        ) or generated
+        first = _date_stamp(record.get("first_seen") or record.get("detected_at"), last_alive)
         targets.append(
             {
                 "kind": kind,
                 "title": title,
                 "url": str(record.get("url") or record.get("source_url") or ""),
-                "last_alive": _iso_or_none(
-                    record.get("last_confirmed_alive") or record.get("last_seen")
-                )
-                or generated,
+                "last_alive": last_alive,
+                "first_seen": first or last_alive,
+                "last_seen": last_alive,
             }
         )
     return targets
 
 
-def _same_string_in(term: str, haystack: str) -> bool:
-    return bool(term) and bool(haystack) and term in haystack
+def _requires_day_window(board: str | None) -> bool:
+    return (board or "") in DAY_WINDOW_BOARDS
+
+
+def _capture_window_ok(
+    board: str | None,
+    first_seen: Any,
+    last_seen: Any,
+    target: Mapping[str, Any],
+) -> bool:
+    if not _requires_day_window(board):
+        return True
+    return _windows_overlap(
+        first_seen,
+        last_seen,
+        target.get("first_seen"),
+        target.get("last_seen") or target.get("last_alive"),
+    )
 
 
 def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
@@ -600,19 +754,19 @@ def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
     for row in doc.get("terms") or []:
         if not isinstance(row, Mapping) or not row.get("title"):
             continue
-        first = row.get("first_seen")
-        last = row.get("last_seen")
-        seen = generated
-        if isinstance(first, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", first):
-            seen = f"{first}T00:00:00Z"
-        elif isinstance(last, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", last):
-            seen = f"{last}T00:00:00Z"
+        first = _date_stamp(row.get("first_seen"), generated)
+        last = _date_stamp(row.get("last_seen"), generated) or first
         board = str(row.get("board") or "public")
+        rank = row.get("best_rank") if isinstance(row.get("best_rank"), int) else row.get("rank")
         _add_term(
             bucket,
             str(row["title"]),
             source_id=f"public-board-terms:{board}",
-            seen_at=_iso_or_none(seen) or generated,
+            seen_at=first or generated,
+            board=board,
+            rank=rank if isinstance(rank, int) else None,
+            first_seen=first,
+            last_seen=last,
         )
 
 
@@ -621,18 +775,18 @@ def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
     for row in doc.get("terms") or []:
         if not isinstance(row, Mapping) or not row.get("title"):
             continue
-        first = row.get("first_seen")
-        last = row.get("last_seen")
-        seen = generated
-        if isinstance(first, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", first):
-            seen = f"{first}T00:00:00Z"
-        elif isinstance(last, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", last):
-            seen = f"{last}T00:00:00Z"
+        first = _date_stamp(row.get("first_seen"), generated)
+        last = _date_stamp(row.get("last_seen"), generated) or first
+        rank = row.get("best_rank") if isinstance(row.get("best_rank"), int) else None
         _add_term(
             bucket,
             str(row["title"]),
             source_id="weibo-hotsearch-terms",
-            seen_at=_iso_or_none(seen) or generated,
+            seen_at=first or generated,
+            board="weibo",
+            rank=rank,
+            first_seen=first,
+            last_seen=last,
         )
     for day in doc.get("pinned_headlines") or []:
         if not isinstance(day, Mapping):
@@ -645,11 +799,16 @@ def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
                 str(title),
                 source_id="weibo-hotsearch-terms",
                 seen_at=_iso_or_none(seen) or generated,
+                board="weibo",
+                first_seen=_iso_or_none(seen) or generated,
+                last_seen=_iso_or_none(seen) or generated,
             )
 
 
-def extract_spreading_terms(inputs: Mapping[str, Mapping[str, Any] | None]) -> dict[str, dict[str, Any]]:
-    bucket: dict[str, dict[str, Any]] = {}
+def extract_spreading_terms(
+    inputs: Mapping[str, Mapping[str, Any] | None],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    bucket: dict[tuple[str, str], dict[str, Any]] = {}
     weibo = inputs.get("weibo-hotsearch")
     if isinstance(weibo, Mapping):
         _extract_weibo(weibo, bucket)
@@ -672,8 +831,15 @@ def extract_spreading_terms(inputs: Mapping[str, Mapping[str, Any] | None]) -> d
 
 
 def match_capture(
-    term: str, inputs: Mapping[str, Mapping[str, Any] | None]
+    term: str,
+    inputs: Mapping[str, Mapping[str, Any] | None],
+    *,
+    first_seen: str | None = None,
+    last_seen: str | None = None,
+    board: str | None = None,
 ) -> dict[str, list[Any]]:
+    """Join only on exact term. Weibo/Zhihu/Tieba also require a day-window overlap."""
+
     wire_ids: list[str] = []
     official: list[dict[str, Any]] = []
     ledger: list[dict[str, Any]] = []
@@ -683,30 +849,38 @@ def match_capture(
             continue
         targets = _wire_targets(doc) if key == "newswire" else _live_wire_targets(doc)
         for target in targets:
-            haystack = f"{target['headline']}\n{target['dek']}"
-            if not _same_string_in(term, haystack):
+            if not _exact_term(term, target["headline"]):
+                continue
+            if not _capture_window_ok(board, first_seen, last_seen, target):
                 continue
             event_id = target.get("event_id")
             if type(event_id) is str and event_id not in wire_ids:
                 wire_ids.append(event_id)
             elif event_id is None and f"live:{target['headline'][:80]}" not in wire_ids:
-                # Live projection has no event id; record the matched headline token.
-                wire_ids.append(f"live:{hashlib.sha256(target['headline'].encode('utf-8')).hexdigest()[:24]}")
+                wire_ids.append(
+                    f"live:{hashlib.sha256(target['headline'].encode('utf-8')).hexdigest()[:24]}"
+                )
     official_doc = inputs.get("official-first-seen")
     if isinstance(official_doc, Mapping):
         for target in _title_targets(official_doc, kind="official"):
-            if _same_string_in(term, target["title"]):
-                official.append(
-                    {
-                        "title": target["title"][:MAX_TERM],
-                        "last_alive": target["last_alive"],
-                    }
-                )
+            if not _exact_term(term, target["title"]):
+                continue
+            if not _capture_window_ok(board, first_seen, last_seen, target):
+                continue
+            official.append(
+                {
+                    "title": target["title"][:MAX_TERM],
+                    "last_alive": target["last_alive"],
+                }
+            )
     ledger_doc = inputs.get("public-deletion-ledgers")
     if isinstance(ledger_doc, Mapping):
         for target in _title_targets(ledger_doc, kind="ledger"):
-            if _same_string_in(term, target["title"]):
-                ledger.append({"title": target["title"][:MAX_TERM]})
+            if not _exact_term(term, target["title"]):
+                continue
+            if not _capture_window_ok(board, first_seen, last_seen, target):
+                continue
+            ledger.append({"title": target["title"][:MAX_TERM]})
     return {
         "wire_event_ids": wire_ids[:32],
         "official_page_last_alive": official[:32],
@@ -780,7 +954,12 @@ def build_social_spread(
         return document
 
     extracted = extract_spreading_terms(inputs)
-    for term, raw in sorted(extracted.items(), key=lambda item: (-len(item[1]["source_ids"]), item[0])):
+    for (_term_key, raw) in sorted(
+        extracted.items(),
+        key=lambda item: (-len(item[1]["source_ids"]), item[1]["term"], item[1].get("board") or ""),
+    ):
+        term = raw["term"]
+        board = raw.get("board")
         source_ids = sorted(raw["source_ids"])
         if is_official_missing_whisper(term, source_ids) or (
             is_whisper_only(source_ids) and looks_like_named_person_package(term)
@@ -792,7 +971,13 @@ def build_social_spread(
                 }
             )
             continue
-        matches = match_capture(term, inputs)
+        matches = match_capture(
+            term,
+            inputs,
+            first_seen=raw["first_seen"],
+            last_seen=raw["last_seen"],
+            board=board,
+        )
         names = looks_like_named_person_package(term)
         if names and is_whisper_only(source_ids):
             refusals.append(
@@ -826,6 +1011,14 @@ def build_social_spread(
         else:
             n_abstained += 1
             continue
+        join_keys = {
+            "term": term,
+            "host": raw.get("host"),
+            "first_seen": raw["first_seen"],
+            "last_seen": raw["last_seen"],
+            "board": board,
+            "rank": raw.get("rank"),
+        }
         rows.append(
             {
                 "term": term,
@@ -833,11 +1026,15 @@ def build_social_spread(
                 "disposition": disposition,
                 "relation": RELATION,
                 "disclaimer": DISCLAIMER,
+                "join_keys": join_keys,
                 "spreading": {
                     "source_ids": source_ids,
                     "n_surfaces": len(source_ids),
                     "first_seen": raw["first_seen"],
                     "last_seen": raw["last_seen"],
+                    "board": board,
+                    "rank": raw.get("rank"),
+                    "host": raw.get("host"),
                 },
                 "matches": matches,
                 "names_a_person": names,
@@ -895,12 +1092,13 @@ def _assemble(
         ),
         "method": (
             "Extract spreading terms from the fused public-board dump, Weibo "
-            "titles, hot boards, and retained channel excerpts. Match only when "
-            "the same string already appears in a registered newswire "
-            "headline/dek, an official last-alive page title, or a deletion-"
-            "ledger title. Whisper-only names do not emit a person package. "
-            "Sense-gated ordinary 失联 accidents stay topic rows. Missing "
-            "required spreading collectors abstain."
+            "titles, hot boards, and retained channel excerpts. Emit fat-object "
+            "join keys: term, host if any, first_seen, last_seen, board, rank. "
+            "A Weibo, Zhihu, or Tieba title joins a registered wire, CDT, or "
+            "official object only on exact term plus overlapping day window. "
+            "Other boards join on exact term when that name already appears in "
+            "a registered public source. Whisper-only names do not emit a "
+            "person package. Missing required spreading collectors abstain."
         ),
         "scope": (
             "Public Chinese attention surfaces already collected outside the "
@@ -969,14 +1167,29 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError(f"{path} must repeat the required disclaimer")
         if any(marker in raw["reason"].casefold() for marker in ("named_party", "accused")):
             raise SocialSpreadError(f"{path} uses a forbidden allegation field")
-    seen_terms: set[str] = set()
+    seen_identities: set[tuple[str, str]] = set()
     for index, raw in enumerate(rows):
         path = f"rows[{index}]"
         row = _exact(raw, _ROW_FIELDS, path)
         term = _text(row["term"], f"{path}.term", maximum=MAX_TERM)
-        if term in seen_terms:
-            raise SocialSpreadError("duplicate spreading term")
-        seen_terms.add(term)
+        join_keys = _exact(row["join_keys"], _JOIN_KEY_FIELDS, f"{path}.join_keys")
+        if join_keys["term"] != term:
+            raise SocialSpreadError(f"{path}.join_keys.term must repeat the spreading term")
+        board = join_keys["board"]
+        if board is not None and (type(board) is not str or not _BOARD.fullmatch(board)):
+            raise SocialSpreadError(f"{path}.join_keys.board is invalid")
+        identity = (term, board or "")
+        if identity in seen_identities:
+            raise SocialSpreadError("duplicate spreading term and board")
+        seen_identities.add(identity)
+        host = join_keys["host"]
+        if host is not None and (type(host) is not str or not _HOST.fullmatch(host)):
+            raise SocialSpreadError(f"{path}.join_keys.host is invalid")
+        _timestamp(join_keys["first_seen"], f"{path}.join_keys.first_seen")
+        _timestamp(join_keys["last_seen"], f"{path}.join_keys.last_seen")
+        rank = join_keys["rank"]
+        if rank is not None and (type(rank) is not int or rank < 1):
+            raise SocialSpreadError(f"{path}.join_keys.rank is invalid")
         if row["topic"] != term:
             raise SocialSpreadError(f"{path}.topic must repeat the spreading term")
         if row["disposition"] not in DISPOSITIONS:
@@ -1000,6 +1213,12 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError(f"{path}.spreading.n_surfaces is inconsistent")
         _timestamp(spreading["first_seen"], f"{path}.spreading.first_seen")
         _timestamp(spreading["last_seen"], f"{path}.spreading.last_seen")
+        if spreading["first_seen"] != join_keys["first_seen"] or spreading["last_seen"] != join_keys["last_seen"]:
+            raise SocialSpreadError(f"{path} spreading dates must match join_keys")
+        if spreading["board"] != join_keys["board"] or spreading["rank"] != join_keys["rank"]:
+            raise SocialSpreadError(f"{path} spreading board/rank must match join_keys")
+        if spreading["host"] != join_keys["host"]:
+            raise SocialSpreadError(f"{path} spreading host must match join_keys")
         matches = _exact(row["matches"], _MATCH_FIELDS, f"{path}.matches")
         for field in ("wire_event_ids", "official_page_last_alive", "ledger_hits"):
             if type(matches[field]) is not list or len(matches[field]) > 32:
@@ -1078,11 +1297,22 @@ SAMPLE_ROW = {
     "disposition": "matched-to-wire",
     "relation": RELATION,
     "disclaimer": DISCLAIMER,
+    "join_keys": {
+        "term": "杭州暴雨",
+        "host": "s.weibo.com",
+        "first_seen": "2026-08-19T00:00:00Z",
+        "last_seen": "2026-08-20T02:06:13Z",
+        "board": "weibo",
+        "rank": 7,
+    },
     "spreading": {
         "source_ids": ["weibo-hotsearch"],
         "n_surfaces": 1,
         "first_seen": "2026-08-19T00:00:00Z",
         "last_seen": "2026-08-20T02:06:13Z",
+        "board": "weibo",
+        "rank": 7,
+        "host": "s.weibo.com",
     },
     "matches": {
         "wire_event_ids": ["event-" + "ab" * 12],

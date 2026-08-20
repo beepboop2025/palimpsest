@@ -118,6 +118,7 @@
         "disposition",
         "relation",
         "disclaimer",
+        "join_keys",
         "spreading",
         "matches",
         "names_a_person",
@@ -127,6 +128,7 @@
       "properties": {
         "term": { "type": "string", "minLength": 1, "maxLength": 180 },
         "topic": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "join_keys": { "$ref": "#/$defs/joinKeys" },
         "disposition": {
           "enum": [
             "circulating-unverified",
@@ -142,7 +144,7 @@
         "spreading": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["source_ids", "n_surfaces", "first_seen", "last_seen"],
+          "required": ["source_ids", "n_surfaces", "first_seen", "last_seen", "board", "rank", "host"],
           "properties": {
             "source_ids": {
               "type": "array",
@@ -151,7 +153,10 @@
             },
             "n_surfaces": { "type": "integer", "minimum": 1 },
             "first_seen": { "type": "string" },
-            "last_seen": { "type": "string" }
+            "last_seen": { "type": "string" },
+            "board": { "type": ["string", "null"] },
+            "rank": { "type": ["integer", "null"], "minimum": 1 },
+            "host": { "type": ["string", "null"] }
           }
         },
         "matches": {
@@ -195,6 +200,19 @@
         "names_a_person": { "type": "boolean" },
         "automatic_publication": { "type": "boolean" },
         "human_review_required": { "type": "boolean" }
+      }
+    },
+    "joinKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "host", "first_seen", "last_seen", "board", "rank"],
+      "properties": {
+        "term": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "host": { "type": ["string", "null"], "maxLength": 253 },
+        "first_seen": { "type": "string" },
+        "last_seen": { "type": "string" },
+        "board": { "type": ["string", "null"], "maxLength": 32 },
+        "rank": { "type": ["integer", "null"], "minimum": 1 }
       }
     },
     "newsStory": {
