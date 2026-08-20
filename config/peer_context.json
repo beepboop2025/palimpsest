@@ -117,8 +117,9 @@
   },
   "join": {
     "fail_closed": true,
-    "substantive_keys": ["host", "asn", "term", "signal"],
-    "day_strengthens_only": true,
+    "substantive_keys": ["host", "term", "day"],
+    "belong": "host_day_exact OR term_day_exact",
+    "negatives": ["same_term_diff_day", "same_day_diff_host"],
     "object_kinds": [
       "official-first-seen",
       "board-term",

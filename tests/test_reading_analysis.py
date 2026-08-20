@@ -9,6 +9,12 @@ from pathlib import Path
 import pytest
 
 from collectors import common_crawl_lake as lake
+from processors.ranker_training import (
+    holdout_unusualness,
+    time_split,
+    train_join_ranker,
+    validate_all_instruments,
+)
 from processors.reading_analysis import (
     FORBIDDEN_COPY,
     INSTRUMENTS,
@@ -53,6 +59,7 @@ def test_every_committed_public_history_is_registered():
     assert names.isdisjoint(node_only)
     assert "history.jsonl" not in names
     assert "reading-analysis-history.jsonl" not in names
+    assert "peer-context-history.jsonl" not in names
     assert LIVE_INVENTORY["common_crawl_lake"]["observations"] == 270664
     assert LIVE_INVENTORY["common_crawl_lake"]["unique_urls"] == 268254
     assert LIVE_INVENTORY["common_crawl_lake"]["mutated_urls"] == 0
@@ -248,6 +255,84 @@ def test_index_plan_dry_run_does_not_download(monkeypatch):
     result = lake_cli.run(parsed)
     assert result["status"] == "planned"
     assert result["n_crawls"] == 1
+
+
+def test_time_split_is_chronological_and_keeps_prefix_scorable():
+    values = list(range(20))
+    split = time_split(values, minimum_prior=6)
+    assert split["split"] == "time"
+    assert split["prefix"] == values[:16]
+    assert split["holdout"] == values[16:]
+    assert split["n_prior"] == 16
+    assert split["n_holdout"] == 4
+    short = time_split([1, 2, 3], minimum_prior=6)
+    assert short["split"] == "warming_up"
+    assert short["holdout"] == []
+
+
+def test_holdout_unusualness_uses_frozen_prefix(tmp_path):
+    prior = [1.0] * 12
+    holdout_vals = [1.0, 1.0, 20.0]
+    report = holdout_unusualness(prior + holdout_vals, side="high", minimum=6)
+    assert report["split"] == "time"
+    assert report["n_prior"] == 12
+    assert report["n_holdout"] == 3
+    assert report["n_holdout_unusual"] == 1
+    assert report["holdout_flag_rate"] == 0.3333
+
+
+def test_on_disk_training_report_covers_real_histories():
+    report = validate_all_instruments(READINGS)
+    by_id = {row["instrument_id"]: row for row in report["instruments"]}
+    assert by_id["circumvention-demand"]["n"] == 416
+    assert by_id["circumvention-demand"]["state"] == "scored"
+    assert by_id["circumvention-demand"]["holdout"]["split"] == "time"
+    assert by_id["circumvention-demand"]["holdout"]["n_holdout"] >= 1
+    assert by_id["circumvention-demand"]["n_prior"] >= 8
+    assert by_id["weibo-hotsearch"]["n"] >= 100
+    assert by_id["ddti"]["n"] >= 300
+    assert by_id["stock-connect"]["n"] == 157
+    assert by_id["ooni-bulk"]["state"] == "missing"
+    assert "node_only" in (by_id["ooni-bulk"].get("reason") or "")
+    assert by_id["app-storefront"]["state"] == "warming_up"
+    assert by_id["believability"]["state"] == "warming_up"
+    assert by_id["vantage-fusion"]["state"] == "warming_up"
+    cc = report["common_crawl"]
+    assert cc["state"] == "warming_up"
+    assert cc["holdout"]["n_holdout"] == 0
+    assert "mutation" in (cc["reason"] or "")
+    assert report["split"] == "time"
+
+
+def test_join_ranker_time_split_and_negatives_on_disk():
+    trained = train_join_ranker(READINGS)
+    assert trained["split"] == "time"
+    assert trained["keys"] == ["host", "term", "day"]
+    assert trained["n_examples"] >= 100
+    assert trained["n_holdout"] >= 1
+    assert trained["holdout"]["n_negatives_leaked"] == 0
+    assert trained["holdout"]["pairwise_accuracy"] == 1.0
+    assert trained["prose"] == "prohibited"
+    assert trained["rights"]["training_use"] == "derived_only"
+
+
+def test_lookup_exposes_citations_not_motive():
+    document = {
+        "instruments": [{
+            "instrument_id": "wayback",
+            "state": "scored",
+            "n_history": 12,
+            "unusualness": 0.2,
+            "unusual": False,
+            "public_copy": "this instrument is within its own 12 prior points",
+            "review_rank": {"status": "configured", "score": 1.5},
+            "feature_citations": [{"instrument_id": "wayback", "field": "n_deletions"}],
+        }]
+    }
+    score = lookup_score(document, "wayback")
+    assert score is not None
+    assert score["feature_citations"][0]["field"] == "n_deletions"
+    assert "event_analysis" not in score
 
 
 def test_osint_china_page_consumes_analysis_as_text():

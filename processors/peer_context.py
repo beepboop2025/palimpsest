@@ -366,10 +366,9 @@ def palimpsest_object_keys(obj: Mapping[str, Any]) -> dict[str, set[str]]:
         term = _term(obj.get("term"))
         if term:
             terms.add(term)
-        for field in ("first_seen", "last_seen", "day"):
-            day = _day(obj.get(field))
-            if day:
-                days.add(day)
+        day = _day(obj.get("last_seen") or obj.get("day") or obj.get("first_seen"))
+        if day:
+            days.add(day)
     elif kind == "bleedthrough-host":
         host = _host(obj.get("host") or obj.get("probe_domain"))
         if host:
@@ -384,8 +383,13 @@ def palimpsest_object_keys(obj: Mapping[str, Any]) -> dict[str, set[str]]:
             days.add(day)
     elif kind == "wire-event":
         host = _host(obj.get("url") or obj.get("host"))
-        if host:
+        if host and host != "palimpsest.info":
             hosts.add(host)
+        for ref in obj.get("evidence_refs") or []:
+            if isinstance(ref, dict):
+                ref_host = _host(ref.get("url") or ref.get("host"))
+                if ref_host and ref_host != "palimpsest.info":
+                    hosts.add(ref_host)
         for topic in obj.get("topics") or obj.get("terms") or []:
             term = _term(topic)
             if term:
@@ -424,20 +428,80 @@ def _peer_keys(row: Mapping[str, Any], items: list[dict[str, Any]] | None = None
     return {"hosts": hosts, "terms": terms, "asns": asns, "days": days, "signals": signals}
 
 
-_SUBSTANTIVE_JOIN = frozenset({"hosts", "asns", "terms", "signals"})
+def exact_join_features(
+    object_keys: Mapping[str, set[str]],
+    peer_keys: Mapping[str, set[str]],
+) -> dict[str, Any]:
+    """Exact host/term/day only. ASN and signal keys do not belong."""
+
+    host = bool(object_keys.get("hosts") and object_keys["hosts"] & peer_keys.get("hosts", set()))
+    term = bool(object_keys.get("terms") and object_keys["terms"] & peer_keys.get("terms", set()))
+    day = bool(object_keys.get("days") and object_keys["days"] & peer_keys.get("days", set()))
+    host_day = host and day
+    term_day = term and day
+    match: list[str] = []
+    if host_day:
+        match.extend(["host", "day"])
+    if term_day:
+        if "term" not in match:
+            match.append("term")
+        if "day" not in match:
+            match.append("day")
+    return {
+        "host_day_exact": host_day,
+        "term_day_exact": term_day,
+        "same_term_diff_day": term and not day,
+        "same_day_diff_host": day and not host,
+        "belong": host_day or term_day,
+        "match": match,
+    }
 
 
-def _overlap(object_keys: Mapping[str, set[str]], peer_keys: Mapping[str, set[str]]) -> list[str]:
-    """Day overlap can strengthen a join; it cannot create one by itself."""
+def join_score_from_features(
+    features: Mapping[str, Any],
+    *,
+    unusualness: float | None = None,
+    unusual: bool | None = None,
+) -> float | None:
+    """Order a belonging row. Fail closed: no exact key pair, no score."""
 
-    matched = []
-    substantive = False
-    for name in ("hosts", "asns", "terms", "days", "signals"):
-        if object_keys.get(name) and object_keys[name] & peer_keys.get(name, set()):
-            matched.append(name[:-1] if name.endswith("s") else name)
-            if name in _SUBSTANTIVE_JOIN:
-                substantive = True
-    return matched if substantive else []
+    if not features.get("belong"):
+        return None
+    groups = 1 + int(bool(features.get("host_day_exact") and features.get("term_day_exact")))
+    strength = 2 if features.get("host_day_exact") else 1
+    priority = editorial_priority({
+        "archive_targets": 0,
+        "archive_anomaly_max": None,
+        "archive_anomalies": 0,
+        "linked_signals": 1,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": groups,
+        "evidence_strength_ordinal": strength,
+    })
+    unusual_points = 0.0
+    if unusual is True and unusualness is not None:
+        unusual_points = min(50.0, float(unusualness) / UNUSUAL_THRESHOLD * 25.0)
+    return round(min(100.0, float(priority["score"]) * 0.7 + unusual_points), 1)
+
+
+def feature_citations_for_join(
+    row: Mapping[str, Any],
+    features: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Rank/score citations only. event_analysis writes the sentence."""
+
+    citations = [{
+        "peer": row.get("peer"),
+        "series_id": row.get("series_id"),
+        "field": row.get("field"),
+        "peer_date": row.get("peer_date"),
+        "n_history": row.get("n_history"),
+        "unusualness": row.get("unusualness"),
+        "match": features.get("match"),
+        "host_day_exact": features.get("host_day_exact"),
+        "term_day_exact": features.get("term_day_exact"),
+    }]
+    return citations
 
 
 def rank_joins(
@@ -446,19 +510,24 @@ def rank_joins(
     *,
     cdt_items: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Fail closed: no overlapping peer row, no score."""
+    """Fail closed: no exact host+day or term+day, no score."""
 
     object_keys = palimpsest_object_keys(obj)
     if not any(object_keys.values()):
         return []
     ranked = []
     for row in peer_rows:
-        matched = _overlap(object_keys, _peer_keys(row, cdt_items))
-        if not matched:
+        features = exact_join_features(object_keys, _peer_keys(row, cdt_items))
+        join_score = join_score_from_features(
+            features,
+            unusualness=row.get("unusualness") if isinstance(row.get("unusualness"), (int, float)) else None,
+            unusual=row.get("unusual") if isinstance(row.get("unusual"), bool) else None,
+        )
+        if join_score is None:
             continue
-        groups = len(set(matched))
-        strength = 2 if {"host", "asn"} & set(matched) else 1
-        features = {
+        groups = 1 + int(bool(features.get("host_day_exact") and features.get("term_day_exact")))
+        strength = 2 if features.get("host_day_exact") else 1
+        priority = editorial_priority({
             "archive_targets": 0,
             "archive_anomaly_max": None,
             "archive_anomalies": 0,
@@ -466,19 +535,14 @@ def rank_joins(
             "live_linked_signals": 1,
             "independent_evidence_groups": groups,
             "evidence_strength_ordinal": strength,
-        }
-        priority = editorial_priority(features)
-        unusual_points = 0.0
-        if row.get("unusual") is True and row.get("unusualness") is not None:
-            unusual_points = min(50.0, float(row["unusualness"]) / UNUSUAL_THRESHOLD * 25.0)
-        join_score = round(min(100.0, float(priority["score"]) * 0.7 + unusual_points), 1)
+        })
         join = {
             "object_id": obj.get("object_id") or obj.get("id") or obj.get("event_id"),
             "object_kind": obj.get("kind"),
             "peer": row.get("peer"),
             "series_id": row.get("series_id"),
             "peer_date": row.get("peer_date"),
-            "match": matched,
+            "match": features["match"],
             "state": row.get("state"),
             "unusual": row.get("unusual"),
             "unusualness": row.get("unusualness"),
@@ -487,6 +551,7 @@ def rank_joins(
             "editorial_priority": priority,
             "join_score": join_score,
             "join_meaning": review_rank_meaning(),
+            "feature_citations": feature_citations_for_join(row, features),
             "label": None,
             "rights": {"training_use": "derived_only"},
             "relation": "peer-context-not-causation",
@@ -552,9 +617,51 @@ def collect_palimpsest_objects(readings: Path) -> list[dict[str, Any]]:
                     "url": event.get("url"),
                     "topics": event.get("topics") or [],
                     "published_at": event.get("published_at"),
+                    "evidence_refs": event.get("evidence_refs") or [],
                     "declared_links": event.get("declared_links") or {},
                 })
     return objects
+
+
+def cdt_item_peer_rows(
+    items: list[dict[str, Any]],
+    weekly: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """One joinable CDT row per title. Unusualness cites the week, not the story."""
+
+    rows = []
+    for item in items:
+        row = {
+            "schema_version": FEATURE_SCHEMA,
+            "peer": "CDT",
+            "series_id": item.get("item_id") or item.get("url"),
+            "field": "title_cluster",
+            "kind": "item",
+            "host": item.get("host"),
+            "terms": list(item.get("terms") or []),
+            "peer_date": item.get("peer_date") or item.get("day"),
+            "day": item.get("day"),
+            "title": item.get("title"),
+            "excerpt": bound_excerpt(item.get("excerpt") or item.get("title")),
+            "url": item.get("url"),
+            "n_history": weekly.get("n_history") if weekly else 0,
+            "state": weekly.get("state") if weekly else "warming_up",
+            "unusualness": weekly.get("unusualness") if weekly else None,
+            "unusual": weekly.get("unusual") if weekly else None,
+            "label": None,
+            "label_source": "human-editorial-review-required",
+            "rights": {"training_use": "derived_only"},
+        }
+        row["public_copy"] = peer_copy({
+            **row,
+            "peer": "CDT",
+            "peer_date": row["peer_date"] or "undated",
+            "n_history": row["n_history"],
+            "state": row["state"],
+            "unusual": row["unusual"],
+        })
+        rows.append(row)
+    return rows
 
 
 def cdt_items_from_ddti(readings: Path) -> dict[str, Any] | None:
@@ -609,6 +716,16 @@ def gfw_series(readings: Path) -> tuple[list[float], str | None]:
     return values, last_date
 
 
+def _peer_validation(readings: Path) -> dict[str, Any]:
+    from processors.ranker_training import train_join_ranker, validate_peer_series
+
+    return {
+        "split": "time",
+        "peer_series": validate_peer_series(readings),
+        "join": train_join_ranker(readings),
+    }
+
+
 def build_peer_context(
     readings_dir: Path | str,
     *,
@@ -629,7 +746,8 @@ def build_peer_context(
     )
     cdt_doc = _optional_json(root / PEER_FILES["cdt"]) or cdt_items_from_ddti(root)
     cdt_series, cdt_items = fit_cdt(cdt_doc, _jsonl(root / PEER_FILES["cdt_history"]))
-    peer_series = greatfire + ooni + cdt_series
+    cdt_item_rows = cdt_item_peer_rows(cdt_items, cdt_series[0] if cdt_series else None)
+    peer_series = greatfire + ooni + cdt_series + cdt_item_rows
     live_objects = objects if objects is not None else collect_palimpsest_objects(root)
     joins = []
     for obj in live_objects:
@@ -659,6 +777,7 @@ def build_peer_context(
         "peer_series": peer_series,
         "cdt_items": cdt_items,
         "joins": joins,
+        "validation": _peer_validation(root),
         "publication_policy": {
             "automatic_publication": "prohibited",
             "human_review_required": True,

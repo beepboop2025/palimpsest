@@ -1,0 +1,2032 @@
+{
+  "schema_version": "palimpsest-peer-context/v1",
+  "job": "peer-context",
+  "generated_at": "2026-08-20T08:00:00Z",
+  "source": "Cached GreatFire verdicts, OONI host/ASN or on-disk ooni-gfw history, and bounded CDT titles. Warehouse files are optional.",
+  "method": "Per-peer robust MAD (prequential-robust-mad/v1) against that peer series' own history, then a fail-closed join onto a Palimpsest object by term/host/ASN/day. Review rank only. No generative brief. Weiboscope is cited as a literature pointer only; the 2012 dump is not loaded or trained on",
+  "scope": "Per-peer unusualness vs that peer series' own history, plus a fail-closed join onto Palimpsest objects. No causal attribution. No Weiboscope dump. No GreatFire catalog crawl.",
+  "rights": {
+    "training_use": "derived_only"
+  },
+  "n_peer_series": 21,
+  "n_peer_series_scored": 1,
+  "n_peer_series_warming_up": 20,
+  "n_cdt_items": 19,
+  "n_joins": 25,
+  "n_objects_considered": 735,
+  "peer_series": [
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "OONI",
+      "series_id": "cn-aggregate",
+      "field": "gfw_index",
+      "peer_date": "2026-08-20",
+      "current_value": 59.2,
+      "n_history": 170,
+      "minimum_prior": 6,
+      "state": "scored",
+      "unusualness": 0.0,
+      "unusual": false,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "kind": "country",
+      "probe_cc": "CN",
+      "public_copy": "OONI 2026-08-20: this series is within its own 170 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "field": "n_titles",
+      "peer_date": "2026-08-11",
+      "current_value": 19.0,
+      "n_history": 0,
+      "minimum_prior": 6,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "kind": "weekly-title-volume",
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "chinese opera"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+      "excerpt": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+      "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "freedom of expression"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+      "excerpt": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+      "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "netizen comments"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "excerpt": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "netizen comments"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Translation: “How Do These Comments Break the Rules?”",
+      "excerpt": "Translation: “How Do These Comments Break the Rules?”",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "subway"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+      "excerpt": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "subway"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "excerpt": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "excerpt": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Translation: No Scaling the Great Firewall in the Library",
+      "excerpt": "Translation: No Scaling the Great Firewall in the Library",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "excerpt": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "humor"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+      "excerpt": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "translation excerpt"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+      "excerpt": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+      "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+      "excerpt": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+      "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/photo-xanadu-by-xiquinho-silva/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Photo: Xanadu, by Xiquinho Silva",
+      "excerpt": "Photo: Xanadu, by Xiquinho Silva",
+      "url": "https://chinadigitaltimes.net/2026/07/photo-xanadu-by-xiquinho-silva/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/photo-%e5%b9%bf%e5%9c%ba%e9%b8%bd%e5%ad%90-by-costi/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Photo: 广场鸽子, by Costi",
+      "excerpt": "Photo: 广场鸽子, by Costi",
+      "url": "https://chinadigitaltimes.net/2026/07/photo-%e5%b9%bf%e5%9c%ba%e9%b8%bd%e5%ad%90-by-costi/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines",
+      "excerpt": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines",
+      "url": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "social media censorship"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+      "excerpt": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "social media censorship"
+      ],
+      "peer_date": "2026-08-19",
+      "day": "2026-08-19",
+      "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+      "excerpt": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+      "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "social media"
+      ],
+      "peer_date": "2026-08-14",
+      "day": "2026-08-14",
+      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "excerpt": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-14: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "migrant workers"
+      ],
+      "peer_date": "2026-08-11",
+      "day": "2026-08-11",
+      "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+      "excerpt": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points"
+    }
+  ],
+  "cdt_items": [
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
+      "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+      "excerpt": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+      "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "chinese opera"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/",
+      "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+      "excerpt": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+      "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "freedom of expression"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "excerpt": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "netizen comments"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+      "title": "Translation: “How Do These Comments Break the Rules?”",
+      "excerpt": "Translation: “How Do These Comments Break the Rules?”",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "netizen comments"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+      "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+      "excerpt": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "subway"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "excerpt": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "subway"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "excerpt": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "title": "Translation: No Scaling the Great Firewall in the Library",
+      "excerpt": "Translation: No Scaling the Great Firewall in the Library",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "excerpt": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
+      "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+      "excerpt": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "humor"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+      "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+      "excerpt": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+      "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "translation excerpt"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+      "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+      "excerpt": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+      "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/photo-xanadu-by-xiquinho-silva/",
+      "title": "Photo: Xanadu, by Xiquinho Silva",
+      "excerpt": "Photo: Xanadu, by Xiquinho Silva",
+      "url": "https://chinadigitaltimes.net/2026/07/photo-xanadu-by-xiquinho-silva/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/photo-%e5%b9%bf%e5%9c%ba%e9%b8%bd%e5%ad%90-by-costi/",
+      "title": "Photo: 广场鸽子, by Costi",
+      "excerpt": "Photo: 广场鸽子, by Costi",
+      "url": "https://chinadigitaltimes.net/2026/07/photo-%e5%b9%bf%e5%9c%ba%e9%b8%bd%e5%ad%90-by-costi/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/",
+      "title": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines",
+      "excerpt": "“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines",
+      "url": "https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "wechat"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/",
+      "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+      "excerpt": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "social media censorship"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+      "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+      "excerpt": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+      "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "social media censorship"
+      ],
+      "day": "2026-08-19",
+      "peer_date": "2026-08-19",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "excerpt": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "social media"
+      ],
+      "day": "2026-08-14",
+      "peer_date": "2026-08-14",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
+      "title": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+      "excerpt": "Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "migrant workers"
+      ],
+      "day": "2026-08-11",
+      "peer_date": "2026-08-11",
+      "peer": "CDT"
+    }
+  ],
+  "joins": [
+    {
+      "object_id": "board-term:Chinese opera",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:freedom of expression",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:netizen comments",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:subway",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:censorship",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:humor",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:translation excerpt",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:WeChat",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:social media censorship",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:social media",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "board-term:migrant workers",
+      "object_kind": "board-term",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-9933c92529df18c725064ca6",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "host",
+        "day",
+        "term"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 38.2,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 26.7,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day",
+            "term"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-9933c92529df18c725064ca6",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "peer_date": "2026-08-14",
+      "match": [
+        "host",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-14: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 34.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 24.4,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+          "field": "title_cluster",
+          "peer_date": "2026-08-14",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": false
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-51a44fee505752df7b1b04f0",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-11a22d53c2dfa5e72d193ef2",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2ad90d1644cdceddd6f791dc",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "host",
+        "day",
+        "term"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 38.2,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 26.7,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day",
+            "term"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2ad90d1644cdceddd6f791dc",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "peer_date": "2026-08-14",
+      "match": [
+        "host",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-14: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 34.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 24.4,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+          "field": "title_cluster",
+          "peer_date": "2026-08-14",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": false
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-e310311d15ed034b368c5ce0",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2322b6e9d8d3b2107d9cfbc4",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-26f2e2c1bb933fb0ba689078",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-61d45f28df8af68e13be971b",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "term",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 30.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 21.6,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "term",
+            "day"
+          ],
+          "host_day_exact": false,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2b56e05eb2fdc56714f80b72",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "host",
+        "day",
+        "term"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 38.2,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 26.7,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day",
+            "term"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2b56e05eb2fdc56714f80b72",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "peer_date": "2026-08-14",
+      "match": [
+        "host",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-14: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 34.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 24.4,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+          "field": "title_cluster",
+          "peer_date": "2026-08-14",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": false
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2c67e19a0f4ed244b1dc4f86",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "cdt-weekly-titles",
+      "peer_date": "2026-08-11",
+      "match": [
+        "host",
+        "day",
+        "term"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 38.2,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 26.7,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day",
+            "term"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": true
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    },
+    {
+      "object_id": "event-2c67e19a0f4ed244b1dc4f86",
+      "object_kind": "wire-event",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
+      "peer_date": "2026-08-11",
+      "match": [
+        "host",
+        "day"
+      ],
+      "state": "warming_up",
+      "unusual": null,
+      "unusualness": null,
+      "n_history": 0,
+      "public_copy": "CDT 2026-08-11: this series is warming up vs its own 0 prior points",
+      "editorial_priority": {
+        "status": "configured",
+        "score": 34.8,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "join_score": 24.4,
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "feature_citations": [
+        {
+          "peer": "CDT",
+          "series_id": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
+          "field": "title_cluster",
+          "peer_date": "2026-08-11",
+          "n_history": 0,
+          "unusualness": null,
+          "match": [
+            "host",
+            "day"
+          ],
+          "host_day_exact": true,
+          "term_day_exact": false
+        }
+      ],
+      "label": null,
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "relation": "peer-context-not-causation"
+    }
+  ],
+  "validation": {
+    "split": "time",
+    "peer_series": {
+      "greatfire": [],
+      "ooni": [
+        {
+          "peer": "OONI",
+          "series_id": "cn-aggregate",
+          "field": "gfw_index",
+          "n": 171,
+          "n_prior": 137,
+          "state": "scored",
+          "holdout": {
+            "split": "time",
+            "n_extracted": 171,
+            "n_prior": 137,
+            "n_holdout": 34,
+            "n_holdout_scored": 34,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": 0.0,
+            "holdout_flag_rate": 0.0,
+            "threshold": 4.5
+          },
+          "reason": null,
+          "rights": {
+            "training_use": "derived_only"
+          }
+        }
+      ],
+      "cdt": [
+        {
+          "peer": "CDT",
+          "series_id": "cdt-weekly-titles",
+          "field": "n_titles",
+          "n": 1,
+          "n_prior": 0,
+          "state": "warming_up",
+          "holdout": {
+            "split": "too_short",
+            "n_extracted": 1,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": null,
+            "holdout_flag_rate": null,
+            "threshold": 4.5
+          },
+          "reason": "series too short: 0 prior points (6 required)",
+          "rights": {
+            "training_use": "derived_only"
+          }
+        }
+      ],
+      "n_cdt_items": 19,
+      "warehouse_present": {
+        "greatfire": false,
+        "ooni": false,
+        "cdt": false
+      }
+    },
+    "join": {
+      "schema_version": "palimpsest-join-ranker/v1",
+      "trainer": "exact-host-term-day + editorial_priority + robust-mad",
+      "keys": [
+        "host",
+        "term",
+        "day"
+      ],
+      "belong": "host_day_exact OR term_day_exact",
+      "negatives": [
+        "same_term_diff_day",
+        "same_day_diff_host"
+      ],
+      "split": "time",
+      "n_examples": 5983,
+      "n_train": 4432,
+      "n_holdout": 1551,
+      "n_days": 22,
+      "n_train_days": 18,
+      "n_holdout_days": 4,
+      "reason": null,
+      "train": {
+        "n_objects": 563,
+        "n_positive": 1516,
+        "n_negative": 2916,
+        "n_pairs": 10334,
+        "n_correct": 10334,
+        "pairwise_accuracy": 1.0,
+        "n_negatives_fail_closed": 2916,
+        "n_negatives_leaked": 0
+      },
+      "holdout": {
+        "n_objects": 172,
+        "n_positive": 539,
+        "n_negative": 1012,
+        "n_pairs": 3780,
+        "n_correct": 3780,
+        "pairwise_accuracy": 1.0,
+        "n_negatives_fail_closed": 1012,
+        "n_negatives_leaked": 0
+      },
+      "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "prose": "prohibited"
+    }
+  },
+  "publication_policy": {
+    "automatic_publication": "prohibited",
+    "human_review_required": true,
+    "causal_language": "prohibited",
+    "generative_model": "prohibited",
+    "event_analysis_prose": "unchanged"
+  },
+  "analysis_sha256": "3813ef8ae663902c6d56eac511ad5610ba86e83bce6b23d14d611a35145b928a"
+}

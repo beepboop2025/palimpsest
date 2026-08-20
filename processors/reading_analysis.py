@@ -607,7 +607,7 @@ def list_public_history_files(readings_dir: Path | str) -> list[str]:
     root = Path(readings_dir)
     names = []
     for path in sorted(root.glob("*-history.jsonl")):
-        if path.name == "reading-analysis-history.jsonl":
+        if path.name in {"reading-analysis-history.jsonl", "peer-context-history.jsonl"}:
             continue
         names.append(path.name)
     return names
@@ -652,6 +652,15 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
+        row["feature_citations"] = [{
+            "instrument_id": instrument_id,
+            "field": spec["field"],
+            "trainer": spec["trainer"],
+            "n_file_lines": 0,
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+        }]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -667,6 +676,15 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
+        row["feature_citations"] = [{
+            "instrument_id": instrument_id,
+            "field": spec["field"],
+            "trainer": spec["trainer"],
+            "n_file_lines": n_file_lines,
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+        }]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -682,6 +700,15 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
+        row["feature_citations"] = [{
+            "instrument_id": instrument_id,
+            "field": spec["field"],
+            "trainer": spec["trainer"],
+            "n_file_lines": n_file_lines,
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+        }]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -729,6 +756,15 @@ def fit_instrument(
         row["board_state"] = board["state"]
         row["board_stat"] = board["stat"]
     row["public_copy"] = public_copy_for_row(row)
+    row["feature_citations"] = [{
+        "instrument_id": instrument_id,
+        "field": spec["field"],
+        "trainer": spec["trainer"],
+        "n_file_lines": n_file_lines,
+        "n_history": n_history,
+        "current_value": current,
+        "unusualness": unusualness,
+    }]
     return row
 
 
@@ -773,6 +809,13 @@ def common_crawl_host_model_row() -> dict[str, Any]:
             "score": None,
         },
     }
+    row["feature_citations"] = [{
+        "instrument_id": "common-crawl-hosts",
+        "field": "host_feature_rows",
+        "trainer": CC_MODEL_ID,
+        "n_history": 1,
+        "score": None,
+    }]
     row["public_copy"] = (
         "this instrument is warming up vs its own 1 prior points "
         f"(1 of {MAD_MIN_HISTORY} required)"
@@ -955,6 +998,7 @@ def lookup_score(
                 "unusual": row.get("unusual"),
                 "public_copy": row.get("public_copy"),
                 "review_rank": row.get("review_rank"),
+                "feature_citations": row.get("feature_citations") or [],
                 "relation": "analysis-context-not-causation",
             }
     return None
@@ -1002,6 +1046,18 @@ def build_reading_analysis(
         archive_context=archive_context,
         now=now,
     )
+    from processors.ranker_training import train_join_ranker, validate_all_instruments
+
+    validation = validate_all_instruments(root)
+    holdout_by_id = {
+        row["instrument_id"]: row["holdout"]
+        for row in validation["instruments"]
+    }
+    for row in instruments:
+        holdout = holdout_by_id.get(row["instrument_id"])
+        if holdout is not None:
+            row["holdout"] = holdout
+    join_validation = train_join_ranker(root)
 
     scored = [row for row in instruments if row["state"] == "scored"]
     warming = [row for row in instruments if row["state"] == "warming_up"]
@@ -1029,6 +1085,11 @@ def build_reading_analysis(
         "n_story_ranks": len(story_ranks),
         "story_ranks_label_source": "human-editorial-review-required",
         "live_inventory": LIVE_INVENTORY,
+        "validation": {
+            "split": "time",
+            "instruments": validation,
+            "join": join_validation,
+        },
         "instruments": instruments,
         "story_ranks": story_ranks,
         "publication_policy": {

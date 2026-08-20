@@ -179,6 +179,8 @@ def test_join_ranks_peer_rows_on_a_palimpsest_object():
         "GreatFire 2026-08-20: this series is unusual vs its own 8 prior points"
     )
     assert greatfire_join["peer_date"] == "2026-08-20"
+    assert greatfire_join["feature_citations"][0]["peer"] == "GreatFire"
+    assert greatfire_join["feature_citations"][0]["host_day_exact"] is True
     ooni_join = next(row for row in ranked if row["peer"] == "OONI")
     assert ooni_join["public_copy"].startswith("OONI 2026-08-20:")
     assert all("facebook.com" != row["series_id"] for row in ranked)
@@ -237,7 +239,7 @@ def test_cdt_week_joins_a_board_term_not_a_truth_score():
     assert "true" not in ranked[0]["public_copy"].casefold()
 
 
-def test_cn_aggregate_joins_only_objects_that_declare_ooni():
+def test_cn_aggregate_does_not_join_without_host_term_day():
     national = fit_ooni(None, [], gfw_history=[50.0] * 8 + [51.0], gfw_date="2026-08-20")
     wire = {
         "kind": "wire-event",
@@ -248,9 +250,7 @@ def test_cn_aggregate_joins_only_objects_that_declare_ooni():
         "published_at": "2026-08-20",
         "declared_links": {"scan_signal_ids": ["ooni-gfw"]},
     }
-    ranked = rank_joins(wire, national)
-    assert ranked[0]["series_id"] == "cn-aggregate"
-    assert "signal" in ranked[0]["match"]
+    assert rank_joins(wire, national) == []
     assert rank_joins(_official_object(), national) == []
 
 
@@ -285,8 +285,8 @@ def test_build_from_fixture_warehouse_and_copy_stays_context_only(tmp_path):
         now=None,
         objects=[_official_object()],
     )
-    assert document["n_peer_series"] == 5
-    assert document["n_peer_series_scored"] == 4
+    assert document["n_peer_series"] == 6
+    assert document["n_peer_series_scored"] == 5
     assert document["n_peer_series_warming_up"] == 1
     assert document["n_joins"] == 2
     copies = [row["public_copy"] for row in document["peer_series"]]
@@ -315,7 +315,37 @@ def test_job_writes_latest_and_abstains_when_halted(tmp_path, monkeypatch):
     assert pull.main(["--root", str(tmp_path)]) == 2
 
 
+def test_same_term_different_day_and_same_day_different_host_are_negatives():
+    series, items = fit_cdt(
+        json.loads((FIXTURES / "cdt-context-latest.json").read_text()),
+        [],
+    )
+    same_term_diff_day = {
+        "kind": "board-term",
+        "object_id": "board-term:guo degang",
+        "term": "Guo Degang",
+        "last_seen": "2026-07-01",
+    }
+    assert rank_joins(same_term_diff_day, series, cdt_items=items) == []
+    same_day_diff_host = {
+        "kind": "official-first-seen",
+        "object_id": "official-first-seen",
+        "generated_at": "2026-08-20T00:00:00Z",
+        "pages": [{"url": "https://wikipedia.org/wiki/X"}],
+    }
+    greatfire = fit_greatfire(
+        json.loads((FIXTURES / "greatfire-context-latest.json").read_text()),
+        [
+            json.loads(line)
+            for line in (FIXTURES / "greatfire-context-history.jsonl").read_text().splitlines()
+            if line.strip()
+        ],
+    )
+    assert rank_joins(same_day_diff_host, greatfire) == []
+
+
 def test_event_analysis_field_sets_are_untouched():
     text = (ROOT / "core" / "event_analysis.py").read_text(encoding="utf-8")
     assert "peer_context" not in text
     assert "peer-context" not in text
+
