@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/public-board-terms-v1.schema.json",
+  "title": "Palimpsest public-board-terms v1",
+  "description": "Fused public-board title dump across archives that answered. Every board is a curated/censored surface.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "job_name",
+    "status",
+    "source",
+    "method",
+    "scope",
+    "disclaimer",
+    "publication_policy",
+    "window_days",
+    "n_titles",
+    "n_boards",
+    "n_boards_ok",
+    "n_sightings",
+    "n_ddti_joined",
+    "regimes",
+    "boards",
+    "terms",
+    "ddti_join",
+    "skipped",
+    "abstained"
+  ],
+  "properties": {
+    "schema_version": { "const": "palimpsest-public-board-terms.v1" },
+    "generated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
+    "job_name": { "const": "public-board-terms" },
+    "status": { "enum": ["live", "abstain"] },
+    "source": { "type": "string", "minLength": 1 },
+    "method": { "type": "string", "minLength": 1 },
+    "scope": { "type": "string", "minLength": 1 },
+    "disclaimer": {
+      "const": "Every hot board is itself a curated or censored surface. This dump is the record of permitted attention, not uncensored public opinion."
+    },
+    "publication_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_publication",
+        "named_person_packages_auto_published",
+        "counts_as_corroboration",
+        "user_ids_included",
+        "post_bodies_included",
+        "private_profiles_included",
+        "follower_graphs_included"
+      ],
+      "properties": {
+        "automatic_publication": { "const": true },
+        "named_person_packages_auto_published": { "const": false },
+        "counts_as_corroboration": { "const": false },
+        "user_ids_included": { "const": false },
+        "post_bodies_included": { "const": false },
+        "private_profiles_included": { "const": false },
+        "follower_graphs_included": { "const": false }
+      }
+    },
+    "window_days": { "type": "array", "items": { "type": "string" } },
+    "n_titles": { "type": "integer", "minimum": 0 },
+    "n_boards": { "type": "integer", "minimum": 0 },
+    "n_boards_ok": { "type": "integer", "minimum": 0 },
+    "n_sightings": { "type": "integer", "minimum": 0 },
+    "n_ddti_joined": { "type": "integer", "minimum": 0 },
+    "regimes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contained_visible", "suppressed_invisible"],
+      "properties": {
+        "contained_visible": { "type": "integer", "minimum": 0 },
+        "suppressed_invisible": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "boards": { "type": "array" },
+    "terms": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "board",
+          "title",
+          "title_sha256",
+          "best_rank",
+          "pinned",
+          "first_seen",
+          "last_seen",
+          "days_present",
+          "appearances",
+          "source_archives",
+          "role"
+        ],
+        "properties": {
+          "board": { "type": "string" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+          "title_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "best_rank": { "type": ["integer", "null"], "minimum": 1 },
+          "pinned": { "type": "boolean" },
+          "first_seen": { "type": "string" },
+          "last_seen": { "type": "string" },
+          "days_present": { "type": "integer", "minimum": 1 },
+          "appearances": { "type": "integer", "minimum": 1 },
+          "source_archives": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "role": { "type": "string" }
+        }
+      }
+    },
+    "ddti_join": { "type": "array" },
+    "skipped": { "type": "array" },
+    "abstained": { "type": "array" }
+  }
+}

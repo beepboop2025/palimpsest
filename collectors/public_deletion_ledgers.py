@@ -57,6 +57,15 @@ DEFAULT_FEEDS = (
         "kind": "freeweibo",
         "note": "FreeWeibo-style public deletion ledger, if a feed is served.",
     },
+    {
+        "name": "freewechat_public",
+        "url": "https://freewechat.com/feed",
+        "kind": "freewechat",
+        "note": (
+            "FreeWeChat recovered-article RSS if a stable public index is served. "
+            "No WeChat private accounts. Unreachable/404 abstains."
+        ),
+    },
 )
 
 Fetch = Callable[[str], tuple[int, str]]

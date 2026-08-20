@@ -86,6 +86,8 @@ def _official(title: str) -> dict:
 def _inputs(**overrides):
     base = {
         "weibo-hotsearch": None,
+        "weibo-hotsearch-terms": None,
+        "public-board-terms": None,
         "public-hot-boards": None,
         "telegram-public-channels": None,
         "social-observations": None,
@@ -386,6 +388,16 @@ def test_weibo_terms_and_hot_boards_fold_into_one_join():
                     "generated_at": "2026-08-20T06:00:00Z",
                     "observations": [{"title": "杭州暴雨", "source": "public-hot-boards:baidu"}],
                 },
+                "public-board-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [
+                        {
+                            "board": "zhihu",
+                            "title": "杭州暴雨",
+                            "first_seen": "2026-08-20",
+                        }
+                    ],
+                },
                 "newswire": _wire("杭州暴雨"),
             }
         ),
@@ -395,7 +407,8 @@ def test_weibo_terms_and_hot_boards_fold_into_one_join():
     assert row["disposition"] == "matched-to-wire"
     assert "weibo-hotsearch-terms" in row["spreading"]["source_ids"]
     assert "public-hot-boards:baidu" in row["spreading"]["source_ids"]
-    assert row["spreading"]["n_surfaces"] == 2
+    assert "public-board-terms:zhihu" in row["spreading"]["source_ids"]
+    assert row["spreading"]["n_surfaces"] == 3
 
 
 def test_json_schema_accepts_a_live_document():

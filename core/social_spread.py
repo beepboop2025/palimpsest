@@ -56,7 +56,12 @@ OFFICIAL_MISSING_WHISPER_REFUSAL = (
     "detained, or dead."
 )
 
-REQUIRED_SPREADING = ("weibo-hotsearch", "weibo-hotsearch-terms", "public-hot-boards")
+REQUIRED_SPREADING = (
+    "weibo-hotsearch",
+    "weibo-hotsearch-terms",
+    "public-hot-boards",
+    "public-board-terms",
+)
 OPTIONAL_SPREADING = ("telegram-public-channels", "social-observations")
 MATCH_TARGETS = (
     "newswire",
@@ -590,6 +595,27 @@ def _same_string_in(term: str, haystack: str) -> bool:
     return bool(term) and bool(haystack) and term in haystack
 
 
+def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+    generated = _iso_or_none(doc.get("generated_at"))
+    for row in doc.get("terms") or []:
+        if not isinstance(row, Mapping) or not row.get("title"):
+            continue
+        first = row.get("first_seen")
+        last = row.get("last_seen")
+        seen = generated
+        if isinstance(first, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", first):
+            seen = f"{first}T00:00:00Z"
+        elif isinstance(last, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", last):
+            seen = f"{last}T00:00:00Z"
+        board = str(row.get("board") or "public")
+        _add_term(
+            bucket,
+            str(row["title"]),
+            source_id=f"public-board-terms:{board}",
+            seen_at=_iso_or_none(seen) or generated,
+        )
+
+
 def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("terms") or []:
@@ -633,6 +659,9 @@ def extract_spreading_terms(inputs: Mapping[str, Mapping[str, Any] | None]) -> d
     boards = inputs.get("public-hot-boards")
     if isinstance(boards, Mapping):
         _extract_hot_boards(boards, bucket)
+    fused = inputs.get("public-board-terms")
+    if isinstance(fused, Mapping):
+        _extract_board_terms(fused, bucket)
     social = inputs.get("social-observations")
     if isinstance(social, Mapping):
         _extract_social_observations(social, bucket)
@@ -857,22 +886,21 @@ def _assemble(
         "job_name": JOB_NAME,
         "status": status,
         "source": (
-            "Public Weibo hot-search titles (join summary and the term-level "
-            "board dump), public aggregate hot-board titles, "
-            "in-tree public Telegram channel titles/excerpts "
+            "Public Weibo titles, the fused public-board-terms dump (archives "
+            "that answered), live aggregate hot boards, in-tree Telegram titles "
             "(DragonDenWhispers, DragonDenCyber, DragonDenBorderlands), and "
-            "closed-registry social observation titles, joined to already-stored "
-            "China-scoped newswire headlines/deks, official-first-seen page titles, "
-            "and public deletion-ledger titles. Wayback is context only."
+            "closed-registry social observation titles, joined to stored "
+            "newswire headlines/deks, official-first-seen titles, and deletion-"
+            "ledger titles. Wayback is context only."
         ),
         "method": (
-            "Extract spreading terms from the Weibo board-title dump, public "
-            "hot boards, and retained channel excerpts. Match only when the "
-            "same string already appears in a registered newswire headline/dek, "
-            "an official last-alive page title, or a deletion-ledger title. "
-            "Whisper-only names do not emit a person package. Sense-gated "
-            "ordinary 失联 accidents stay topic rows. Missing required "
-            "spreading collectors abstain."
+            "Extract spreading terms from the fused public-board dump, Weibo "
+            "titles, hot boards, and retained channel excerpts. Match only when "
+            "the same string already appears in a registered newswire "
+            "headline/dek, an official last-alive page title, or a deletion-"
+            "ledger title. Whisper-only names do not emit a person package. "
+            "Sense-gated ordinary 失联 accidents stay topic rows. Missing "
+            "required spreading collectors abstain."
         ),
         "scope": (
             "Public Chinese attention surfaces already collected outside the "

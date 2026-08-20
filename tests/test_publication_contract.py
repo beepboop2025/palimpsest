@@ -97,6 +97,9 @@ CONTRACT = {
     "public-hot-boards": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "public-board-terms": _d(
+        "generated_at", ["source", "method", "scope"], "n_titles"
+    ),
     "telegram-public-channels": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
@@ -277,6 +280,7 @@ PENDING = {
     "telegram-public-channels",
     "social-spread",
     "weibo-hotsearch-terms",
+    "public-board-terms",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

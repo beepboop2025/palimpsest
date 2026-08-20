@@ -28,6 +28,7 @@ INPUT_FILES = {
     "weibo-hotsearch": "weibo-hotsearch-latest.json",
     "weibo-hotsearch-terms": "weibo-hotsearch-terms-latest.json",
     "public-hot-boards": "public-hot-boards-latest.json",
+    "public-board-terms": "public-board-terms-latest.json",
     "telegram-public-channels": "telegram-public-channels-latest.json",
     "social-observations": "social-observations-latest.json",
     "newswire": "newswire-latest.json",

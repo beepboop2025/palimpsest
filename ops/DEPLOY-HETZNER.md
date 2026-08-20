@@ -340,6 +340,7 @@ the OSINT bundle does not wait for a GitHub-only refresh:
 | `gdelt` | `readings/gdelt-latest.json` | every 15 min on vigorous (`PALIMPSEST_GDELT_TIMESPAN=15min`, 8-term cap, setdefault only — not in Compose `.env`); abstains if GDELT returns no volume |
 | `baike-public-snapshot` | `readings/baike-public-snapshot-latest.json` | hourly; public Baike article HTML + CDX; abstains if every article is silent/walled |
 | `public-hot-boards` | `readings/public-hot-boards-latest.json` | hourly; Baidu / Toutiao / Douyin aggregate JSON; abstains if every board is silent |
+| `public-board-terms` | `readings/public-board-terms-latest.json` | hourly; fused title/rank dump from verified public archives; silent/walled boards abstain |
 | `telegram-public-channels` | `readings/telegram-public-channels-latest.json` | hourly; public Dragon Den `t.me/s/` HTML + ScamShield inbox drain; abstains if every preview is silent/walled. Does not write `telegram-watch-latest.json` |
 | `censored-planet` | `readings/censored-planet-latest.json` | every 6h on vigorous (standard stays daily) |
 | `ooni-gfw` / `ioda-outages` | existing readings | every 2h on vigorous |

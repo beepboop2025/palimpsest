@@ -1,0 +1,187 @@
+{
+  "_meta": {
+    "purpose": "Keyless public board archives. Titles and ranks only. Each source is a candidate; login wall, captcha, empty, or 暂无数据 is a silent board, never a zero.",
+    "safety": "No user pages, no login, no profiles, no Douyin signed APIs, no RapidAPI, no Xiaohongshu, no invented Telegram handles."
+  },
+  "disclosure": "Every board is itself a curated or censored surface. This dump is permitted attention, not uncensored public opinion.",
+  "window_days": 2,
+  "wired": [
+    {
+      "name": "justjavac-weibo",
+      "board": "weibo",
+      "kind": "justjavac_json",
+      "license": "MIT",
+      "url_template": "https://raw.githubusercontent.com/justjavac/weibo-trending-hot-search/master/raw/{date}.json",
+      "note": "Hourly Sina Weibo hot-search union already used by collectors/weibo_hotsearch.py."
+    },
+    {
+      "name": "lonnyzhang423-weibo-hot-hub",
+      "board": "weibo",
+      "kind": "lonny_md",
+      "license": "MIT",
+      "section": "热门搜索",
+      "url_template": "https://raw.githubusercontent.com/lonnyzhang423/weibo-hot-hub/main/archives/{date}.md",
+      "note": "Deduped against justjavac on (weibo, title, day). Recent days may be 暂无数据 (silent)."
+    },
+    {
+      "name": "lonnyzhang423-zhihu-hot-hub",
+      "board": "zhihu",
+      "kind": "lonny_md",
+      "license": "MIT",
+      "sections": ["热门搜索", "热门话题"],
+      "url_template": "https://raw.githubusercontent.com/lonnyzhang423/zhihu-hot-hub/main/archives/{date}.md",
+      "note": "Markdown titles only. Skip 热门视频. Recent days may be 暂无数据 (silent)."
+    },
+    {
+      "name": "lonnyzhang423-toutiao-hot-hub",
+      "board": "toutiao",
+      "kind": "lonny_md",
+      "license": "MIT",
+      "url_template": "https://raw.githubusercontent.com/lonnyzhang423/toutiao-hot-hub/main/archives/{date}.md",
+      "note": "Markdown titles only. Recent days may be 暂无数据 (silent)."
+    },
+    {
+      "name": "lonnyzhang423-douyin-hot-hub",
+      "board": "douyin",
+      "kind": "lonny_md",
+      "license": "MIT",
+      "section": "抖音热榜",
+      "url_template": "https://raw.githubusercontent.com/lonnyzhang423/douyin-hot-hub/main/archives/{date}.md",
+      "note": "热榜 section only. Star/live/music/brand raw JSON contains uids and is not ingested."
+    },
+    {
+      "name": "iiecho1-hot-searches",
+      "kind": "iiecho_md",
+      "license": "unspecified-public-github-markdown",
+      "license_note": "No SPDX file posted. Titles are public board facts extracted from the markdown archive.",
+      "url_template": "https://raw.githubusercontent.com/iiecho1/hot_searches_for_apps/main/archives/{board_zh}/{year}/{month}/{date}.md",
+      "boards": [
+        {"zh": "微博", "board": "weibo"},
+        {"zh": "百度", "board": "baidu"},
+        {"zh": "知乎", "board": "zhihu"},
+        {"zh": "抖音", "board": "douyin"},
+        {"zh": "哔哩哔哩", "board": "bilibili"},
+        {"zh": "百度贴吧", "board": "tieba"},
+        {"zh": "豆瓣", "board": "douban"},
+        {"zh": "今日头条", "board": "toutiao"},
+        {"zh": "搜狗", "board": "sogou"},
+        {"zh": "澎湃新闻", "board": "thepaper"},
+        {"zh": "CCTV新闻", "board": "cctv"},
+        {"zh": "人民网", "board": "people"},
+        {"zh": "36氪", "board": "36kr"}
+      ]
+    },
+    {
+      "name": "zh-wikipedia-mostviewed",
+      "board": "zh-wikipedia",
+      "kind": "mediawiki_mostviewed",
+      "license": "CC-BY-SA-4.0",
+      "url": "https://zh.wikipedia.org/w/api.php?action=query&list=mostviewed&pvimlimit=50&format=json",
+      "note": "Chinese Wikipedia most-viewed titles. Rank only; view counts are dropped."
+    },
+    {
+      "name": "wikipedia-gazetteer-rc",
+      "board": "zh-wikipedia",
+      "kind": "in_tree_reading",
+      "license": "CC-BY-SA-4.0",
+      "note": "Already-in-tree MediaWiki recentchanges titles matched to the gazetteer. Folded when the reading exists."
+    },
+    {
+      "name": "public-hot-boards-live",
+      "kind": "in_tree_reading",
+      "license": "public-aggregate-json",
+      "note": "Live Baidu / Toutiao / Douyin JSON from config/public_hot_boards.json, folded when that reading exists."
+    }
+  ],
+  "candidates": [
+    {
+      "name": "freewechat-public",
+      "board": "freewechat",
+      "kind": "recovered_listing",
+      "role": "recovered-listing",
+      "urls": [
+        "https://freewechat.com/feed",
+        "https://freewechat.com/"
+      ],
+      "note": "Peer to public-deletion-ledgers. No stable RSS (feed 404). HTML homepage titles only if served without login. No WeChat private accounts, no article bodies."
+    }
+  ],
+  "skipped": [
+    {
+      "name": "360doc",
+      "reason": "closing; archive froze 2026-03-31"
+    },
+    {
+      "name": "懂球帝",
+      "reason": "sports-only; cannot join DDTI"
+    },
+    {
+      "name": "虎扑",
+      "reason": "sports-only; cannot join DDTI"
+    },
+    {
+      "name": "AcFun",
+      "reason": "entertainment-only; cannot join DDTI"
+    },
+    {
+      "name": "梨视频",
+      "reason": "entertainment-only; cannot join DDTI"
+    },
+    {
+      "name": "国家地理",
+      "reason": "entertainment/lifestyle-only; cannot join DDTI"
+    },
+    {
+      "name": "历史上的今天",
+      "reason": "almanac-only; cannot join DDTI"
+    },
+    {
+      "name": "360搜索",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "搜狐",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "夸克",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "V2EX",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "新京报",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "网易新闻",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "腾讯新闻",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "南方周末",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "CSDN",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "GitHub",
+      "reason": "not a China attention board"
+    },
+    {
+      "name": "IT之家",
+      "reason": "not in the requested China-relevant set"
+    },
+    {
+      "name": "少数派",
+      "reason": "not in the requested China-relevant set"
+    }
+  ]
+}

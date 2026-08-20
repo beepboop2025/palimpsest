@@ -37,6 +37,7 @@ def test_default_feeds_are_public_candidates_only():
     assert all(url.startswith("https://") for url in urls)
     assert any("chinadigitaltimes.net/feed/" in url for url in urls)
     assert any("chinadigitaltimes.net/chinese/feed/" in url for url in urls)
+    assert any("freewechat.com/feed" in url for url in urls)
     assert not any(
         host in url
         for url in urls
