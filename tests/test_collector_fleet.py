@@ -85,6 +85,20 @@ def test_vigorous_schedule_routes_every_job_to_the_isolated_queue():
         assert entry["options"]["expires"] > 0
 
 
+def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
+    monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
+    names = {
+        name.removeprefix("collect-snapshot-")
+        for name in build_collector_schedule("vigorous")
+        if name.startswith("collect-snapshot-")
+    }
+    assert {
+        "silence-index", "vantage-fusion", "erasure-observatory",
+        "undertext", "public-deletion-ledgers",
+    } <= names
+
+
 def test_six_more_passive_methods_are_in_the_always_on_fleet(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
     monkeypatch.delenv("PALIMPSEST_LIVE", raising=False)
@@ -187,7 +201,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 23  # feed head + index processor + 21 passive snapshots
+    assert len(specs) == 28  # feed head + index processor + 26 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(

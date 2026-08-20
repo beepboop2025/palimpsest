@@ -127,6 +127,14 @@ human-ratified gazetteer evolver. UNDERTEXT is the *active* front-end to the *pa
 Palimpsest already ships. See `tests/test_undertext.py` for the end-to-end proof that an
 UNDERTEXT deletion scores in the DDTI index.
 
+The scheduled 24/7 runner is `scripts/undertext_pull.py`. Its default is **offline
+fusion** of already-published Wayback reconstructions and Weibo
+`suppressed_invisible` joins into the shared
+[`core/china_observation.py`](../core/china_observation.py) schema. Optional
+Wikipedia-only live surfaces require `UNDERTEXT_LIVE_SURFACES=1` and record
+presence as last-confirmed-alive, not a deletion. Live Weibo, Baidu, and Baike
+stay disabled. See [CHINA-CAPTURE.md](CHINA-CAPTURE.md).
+
 ## 9. The one decision that defines behavior
 
 The `observation_key` granularity is UNDERTEXT's safety knob: too coarse and you miss real

@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:undertext",
+  "slug": "undertext-differential-fusion",
+  "url": "https://palimpsest.info/news/undertext-differential-fusion/",
+  "signal_id": "undertext",
+  "headline": "UNDERTEXT fuses 34 public observations across archive and board readings",
+  "dek": "The fusion remaps already-published Wayback, Weibo-board and DDTI records onto one observation schema without inventing a live deletion round.",
+  "section": "attention",
+  "order": 8,
+  "type": "analysis",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-20T03:58:30Z",
+  "modified_at": "2026-08-20T03:58:30Z",
+  "claim_fingerprint": "sha256:30c3edf6eaedd18a314f1945d8c1e2d4f14e798eb61fb13d53ce07f640311e65",
+  "metric": {
+    "label": "observations",
+    "value": 34,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current fusion contains 34 observations reconstructed from committed public readings."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/undertext-latest.json",
+    "input": {
+      "filename": "undertext-latest.json",
+      "sha256": "ea844b57fb3528afd059b7d79bdf9192a2d86fe917ae719c883b46a1da17a2d6",
+      "bytes": 83957
+    },
+    "source_timestamp": "2026-08-20T03:58:30Z"
+  },
+  "method": {
+    "summary": "Offline fusion of committed readings through divergence_to_observation and china_observation.enrich_observation. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+    "version": 1
+  },
+  "limitations": [
+    "Fusion inherits the limits of its inputs; archive-status rows are not relabelled as deletions, and optional Wikipedia live surfaces stay gated."
+  ],
+  "related_signal_ids": [
+    "wayback",
+    "weibo-hotsearch",
+    "ddti"
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/china-observation-v1.schema.json",
+  "title": "Palimpsest China OSINT observation richness v1",
+  "description": "Additive fields carried on public China OSINT observations. Absence is null or empty, never a fabricated live reading.",
+  "type": "object",
+  "required": ["terms", "detected_at", "title", "source"],
+  "properties": {
+    "terms": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"type": "string", "minLength": 1, "maxLength": 80}
+    },
+    "detected_at": {"type": "string"},
+    "title": {"type": "string", "maxLength": 1000},
+    "text": {"type": "string", "maxLength": 8000},
+    "text_zh": {"type": "string", "maxLength": 8000},
+    "text_en": {"type": "string", "maxLength": 8000},
+    "url": {"type": "string", "maxLength": 2048},
+    "source": {"type": "string", "maxLength": 120},
+    "source_url": {"type": "string", "maxLength": 2048},
+    "mirror_urls": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {"type": "string", "pattern": "^https://"}
+    },
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "first_seen": {"type": ["string", "null"]},
+    "last_seen": {"type": ["string", "null"]},
+    "last_confirmed_alive": {"type": ["string", "null"]},
+    "deletion_confirmation": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["status", "observed_at", "source"],
+        "properties": {
+          "status": {"type": "string", "maxLength": 80},
+          "observed_at": {"type": ["string", "null"]},
+          "source": {"type": "string", "maxLength": 120},
+          "note": {"type": "string", "maxLength": 400}
+        }
+      }
+    },
+    "gazetteer_hits": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "required": ["zh"],
+        "properties": {
+          "zh": {"type": "string", "minLength": 2, "maxLength": 80},
+          "en": {"type": "string", "maxLength": 160},
+          "category": {"type": "string", "maxLength": 80},
+          "first_seen": {"type": "string", "maxLength": 40}
+        }
+      }
+    },
+    "archive": {
+      "type": "object",
+      "properties": {
+        "wayback_lookup": {"type": ["string", "null"]},
+        "wayback_snapshot": {"type": ["string", "null"]},
+        "wayback_raw": {"type": ["string", "null"]},
+        "archive_today_lookup": {"type": ["string", "null"]},
+        "post_event_snapshot": {"type": ["string", "null"]},
+        "timestamp_bracket": {
+          "type": "object",
+          "properties": {
+            "last_live": {"type": ["string", "null"]},
+            "post_event": {"type": ["string", "null"]}
+          }
+        }
+      }
+    },
+    "cross_links": {
+      "type": "object",
+      "properties": {
+        "cdt": {"type": ["object", "null"]},
+        "gdelt": {"type": ["object", "null"]},
+        "ooni": {"type": ["object", "null"]},
+        "greatfire": {"type": ["object", "null"]}
+      }
+    },
+    "provenance": {"type": "object"}
+  }
+}

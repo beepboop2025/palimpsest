@@ -77,9 +77,11 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert "Reports." in page
     assert "Social context." in page
     assert "Measurements." in page
+    assert "Public OSINT context" in page
     assert "More context does not automatically mean more proof." in page
     assert "topic-surface-only · not article verification" in page
     assert "publisher-link-context-not-corroboration" in page
+    assert "topic-or-url-context-not-corroboration" in page
     assert "Reviewed Telegram briefing" in page
     assert "Source-free signals stay separate from attributed reporting." in page
     assert "Raw Telegram forwards remain in Dragon Den" in page

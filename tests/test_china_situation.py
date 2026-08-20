@@ -107,6 +107,9 @@ def test_every_in_scope_event_gets_one_situation_without_strengthening(
     assert situation["reviewed_telegram"] == []
     assert situation["coverage"]["social_observations"] == 0
     assert situation["coverage"]["situations_with_three_layers"] == 0
+    assert "events_with_osint_context" in situation["coverage"]
+    assert "osint_context_rows" in situation["coverage"]
+    assert all("osint_context" in row for row in situation["situations"])
 
     events = {event["event_id"]: event for event in wire["events"]}
     for row in situation["situations"]:
@@ -325,3 +328,47 @@ def test_generated_situation_conforms_to_public_json_schema(situation):
     jsonschema = pytest.importorskip("jsonschema")
     schema = json.loads((ROOT / "protocol/china-situation-v1.schema.json").read_text())
     jsonschema.Draft202012Validator(schema).validate(situation)
+
+
+def test_osint_observations_join_by_exact_url_or_topic_and_stay_non_corroboration(
+    inputs,
+):
+    wire, _feed, analyses = inputs
+    event = next(
+        row
+        for row in wire["events"]
+        if analyses[row["event_id"]]["scope_status"] == "in-scope"
+        and row["evidence_refs"]
+    )
+    url = event["evidence_refs"][0]["url"]
+    topic = event["topics"][0] if event["topics"] else "china"
+    observations = [
+        {
+            "source": "ddti",
+            "title": "Public ledger row",
+            "url": url,
+            "terms": [topic],
+            "first_seen": "2026-08-01T00:00:00Z",
+            "last_seen": "2026-08-01T00:00:00Z",
+            "content_sha256": "a" * 64,
+            "gazetteer_hits": [{"zh": "白纸运动", "en": "White Paper"}],
+            "archive": {
+                "wayback_lookup": "https://web.archive.org/web/*/https://example.test/",
+                "wayback_snapshot": None,
+                "archive_today_lookup": None,
+                "timestamp_bracket": {"last_live": None, "post_event": None},
+            },
+        }
+    ]
+    document = china_situation.build_china_situation(
+        wire, analyses, osint_observations=observations
+    )
+    row = next(
+        item for item in document["situations"] if item["event_id"] == event["event_id"]
+    )
+    assert row["osint_context"]
+    assert row["osint_context"][0]["relation"] == (
+        "topic-or-url-context-not-corroboration"
+    )
+    assert document["coverage"]["osint_context_rows"] >= 1
+    assert document["coverage"]["events_with_osint_context"] >= 1

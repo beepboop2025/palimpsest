@@ -214,13 +214,39 @@ async def pull(now: datetime | None = None):
                     continue
                 role = role_for(tags)
                 by_role[role] = by_role.get(role, 0) + 1
-                observations.append({
-                    "terms": terms,
-                    "detected_at": detected_at,
-                    "title": _strip_angles(it["title"]),
-                    "url": url,
-                    "source": role,
-                })
+                from core.china_observation import enrich_observation
+
+                title = _strip_angles(it["title"])
+                body = _strip_angles(it.get("text") or "")
+                observations.append(enrich_observation(
+                    {
+                        "terms": terms,
+                        "detected_at": detected_at,
+                        "title": title,
+                        "text": body,
+                        "url": url,
+                        "source": role,
+                    },
+                    text=body,
+                    source_url=url,
+                    first_seen=detected_at,
+                    last_seen=detected_at,
+                    confirmations=[{
+                        "status": "ledger-reported",
+                        "observed_at": detected_at,
+                        "source": role,
+                        "note": "CDT public feed item; not a Palimpsest liveness check",
+                    }],
+                    cdt={"id": role, "url": url, "title": title},
+                    provenance={
+                        "collector": "ddti",
+                        "method": "CDT root-feed pagination",
+                        "vantage": "outside-china-public-source",
+                        "feed_page": key,
+                        "schema_version": "palimpsest-china-observation.v1",
+                        "method_version": 1,
+                    },
+                ))
 
             if oldest is not None and oldest <= cutoff:
                 stopped = "history-window-covered"
@@ -269,13 +295,23 @@ def load_wayback_observations(path: Path = WAYBACK_LATEST) -> list:
             continue
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
-        out.append({
+        from core.china_observation import enrich_observation
+
+        merged = dict(obs)
+        merged.update({
             "terms": terms,
             "detected_at": ts,
             "title": obs.get("title", ""),
             "url": obs.get("url", ""),
             "source": obs.get("source", "wayback"),
         })
+        out.append(enrich_observation(
+            merged,
+            text=obs.get("text") or obs.get("title"),
+            source_url=obs.get("url"),
+            last_live_snapshot=(obs.get("archive") or {}).get("wayback_snapshot"),
+            post_event_snapshot=(obs.get("archive") or {}).get("post_event_snapshot"),
+        ))
     return out
 
 
@@ -386,6 +422,12 @@ async def main():
     index["source_feeds"] = reachability
     index["feed_health"] = health
     index["wayback_observations_merged"] = len(wayback)
+    from core.china_observation import serialize_observation
+
+    index["observation_records"] = [
+        serialize_observation(obs) for obs in observations[:80]
+    ]
+    index["n_observation_records"] = len(index["observation_records"])
 
     disk = store_disk(index)
     embedded = embed_in_dashboard(index)

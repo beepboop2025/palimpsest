@@ -41,16 +41,7 @@ PALIMPSEST_UA = (
 # Deletion feeds are untrusted external XML — use defusedxml to block XXE and
 # billion-laughs attacks. Fall back to stdlib only if defusedxml is absent, and
 # say so loudly so the gap is visible rather than silent.
-try:
-    from defusedxml import ElementTree as ET
-    _XML_HARDENED = True
-except ImportError:  # pragma: no cover
-    from xml.etree import ElementTree as ET
-    _XML_HARDENED = False
-    logger.warning(
-        "[DDTI] defusedxml not installed — parsing untrusted XML with stdlib "
-        "(vulnerable to XXE/billion-laughs). Run: pip install defusedxml"
-    )
+from collectors.feed_parse import parse_feed_items
 
 # Cumulative survival buckets (seconds). Zhu et al. (2013) reference values, to
 # be RE-MEASURED not assumed: ~5% @ 8min, ~30% @ 30min, ~90% @ 24h.
@@ -152,91 +143,8 @@ async def check_liveness(client, url: str) -> dict:
 # reachable sources lost. This reader handles both by comparing tag *localnames* (so any XML
 # namespace prefix is tolerated) and pulling links/tags from text OR attribute. RSS/CDT output is
 # preserved byte-for-byte (description stays the primary body, so the live DDTI signal is
-# unchanged); Atom support is strictly additive.
-
-# Atom <link> rels that are not the article itself — never use these as the item URL.
-_SKIP_LINK_RELS = {"self", "replies", "edit", "enclosure", "hub", "via"}
-
-
-def _localname(tag) -> str:
-    """Strip any '{namespace}' prefix from an ElementTree tag, leaving the bare local name."""
-    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) and "}" in tag else (tag or "")
-
-
-def _children_by_local(el) -> dict:
-    m: dict[str, list] = {}
-    for child in el:
-        m.setdefault(_localname(child.tag), []).append(child)
-    return m
-
-
-def _first_text(cmap: dict, *names: str) -> str:
-    """First non-empty child text among `names`, in preference order."""
-    for n in names:
-        for c in cmap.get(n, []):
-            t = (c.text or "").strip()
-            if t:
-                return t
-    return ""
-
-
-def _extract_link(cmap: dict) -> str:
-    """Item URL from RSS (<link>text) or Atom (<link href rel>), skipping self/replies rels; falls
-    back to a permalink-looking <guid>/<id>."""
-    for c in cmap.get("link", []):
-        href = (c.get("href") or "").strip()
-        if href:
-            if (c.get("rel") or "").strip().lower() in _SKIP_LINK_RELS:
-                continue
-            return href
-        txt = (c.text or "").strip()
-        if txt:
-            return txt
-    for c in cmap.get("guid", []) + cmap.get("id", []):
-        t = (c.text or "").strip()
-        if t.startswith("http"):
-            return t
-    return ""
-
-
-def _extract_tags(cmap: dict) -> list:
-    """Topic tags from RSS (<category>text) or Atom (<category term=...>) — the free, curated
-    selectivity/novelty signal. De-duplicated, order preserved."""
-    tags, seen = [], set()
-    for c in cmap.get("category", []):
-        t = (c.get("term") or c.text or "").strip()
-        if t and t not in seen:
-            seen.add(t)
-            tags.append(t)
-    return tags
-
-
-def parse_feed_items(source: str, text: str) -> list[dict]:
-    """RSS + Atom → list of item dicts {source, title, text, url, published_at, tags}.
-
-    Namespace-tolerant and best-effort: a feed that isn't XML (or that defusedxml rejects as a
-    malicious entity) yields [] — reachability is recorded by the caller; we just surface no items.
-    Never raises. The return schema is exactly what `parse()` / `ddti_live_pull` already consume."""
-    out: list[dict] = []
-    try:
-        root = ET.fromstring(text)
-    except Exception as e:
-        logger.debug(f"[DDTI] {source} XML parse skipped: {type(e).__name__}")
-        return out
-    for el in root.iter():
-        if _localname(el.tag) not in ("item", "entry"):
-            continue
-        cmap = _children_by_local(el)
-        out.append({
-            "source": source,
-            "title": _first_text(cmap, "title"),
-            # description first keeps RSS/CDT output identical; encoded/content/summary cover Atom.
-            "text": _first_text(cmap, "description", "encoded", "content", "summary"),
-            "url": _extract_link(cmap),
-            "published_at": _first_text(cmap, "pubDate", "published", "updated", "date"),
-            "tags": _extract_tags(cmap),
-        })
-    return out
+# unchanged); Atom support is strictly additive. The parser itself lives in
+# collectors.feed_parse so ledger ingest does not import pandas/httpx.
 
 
 class DDTIProbeCollector(BaseCollector):

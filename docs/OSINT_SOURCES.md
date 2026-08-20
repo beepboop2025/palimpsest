@@ -30,6 +30,7 @@ private accounts, or asks anyone inside China to act.
 | Source | Access | What it yields | Limits |
 | --- | --- | --- | --- |
 | **GreatFire / FreeWeibo** | Public RSS (open); JSON path may need an unblocked egress | Already-confirmed Weibo deletions (a large human-curated archive) — a passive replay of the public record | The JSON path is often Cloudflare-walled to foreign traffic |
+| **Public deletion ledgers** (`collectors/public_deletion_ledgers.py`) | Keyless RSS/Atom: CDT EN, CDT ZH, GreatFire blog, FreeWeibo-style feed | Enriched observation records (text, sightings, archive lookups, gazetteer hits, provenance). Each feed reports its own reachability | If every ledger is unreachable the runner abstains rather than publish a zero |
 | **Weibo trending / hot-search** | Public endpoint | Topic-volume denominator that can upgrade selectivity to a true deletion *rate* | Polite, low-frequency; WAF-gated from some egress |
 
 ## Direct-observation (the velocity leg, `censorwatch/`)

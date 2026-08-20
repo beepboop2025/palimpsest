@@ -74,6 +74,42 @@ def _load_gazetteer_terms() -> list[dict]:
     return out
 
 
+def _observation_records(now, joined, breakthroughs, days) -> list[dict]:
+    """Project join/breakthrough rows onto the shared China observation schema."""
+
+    from core.china_observation import enrich_observation, serialize_observation
+
+    records = []
+    for row in list(joined) + list(breakthroughs):
+        term = row.get("term") or ""
+        if not term:
+            continue
+        regime = row.get("regime") or (
+            "gazetteer_breakthrough" if row.get("appearances") else "unclassified"
+        )
+        raw = {
+            "terms": [term],
+            "title": f"[weibo-hotsearch:{regime}] {term}",
+            "text": term,
+            "url": "",
+            "source": "weibo-hotsearch",
+            "regime": regime,
+        }
+        records.append(serialize_observation(enrich_observation(
+            raw,
+            text=term,
+            provenance={
+                "collector": "weibo-hotsearch",
+                "method": "justjavac weibo-trending-hot-search archive join",
+                "vantage": "outside-china-public-archive",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+                "board_days": len(days),
+            },
+        )))
+    return records[:80]
+
+
 def main() -> None:
     now = datetime.now(timezone.utc)
     dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -117,6 +153,9 @@ def main() -> None:
         },
         "join": joined,
         "gazetteer_breakthroughs": breakthroughs,
+        "observation_records": _observation_records(
+            now, joined, breakthroughs, days
+        ),
         "withdrawal_watch": withdrawal_candidates(
             days,
             sensitive_terms={g["term"] for g in _load_gazetteer_terms()}

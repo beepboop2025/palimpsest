@@ -143,6 +143,16 @@ apparatus events) for the site.
 
 ## 9. Status
 
+The **live path is the scheduled Hetzner pipeline**, not a demo and not a
+GitHub Actions probe. `ops/systemd/palimpsest-bleedthrough.timer` runs
+prefix-fetch → curate → pull every six hours once §5e of
+[`ops/DEPLOY-HETZNER.md`](../ops/DEPLOY-HETZNER.md) is completed. The site
+standby copy ("awaiting first live round") is shown only when the public
+importer has no latest file (HTTP 404 / empty bootstrap). A committed
+`readings/bleedthrough-latest.json` that already exists is a live-format
+reading with provenance; it is never a demo badge. `scripts/bleedthrough_demo.py`
+is offline-only and cannot pass import validation.
+
 Core built and tested offline (`collectors/bleedthrough.py`, `tests/test_bleedthrough.py`,
 38 tests). Shipped:
 
@@ -177,17 +187,24 @@ authorized, deployment-controlled Hetzner vantage outside China and is triple-ga
 a curated list (it refuses the shipped placeholder). If nothing injects in a round it abstains
 rather than publish a hollow board.
 
-Going live is **one script** on a controlled, rotating VPS outside China (never CI, never your
-home machine). The Hetzner box is **refused by default** — it is not disposable and its IP is
-published in the `api.seiche.info` A record — but the refusal is overridable on purpose, since
-a non-ideal vantage that runs beats an ideal one that never does:
+Going live on the German Hetzner node is the documented, testable install in
+[`ops/DEPLOY-HETZNER.md` §5e](../ops/DEPLOY-HETZNER.md) and
+[`ops/bleedthrough/README.md`](../ops/bleedthrough/README.md): copy
+`ops/bleedthrough/bleedthrough.env.example` to `/etc/palimpsest/bleedthrough.env`
+(`BLEEDTHROUGH_LIVE=1` and `BLEEDTHROUGH_ALLOW_BOX=1`), let the Common Crawl
+installer own the units, run `python -m scripts.bleedthrough_preflight` (no
+China query), then `systemctl enable --now palimpsest-bleedthrough.timer`.
+
+A one-shot from a disposable rotating VPS outside China remains valid for
+development (never CI, never a home machine):
 
 ```
 BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
 # on the box, accepting the exposure above:
 BLEEDTHROUGH_LIVE=1 BLEEDTHROUGH_ALLOW_BOX=1 bash ops/bleedthrough_prober.sh
-# cron, every 6h:  17 */6 * * *  cd /opt/palimpsest && BLEEDTHROUGH_LIVE=1 bash ops/bleedthrough_prober.sh
 ```
+
+Do not replace the systemd timer with an ad-hoc cron on the production node.
 
 Either way the published reading records only a **coarse** vantage kind, never the host name.
 Per-target apparatus events follow the same boundary: the private baseline remains keyed by
@@ -222,6 +239,8 @@ Province granularity is currently ASN-level (Beijing/Shanghai/Guangdong via prov
 ASNs; national backbones tagged `CN`). True per-province resolution for regional-firewall
 detection (e.g. Henan) needs IP-geolocation of the sampled prefixes — a documented next step.
 
-Until the first real round lands, the site card shows an honest **"awaiting first live round"**
-panel. Once it lands, BLEEDTHROUGH is a scheduled first-party publication, not a permanently
-pending experiment and never synthetic data on the live site.
+If the public importer has no latest file, the site card shows an honest
+**"awaiting first live round"** panel. Once a live round (or an honest abstain
+that leaves a prior live file intact) is imported, BLEEDTHROUGH is a scheduled
+first-party publication, not a permanently pending experiment and never
+synthetic data on the live site.

@@ -547,8 +547,28 @@
       ["Freshness deadline", signal.freshness_deadline], ["Cadence hours", signal.cadence_hours],
       ["Health reason", health.reason], ["Upstream status", health.upstream_status],
       ["Method version", signal.method_version], ["Input filename", input.filename],
-      ["Input bytes", input.bytes], ["Input SHA-256", input.sha256]
+      ["Input bytes", input.bytes], ["Input SHA-256", input.sha256],
+      ["Observation records", payloadCount(signal, "observation_records") || payloadCount(signal, "observations")],
+      ["First seen", firstObservationField(signal, "first_seen")],
+      ["Last seen", firstObservationField(signal, "last_seen")],
+      ["Gazetteer hits", firstObservationField(signal, "gazetteer_hits")]
     ];
+  }
+  function payloadOf(signal) {
+    return signal && signal.payload && typeof signal.payload === "object" ? signal.payload : {};
+  }
+  function payloadCount(signal, key) {
+    var payload = payloadOf(signal);
+    var rows = payload[key];
+    return Array.isArray(rows) ? rows.length : "";
+  }
+  function firstObservationField(signal, key) {
+    var payload = payloadOf(signal);
+    var rows = payload.observation_records || payload.observations || payload.ddti_observations || [];
+    if (!Array.isArray(rows) || !rows.length) return "";
+    var value = rows[0] && rows[0][key];
+    if (Array.isArray(value)) return value.map(function (hit) { return hit && (hit.zh || hit); }).filter(Boolean).slice(0, 6).join(", ");
+    return value || "";
   }
   function searchDocument(signal) {
     try { return JSON.stringify(signal).toLocaleLowerCase(); }

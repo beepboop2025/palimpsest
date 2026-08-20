@@ -99,6 +99,49 @@ def load_active_watchlist() -> list:
     return out
 
 
+def _observation_records(now, readings) -> list[dict]:
+    from core.china_observation import enrich_observation, serialize_observation
+
+    generated = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    records = []
+    for row in readings:
+        name = row.get("full_name") or ""
+        if not name:
+            continue
+        url = f"https://github.com/{name}"
+        raw = {
+            "terms": list(row.get("topic_terms") or []),
+            "detected_at": generated,
+            "title": f"[github-refuge:{row.get('kind') or row.get('status')}] {name}",
+            "text": row.get("detail") or name,
+            "url": url,
+            "source": "github-refuge",
+        }
+        records.append(serialize_observation(enrich_observation(
+            raw,
+            text=raw["text"],
+            source_url=url,
+            first_seen=generated,
+            last_seen=generated,
+            last_confirmed_alive=generated if row.get("status") == "present" else None,
+            confirmations=[{
+                "status": row.get("kind") or row.get("status") or "observed",
+                "observed_at": generated,
+                "source": "github-refuge",
+                "note": row.get("detail") or "",
+            }] if not row.get("abstained") else [],
+            provenance={
+                "collector": "github-refuge",
+                "method": "public GitHub pressure metadata",
+                "vantage": "outside-china-public-api",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+                "repository": name,
+            },
+        )))
+    return records
+
+
 def main() -> None:
     watchlist = load_active_watchlist()
     if not watchlist:
@@ -159,6 +202,7 @@ def main() -> None:
             }
             for r in readings
         ],
+        "observation_records": _observation_records(now, readings),
     }
     os.makedirs(READINGS, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:

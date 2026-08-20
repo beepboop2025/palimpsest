@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:research-corpus",
+  "slug": "research-corpus-metadata",
+  "url": "https://palimpsest.info/news/research-corpus-metadata/",
+  "signal_id": "research-corpus",
+  "headline": "The research-corpus ledger tracks 5 allowlisted public repositories",
+  "dek": "Only Git ref advertisements and default-branch cursors are published; notice bodies, keyword lists and routing rules stay unpublished.",
+  "section": "attention",
+  "order": 9,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-20T02:04:29Z",
+  "modified_at": "2026-08-20T02:04:29Z",
+  "claim_fingerprint": "sha256:345b93d79499a4021b7eebdb2d6eaf0b76660096844feb54e0083bf224c4f2e7",
+  "metric": {
+    "label": "sources",
+    "value": 5,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current metadata-only ledger covers 5 allowlisted research repositories."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/research-corpus-latest.json",
+    "input": {
+      "filename": "research-corpus-latest.json",
+      "sha256": "7c6e97d15adee0b95f74521e18013b539d0509c19087fc03723e47370e645e9e",
+      "bytes": 7055
+    },
+    "source_timestamp": "2026-08-20T02:04:29Z"
+  },
+  "method": {
+    "summary": "one bounded keyless Git smart-HTTP ref advertisement per source; exact default-branch cursor plus aggregate ref-count deltas",
+    "version": 1
+  },
+  "limitations": [
+    "A commit cursor change is not a claim about why the repository moved, and unpublished notice bodies cannot be inferred from the metadata."
+  ],
+  "related_signal_ids": [
+    "github-refuge",
+    "wayback"
+  ]
+}

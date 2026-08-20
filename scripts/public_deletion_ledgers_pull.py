@@ -1,0 +1,107 @@
+"""Publish public deletion-ledger observations (CDT / FreeWeibo / GreatFire).
+
+A transport failure or empty feed is recorded per ledger. If *every* ledger is
+unreachable the runner abstains rather than overwrite a good reading with a
+hollow zero. Observations are enriched through core.china_observation.
+
+Usage:  PYTHONPATH=. python -m scripts.public_deletion_ledgers_pull
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+
+from collectors.public_deletion_ledgers import DEFAULT_FEEDS, collect_ledgers
+from core.china_observation import iso_z, serialize_observation
+from core.governance import KillSwitch, RateCeiling
+
+
+ROOT = Path(__file__).resolve().parent.parent
+READINGS = ROOT / "readings"
+OUT = READINGS / "public-deletion-ledgers-latest.json"
+HIST = READINGS / "public-deletion-ledgers-history.jsonl"
+METHOD_VERSION = 1
+USER_AGENT = (
+    "Palimpsest/0.2 (+https://palimpsest.info; open-source censorship "
+    "research; use=reference)"
+)
+_RATE_PER_SEC = 0.4
+_BURST = 2.0
+_TIMEOUT = 25
+
+
+def _http_fetch(url: str) -> tuple[int, str]:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            body = resp.read(2 * 1024 * 1024).decode("utf-8", "replace")
+            return int(resp.status), body
+    except urllib.error.HTTPError as exc:
+        return int(exc.code), ""
+
+
+def main(*, fetch=None, now: datetime | None = None) -> dict | None:
+    kill = KillSwitch()
+    if kill.is_halted():
+        print("public-deletion-ledgers: halted by kill switch — abstaining")
+        return None
+
+    result = collect_ledgers(
+        feeds=DEFAULT_FEEDS,
+        fetch=fetch or _http_fetch,
+        kill_switch=kill,
+        rate_ceiling=RateCeiling(rate=_RATE_PER_SEC, capacity=_BURST),
+        now=now or datetime.now(timezone.utc),
+    )
+    if result["n_feeds_ok"] == 0 and result["n_observations"] == 0:
+        print(
+            "public-deletion-ledgers: no public ledger answered — abstaining, "
+            "not publishing a hollow board "
+            f"(ledgers={[row['status'] for row in result['ledgers']]})"
+        )
+        return None
+
+    generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
+    observations = [serialize_observation(obs) for obs in result["observations"]]
+    out = {
+        "generated_at": generated,
+        "method_version": METHOD_VERSION,
+        "source": "public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style)",
+        "scope": (
+            "Public ledger items only: titles, excerpts, source URLs, gazetteer hits, "
+            "archive lookup addresses, and capture provenance. No account graphs, "
+            "no in-country vantage, no fabricated live readings."
+        ),
+        "method": (
+            "Keyless RSS/Atom ingest through collectors.ddti_probe.parse_feed_items; "
+            "each feed is a candidate and reports its own reachability."
+        ),
+        "n_feeds": result["n_feeds"],
+        "n_feeds_ok": result["n_feeds_ok"],
+        "n_observations": len(observations),
+        "ledgers": result["ledgers"],
+        "observations": observations,
+    }
+    READINGS.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    with HIST.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({
+            "generated_at": generated,
+            "n_feeds_ok": out["n_feeds_ok"],
+            "n_observations": out["n_observations"],
+            "ledgers": [row["name"] for row in out["ledgers"] if row["status"] == "ok"],
+        }, ensure_ascii=False) + "\n")
+    print(
+        f"public-deletion-ledgers: {out['n_feeds_ok']}/{out['n_feeds']} ledgers, "
+        f"{out['n_observations']} observations"
+    )
+    return out
+
+
+if __name__ == "__main__":
+    main()

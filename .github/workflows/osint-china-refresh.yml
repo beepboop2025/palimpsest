@@ -89,6 +89,7 @@ jobs:
           python -m scripts.build_economic_pulse
           python -m scripts.build_china_econ_manifest
           python -m scripts.build_china_site
+          python -m scripts.undertext_pull
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -251,6 +252,7 @@ jobs:
           python -m scripts.build_economic_pulse
           python -m scripts.build_china_econ_manifest
           python -m scripts.build_china_site
+          python -m scripts.undertext_pull
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -416,6 +418,7 @@ jobs:
           python -m scripts.build_economic_pulse
           python -m scripts.build_china_econ_manifest
           python -m scripts.build_china_site
+          python -m scripts.undertext_pull
           python -m scripts.build_osint_china --input-commit "$(git rev-parse origin/main)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds

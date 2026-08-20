@@ -32,11 +32,13 @@ time series, one compact record per run. Grouped by the layer of the apparatus e
 | IODA outages | Every 6h | [`ioda-outages-latest.json`](ioda-outages-latest.json) | [`ioda-outages-history.jsonl`](ioda-outages-history.jsonl) |
 | net4people firewall events | Every 12h | [`net4people-latest.json`](net4people-latest.json) | [`net4people-history.jsonl`](net4people-history.jsonl) |
 | Circumvention demand (Tor telemetry) | Daily | [`circumvention-demand-latest.json`](circumvention-demand-latest.json) | [`circumvention-demand-history.jsonl`](circumvention-demand-history.jsonl) |
-| Bleedthrough (GFW injector fleet) | Prober-run | *awaiting the first live round — no file published yet* | *pending* |
+| Bleedthrough (GFW injector fleet) | 6h on the Hetzner prober | [`bleedthrough-latest.json`](bleedthrough-latest.json) | [`bleedthrough-history.jsonl`](bleedthrough-history.jsonl) |
 
-Bleedthrough actively probes, so it runs from a controlled, rotating prober outside China and
-never from shared CI. Until that prober publishes there is no reading, and nothing is linked;
-the method is on [`bleedthrough.html`](bleedthrough.html) and the code is open.
+Bleedthrough actively probes, so it runs from the controlled Hetzner unit
+(`ops/DEPLOY-HETZNER.md` §5e) and never from shared CI. The committed latest
+file is a live-format reading with provenance. If a later round injects
+nothing, the runner abstains and leaves this file intact; the HTML card shows
+"awaiting first live round" only when the public importer has no latest file.
 
 **Content and narrative layer**
 
@@ -45,6 +47,8 @@ the method is on [`bleedthrough.html`](bleedthrough.html) and the code is open.
 | Weibo hot-search (allowed-attention denominator) | Every 6h | [`weibo-hotsearch-latest.json`](weibo-hotsearch-latest.json) | [`weibo-hotsearch-history.jsonl`](weibo-hotsearch-history.jsonl) |
 | Baike redaction-diff | Disabled pending authorized access; retained artifact only | [`baike-redaction-latest.json`](baike-redaction-latest.json) | [`baike-redaction-history.jsonl`](baike-redaction-history.jsonl) |
 | Wayback reconstruction | Every 12h | [`wayback-latest.json`](wayback-latest.json) | [`wayback-history.jsonl`](wayback-history.jsonl) |
+| UNDERTEXT fusion | Every 3–6h | [`undertext-latest.json`](undertext-latest.json) | [`undertext-history.jsonl`](undertext-history.jsonl) |
+| Public deletion ledgers | Hourly when a feed answers | *optional — abstains until a public ledger is reachable* | *pending first answering round* |
 | Bounded institutional social observations | Hourly, credential-gated | [`social-observations-latest.json`](social-observations-latest.json) | [`social-observations-versions.jsonl`](social-observations-versions.jsonl) |
 | Human-reviewed Dragon Whispers | Review-driven | [`dragon-whispers-latest.json`](dragon-whispers-latest.json) | No raw-message history is published |
 

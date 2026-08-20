@@ -63,12 +63,23 @@ mutable network-lane subdirectories named above.
 
 ## Install (do not run from CI)
 
+The production enable path is documented as a testable first-boot step in
+[`ops/DEPLOY-HETZNER.md` §5e](../DEPLOY-HETZNER.md). Follow that section on the
+box; this page is the same procedure with the ACL and Caddy detail.
+
 These commands assume the repository is already deployed at
 `/home/palimpsest/palimpsest` and the `palimpsest` user/group already own the
 deployment. Review the environment file before enabling anything: starting the
 service performs the authorized active measurement. The Common Crawl installer
 owns the revision-bound network helper, tmpfiles ACL, BLEED unit/timer, and
 mirror unit; do not reinstall those files by hand.
+
+Offline proof that the triple gate would pass, **without sending a China query**:
+
+```bash
+sudo -u palimpsest python3 -m scripts.bleedthrough_preflight \
+  --env-file /etc/palimpsest/bleedthrough.env
+```
 
 ```bash
 sudo install -d -o root -g root -m 0755 /etc/palimpsest

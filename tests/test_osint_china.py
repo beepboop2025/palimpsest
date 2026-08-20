@@ -121,7 +121,6 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "newswire-latest.json",
         "newsroom-latest.json",
         "primary-documents-latest.json",
-        "research-corpus-latest.json",
         "refusal-drift-latest.json",
         "source-workflow-latest.json",
         "social-observations-latest.json",

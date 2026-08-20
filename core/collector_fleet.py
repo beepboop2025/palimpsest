@@ -103,6 +103,11 @@ SNAPSHOT_OUTPUTS = {
     "cloudflare-radar-tcp": "readings/cloudflare-radar-tcp-latest.json",
     "research-corpus": "readings/research-corpus-latest.json",
     "primary-documents": "readings/primary-documents-latest.json",
+    "silence-index": "readings/silence-index-latest.json",
+    "vantage-fusion": "readings/vantage-fusion-latest.json",
+    "erasure-observatory": "readings/erasure-observatory-latest.json",
+    "undertext": "readings/undertext-latest.json",
+    "public-deletion-ledgers": "readings/public-deletion-ledgers-latest.json",
 }
 
 
@@ -147,6 +152,11 @@ _STANDARD = {
         31, "*/12", expires_s=8 * 3600, interval_s=12 * 3600,
     ),
     "primary-documents": Cadence(37, 2, expires_s=12 * 3600),
+    "silence-index": Cadence(53, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "vantage-fusion": Cadence(7, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "erasure-observatory": Cadence(19, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "undertext": Cadence(44, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "public-deletion-ledgers": Cadence(8, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
 }
 
 
@@ -196,6 +206,11 @@ _VIGOROUS = {
     # Official release/catalog pages update at most daily. More frequent reads
     # would add upstream traffic without producing an additional vintage.
     "primary-documents": Cadence(37, 2, expires_s=12 * 3600),
+    "silence-index": Cadence(53, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "vantage-fusion": Cadence(7, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "erasure-observatory": Cadence(19, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "undertext": Cadence(44, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "public-deletion-ledgers": Cadence(8, "*", expires_s=45 * 60, interval_s=3600),
 }
 
 
@@ -370,6 +385,11 @@ _COUNT_PATHS = {
     "cloudflare-radar-tcp": ("geographies",),
     "research-corpus": ("n_sources",),
     "primary-documents": ("n_documents",),
+    "silence-index": ("n_topics_considered",),
+    "vantage-fusion": ("fused_index",),
+    "erasure-observatory": ("erasure_index",),
+    "undertext": ("n_observations",),
+    "public-deletion-ledgers": ("n_observations",),
 }
 
 
@@ -522,6 +542,21 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         code = main(["--output", str(root / SNAPSHOT_OUTPUTS[name])])
         if code:
             raise RuntimeError("primary-document collector failed")
+    elif name == "silence-index":
+        from scripts.silence_index_pull import main
+        main()
+    elif name == "vantage-fusion":
+        from scripts.vantage_fusion_pull import main
+        main()
+    elif name == "erasure-observatory":
+        from scripts.erasure_pull import main
+        main()
+    elif name == "undertext":
+        from scripts.undertext_pull import main
+        main()
+    elif name == "public-deletion-ledgers":
+        from scripts.public_deletion_ledgers_pull import main
+        main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 

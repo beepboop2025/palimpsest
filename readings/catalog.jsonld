@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-20T02:04:30.864536Z",
+  "dateModified": "2026-08-20T03:58:31Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -22,7 +22,7 @@
         "CN"
       ],
       "temporalResolution": "PT3H",
-      "dateModified": "2026-08-20T01:51:28.790214Z",
+      "dateModified": "2026-08-20T03:58:30.255716Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -100,7 +100,7 @@
         "NL"
       ],
       "temporalResolution": "PT2H",
-      "dateModified": "2026-08-19T19:04:58.904130Z",
+      "dateModified": "2026-08-20T02:04:26.058707Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -261,7 +261,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T13:28:04.604914Z",
+      "dateModified": "2026-08-20T02:05:13.136512Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -317,7 +317,7 @@
         "CN"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T19:13:48.805102Z",
+      "dateModified": "2026-08-20T02:08:31.079358Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -345,7 +345,7 @@
         "CN"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T19:06:41Z",
+      "dateModified": "2026-08-20T02:06:13Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -374,7 +374,7 @@
         "CN"
       ],
       "temporalResolution": "PT3H",
-      "dateModified": "2026-08-19T19:16:38.449442Z",
+      "dateModified": "2026-08-20T02:12:09.768626Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -480,6 +480,51 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "undertext",
+      "name": "UNDERTEXT differential fusion",
+      "description": "Fuses already-published Wayback reconstructions, Weibo-board joins, and DDTI public records into shared China observation rows. Optional Wikipedia-only live surfaces stay gated; live Weibo, Baidu, and Baike are never enabled from this runner.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-20T03:58:30Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "UNDERTEXT differential fusion — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/undertext-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "UNDERTEXT differential fusion — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/undertext-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "public-deletion-ledgers",
+      "name": "Public deletion ledgers",
+      "description": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style). Each feed is a candidate; if every ledger is unreachable the runner abstains rather than publish a zero.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
       "identifier": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
@@ -490,7 +535,7 @@
         "US"
       ],
       "temporalResolution": "PT2H",
-      "dateModified": "2026-08-19T19:14:12.937296Z",
+      "dateModified": "2026-08-20T02:08:20.229491Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -797,7 +842,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T19:15:19Z",
+      "dateModified": "2026-08-20T02:14:02Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -826,7 +871,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T19:12:07.696427Z",
+      "dateModified": "2026-08-20T02:07:15.067222Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -855,7 +900,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T19:14:27.316423Z",
+      "dateModified": "2026-08-20T02:07:58.634429Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -884,7 +929,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T19:14:27.397906Z",
+      "dateModified": "2026-08-20T02:07:58.693367Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -913,7 +958,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-19T19:14:27.505857Z",
+      "dateModified": "2026-08-20T02:07:58.782488Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -942,7 +987,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T19:14:27.432203Z",
+      "dateModified": "2026-08-20T02:07:58.725453Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -970,7 +1015,7 @@
         "CN"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-17T13:34:54.018709Z",
+      "dateModified": "2026-08-20T03:29:20.696288Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -999,7 +1044,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T07:32:00Z",
+      "dateModified": "2026-08-20T03:58:31Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1127,7 +1172,7 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-18T09:48:57Z",
+      "dateModified": "2026-08-20T03:58:30Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1150,7 +1195,7 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T07:32:00Z",
+      "dateModified": "2026-08-20T03:58:31Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1196,7 +1241,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T07:32:00Z",
+      "dateModified": "2026-08-20T03:58:31Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1219,7 +1264,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T07:32:03Z",
+      "dateModified": "2026-08-20T03:58:33Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1242,7 +1287,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T07:32:03Z",
+      "dateModified": "2026-08-20T03:58:33Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1360,7 +1405,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-19T07:32:00Z",
+      "dateModified": "2026-08-20T03:58:31Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1411,7 +1456,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-17T13:02:26.102754Z",
+      "dateModified": "2026-08-20T01:47:29.258006Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1462,7 +1507,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T07:32:00.040417Z",
+      "dateModified": "2026-08-20T01:47:29.258006Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1490,7 +1535,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T07:32:00.040417Z",
+      "dateModified": "2026-08-20T01:47:29.258006Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1513,7 +1558,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-19T07:32:00.040417Z",
+      "dateModified": "2026-08-20T01:47:29.258006Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1535,7 +1580,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-17T13:02:26.102754Z",
+      "dateModified": "2026-08-20T01:47:29.258006Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1557,7 +1602,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-17T13:35:02.057749Z",
+      "dateModified": "2026-08-20T03:29:33.419111Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
