@@ -1,9 +1,31 @@
 {
-  "generated_at": "2026-08-19T19:14:27.505857+00:00",
+  "generated_at": "2026-08-20T02:07:58.782488+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
   "pairs": [
+    {
+      "ok": true,
+      "overlap_days": 40,
+      "lag_days": 7,
+      "correlation": 0.682,
+      "p_value": 0.0385,
+      "n_shifts": 25,
+      "null_median_abs_r": 0.456,
+      "pair": [
+        "github_refuge",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-20",
+      "reading": "github_refuge moves 7d BEFORE ooni_gfw",
+      "holm_threshold": 0.00625,
+      "survives_multiplicity": false
+    },
     {
       "ok": true,
       "overlap_days": 41,
@@ -23,17 +45,17 @@
       "first_day": "2026-07-06",
       "last_day": "2026-08-16",
       "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
-      "holm_threshold": 0.00625,
+      "holm_threshold": 0.00714,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 39,
+      "overlap_days": 40,
       "lag_days": -5,
-      "correlation": 0.444,
-      "p_value": 0.24,
-      "n_shifts": 24,
-      "null_median_abs_r": 0.282,
+      "correlation": 0.454,
+      "p_value": 0.1923,
+      "n_shifts": 25,
+      "null_median_abs_r": 0.342,
       "pair": [
         "ddti_novelty",
         "ooni_gfw"
@@ -43,30 +65,8 @@
         "network"
       ],
       "first_day": "2026-07-11",
-      "last_day": "2026-08-19",
+      "last_day": "2026-08-20",
       "reading": "ooni_gfw moves 5d BEFORE ddti_novelty",
-      "holm_threshold": 0.00714,
-      "survives_multiplicity": false
-    },
-    {
-      "ok": true,
-      "overlap_days": 39,
-      "lag_days": 7,
-      "correlation": 0.693,
-      "p_value": 0.24,
-      "n_shifts": 24,
-      "null_median_abs_r": 0.229,
-      "pair": [
-        "github_refuge",
-        "ooni_gfw"
-      ],
-      "layers": [
-        "content",
-        "network"
-      ],
-      "first_day": "2026-07-11",
-      "last_day": "2026-08-19",
-      "reading": "github_refuge moves 7d BEFORE ooni_gfw",
       "holm_threshold": 0.00833,
       "survives_multiplicity": false
     },
@@ -96,7 +96,7 @@
       "ok": true,
       "overlap_days": 39,
       "lag_days": 0,
-      "correlation": -0.32,
+      "correlation": -0.319,
       "p_value": 0.88,
       "n_shifts": 24,
       "null_median_abs_r": 0.408,
@@ -160,12 +160,12 @@
     },
     {
       "ok": true,
-      "overlap_days": 39,
+      "overlap_days": 40,
       "lag_days": 7,
-      "correlation": 0.238,
+      "correlation": 0.236,
       "p_value": 1.0,
-      "n_shifts": 24,
-      "null_median_abs_r": 0.413,
+      "n_shifts": 25,
+      "null_median_abs_r": 0.442,
       "pair": [
         "ddti_threat",
         "ooni_gfw"
@@ -175,7 +175,7 @@
         "network"
       ],
       "first_day": "2026-07-11",
-      "last_day": "2026-08-19",
+      "last_day": "2026-08-20",
       "reading": "ddti_threat moves 7d BEFORE ooni_gfw",
       "holm_threshold": 0.05,
       "survives_multiplicity": false

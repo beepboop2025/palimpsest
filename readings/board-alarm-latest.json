@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-19T19:14:27.316423+00:00",
-  "board_e_value": 87.735,
+  "generated_at": "2026-08-20T02:07:58.634429+00:00",
+  "board_e_value": 93.972,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -14,29 +14,29 @@
   },
   "layers": {
     "network": {
-      "e": 184.229,
+      "e": 184.126,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 728.6,
         "ioda_outages": 1.0,
-        "ooni_gfw": 4.068,
+        "ooni_gfw": 3.655,
         "tor_bridge_cn": 3.249
       },
       "recent_alarms": []
     },
     "content": {
-      "e": 23.406,
+      "e": 33.869,
       "n_signals": 6,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 88.192,
-        "ddti_threat": 15.479,
-        "gdelt_containment": 1.615,
-        "github_refuge": 3.089,
+        "ddti_novelty": 152.892,
+        "ddti_threat": 13.543,
+        "gdelt_containment": 1.751,
+        "github_refuge": 2.965,
         "weibo_suppression": 1.0
       },
       "recent_alarms": []
@@ -59,34 +59,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 4.0681,
-      "n": 169,
-      "direction": "down",
-      "robust_z": -0.84,
+      "e": 3.6553,
+      "n": 170,
+      "direction": "up",
+      "robust_z": 0.08,
       "driver_side": "up",
-      "readings_since_alarm": 22,
+      "readings_since_alarm": 23,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 15.4787,
-      "n": 318,
-      "direction": "up",
-      "robust_z": 0.04,
+      "e": 13.5427,
+      "n": 320,
+      "direction": "down",
+      "robust_z": -0.13,
       "driver_side": "up",
-      "readings_since_alarm": 79,
+      "readings_since_alarm": 81,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 88.1924,
-      "n": 318,
+      "e": 152.8917,
+      "n": 320,
       "direction": "down",
       "robust_z": -8.77,
       "driver_side": "up",
-      "readings_since_alarm": 60,
+      "readings_since_alarm": 62,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -103,21 +103,21 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 1.6155,
-      "n": 175,
-      "direction": "flat",
-      "robust_z": 0.0,
-      "driver_side": "up",
+      "e": 1.7507,
+      "n": 176,
+      "direction": "down",
+      "robust_z": -0.34,
+      "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
       "state": "calm",
-      "e": 3.0888,
-      "n": 87,
+      "e": 2.9646,
+      "n": 88,
       "direction": "up",
-      "robust_z": 1.35,
+      "robust_z": 0.67,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -165,7 +165,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 124,
+      "n": 125,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -176,7 +176,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 126,
+      "n": 127,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -210,10 +210,10 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 54.2,
+      "age_hours": 61.1,
       "bound_hours": 30.0,
       "state": "stale",
-      "reason": "newest churn row is 54.2h old, past the 30h bound"
+      "reason": "newest churn row is 61.1h old, past the 30h bound"
     }
   },
   "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
