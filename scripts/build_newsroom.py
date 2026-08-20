@@ -3736,7 +3736,7 @@ def render_china_article_stream(
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
+    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/rumour/">Public vantages</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>
@@ -3985,7 +3985,7 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
     </div>
   </header>
   <div class="dw-shell">
-    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
+    <nav class="dw-nav" aria-label="China intelligence tabs"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/">Article stream</a><a aria-current="page" href="/news/china/whispers/">Whispers</a><a href="/news/china/rumour/">Public vantages</a><a href="/news/wire/">Evidence dossiers</a><a href="/news/china/whispers/feed.xml">Whispers RSS</a><a href="/news/china/whispers/feed.json">JSON Feed</a><a href="/readings/dragon-whispers-latest.json">Structured artifact</a></nav>
     <aside class="dw-warning" aria-labelledby="dw-warning-title">
       <div><p class="dw-kicker">Read before the ledger</p><h2 id="dw-warning-title">This is not verified news.</h2></div>
       <div><p>Entries are sanitized interpretations of automated signals from configured public Telegram sources. The underlying post may be false, incomplete, manipulated, illegal, or malicious.</p><p>Do not use this page to accuse, identify, contact, pay, or investigate a person. Raw wording, source identity, Telegram coordinates, live links, named parties, and exact indicators are withheld. No entry counts as evidence or corroboration.</p></div>

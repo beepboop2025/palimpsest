@@ -9,14 +9,14 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 70,
+    "datasets": 72,
     "states": {
       "disabled": 1,
       "fresh": 42,
       "gated": 6,
       "private-node": 1,
       "stale": 10,
-      "warming": 10
+      "warming": 12
     },
     "layers": {
       "content": 14,
@@ -24,12 +24,12 @@
       "economy": 4,
       "integrity": 1,
       "model": 7,
-      "narrative": 2,
+      "narrative": 4,
       "network": 14,
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 19762765,
+    "published_bytes": 19768169,
     "history_rows": 6556
   },
   "datasets": [
@@ -2468,6 +2468,97 @@
         "latest": "https://palimpsest.info/readings/dragon-whispers-latest.json",
         "landing_page": "https://palimpsest.info/news/china/whispers/",
         "method": "https://palimpsest.info/docs/SOCIAL-OBSERVATION-PIPELINE.md"
+      }
+    },
+    {
+      "id": "live-watch",
+      "name": "Public vantage watch",
+      "description": "The way to get more grey data is more public vantages, continuously, then join them. Sealed coverage of the box live-event lane. Day NDJSON stays on the node. Git only gets a summary. Never corroboration.",
+      "layer": "narrative",
+      "stage": "observation",
+      "collection_mode": "metadata-only-node-lane",
+      "status": "warming",
+      "cadence": "PT1H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Reviewed live-tap registry"
+      ],
+      "latest": "readings/live-watch-latest.json",
+      "landing_page": "news/china/rumour/",
+      "method": "docs/LIVE-EVENT-INGEST.md",
+      "count_fields": [
+        "n_events",
+        "n_taps"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest summaries; upstream board rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": "2026-08-20T09:50:33Z",
+        "age_seconds": 0,
+        "counts": {
+          "n_events": 0,
+          "n_taps": 19
+        },
+        "latest_bytes": 4320,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/live-watch-latest.json",
+        "landing_page": "https://palimpsest.info/news/china/rumour/",
+        "method": "https://palimpsest.info/docs/LIVE-EVENT-INGEST.md"
+      }
+    },
+    {
+      "id": "rumour-board",
+      "name": "Rumour-board context",
+      "description": "Taken from rumour boards. One labeled slice of the public-vantage stack. Grow named Telegram first. 4chan is a weak China live source and stays context, never corroboration. Rows never increment independent source groups.",
+      "layer": "narrative",
+      "stage": "review",
+      "collection_mode": "metadata-only-rumour-context",
+      "status": "warming",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Reviewed rumour-board taps"
+      ],
+      "latest": "readings/rumour-board-latest.json",
+      "landing_page": "news/china/rumour/",
+      "method": "docs/LIVE-EVENT-INGEST.md",
+      "count_fields": [
+        "n_entries"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest structure; upstream board rights retained",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": "2026-08-20T09:50:33Z",
+        "age_seconds": 0,
+        "counts": {
+          "n_entries": 0
+        },
+        "latest_bytes": 1084,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/rumour-board-latest.json",
+        "landing_page": "https://palimpsest.info/news/china/rumour/",
+        "method": "https://palimpsest.info/docs/LIVE-EVENT-INGEST.md"
       }
     },
     {

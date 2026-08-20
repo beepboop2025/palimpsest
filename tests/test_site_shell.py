@@ -44,6 +44,7 @@ import sync_nav  # noqa: E402
 GENERATED = {
     "china-brief.html",
     "news/china/situation/index.html",
+    "news/china/rumour/index.html",
     "readings/generative-firewall-index.html",
 } | {
     str(path.relative_to(ROOT))
@@ -195,6 +196,7 @@ def test_generated_pages_use_the_shared_nav():
         ("scripts/generative_firewall_reading.py",
          "readings/generative-firewall-index.html"),
         ("scripts/build_eval_findings.py", "journal/index.html"),
+        ("scripts/build_rumour_board.py", "news/china/rumour/index.html"),
     ):
         src = (ROOT / script).read_text(encoding="utf-8")
         assert "site_nav" in src, (

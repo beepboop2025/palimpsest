@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/live-watch-v1.schema.json",
+  "title": "Palimpsest live-watch v1",
+  "description": "Sealed public summary of the public-vantage lane. More public vantages, continuously, then join them. Day files stay on the node. Git only gets a summary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source",
+    "method",
+    "scope",
+    "status",
+    "relation",
+    "n_events",
+    "n_taps",
+    "coverage",
+    "taps",
+    "publication_policy",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-live-watch.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "source": {"type": "string", "minLength": 1, "maxLength": 500},
+    "method": {"type": "string", "minLength": 1, "maxLength": 1200},
+    "scope": {"type": "string", "minLength": 1, "maxLength": 1200},
+    "status": {"enum": ["warming_up", "live", "halted"]},
+    "relation": {"const": "context-only-not-corroboration"},
+    "n_events": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "n_taps": {"type": "integer", "minimum": 0, "maximum": 256},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configured", "attempted", "not_attempted", "accepted", "dropped"],
+      "properties": {
+        "configured": {"type": "integer", "minimum": 0, "maximum": 256},
+        "attempted": {"type": "integer", "minimum": 0, "maximum": 256},
+        "not_attempted": {"type": "integer", "minimum": 0, "maximum": 256},
+        "accepted": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "dropped": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      }
+    },
+    "taps": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tap_id", "status", "accepted", "dropped", "error_code"],
+        "properties": {
+          "tap_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"},
+          "status": {"enum": ["success", "not-attempted", "halted"]},
+          "accepted": {"type": "integer", "minimum": 0, "maximum": 1000000},
+          "dropped": {"type": "integer", "minimum": 0, "maximum": 1000000},
+          "error_code": {
+            "oneOf": [
+              {"type": "null"},
+              {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"}
+            ]
+          }
+        }
+      }
+    },
+    "publication_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bodies_included", "media_included", "counts_as_corroboration"],
+      "properties": {
+        "bodies_included": {"const": false},
+        "media_included": {"const": false},
+        "counts_as_corroboration": {"const": false}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {"type": "string", "minLength": 1, "maxLength": 500}
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    }
+  }
+}
