@@ -1887,10 +1887,6 @@ def build_summary(
             "A digest change proves archived bytes changed; it does not identify cause or intent.",
             "Targets are reviewed first-party institutions and source bodies remain outside public output.",
         ],
-        "observer_class": "archive-crawler",
-        "visibility_label": None,
-        "missingness": "archive_gap",
-        "note": "A missing monthly capture is an archive coverage gap, never a deletion label.",
     }
     summary["summary_sha256"] = hashlib.sha256(_canonical_json(summary)).hexdigest()
     return summary

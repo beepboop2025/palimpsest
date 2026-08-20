@@ -182,6 +182,8 @@ def build_sidecar(
             "join": "probabilistic-sidecar",
             "exact_key_join_unchanged": True,
             "same_post_claim": SAME_POST_CLAIM,
+            "attaches_warehouse_slots": False,
+            "exact_keys": ("host", "url_path", "term", "asn"),
         },
         "n_records": len(items),
         "n_clusters": len(groups),
@@ -222,10 +224,27 @@ def attach_without_raising_join(
     increment = independent_group_increment(sidecar)
     if increment != 0:
         raise ValueError("sidecar attempted to raise independent_source_groups")
-    return {
+    from core.event_interconnection import EXACT_KEYS, SLOT_IDS
+
+    policy = sidecar.get("publication_policy") if isinstance(sidecar, Mapping) else None
+    if isinstance(policy, Mapping) and policy.get("attaches_warehouse_slots"):
+        raise ValueError("event-cluster sidecar must not attach warehouse slots")
+    if sidecar.get("warehouse_id") or sidecar.get("slot_ids") or sidecar.get("slots"):
+        raise ValueError("event-cluster sidecar must not carry warehouse slots")
+    peers = interconnection.get("peers")
+    if isinstance(peers, list):
+        for peer in peers:
+            if not isinstance(peer, Mapping):
+                continue
+            if peer.get("peer_id") in SLOT_IDS and "semantic" in str(peer.get("join") or ""):
+                raise ValueError("semantic sidecar must not occupy a warehouse slot")
+    wrapped = {
         "interconnection": dict(interconnection),
         "semantic_sidecar": dict(sidecar),
         "independent_source_groups": interconnection.get("independent_source_groups"),
         "joined_count": interconnection.get("joined_count"),
         "sidecar_corroboration_increment": corroboration_increment(sidecar),
     }
+    if wrapped["interconnection"].get("required_exact_keys") not in (None, list(EXACT_KEYS)):
+        raise ValueError("sidecar must not change exact-key join")
+    return wrapped

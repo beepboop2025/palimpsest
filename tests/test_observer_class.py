@@ -9,6 +9,7 @@ from core.observer_class import (
     ObserverClassError,
     blocked_abstention,
     claims_china_sensor,
+    fleet_observer_class,
     refuse_forbidden,
     validate_observer_class,
 )
@@ -36,6 +37,22 @@ def test_archive_crawler_of_a_chinese_url_is_not_a_sensor():
     assert validate_observer_class("official-landing", geo="cn") == "official-landing"
     assert validate_observer_class("public-board", geo="cn") == "public-board"
     assert validate_observer_class("public-channel", geo="cn") == "public-channel"
+
+
+def test_merged_china_fleet_jobs_have_observer_classes():
+    expected = {
+        "weibo-hotsearch-terms": "public-board",
+        "archive-news-context": "archive-crawler",
+        "public-board-terms": "public-board",
+        "social-spread": "public-board",
+        "reading-analysis": "outside-china-node",
+        "greatfire-context": "public-ledger",
+        "peer-context": "outside-china-node",
+        "peer-context-rank": "outside-china-node",
+    }
+    for job, cls in expected.items():
+        assert fleet_observer_class(job) == cls
+        validate_observer_class(cls)
 
 
 def test_blocked_observer_abstains_instead_of_writing_zero():

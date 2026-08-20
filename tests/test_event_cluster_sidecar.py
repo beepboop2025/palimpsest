@@ -34,6 +34,7 @@ def test_similar_text_is_not_the_same_post():
     assert sidecar["publication_policy"]["counts_as_corroboration"] is False
     assert sidecar["publication_policy"]["increments_independent_groups"] is False
     assert sidecar["publication_policy"]["same_post_claim"] is False
+    assert sidecar["publication_policy"]["attaches_warehouse_slots"] is False
     assert all(row["same_post"] is False for row in sidecar["clusters"])
     assert semantic_match_score("NBS releases July figures", "NBS releases July figures") > 0.9
 
@@ -86,3 +87,9 @@ def test_exact_key_join_is_unchanged_when_sidecar_is_attached():
     assert wrapped["interconnection"]["required_exact_keys"] == list(
         event_interconnection.EXACT_KEYS
     )
+    assert wrapped["interconnection"]["peers"] == block["peers"]
+    assert sidecar["publication_policy"]["attaches_warehouse_slots"] is False
+    assert "warehouse_id" not in sidecar
+    for slot in event_interconnection.SLOT_IDS:
+        assert sidecar.get("peer_id") != slot
+        assert not any(row.get("peer_id") == slot for row in sidecar.get("clusters") or [])

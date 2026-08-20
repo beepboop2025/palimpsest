@@ -99,3 +99,31 @@ the join `topic-or-url-context-not-corroboration`.
   a peer 90-day verdict as proof of Party motive.
 - Auto-publish Dragon Whispers or `telegram-watch`. Those stay human-review-gated.
   Warehouse fat public-channel records do not write those files.
+
+## Greyball / OTF-friend methods
+
+The ten collection methods, forbidden list, visibility-event schema, and
+exact-key join rule (`host | url_path | term | asn`, UTC ±24h) live in
+[GREYBALL-METHODS.md](GREYBALL-METHODS.md). They are Palimpsest `core/` /
+`collectors/` / `processors/` machinery, not CensorWatch, not BLEEDTHROUGH
+systemd, not Common Crawl systemd, and not GFI.
+
+Already-on-main fleet jobs that Greyball **labels rather than reimplements**:
+`weibo-hotsearch-terms`, `archive-news-context`, `public-board-terms`,
+`social-spread`, `reading-analysis`, `greatfire-context`, `peer-context`,
+`peer-context-rank`. Closed-schema writers keep their exact field sets.
+Observer class is `core.observer_class.fleet_observer_class`. China-as-sensor
+is a hard reject.
+
+| Surface | Runner | 24/7 path | Notes |
+| --- | --- | --- | --- |
+| Synthetic calibration | `scripts/greyball_calibration_pull.py` | fleet `greyball-calibration` (inert unless `PALIMPSEST_GREYBALL_ENABLED=1`) | Offline eight-case harness. Distinguishes or withholds a censorship label. Not a substitute: data_darkness / silence-index / conformal events. |
+| Declared public endpoints | `scripts/greyball_public_endpoints_pull.py` | fleet `greyball-public-endpoints` (flagged) | HTTPS GET of reviewer-declared URLs. Login/CAPTCHA/denied records and **stops**. Empty panel / `robots_tos_permit: false` abstains. |
+| Donation ingest | `scripts/greyball_donation_pull.py` | fleet `greyball-donation` (flagged) | Hashes / transitions / counts only. Identity fields reject. Empty inbox abstains. |
+| Search differential | `scripts/greyball_search_differential_pull.py` | fleet `greyball-search-differential` (flagged) | Gazetteer panel. Anomaly, not censorship. No live term discovery. |
+| Multi-node panel | `scripts/greyball_multi_node_pull.py` | fleet `greyball-multi-node` (flagged) | Outside-China observers only. Blocked → abstain. |
+
+Browser-capture protocol (`collectors/browser_capture.py`) has no fleet job
+until an extension exists. Semantic event clusters
+(`processors/event_cluster_sidecar.py`) are not a collector and must not
+attach `SLOT_IDS`.

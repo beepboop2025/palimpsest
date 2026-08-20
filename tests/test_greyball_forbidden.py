@@ -8,7 +8,6 @@ import re
 from collectors.browser_capture import refuse_history_export
 from collectors.multi_node_panel import rotate_identity, rotate_residential_path
 from collectors.public_endpoint import probe_hidden_object
-from censorwatch.outside_observer import in_country_egress
 from core.observer_class import FORBIDDEN_TECHNIQUES, ForbiddenTechniqueError, refuse_forbidden
 from processors.search_differential import discover_blocked_terms
 from processors.synthetic_calibration import run_calibration
@@ -27,7 +26,6 @@ GREYBALL_PATHS = [
     ROOT / "processors/search_differential.py",
     ROOT / "processors/event_cluster_sidecar.py",
     ROOT / "processors/synthetic_calibration.py",
-    ROOT / "censorwatch/outside_observer.py",
 ]
 
 _IMPLEMENTED = re.compile(
@@ -60,9 +58,9 @@ def test_refuse_gates_are_hard_fails():
         rotate_identity,
         rotate_residential_path,
         probe_hidden_object,
-        in_country_egress,
         discover_blocked_terms,
         lambda: refuse_forbidden("stolen_credentials"),
+        lambda: refuse_forbidden("covert_in_china_collection"),
     ):
         try:
             fn()

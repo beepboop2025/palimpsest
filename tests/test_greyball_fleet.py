@@ -33,6 +33,17 @@ def test_greyball_flag_defaults_off(monkeypatch):
     assert set(GREYBALL_JOBS).isdisjoint(names)
     for job in GREYBALL_JOBS:
         assert job in SNAPSHOT_OUTPUTS
+    for job in (
+        "weibo-hotsearch-terms",
+        "archive-news-context",
+        "public-board-terms",
+        "social-spread",
+        "reading-analysis",
+        "greatfire-context",
+        "peer-context",
+        "peer-context-rank",
+    ):
+        assert job in SNAPSHOT_OUTPUTS
 
 
 def test_greyball_jobs_schedule_only_when_flagged(monkeypatch):

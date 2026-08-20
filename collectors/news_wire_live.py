@@ -13,6 +13,7 @@ from typing import Any
 
 from core.china_observation import enrich_observation, public_text
 from core.live_paths import resolve_newswire_path
+from core.visibility_event import stamp_visibility_event
 
 DEFAULT_WIRE = resolve_newswire_path(preferred=Path("readings/newswire-latest.json"))
 
@@ -74,7 +75,7 @@ def observation_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
     }
     if topics:
         seed["topics"] = topics
-    return enrich_observation(
+    return stamp_visibility_event(enrich_observation(
         seed,
         text=text,
         source_url=url,
@@ -91,7 +92,7 @@ def observation_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
             "source_id": source_id or None,
             "outlet": outlet or None,
         },
-    )
+    ))
 
 
 def observations_from_events(events: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:

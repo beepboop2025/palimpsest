@@ -114,11 +114,14 @@ last-live/first-gone, mutations, removed public-account posts, changed SERPs,
 vanished official notices.
 
 **Honesty.** A missing archive capture is an `archive_gap`, never a deletion.
-The Common Crawl URL lake is not published as a censorship dump.
+The Common Crawl URL lake is not published as a censorship dump. Greyball does
+not modify the Common Crawl systemd path, lake ingest, or WARC fetchers.
 
-**Shipping.** Existing `collectors/wayback_vantage.py` and
-`collectors/common_crawl_lake.py`, now stamped with `observer_class`
-`archive-crawler` and missingness labels. No rewrite of the CDX math.
+**Shipping.** Existing `collectors/wayback_vantage.py` / `scripts/wayback_reconstruct_pull.py`
+are stamped `archive-crawler`; `no_baseline` is `archive_gap`. Common Crawl
+remains a documented archive-first *source*; this package does not edit the
+lake. `archive-news-context` (fleet job, already on main) is labeled
+`archive-crawler` without reimplementation.
 
 ### 4. Volunteer data donation — pipeline (new)
 
@@ -257,16 +260,18 @@ rotator, or a CAPTCHA path to that package.
 ## CensorWatch relationship
 
 `censorwatch/` is the feature-flagged archive-and-recheck velocity leg. It has
-never been enabled in production. This package **does not enable it**.
+never been enabled in production. Greyball **does not live in that package**,
+does not add tasks or ingest helpers there, and **does not enable it**.
+`CENSORWATCH_ENABLED` stays off.
 
-CensorWatch is **not** reframed as an in-country China sensor. If it is
-extended, the extension is outside-China opt-in observers and donation ingest
-(`censorwatch/outside_observer.py`), still behind `CENSORWATCH_ENABLED`, still
-inert by default, still without an in-country egress path.
+CensorWatch is **not** an in-country China sensor. Minute-resolution in-country
+velocity remains an honest unbuilt capability. Greyball closes visibility gaps
+from *outside* the wall: archives, public ledgers, opt-in outside observers,
+hashes, and synthetic calibration in Palimpsest `core/` / `collectors/` /
+`processors/`.
 
-Greyball is how Palimpsest closes visibility gaps from *outside* the wall:
-archives, public ledgers, opt-in outside observers, hashes. Minute-resolution
-in-country velocity remains an honest unbuilt capability, not a silent proxy.
+Greyball also does not touch BLEEDTHROUGH systemd units, Common Crawl systemd
+units, or GFI eval paths.
 
 ---
 
@@ -276,7 +281,7 @@ in-country velocity remains an honest unbuilt capability, not a silent proxy.
 | --- | --- | --- | --- |
 | 1 | Browser-side public-page capture | **new** (protocol + ingest) | `collectors/browser_capture.py` |
 | 2 | Public endpoint discovery | **new** (hard-stop adapter) | `collectors/public_endpoint.py` |
-| 3 | Archive-first reconstruction | **wired** | `wayback_vantage`, `common_crawl_lake` |
+| 3 | Archive-first reconstruction | **wired** | Wayback reconstructions; `archive-news-context` labeled, not rewritten. Common Crawl systemd/lake untouched. |
 | 4 | Volunteer data donation | **new** | `collectors/donation_ingest.py` |
 | 5 | Multi-node public observation | **new** | `collectors/multi_node_panel.py`, `core/observer_class.py` |
 | 6 | Search-result differential | **new** | `processors/search_differential.py` |
@@ -285,9 +290,24 @@ in-country velocity remains an honest unbuilt capability, not a silent proxy.
 | 9 | Public deletion-report aggregation | **wired** | ledgers + `deletion_report_agg.py` |
 | 10 | Synthetic censorship calibration | **new** | `processors/synthetic_calibration.py` |
 
-Existing live collectors keep working. New fleet jobs register in
-`core/collector_fleet.py` and stay **inert** unless
-`PALIMPSEST_GREYBALL_ENABLED=1`. They abstain, not zero, when blocked.
+Existing live collectors keep working. The always-on Hetzner fleet is **42
+snapshot jobs** (`SNAPSHOT_OUTPUTS` on main), including the already-merged
+`weibo-hotsearch-terms`, `archive-news-context`, `public-board-terms`,
+`social-spread`, `reading-analysis`, `greatfire-context`, `peer-context`, and
+`peer-context-rank` jobs — labeled, not reimplemented. Closed-schema writers
+keep their exact field sets.
+
+New Greyball snapshot jobs register in `core/collector_fleet.py`
+(`SNAPSHOT_OUTPUTS`, `_STANDARD`, `_VIGOROUS`, `_COUNT_PATHS`, explicit
+`_invoke_snapshot` import) and stay **inert** unless
+`PALIMPSEST_GREYBALL_ENABLED=1`. They abstain, not zero, when blocked. They
+are not news-family jobs and do not trigger `_refresh_archive_news_context`.
+They are not join peers: no `SLOT_IDS` / `LIVE_SOURCES` entries. Semantic
+clusters stay a sidecar.
+
+Hetzner: no extra Docker service. Same `worker-collectors` after image rebuild.
+Canonical checkout `/home/palimpsest/palimpsest`. State under
+`/var/lib/palimpsest/{readings,data}`. No hollow `*-latest.json` placeholders.
 
 ---
 
@@ -298,4 +318,5 @@ Existing live collectors keep working. New fleet jobs register in
   donate a feed.
 - Public data only. The donation path accepts hashes, not lives.
 - Calibration is the scientific backbone: no censorship label until the eight
-  synthetic cases distinguish.
+  synthetic cases distinguish. Existing missingness models (data_darkness,
+  silence-index, conformal events) are not a substitute.

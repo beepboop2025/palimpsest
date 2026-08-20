@@ -6,9 +6,9 @@ by default** — nothing starts collecting until the `velocity` profile is enabl
 and `CENSORWATCH_ENABLED=1` is set.
 
 **CensorWatch is not an in-country China sensor.** This repository does not
-enable it in production and does not add an in-country egress path. Outside-China
-opt-in observers and donation ingest live in `censorwatch/outside_observer.py`
-(still gated) and in [docs/GREYBALL-METHODS.md](../docs/GREYBALL-METHODS.md).
+enable it in production and does not add an in-country egress path. Greyball
+collection methods live in Palimpsest core
+([docs/GREYBALL-METHODS.md](../docs/GREYBALL-METHODS.md)), not in this package.
 
 There are two tiers:
 - **Tier 1 — Eastmoney guba only.** Works from any host, no proxy. Live in ~10 min.

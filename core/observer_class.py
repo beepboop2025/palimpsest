@@ -110,6 +110,45 @@ COLLECTOR_CLASS = {
     "multi_node_panel": "outside-china-researcher",
     "public_endpoint": "outside-china-node",
     "search_differential": "outside-china-researcher",
+    "news_wire_live": "outside-china-node",
+    "weibo_hotsearch": "public-board",
+    "weibo_hotsearch_terms": "public-board",
+    "public_board_terms": "public-board",
+    "social_spread": "public-board",
+    "greatfire_context": "public-ledger",
+    "peer_context": "outside-china-node",
+    "peer_context_rank": "outside-china-node",
+    "reading_analysis": "outside-china-node",
+    "archive_news_context": "archive-crawler",
+    "wikipedia_gazetteer_rc": "outside-china-node",
+    "baike_public_snapshot": "outside-china-node",
+}
+
+# Fleet snapshot job names (hyphenated) for the always-on 42-job registry.
+# Closed-schema writers keep their exact field sets; this map labels them.
+FLEET_JOB_OBSERVER = {
+    "public-deletion-ledgers": "public-ledger",
+    "official-first-seen": "official-landing",
+    "public-hot-boards": "public-board",
+    "telegram-public-channels": "public-channel",
+    "wayback": "archive-crawler",
+    "weibo-hotsearch": "public-board",
+    "weibo-hotsearch-terms": "public-board",
+    "public-board-terms": "public-board",
+    "social-spread": "public-board",
+    "news-wire-live": "outside-china-node",
+    "archive-news-context": "archive-crawler",
+    "greatfire-context": "public-ledger",
+    "peer-context": "outside-china-node",
+    "peer-context-rank": "outside-china-node",
+    "reading-analysis": "outside-china-node",
+    "wikipedia-gazetteer-rc": "outside-china-node",
+    "baike-public-snapshot": "outside-china-node",
+    "greyball-search-differential": "outside-china-researcher",
+    "greyball-public-endpoints": "outside-china-node",
+    "greyball-donation": "volunteer-donation",
+    "greyball-multi-node": "outside-china-researcher",
+    "greyball-calibration": "synthetic-calibration",
 }
 
 
@@ -206,6 +245,16 @@ def infer_observer_class(
     if "outside" in vant or vant in {"hetzner", "global", "de", "eu"}:
         return "outside-china-node"
     return "outside-china-node"
+
+
+def fleet_observer_class(job_name: str) -> str:
+    """Observer class for an already-registered snapshot job. Never in-country."""
+
+    key = _norm(job_name)
+    hyphen = key.replace("_", "-")
+    if hyphen in FLEET_JOB_OBSERVER:
+        return FLEET_JOB_OBSERVER[hyphen]
+    return infer_observer_class(collector=job_name.replace("-", "_"))
 
 
 def validate_observer_class(

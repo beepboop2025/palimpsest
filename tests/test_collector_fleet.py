@@ -108,6 +108,13 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
         "peer-context",
         "peer-context-rank",
     } <= names
+    assert {
+        "greyball-search-differential",
+        "greyball-public-endpoints",
+        "greyball-donation",
+        "greyball-multi-node",
+        "greyball-calibration",
+    }.isdisjoint(names)
 
 
 def test_six_more_passive_methods_are_in_the_always_on_fleet(monkeypatch):
