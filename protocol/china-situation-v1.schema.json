@@ -204,7 +204,12 @@
         "state": {"type": "string", "minLength": 1, "maxLength": 40},
         "matched_article_url": {"$ref": "#/$defs/httpsUrl"},
         "same_publisher_lineage": {"type": "boolean"},
-        "relation": {"const": "publisher-link-context-not-corroboration"}
+        "relation": {
+          "enum": [
+            "publisher-link-context-not-corroboration",
+            "topic-title-context-not-corroboration"
+          ]
+        }
       }
     },
     "reviewedTelegram": {

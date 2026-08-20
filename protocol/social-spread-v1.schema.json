@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/social-spread-v1.schema.json",
+  "title": "Palimpsest social-spread v1",
+  "description": "Public-board spreading terms matched to already-captured Palimpsest records. Topic surface only; not a missing-person finding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "job_name",
+    "status",
+    "source",
+    "method",
+    "scope",
+    "relation",
+    "disclaimer",
+    "publication_policy",
+    "input_status",
+    "n_rows",
+    "n_abstained",
+    "n_refused",
+    "rows",
+    "refusals",
+    "news_story"
+  ],
+  "properties": {
+    "schema_version": { "const": "palimpsest-social-spread.v1" },
+    "generated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
+    "job_name": { "const": "social-spread" },
+    "status": { "enum": ["live", "abstain"] },
+    "source": { "type": "string", "minLength": 1, "maxLength": 800 },
+    "method": { "type": "string", "minLength": 1, "maxLength": 800 },
+    "scope": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "relation": { "const": "topic-surface-only" },
+    "disclaimer": {
+      "const": "Palimpsest does not confirm a person is missing, detained, or dead."
+    },
+    "publication_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human_review_required",
+        "named_person_packages_auto_published",
+        "named_person_findings_included",
+        "counts_as_corroboration",
+        "raw_telegram_included",
+        "private_social_included",
+        "dragon_whispers_reused"
+      ],
+      "properties": {
+        "human_review_required": { "const": true },
+        "named_person_packages_auto_published": { "const": false },
+        "named_person_findings_included": { "const": false },
+        "counts_as_corroboration": { "const": false },
+        "raw_telegram_included": { "const": false },
+        "private_social_included": { "const": false },
+        "dragon_whispers_reused": { "const": false }
+      }
+    },
+    "input_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "weibo-hotsearch",
+        "weibo-hotsearch-terms",
+        "public-hot-boards",
+        "public-board-terms",
+        "telegram-public-channels",
+        "social-observations",
+        "newswire",
+        "news-wire-live",
+        "official-first-seen",
+        "public-deletion-ledgers",
+        "wayback"
+      ],
+      "properties": {
+        "weibo-hotsearch": { "enum": ["present", "missing", "abstain"] },
+        "weibo-hotsearch-terms": { "enum": ["present", "missing", "abstain"] },
+        "public-hot-boards": { "enum": ["present", "missing", "abstain"] },
+        "public-board-terms": { "enum": ["present", "missing", "abstain"] },
+        "telegram-public-channels": { "enum": ["present", "missing", "abstain"] },
+        "social-observations": { "enum": ["present", "missing", "abstain"] },
+        "newswire": { "enum": ["present", "missing", "abstain"] },
+        "news-wire-live": { "enum": ["present", "missing", "abstain"] },
+        "official-first-seen": { "enum": ["present", "missing", "abstain"] },
+        "public-deletion-ledgers": { "enum": ["present", "missing", "abstain"] },
+        "wayback": { "enum": ["present", "missing", "abstain"] }
+      }
+    },
+    "n_rows": { "type": "integer", "minimum": 0 },
+    "n_abstained": { "type": "integer", "minimum": 0 },
+    "n_refused": { "type": "integer", "minimum": 0 },
+    "rows": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "refusals": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/refusal" }
+    },
+    "news_story": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/newsStory" }
+      ]
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "topic",
+        "disposition",
+        "relation",
+        "disclaimer",
+        "join_keys",
+        "spreading",
+        "matches",
+        "names_a_person",
+        "automatic_publication",
+        "human_review_required"
+      ],
+      "properties": {
+        "term": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "join_keys": { "$ref": "#/$defs/joinKeys" },
+        "disposition": {
+          "enum": [
+            "circulating-unverified",
+            "matched-to-wire",
+            "matched-to-official-page",
+            "abstain"
+          ]
+        },
+        "relation": { "const": "topic-surface-only" },
+        "disclaimer": {
+          "const": "Palimpsest does not confirm a person is missing, detained, or dead."
+        },
+        "spreading": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_ids", "n_surfaces", "first_seen", "last_seen", "board", "rank", "host"],
+          "properties": {
+            "source_ids": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "n_surfaces": { "type": "integer", "minimum": 1 },
+            "first_seen": { "type": "string" },
+            "last_seen": { "type": "string" },
+            "board": { "type": ["string", "null"] },
+            "rank": { "type": ["integer", "null"], "minimum": 1 },
+            "host": { "type": ["string", "null"] }
+          }
+        },
+        "matches": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wire_event_ids",
+            "official_page_last_alive",
+            "ledger_hits"
+          ],
+          "properties": {
+            "wire_event_ids": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "official_page_last_alive": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title", "last_alive"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "last_alive": { "type": "string" }
+                }
+              }
+            },
+            "ledger_hits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "names_a_person": { "type": "boolean" },
+        "automatic_publication": { "type": "boolean" },
+        "human_review_required": { "type": "boolean" }
+      }
+    },
+    "joinKeys": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term", "host", "first_seen", "last_seen", "board", "rank"],
+      "properties": {
+        "term": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "host": { "type": ["string", "null"], "maxLength": 253 },
+        "first_seen": { "type": "string" },
+        "last_seen": { "type": "string" },
+        "board": { "type": ["string", "null"], "maxLength": 32 },
+        "rank": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "newsStory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "dek",
+        "body",
+        "automatic_publication",
+        "relation",
+        "disclaimer"
+      ],
+      "properties": {
+        "headline": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "dek": {
+          "const": "Palimpsest does not confirm a person is missing, detained, or dead."
+        },
+        "body": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1, "maxLength": 400 }
+        },
+        "automatic_publication": { "const": true },
+        "relation": { "const": "topic-surface-only" },
+        "disclaimer": {
+          "const": "Palimpsest does not confirm a person is missing, detained, or dead."
+        }
+      }
+    },
+    "refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term_class", "reason"],
+      "properties": {
+        "term_class": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    }
+  }
+}

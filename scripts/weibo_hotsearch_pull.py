@@ -15,10 +15,12 @@ import json
 import os
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from collectors.weibo_hotsearch import (
     collect_range, join_ddti, pinned_series, term_presence,
     withdrawal_candidates)
+from core.weibo_hotsearch_terms import write_weibo_hotsearch_terms
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 READINGS = os.path.join(ROOT, "readings")
@@ -212,6 +214,14 @@ def main() -> None:
     os.makedirs(READINGS, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(latest, f, ensure_ascii=False, indent=1, sort_keys=True)
+    write_weibo_hotsearch_terms(
+        days,
+        generated_at=latest["generated_at"],
+        readings=Path(READINGS),
+        ddti_terms=ddti_terms,
+        sensitive_terms={g["term"] for g in _load_gazetteer_terms()}
+        | {t["term"] for t in ddti_terms},
+    )
 
     hist_row = {
         "date": max(days),

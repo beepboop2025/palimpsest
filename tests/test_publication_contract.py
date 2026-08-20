@@ -59,6 +59,7 @@ CONTRACT = {
     "refusal-drift":        _d("generated_at", ["method", "verify_cmd"], "n_probes"),
     "wayback":              _d("generated_at", ["source", "scope"], "n_watched"),
     "weibo-hotsearch":      _d("generated_at", ["source", "method_note"], "board_entries"),
+    "weibo-hotsearch-terms": _d("generated_at", ["source", "method", "scope"], "n_titles"),
     "censored-planet":      _d("generated_at", ["source", "method"], "n_events"),
     "eval-registry":        _d("generated_at", ["registry", "verify_cmd"], "runs"),
     "eval-assurance":       _d(
@@ -99,8 +100,14 @@ CONTRACT = {
     "public-hot-boards": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "public-board-terms": _d(
+        "generated_at", ["source", "method", "scope"], "n_titles"
+    ),
     "telegram-public-channels": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "social-spread": _d(
+        "generated_at", ["source", "method", "scope"], "n_rows"
     ),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
@@ -274,6 +281,9 @@ PENDING = {
     "baike-public-snapshot",
     "public-hot-boards",
     "telegram-public-channels",
+    "social-spread",
+    "weibo-hotsearch-terms",
+    "public-board-terms",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

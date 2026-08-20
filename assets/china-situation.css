@@ -131,6 +131,21 @@ body.ps.newsroom-page.situation-page {
 .situation-method h2 { margin: 0; font-size: clamp(1.25rem, 2.5vw, 2rem); }
 .situation-social-state p { margin: 0; color: #bdcbd2; line-height: 1.55; }
 
+.situation-spread-state {
+  margin: 1.5rem 0;
+  padding: 1.4rem;
+  border: 1px solid var(--sit-line);
+  background: var(--sit-panel);
+}
+.situation-spread-state.is-pending { border-left: 0.35rem solid var(--sit-report); }
+.situation-spread-state.is-live { border-left: 0.35rem solid var(--sit-social); }
+.situation-spread-state h2 { margin: 0 0 0.8rem; font-size: clamp(1.25rem, 2.5vw, 2rem); }
+.situation-spread-state p { color: #bdcbd2; line-height: 1.55; }
+.situation-spread-state ul { margin: 1rem 0 0; padding: 0; list-style: none; }
+.situation-spread-state li { padding: 0.7rem 0; border-top: 1px solid var(--sit-line); }
+.situation-spread-state li span,
+.situation-spread-state li small { display: block; color: var(--sit-muted); }
+
 .situation-telegram {
   margin: 1.5rem 0 3rem;
   padding: clamp(1.4rem, 3vw, 2.4rem);

@@ -43,6 +43,7 @@ the join `topic-or-url-context-not-corroboration`.
 | Research-corpus metadata | `scripts/research_corpus_ingest.py` | fleet `research-corpus` | Metadata-only Git refs. Blobs and keywords stay unpublished. |
 | Public Baike article snapshot | `scripts/baike_public_snapshot_pull.py` | fleet `baike-public-snapshot` | Public HTML + Wayback CDX for topic/event articles only. Hash trail + last-confirmed-alive. No logged-in API. No person pages. The Wikipedia-fork `baike-redaction` runner stays `disabled_no_authorized_access`. |
 | Public hot boards | `scripts/public_hot_boards_pull.py` | fleet `public-hot-boards` | Baidu / Toutiao / Douyin aggregate JSON. Titles and ranks only. Each board is a candidate; login-walled or empty boards abstain. |
+| Public board terms | `scripts/public_board_terms_pull.py` | fleet `public-board-terms` | Fused title/rank dump from verified keyless archives (justjavac Weibo JSON; lonnyzhang423 MIT weibo/zhihu/toutiao/douyin-hot-hub markdown day files; iiecho1 China-relevant markdown boards), live JSON boards already in `config/public_hot_boards.json`, zh.wikipedia most-viewed, and in-tree wikipedia-gazetteer-rc. Login wall / captcha / empty / 暂无数据 is a silent board, never a zero. FreeWeChat `https://freewechat.com/feed` is 404 and the homepage is a recovered-listing candidate only — no WeChat private accounts. Sports/entertainment iiecho1 boards and 360doc (closing) are skipped. Every board is itself a curated/censored surface. |
 | Public Telegram channels | `scripts/telegram_public_channels_pull.py` | fleet `telegram-public-channels` | Keyless `t.me/s/` HTML for the three in-tree Dragon Den public channels. Fat warehouse observations (full public text, hash, first-seen, outbound links, gazetteer, joins). `mainland_echo` when a post quotes/archives a deleted mainland item. ScamShield inbox drained through the existing sanitized feed. Public whispers / `telegram-watch` stay review-gated. CDT/GreatFire have no `t.me` in-tree. |
 
 `china/sources/` remains a static economic catalogue. It is not a collector.
@@ -65,6 +66,10 @@ the join `topic-or-url-context-not-corroboration`.
    events by **exact publisher URL** or **topic/term overlap** (headline match
    requires a term of four or more characters). The OSINT layer now shows
    source URL, SHA-256, and Wayback snapshot/lookup. Absence is a coverage gap.
+   The social-spread desk emits the same fat-object join keys (`term`, `host`,
+   `first_seen`, `last_seen`, `board`, `rank`). A Weibo / Zhihu / Tieba title
+   joins a registered wire, CDT, or official object only on exact term plus
+   overlapping day window. It does not confirm that a person is missing.
 
 ## What this repository will not do
 

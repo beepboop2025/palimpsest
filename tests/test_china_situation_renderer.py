@@ -84,7 +84,11 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert "More context does not automatically mean more proof." in page
     assert "topic-surface-only · not article verification" in page
     assert "publisher-link-context-not-corroboration" in page
+    assert "topic-title-context-not-corroboration" in page
     assert "topic-or-url-context-not-corroboration" in page
+    assert "Public social-spread join is pending." in page
+    assert "Palimpsest does not confirm a person is missing, detained, or dead." in page
+    assert "topic-surface-only" in page
     assert "Reviewed Telegram briefing" in page
     assert "Source-free signals stay separate from attributed reporting." in page
     assert "Raw Telegram forwards remain in Dragon Den" in page
@@ -118,6 +122,7 @@ def test_situation_styles_preserve_dark_contrast_and_readable_headlines():
     assert "var(--nw-display" in css
     assert "var(--nw-mono" in css
     assert "var(--display" not in css
+    assert ".situation-spread-state" in css
     assert "var(--mono" not in css
     assert "overflow-wrap: normal" in css
     assert "word-break: normal" in css

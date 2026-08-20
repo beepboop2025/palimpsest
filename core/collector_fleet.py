@@ -84,6 +84,7 @@ SNAPSHOT_OUTPUTS = {
     "ooni-gfw": "readings/ooni-gfw-latest.json",
     "ioda-outages": "readings/ioda-outages-latest.json",
     "weibo-hotsearch": "readings/weibo-hotsearch-latest.json",
+    "weibo-hotsearch-terms": "readings/weibo-hotsearch-terms-latest.json",
     "app-storefront": "readings/app-storefront-latest.json",
     "china-econ": "readings/china-econ-latest.json",
     "inside-view": "readings/inside-view-latest.json",
@@ -114,7 +115,9 @@ SNAPSHOT_OUTPUTS = {
     "wikipedia-gazetteer-rc": "readings/wikipedia-gazetteer-rc-latest.json",
     "baike-public-snapshot": "readings/baike-public-snapshot-latest.json",
     "public-hot-boards": "readings/public-hot-boards-latest.json",
+    "public-board-terms": "readings/public-board-terms-latest.json",
     "telegram-public-channels": "readings/telegram-public-channels-latest.json",
+    "social-spread": "readings/social-spread-latest.json",
 }
 
 
@@ -123,6 +126,7 @@ _STANDARD = {
     "ooni-gfw": Cadence(23, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "ioda-outages": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "weibo-hotsearch": Cadence(41, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "weibo-hotsearch-terms": Cadence(43, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "app-storefront": Cadence(53, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "china-econ": Cadence(41, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "in-path-interference": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
@@ -170,7 +174,9 @@ _STANDARD = {
     "wikipedia-gazetteer-rc": Cadence(27, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "baike-public-snapshot": Cadence(16, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "public-hot-boards": Cadence(36, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "public-board-terms": Cadence(45, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "telegram-public-channels": Cadence(18, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "social-spread": Cadence(47, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -182,6 +188,7 @@ _VIGOROUS = {
     "ooni-gfw": Cadence(11, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
     "ioda-outages": Cadence(19, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
     "weibo-hotsearch": Cadence(27, "*", expires_s=45 * 60, interval_s=3600),
+    "weibo-hotsearch-terms": Cadence(29, "*", expires_s=45 * 60, interval_s=3600),
     "app-storefront": Cadence(33, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
     "china-econ": Cadence(41, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "in-path-interference": Cadence(53, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
@@ -231,7 +238,9 @@ _VIGOROUS = {
     "wikipedia-gazetteer-rc": Cadence(27, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "baike-public-snapshot": Cadence(16, "*", expires_s=45 * 60, interval_s=3600),
     "public-hot-boards": Cadence(36, "*", expires_s=45 * 60, interval_s=3600),
+    "public-board-terms": Cadence(45, "*", expires_s=45 * 60, interval_s=3600),
     "telegram-public-channels": Cadence(18, "*", expires_s=45 * 60, interval_s=3600),
+    "social-spread": Cadence(47, "*", expires_s=45 * 60, interval_s=3600),
 }
 
 
@@ -417,7 +426,10 @@ _COUNT_PATHS = {
     "wikipedia-gazetteer-rc": ("n_observations",),
     "baike-public-snapshot": ("n_observations",),
     "public-hot-boards": ("n_observations",),
+    "public-board-terms": ("n_titles",),
     "telegram-public-channels": ("n_observations",),
+    "social-spread": ("n_rows",),
+    "weibo-hotsearch-terms": ("n_titles",),
 }
 
 
@@ -499,6 +511,9 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         main()
     elif name == "weibo-hotsearch":
         from scripts.weibo_hotsearch_pull import main
+        main()
+    elif name == "weibo-hotsearch-terms":
+        from scripts.weibo_hotsearch_terms_pull import main
         main()
     elif name == "app-storefront":
         from scripts.app_storefront_pull import main
@@ -616,8 +631,14 @@ def _invoke_snapshot(name: str, root: Path) -> None:
     elif name == "public-hot-boards":
         from scripts.public_hot_boards_pull import main
         main()
+    elif name == "public-board-terms":
+        from scripts.public_board_terms_pull import main
+        main()
     elif name == "telegram-public-channels":
         from scripts.telegram_public_channels_pull import main
+        main()
+    elif name == "social-spread":
+        from scripts.social_spread_pull import main
         main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")

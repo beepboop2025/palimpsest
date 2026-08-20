@@ -100,6 +100,9 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
         "wikipedia-gazetteer-rc",
         "baike-public-snapshot", "public-hot-boards",
         "telegram-public-channels",
+        "social-spread",
+        "weibo-hotsearch-terms",
+        "public-board-terms",
     } <= names
 
 
@@ -205,7 +208,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 35  # feed head + index processor + 33 passive snapshots
+    assert len(specs) == 38  # feed head + index processor + 36 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -238,6 +241,12 @@ def test_vigorous_profile_really_samples_fast_sources_more_often():
     assert "*/12" in str(standard["collect-snapshot-official-first-seen"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-telegram-public-channels"]["schedule"])
     assert "*/6" in str(standard["collect-snapshot-telegram-public-channels"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-social-spread"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-social-spread"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-weibo-hotsearch-terms"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-weibo-hotsearch-terms"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-public-board-terms"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-public-board-terms"]["schedule"])
     assert "*/6" in str(vigorous["collect-snapshot-censored-planet"]["schedule"])
 
 
@@ -431,6 +440,12 @@ def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences
     assert spec("vigorous", "public-hot-boards")["cadence_seconds"] == 3600
     assert spec("standard", "telegram-public-channels")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "telegram-public-channels")["cadence_seconds"] == 3600
+    assert spec("standard", "social-spread")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "social-spread")["cadence_seconds"] == 3600
+    assert spec("standard", "weibo-hotsearch-terms")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "weibo-hotsearch-terms")["cadence_seconds"] == 3600
+    assert spec("standard", "public-board-terms")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "public-board-terms")["cadence_seconds"] == 3600
     assert spec("standard", "censored-planet")["cadence_seconds"] == 24 * 3600
     assert spec("vigorous", "censored-planet")["cadence_seconds"] == 6 * 3600
     assert spec("standard", "wikipedia-gazetteer-rc")["cadence_seconds"] == 6 * 3600
@@ -467,7 +482,10 @@ def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path
     import scripts.news_wire_live_pull as news
     import scripts.official_first_seen_pull as official
     import scripts.public_hot_boards_pull as boards
+    import scripts.social_spread_pull as spread
     import scripts.telegram_public_channels_pull as telegram
+    import scripts.public_board_terms_pull as board_terms
+    import scripts.weibo_hotsearch_terms_pull as weibo_terms
     import scripts.wikipedia_gazetteer_rc_pull as wiki
 
     monkeypatch.setattr(official, "main", lambda: seen.append("official-first-seen"))
@@ -479,6 +497,9 @@ def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path
     monkeypatch.setattr(
         archive, "main", lambda **kwargs: seen.append(("archive-news-context", kwargs.get("root")))
     )
+    monkeypatch.setattr(spread, "main", lambda: seen.append("social-spread"))
+    monkeypatch.setattr(weibo_terms, "main", lambda: seen.append("weibo-hotsearch-terms"))
+    monkeypatch.setattr(board_terms, "main", lambda: seen.append("public-board-terms"))
     _invoke_snapshot("official-first-seen", tmp_path)
     _invoke_snapshot("news-wire-live", tmp_path)
     _invoke_snapshot("archive-news-context", tmp_path)
@@ -486,6 +507,9 @@ def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path
     _invoke_snapshot("baike-public-snapshot", tmp_path)
     _invoke_snapshot("public-hot-boards", tmp_path)
     _invoke_snapshot("telegram-public-channels", tmp_path)
+    _invoke_snapshot("social-spread", tmp_path)
+    _invoke_snapshot("weibo-hotsearch-terms", tmp_path)
+    _invoke_snapshot("public-board-terms", tmp_path)
     assert seen == [
         "official-first-seen", ("archive-news-context", tmp_path),
         "news-wire-live", ("archive-news-context", tmp_path),
@@ -493,6 +517,9 @@ def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path
         "wikipedia-gazetteer-rc",
         "baike-public-snapshot", "public-hot-boards",
         "telegram-public-channels",
+        "social-spread",
+        "weibo-hotsearch-terms",
+        "public-board-terms",
     ]
 
 
