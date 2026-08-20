@@ -9,18 +9,19 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 63,
+    "datasets": 64,
     "states": {
       "disabled": 1,
       "fresh": 42,
       "gated": 6,
+      "pending": 1,
       "private-node": 1,
       "stale": 10,
       "warming": 3
     },
     "layers": {
       "content": 11,
-      "cross-layer": 18,
+      "cross-layer": 19,
       "economy": 4,
       "integrity": 1,
       "model": 7,
@@ -3108,6 +3109,55 @@
         "history": "https://palimpsest.info/readings/reading-analysis-history.jsonl",
         "landing_page": "https://palimpsest.info/osint-china.html",
         "method": "https://palimpsest.info/docs/NEW-METHODS.md"
+      }
+    },
+    {
+      "id": "peer-context",
+      "name": "Peer-context review rank",
+      "description": "Orders GreatFire, OONI, and CDT peer rows against each peer's own history and a fail-closed Palimpsest join. This is a review rank, not a generative brief, not a causal attribution, and not automatic publication permission. Weiboscope is a citation only; the 2012 dump is not loaded.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire cached verdicts",
+        "OONI host/ASN or ooni-gfw history",
+        "China Digital Times public RSS titles"
+      ],
+      "latest": "readings/peer-context-latest.json",
+      "history": "readings/peer-context-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/METHODOLOGY.md",
+      "count_fields": [
+        "n_peer_series",
+        "n_peer_series_scored",
+        "n_joins"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "pending",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/peer-context-latest.json",
+        "history": "https://palimpsest.info/readings/peer-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/METHODOLOGY.md"
       }
     },
     {

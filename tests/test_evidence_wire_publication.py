@@ -286,7 +286,7 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
 
 def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    assert 'const CACHE = "palimpsest-v17"' in worker
+    assert 'const CACHE = "palimpsest-v18"' in worker
     assert '"/readings/newswire-latest.json"' in worker
     assert '"/readings/china-economic-pulse-latest.json"' in worker
     assert '"/readings/china-econ-observations-latest.json"' in worker

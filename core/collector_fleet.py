@@ -115,6 +115,7 @@ SNAPSHOT_OUTPUTS = {
     "public-hot-boards": "readings/public-hot-boards-latest.json",
     "telegram-public-channels": "readings/telegram-public-channels-latest.json",
     "reading-analysis": "readings/reading-analysis-latest.json",
+    "peer-context": "readings/peer-context-latest.json",
 }
 
 
@@ -171,6 +172,7 @@ _STANDARD = {
     "public-hot-boards": Cadence(36, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "telegram-public-channels": Cadence(18, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "reading-analysis": Cadence(57, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "peer-context": Cadence(59, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -232,6 +234,7 @@ _VIGOROUS = {
     "public-hot-boards": Cadence(36, "*", expires_s=45 * 60, interval_s=3600),
     "telegram-public-channels": Cadence(18, "*", expires_s=45 * 60, interval_s=3600),
     "reading-analysis": Cadence(57, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "peer-context": Cadence(59, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
 }
 
 
@@ -418,6 +421,7 @@ _COUNT_PATHS = {
     "public-hot-boards": ("n_observations",),
     "telegram-public-channels": ("n_observations",),
     "reading-analysis": ("n_instruments_scored",),
+    "peer-context": ("n_joins",),
 }
 
 
@@ -612,6 +616,12 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         code = main([])
         if code:
             raise RuntimeError("reading-analysis collector failed")
+    elif name == "peer-context":
+        from scripts.peer_context_pull import main
+
+        code = main([])
+        if code:
+            raise RuntimeError("peer-context collector failed")
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 

@@ -1,0 +1,129 @@
+{
+  "schema": "palimpsest-peer-context/v1",
+  "job": "peer-context",
+  "purpose": "Order and flag GreatFire, OONI, and CDT peer rows against each peer's own history and a Palimpsest join. Not a generative brief writer.",
+  "peers": ["greatfire", "ooni", "cdt"],
+  "citations_only": ["weiboscope"],
+  "forbidden_inputs": [
+    "weiboscope_2012_dump",
+    "greatfire_live_catalog_crawl",
+    "full_article_bodies",
+    "telegram_private_ids"
+  ],
+  "warehouse_files": {
+    "greatfire": "readings/greatfire-context-latest.json",
+    "greatfire_history": "readings/greatfire-context-history.jsonl",
+    "ooni": "readings/ooni-peer-context-latest.json",
+    "ooni_history": "readings/ooni-peer-context-history.jsonl",
+    "cdt": "readings/cdt-context-latest.json",
+    "cdt_history": "readings/cdt-context-history.jsonl"
+  },
+  "feature_schemas": {
+    "greatfire": {
+      "schema_version": "palimpsest-greatfire-context/v1",
+      "source": "cached-verdicts-only",
+      "do_not_crawl_catalog": true,
+      "latest": {
+        "hosts": [
+          {
+            "host": "example.com",
+            "observed_at": "2026-08-20T00:00:00Z",
+            "block_share": 0.3,
+            "blocked": 12,
+            "tested": 40,
+            "peer_date": "2026-08-20"
+          }
+        ]
+      },
+      "history_row": {
+        "host": "example.com",
+        "block_share": 0.22,
+        "observed_at": "2026-06-01T00:00:00Z"
+      },
+      "fit_field": "block_share",
+      "window_days": 90,
+      "minimum_prior": 6
+    },
+    "ooni": {
+      "schema_version": "palimpsest-ooni-peer-context/v1",
+      "source": "host-or-asn series from ooni-bulk / ooni-gfw already on disk",
+      "national_gfw_index": "cn-aggregate only; never a per-host score",
+      "latest": {
+        "series": [
+          {
+            "kind": "host",
+            "key": "example.com",
+            "anomaly_rate": 0.41,
+            "n_measurements": 80,
+            "peer_date": "2026-08-20"
+          },
+          {
+            "kind": "asn",
+            "key": "AS4808",
+            "anomaly_rate": 0.18,
+            "n_measurements": 40,
+            "peer_date": "2026-08-20"
+          }
+        ]
+      },
+      "history_row": {
+        "kind": "host",
+        "key": "example.com",
+        "anomaly_rate": 0.12,
+        "observed_at": "2026-06-01T00:00:00Z"
+      },
+      "fit_field": "anomaly_rate",
+      "minimum_prior": 6
+    },
+    "cdt": {
+      "schema_version": "palimpsest-cdt-context/v1",
+      "source": "public RSS titles and excerpts only",
+      "excerpt_chars": 280,
+      "do_not_fit_article_bodies": true,
+      "latest": {
+        "items": [
+          {
+            "item_id": "https://chinadigitaltimes.net/example/",
+            "title": "Example title",
+            "excerpt": "Bounded excerpt",
+            "url": "https://chinadigitaltimes.net/example/",
+            "host": "chinadigitaltimes.net",
+            "terms": ["example-term"],
+            "published_at": "2026-08-18T00:00:00Z",
+            "peer_date": "2026-08-18"
+          }
+        ],
+        "weeks": [
+          {"week_start": "2026-06-02", "n_titles": 12}
+        ]
+      },
+      "history_row": {
+        "series_id": "cdt-weekly-titles",
+        "n_titles": 12,
+        "week_start": "2026-06-02"
+      },
+      "fit_field": "n_titles",
+      "minimum_prior": 6
+    }
+  },
+  "rights": {
+    "training_use": "derived_only",
+    "labels": "human-editorial-review-required"
+  },
+  "gates": {
+    "minimum_prior": 6,
+    "unusual_threshold": 4.5,
+    "excerpt_chars": 280
+  },
+  "join": {
+    "fail_closed": true,
+    "substantive_keys": ["host", "asn", "term", "signal"],
+    "day_strengthens_only": true,
+    "object_kinds": [
+      "official-first-seen",
+      "board-term",
+      "bleedthrough-host",
+      "wire-event"
+    ]
+  }
+}
