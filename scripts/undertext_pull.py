@@ -33,7 +33,9 @@ from collectors.undertext import (
     content_key,
     divergence_to_observation,
 )
+from collectors.common_crawl_lake import load_china_lake_receipt, load_config, open_existing_database
 from core.china_joins import (
+    attach_common_crawl_join,
     attach_joins,
     cluster_by_url,
     gdelt_index,
@@ -413,22 +415,36 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
     weibo_links = weibo_index(weibo)
     ooni = instrument_ooni(_load_json("ooni-gfw-latest.json"))
     bleedthrough = instrument_bleedthrough(_load_json("bleedthrough-latest.json"))
-    joined = []
-    for row in clustered:
-        joined.append(attach_joins(
-            row,
-            gdelt=gdelt,
-            weibo=weibo_links,
-            ooni=ooni,
-            bleedthrough=bleedthrough,
-            undertext={
-                "id": "undertext-fusion",
-                "url": "https://palimpsest.info/readings/undertext-latest.json",
-                "title": "UNDERTEXT public-archive fusion",
-                "note": "This record is the Palimpsest reconstruction itself",
-            },
-        ))
-    return joined
+    receipt = load_china_lake_receipt()
+    connection = None
+    config = None
+    if receipt is None:
+        connection = open_existing_database()
+        if connection is not None:
+            config = load_config()
+    try:
+        joined = []
+        for row in clustered:
+            rec = attach_joins(
+                row,
+                gdelt=gdelt,
+                weibo=weibo_links,
+                ooni=ooni,
+                bleedthrough=bleedthrough,
+                undertext={
+                    "id": "undertext-fusion",
+                    "url": "https://palimpsest.info/readings/undertext-latest.json",
+                    "title": "UNDERTEXT public-archive fusion",
+                    "note": "This record is the Palimpsest reconstruction itself",
+                },
+            )
+            joined.append(attach_common_crawl_join(
+                rec, receipt=receipt, connection=connection, config=config,
+            ))
+        return joined
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 def _gazetteer_probes(limit: int = 12) -> list[Probe]:
@@ -520,18 +536,23 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
         "method_version": METHOD_VERSION,
         "source": (
             "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI "
-            "clustered by public URL, with GDELT/OONI/Bleedthrough joins"
+            "clustered by public URL, with GDELT/OONI/Bleedthrough joins and a "
+            "read-only Common Crawl lake join when a sanitized receipt or "
+            "existing sqlite is already present"
         ),
         "scope": (
             "Fat public-evidence objects reconstructed from already-public "
             "Palimpsest readings, plus an optional Wikipedia-only live surface. "
             "Live Weibo/Baidu/Baike fetches stay disabled on this runner. "
-            "Article bodies that were never captured stay unnamed as missing."
+            "Article bodies that were never captured stay unnamed as missing. "
+            "The Common Crawl warehouse is never created or scraped from here."
         ),
         "method": (
             "Offline fusion of every committed sample/reconstruction through "
             "china_observation.enrich_observation, URL clustering, and honest "
-            "cross-signal joins. Optional live surfaces require "
+            "cross-signal joins. A matching URL/host/digest on the existing "
+            "node lake attaches a sanitized receipt; an empty or absent lake "
+            "abstains. Optional live surfaces require "
             "UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch."
         ),
         "n_observations": len(serialized),

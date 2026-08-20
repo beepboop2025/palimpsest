@@ -19,11 +19,16 @@ operator chooses a reviewed locator.
   derived/common-crawl-summary.json
   derived/archive-news-context.json
   derived/story-ranking-features.jsonl
+  derived/china-observation-lake-joins.json
 ```
 
 The inbox and database contain full public URLs and are private node state. The
 feature, context, and story-ranking files contain aggregate metadata only and are
-mode `0600`. None is copied into the website by this lane.
+mode `0600`. `china-observation-lake-joins.json` is a sanitized receipt
+(match kind, allowlisted host, capture time, MIME, language, digest, locator
+hash) written by `refresh` / `china-join`. None of these files, and no WARC
+object, is copied into the website or git by this lane. An empty or absent
+warehouse yields `status: no_data` and the public China path abstains.
 
 The stable path is a bind mount from the separately mounted bulk Volume. The
 installer refuses a source on `/`, a symlinked source, a dirty checkout, a
@@ -147,7 +152,9 @@ service joins China-scoped event IDs to:
 
 1. the newest Common Crawl feature row that existed before the event;
 2. the event's already-declared Palimpsest scan and economic surfaces; and
-3. explicit coverage, mutation, and freshness limitations.
+3. explicit coverage, mutation, and freshness limitations; and
+4. already-public China observations (UNDERTEXT / OSINT) to a matching
+   URL, allowlisted host, or content digest already in the lake.
 
 The output is a structured context receipt, not prose. It carries
 `context-not-causation`, sets `automatic_publication_eligible` to false, and

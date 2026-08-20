@@ -7,7 +7,7 @@
   "generated_at": "2026-08-20T03:58:31Z",
   "n_stories": 36,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "c6b4264d742110a0948d1205b09240c8f8d2a469",
+  "source_commit": "6ed340ceb696ce8a5ba59b3582d4ed4accd08237",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -731,13 +731,13 @@
         "url": "https://palimpsest.info/readings/undertext-latest.json",
         "input": {
           "filename": "undertext-latest.json",
-          "sha256": "dd18f775c7cbda1aff1e3f0c00067b00424ed51edc3cb1c067559ebec3da17f7",
-          "bytes": 72809
+          "sha256": "25661629986a2d50a3df594adf7ec3b8891fcea604f657614f2aade216682b8e",
+          "bytes": 74138
         },
         "source_timestamp": "2026-08-20T03:58:30Z"
       },
       "method": {
-        "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+        "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
         "version": 1
       },
       "limitations": [

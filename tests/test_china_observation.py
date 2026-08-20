@@ -75,6 +75,8 @@ def test_enrich_observation_is_additive_and_honest():
     assert row["cross_links"]["weibo"] is None
     assert row["cross_links"]["undertext"] is None
     assert row["cross_links"]["bleedthrough"] is None
+    assert row["cross_links"]["common_crawl"] is None
+    assert row.get("common_crawl") in (None, {}) or not row.get("common_crawl")
     assert row["language"] in {"zh", "en", "mixed", "unknown"}
     assert row["uncertainty"]
     assert any("title/term only" in note for note in row["uncertainty"])

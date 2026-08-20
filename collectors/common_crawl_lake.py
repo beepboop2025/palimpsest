@@ -678,6 +678,238 @@ def database_path(warehouse: Path | str | None = None) -> Path:
     return warehouse_path(warehouse) / DEFAULT_DATABASE_NAME
 
 
+CHINA_JOINS_KIND = "common-crawl-china-observation-joins"
+CHINA_JOINS_SCHEMA = "palimpsest.common-crawl-china-joins.v1"
+CHINA_JOINS_FILENAME = "china-observation-lake-joins.json"
+SANITIZED_MATCH_KEYS = (
+    "match_kind",
+    "target_id",
+    "host",
+    "crawl",
+    "capture_at",
+    "mime_type",
+    "languages",
+    "content_digest",
+    "locator_sha256",
+    "relation",
+    "uncertainty",
+)
+_LAKE_LEAK_KEYS = frozenset(
+    {
+        "canonical_url",
+        "url",
+        "warc_filename",
+        "warc_record_offset",
+        "warc_record_length",
+        "input_sha256",
+    }
+)
+
+
+def existing_database_path(value: Path | str | None = None) -> Path | None:
+    """Return the sqlite path only when the file already exists. Never create it."""
+
+    if value is not None:
+        path = Path(value).expanduser()
+        if path.is_file():
+            return path
+        candidate = path / DEFAULT_DATABASE_NAME
+        return candidate if candidate.is_file() else None
+    env = (os.getenv("PALIMPSEST_COMMON_CRAWL_WAREHOUSE_DIR") or "").strip()
+    candidates: list[Path] = []
+    if env:
+        env_path = Path(env).expanduser()
+        candidates.append(env_path if env_path.suffix == ".sqlite3" else env_path / DEFAULT_DATABASE_NAME)
+    candidates.append(Path("/var/lib/palimpsest/common-crawl") / DEFAULT_DATABASE_NAME)
+    candidates.append(DEFAULT_WAREHOUSE / DEFAULT_DATABASE_NAME)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def open_existing_database(value: Path | str | None = None) -> sqlite3.Connection | None:
+    """Read-only connection to an already-present warehouse. None if absent."""
+
+    path = existing_database_path(value)
+    if path is None:
+        return None
+    try:
+        uri = path.resolve().as_posix().replace("?", "%3F")
+        connection = sqlite3.connect(f"file:{uri}?mode=ro", uri=True)
+        connection.row_factory = sqlite3.Row
+        connection.execute("SELECT 1")
+    except sqlite3.Error:
+        return None
+    return connection
+
+
+def lake_observation_count(connection: sqlite3.Connection) -> int:
+    try:
+        row = connection.execute("SELECT COUNT(*) AS n FROM observations").fetchone()
+    except sqlite3.Error:
+        return 0
+    if row is None:
+        return 0
+    return int(row["n"] if "n" in row.keys() else row[0])
+
+
+def public_url_identity(
+    url: object, *, maximum_chars: int = 4096
+) -> tuple[str, str] | None:
+    """Stable ``url_sha256`` and host for an already-public URL. None if unusable."""
+
+    if type(url) is not str or not url:
+        return None
+    try:
+        canonical, host = _canonical_url(url, maximum_chars=maximum_chars)
+    except (ValidationError, ValueError):
+        return None
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest(), host
+
+
+def sanitized_match(row: Mapping[str, Any], match_kind: str) -> dict[str, Any]:
+    """Public receipt fields. Never include lake URLs or WARC fetch coordinates."""
+
+    host = ""
+    canonical = row["canonical_url"] if "canonical_url" in row.keys() else ""
+    if isinstance(canonical, str) and canonical:
+        try:
+            host = (urlsplit(canonical).hostname or "").lower()
+        except ValueError:
+            host = ""
+    if match_kind == "host":
+        receipt = {
+            "match_kind": "host",
+            "target_id": row["target_id"],
+            "host": host or None,
+            "crawl": row["crawl"],
+            "capture_at": row["capture_at"],
+            "mime_type": None,
+            "languages": None,
+            "content_digest": None,
+            "locator_sha256": None,
+            "relation": "instrument-archive-context-not-url-corroboration",
+            "uncertainty": (
+                "Common Crawl host coverage on the node lake. "
+                "Not a matching URL. Not a deletion claim."
+            ),
+        }
+    else:
+        receipt = {
+            "match_kind": match_kind,
+            "target_id": row["target_id"],
+            "host": host or None,
+            "crawl": row["crawl"],
+            "capture_at": row["capture_at"],
+            "mime_type": row["mime_type"] or None,
+            "languages": row["languages"] or None,
+            "content_digest": row["content_digest"] or None,
+            "locator_sha256": row["locator_sha256"] or None,
+            "relation": "archive-coverage-not-deletion",
+            "uncertainty": (
+                "Common Crawl capture on the node lake. "
+                "Coverage gap is not a deletion."
+            ),
+        }
+    leaked = _LAKE_LEAK_KEYS.intersection(receipt)
+    if leaked:
+        raise ValidationError(f"sanitized lake match leaked private keys: {sorted(leaked)}")
+    return receipt
+
+
+def public_match_fields(value: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value.get(key) for key in SANITIZED_MATCH_KEYS}
+
+
+def match_observation(
+    connection: sqlite3.Connection,
+    record: Mapping[str, Any],
+    config: LakeConfig | None = None,
+) -> dict[str, Any] | None:
+    """Newest URL, digest, or allowlisted-host match. Read-only. No network."""
+
+    cfg = config or load_config()
+    url = record.get("url") or record.get("source_url")
+    identity = public_url_identity(url, maximum_chars=cfg.limits.url_chars)
+    if identity is not None:
+        url_sha, _host = identity
+        row = connection.execute(
+            """
+            SELECT * FROM observations
+             WHERE url_sha256 = ?
+             ORDER BY capture_at DESC, observation_id DESC
+             LIMIT 1
+            """,
+            (url_sha,),
+        ).fetchone()
+        if row is not None:
+            return sanitized_match(row, "url")
+    digest = record.get("content_digest")
+    if isinstance(digest, str):
+        normalized = digest.strip().upper()
+        if _DIGEST_RE.fullmatch(normalized):
+            row = connection.execute(
+                """
+                SELECT * FROM observations
+                 WHERE content_digest = ?
+                 ORDER BY capture_at DESC, observation_id DESC
+                 LIMIT 1
+                """,
+                (normalized,),
+            ).fetchone()
+            if row is not None:
+                return sanitized_match(row, "digest")
+    if identity is not None:
+        host = identity[1]
+        target = cfg.target_by_host.get(host)
+        if target is not None:
+            row = connection.execute(
+                """
+                SELECT * FROM observations
+                 WHERE target_id = ?
+                 ORDER BY capture_at DESC, observation_id DESC
+                 LIMIT 1
+                """,
+                (target.id,),
+            ).fetchone()
+            if row is not None:
+                return sanitized_match(row, "host")
+    return None
+
+
+def china_lake_receipt_paths() -> list[Path]:
+    paths: list[Path] = []
+    env = (os.getenv("PALIMPSEST_CHINA_LAKE_JOINS") or "").strip()
+    if env:
+        paths.append(Path(env).expanduser())
+    paths.append(ROOT / "readings" / "common-crawl-china-joins-latest.json")
+    env_wh = (os.getenv("PALIMPSEST_COMMON_CRAWL_WAREHOUSE_DIR") or "").strip()
+    if env_wh:
+        paths.append(Path(env_wh).expanduser() / "derived" / CHINA_JOINS_FILENAME)
+    paths.append(Path("/var/lib/palimpsest/common-crawl") / "derived" / CHINA_JOINS_FILENAME)
+    default_derived = DEFAULT_WAREHOUSE / "derived" / CHINA_JOINS_FILENAME
+    if default_derived.is_file():
+        paths.append(default_derived)
+    return paths
+
+
+def load_china_lake_receipt(path: Path | str | None = None) -> dict[str, Any] | None:
+    """Load a sanitized join receipt. Missing or unreadable files abstain."""
+
+    candidates = [Path(path).expanduser()] if path is not None else china_lake_receipt_paths()
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        try:
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and data.get("kind") == CHINA_JOINS_KIND:
+            return data
+    return None
+
+
 def _row_value(row: Mapping[str, Any], name: str, default: Any = "") -> Any:
     for alias in _ROW_ALIASES[name]:
         if alias in row and row[alias] not in (None, ""):

@@ -274,6 +274,9 @@
         "gazetteer_hits",
         "archive",
         "cross_links",
+        "common_crawl_match_kind",
+        "common_crawl_host",
+        "common_crawl_capture_at",
         "relation"
       ],
       "properties": {
@@ -300,7 +303,8 @@
             "greatfire",
             "weibo",
             "undertext",
-            "bleedthrough"
+            "bleedthrough",
+            "common_crawl"
           ],
           "properties": {
             "cdt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
@@ -309,8 +313,18 @@
             "greatfire": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
             "weibo": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
             "undertext": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
-            "bleedthrough": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]}
+            "bleedthrough": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "common_crawl": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]}
           }
+        },
+        "common_crawl_match_kind": {
+          "oneOf": [{"type": "null"}, {"enum": ["url", "host", "digest"]}]
+        },
+        "common_crawl_host": {
+          "oneOf": [{"type": "null"}, {"type": "string", "minLength": 1, "maxLength": 253}]
+        },
+        "common_crawl_capture_at": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
         },
         "first_seen": {
           "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]

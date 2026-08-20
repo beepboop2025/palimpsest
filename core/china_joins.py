@@ -17,11 +17,27 @@ from core.china_observation import (
     apply_uncertainty,
     iso_z,
     merge_cross_links,
+    observation_key,
     public_text,
 )
 
 
 INSTRUMENT_NOTE = "instrument-context-not-url-corroboration"
+_LAKE_MATCH_RANK = {"url": 3, "digest": 2, "host": 1}
+
+
+def _prefer_lake_match(left: Any, right: Any) -> dict[str, Any] | None:
+    left_row = left if isinstance(left, Mapping) and left else None
+    right_row = right if isinstance(right, Mapping) and right else None
+    if right_row and _LAKE_MATCH_RANK.get(str(right_row.get("match_kind") or ""), 0) > _LAKE_MATCH_RANK.get(
+        str((left_row or {}).get("match_kind") or ""), 0
+    ):
+        return dict(right_row)
+    if left_row:
+        return dict(left_row)
+    if right_row:
+        return dict(right_row)
+    return None
 CDT_HOST_MARKERS = ("//chinadigitaltimes.net/", "//www.chinadigitaltimes.net/")
 GREATFIRE_HOST_MARKERS = ("//en.greatfire.org/", "//greatfire.org/")
 
@@ -186,6 +202,7 @@ def attach_joins(
     ooni: Mapping[str, Any] | None = None,
     bleedthrough: Mapping[str, Any] | None = None,
     undertext: Mapping[str, Any] | None = None,
+    common_crawl: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Attach real related records. Recomputes uncertainty after the join."""
 
@@ -211,6 +228,7 @@ def attach_joins(
         "ooni": ooni,
         "bleedthrough": bleedthrough,
         "undertext": undertext,
+        "common_crawl": common_crawl,
     }
     row["cross_links"] = merge_cross_links(row.get("cross_links"), incoming)
     return apply_uncertainty(row)
@@ -324,6 +342,7 @@ def merge_observations(left: Mapping[str, Any], right: Mapping[str, Any]) -> dic
         "gazetteer_hits": gazetteer_hits(title, body, " ".join(terms)),
         "cross_links": merge_cross_links(keep.get("cross_links"), other.get("cross_links")),
         "source": public_text(keep.get("source"), limit=120) or public_text(other.get("source"), limit=120),
+        "common_crawl": _prefer_lake_match(keep.get("common_crawl"), other.get("common_crawl")),
     }
     archive_keep = keep.get("archive") if isinstance(keep.get("archive"), dict) else {}
     archive_other = other.get("archive") if isinstance(other.get("archive"), dict) else {}
@@ -365,3 +384,86 @@ def cluster_by_url(rows: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
         else:
             clustered[url] = row
     return leftovers + list(clustered.values())
+
+
+def common_crawl_related_link(match: Mapping[str, Any]) -> dict[str, Any]:
+    """Compact related-link. Never carries a lake URL or WARC fetch coordinate."""
+
+    ident = (
+        public_text(match.get("locator_sha256"), limit=80)
+        or (
+            f"host:{public_text(match.get('host'), limit=64)}"
+            if match.get("host")
+            else public_text(match.get("target_id"), limit=64)
+        )
+        or "common-crawl-lake"
+    )
+    parts = [
+        public_text(match.get("relation"), limit=80) or "archive-coverage-not-deletion",
+        f"match_kind={public_text(match.get('match_kind'), limit=16)}",
+    ]
+    if match.get("host"):
+        parts.append(f"host={public_text(match.get('host'), limit=253)}")
+    if match.get("crawl"):
+        parts.append(f"crawl={public_text(match.get('crawl'), limit=32)}")
+    if match.get("capture_at"):
+        parts.append(f"capture_at={iso_z(match.get('capture_at')) or public_text(match.get('capture_at'), limit=32)}")
+    if match.get("mime_type"):
+        parts.append(f"mime={public_text(match.get('mime_type'), limit=64)}")
+    if match.get("languages"):
+        parts.append(f"languages={public_text(match.get('languages'), limit=64)}")
+    if match.get("content_digest"):
+        parts.append(f"digest={public_text(match.get('content_digest'), limit=40)}")
+    return {
+        "id": ident[:80],
+        "url": None,
+        "title": f"Common Crawl {public_text(match.get('match_kind'), limit=16) or 'lake'} match",
+        "note": "; ".join(part for part in parts if part),
+    }
+
+
+def _match_from_receipt(
+    observation: Mapping[str, Any], receipt: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    from collectors.common_crawl_lake import public_match_fields, public_url_identity
+
+    key = observation_key(observation)
+    identity = public_url_identity(observation.get("url") or observation.get("source_url"))
+    url_sha = identity[0] if identity else None
+    for item in receipt.get("matches") or []:
+        if not isinstance(item, Mapping):
+            continue
+        if key and item.get("observation_key") == key:
+            return public_match_fields(item)
+        if url_sha and item.get("url_sha256") == url_sha:
+            return public_match_fields(item)
+    return None
+
+
+def attach_common_crawl_join(
+    observation: Mapping[str, Any],
+    *,
+    receipt: Mapping[str, Any] | None = None,
+    connection=None,
+    config=None,
+) -> dict[str, Any]:
+    """Attach a sanitized lake match. Missing/empty lake leaves the join null."""
+
+    from collectors.common_crawl_lake import SANITIZED_MATCH_KEYS, match_observation
+
+    match = None
+    if isinstance(receipt, Mapping) and receipt.get("status") == "ok":
+        match = _match_from_receipt(observation, receipt)
+    elif connection is not None:
+        match = match_observation(connection, observation, config)
+    row = dict(observation)
+    if not match:
+        row["common_crawl"] = None
+        row["cross_links"] = merge_cross_links(row.get("cross_links"), {"common_crawl": None})
+        return apply_uncertainty(row)
+    row["common_crawl"] = {key: match.get(key) for key in SANITIZED_MATCH_KEYS}
+    row["cross_links"] = merge_cross_links(
+        row.get("cross_links"),
+        {"common_crawl": common_crawl_related_link(match)},
+    )
+    return apply_uncertainty(row)

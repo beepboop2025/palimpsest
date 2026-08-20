@@ -1,9 +1,9 @@
 {
   "generated_at": "2026-08-20T03:58:30Z",
   "method_version": 1,
-  "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI clustered by public URL, with GDELT/OONI/Bleedthrough joins",
-  "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing.",
-  "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+  "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
+  "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
+  "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
   "n_observations": 18,
   "live_surfaces_enabled": false,
   "live_round_ran": false,
@@ -78,7 +78,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -95,7 +96,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -164,7 +166,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -181,7 +184,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -250,7 +254,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -267,7 +272,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -336,7 +342,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -353,7 +360,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -422,7 +430,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -439,7 +448,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -508,7 +518,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -525,7 +536,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -597,7 +609,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -613,7 +626,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -685,7 +699,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -701,7 +716,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -766,7 +782,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -782,7 +799,8 @@
         "last-confirmed-alive is unknown",
         "no China Digital Times ledger join",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -864,7 +882,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -878,7 +897,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -945,7 +965,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -959,7 +980,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1026,7 +1048,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1041,7 +1064,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1113,7 +1137,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1127,7 +1152,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1204,7 +1230,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1218,7 +1245,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1296,7 +1324,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1310,7 +1339,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1372,7 +1402,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1387,7 +1418,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1449,7 +1481,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1463,7 +1496,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     },
     {
       "terms": [
@@ -1525,7 +1559,8 @@
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "title": "Bleedthrough injector floor, 6 distinct pools",
           "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
-        }
+        },
+        "common_crawl": null
       },
       "provenance": {
         "collector": "undertext",
@@ -1539,7 +1574,8 @@
         "no deletion-confirmation trail on this row",
         "last-confirmed-alive is unknown",
         "OONI/Bleedthrough join is instrument-level, not URL corroboration"
-      ]
+      ],
+      "common_crawl": null
     }
   ]
 }

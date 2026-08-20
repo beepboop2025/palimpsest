@@ -172,6 +172,28 @@ def test_osint_layer_shows_url_hash_and_snapshots():
     assert "web.archive.org/web/20260101000000" in html
 
 
+def test_osint_layer_shows_sanitized_common_crawl_join_without_a_url():
+    html = builder._osint_layer({
+        "situation_id": "sit-test",
+        "osint_context": [{
+            "source": "undertext:fusion:wayback",
+            "title": "NBS release",
+            "url": "https://www.stats.gov.cn/sj/zxfb/",
+            "first_seen": "2026-01-01T00:00:00Z",
+            "last_seen": "2026-01-02T00:00:00Z",
+            "relation": "topic-or-url-context-not-corroboration",
+            "common_crawl_match_kind": "url",
+            "common_crawl_host": "www.stats.gov.cn",
+            "common_crawl_capture_at": "2026-07-24T12:30:00Z",
+            "archive": {},
+        }],
+    })
+    assert "Common Crawl lake url" in html
+    assert "www.stats.gov.cn" in html
+    assert "2026-07-24T12:30:00Z" in html
+    assert "data.commoncrawl.org" not in html
+
+
 def test_checked_in_situation_outputs_are_current():
     assert builder.run(check=True) == 0
 

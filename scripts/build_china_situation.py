@@ -214,6 +214,16 @@ def _osint_evidence(item: Mapping[str, Any]) -> str:
     count = item.get("confirmation_count")
     if isinstance(count, int) and count:
         parts.append(f"{count} confirmation{'s' if count != 1 else ''}")
+    cc_kind = item.get("common_crawl_match_kind")
+    if isinstance(cc_kind, str) and cc_kind:
+        label = f"Common Crawl lake {cc_kind}"
+        cc_host = item.get("common_crawl_host")
+        if isinstance(cc_host, str) and cc_host:
+            label += f" host {_h(cc_host)}"
+        cc_at = item.get("common_crawl_capture_at")
+        if isinstance(cc_at, str) and cc_at:
+            label += f" captured {_h(cc_at)}"
+        parts.append(label)
     return " · ".join(parts) if parts else "no public URL or snapshot on this row"
 
 

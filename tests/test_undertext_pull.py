@@ -7,7 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.undertext import DELETION
+from collectors import common_crawl_lake as lake
+from core.governance import KillSwitch
 from scripts import undertext_pull as pull
+from tests.test_common_crawl_lake import _jsonl, _row
 
 
 class _Live:
@@ -191,3 +194,74 @@ def test_pull_abstains_when_fusion_is_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
     assert pull.main() is None
     assert not (tmp_path / "undertext-latest.json").exists()
+
+
+def test_fusion_abstains_from_common_crawl_when_lake_is_absent(tmp_path, monkeypatch):
+    from collectors import common_crawl_lake as lake
+
+    readings = tmp_path / "readings"
+    readings.mkdir()
+    (readings / "wayback-latest.json").write_text(json.dumps({
+        "generated_at": "2026-08-01T00:00:00Z",
+        "reconstructions": [{
+            "url": "https://www.stats.gov.cn/sj/zxfb/",
+            "term": "青年失业率",
+            "event": DELETION,
+            "detail": "200 to 404",
+            "last_capture": "2026-08-01T00:00:00Z",
+            "note": "archive-witnessed",
+        }],
+        "ddti_observations": [],
+    }), encoding="utf-8")
+    (readings / "weibo-hotsearch-latest.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pull, "READINGS", readings)
+    monkeypatch.delenv("PALIMPSEST_COMMON_CRAWL_WAREHOUSE_DIR", raising=False)
+    monkeypatch.delenv("PALIMPSEST_CHINA_LAKE_JOINS", raising=False)
+    existed = lake.DEFAULT_WAREHOUSE.exists()
+    rows = pull.fuse_existing_readings()
+    wayback = next(row for row in rows if row["source"] == "undertext:fusion:wayback")
+    assert wayback["cross_links"]["common_crawl"] is None
+    assert wayback.get("common_crawl") in (None, {})
+    if not existed:
+        assert not lake.DEFAULT_WAREHOUSE.exists()
+
+
+def test_fusion_attaches_sanitized_lake_url_match(tmp_path, monkeypatch):
+    warehouse = tmp_path / "warehouse"
+    lake.ingest_export(
+        _jsonl(
+            tmp_path / "nbs.jsonl",
+            [_row(url="https://www.stats.gov.cn/sj/zxfb/")],
+        ),
+        config_path=lake.DEFAULT_CONFIG,
+        warehouse=warehouse,
+        kill_switch=KillSwitch(path=tmp_path / "halt"),
+        now=datetime(2026, 8, 12, tzinfo=timezone.utc),
+    )
+    readings = tmp_path / "readings"
+    readings.mkdir()
+    (readings / "wayback-latest.json").write_text(json.dumps({
+        "generated_at": "2026-08-01T00:00:00Z",
+        "reconstructions": [{
+            "url": "https://www.stats.gov.cn/sj/zxfb/",
+            "term": "青年失业率",
+            "event": DELETION,
+            "detail": "200 to 404",
+            "last_capture": "2026-08-01T00:00:00Z",
+            "note": "archive-witnessed",
+        }],
+        "ddti_observations": [],
+    }), encoding="utf-8")
+    (readings / "weibo-hotsearch-latest.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pull, "READINGS", readings)
+    monkeypatch.setenv("PALIMPSEST_COMMON_CRAWL_WAREHOUSE_DIR", str(warehouse))
+    monkeypatch.delenv("PALIMPSEST_CHINA_LAKE_JOINS", raising=False)
+    rows = pull.fuse_existing_readings()
+    wayback = next(row for row in rows if row["source"] == "undertext:fusion:wayback")
+    assert wayback["common_crawl"]["match_kind"] == "url"
+    assert wayback["common_crawl"]["host"] == "www.stats.gov.cn"
+    assert wayback["cross_links"]["common_crawl"]["url"] is None
+    blob = json.dumps(wayback)
+    assert "warc_filename" not in blob
+    assert "warc_record_offset" not in blob
+    assert "canonical_url" not in blob

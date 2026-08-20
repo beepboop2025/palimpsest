@@ -87,6 +87,14 @@ ROW_FIELDS = (
     "cross_links_weibo",
     "cross_links_undertext",
     "cross_links_bleedthrough",
+    "cross_links_common_crawl",
+    "common_crawl_match_kind",
+    "common_crawl_host",
+    "common_crawl_capture_at",
+    "common_crawl_mime_type",
+    "common_crawl_languages",
+    "common_crawl_content_digest",
+    "common_crawl_locator_sha256",
     "gazetteer",
     "collector",
     "cite",
@@ -94,9 +102,11 @@ ROW_FIELDS = (
 
 HONESTY_CAPTURES = (
     "Public posts that were already published, public deletion and blocking "
-    "ledgers, Wayback reconstructions of those public URLs, and GFW injector "
+    "ledgers, Wayback reconstructions of those public URLs, GFW injector "
     "telemetry from separate instruments (OONI, Censored Planet, Inside View, "
-    "Bleedthrough)."
+    "Bleedthrough), and sanitized Common Crawl lake joins (capture time, MIME, "
+    "language, digest) when a matching URL, host, or digest already exists on "
+    "the node. The lake is not a live scrape and is not copied here."
 )
 HONESTY_DOES_NOT = (
     "Private WeChat, classified systems, in-country accounts, follower graphs, "
@@ -279,6 +289,14 @@ def _row(
     cross_links_weibo: str = "",
     cross_links_undertext: str = "",
     cross_links_bleedthrough: str = "",
+    cross_links_common_crawl: str = "",
+    common_crawl_match_kind: str = "",
+    common_crawl_host: str = "",
+    common_crawl_capture_at: str = "",
+    common_crawl_mime_type: str = "",
+    common_crawl_languages: str = "",
+    common_crawl_content_digest: str = "",
+    common_crawl_locator_sha256: str = "",
     gazetteer: str,
     collector: str,
 ) -> dict[str, str]:
@@ -318,6 +336,14 @@ def _row(
         "cross_links_weibo": public_text(cross_links_weibo, limit=800),
         "cross_links_undertext": public_text(cross_links_undertext, limit=800),
         "cross_links_bleedthrough": public_text(cross_links_bleedthrough, limit=800),
+        "cross_links_common_crawl": public_text(cross_links_common_crawl, limit=800),
+        "common_crawl_match_kind": public_text(common_crawl_match_kind, limit=16),
+        "common_crawl_host": public_text(common_crawl_host, limit=253),
+        "common_crawl_capture_at": public_text(common_crawl_capture_at, limit=32),
+        "common_crawl_mime_type": public_text(common_crawl_mime_type, limit=64),
+        "common_crawl_languages": public_text(common_crawl_languages, limit=64),
+        "common_crawl_content_digest": public_text(common_crawl_content_digest, limit=40),
+        "common_crawl_locator_sha256": public_text(common_crawl_locator_sha256, limit=64),
         "gazetteer": gazetteer,
         "collector": public_text(collector, limit=40) or "unknown",
         "cite": "",
@@ -334,6 +360,7 @@ def _from_observation(obs: Mapping[str, Any], *, collector: str) -> dict[str, st
     archive = obs.get("archive") if isinstance(obs.get("archive"), dict) else {}
     bracket = archive.get("timestamp_bracket") if isinstance(archive.get("timestamp_bracket"), dict) else {}
     links = obs.get("cross_links") if isinstance(obs.get("cross_links"), dict) else {}
+    lake = obs.get("common_crawl") if isinstance(obs.get("common_crawl"), dict) else {}
     digest = _sha(obs.get("content_sha256"))
     body = public_text(obs.get("text") or obs.get("detail") or obs.get("note"), limit=8000)
     if not digest:
@@ -388,6 +415,14 @@ def _from_observation(obs: Mapping[str, Any], *, collector: str) -> dict[str, st
         cross_links_weibo=_flatten_link(links.get("weibo")),
         cross_links_undertext=_flatten_link(links.get("undertext")),
         cross_links_bleedthrough=_flatten_link(links.get("bleedthrough")),
+        cross_links_common_crawl=_flatten_link(links.get("common_crawl")),
+        common_crawl_match_kind=public_text(lake.get("match_kind"), limit=16),
+        common_crawl_host=public_text(lake.get("host"), limit=253),
+        common_crawl_capture_at=iso_z(lake.get("capture_at")) or "",
+        common_crawl_mime_type=public_text(lake.get("mime_type"), limit=64),
+        common_crawl_languages=public_text(lake.get("languages"), limit=64),
+        common_crawl_content_digest=public_text(lake.get("content_digest"), limit=40),
+        common_crawl_locator_sha256=public_text(lake.get("locator_sha256"), limit=64),
         gazetteer=_gazetteer_label(obs.get("gazetteer_hits")),
         collector=collector,
     )
@@ -463,7 +498,10 @@ def _merge_row(existing: Mapping[str, str], candidate: Mapping[str, str]) -> dic
         "post_event_snapshot", "bracket_before", "bracket_after",
         "cross_links_cdt", "cross_links_gdelt", "cross_links_ooni",
         "cross_links_greatfire", "cross_links_weibo", "cross_links_undertext",
-        "cross_links_bleedthrough",
+        "cross_links_bleedthrough", "cross_links_common_crawl",
+        "common_crawl_match_kind", "common_crawl_host", "common_crawl_capture_at",
+        "common_crawl_mime_type", "common_crawl_languages",
+        "common_crawl_content_digest", "common_crawl_locator_sha256",
     ):
         if not keep.get(field) and other.get(field):
             keep[field] = other[field]
@@ -667,6 +705,14 @@ def _card(row: Mapping[str, str]) -> str:
         + pair("Weibo", row.get("cross_links_weibo") or "")
         + pair("UNDERTEXT", row.get("cross_links_undertext") or "")
         + pair("Bleedthrough", row.get("cross_links_bleedthrough") or "")
+        + pair("Common Crawl lake", row.get("cross_links_common_crawl") or "")
+        + pair("CC match", row.get("common_crawl_match_kind") or "")
+        + pair("CC host", row.get("common_crawl_host") or "")
+        + pair("CC capture", row.get("common_crawl_capture_at") or "")
+        + pair("CC MIME", row.get("common_crawl_mime_type") or "")
+        + pair("CC language", row.get("common_crawl_languages") or "")
+        + pair("CC digest", row.get("common_crawl_content_digest") or "")
+        + pair("CC locator", row.get("common_crawl_locator_sha256") or "")
         + f"<div><dt>Cite</dt><dd>{_h(row.get('cite') or '')}</dd></div>"
         + "</dl></details>"
     )

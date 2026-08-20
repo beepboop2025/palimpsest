@@ -87,6 +87,17 @@ def content_sha256(*parts: str) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def observation_key(observation: Mapping[str, Any]) -> str:
+    """Stable public identity used by Situation and the Common Crawl lake join."""
+
+    url = public_text(observation.get("url") or observation.get("source_url"), limit=2048)
+    return content_sha256(
+        public_text(observation.get("source"), limit=80),
+        url,
+        public_text(observation.get("title"), limit=240),
+    )[:32]
+
+
 def public_text(value: Any, *, limit: int = MAX_PUBLIC_TEXT) -> str:
     """Bound public text. Strip angle brackets so feed HTML cannot become markup."""
 
@@ -291,6 +302,7 @@ def cross_links(
     weibo: Mapping[str, Any] | None = None,
     undertext: Mapping[str, Any] | None = None,
     bleedthrough: Mapping[str, Any] | None = None,
+    common_crawl: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Attach only caller-supplied related records. Absence stays null, never a zero."""
 
@@ -302,6 +314,7 @@ def cross_links(
         "weibo": _related_link(weibo),
         "undertext": _related_link(undertext),
         "bleedthrough": _related_link(bleedthrough),
+        "common_crawl": _related_link(common_crawl),
     }
 
 
@@ -346,6 +359,14 @@ def uncertainty_notes(observation: Mapping[str, Any]) -> list[str]:
         notes.append("no China Digital Times ledger join")
     if links.get("ooni") or links.get("bleedthrough"):
         notes.append("OONI/Bleedthrough join is instrument-level, not URL corroboration")
+    lake = observation.get("common_crawl") if isinstance(observation.get("common_crawl"), dict) else {}
+    if links.get("common_crawl") or lake:
+        if (lake.get("match_kind") or "") == "host":
+            notes.append(
+                "Common Crawl join is host-level archive context, not URL corroboration"
+            )
+        else:
+            notes.append("Common Crawl join is archive coverage, not a deletion claim")
     if not archive.get("ghostarchive_lookup") and url.startswith("https://"):
         notes.append("Ghostarchive lookup was not attached")
     return notes[:MAX_UNCERTAINTY]
@@ -403,6 +424,7 @@ def enrich_observation(
     weibo: Mapping[str, Any] | None = None,
     undertext: Mapping[str, Any] | None = None,
     bleedthrough: Mapping[str, Any] | None = None,
+    common_crawl: Mapping[str, Any] | None = None,
     provenance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a copy of ``observation`` with additive richness. Never drops existing keys."""
@@ -458,6 +480,7 @@ def enrich_observation(
             weibo=weibo,
             undertext=undertext,
             bleedthrough=bleedthrough,
+            common_crawl=common_crawl,
         ),
     )
     if provenance:
@@ -502,7 +525,16 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
     url = public_text(observation.get("url") or observation.get("source_url"), limit=2048)
     links = observation.get("cross_links") if isinstance(observation.get("cross_links"), dict) else {}
     compact: dict[str, Any] = {}
-    for key in ("cdt", "gdelt", "ooni", "greatfire", "weibo", "undertext", "bleedthrough"):
+    for key in (
+        "cdt",
+        "gdelt",
+        "ooni",
+        "greatfire",
+        "weibo",
+        "undertext",
+        "bleedthrough",
+        "common_crawl",
+    ):
         item = links.get(key)
         if not isinstance(item, dict) or not item:
             compact[key] = None
@@ -512,6 +544,12 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
             "url": public_text(item.get("url"), limit=2048) or None,
             "note": public_text(item.get("note"), limit=240) or None,
         }
+    if compact.get("common_crawl"):
+        compact["common_crawl"]["url"] = None
+    lake = observation.get("common_crawl") if isinstance(observation.get("common_crawl"), dict) else {}
+    match_kind = public_text(lake.get("match_kind"), limit=16)
+    if match_kind not in {"url", "host", "digest"}:
+        match_kind = ""
     uncertainty = []
     for note in observation.get("uncertainty") or []:
         item = public_text(note, limit=240)
@@ -530,11 +568,7 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
             text_en=public_text(observation.get("text_en"), limit=800),
         )
     return {
-        "observation_key": content_sha256(
-            public_text(observation.get("source"), limit=80),
-            url,
-            public_text(observation.get("title"), limit=240),
-        )[:32],
+        "observation_key": observation_key(observation),
         "source": public_text(observation.get("source"), limit=80) or "unknown",
         "title": public_text(observation.get("title"), limit=240) or "(untitled public record)",
         "url": url if url.startswith("https://") else "",
@@ -563,5 +597,8 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
             "bracket_after": (archive.get("timestamp_bracket") or {}).get("post_event"),
         },
         "cross_links": compact,
+        "common_crawl_match_kind": match_kind or None,
+        "common_crawl_host": public_text(lake.get("host"), limit=253) or None,
+        "common_crawl_capture_at": iso_z(lake.get("capture_at")),
         "relation": "topic-or-url-context-not-corroboration",
     }

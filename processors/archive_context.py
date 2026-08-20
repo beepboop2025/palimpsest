@@ -14,9 +14,12 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from collectors.common_crawl_lake import (
+    CHINA_JOINS_FILENAME,
+    CHINA_JOINS_KIND,
+    CHINA_JOINS_SCHEMA,
     DEFAULT_CONFIG,
     FEATURE_SCHEMA_VERSION,
     LakeConfig,
@@ -25,7 +28,12 @@ from collectors.common_crawl_lake import (
     _canonical_json,
     _iso_now,
     _strict_json_bytes,
+    lake_observation_count,
     load_config,
+    match_observation,
+    open_existing_database,
+    public_match_fields,
+    public_url_identity,
 )
 from processors.editorial_priority import editorial_priority
 
@@ -394,6 +402,151 @@ def _atomic_private(path: Path, payload: bytes) -> None:
             os.unlink(temporary)
         except FileNotFoundError:
             pass
+
+
+def _china_observation_candidates(
+    osint_board: Mapping[str, Any] | None,
+    readings_dir: Path | None,
+) -> list[dict[str, Any]]:
+    from core.china_observation import observation_key
+
+    records: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def _add(record: object) -> None:
+        if type(record) is not dict:
+            return
+        key = observation_key(record)
+        if key in seen:
+            return
+        seen.add(key)
+        records.append(record)
+
+    if readings_dir is not None:
+        undertext_path = Path(readings_dir) / "undertext-latest.json"
+        if undertext_path.is_file():
+            payload = _read_json(undertext_path, "undertext")
+            for record in payload.get("observations") or []:
+                _add(record)
+    if records:
+        return records
+    if type(osint_board) is dict:
+        for signal in osint_board.get("signals") or []:
+            if type(signal) is not dict or signal.get("id") != "undertext":
+                continue
+            payload = signal.get("payload") if type(signal.get("payload")) is dict else {}
+            for record in payload.get("observations") or []:
+                _add(record)
+    return records
+
+
+def _empty_china_joins(now: datetime | None) -> dict[str, Any]:
+    return {
+        "kind": CHINA_JOINS_KIND,
+        "schema": CHINA_JOINS_SCHEMA,
+        "generated_at": _iso_now(now),
+        "status": "no_data",
+        "source": "node-lake-readonly",
+        "matches": [],
+        "uncertainty": (
+            "Common Crawl warehouse is empty or absent on this host. "
+            "No join attempted. Absence is not a zero census."
+        ),
+    }
+
+
+def build_china_lake_joins(
+    osint_board: Mapping[str, Any] | None,
+    readings_dir: Path | str | None,
+    *,
+    connection,
+    config: LakeConfig,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Join public China observations to the existing lake. Read-only. No scrape."""
+
+    from core.china_observation import observation_key
+
+    if connection is None or lake_observation_count(connection) < 1:
+        return _empty_china_joins(now)
+    candidates = _china_observation_candidates(
+        osint_board, Path(readings_dir) if readings_dir is not None else None
+    )
+    matches: list[dict[str, Any]] = []
+    for record in candidates:
+        hit = match_observation(connection, record, config)
+        if hit is None:
+            continue
+        identity = public_url_identity(
+            record.get("url") or record.get("source_url"),
+            maximum_chars=config.limits.url_chars,
+        )
+        matches.append(
+            {
+                "observation_key": observation_key(record),
+                "url_sha256": identity[0] if identity else None,
+                **public_match_fields(hit),
+            }
+        )
+    return {
+        "kind": CHINA_JOINS_KIND,
+        "schema": CHINA_JOINS_SCHEMA,
+        "generated_at": _iso_now(now),
+        "status": "ok",
+        "source": "node-lake-readonly",
+        "n_candidates": len(candidates),
+        "n_matches": len(matches),
+        "matches": matches,
+        "uncertainty": (
+            "Sanitized Common Crawl lake joins. URL/digest matches are archive "
+            "coverage, not deletions. Host matches are institution-level context, "
+            "not URL corroboration. Lake URLs, WARC paths, offsets, lengths, and "
+            "bodies are not published."
+        ),
+    }
+
+
+def write_china_lake_joins(
+    *,
+    osint_path: Path | str | None,
+    readings_dir: Path | str | None,
+    warehouse: Path | str | None,
+    output_path: Path | str | None = None,
+    config_path: Path | str = DEFAULT_CONFIG,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Write a private sanitized receipt when the warehouse already exists."""
+
+    config = load_config(config_path)
+    warehouse_root = Path(warehouse) if warehouse is not None else None
+    connection = open_existing_database(warehouse_root)
+    osint_board: dict[str, Any] | None = None
+    osint_file = Path(osint_path) if osint_path else None
+    try:
+        if osint_file is not None and osint_file.is_file():
+            osint_board = _read_json(osint_file, "OSINT board")
+        document = build_china_lake_joins(
+            osint_board,
+            Path(readings_dir) if readings_dir is not None else None,
+            connection=connection,
+            config=config,
+            now=now,
+        )
+    finally:
+        if connection is not None:
+            connection.close()
+    dest = Path(output_path) if output_path is not None else (
+        warehouse_root / "derived" / CHINA_JOINS_FILENAME if warehouse_root is not None else None
+    )
+    wrote = False
+    if dest is not None and warehouse_root is not None and warehouse_root.is_dir():
+        _atomic_private(dest, _canonical_json(document) + b"\n")
+        wrote = True
+    return {
+        "status": document["status"],
+        "matches": len(document.get("matches") or []),
+        "path": str(dest) if wrote else None,
+    }
 
 
 def write_archive_context(

@@ -17,7 +17,7 @@ read `terms` / `detected_at` / `title` / `url`. The extra keys are additive:
 | `archive` | Wayback / archive.today / Ghostarchive *lookup* URLs are addresses to try. A snapshot URL is attached only when a caller supplies a witnessed capture. |
 | `gazetteer_hits` | Lexical hits against the human-authored `config/zh_censorship_gazetteer.json`. |
 | `source_url`, `mirror_urls`, `content_sha256` | Public HTTPS only. Hash is over title + text + URL. |
-| `cross_links` | `cdt` / `gdelt` / `ooni` / `greatfire` / `weibo` / `undertext` / `bleedthrough` stay `null` unless a real related record is attached. OONI and Bleedthrough are instrument-context, not URL corroboration. |
+| `cross_links` | `cdt` / `gdelt` / `ooni` / `greatfire` / `weibo` / `undertext` / `bleedthrough` / `common_crawl` stay `null` unless a real related record is attached. OONI and Bleedthrough are instrument-context, not URL corroboration. Common Crawl is a sanitized node-lake receipt (capture time, MIME, language, digest, locator hash) when a matching URL, allowlisted host, or content digest already exists. It never publishes lake URLs, WARC paths, offsets, lengths, or bodies. |
 | `uncertainty` | Named gaps (no snapshot, no body, no ledger, instrument-only join). Absence is never filled with a synthetic fact. |
 | `provenance` | Collector, method, vantage, fetch time. Never a hostname of a person. |
 
@@ -33,7 +33,7 @@ the join `topic-or-url-context-not-corroboration`.
 | Wayback reconstruction | `scripts/wayback_reconstruct_pull.py` | fleet `wayback` | Watchlist in `config/wayback_watchlist.json` now includes Xinhua, People's Daily, gov.cn, MFA, PBOC, CAC, NDRC, MIIT, and the *landing page only* of `wenshu.court.gov.cn`. No captcha docket scrape. |
 | Weibo hot-search join | `scripts/weibo_hotsearch_pull.py` | fleet `weibo-hotsearch` | Public board archive only. `observation_records` from join/breakthroughs. |
 | GitHub refuge | `scripts/github_refuge_pull.py` | fleet `github-refuge` | `active_watchlist` stays empty until an activation review. |
-| UNDERTEXT fusion | `scripts/undertext_pull.py` | fleet `undertext` | Default is **offline fusion** of every committed Wayback reconstruction, every DDTI ranked sample, Weibo suppression / breakthrough / withdrawal rows, clustered by public URL, with GDELT / OONI / Bleedthrough joins. `UNDERTEXT_LIVE_SURFACES=1` may add Wikipedia-only presence (last-confirmed-alive, not a deletion). Never live Weibo / Baidu / Baike. |
+| UNDERTEXT fusion | `scripts/undertext_pull.py` | fleet `undertext` | Default is **offline fusion** of every committed Wayback reconstruction, every DDTI ranked sample, Weibo suppression / breakthrough / withdrawal rows, clustered by public URL, with GDELT / OONI / Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present. An empty or absent lake abstains. `UNDERTEXT_LIVE_SURFACES=1` may add Wikipedia-only presence (last-confirmed-alive, not a deletion). Never live Weibo / Baidu / Baike. Never invent a crawl or scrape publishers to refill the lake. |
 | Public deletion ledgers | `scripts/public_deletion_ledgers_pull.py` | fleet `public-deletion-ledgers` | CDT EN/ZH, GreatFire RSS, FreeWeibo-style feed. Each feed is a candidate. If every ledger is unreachable the runner **abstains**. |
 | Silence / vantage / erasure | existing pull scripts | fleet `silence-index`, `vantage-fusion`, `erasure-observatory` | Fusion jobs now sit on the always-on Hetzner schedule so the China bundle does not wait for a GitHub-only refresh. |
 | Research-corpus metadata | `scripts/research_corpus_ingest.py` | fleet `research-corpus` | Metadata-only Git refs. Blobs and keywords stay unpublished. |
@@ -67,3 +67,5 @@ the join `topic-or-url-context-not-corroboration`.
 - Exploit the GFW (no Wallbleed, no packet dropping, no availability tests).
 - Publish a hollow "zero deletions" board when a ledger or fusion is silent.
 - Treat a Situation OSINT join as corroboration or an extra independent source.
+- Invent a Common Crawl, scrape live publisher sites to refill the node lake, or
+  publish lake URLs / WARC paths / bodies. An empty lake abstains.

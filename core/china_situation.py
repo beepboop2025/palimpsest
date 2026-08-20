@@ -189,13 +189,26 @@ _OSINT_FIELDS = frozenset(
         "gazetteer_hits",
         "archive",
         "cross_links",
+        "common_crawl_match_kind",
+        "common_crawl_host",
+        "common_crawl_capture_at",
         "relation",
     }
 )
 _OSINT_LANGUAGES = frozenset({"zh", "en", "mixed", "unknown"})
 _OSINT_LINK_KEYS = frozenset(
-    {"cdt", "gdelt", "ooni", "greatfire", "weibo", "undertext", "bleedthrough"}
+    {
+        "cdt",
+        "gdelt",
+        "ooni",
+        "greatfire",
+        "weibo",
+        "undertext",
+        "bleedthrough",
+        "common_crawl",
+    }
 )
+_OSINT_CC_MATCH_KINDS = frozenset({"url", "host", "digest"})
 MAX_OSINT_PER_SITUATION = 12
 _REVIEWED_TELEGRAM_FIELDS = frozenset(
     {
@@ -1176,6 +1189,20 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
                     raise ChinaSituationError(
                         f"{osint_path}.cross_links.{link_key} has unexpected keys"
                     )
+                if link_key == "common_crawl" and link.get("url"):
+                    raise ChinaSituationError(
+                        f"{osint_path}.cross_links.common_crawl must not publish a lake URL"
+                    )
+            cc_kind = osint_row["common_crawl_match_kind"]
+            if cc_kind is not None and cc_kind not in _OSINT_CC_MATCH_KINDS:
+                raise ChinaSituationError(f"{osint_path}.common_crawl_match_kind is invalid")
+            if osint_row["common_crawl_host"] is not None:
+                _text(osint_row["common_crawl_host"], f"{osint_path}.common_crawl_host", maximum=253)
+            _timestamp(
+                osint_row["common_crawl_capture_at"],
+                f"{osint_path}.common_crawl_capture_at",
+                nullable=True,
+            )
         total_osint += len(osint_rows)
         osint_events += bool(osint_rows)
         synthesis = _exact(row["synthesis"], _SYNTHESIS_FIELDS, f"{path}.synthesis")
