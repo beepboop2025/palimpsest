@@ -355,6 +355,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "telegram-public-channels-latest.json",
     "reading-analysis-latest.json",
     "peer-context-latest.json",
+    "peer-context-rank-latest.json",
 })
 
 

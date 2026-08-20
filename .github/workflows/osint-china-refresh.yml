@@ -21,7 +21,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: osint-china-refresh
+  group: derived-graph-publish
   cancel-in-progress: false
 
 jobs:
@@ -175,6 +175,9 @@ jobs:
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
             readings/china-situation-latest.json \
+            readings/erasure-trail-latest.json \
+            readings/erasure-trail-history.jsonl \
+            readings/erasure-trail.csv \
             readings/social-observations-latest.json \
             readings/social-observations-versions.jsonl \
             readings/china-censorship-analysis-latest.json \
@@ -199,7 +202,7 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
           else
-            git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip pytest]"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -339,6 +342,9 @@ jobs:
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
             readings/china-situation-latest.json \
+            readings/erasure-trail-latest.json \
+            readings/erasure-trail-history.jsonl \
+            readings/erasure-trail.csv \
             readings/social-observations-latest.json \
             readings/social-observations-versions.jsonl \
             readings/china-censorship-analysis-latest.json \
@@ -363,7 +369,7 @@ jobs:
             if git diff --cached --quiet origin/main; then
               echo "no change after synchronization"
             else
-              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
+              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip pytest]"
             fi
           else
             git commit --amend --no-edit
@@ -506,6 +512,9 @@ jobs:
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
             readings/china-situation-latest.json \
+            readings/erasure-trail-latest.json \
+            readings/erasure-trail-history.jsonl \
+            readings/erasure-trail.csv \
             readings/social-observations-latest.json \
             readings/social-observations-versions.jsonl \
             readings/china-censorship-analysis-latest.json \
@@ -530,7 +539,7 @@ jobs:
             if git diff --cached --quiet; then
               echo "no change after push race"
             else
-              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip ci]"
+              git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip pytest]"
             fi
           else
             git commit --amend --no-edit

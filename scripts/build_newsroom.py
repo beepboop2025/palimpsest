@@ -3156,6 +3156,40 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
         if peer_items
         else ""
     )
+    interconnection = analysis.get("interconnection") if isinstance(analysis.get("interconnection"), dict) else {}
+    joined = [
+        row
+        for row in (interconnection.get("peers") or [])
+        if isinstance(row, dict) and row.get("status") == "joined"
+    ]
+    skipped = [
+        row
+        for row in (interconnection.get("peers") or [])
+        if isinstance(row, dict) and row.get("status") == "skipped"
+    ]
+    if joined:
+        join_items = "".join(
+            f"<li><strong>{_h(row.get('citation') or row.get('peer_name'))}.</strong> "
+            f"{_h(row.get('why_joined') or '')} "
+            f"<small>{_h(', '.join(row.get('join_keys') or []))}</small></li>"
+            for row in joined
+        )
+        interconnection_html = (
+            f'<h3 class="nw-assessment__subhead">Named-key interconnection</h3>'
+            f'<ul class="nw-assessment__rationale">{join_items}</ul>'
+            f'<p class="nw-method-note">topic-surface-only · '
+            f"{_h(str(interconnection.get('joined_count', 0)))} joined · "
+            "warehouse groups do not count as wire corroboration.</p>"
+        )
+    else:
+        skip_note = ", ".join(
+            sorted({str(row.get("skip_reason")) for row in skipped if row.get("skip_reason")})
+        )
+        interconnection_html = (
+            '<h3 class="nw-assessment__subhead">Named-key interconnection</h3>'
+            '<p class="nw-method-note">No interconnection peer met an exact join key. '
+            f"{_h(skip_note or 'silent')} slots remain coverage gaps, not verdicts.</p>"
+        )
     evidence = analysis["evidence_assessment"]
     if collector_cards:
         added_value = (
@@ -3181,6 +3215,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   {collector_context}
   {peer_context}
+  {interconnection_html}
   <p class="nw-assessment__receipt">Analysis <code>{_h(analysis['analysis_id'])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis['analysis_id'])}.json">immutable revision</a></p>
 </section>"""
 
@@ -3198,8 +3233,15 @@ def render_event(
             if PEER_CONTEXT_READING.is_file()
             else None
         )
+        readings_dir = resolve_readings_dir(preferred=ROOT / "readings")
         analysis = event_analysis_model.build_event_analysis(
-            event, wire=wire, feed=feed, peer=peer
+            event,
+            wire=wire,
+            feed=feed,
+            peer=peer,
+            peer_warehouses=event_analysis_model.load_optional_peer_warehouses(
+                readings_dir
+            ),
         )
     event_analysis_model.validate_event_analysis(analysis, event=event)
     items = _wire_items(wire)

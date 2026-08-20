@@ -135,6 +135,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "telegram-public-channels-latest.json",
         "reading-analysis-latest.json",
         "peer-context-latest.json",
+        "peer-context-rank-latest.json",
     }
 
 
@@ -669,7 +670,7 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
         in text
     )
     assert "github.event.workflow_run.conclusion == 'success'" in text
-    assert "group: osint-china-refresh" in text
+    assert "group: derived-graph-publish" in text
     assert "cancel-in-progress: false" in text
     economic_pulse = text.index("python -m scripts.build_economic_pulse")
     undertext = text.index("python -m scripts.undertext_pull")

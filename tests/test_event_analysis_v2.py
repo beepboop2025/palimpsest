@@ -525,6 +525,25 @@ def test_same_window_peers_are_counts_and_names_only() -> None:
     assert "deleted because" not in blob
 
 
+def test_same_topic_outside_interconnection_window_is_not_a_window_peer() -> None:
+    event = _event()
+    far = _event()
+    far["event_id"] = "event-" + "dd" * 12
+    far["version_id"] = "eventv-" + "ee" * 12
+    far["url"] = f"https://palimpsest.info/news/wire/{far['event_id']}/"
+    far["topics"] = ["economy"]
+    far["headline"] = "Older economy note"
+    far["published_at"] = "2026-08-18T00:00:00Z"
+    wire = _wire(event)
+    wire["events"].append(far)
+    analysis = event_analysis.build_event_analysis(
+        event, wire=wire, feed=_feed()
+    )
+    peers = analysis["window_peers"]
+    assert peers["same_window_peer_count"] == 0
+    assert peers["shared_topics"] == []
+
+
 def test_missing_newsroom_feed_abstains_collectors_instead_of_inventing() -> None:
     event = _event()
     analysis = event_analysis.build_event_analysis(

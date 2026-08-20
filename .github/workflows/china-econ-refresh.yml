@@ -110,7 +110,7 @@ jobs:
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
-        # workflow cannot cover this commit: it carries [skip ci], and GitHub skips the
+        # workflow marks the commit [skip pytest] so Tests/pytest skips; Tests/contract still runs. GitHub does not skip the
         # whole run rather than one job. Without the rule list configured this reports and
         # exits 0, on purpose: a check that stops the refresh when a secret is absent
         # stops the observatory, and stops it silently.
@@ -149,7 +149,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "no change"
           else
-            git commit -m "data: china econ telemetry refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git commit -m "data: china econ telemetry refresh ($(date -u +%FT%TZ)) [skip pytest]"
             # The direct observations stay byte-identical on a race. Refuse the
             # candidate if any transitive generator/input tree changed on main;
             # the next scheduled run will rebuild from that newer graph.

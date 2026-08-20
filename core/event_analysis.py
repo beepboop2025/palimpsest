@@ -14,7 +14,7 @@ import json
 import math
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
@@ -398,18 +398,33 @@ def _compose_position(
     return " ".join(parts)
 
 
+def _published_at(event: Mapping[str, Any]) -> datetime | None:
+    raw = event.get("published_at")
+    if type(raw) is not str:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def window_peers_for(
     event: Mapping[str, Any], wire_events: Sequence[Mapping[str, Any]]
 ) -> dict[str, Any]:
-    """Count same-window events that share a topic. Counts and names only."""
+    """Count events that share a topic inside the interconnection ±24h window."""
 
     topics = {topic for topic in (event.get("topics") or []) if type(topic) is str and topic}
     shared_topics: list[str] = []
     peer_source_ids: list[str] = []
     peer_groups: list[str] = []
     count = 0
+    anchor = _published_at(event)
+    radius = timedelta(hours=event_interconnection.WINDOW_HOURS)
     for other in wire_events:
         if type(other) is not dict or other.get("event_id") == event.get("event_id"):
+            continue
+        other_clock = _published_at(other)
+        if anchor is None or other_clock is None or abs(other_clock - anchor) > radius:
             continue
         other_topics = {
             topic for topic in (other.get("topics") or []) if type(topic) is str and topic

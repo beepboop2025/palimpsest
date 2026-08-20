@@ -313,6 +313,54 @@ def test_get_newsroom_keeps_publication_state_and_bounds_the_selection(monkeypat
     assert "not automatically publication-ready" in body["how_to_read_this"]
 
 
+def test_get_newsroom_interconnection_view_keeps_denominators(monkeypatch):
+    monkeypatch.setattr(mcp, "_fetch", lambda name: {
+        "schema_version": "palimpsest-china-situation.v1",
+        "generated_at": "2026-08-20T07:06:05Z",
+        "coverage": {
+            "events_with_interconnection": 1,
+            "interconnection_joined_rows": 2,
+        },
+        "situations": [
+            {
+                "event_id": "event-" + "ab" * 12,
+                "headline": "NBS releases July figures",
+                "interconnection": {
+                    "joined_count": 2,
+                    "meets_quality_bar": False,
+                    "relation": "topic-surface-only",
+                    "event_keys": {"hosts": ["stats.gov.cn"], "terms": [], "url_paths": [], "asns": [], "calendar_day": "2026-08-20"},
+                    "peers": [
+                        {
+                            "peer_id": "greatfire",
+                            "status": "joined",
+                            "citation": "GreatFire, 2026-08-20",
+                            "join_keys": ["host"],
+                            "why_joined": "exact host stats.gov.cn",
+                            "count": 12,
+                            "count_label": "GreatFire blocked samples",
+                            "denominator_label": "GreatFire probe set",
+                            "denominator_value": 40,
+                            "relation": "topic-surface-only",
+                        }
+                    ],
+                },
+            }
+        ],
+    })
+    out = mcp.dispatch(_rpc("tools/call", {
+        "name": "get_newsroom",
+        "arguments": {"view": "interconnection", "limit": 5},
+    }))
+    body = out["result"]["structuredContent"]
+    assert body["view"] == "interconnection"
+    assert body["data"]["coverage"]["interconnection_joined_rows"] == 2
+    row = body["data"]["situations"][0]
+    assert row["joined_count"] == 2
+    assert row["joined_peers"][0]["denominator_value"] == 40
+    assert "not wire corroboration" in body["data"]["note"]
+
+
 def test_get_newsroom_rejects_unknown_views():
     out = mcp.dispatch(_rpc("tools/call", {
         "name": "get_newsroom",

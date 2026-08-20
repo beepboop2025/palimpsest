@@ -602,6 +602,22 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "peer-context-rank",
+      "name": "Peer-context review ranker",
+      "description": "Orders and flags cached GreatFire, OONI, and CDT peer rows against each peer series' own history. Review rank only. It does not write the warehouse, replace event-analysis sentences, or become a join on the Situation desk.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
       "identifier": "ooni-peer-context",
       "name": "OONI peer-context host join",
       "description": "Host/ASN feature rows joined from already-held ooni-gfw-latest or warehouse/ooni-bulk. Does not re-download the 33G archive. Silent or miss joins fail closed.",
@@ -1296,7 +1312,7 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T07:06:05Z",
+      "dateModified": "2026-08-20T07:26:43Z",
       "isAccessibleForFree": true,
       "distribution": [
         {

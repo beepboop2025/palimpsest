@@ -9,18 +9,18 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 69,
+    "datasets": 70,
     "states": {
       "disabled": 1,
       "fresh": 42,
       "gated": 6,
       "private-node": 1,
       "stale": 10,
-      "warming": 9
+      "warming": 10
     },
     "layers": {
       "content": 14,
-      "cross-layer": 19,
+      "cross-layer": 20,
       "economy": 4,
       "integrity": 1,
       "model": 7,
@@ -29,7 +29,7 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 15505569,
+    "published_bytes": 19762438,
     "history_rows": 6552
   },
   "datasets": [
@@ -1156,6 +1156,55 @@
         "latest": "https://palimpsest.info/readings/peer-context-latest.json",
         "history": "https://palimpsest.info/readings/peer-context-history.jsonl",
         "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
+      "id": "peer-context-rank",
+      "name": "Peer-context review ranker",
+      "description": "Orders and flags cached GreatFire, OONI, and CDT peer rows against each peer series' own history. Review rank only. It does not write the warehouse, replace event-analysis sentences, or become a join on the Situation desk.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "warming",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire cache",
+        "OONI host/ASN series",
+        "China Digital Times titles"
+      ],
+      "latest": "readings/peer-context-rank-latest.json",
+      "history": "readings/peer-context-rank-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [
+        "n_peer_series",
+        "n_peer_series_scored",
+        "n_joins"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/peer-context-rank-latest.json",
+        "history": "https://palimpsest.info/readings/peer-context-rank-history.jsonl",
+        "landing_page": "https://palimpsest.info/osint-china.html",
         "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
       }
     },
@@ -2307,7 +2356,7 @@
           "coverage.successful_sources": 44,
           "coverage.excluded_global_feed_items": 83
         },
-        "latest_bytes": 2931518,
+        "latest_bytes": 2936842,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2456,8 +2505,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T07:06:05Z",
-        "age_seconds": 5523,
+        "observed_at": "2026-08-20T07:26:43Z",
+        "age_seconds": 4285,
         "counts": {
           "coverage.in_scope_events": 459,
           "coverage.publisher_reports": 494,
@@ -2465,7 +2514,7 @@
           "coverage.social_observations_linked": 0,
           "coverage.reviewed_telegram_signals": 0
         },
-        "latest_bytes": 2411305,
+        "latest_bytes": 6661001,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2657,11 +2706,11 @@
         "age_seconds": 0,
         "counts": {
           "inputs": 8,
-          "resources": 122,
-          "dependency_groups": 101,
+          "resources": 123,
+          "dependency_groups": 104,
           "projects": 5
         },
-        "latest_bytes": 193204,
+        "latest_bytes": 195053,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,

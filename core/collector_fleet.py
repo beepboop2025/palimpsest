@@ -121,6 +121,7 @@ SNAPSHOT_OUTPUTS = {
     "reading-analysis": "readings/reading-analysis-latest.json",
     "greatfire-context": "readings/greatfire-context-latest.json",
     "peer-context": "readings/peer-context-latest.json",
+    "peer-context-rank": "readings/peer-context-rank-latest.json",
 }
 
 
@@ -183,6 +184,7 @@ _STANDARD = {
     "reading-analysis": Cadence(57, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "greatfire-context": Cadence(33, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "peer-context": Cadence(48, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "peer-context-rank": Cadence(51, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -250,6 +252,7 @@ _VIGOROUS = {
     "reading-analysis": Cadence(57, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "greatfire-context": Cadence(33, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "peer-context": Cadence(48, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "peer-context-rank": Cadence(51, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
 }
 
 
@@ -442,6 +445,7 @@ _COUNT_PATHS = {
     "reading-analysis": ("n_instruments_scored",),
     "greatfire-context": ("n_verdicts",),
     "peer-context": ("n_hosts",),
+    "peer-context-rank": ("n_peer_series",),
 }
 
 
@@ -664,6 +668,12 @@ def _invoke_snapshot(name: str, root: Path) -> None:
     elif name == "peer-context":
         from scripts.peer_context_pull import main
         main()
+    elif name == "peer-context-rank":
+        from scripts.peer_context_rank_pull import main
+
+        code = main([])
+        if code:
+            raise RuntimeError("peer-context-rank collector failed")
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 

@@ -29,6 +29,7 @@ from core.collector_fleet import (  # noqa: E402
     collection_profile,
     collectors_enabled,
     ddti_head_config,
+    _effective_cadences,
     expected_collector_specs,
     run_ddti_head,
     run_snapshot_job,
@@ -105,6 +106,7 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
         "public-board-terms",
         "greatfire-context",
         "peer-context",
+        "peer-context-rank",
     } <= names
 
 
@@ -210,7 +212,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 41  # feed head + index processor + 39 passive snapshots
+    assert len(specs) == 2 + len(_effective_cadences("vigorous"))
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -468,6 +470,11 @@ def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences
     assert spec("standard", "peer-context")["output_path"] == (
         "readings/peer-context-latest.json"
     )
+    assert spec("standard", "peer-context-rank")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "peer-context-rank")["cadence_seconds"] == 3 * 3600
+    assert spec("standard", "peer-context-rank")["output_path"] == (
+        "readings/peer-context-rank-latest.json"
+    )
 
 
 def test_vigorous_gdelt_sets_the_fifteen_minute_window_without_compose_flags(
@@ -544,12 +551,21 @@ def test_reading_analysis_invokes_the_local_ranker(monkeypatch, tmp_path):
     assert seen == [[]]
 
 
-def test_peer_context_invokes_the_local_ranker(monkeypatch, tmp_path):
+def test_peer_context_invokes_the_warehouse_assembler(monkeypatch, tmp_path):
     seen = []
     import scripts.peer_context_pull as pull
 
-    monkeypatch.setattr(pull, "main", lambda argv=None: seen.append(argv or []) or 0)
+    monkeypatch.setattr(pull, "main", lambda **kwargs: seen.append(kwargs) or {})
     _invoke_snapshot("peer-context", tmp_path)
+    assert seen == [{}]
+
+
+def test_peer_context_rank_invokes_the_local_ranker(monkeypatch, tmp_path):
+    seen = []
+    import scripts.peer_context_rank_pull as pull
+
+    monkeypatch.setattr(pull, "main", lambda argv=None: seen.append(argv or []) or 0)
+    _invoke_snapshot("peer-context-rank", tmp_path)
     assert seen == [[]]
 
 

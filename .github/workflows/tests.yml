@@ -30,21 +30,12 @@ concurrency:
 
 jobs:
   pytest:
-    # The data-refresh workflows push bot commits marked [skip ci]; those touch only
-    # published readings and never the code under test, so re-running the FULL suite on
-    # them would burn minutes to re-prove the previous commit. GitHub honours the
-    # marker natively for pushes — this makes the intent explicit and readable, and
-    # is a no-op for pull_request events (head_commit is absent there, so the guard
-    # evaluates false and the job runs).
-    #
-    # "never the code under test" was true when this was written and is not true now.
-    # Several tests exist specifically to validate PUBLISHED READINGS — the publication
-    # contract, layer freshness, board staleness — so a refresh could publish a reading
-    # with a missing timestamp, an unregistered signal or a zero denominator and no CI
-    # run would ever look at it. Those tests are the `contract` job below, which
-    # deliberately does NOT skip data commits. The split keeps the fast path fast: the
-    # full suite still skips them, the reading validators never do.
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    # Data-refresh workflows mark commits [skip pytest], which is NOT a GitHub-native
+    # skip token. The Tests workflow still starts. This job skips the full suite on
+    # those data commits; the contract job below still reads what they published.
+    # Do not use [skip ci] / [ci skip] / [no ci]: GitHub would skip the entire
+    # workflow, including contract.
+    if: ${{ !contains(github.event.head_commit.message, '[skip pytest]') }}
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
@@ -80,11 +71,8 @@ jobs:
         run: python -m pytest tests/ censorwatch/tests/ -q
 
   contract:
-    # THE READING VALIDATORS. This job has NO [skip ci] guard, on purpose: it is the only
-    # thing that ever inspects what a refresh actually published. These tests are offline
-    # and use the small hash-pinned contract environment, so they cost seconds rather than
-    # the full suite's minutes. JSON Schema is deliberately mandatory here: a missing
-    # validator must fail the publication gate, not skip it.
+    # THE READING VALIDATORS. This job has no skip guard. Refresh commits use
+    # [skip pytest] so this job still runs against the bytes that landed.
     #
     # It also runs the three integrity verifiers. Those live inside erasure-refresh today,
     # so a change that breaks the ledger verifier is caught only if it happens to touch that
@@ -118,7 +106,10 @@ jobs:
             tests/test_econ_ledger.py::test_published_schema_accepts_every_current_ledger_row \
             tests/test_china_econ_manifest.py::test_manifest_schema_accepts_generated_public_and_fixture_documents \
             tests/test_china_econ_forecast_publish.py::test_strict_schema_accepts_the_public_artifact \
-            tests/test_china_site.py::test_json_schema_is_valid_and_validates_the_index
+            tests/test_china_site.py::test_json_schema_is_valid_and_validates_the_index \
+            tests/test_china_situation.py \
+            tests/test_erasure_trail.py \
+            tests/test_event_interconnection.py
 
       - name: Check the committed deterministic machine-newsroom graph
         run: |
@@ -137,6 +128,8 @@ jobs:
           python -m scripts.build_china_econ_forecast --check
           python -m scripts.build_china_site --check
           python -m scripts.build_data_catalog --check
+          python -m scripts.build_china_situation --check
+          python -m scripts.build_erasure_trail --check
           python scripts/seal_readings.py --check
 
       - name: Rebuild and prove the deterministic graph is unchanged
@@ -153,6 +146,8 @@ jobs:
           python -m scripts.build_china_econ_forecast
           python -m scripts.build_china_site
           python -m scripts.build_data_catalog --now "$catalog_clock"
+          python -m scripts.build_china_situation
+          python -m scripts.build_erasure_trail
           git diff --exit-code -- \
             readings/china-econ-observations-latest.json \
             readings/china-econ-forecast-latest.json \
@@ -160,6 +155,8 @@ jobs:
             readings/evidence-mesh-latest.json \
             readings/machine-investigations-latest.json \
             readings/newsroom-latest.json \
+            readings/china-situation-latest.json \
+            readings/erasure-trail-latest.json \
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
@@ -167,13 +164,8 @@ jobs:
             news/
 
       - name: Read the public surface
-        # Being in this job rather than in pytest above buys nothing against a data commit,
-        # and the earlier version of this comment claimed it did. GitHub honours [skip ci]
-        # by skipping the ENTIRE workflow run for that push, not one job in it, so no job
-        # here ever sees a refresh commit. The only thing that reads a refresh commit is
-        # the same check inside each refresh workflow, which runs before its own push. This
-        # run covers commits that reach the branch by every other route: a person's push, a
-        # merged pull request, a manual dispatch.
+        # Refresh commits now use [skip pytest], so this job sees those pushes.
+        # GitHub-native [skip pytest] is forbidden by scripts/push_data_commit.py.
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py

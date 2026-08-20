@@ -75,7 +75,7 @@ def _repositories(tmp_path: Path) -> tuple[Path, Path, Path]:
 def _candidate(repo: Path, value: str = '{"version":2}\n') -> None:
     (repo / "source.json").write_text(value, encoding="utf-8")
     _git(repo, "add", "source.json")
-    _git(repo, "commit", "-qm", "data: source refresh [skip ci]")
+    _git(repo, "commit", "-qm", "data: source refresh [skip pytest]")
 
 
 def test_publish_rebases_byte_identical_candidate_after_unrelated_race(
@@ -476,7 +476,10 @@ def test_publish_rejects_dirty_or_non_data_candidate(tmp_path: Path) -> None:
 
     (publisher / "unstaged.txt").unlink()
     _git(publisher, "commit", "--amend", "-qm", "data without marker")
-    with pytest.raises(push_data_commit.PublishError, match="skip ci"):
+    with pytest.raises(push_data_commit.PublishError, match="skip pytest"):
+        push_data_commit.publish(publisher)
+    _git(publisher, "commit", "--amend", "-qm", "data: refresh [skip ci]")
+    with pytest.raises(push_data_commit.PublishError, match="GitHub-native skip token"):
         push_data_commit.publish(publisher)
 
 
@@ -627,6 +630,7 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "osint-china-refresh.yml",
         "reading-analysis-refresh.yml",
         "peer-context-refresh.yml",
+        "peer-context-rank-refresh.yml",
         "silence-index-refresh.yml",
         "stock-connect-refresh.yml",
         "vantage-fusion-refresh.yml",

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://palimpsest.info/protocol/event-interconnection-v1.schema.json",
   "title": "Palimpsest event interconnection",
-  "description": "The fat-object join block on one wire event. Peers attach only on a named exact key (host / registrable domain, exact URL path, extracted term, or ASN) plus a UTC calendar-day ±24h window. No key, a silent warehouse, or warming_up abstains. Denominators are never collapsed.",
+  "description": "The fat-object join block on one wire event. Peers attach only on a named exact key (host / registrable domain, exact URL path, extracted term, or ASN) plus a UTC ±24h window from event.published_at. No key, a silent warehouse, warming_up, or a window miss abstains. Denominators are never collapsed. Warehouse independence groups do not count as wire corroboration.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -108,7 +108,7 @@
         },
         "skip_reason": {
           "oneOf": [
-            {"enum": ["no_key", "silent", "warming_up"]},
+            {"enum": ["no_key", "silent", "warming_up", "window_missed"]},
             {"type": "null"}
           ]
         },

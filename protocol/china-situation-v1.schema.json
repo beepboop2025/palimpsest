@@ -74,7 +74,9 @@
         "events_with_osint_context",
         "osint_context_rows",
         "events_with_peer_context",
-        "peer_context_rows"
+        "peer_context_rows",
+        "events_with_interconnection",
+        "interconnection_joined_rows"
       ],
       "properties": {
         "wire_events": {"$ref": "#/$defs/count"},
@@ -92,7 +94,9 @@
         "events_with_osint_context": {"$ref": "#/$defs/count"},
         "osint_context_rows": {"$ref": "#/$defs/count"},
         "events_with_peer_context": {"$ref": "#/$defs/count"},
-        "peer_context_rows": {"$ref": "#/$defs/count"}
+        "peer_context_rows": {"$ref": "#/$defs/count"},
+        "events_with_interconnection": {"$ref": "#/$defs/count"},
+        "interconnection_joined_rows": {"$ref": "#/$defs/count"}
       }
     },
     "reviewed_telegram": {
@@ -476,6 +480,7 @@
         "measurement_context",
         "osint_context",
         "peer_context",
+        "interconnection",
         "synthesis"
       ],
       "properties": {
@@ -486,7 +491,7 @@
         "analysis_id": {"type": "string", "pattern": "^analysisv-[0-9a-f]{24}$"},
         "url": {
           "type": "string",
-          "pattern": "^https://palimpsest\\.info/news/china/situation/#situation-[0-9a-f]{24}$"
+          "pattern": "^https://palimpsest\\.info/news/china/situation/(page/[0-9]+/)?#situation-[0-9a-f]{24}$"
         },
         "headline": {"type": "string", "minLength": 1, "maxLength": 1000},
         "dek": {"type": "string", "minLength": 1, "maxLength": 4000},
@@ -548,6 +553,9 @@
           "type": "array",
           "maxItems": 8,
           "items": {"$ref": "#/$defs/peerContext"}
+        },
+        "interconnection": {
+          "$ref": "https://palimpsest.info/protocol/event-interconnection-v1.schema.json"
         },
         "synthesis": {
           "type": "object",

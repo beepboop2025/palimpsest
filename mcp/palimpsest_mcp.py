@@ -306,8 +306,9 @@ SIGNALS = {
     "china-situation": (
         "/readings/china-situation-latest.json",
         "the combined China situation desk: publisher reports, exact-link social "
-        "observations, reviewed source-free Telegram context and declared Observatory "
-        "measurements kept in distinct evidentiary roles"),
+        "observations, reviewed source-free Telegram context, declared Observatory "
+        "measurements, attributed peer sentences, and named-key interconnection "
+        "peers kept in distinct evidentiary roles"),
     "china-economic-pulse": (
         "/readings/china-economic-pulse-latest.json",
         "revision-safe official, market and physical-telemetry state with coverage "
@@ -797,6 +798,7 @@ NEWSROOM_VIEWS = {
     "machine-analysis": ("machine-investigations", "cases"),
     "investigations": ("investigations", "cases"),
     "editorial-readiness": ("editorial-readiness", None),
+    "interconnection": ("china-situation", "situations"),
 }
 _NEWSROOM_MAX_ITEMS = 50
 
@@ -856,7 +858,54 @@ def tool_get_newsroom(args: dict) -> dict:
         matched = len(items)
         items = items[:limit]
         returned = len(items)
-        data[collection_key] = items
+        if view == "interconnection":
+            slim = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                block = item.get("interconnection") if isinstance(item.get("interconnection"), dict) else {}
+                joined = [
+                    {
+                        "peer_id": row.get("peer_id"),
+                        "citation": row.get("citation"),
+                        "join_keys": row.get("join_keys"),
+                        "why_joined": row.get("why_joined"),
+                        "count": row.get("count"),
+                        "count_label": row.get("count_label"),
+                        "denominator_label": row.get("denominator_label"),
+                        "denominator_value": row.get("denominator_value"),
+                        "relation": row.get("relation"),
+                    }
+                    for row in (block.get("peers") or [])
+                    if isinstance(row, dict) and row.get("status") == "joined"
+                ]
+                slim.append(
+                    {
+                        "event_id": item.get("event_id"),
+                        "headline": item.get("headline"),
+                        "joined_count": block.get("joined_count"),
+                        "meets_quality_bar": block.get("meets_quality_bar"),
+                        "event_keys": block.get("event_keys"),
+                        "joined_peers": joined,
+                        "relation": block.get("relation"),
+                    }
+                )
+            coverage = data.get("coverage") if isinstance(data.get("coverage"), dict) else {}
+            data = {
+                "schema_version": data.get("schema_version"),
+                "generated_at": data.get("generated_at"),
+                "coverage": {
+                    "events_with_interconnection": coverage.get("events_with_interconnection"),
+                    "interconnection_joined_rows": coverage.get("interconnection_joined_rows"),
+                },
+                "situations": slim,
+                "note": (
+                    "Named-key interconnection is topic-surface-only. "
+                    "joined_count is not wire corroboration."
+                ),
+            }
+        else:
+            data[collection_key] = items
 
     out = {
         "view": view,
@@ -1731,7 +1780,9 @@ TOOLS = {
         "stories, 'wire' for normalized source dossiers, 'economy' for the "
         "revision-safe China economic pulse, 'machine-analysis' for deterministic "
         "AnalysisReports and AbstentionReports, 'investigations' for review-gated "
-        "research leads, and 'editorial-readiness' for publication gates. "
+        "research leads, 'editorial-readiness' for publication gates, and "
+        "'interconnection' for named-key fat-object joins on China situation "
+        "events (topic-surface-only, never wire corroboration). "
         "Availability never implies publication readiness: statuses, gates, "
         "counterevidence, limitations and right-to-reply state stay attached.",
         {"type": "object",

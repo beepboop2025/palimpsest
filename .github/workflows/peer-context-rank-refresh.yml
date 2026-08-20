@@ -1,0 +1,62 @@
+name: Refresh peer-context ranker
+
+# Per-peer unusualness (GreatFire / OONI / CDT) and fail-closed joins onto
+# Palimpsest objects. Reads cached warehouse files. Never writes
+# peer-context-latest.json. No catalog crawl, no Weiboscope dump, no
+# generative model.
+
+on:
+  schedule:
+    - cron: "2 */6 * * *"     # every 6 hours, after warehouse at :59
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: peer-context-rank-refresh
+  cancel-in-progress: false
+
+jobs:
+  peer-context-rank:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the hash-pinned contract environment
+        run: pip install --quiet --require-hashes -r .github/osint-china-ci-requirements.txt
+
+      - name: Rank cached peer series without touching the warehouse file
+        run: python -m scripts.peer_context_rank_pull
+
+      - name: Validate the published reading
+        run: python -m pytest -q tests/test_peer_context.py tests/test_publication_contract.py
+
+      - name: Read the public surface before pushing it
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Commit & push if the analysis changed
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/peer-context-rank-latest.json \
+                  readings/peer-context-rank-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: peer-context rank refresh ($(date -u +%FT%TZ)) [skip pytest]"
+            python scripts/push_data_commit.py \
+              --rebuild-module scripts.peer_context_rank_pull \
+              --stage readings/peer-context-rank-latest.json \
+              --stage readings/peer-context-rank-history.jsonl
+          fi

@@ -1,4 +1,4 @@
-"""Peer-context is a review ranker over GreatFire / OONI / CDT, not a writer."""
+"""Peer-context is two products: warehouse (n_hosts) and review ranker (n_peer_series)."""
 
 from __future__ import annotations
 
@@ -21,10 +21,11 @@ from processors.peer_context import (
     fit_cdt,
     fit_greatfire,
     fit_ooni,
+    join_score_from_features,
     rank_joins,
 )
 from processors.reading_analysis import FORBIDDEN_COPY as ANALYSIS_FORBIDDEN
-from scripts import peer_context_pull as pull
+from scripts import peer_context_rank_pull as rank_pull
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -205,6 +206,16 @@ def test_join_fails_closed_without_a_peer_row():
     assert attach_peer_context(obj, {"peer_series": [], "cdt_items": []}) == []
 
 
+def test_warming_up_peer_does_not_receive_a_join_score():
+    features = {
+        "belong": True,
+        "host_day_exact": True,
+        "term_day_exact": False,
+        "state": "warming_up",
+    }
+    assert join_score_from_features(features) is None
+
+
 def test_day_overlap_alone_does_not_create_a_join():
     peer = {
         "peer": "GreatFire",
@@ -302,18 +313,20 @@ def test_build_from_fixture_warehouse_and_copy_stays_context_only(tmp_path):
 def test_job_writes_latest_and_abstains_when_halted(tmp_path, monkeypatch):
     readings = tmp_path / "readings"
     _copy_warehouse(readings)
-    assert pull.main(["--root", str(tmp_path), "--now", "2026-08-20T00:00:00Z"]) == 0
-    latest = json.loads((readings / "peer-context-latest.json").read_text(encoding="utf-8"))
+    assert rank_pull.main(["--root", str(tmp_path), "--now", "2026-08-20T00:00:00Z"]) == 0
+    latest = json.loads((readings / "peer-context-rank-latest.json").read_text(encoding="utf-8"))
     assert latest["job"] == JOB
+    assert latest["schema_version"] == SCHEMA
     assert latest["generated_at"] == "2026-08-20T00:00:00Z"
     assert latest["n_joins"] >= 0
+    assert not (readings / "peer-context-latest.json").exists()
 
     class _Halted:
         def is_halted(self):
             return True
 
-    monkeypatch.setattr(pull, "KillSwitch", _Halted)
-    assert pull.main(["--root", str(tmp_path)]) == 2
+    monkeypatch.setattr(rank_pull, "KillSwitch", _Halted)
+    assert rank_pull.main(["--root", str(tmp_path)]) == 2
 
 
 def test_same_term_different_day_and_same_day_different_host_are_negatives():
@@ -617,11 +630,6 @@ def test_event_analysis_emits_canned_peer_sentences_for_an_official_url():
         and event_analysis._event_scope_status(row, items) == "in-scope"
     )
     host = host_of(event["evidence_refs"][0]["url"])
-    headline_token = next(
-        token
-        for token in event["headline"].casefold().replace(":", " ").split()
-        if len(token) >= 4
-    )
     peer = {
         "generated_at": "2026-08-20T12:00:00Z",
         "greatfire": {
@@ -647,7 +655,7 @@ def test_event_analysis_emits_canned_peer_sentences_for_an_official_url():
             }],
         },
         "cdt_items": [{
-            "title": f"CDT note on {headline_token}",
+            "title": event["headline"],
             "url": "https://chinadigitaltimes.net/2026/08/related/",
             "excerpt": "Bounded excerpt.",
             "published_at": "2026-08-17T00:00:00Z",
@@ -679,6 +687,7 @@ def test_no_fake_latest_peer_files_are_committed():
     for name in (
         "greatfire-context-latest.json",
         "peer-context-latest.json",
+        "peer-context-rank-latest.json",
         "ooni-peer-context-latest.json",
         "cdt-context-latest.json",
         "weiboscope-context-latest.json",

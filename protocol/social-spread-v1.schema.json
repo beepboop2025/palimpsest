@@ -40,6 +40,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "automatic_publication",
         "human_review_required",
         "named_person_packages_auto_published",
         "named_person_findings_included",
@@ -49,6 +50,7 @@
         "dragon_whispers_reused"
       ],
       "properties": {
+        "automatic_publication": { "const": false },
         "human_review_required": { "const": true },
         "named_person_packages_auto_published": { "const": false },
         "named_person_findings_included": { "const": false },
@@ -237,7 +239,7 @@
           "maxItems": 8,
           "items": { "type": "string", "minLength": 1, "maxLength": 400 }
         },
-        "automatic_publication": { "const": true },
+        "automatic_publication": { "const": false },
         "relation": { "const": "topic-surface-only" },
         "disclaimer": {
           "const": "Palimpsest does not confirm a person is missing, detained, or dead."
