@@ -116,6 +116,16 @@
       "maxLength": 2048,
       "pattern": "^https://"
     },
+    "osintRelatedLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "url", "note"],
+      "properties": {
+        "id": {"type": ["string", "null"], "maxLength": 80},
+        "url": {"type": ["string", "null"], "maxLength": 2048},
+        "note": {"type": ["string", "null"], "maxLength": 240}
+      }
+    },
     "metric": {
       "type": "object",
       "additionalProperties": false,
@@ -252,12 +262,18 @@
         "source",
         "title",
         "url",
+        "text",
+        "language",
+        "uncertainty",
+        "deletion_signal",
+        "confirmation_count",
         "first_seen",
         "last_seen",
         "last_confirmed_alive",
         "content_sha256",
         "gazetteer_hits",
         "archive",
+        "cross_links",
         "relation"
       ],
       "properties": {
@@ -265,6 +281,37 @@
         "source": {"type": "string", "minLength": 1, "maxLength": 80},
         "title": {"type": "string", "minLength": 1, "maxLength": 240},
         "url": {"type": "string", "maxLength": 2048},
+        "text": {"type": "string", "maxLength": 2000},
+        "language": {"enum": ["zh", "en", "mixed", "unknown"]},
+        "uncertainty": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"type": "string", "minLength": 1, "maxLength": 240}
+        },
+        "deletion_signal": {"type": "string", "maxLength": 80},
+        "confirmation_count": {"type": "integer", "minimum": 0, "maximum": 12},
+        "cross_links": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cdt",
+            "gdelt",
+            "ooni",
+            "greatfire",
+            "weibo",
+            "undertext",
+            "bleedthrough"
+          ],
+          "properties": {
+            "cdt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "gdelt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "ooni": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "greatfire": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "weibo": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "undertext": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "bleedthrough": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]}
+          }
+        },
         "first_seen": {
           "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
         },
@@ -297,6 +344,7 @@
             "wayback_lookup",
             "wayback_snapshot",
             "archive_today_lookup",
+            "ghostarchive_lookup",
             "post_event_snapshot",
             "bracket_before",
             "bracket_after"
@@ -305,6 +353,7 @@
             "wayback_lookup": {"type": ["string", "null"], "maxLength": 2048},
             "wayback_snapshot": {"type": ["string", "null"], "maxLength": 2048},
             "archive_today_lookup": {"type": ["string", "null"], "maxLength": 2048},
+            "ghostarchive_lookup": {"type": ["string", "null"], "maxLength": 2048},
             "post_event_snapshot": {"type": ["string", "null"], "maxLength": 2048},
             "bracket_before": {"type": ["string", "null"], "maxLength": 80},
             "bracket_after": {"type": ["string", "null"], "maxLength": 80}

@@ -10,6 +10,16 @@ and [CSV](https://palimpsest.info/readings/erasure-trail.csv).
 OpenAPI: `GET /readings/erasure-trail-latest.json` and
 `GET /readings/erasure-trail.csv` on [openapi.json](../openapi.json).
 
+Each row is a **Palimpsest reconstruction**, not a CDT or Wayback wrapper.
+The unique object is the joined record: public text we actually hold,
+language (lexical CJK/Latin split, not machine translation), first-seen /
+last-seen / last-confirmed-alive, every deletion confirmation, every
+Wayback / archive.today / Ghostarchive address with timestamp brackets,
+content hash, gazetteer hits, source and mirror URLs, and related
+GDELT / OONI / GreatFire / CDT / Weibo / UNDERTEXT / Bleedthrough
+joins. Uncertainty is named. Article bodies that were never captured
+stay unnamed as missing — we do not invent them.
+
 ## What Palimpsest captures
 
 - **Public posts** that were already published and that a collector later

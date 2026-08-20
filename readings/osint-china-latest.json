@@ -106,7 +106,7 @@
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "7b029fceeb32aa56e00120f6ca8505a6a1357f57",
+  "input_commit": "c6b4264d742110a0948d1205b09240c8f8d2a469",
   "layers": [
     {
       "id": "command",
@@ -4011,32 +4011,33 @@
       },
       "id": "undertext",
       "input": {
-        "bytes": 83957,
+        "bytes": 72809,
         "filename": "undertext-latest.json",
-        "sha256": "ea844b57fb3528afd059b7d79bdf9192a2d86fe917ae719c883b46a1da17a2d6"
+        "sha256": "dd18f775c7cbda1aff1e3f0c00067b00424ed51edc3cb1c067559ebec3da17f7"
       },
       "layer": "attention",
       "live": true,
-      "method": "Offline fusion of committed readings through divergence_to_observation and china_observation.enrich_observation. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+      "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
       "method_version": 1,
       "metric": {
         "denominator": null,
         "label": "observations",
         "unit": "count",
-        "value": 34
+        "value": 18
       },
       "optional": false,
       "payload": {
         "generated_at": "2026-08-20T03:58:30Z",
         "live_round_ran": false,
         "live_surfaces_enabled": false,
-        "method": "Offline fusion of committed readings through divergence_to_observation and china_observation.enrich_observation. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+        "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
         "method_version": 1,
-        "n_observations": 34,
+        "n_observations": 18,
         "observations": [
           {
             "archive": {
               "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
@@ -4048,10 +4049,28 @@
             },
             "content_sha256": "eafe3d13a343f75972500faa6e0323d8c70fec40998c5dfc5601b7ad2b842c0f",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": null,
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [
               {
@@ -4072,6 +4091,7 @@
                 "zh": "青年失业率"
               }
             ],
+            "language": "mixed",
             "last_confirmed_alive": null,
             "last_seen": "2026-08-20T01:56:45Z",
             "mirror_urls": [],
@@ -4093,11 +4113,450 @@
             "text_en": "no_baseline",
             "text_zh": "[undertext:no_baseline] 青年失业率",
             "title": "[undertext:no_baseline] 青年失业率",
+            "uncertainty": [
+              "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": ""
+          },
+          {
+            "archive": {
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": null,
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "aa52978f1272cd8d364c9a798b10bfd8670a6b2f82cbc980e9eb68c3fef43ed8",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": null,
+              "gdelt": null,
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": {
+                "id": "weibo:广场",
+                "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim.",
+                "title": "商务局回应胖东来生活广场涨租闭店",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
+            },
+            "deletion_confirmation": [],
+            "deletion_signal": "permitted_attention",
+            "detected_at": "2026-08-20T02:06:13Z",
+            "first_seen": "2026-08-20T02:06:13Z",
+            "gazetteer_hits": [
+              {
+                "category": "june4_tiananmen",
+                "en": "the Square (Tiananmen)",
+                "first_seen": "",
+                "zh": "广场"
+              }
+            ],
+            "language": "zh",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-20T02:06:13Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "weibo-board-archive"
+            },
+            "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+            "source_url": "",
+            "terms": [
+              "广场"
+            ],
+            "text": "商务局回应胖东来生活广场涨租闭店\n广场",
+            "text_en": "",
+            "text_zh": "商务局回应胖东来生活广场涨租闭店\n商务局回应胖东来生活广场涨租闭店\n广场",
+            "title": "商务局回应胖东来生活广场涨租闭店",
+            "uncertainty": [
+              "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": ""
+          },
+          {
+            "archive": {
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": null,
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "dc16200f00706003267ee64f5aedd181dd64cf791cb5a39f2fe58d34fcb0da9a",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": null,
+              "gdelt": null,
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": {
+                "id": "weibo:天安门",
+                "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim.",
+                "title": "天安门下半旗悼念朱镕基同志",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
+            },
+            "deletion_confirmation": [],
+            "deletion_signal": "permitted_attention",
+            "detected_at": "2026-08-20T02:06:13Z",
+            "first_seen": "2026-08-20T02:06:13Z",
+            "gazetteer_hits": [
+              {
+                "category": "june4_tiananmen",
+                "en": "Tiananmen Square",
+                "first_seen": "",
+                "zh": "天安门"
+              }
+            ],
+            "language": "zh",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-20T02:06:13Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "weibo-board-archive"
+            },
+            "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+            "source_url": "",
+            "terms": [
+              "天安门"
+            ],
+            "text": "天安门下半旗悼念朱镕基同志\n天安门",
+            "text_en": "",
+            "text_zh": "天安门下半旗悼念朱镕基同志\n天安门下半旗悼念朱镕基同志\n天安门",
+            "title": "天安门下半旗悼念朱镕基同志",
+            "uncertainty": [
+              "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": ""
+          },
+          {
+            "archive": {
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": null,
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "ae466d1b82ca8b1eb73d77d9a67aa77b006f548db71aaa2f792d0576c822f536",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": null,
+              "gdelt": null,
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": {
+                "id": "weibo:散步",
+                "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim.",
+                "title": "张家界偶遇汪涵沈梦辰散步",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
+            },
+            "deletion_confirmation": [],
+            "deletion_signal": "permitted_attention",
+            "detected_at": "2026-08-20T02:06:13Z",
+            "first_seen": "2026-08-20T02:06:13Z",
+            "gazetteer_hits": [
+              {
+                "category": "protest_dissent",
+                "en": "taking a walk = protest evasion",
+                "first_seen": "",
+                "zh": "散步"
+              }
+            ],
+            "language": "zh",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-20T02:06:13Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "weibo-board-archive"
+            },
+            "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+            "source_url": "",
+            "terms": [
+              "散步"
+            ],
+            "text": "张家界偶遇汪涵沈梦辰散步\n散步",
+            "text_en": "",
+            "text_zh": "张家界偶遇汪涵沈梦辰散步\n张家界偶遇汪涵沈梦辰散步\n散步",
+            "title": "张家界偶遇汪涵沈梦辰散步",
+            "uncertainty": [
+              "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": ""
+          },
+          {
+            "archive": {
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": null,
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "3dc5e358f06d9a04eba834b40fa102bde6091b59f605eae289bbf17e5877f755",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": null,
+              "gdelt": null,
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": {
+                "id": "weibo:失联",
+                "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim.",
+                "title": "25岁小伙见网恋女友失联近两年",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
+            },
+            "deletion_confirmation": [],
+            "deletion_signal": "permitted_attention",
+            "detected_at": "2026-08-20T02:06:13Z",
+            "first_seen": "2026-08-20T02:06:13Z",
+            "gazetteer_hits": [
+              {
+                "category": "repression_triggers",
+                "en": "lost contact = disappeared",
+                "first_seen": "",
+                "zh": "失联"
+              }
+            ],
+            "language": "zh",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-20T02:06:13Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "weibo-board-archive"
+            },
+            "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+            "source_url": "",
+            "terms": [
+              "失联"
+            ],
+            "text": "25岁小伙见网恋女友失联近两年\n失联",
+            "text_en": "",
+            "text_zh": "25岁小伙见网恋女友失联近两年\n25岁小伙见网恋女友失联近两年\n失联",
+            "title": "25岁小伙见网恋女友失联近两年",
+            "uncertainty": [
+              "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": ""
+          },
+          {
+            "archive": {
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": null,
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "1f25c99a99b95afd7c1a5feed2da011ccf142d449d8cbef7616d30fefc8054c8",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": null,
+              "gdelt": null,
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": {
+                "id": "weibo:天安门",
+                "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim.",
+                "title": "天安门下半旗悼念朱镕基同志",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
+            },
+            "deletion_confirmation": [],
+            "deletion_signal": "withdrawal_watch",
+            "detected_at": "2026-08-20T02:06:13Z",
+            "first_seen": "2026-08-20T02:06:13Z",
+            "gazetteer_hits": [
+              {
+                "category": "june4_tiananmen",
+                "en": "Tiananmen Square",
+                "first_seen": "",
+                "zh": "天安门"
+              }
+            ],
+            "language": "zh",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-20T02:06:13Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of Weibo withdrawal-watch candidates (pooled persist-rate, not a takedown proof)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "weibo-board-archive"
+            },
+            "source": "undertext:fusion:weibo-hotsearch-withdrawal",
+            "source_url": "",
+            "terms": [
+              "天安门"
+            ],
+            "text": "天安门下半旗悼念朱镕基同志",
+            "text_en": "",
+            "text_zh": "天安门下半旗悼念朱镕基同志\n天安门下半旗悼念朱镕基同志",
+            "title": "天安门下半旗悼念朱镕基同志",
+            "uncertainty": [
+              "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
             "url": ""
           },
           {
             "archive": {
               "archive_today_lookup": "https://archive.today/https://baike.baidu.com/item/%25E7%2583%2582%25E5%25B0%25BE%25E6%25A5%25BC",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://baike.baidu.com/item/%25E7%2583%2582%25E5%25B0%25BE%25E6%25A5%25BC",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
@@ -4109,10 +4568,28 @@
             },
             "content_sha256": "e435cce5dd6535bd943401d33ef5b72cf25a560e63ab4dbae2ed27aa41b30aaa",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": null,
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [
               {
@@ -4133,6 +4610,7 @@
                 "zh": "烂尾楼"
               }
             ],
+            "language": "mixed",
             "last_confirmed_alive": null,
             "last_seen": "2020-10-14T05:28:15Z",
             "mirror_urls": [],
@@ -4154,11 +4632,19 @@
             "text_en": "no_baseline",
             "text_zh": "[undertext:no_baseline] 烂尾楼",
             "title": "[undertext:no_baseline] 烂尾楼",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
             "url": "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC"
           },
           {
             "archive": {
               "archive_today_lookup": "https://archive.today/https://baike.baidu.com/item/%25E7%2599%25BD%25E7%25BA%25B8%25E8%25BF%2590%25E5%258A%25A8",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://baike.baidu.com/item/%25E7%2599%25BD%25E7%25BA%25B8%25E8%25BF%2590%25E5%258A%25A8",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
@@ -4170,10 +4656,28 @@
             },
             "content_sha256": "682068d60c3243aa7fc2e927989f09b28d67d7cde50c6624101d5aed9c72d769",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": null,
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [
               {
@@ -4194,6 +4698,7 @@
                 "zh": "白纸"
               }
             ],
+            "language": "mixed",
             "last_confirmed_alive": null,
             "last_seen": "2026-08-20T01:56:45Z",
             "mirror_urls": [],
@@ -4215,11 +4720,19 @@
             "text_en": "unreachable",
             "text_zh": "[undertext:unreachable] 白纸运动",
             "title": "[undertext:unreachable] 白纸运动",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
             "url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8"
           },
           {
             "archive": {
               "archive_today_lookup": "https://archive.today/https://www.stats.gov.cn/sj/zxfb/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://www.stats.gov.cn/sj/zxfb/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
@@ -4231,10 +4744,28 @@
             },
             "content_sha256": "446a219b3d41337bace4ef9be331510c5844a91ffdf1a972ef573b594ec4f669",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": null,
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [
               {
@@ -4248,6 +4779,7 @@
             "detected_at": "2026-08-20T01:56:45Z",
             "first_seen": "2026-08-20T01:56:45Z",
             "gazetteer_hits": [],
+            "language": "mixed",
             "last_confirmed_alive": null,
             "last_seen": "2026-08-20T01:56:45Z",
             "mirror_urls": [],
@@ -4269,11 +4801,19 @@
             "text_en": "unreachable",
             "text_zh": "[undertext:unreachable] 国家统计局 最新发布",
             "title": "[undertext:unreachable] 国家统计局 最新发布",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "last-confirmed-alive is unknown",
+              "no China Digital Times ledger join",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
             "url": "https://www.stats.gov.cn/sj/zxfb/"
           },
           {
             "archive": {
               "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
@@ -4283,1297 +4823,433 @@
               "wayback_raw": null,
               "wayback_snapshot": null
             },
-            "content_sha256": "17593d8ea78583eff3e9cd343975ebba607f5e11bc981f6a3b0f6ac0d3c238a9",
+            "content_sha256": "19346fd521785d0e937a39c5a7625ec823fea4995142de20165e5b22fc6e2d44",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": {
-                "id": "subway",
-                "note": null,
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
                 "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
                 "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
               },
-              "gdelt": null,
+              "gdelt": {
+                "id": "gdelt:subway",
+                "note": "GDELT DOC 2.0 overlap on committed term 'subway'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim.",
+                "title": "subway",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
+            },
+            "deletion_confirmation": [],
+            "detected_at": "2026-07-27T20:03:29Z",
+            "domain": "OTHER",
+            "first_seen": "2026-02-21T04:06:58Z",
+            "gazetteer_hits": [],
+            "language": "en",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-19T05:20:06Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "cdt-public-rss"
+            },
+            "source": "undertext:fusion:ddti",
+            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+            "terms": [
+              "subway",
+              "Extreme Security",
+              "Shanghai",
+              "airport security",
+              "beijing subway",
+              "tourist sites",
+              "Tiananmen Square",
+              "fraud",
+              "tourism",
+              "WeChat",
+              "social media censorship",
+              "Tiananmen",
+              "travel",
+              "Internet censorship",
+              "online censorship",
+              "Beijing"
+            ],
+            "text": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nDDTI terms: subway, Extreme Security, Shanghai, airport security, beijing subway, tourist sites, Tiananmen Square, fraud, tourism, WeChat, social media censorship, Tiananmen, travel, Internet censorship, online censorship, Beijing",
+            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nTranslation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nDDTI terms: subway, Extreme Security, Shanghai, airport security, beijing subway, tourist sites, Tiananmen Square, fraud, tourism, WeChat, social media censorship, Tiananmen, travel, Internet censorship, online censorship, Beijing",
+            "text_zh": "",
+            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+          },
+          {
+            "archive": {
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "f637d9513b238437cb9195ecb5906a31a9045331857546a57e537282c3397975",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": {
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+                "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
+              },
+              "gdelt": {
+                "id": "gdelt:subway",
+                "note": "GDELT DOC 2.0 overlap on committed term 'subway'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim.",
+                "title": "subway",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [],
             "detected_at": "2026-07-27T20:03:29Z",
             "domain": "OTHER",
             "first_seen": "2026-07-27T20:03:29Z",
             "gazetteer_hits": [],
+            "language": "en",
             "last_confirmed_alive": null,
             "last_seen": "2026-07-27T20:03:29Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
               "vantage": "cdt-public-rss"
             },
             "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+            "source_url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
             "terms": [
               "subway"
             ],
-            "text": "subway",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nsubway",
+            "text": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On\nDDTI terms: subway",
+            "text_en": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On\nTranslations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On\nDDTI terms: subway",
             "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "4a3a194676c10e1a709fca3d3ed872d55b848aab8ba1071c4c2d02af9d55b9e6",
-            "cross_links": {
-              "cdt": {
-                "id": "Extreme Security",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-19T05:20:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-19T05:20:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-19T05:20:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "Extreme Security"
+            "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
             ],
-            "text": "Extreme Security",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nExtreme Security",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+            "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
               "wayback_raw": null,
               "wayback_snapshot": null
             },
-            "content_sha256": "062ad0d43c819d8c839240f7b0f02a9f25842173c6304d1802f4ec7e6bea556f",
+            "content_sha256": "6ca36b216ca49662370a80fa3f7500aa5803bee022f83531db8348242755f826",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": {
-                "id": "Shanghai",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+                "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/"
               },
-              "gdelt": null,
+              "gdelt": {
+                "id": "gdelt:WeChat",
+                "note": "GDELT DOC 2.0 overlap on committed term 'WeChat'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim.",
+                "title": "WeChat",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
               "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-19T05:20:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-19T05:20:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-19T05:20:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "Shanghai"
-            ],
-            "text": "Shanghai",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nShanghai",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
               },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "5dbb7930f5988e0f7d7afac991921e49ab5b786169725b900c76d3479645f06e",
-            "cross_links": {
-              "cdt": {
-                "id": "airport security",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
               },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-19T05:20:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-19T05:20:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-19T05:20:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "airport security"
-            ],
-            "text": "airport security",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nairport security",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "85b915ff8b3811889581151e130291a73949306de516e2862a398d2cf895656d",
-            "cross_links": {
-              "cdt": {
-                "id": "beijing subway",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-19T05:20:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-19T05:20:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-19T05:20:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "beijing subway"
-            ],
-            "text": "beijing subway",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nbeijing subway",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "050322d7575d958af0ae223f403d518a8d31b6d8a447889f22f61b0cda40f7e2",
-            "cross_links": {
-              "cdt": {
-                "id": "tourist sites",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-19T05:20:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-19T05:20:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-19T05:20:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "tourist sites"
-            ],
-            "text": "tourist sites",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\ntourist sites",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "e12e6604e2602f1193f53a5470d256a97524e3579983dd6aa09eeacfba1348c8",
-            "cross_links": {
-              "cdt": {
-                "id": "Tiananmen Square",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-06-05T00:27:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-06-05T00:27:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-06-05T00:27:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "Tiananmen Square"
-            ],
-            "text": "Tiananmen Square",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nTiananmen Square",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "a2ca192a6c75a85a792a6a2b650b4528b3e1a78d4c5e20d3d1cf1f0275b03249",
-            "cross_links": {
-              "cdt": {
-                "id": "fraud",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-03-27T06:08:44Z",
-            "domain": "OTHER",
-            "first_seen": "2026-03-27T06:08:44Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-03-27T06:08:44Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "fraud"
-            ],
-            "text": "fraud",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nfraud",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "f85477c408f507fab08a10cc2ad7f1fbbcac378e7ae2487cfb579452cf8fa3d9",
-            "cross_links": {
-              "cdt": {
-                "id": "tourism",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-05-21T17:22:46Z",
-            "domain": "OTHER",
-            "first_seen": "2026-05-21T17:22:46Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-05-21T17:22:46Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "tourism"
-            ],
-            "text": "tourism",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\ntourism",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "831b020199de73a5b0b3f26517bc055f90d961f35ebc63bce4f1fb33845207c0",
-            "cross_links": {
-              "cdt": {
-                "id": "WeChat",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
+              "weibo": null
             },
             "deletion_confirmation": [],
             "detected_at": "2026-02-21T04:06:58Z",
             "domain": "TECHNOLOGY",
             "first_seen": "2026-02-21T04:06:58Z",
             "gazetteer_hits": [],
+            "language": "en",
             "last_confirmed_alive": null,
             "last_seen": "2026-02-21T04:06:58Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
               "vantage": "cdt-public-rss"
             },
             "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+            "source_url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
             "terms": [
               "WeChat"
             ],
-            "text": "WeChat",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nWeChat",
+            "text": "Photo: CHINA – PINGYAO, by Pierre Doyen\nDDTI terms: WeChat",
+            "text_en": "Photo: CHINA – PINGYAO, by Pierre Doyen\nPhoto: CHINA – PINGYAO, by Pierre Doyen\nDDTI terms: WeChat",
             "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+            "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
               "wayback_raw": null,
               "wayback_snapshot": null
             },
-            "content_sha256": "33675a246504446716e69ccc653228b491afa620e53f997c467902bdbef3f7dd",
+            "content_sha256": "598211262bb9682eb3b2ae59cecc620d75d0696dfe372d1276d856aa0c6e23eb",
             "cross_links": {
-              "cdt": {
-                "id": "social media censorship",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
-              "gdelt": null,
+              "cdt": {
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+              },
+              "gdelt": {
+                "id": "gdelt:WeChat",
+                "note": "GDELT DOC 2.0 overlap on committed term 'WeChat'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim.",
+                "title": "WeChat",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
+            },
+            "deletion_confirmation": [],
+            "detected_at": "2026-02-21T04:06:58Z",
+            "domain": "TECHNOLOGY",
+            "first_seen": "2026-02-21T04:06:58Z",
+            "gazetteer_hits": [],
+            "language": "en",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-14T00:51:23Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "cdt-public-rss"
+            },
+            "source": "undertext:fusion:ddti",
+            "source_url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+            "terms": [
+              "WeChat",
+              "social media censorship",
+              "Internet censorship",
+              "online censorship",
+              "social media",
+              "Cannot Speak Openly"
+            ],
+            "text": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nDDTI terms: WeChat, social media censorship, Internet censorship, online censorship, social media, Cannot Speak Openly",
+            "text_en": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nTranslation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nDDTI terms: WeChat, social media censorship, Internet censorship, online censorship, social media, Cannot Speak Openly",
+            "text_zh": "",
+            "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+          },
+          {
+            "archive": {
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "288583a8626bb6ceaeaac34c9c0de889525278f80e66f7350ffd3734346b2f4f",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": {
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+                "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+              },
+              "gdelt": {
+                "id": "gdelt:social media censorship",
+                "note": "GDELT DOC 2.0 overlap on committed term 'social media censorship'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim.",
+                "title": "social media censorship",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [],
             "detected_at": "2026-02-23T02:11:05Z",
             "domain": "INFORMATION",
             "first_seen": "2026-02-23T02:11:05Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-02-23T02:11:05Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "social media censorship"
+            "gazetteer_hits": [
+              {
+                "category": "censorship_meta",
+                "en": "deleted / not found",
+                "first_seen": "",
+                "zh": "404"
+              }
             ],
-            "text": "social media censorship",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nsocial media censorship",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "df15422fde3205418a787aed7208a4199c8a6f3e57ac16e97af3e11958cdb08f",
-            "cross_links": {
-              "cdt": {
-                "id": "Tiananmen",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-06-05T00:27:06Z",
-            "domain": "OTHER",
-            "first_seen": "2026-06-05T00:27:06Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-06-05T00:27:06Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "Tiananmen"
-            ],
-            "text": "Tiananmen",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nTiananmen",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "b605a53ca4fe0d373c8900a09e981e75959a7cd1ef48f2821c434265a1f66512",
-            "cross_links": {
-              "cdt": {
-                "id": "travel",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-02-28T01:56:40Z",
-            "domain": "OTHER",
-            "first_seen": "2026-02-28T01:56:40Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-02-28T01:56:40Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "travel"
-            ],
-            "text": "travel",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\ntravel",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "bd1b998943ad0f19a8a2670137c101986d318534f6b15060ee3b9e184f791244",
-            "cross_links": {
-              "cdt": {
-                "id": "Internet censorship",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-02-23T02:11:05Z",
-            "domain": "INFORMATION",
-            "first_seen": "2026-02-23T02:11:05Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-02-23T02:11:05Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "Internet censorship"
-            ],
-            "text": "Internet censorship",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nInternet censorship",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "ed6c2fb3d816ce0cc251f8b82abc9acae633c3ea279b831eb92666400cbb42d7",
-            "cross_links": {
-              "cdt": {
-                "id": "online censorship",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-02-23T02:11:05Z",
-            "domain": "INFORMATION",
-            "first_seen": "2026-02-23T02:11:05Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-02-23T02:11:05Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "online censorship"
-            ],
-            "text": "online censorship",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nonline censorship",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "82533d95e1703040dc8c0255fbf0b86cadafed633f966628621064c0912a3159",
-            "cross_links": {
-              "cdt": {
-                "id": "Beijing",
-                "note": null,
-                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-04-29T04:37:29Z",
-            "domain": "OTHER",
-            "first_seen": "2026-04-29T04:37:29Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-04-29T04:37:29Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
-            "terms": [
-              "Beijing"
-            ],
-            "text": "Beijing",
-            "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nBeijing",
-            "text_zh": "",
-            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "7fcd8eb65c3ae7900f0a0a30aa618bd919cfbb2fbd7271c606e5e36be4920e66",
-            "cross_links": {
-              "cdt": {
-                "id": "Discouraged",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "Discouraged"
-            ],
-            "text": "Discouraged",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nDiscouraged",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "763877fb505886279f33e91fca5302752dcc538be9a37a3c6c9573428a9781d3",
-            "cross_links": {
-              "cdt": {
-                "id": "France",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "France"
-            ],
-            "text": "France",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nFrance",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "ff57d5900581ac3bf86c0ea8a40b4e6fd817aad9d2c3cf3ac7983d85cba846b8",
-            "cross_links": {
-              "cdt": {
-                "id": "Peking University",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "Peking University"
-            ],
-            "text": "Peking University",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nPeking University",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "010b9b58fe00e189bc58097815a6e96598c749b041340ddf78a701fbba28b716",
-            "cross_links": {
-              "cdt": {
-                "id": "U.S. universities",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "U.S. universities"
-            ],
-            "text": "U.S. universities",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nU.S. universities",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "5c43f8ed4771504ab4fa297b1556f0a40957c592ac7b94a78383bae5feee307f",
-            "cross_links": {
-              "cdt": {
-                "id": "academics",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "academics"
-            ],
-            "text": "academics",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nacademics",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "62333a64d08de3b63f6df1459584360b20d490dbfdd9bdc4106c921d6ade58d3",
-            "cross_links": {
-              "cdt": {
-                "id": "foreign universities",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "foreign universities"
-            ],
-            "text": "foreign universities",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nforeign universities",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "72b7301c0c60f85148edb992bbd6070a31bc7fc875240c8d13c5188825f656b4",
-            "cross_links": {
-              "cdt": {
-                "id": "mathematics",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "mathematics"
-            ],
-            "text": "mathematics",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nmathematics",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "cecb1a8787ff2c62e4bf41ca0e58c6b0353b095709c42f87008ea182391c3d80",
-            "cross_links": {
-              "cdt": {
-                "id": "overseas Chinese",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "overseas Chinese"
-            ],
-            "text": "overseas Chinese",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\noverseas Chinese",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "ed36738ef989e8bf822a471c16ca1d0764b98d0c1bcf9dfaa3254de3a8f32877",
-            "cross_links": {
-              "cdt": {
-                "id": "science education",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T23:04:56Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T23:04:56Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T23:04:56Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-            "terms": [
-              "science education"
-            ],
-            "text": "science education",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nscience education",
-            "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "7718a2df0cdd0e5109e7761fbf6f0998ad6617ad20c018cb3cddc51df524390f",
-            "cross_links": {
-              "cdt": {
-                "id": "nationalism",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-03-04T22:42:51Z",
-            "domain": "OTHER",
-            "first_seen": "2026-03-04T22:42:51Z",
-            "gazetteer_hits": [],
+            "language": "en",
             "last_confirmed_alive": null,
             "last_seen": "2026-03-04T22:42:51Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
               "vantage": "cdt-public-rss"
             },
             "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+            "source_url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
             "terms": [
+              "social media censorship",
+              "Internet censorship",
+              "online censorship",
               "nationalism"
             ],
-            "text": "nationalism",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nnationalism",
+            "text": "CDT’s “404 Deleted Content Archive” Summary for June 2026\nDDTI terms: social media censorship, Internet censorship, online censorship, nationalism",
+            "text_en": "CDT’s “404 Deleted Content Archive” Summary for June 2026\nCDT’s “404 Deleted Content Archive” Summary for June 2026\nDDTI terms: social media censorship, Internet censorship, online censorship, nationalism",
             "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+            "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
           },
           {
             "archive": {
               "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
@@ -5583,204 +5259,324 @@
               "wayback_raw": null,
               "wayback_snapshot": null
             },
-            "content_sha256": "36940e35decac05fb19359a3fceaa25bc3e603a908ccb282c82d9e7c3b02efc5",
+            "content_sha256": "65eca18d1e56002b5a3d8f5fe8bb2cfd0cc3d75e6879cfc0d8824707b158ba9f",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": {
-                "id": "United States",
-                "note": null,
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
                 "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
                 "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
               },
+              "gdelt": {
+                "id": "gdelt:Discouraged",
+                "note": "GDELT DOC 2.0 overlap on committed term 'Discouraged'; label=containment; global_norm=0.0277; clock 2026-08-20T02:12:09Z. Not a deletion claim.",
+                "title": "Discouraged",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
+              "greatfire": null,
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
+            },
+            "deletion_confirmation": [],
+            "detected_at": "2026-08-14T23:04:56Z",
+            "domain": "OTHER",
+            "first_seen": "2026-03-04T22:42:51Z",
+            "gazetteer_hits": [],
+            "language": "en",
+            "last_confirmed_alive": null,
+            "last_seen": "2026-08-14T23:04:56Z",
+            "mirror_urls": [],
+            "provenance": {
+              "collector": "undertext",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "cdt-public-rss"
+            },
+            "source": "undertext:fusion:ddti",
+            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+            "terms": [
+              "Discouraged",
+              "France",
+              "Peking University",
+              "U.S. universities",
+              "academics",
+              "foreign universities",
+              "mathematics",
+              "overseas Chinese",
+              "science education",
+              "nationalism",
+              "United States",
+              "Academia"
+            ],
+            "text": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nDDTI terms: Discouraged, France, Peking University, U.S. universities, academics, foreign universities, mathematics, overseas Chinese, science education, nationalism, United States, Academia",
+            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nMathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nDDTI terms: Discouraged, France, Peking University, U.S. universities, academics, foreign universities, mathematics, overseas Chinese, science education, nationalism, United States, Academia",
+            "text_zh": "",
+            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+          },
+          {
+            "archive": {
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+              "post_event_snapshot": null,
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+              "wayback_raw": null,
+              "wayback_snapshot": null
+            },
+            "content_sha256": "7f5a7e56aa15aa2c5f0e2d58bcfcdef8bb44c92a4519fd6825edf54b7c9debe7",
+            "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
+              "cdt": {
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "Translation: “How Do These Comments Break the Rules?”",
+                "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"
+              },
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [],
             "detected_at": "2026-03-09T23:19:55Z",
             "domain": "OTHER",
             "first_seen": "2026-03-09T23:19:55Z",
             "gazetteer_hits": [],
+            "language": "en",
             "last_confirmed_alive": null,
             "last_seen": "2026-03-09T23:19:55Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
               "vantage": "cdt-public-rss"
             },
             "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+            "source_url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
             "terms": [
               "United States"
             ],
-            "text": "United States",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nUnited States",
+            "text": "Translation: “How Do These Comments Break the Rules?”\nDDTI terms: United States",
+            "text_en": "Translation: “How Do These Comments Break the Rules?”\nTranslation: “How Do These Comments Break the Rules?”\nDDTI terms: United States",
             "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+            "title": "Translation: “How Do These Comments Break the Rules?”",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
               "wayback_raw": null,
               "wayback_snapshot": null
             },
-            "content_sha256": "9c5850ca904df3ae1638a689269e9c7f6758be0ee45bb64d856c9aa5099feb8f",
+            "content_sha256": "ade291f8b46273d2ad58ccbfb5d3bcda988585842132666d1620b8e215684293",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": {
-                "id": "social media",
-                "note": null,
-                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
               },
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [],
             "detected_at": "2026-03-04T07:21:40Z",
             "domain": "OTHER",
             "first_seen": "2026-03-04T07:21:40Z",
             "gazetteer_hits": [],
+            "language": "en",
             "last_confirmed_alive": null,
             "last_seen": "2026-03-04T07:21:40Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
               "vantage": "cdt-public-rss"
             },
             "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+            "source_url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
             "terms": [
               "social media"
             ],
-            "text": "social media",
-            "text_en": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nsocial media",
+            "text": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints\nDDTI terms: social media",
+            "text_en": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints\nTranslation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints\nDDTI terms: social media",
             "text_zh": "",
-            "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+            "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+            ],
+            "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
               "post_event_snapshot": null,
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
               "wayback_raw": null,
               "wayback_snapshot": null
             },
-            "content_sha256": "1cc08248a56ee4abe993a2685e6e8075b4c365323a49641d79c5e44d1d82bd59",
+            "content_sha256": "d8139588fbffe7d6dd490bae10585c05078951eb8029284308a30b9ec40fa57d",
             "cross_links": {
+              "bleedthrough": {
+                "id": "bleedthrough",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post",
+                "title": "Bleedthrough injector floor, 6 distinct pools",
+                "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
+              },
               "cdt": {
-                "id": "Academia",
-                "note": null,
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                "id": "cdt-public-article",
+                "note": "China Digital Times public article URL already on this record; not a private feed",
+                "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+                "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"
               },
               "gdelt": null,
               "greatfire": null,
-              "ooni": null
+              "ooni": {
+                "id": "ooni-gfw",
+                "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL",
+                "title": "OONI GFW index 59.3",
+                "url": "https://palimpsest.info/readings/ooni-gfw-latest.json"
+              },
+              "undertext": {
+                "id": "undertext-fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+                "title": "UNDERTEXT public-archive fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json"
+              },
+              "weibo": null
             },
             "deletion_confirmation": [],
-            "detected_at": "2026-04-03T02:47:04Z",
+            "detected_at": "2026-03-04T07:21:40Z",
             "domain": "OTHER",
-            "first_seen": "2026-04-03T02:47:04Z",
+            "first_seen": "2026-03-04T07:21:40Z",
             "gazetteer_hits": [],
+            "language": "en",
             "last_confirmed_alive": null,
-            "last_seen": "2026-04-03T02:47:04Z",
+            "last_seen": "2026-03-04T07:21:40Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
+              "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
               "vantage": "cdt-public-rss"
             },
             "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+            "source_url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
             "terms": [
-              "Academia"
+              "social media"
             ],
-            "text": "Academia",
-            "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nAcademia",
+            "text": "Minitrue: 718 Leaked Directives from Video Platform LeTV\nDDTI terms: social media",
+            "text_en": "Minitrue: 718 Leaked Directives from Video Platform LeTV\nMinitrue: 718 Leaked Directives from Video Platform LeTV\nDDTI terms: social media",
             "text_zh": "",
-            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-              "post_event_snapshot": null,
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-              "wayback_raw": null,
-              "wayback_snapshot": null
-            },
-            "content_sha256": "f042e0c900f70318b5ea4ec67bb27dba50e01921c7cecde5b615a559afbb37b4",
-            "cross_links": {
-              "cdt": {
-                "id": "Cannot Speak Openly",
-                "note": null,
-                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
-              },
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null
-            },
-            "deletion_confirmation": [],
-            "detected_at": "2026-08-14T00:51:23Z",
-            "domain": "OTHER",
-            "first_seen": "2026-08-14T00:51:23Z",
-            "gazetteer_hits": [],
-            "last_confirmed_alive": null,
-            "last_seen": "2026-08-14T00:51:23Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "cdt-public-rss"
-            },
-            "source": "undertext:fusion:ddti",
-            "source_url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-            "terms": [
-              "Cannot Speak Openly"
+            "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+            "uncertainty": [
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "no deletion-confirmation trail on this row",
+              "last-confirmed-alive is unknown",
+              "OONI/Bleedthrough join is instrument-level, not URL corroboration"
             ],
-            "text": "Cannot Speak Openly",
-            "text_en": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nCannot Speak Openly",
-            "text_zh": "",
-            "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-            "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+            "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/"
           }
         ],
-        "scope": "Differential-censorship observations reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner.",
-        "source": "UNDERTEXT fusion of public Wayback / Weibo-board / DDTI readings"
+        "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing.",
+        "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI clustered by public URL, with GDELT/OONI/Bleedthrough joins"
       },
       "raw_url": "https://palimpsest.info/readings/undertext-latest.json",
-      "scope": "Differential-censorship observations reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner.",
-      "source": "UNDERTEXT fusion of public Wayback / Weibo-board / DDTI readings",
+      "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing.",
+      "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI clustered by public URL, with GDELT/OONI/Bleedthrough joins",
       "source_timestamp": "2026-08-20T03:58:30Z",
       "status": "live",
-      "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 34 count.",
+      "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 18 count.",
       "title": "UNDERTEXT differential fusion"
     },
     {

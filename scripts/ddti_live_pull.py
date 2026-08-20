@@ -410,7 +410,7 @@ async def main():
     dmap, _ = load_domain_map()
     index = compute_selectivity_novelty(
         observations, now, current_window_days=45,
-        history_window_days=FEED_HISTORY_DAYS, top_n=30,
+        history_window_days=FEED_HISTORY_DAYS, top_n=10_000,
         domain_map=dmap,
         # This surface, and only this one, opts into evidence shrinkage on novelty. CDT's feed
         # is a SAMPLE of what the censor touched, so a term seen once is thin evidence and must
@@ -425,7 +425,7 @@ async def main():
     from core.china_observation import serialize_observation
 
     index["observation_records"] = [
-        serialize_observation(obs) for obs in observations[:80]
+        serialize_observation(obs) for obs in observations
     ]
     index["n_observation_records"] = len(index["observation_records"])
 

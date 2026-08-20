@@ -33,6 +33,14 @@ from collectors.undertext import (
     content_key,
     divergence_to_observation,
 )
+from core.china_joins import (
+    attach_joins,
+    cluster_by_url,
+    gdelt_index,
+    instrument_bleedthrough,
+    instrument_ooni,
+    weibo_index,
+)
 from core.china_observation import enrich_observation, iso_z, serialize_observation
 from core.governance import KillSwitch, RateCeiling
 
@@ -48,6 +56,9 @@ _FUSION_INPUTS = (
     "wayback-latest.json",
     "weibo-hotsearch-latest.json",
     "ddti-latest.json",
+    "gdelt-latest.json",
+    "ooni-gfw-latest.json",
+    "bleedthrough-latest.json",
 )
 
 # Public encyclopedia search only. Not Weibo, not Baidu, not Baike.
@@ -104,8 +115,121 @@ def _wayback_timestamp(value: Any) -> str | None:
     return iso_z(value)
 
 
+def _fuse_ddti_ranked(ddti: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every ranked term and every public sample, clustered later by URL.
+
+    The committed index is a ranked cut. This path still persists every sample
+    title/URL the index already published rather than the first sample of the
+    first forty terms.
+    """
+
+    buckets: dict[str, dict[str, Any]] = {}
+    term_only: list[dict[str, Any]] = []
+    for row in ddti.get("ranked") or []:
+        if not isinstance(row, dict):
+            continue
+        term = (row.get("term") or "").strip()
+        if not term:
+            continue
+        samples = [s for s in (row.get("samples") or []) if isinstance(s, dict)]
+        detected = iso_z(row.get("last_seen") or row.get("first_seen") or ddti.get("generated_at"))
+        if not samples:
+            raw = {
+                "terms": [term],
+                "detected_at": detected,
+                "title": f"[undertext:ddti] {term}",
+                "text": term,
+                "url": "",
+                "source": "undertext:fusion:ddti",
+                "domain": row.get("domain"),
+            }
+            term_only.append(enrich_observation(
+                raw,
+                text=term,
+                first_seen=row.get("first_seen"),
+                last_seen=row.get("last_seen") or row.get("first_seen"),
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of committed DDTI ranked term with no public sample URL",
+                    "vantage": "cdt-public-rss",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            ))
+            continue
+        for sample in samples:
+            url = (sample.get("url") or "").strip()
+            title = sample.get("title") or f"[undertext:ddti] {term}"
+            key = url if url.startswith("https://") else f"term:{term}:{title}"
+            bucket = buckets.setdefault(key, {
+                "terms": [],
+                "titles": [],
+                "mirrors": [],
+                "url": url if url.startswith("https://") else "",
+                "first_seen": row.get("first_seen"),
+                "last_seen": row.get("last_seen") or row.get("first_seen"),
+                "detected": detected,
+                "domain": row.get("domain"),
+            })
+            if term not in bucket["terms"]:
+                bucket["terms"].append(term)
+            if title not in bucket["titles"]:
+                bucket["titles"].append(title)
+            if url.startswith("https://") and url not in bucket["mirrors"]:
+                bucket["mirrors"].append(url)
+            if row.get("first_seen") and (
+                not bucket["first_seen"] or row["first_seen"] < bucket["first_seen"]
+            ):
+                bucket["first_seen"] = row["first_seen"]
+            if (row.get("last_seen") or row.get("first_seen")) and (
+                not bucket["last_seen"]
+                or (row.get("last_seen") or row.get("first_seen")) > bucket["last_seen"]
+            ):
+                bucket["last_seen"] = row.get("last_seen") or row.get("first_seen")
+
+    out: list[dict[str, Any]] = []
+    for bucket in buckets.values():
+        title = bucket["titles"][0] if bucket["titles"] else "; ".join(bucket["terms"])
+        text = "\n".join(bucket["titles"] + [f"DDTI terms: {', '.join(bucket['terms'])}"])
+        mirrors = [url for url in bucket["mirrors"] if url != bucket["url"]]
+        raw = {
+            "terms": bucket["terms"],
+            "detected_at": bucket["detected"],
+            "title": title,
+            "text": text,
+            "url": bucket["url"],
+            "source": "undertext:fusion:ddti",
+            "domain": bucket["domain"],
+        }
+        out.append(enrich_observation(
+            raw,
+            text=text,
+            source_url=bucket["url"],
+            mirror_urls=mirrors,
+            first_seen=bucket["first_seen"],
+            last_seen=bucket["last_seen"],
+            cdt={
+                "id": "cdt-public-article",
+                "url": bucket["url"],
+                "title": title,
+            } if bucket["url"] else None,
+            provenance={
+                "collector": "undertext",
+                "method": (
+                    "fusion of every committed DDTI ranked term and every public "
+                    "sample title/URL (no observation_records on this snapshot)"
+                ),
+                "vantage": "cdt-public-rss",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+            },
+        ))
+    out.extend(term_only)
+    return out
+
+
 def fuse_existing_readings() -> list[dict[str, Any]]:
-    """Map already-published public readings onto the shared observation schema."""
+    """Map already-published public readings onto one fat observation per URL."""
 
     out: list[dict[str, Any]] = []
     wayback = _load_json("wayback-latest.json")
@@ -191,9 +315,8 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
                 "method_version": METHOD_VERSION,
             },
         ))
-    for rec in weibo.get("observation_records") or []:
-        if not isinstance(rec, dict):
-            continue
+    weibo_records = [rec for rec in (weibo.get("observation_records") or []) if isinstance(rec, dict)]
+    for rec in weibo_records:
         out.append(enrich_observation(
             rec,
             text=rec.get("text") or rec.get("title"),
@@ -201,6 +324,65 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
             provenance=rec.get("provenance") or {
                 "collector": "undertext",
                 "method": "fusion of Weibo hot-search observation records",
+                "vantage": "weibo-board-archive",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+            },
+        ))
+    for row in [] if weibo_records else (weibo.get("gazetteer_breakthroughs") or []):
+        if not isinstance(row, dict):
+            continue
+        term = row.get("term") or ""
+        if not term:
+            continue
+        titles = []
+        for sample in row.get("samples") or []:
+            if isinstance(sample, dict) and sample.get("title"):
+                titles.append(str(sample["title"]))
+        text = "\n".join(titles + [term]) if titles else term
+        raw = {
+            "terms": [term],
+            "detected_at": weibo.get("generated_at"),
+            "title": titles[0] if titles else f"[undertext:weibo-breakthrough] {term}",
+            "text": text,
+            "url": "",
+            "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+            "deletion_signal": "permitted_attention",
+        }
+        out.append(enrich_observation(
+            raw,
+            text=text,
+            provenance={
+                "collector": "undertext",
+                "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+                "vantage": "weibo-board-archive",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+            },
+        ))
+    watch = weibo.get("withdrawal_watch") if isinstance(weibo.get("withdrawal_watch"), dict) else {}
+    for row in [] if weibo_records else (watch.get("candidates") or []):
+        if not isinstance(row, dict):
+            continue
+        title = row.get("title") or ""
+        terms = [str(t) for t in (row.get("matched_terms") or []) if t]
+        if not title and not terms:
+            continue
+        raw = {
+            "terms": terms,
+            "detected_at": weibo.get("generated_at"),
+            "title": title or f"[undertext:weibo-withdrawal] {terms[0]}",
+            "text": title or "; ".join(terms),
+            "url": "",
+            "source": "undertext:fusion:weibo-hotsearch-withdrawal",
+            "deletion_signal": "withdrawal_watch",
+        }
+        out.append(enrich_observation(
+            raw,
+            text=raw["text"],
+            provenance={
+                "collector": "undertext",
+                "method": "fusion of Weibo withdrawal-watch candidates (pooled persist-rate, not a takedown proof)",
                 "vantage": "weibo-board-archive",
                 "schema_version": "palimpsest-china-observation.v1",
                 "method_version": METHOD_VERSION,
@@ -224,39 +406,29 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
             },
         ))
     if not ddti.get("observation_records"):
-        for row in (ddti.get("ranked") or [])[:40]:
-            if not isinstance(row, dict):
-                continue
-            term = row.get("term") or ""
-            if not term:
-                continue
-            sample = (row.get("samples") or [{}])[0] or {}
-            detected = iso_z(row.get("last_seen") or row.get("first_seen") or ddti.get("generated_at"))
-            raw = {
-                "terms": [term],
-                "detected_at": detected,
-                "title": sample.get("title") or f"[undertext:ddti] {term}",
-                "text": term,
-                "url": sample.get("url") or "",
-                "source": "undertext:fusion:ddti",
-                "domain": row.get("domain"),
-            }
-            out.append(enrich_observation(
-                raw,
-                text=term,
-                source_url=raw["url"],
-                first_seen=row.get("first_seen"),
-                last_seen=row.get("last_seen") or row.get("first_seen"),
-                cdt={"id": term, "url": raw["url"], "title": raw["title"]} if raw["url"] else None,
-                provenance={
-                    "collector": "undertext",
-                    "method": "fusion of committed DDTI ranked terms (no observation_records on this snapshot)",
-                    "vantage": "cdt-public-rss",
-                    "schema_version": "palimpsest-china-observation.v1",
-                    "method_version": METHOD_VERSION,
-                },
-            ))
-    return out
+        out.extend(_fuse_ddti_ranked(ddti))
+
+    clustered = cluster_by_url(out)
+    gdelt = gdelt_index(_load_json("gdelt-latest.json"))
+    weibo_links = weibo_index(weibo)
+    ooni = instrument_ooni(_load_json("ooni-gfw-latest.json"))
+    bleedthrough = instrument_bleedthrough(_load_json("bleedthrough-latest.json"))
+    joined = []
+    for row in clustered:
+        joined.append(attach_joins(
+            row,
+            gdelt=gdelt,
+            weibo=weibo_links,
+            ooni=ooni,
+            bleedthrough=bleedthrough,
+            undertext={
+                "id": "undertext-fusion",
+                "url": "https://palimpsest.info/readings/undertext-latest.json",
+                "title": "UNDERTEXT public-archive fusion",
+                "note": "This record is the Palimpsest reconstruction itself",
+            },
+        ))
+    return joined
 
 
 def _gazetteer_probes(limit: int = 12) -> list[Probe]:
@@ -346,15 +518,20 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
     out = {
         "generated_at": generated,
         "method_version": METHOD_VERSION,
-        "source": "UNDERTEXT fusion of public Wayback / Weibo-board / DDTI readings",
+        "source": (
+            "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI "
+            "clustered by public URL, with GDELT/OONI/Bleedthrough joins"
+        ),
         "scope": (
-            "Differential-censorship observations reconstructed from already-public "
+            "Fat public-evidence objects reconstructed from already-public "
             "Palimpsest readings, plus an optional Wikipedia-only live surface. "
-            "Live Weibo/Baidu/Baike fetches stay disabled on this runner."
+            "Live Weibo/Baidu/Baike fetches stay disabled on this runner. "
+            "Article bodies that were never captured stay unnamed as missing."
         ),
         "method": (
-            "Offline fusion of committed readings through divergence_to_observation "
-            "and china_observation.enrich_observation. Optional live surfaces require "
+            "Offline fusion of every committed sample/reconstruction through "
+            "china_observation.enrich_observation, URL clustering, and honest "
+            "cross-signal joins. Optional live surfaces require "
             "UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch."
         ),
         "n_observations": len(serialized),

@@ -59,6 +59,11 @@ def test_fusion_clock_is_newest_input_and_skips_missing_ledger(tmp_path):
     assert row["content_sha256"] == "ab" * 32
     assert "青年失业率" in row["gazetteer"]
     assert "Palimpsest erasure trail" in row["cite"]
+    assert row["text"]
+    assert "text_zh" in row
+    assert "uncertainty" in row
+    assert "cross_links_cdt" in row
+    assert "ghostarchive_lookup" in row
     ledger = next(
         item for item in document["inputs"]
         if item["filename"] == "public-deletion-ledgers-latest.json"
@@ -120,6 +125,8 @@ def test_html_desk_is_usable_without_javascript(tmp_path):
     document = trail.build_document(readings_dir=tmp_path)
     page = trail.render_html(document)
     assert "visible without JS" in page
+    assert "<details" in page
+    assert "<summary>" in page
     assert "Download CSV" in page
     assert "Download JSON" in page
     assert "Private WeChat" in page

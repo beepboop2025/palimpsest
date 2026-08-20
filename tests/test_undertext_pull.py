@@ -129,6 +129,61 @@ def test_offline_fusion_clock_is_the_newest_input_reading(tmp_path, monkeypatch)
     assert out["live_round_ran"] is False
 
 
+def test_offline_fusion_clusters_every_ddti_sample_and_keeps_weibo_suppression(
+    tmp_path, monkeypatch,
+):
+    readings = tmp_path
+    (readings / "wayback-latest.json").write_text("{}", encoding="utf-8")
+    (readings / "weibo-hotsearch-latest.json").write_text(json.dumps({
+        "generated_at": "2026-08-01T01:00:00Z",
+        "join": [{"term": "维权", "regime": "suppressed_invisible"}],
+        "gazetteer_breakthroughs": [{
+            "term": "天安门",
+            "samples": [{"title": "天安门下半旗悼念朱镕基同志"}],
+        }],
+    }), encoding="utf-8")
+    (readings / "ddti-latest.json").write_text(json.dumps({
+        "generated_at": "2026-08-01T02:00:00Z",
+        "ranked": [
+            {
+                "term": "subway",
+                "first_seen": "2026-07-01T00:00:00Z",
+                "last_seen": "2026-08-01T00:00:00Z",
+                "samples": [
+                    {"title": "Article A", "url": "https://chinadigitaltimes.net/a/"},
+                    {"title": "Article B", "url": "https://chinadigitaltimes.net/b/"},
+                ],
+            },
+            {
+                "term": "Extreme Security",
+                "first_seen": "2026-07-02T00:00:00Z",
+                "last_seen": "2026-08-01T00:00:00Z",
+                "samples": [
+                    {"title": "Article A", "url": "https://chinadigitaltimes.net/a/"},
+                ],
+            },
+        ],
+    }), encoding="utf-8")
+    monkeypatch.setattr(pull, "READINGS", readings)
+
+    rows = pull.fuse_existing_readings()
+    sources = {row["source"] for row in rows}
+    assert "undertext:fusion:weibo-hotsearch" in sources
+    assert "undertext:fusion:weibo-hotsearch-breakthrough" in sources
+    ddti = [row for row in rows if row["source"] == "undertext:fusion:ddti"]
+    urls = {row.get("url") for row in ddti}
+    assert urls == {
+        "https://chinadigitaltimes.net/a/",
+        "https://chinadigitaltimes.net/b/",
+    }
+    fat = next(row for row in ddti if row["url"].endswith("/a/"))
+    assert "subway" in fat["terms"] and "Extreme Security" in fat["terms"]
+    assert "Article A" in fat["text"]
+    assert fat["cross_links"]["cdt"]["url"].endswith("/a/")
+    assert fat["language"] in {"zh", "en", "mixed", "unknown"}
+    assert fat["uncertainty"]
+
+
 def test_pull_abstains_when_fusion_is_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "READINGS", tmp_path)
     monkeypatch.setattr(pull, "OUT", tmp_path / "undertext-latest.json")

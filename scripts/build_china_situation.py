@@ -202,6 +202,18 @@ def _osint_evidence(item: Mapping[str, Any]) -> str:
         parts.append(f'<a href="{_h(snapshot)}">Wayback snapshot</a>')
     elif isinstance(lookup, str) and lookup.startswith("https://"):
         parts.append(f'<a href="{_h(lookup)}">Wayback lookup</a>')
+    ghost = archive.get("ghostarchive_lookup")
+    if isinstance(ghost, str) and ghost.startswith("https://"):
+        parts.append(f'<a href="{_h(ghost)}">Ghostarchive lookup</a>')
+    language = item.get("language")
+    if isinstance(language, str) and language:
+        parts.append(f"language {_h(language)}")
+    signal = item.get("deletion_signal")
+    if isinstance(signal, str) and signal:
+        parts.append(f"signal {_h(signal)}")
+    count = item.get("confirmation_count")
+    if isinstance(count, int) and count:
+        parts.append(f"{count} confirmation{'s' if count != 1 else ''}")
     return " · ".join(parts) if parts else "no public URL or snapshot on this row"
 
 
@@ -210,10 +222,20 @@ def _osint_layer(row: Mapping[str, Any]) -> str:
     if not observations:
         body = """<div class="situation-empty"><strong>No linked public OSINT observation.</strong><p>Join is exact publisher URL or an exact gazetteer/topic term. Absence is a coverage gap, not a finding.</p></div>"""
     else:
-        body = "<ul>" + "".join(
-            f"""<li><strong>{_h(item['source'])}</strong><span>{_h(item['title'])}</span><small>first {_h(item.get('first_seen') or 'unknown')} · last {_h(item.get('last_seen') or 'unknown')} · {_osint_evidence(item)} · {_h(item['relation'])}</small></li>"""
-            for item in observations
-        ) + "</ul>"
+        items = []
+        for item in observations:
+            text = item.get("text") or ""
+            notes = item.get("uncertainty") or []
+            note_html = ""
+            if isinstance(notes, list) and notes:
+                note_html = "<small>uncertainty: " + " · ".join(
+                    _h(note) for note in notes if isinstance(note, str) and note
+                ) + "</small>"
+            text_html = f"<p>{_h(text)}</p>" if isinstance(text, str) and text else ""
+            items.append(
+                f"""<li><strong>{_h(item['source'])}</strong><span>{_h(item['title'])}</span>{text_html}<small>first {_h(item.get('first_seen') or 'unknown')} · last {_h(item.get('last_seen') or 'unknown')} · {_osint_evidence(item)} · {_h(item['relation'])}</small>{note_html}</li>"""
+            )
+        body = "<ul>" + "".join(items) + "</ul>"
     return f"""<section class="situation-layer situation-layer--osint" aria-labelledby="osint-{_h(row['situation_id'])}">
   <header><span>04</span><div><p>Public OSINT context</p><h3 id="osint-{_h(row['situation_id'])}">{len(observations)} linked observation{'s' if len(observations) != 1 else ''}</h3></div></header>
   {body}

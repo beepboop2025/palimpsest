@@ -177,14 +177,24 @@ _OSINT_FIELDS = frozenset(
         "source",
         "title",
         "url",
+        "text",
+        "language",
+        "uncertainty",
+        "deletion_signal",
+        "confirmation_count",
         "first_seen",
         "last_seen",
         "last_confirmed_alive",
         "content_sha256",
         "gazetteer_hits",
         "archive",
+        "cross_links",
         "relation",
     }
+)
+_OSINT_LANGUAGES = frozenset({"zh", "en", "mixed", "unknown"})
+_OSINT_LINK_KEYS = frozenset(
+    {"cdt", "gdelt", "ooni", "greatfire", "weibo", "undertext", "bleedthrough"}
 )
 MAX_OSINT_PER_SITUATION = 12
 _REVIEWED_TELEGRAM_FIELDS = frozenset(
@@ -1135,6 +1145,37 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
                 or _SHA256_RE.fullmatch(osint_row["content_sha256"]) is None
             ):
                 raise ChinaSituationError(f"{osint_path}.content_sha256 is invalid")
+            _text(osint_row["text"], f"{osint_path}.text", maximum=2_000, empty=True)
+            if osint_row["language"] not in _OSINT_LANGUAGES:
+                raise ChinaSituationError(f"{osint_path}.language is invalid")
+            _text(
+                osint_row["deletion_signal"],
+                f"{osint_path}.deletion_signal",
+                maximum=80,
+                empty=True,
+            )
+            if (
+                type(osint_row["confirmation_count"]) is not int
+                or osint_row["confirmation_count"] < 0
+                or osint_row["confirmation_count"] > 12
+            ):
+                raise ChinaSituationError(f"{osint_path}.confirmation_count is invalid")
+            notes = osint_row["uncertainty"]
+            if type(notes) is not list or len(notes) > 8:
+                raise ChinaSituationError(f"{osint_path}.uncertainty must be bounded")
+            for note in notes:
+                _text(note, f"{osint_path}.uncertainty", maximum=240)
+            links = _exact(osint_row["cross_links"], _OSINT_LINK_KEYS, f"{osint_path}.cross_links")
+            for link_key, link in links.items():
+                if link is None:
+                    continue
+                if type(link) is not dict:
+                    raise ChinaSituationError(f"{osint_path}.cross_links.{link_key} is invalid")
+                extra_link = set(link) - {"id", "url", "note"}
+                if extra_link:
+                    raise ChinaSituationError(
+                        f"{osint_path}.cross_links.{link_key} has unexpected keys"
+                    )
         total_osint += len(osint_rows)
         osint_events += bool(osint_rows)
         synthesis = _exact(row["synthesis"], _SYNTHESIS_FIELDS, f"{path}.synthesis")

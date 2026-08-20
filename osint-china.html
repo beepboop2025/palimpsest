@@ -322,7 +322,7 @@
     <section class="oc-command ps-p3" id="erasure-desk">
       <p class="ps-label">Journalist desk</p>
       <h3 class="oc-command__headline">Find a deleted post and its evidence trail</h3>
-      <p class="oc-command__note">First-seen, last-seen, snapshots, hashes and source URLs for already-public posts the state later hid. Export CSV or JSON and cite the row. This is not private WeChat, not a classified system, and not a live in-country account feed.</p>
+      <p class="oc-command__note">Each Palimpsest record is a reconstruction: public text we hold, language, first-seen / last-seen / last-confirmed-alive, every confirmation, every archive address, hashes, gazetteer hits, mirrors, and GDELT / OONI / Weibo / Bleedthrough joins. Export the fat JSON or CSV. This is not private WeChat, not a classified system, and not a live in-country account feed.</p>
       <div class="oc-actions">
         <a class="ps-btn" href="/news/china/erasure/">Open the evidence trail</a>
         <a class="ps-btn ps-btn--ghost" href="/readings/erasure-trail.csv">Download CSV</a>
@@ -568,7 +568,13 @@
       ["Observation records", payloadCount(signal, "observation_records") || payloadCount(signal, "observations")],
       ["First seen", firstObservationField(signal, "first_seen")],
       ["Last seen", firstObservationField(signal, "last_seen")],
-      ["Gazetteer hits", firstObservationField(signal, "gazetteer_hits")]
+      ["Last confirmed alive", firstObservationField(signal, "last_confirmed_alive")],
+      ["Language", firstObservationField(signal, "language")],
+      ["Deletion signal", firstObservationField(signal, "deletion_signal")],
+      ["Public text", firstObservationField(signal, "text")],
+      ["Uncertainty", firstObservationField(signal, "uncertainty")],
+      ["Gazetteer hits", firstObservationField(signal, "gazetteer_hits")],
+      ["Content SHA-256", firstObservationField(signal, "content_sha256")]
     ];
   }
   function payloadOf(signal) {

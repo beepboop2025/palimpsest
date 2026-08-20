@@ -36,13 +36,16 @@ SCHEMA_VERSION = "palimpsest-china-observation.v1"
 METHOD_VERSION = 1
 MAX_PUBLIC_TEXT = 8_000
 MAX_CONFIRMATIONS = 12
-MAX_MIRRORS = 8
+MAX_MIRRORS = 24
 MAX_HITS = 24
+MAX_UNCERTAINTY = 12
 
 WAYBACK_LOOKUP = "https://web.archive.org/web/*/{url}"
 WAYBACK_SNAPSHOT = "https://web.archive.org/web/{ts}/{url}"
 WAYBACK_RAW = "https://web.archive.org/web/{ts}id_/{url}"
 ARCHIVE_TODAY_LOOKUP = "https://archive.today/{url}"
+GHOSTARCHIVE_LOOKUP = "https://ghostarchive.org/search?term={url}"
+LANGUAGE_TAGS = ("zh", "en", "mixed", "unknown")
 
 _CJK_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
 _LATIN_WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9'’\-]{2,}")
@@ -115,6 +118,20 @@ def bilingual_fields(title: str = "", text: str = "") -> dict[str, str]:
     }
 
 
+def language_tag(*, text_zh: str = "", text_en: str = "") -> str:
+    """Lexical language tag from already-split spans. Not a translator."""
+
+    has_zh = bool((text_zh or "").strip())
+    has_en = bool((text_en or "").strip())
+    if has_zh and has_en:
+        return "mixed"
+    if has_zh:
+        return "zh"
+    if has_en:
+        return "en"
+    return "unknown"
+
+
 @lru_cache(maxsize=1)
 def load_gazetteer_index() -> tuple[dict[str, dict[str, str]], tuple[str, ...]]:
     """Return (zh -> {zh, en, category, first_seen}, terms longest-first)."""
@@ -172,6 +189,7 @@ def archive_lookup(url: str) -> dict[str, str | None]:
             "wayback_snapshot": None,
             "wayback_raw": None,
             "archive_today_lookup": None,
+            "ghostarchive_lookup": None,
         }
     encoded = quote(url, safe=":/")
     return {
@@ -179,6 +197,7 @@ def archive_lookup(url: str) -> dict[str, str | None]:
         "wayback_snapshot": None,
         "wayback_raw": None,
         "archive_today_lookup": ARCHIVE_TODAY_LOOKUP.format(url=encoded),
+        "ghostarchive_lookup": GHOSTARCHIVE_LOOKUP.format(url=encoded),
     }
 
 
@@ -252,31 +271,90 @@ def sighting_fields(
     }
 
 
+def _related_link(record: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(record, Mapping) or not record:
+        return None
+    return {
+        "id": public_text(record.get("id") or record.get("signal_id"), limit=80) or None,
+        "url": public_text(record.get("url"), limit=2048) or None,
+        "title": public_text(record.get("title"), limit=240) or None,
+        "note": public_text(record.get("note"), limit=400) or None,
+    }
+
+
 def cross_links(
     *,
     cdt: Mapping[str, Any] | None = None,
     gdelt: Mapping[str, Any] | None = None,
     ooni: Mapping[str, Any] | None = None,
     greatfire: Mapping[str, Any] | None = None,
+    weibo: Mapping[str, Any] | None = None,
+    undertext: Mapping[str, Any] | None = None,
+    bleedthrough: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Attach only caller-supplied related records. Absence stays null, never a zero."""
 
-    def _link(record: Mapping[str, Any] | None) -> dict[str, Any] | None:
-        if not isinstance(record, Mapping) or not record:
-            return None
-        return {
-            "id": public_text(record.get("id") or record.get("signal_id"), limit=80) or None,
-            "url": public_text(record.get("url"), limit=2048) or None,
-            "title": public_text(record.get("title"), limit=240) or None,
-            "note": public_text(record.get("note"), limit=400) or None,
-        }
-
     return {
-        "cdt": _link(cdt),
-        "gdelt": _link(gdelt),
-        "ooni": _link(ooni),
-        "greatfire": _link(greatfire),
+        "cdt": _related_link(cdt),
+        "gdelt": _related_link(gdelt),
+        "ooni": _related_link(ooni),
+        "greatfire": _related_link(greatfire),
+        "weibo": _related_link(weibo),
+        "undertext": _related_link(undertext),
+        "bleedthrough": _related_link(bleedthrough),
     }
+
+
+def merge_cross_links(
+    existing: Mapping[str, Any] | None,
+    incoming: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Prefer a non-null incoming link; keep an existing one when the incoming is empty."""
+
+    base = cross_links()
+    for source in (existing, incoming):
+        if not isinstance(source, Mapping):
+            continue
+        for key in base:
+            linked = _related_link(source.get(key) if isinstance(source.get(key), Mapping) else None)
+            if linked:
+                base[key] = linked
+    return base
+
+
+def uncertainty_notes(observation: Mapping[str, Any]) -> list[str]:
+    """Honest gaps. Absence is named; it is never filled with a synthetic fact."""
+
+    notes: list[str] = []
+    url = public_text(observation.get("url") or observation.get("source_url"), limit=2048)
+    text = public_text(observation.get("text"), limit=MAX_PUBLIC_TEXT)
+    title = public_text(observation.get("title"), limit=1000)
+    archive = observation.get("archive") if isinstance(observation.get("archive"), dict) else {}
+    links = observation.get("cross_links") if isinstance(observation.get("cross_links"), dict) else {}
+    confirmations = observation.get("deletion_confirmation")
+    if not url.startswith("https://"):
+        notes.append("no public source URL on this row")
+    if not archive.get("wayback_snapshot"):
+        notes.append("no witnessed Wayback snapshot; lookup is an address to try")
+    if not text or text == title or len(text) < 80:
+        notes.append("public text is title/term only; article body was not captured")
+    if not isinstance(confirmations, list) or not confirmations:
+        notes.append("no deletion-confirmation trail on this row")
+    if not observation.get("last_confirmed_alive"):
+        notes.append("last-confirmed-alive is unknown")
+    if not links.get("cdt"):
+        notes.append("no China Digital Times ledger join")
+    if links.get("ooni") or links.get("bleedthrough"):
+        notes.append("OONI/Bleedthrough join is instrument-level, not URL corroboration")
+    if not archive.get("ghostarchive_lookup") and url.startswith("https://"):
+        notes.append("Ghostarchive lookup was not attached")
+    return notes[:MAX_UNCERTAINTY]
+
+
+def apply_uncertainty(observation: Mapping[str, Any]) -> dict[str, Any]:
+    row = dict(observation)
+    row["uncertainty"] = uncertainty_notes(row)
+    return row
 
 
 def capture_provenance(
@@ -322,6 +400,9 @@ def enrich_observation(
     gdelt: Mapping[str, Any] | None = None,
     ooni: Mapping[str, Any] | None = None,
     greatfire: Mapping[str, Any] | None = None,
+    weibo: Mapping[str, Any] | None = None,
+    undertext: Mapping[str, Any] | None = None,
+    bleedthrough: Mapping[str, Any] | None = None,
     provenance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a copy of ``observation`` with additive richness. Never drops existing keys."""
@@ -336,6 +417,7 @@ def enrich_observation(
     bilingual = bilingual_fields(title, body)
     row["text_zh"] = bilingual["text_zh"]
     row["text_en"] = bilingual["text_en"]
+    row["language"] = language_tag(text_zh=row["text_zh"], text_en=row["text_en"])
     if url:
         row["url"] = url
     row["source_url"] = public_text(source_url or url, limit=2048)
@@ -366,7 +448,18 @@ def enrich_observation(
         last_live_snapshot=last_live_snapshot or row.get("last_live_snapshot"),
         post_event_snapshot=post_event_snapshot or row.get("post_event_snapshot"),
     )
-    row["cross_links"] = cross_links(cdt=cdt, gdelt=gdelt, ooni=ooni, greatfire=greatfire)
+    row["cross_links"] = merge_cross_links(
+        row.get("cross_links") if isinstance(row.get("cross_links"), dict) else None,
+        cross_links(
+            cdt=cdt,
+            gdelt=gdelt,
+            ooni=ooni,
+            greatfire=greatfire,
+            weibo=weibo,
+            undertext=undertext,
+            bleedthrough=bleedthrough,
+        ),
+    )
     if provenance:
         row["provenance"] = dict(provenance)
     elif not isinstance(row.get("provenance"), dict):
@@ -375,7 +468,7 @@ def enrich_observation(
             method="public-source observation enrichment",
             fetched_at=detected,
         )
-    return row
+    return apply_uncertainty(row)
 
 
 def serialize_observation(observation: Mapping[str, Any]) -> dict[str, Any]:
@@ -407,6 +500,35 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
         if len(hits) >= 8:
             break
     url = public_text(observation.get("url") or observation.get("source_url"), limit=2048)
+    links = observation.get("cross_links") if isinstance(observation.get("cross_links"), dict) else {}
+    compact: dict[str, Any] = {}
+    for key in ("cdt", "gdelt", "ooni", "greatfire", "weibo", "undertext", "bleedthrough"):
+        item = links.get(key)
+        if not isinstance(item, dict) or not item:
+            compact[key] = None
+            continue
+        compact[key] = {
+            "id": public_text(item.get("id"), limit=80) or None,
+            "url": public_text(item.get("url"), limit=2048) or None,
+            "note": public_text(item.get("note"), limit=240) or None,
+        }
+    uncertainty = []
+    for note in observation.get("uncertainty") or []:
+        item = public_text(note, limit=240)
+        if item and item not in uncertainty:
+            uncertainty.append(item)
+        if len(uncertainty) >= 8:
+            break
+    confirmations = observation.get("deletion_confirmation")
+    confirmation_count = (
+        len(confirmations) if isinstance(confirmations, list) else 0
+    )
+    language = public_text(observation.get("language"), limit=16)
+    if language not in LANGUAGE_TAGS:
+        language = language_tag(
+            text_zh=public_text(observation.get("text_zh"), limit=800),
+            text_en=public_text(observation.get("text_en"), limit=800),
+        )
     return {
         "observation_key": content_sha256(
             public_text(observation.get("source"), limit=80),
@@ -416,6 +538,11 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
         "source": public_text(observation.get("source"), limit=80) or "unknown",
         "title": public_text(observation.get("title"), limit=240) or "(untitled public record)",
         "url": url if url.startswith("https://") else "",
+        "text": public_text(observation.get("text"), limit=2000).replace("\n", " ").replace("\r", " "),
+        "language": language,
+        "uncertainty": uncertainty,
+        "deletion_signal": public_text(observation.get("deletion_signal"), limit=80),
+        "confirmation_count": confirmation_count,
         "first_seen": iso_z(observation.get("first_seen")),
         "last_seen": iso_z(observation.get("last_seen")),
         "last_confirmed_alive": iso_z(observation.get("last_confirmed_alive")),
@@ -430,9 +557,11 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
             "wayback_lookup": archive.get("wayback_lookup"),
             "wayback_snapshot": archive.get("wayback_snapshot"),
             "archive_today_lookup": archive.get("archive_today_lookup"),
+            "ghostarchive_lookup": archive.get("ghostarchive_lookup"),
             "post_event_snapshot": archive.get("post_event_snapshot"),
             "bracket_before": (archive.get("timestamp_bracket") or {}).get("last_live"),
             "bracket_after": (archive.get("timestamp_bracket") or {}).get("post_event"),
         },
+        "cross_links": compact,
         "relation": "topic-or-url-context-not-corroboration",
     }

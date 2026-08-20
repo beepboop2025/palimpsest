@@ -11,6 +11,7 @@ from core.china_observation import (
     enrich_observation,
     gazetteer_hits,
     iso_z,
+    language_tag,
     serialize_observation,
     situation_osint_row,
 )
@@ -45,6 +46,7 @@ def test_archive_lookup_is_an_address_not_a_claimed_capture():
     row = archive_lookup("https://www.gov.cn/")
     assert row["wayback_lookup"].startswith("https://web.archive.org/web/*/")
     assert row["archive_today_lookup"].startswith("https://archive.today/")
+    assert row["ghostarchive_lookup"].startswith("https://ghostarchive.org/")
     assert row["wayback_snapshot"] is None
 
 
@@ -70,9 +72,25 @@ def test_enrich_observation_is_additive_and_honest():
     assert row["archive"]["wayback_lookup"]
     assert row["cross_links"]["cdt"]["id"] == "cdt_404"
     assert row["cross_links"]["gdelt"] is None
+    assert row["cross_links"]["weibo"] is None
+    assert row["cross_links"]["undertext"] is None
+    assert row["cross_links"]["bleedthrough"] is None
+    assert row["language"] in {"zh", "en", "mixed", "unknown"}
+    assert row["uncertainty"]
+    assert any("title/term only" in note for note in row["uncertainty"])
     assert any(hit["zh"] == "白纸革命" for hit in row["gazetteer_hits"])
     card = situation_osint_row(row)
     assert card["relation"] == "topic-or-url-context-not-corroboration"
     assert card["content_sha256"] == row["content_sha256"]
+    assert card["language"] == row["language"]
+    assert "text" in card
+    assert card["cross_links"]["cdt"]["id"] == "cdt_404"
     serialized = serialize_observation(row)
     assert serialized["detected_at"] == "2026-08-01T12:00:00Z"
+
+
+def test_language_tag_is_lexical_not_translated():
+    assert language_tag(text_zh="白纸", text_en="White Paper") == "mixed"
+    assert language_tag(text_zh="白纸", text_en="") == "zh"
+    assert language_tag(text_zh="", text_en="hello") == "en"
+    assert language_tag(text_zh="", text_en="") == "unknown"

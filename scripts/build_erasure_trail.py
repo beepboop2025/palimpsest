@@ -47,6 +47,9 @@ INPUT_FILES = (
     "wayback-latest.json",
     "weibo-hotsearch-latest.json",
     "ddti-latest.json",
+    "gdelt-latest.json",
+    "ooni-gfw-latest.json",
+    "bleedthrough-latest.json",
     "public-deletion-ledgers-latest.json",
 )
 
@@ -54,16 +57,36 @@ ROW_FIELDS = (
     "key",
     "title",
     "excerpt",
+    "text",
+    "text_zh",
+    "text_en",
+    "language",
+    "uncertainty",
+    "terms",
     "source",
     "source_url",
+    "mirror_urls",
     "first_seen",
     "last_seen",
     "last_confirmed_alive",
     "deletion_signal",
+    "deletion_confirmations",
     "content_sha256",
     "wayback_lookup",
     "wayback_snapshot",
+    "wayback_raw",
     "archive_today_lookup",
+    "ghostarchive_lookup",
+    "post_event_snapshot",
+    "bracket_before",
+    "bracket_after",
+    "cross_links_cdt",
+    "cross_links_gdelt",
+    "cross_links_ooni",
+    "cross_links_greatfire",
+    "cross_links_weibo",
+    "cross_links_undertext",
+    "cross_links_bleedthrough",
     "gazetteer",
     "collector",
     "cite",
@@ -192,38 +215,109 @@ def _cite(row: Mapping[str, str]) -> str:
     )
 
 
+def _flatten_link(record: Any) -> str:
+    if not isinstance(record, dict) or not record:
+        return ""
+    parts = [
+        public_text(record.get("id"), limit=80),
+        public_text(record.get("url"), limit=2048),
+        public_text(record.get("note"), limit=240),
+    ]
+    return " | ".join(part for part in parts if part)
+
+
+def _flatten_confirmations(trail: Any) -> str:
+    parts: list[str] = []
+    if not isinstance(trail, list):
+        return ""
+    for item in trail[:12]:
+        if not isinstance(item, dict):
+            continue
+        status = public_text(item.get("status"), limit=80)
+        when = iso_z(item.get("observed_at")) or ""
+        source = public_text(item.get("source"), limit=80)
+        note = public_text(item.get("note"), limit=160)
+        chunk = " ".join(part for part in (status, when, source) if part)
+        if note:
+            chunk = f"{chunk} — {note}" if chunk else note
+        if chunk and chunk not in parts:
+            parts.append(chunk)
+    return "; ".join(parts)
+
+
 def _row(
     *,
     title: str,
     excerpt: str,
+    text: str = "",
+    text_zh: str = "",
+    text_en: str = "",
+    language: str = "",
+    uncertainty: str = "",
+    terms: str = "",
     source: str,
     source_url: str,
+    mirror_urls: str = "",
     first_seen: str | None,
     last_seen: str | None,
     last_confirmed_alive: str | None,
     deletion_signal: str,
+    deletion_confirmations: str = "",
     content_sha256_value: str,
     wayback_lookup: str,
     wayback_snapshot: str,
+    wayback_raw: str = "",
     archive_today_lookup: str,
+    ghostarchive_lookup: str = "",
+    post_event_snapshot: str = "",
+    bracket_before: str = "",
+    bracket_after: str = "",
+    cross_links_cdt: str = "",
+    cross_links_gdelt: str = "",
+    cross_links_ooni: str = "",
+    cross_links_greatfire: str = "",
+    cross_links_weibo: str = "",
+    cross_links_undertext: str = "",
+    cross_links_bleedthrough: str = "",
     gazetteer: str,
     collector: str,
 ) -> dict[str, str]:
     key = content_sha256(collector, source, source_url, title)[:32]
+    body = public_text(text or excerpt, limit=8000)
     row = {
         "key": key,
         "title": public_text(title, limit=240) or "(untitled public record)",
-        "excerpt": public_text(excerpt, limit=400),
+        "excerpt": public_text(excerpt or body, limit=400),
+        "text": body,
+        "text_zh": public_text(text_zh, limit=8000),
+        "text_en": public_text(text_en, limit=8000),
+        "language": public_text(language, limit=16),
+        "uncertainty": public_text(uncertainty, limit=2000),
+        "terms": public_text(terms, limit=800),
         "source": public_text(source, limit=80) or "unknown",
         "source_url": source_url,
+        "mirror_urls": public_text(mirror_urls, limit=4000),
         "first_seen": iso_z(first_seen) or "",
         "last_seen": iso_z(last_seen) or "",
         "last_confirmed_alive": iso_z(last_confirmed_alive) or "",
         "deletion_signal": public_text(deletion_signal, limit=80),
+        "deletion_confirmations": public_text(deletion_confirmations, limit=2000),
         "content_sha256": content_sha256_value,
         "wayback_lookup": wayback_lookup,
         "wayback_snapshot": wayback_snapshot,
+        "wayback_raw": wayback_raw,
         "archive_today_lookup": archive_today_lookup,
+        "ghostarchive_lookup": ghostarchive_lookup,
+        "post_event_snapshot": post_event_snapshot,
+        "bracket_before": public_text(bracket_before, limit=80),
+        "bracket_after": public_text(bracket_after, limit=80),
+        "cross_links_cdt": public_text(cross_links_cdt, limit=800),
+        "cross_links_gdelt": public_text(cross_links_gdelt, limit=800),
+        "cross_links_ooni": public_text(cross_links_ooni, limit=800),
+        "cross_links_greatfire": public_text(cross_links_greatfire, limit=800),
+        "cross_links_weibo": public_text(cross_links_weibo, limit=800),
+        "cross_links_undertext": public_text(cross_links_undertext, limit=800),
+        "cross_links_bleedthrough": public_text(cross_links_bleedthrough, limit=800),
         "gazetteer": gazetteer,
         "collector": public_text(collector, limit=40) or "unknown",
         "cite": "",
@@ -238,24 +332,62 @@ def _from_observation(obs: Mapping[str, Any], *, collector: str) -> dict[str, st
     if not title and not url:
         return None
     archive = obs.get("archive") if isinstance(obs.get("archive"), dict) else {}
+    bracket = archive.get("timestamp_bracket") if isinstance(archive.get("timestamp_bracket"), dict) else {}
+    links = obs.get("cross_links") if isinstance(obs.get("cross_links"), dict) else {}
     digest = _sha(obs.get("content_sha256"))
+    body = public_text(obs.get("text") or obs.get("detail") or obs.get("note"), limit=8000)
     if not digest:
-        digest = content_sha256(title, public_text(obs.get("text"), limit=400), url)
+        digest = content_sha256(title, body, url)
+    mirrors = []
+    for candidate in obs.get("mirror_urls") or []:
+        item = _https(candidate)
+        if item and item not in mirrors:
+            mirrors.append(item)
+    terms = []
+    for term in obs.get("terms") or []:
+        item = public_text(term, limit=80)
+        if item and item not in terms:
+            terms.append(item)
+    notes = []
+    for note in obs.get("uncertainty") or []:
+        item = public_text(note, limit=240)
+        if item and item not in notes:
+            notes.append(item)
     return _row(
         title=title,
-        excerpt=public_text(obs.get("text") or obs.get("detail") or obs.get("note"), limit=400),
+        excerpt=public_text(body, limit=400),
+        text=body,
+        text_zh=public_text(obs.get("text_zh"), limit=8000),
+        text_en=public_text(obs.get("text_en"), limit=8000),
+        language=public_text(obs.get("language"), limit=16),
+        uncertainty=" | ".join(notes),
+        terms="; ".join(terms),
         source=public_text(obs.get("source"), limit=80) or collector,
         source_url=url,
+        mirror_urls=" ".join(mirrors),
         first_seen=iso_z(obs.get("first_seen") or obs.get("detected_at")),
         last_seen=iso_z(obs.get("last_seen") or obs.get("detected_at")),
         last_confirmed_alive=iso_z(obs.get("last_confirmed_alive")),
         deletion_signal=public_text(
             obs.get("deletion_signal") or obs.get("event"), limit=80
         ),
+        deletion_confirmations=_flatten_confirmations(obs.get("deletion_confirmation")),
         content_sha256_value=digest,
         wayback_lookup=_archive_url(archive, "wayback_lookup"),
         wayback_snapshot=_archive_url(archive, "wayback_snapshot"),
+        wayback_raw=_archive_url(archive, "wayback_raw"),
         archive_today_lookup=_archive_url(archive, "archive_today_lookup"),
+        ghostarchive_lookup=_archive_url(archive, "ghostarchive_lookup"),
+        post_event_snapshot=_archive_url(archive, "post_event_snapshot"),
+        bracket_before=public_text(bracket.get("last_live"), limit=80),
+        bracket_after=public_text(bracket.get("post_event"), limit=80),
+        cross_links_cdt=_flatten_link(links.get("cdt")),
+        cross_links_gdelt=_flatten_link(links.get("gdelt")),
+        cross_links_ooni=_flatten_link(links.get("ooni")),
+        cross_links_greatfire=_flatten_link(links.get("greatfire")),
+        cross_links_weibo=_flatten_link(links.get("weibo")),
+        cross_links_undertext=_flatten_link(links.get("undertext")),
+        cross_links_bleedthrough=_flatten_link(links.get("bleedthrough")),
         gazetteer=_gazetteer_label(obs.get("gazetteer_hits")),
         collector=collector,
     )
@@ -283,7 +415,9 @@ def _from_wayback(rec: Mapping[str, Any]) -> dict[str, str] | None:
         content_sha256_value=content_sha256("wayback", event, url, title),
         wayback_lookup=lookup,
         wayback_snapshot=snapshot,
+        wayback_raw="",
         archive_today_lookup=f"https://archive.today/{url}" if url else "",
+        ghostarchive_lookup=f"https://ghostarchive.org/search?term={url}" if url else "",
         gazetteer=title,
         collector="wayback",
     )
@@ -295,7 +429,11 @@ def _richer(existing: Mapping[str, str], candidate: Mapping[str, str]) -> bool:
         1 if row.get("source_url") else 0,
         1 if row.get("content_sha256") else 0,
         1 if row.get("last_confirmed_alive") else 0,
-        len(row.get("excerpt") or ""),
+        1 if row.get("cross_links_gdelt") else 0,
+        1 if row.get("cross_links_ooni") else 0,
+        len(row.get("text") or row.get("excerpt") or ""),
+        len(row.get("uncertainty") or ""),
+        len(row.get("deletion_confirmations") or ""),
     )
     return score(candidate) > score(existing)
 
@@ -312,22 +450,55 @@ def _merge_gazetteer(*labels: str) -> str:
     return "; ".join(seen)
 
 
+def _merge_row(existing: Mapping[str, str], candidate: Mapping[str, str]) -> dict[str, str]:
+    keep = dict(candidate if _richer(existing, candidate) else existing)
+    other = candidate if keep["key"] == existing.get("key") else existing
+    keep["gazetteer"] = _merge_gazetteer(existing.get("gazetteer", ""), candidate.get("gazetteer", ""))
+    if len(candidate.get("text") or "") > len(keep.get("text") or ""):
+        keep["text"] = candidate["text"]
+        keep["excerpt"] = candidate.get("excerpt") or keep.get("excerpt") or ""
+    for field in (
+        "text_zh", "text_en", "language", "uncertainty", "terms", "mirror_urls",
+        "deletion_confirmations", "wayback_raw", "ghostarchive_lookup",
+        "post_event_snapshot", "bracket_before", "bracket_after",
+        "cross_links_cdt", "cross_links_gdelt", "cross_links_ooni",
+        "cross_links_greatfire", "cross_links_weibo", "cross_links_undertext",
+        "cross_links_bleedthrough",
+    ):
+        if not keep.get(field) and other.get(field):
+            keep[field] = other[field]
+        elif field in {"terms", "mirror_urls", "uncertainty"} and other.get(field):
+            parts = []
+            sep = " | " if field == "uncertainty" else ("; " if field == "terms" else " ")
+            for chunk in (keep.get(field) or "", other.get(field) or ""):
+                for part in chunk.split(sep):
+                    part = part.strip()
+                    if part and part not in parts:
+                        parts.append(part)
+            keep[field] = sep.join(parts)
+    keep["cite"] = _cite(keep)
+    return keep
+
+
 def _collect_rows(payloads: Mapping[str, Mapping[str, Any] | None]) -> list[dict[str, str]]:
     collected: dict[str, dict[str, str]] = {}
+    by_url: dict[str, str] = {}
 
     def add(row: dict[str, str] | None) -> None:
         if not row:
             return
+        url = row.get("source_url") or ""
+        key = by_url.get(url) if url else None
+        if key and key in collected:
+            collected[key] = _merge_row(collected[key], row)
+            return
         key = row["key"]
         if key in collected:
-            keep = dict(row if _richer(collected[key], row) else collected[key])
-            keep["gazetteer"] = _merge_gazetteer(
-                collected[key].get("gazetteer", ""),
-                row.get("gazetteer", ""),
-            )
-            collected[key] = keep
+            collected[key] = _merge_row(collected[key], row)
             return
         collected[key] = row
+        if url:
+            by_url[url] = key
 
     undertext = payloads.get("undertext-latest.json") or {}
     for obs in undertext.get("observations") or []:
@@ -396,13 +567,14 @@ def build_document(
         "schema_version": SCHEMA_VERSION,
         "generated_at": generated,
         "source": (
-            "Offline journalist projection of committed UNDERTEXT, Wayback, "
-            "Weibo-board, DDTI, and optional public-deletion-ledger readings"
+            "Offline journalist projection of Palimpsest reconstructions: "
+            "UNDERTEXT, Wayback, Weibo-board, DDTI, GDELT/OONI/Bleedthrough "
+            "joins, and optional public-deletion-ledger readings"
         ),
         "method": (
-            "Deterministic flatten of already-published observation records and "
-            "Wayback reconstructions. Clock is the newest input generated_at. "
-            "No network fetch. No invented live ledger."
+            "Deterministic flatten of already-published fat observation records "
+            "and Wayback reconstructions, clustered by public URL. Clock is the "
+            "newest input generated_at. No network fetch. No invented live ledger."
         ),
         "scope": (
             "Already-public China posts, deletions, and archive reconstructions "
@@ -455,11 +627,58 @@ def _link(url: str, label: str | None = None) -> str:
     return f'<a href="{_h(url)}">{_h(label or url)}</a>'
 
 
+def _card(row: Mapping[str, str]) -> str:
+    def pair(label: str, value: str, *, link: bool = False) -> str:
+        if not value:
+            return ""
+        shown = _link(value) if link and value.startswith("https://") else _h(value)
+        return f"<div><dt>{_h(label)}</dt><dd>{shown}</dd></div>"
+
+    text = row.get("text") or row.get("excerpt") or ""
+    return (
+        f"<details class=\"et-card\" id=\"{_h(row['key'])}\">"
+        f"<summary><strong>{_h(row['title'])}</strong>"
+        f"<span>{_h(row.get('deletion_signal') or row.get('language') or 'public record')}</span></summary>"
+        f"<p class=\"et-card-text\">{_h(text or '—')}</p>"
+        "<dl class=\"et-card-meta\">"
+        + pair("Language", row.get("language") or "")
+        + pair("Terms", row.get("terms") or "")
+        + pair("First seen", row.get("first_seen") or "")
+        + pair("Last seen", row.get("last_seen") or "")
+        + pair("Last confirmed alive", row.get("last_confirmed_alive") or "")
+        + pair("SHA-256", row.get("content_sha256") or "")
+        + pair("Source URL", row.get("source_url") or "", link=True)
+        + pair("Mirrors", row.get("mirror_urls") or "", link=False)
+        + pair("Wayback snapshot", row.get("wayback_snapshot") or "", link=True)
+        + pair("Wayback lookup", row.get("wayback_lookup") or "", link=True)
+        + pair("Wayback raw", row.get("wayback_raw") or "", link=True)
+        + pair("archive.today", row.get("archive_today_lookup") or "", link=True)
+        + pair("Ghostarchive", row.get("ghostarchive_lookup") or "", link=True)
+        + pair("Post-event snapshot", row.get("post_event_snapshot") or "", link=True)
+        + pair("Bracket before", row.get("bracket_before") or "")
+        + pair("Bracket after", row.get("bracket_after") or "")
+        + pair("Confirmations", row.get("deletion_confirmations") or "")
+        + pair("Gazetteer", row.get("gazetteer") or "")
+        + pair("Uncertainty", row.get("uncertainty") or "")
+        + pair("CDT", row.get("cross_links_cdt") or "")
+        + pair("GDELT", row.get("cross_links_gdelt") or "")
+        + pair("OONI", row.get("cross_links_ooni") or "")
+        + pair("GreatFire", row.get("cross_links_greatfire") or "")
+        + pair("Weibo", row.get("cross_links_weibo") or "")
+        + pair("UNDERTEXT", row.get("cross_links_undertext") or "")
+        + pair("Bleedthrough", row.get("cross_links_bleedthrough") or "")
+        + f"<div><dt>Cite</dt><dd>{_h(row.get('cite') or '')}</dd></div>"
+        + "</dl></details>"
+    )
+
+
 def render_html(document: Mapping[str, Any]) -> str:
     rows_html = []
+    cards_html = []
     for row in document["rows"]:
+        cards_html.append(_card(row))
         rows_html.append(
-            "<tr id=\"" + _h(row["key"]) + "\">"
+            "<tr>"
             f"<td><strong>{_h(row['title'])}</strong>"
             f"<div class=\"et-excerpt\">{_h(row['excerpt'] or '—')}</div></td>"
             f"<td>{_h(row['deletion_signal'] or '—')}</td>"
@@ -474,6 +693,10 @@ def render_html(document: Mapping[str, Any]) -> str:
     table = "\n".join(rows_html) if rows_html else (
         "<tr><td colspan=\"8\">No public rows in the committed inputs. "
         "Absence is a coverage gap, not a live zero.</td></tr>"
+    )
+    cards = "\n".join(cards_html) if cards_html else (
+        "<p>No public reconstructions in the committed inputs. "
+        "Absence is a coverage gap, not a live zero.</p>"
     )
     nav = site_nav.render("/news/china/erasure/")
     generated = _h(document["generated_at"])
@@ -513,6 +736,14 @@ def render_html(document: Mapping[str, Any]) -> str:
 .et-table code{{font-size:11px}}
 .et-cite{{min-height:36px;padding:6px 10px;border:1px solid var(--tk-line-2);background:transparent;color:var(--tk-text-2);font:600 10px/1 var(--tk-font-mono);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}}
 .et-cite:hover{{color:var(--tk-text-0);border-color:var(--tk-line-3)}}
+.et-records{{display:grid;gap:12px;margin:28px 0}}
+.et-card{{padding:16px 18px;border:1px solid var(--tk-line-1);background:var(--tk-bg-1)}}
+.et-card summary{{cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:baseline}}
+.et-card summary span{{font:600 11px/1.3 var(--tk-font-mono);color:var(--tk-text-3);letter-spacing:.08em;text-transform:uppercase}}
+.et-card-text{{white-space:pre-wrap;color:var(--tk-text-1);line-height:1.55;margin:14px 0}}
+.et-card-meta{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;margin:0}}
+.et-card-meta dt{{font:600 10px/1.3 var(--tk-font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--tk-text-4)}}
+.et-card-meta dd{{margin:4px 0 0;color:var(--tk-text-2);overflow-wrap:anywhere}}
 .et-how{{margin:28px 0;max-width:760px}}
 .et-how ol{{margin:8px 0 0;padding-left:1.2em;color:var(--tk-text-2);line-height:1.6}}
 @media(max-width:900px){{.et-honesty{{grid-template-columns:1fr}}.et-wrap{{overflow-x:auto}}}}
@@ -524,7 +755,7 @@ def render_html(document: Mapping[str, Any]) -> str:
   <header class="et-hero">
     <p class="ps-kicker">Journalist desk · public record only</p>
     <h1 class="et-title">Find a deleted post.<br>See the trail. Export it.</h1>
-    <p class="et-deck">Each row is an already-public China post, deletion ledger item, or archive reconstruction. The trail is first-seen, last-seen, snapshots, hashes and source URLs — not a private-message feed and not a live claim about anyone inside China.</p>
+    <p class="et-deck">Each record is a Palimpsest reconstruction: the public text we actually hold, language, first-seen / last-seen / last-confirmed-alive, every deletion confirmation, every Wayback / archive.today / Ghostarchive address, hashes, gazetteer hits, mirrors, and GDELT / OONI / GreatFire / CDT / Weibo / Bleedthrough joins. A journalist should be able to write from this object without hopping five other sites. This is not a private-message feed and not a live claim about anyone inside China.</p>
     <div class="et-actions">
       <a class="ps-btn" href="/readings/erasure-trail.csv">Download CSV</a>
       <a class="ps-btn ps-btn--ghost" href="/readings/erasure-trail-latest.json">Download JSON</a>
@@ -548,7 +779,10 @@ def render_html(document: Mapping[str, Any]) -> str:
     </article>
   </section>
 
-  <p class="et-meta">{_h(document["n_rows"])} public rows · clock {generated} from committed inputs · method v{METHOD_VERSION}</p>
+  <p class="et-meta">{_h(document["n_rows"])} public reconstructions · clock {generated} from committed inputs · method v{METHOD_VERSION}</p>
+  <section class="et-records" aria-label="Fat Palimpsest reconstructions, readable without JavaScript">
+    {cards}
+  </section>
   <div class="et-wrap ps-p1" tabindex="0" role="region" aria-label="Public deletion and reconstruction trail, scrolls horizontally">
     <table class="et-table">
       <thead>
@@ -575,7 +809,7 @@ def render_html(document: Mapping[str, Any]) -> str:
     <ol>
       <li>Find the row by title, gazetteer term, or source URL.</li>
       <li>Copy first-seen, last-seen, the snapshot or lookup URL, and the SHA-256.</li>
-      <li>Download the <a href="/readings/erasure-trail.csv">CSV</a> or <a href="/readings/erasure-trail-latest.json">JSON</a> if you need the full table.</li>
+      <li>Download the <a href="/readings/erasure-trail.csv">CSV</a> or <a href="/readings/erasure-trail-latest.json">JSON</a> if you need the fat record, including public text, joins and uncertainty.</li>
       <li>Cite Palimpsest as the observatory that recorded a public disappearance, not as a witness inside China and not as proof of motive.</li>
     </ol>
     <p>Method: <a href="/docs/CHINA-CAPTURE.md">China capture</a> · <a href="/docs/FOR-JOURNALISTS.md">Journalist guide</a> · <a href="/protocol/china-observation-v1.schema.json">Observation schema</a>.</p>

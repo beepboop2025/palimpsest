@@ -518,7 +518,7 @@
     }},
     "/readings/undertext-latest.json": {"get": {
       "operationId": "getUndertextFusion",
-      "summary": "Read fused public Wayback, Weibo-board and DDTI observation records",
+      "summary": "Read fat UNDERTEXT reconstructions: public text, archives, hashes, joins and uncertainty",
       "responses": {"200": {"$ref": "#/components/responses/Reading"}}
     }},
     "/readings/wayback-latest.json": {"get": {
@@ -533,7 +533,7 @@
     }},
     "/readings/erasure-trail-latest.json": {"get": {
       "operationId": "getErasureTrail",
-      "summary": "Read the journalist evidence trail: first-seen, last-seen, snapshots, hashes and source URLs",
+      "summary": "Read fat journalist reconstructions: public text, archives, hashes, joins and uncertainty",
       "responses": {"200": {"$ref": "#/components/responses/Reading"}}
     }},
     "/readings/erasure-trail.csv": {"get": {

@@ -16,6 +16,12 @@
     "text": {"type": "string", "maxLength": 8000},
     "text_zh": {"type": "string", "maxLength": 8000},
     "text_en": {"type": "string", "maxLength": 8000},
+    "language": {"enum": ["zh", "en", "mixed", "unknown"]},
+    "uncertainty": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {"type": "string", "minLength": 1, "maxLength": 240}
+    },
     "url": {"type": "string", "maxLength": 2048},
     "source": {"type": "string", "maxLength": 120},
     "source_url": {"type": "string", "maxLength": 2048},
@@ -63,6 +69,7 @@
         "wayback_snapshot": {"type": ["string", "null"]},
         "wayback_raw": {"type": ["string", "null"]},
         "archive_today_lookup": {"type": ["string", "null"]},
+        "ghostarchive_lookup": {"type": ["string", "null"]},
         "post_event_snapshot": {"type": ["string", "null"]},
         "timestamp_bracket": {
           "type": "object",
@@ -79,7 +86,10 @@
         "cdt": {"type": ["object", "null"]},
         "gdelt": {"type": ["object", "null"]},
         "ooni": {"type": ["object", "null"]},
-        "greatfire": {"type": ["object", "null"]}
+        "greatfire": {"type": ["object", "null"]},
+        "weibo": {"type": ["object", "null"]},
+        "undertext": {"type": ["object", "null"]},
+        "bleedthrough": {"type": ["object", "null"]}
       }
     },
     "provenance": {"type": "object"}

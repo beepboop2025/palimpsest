@@ -238,8 +238,8 @@ def compute_selectivity_novelty(
             if in_current:
                 s["attention"] += decay
                 s["recent_count"] += 1
-                if len(s["samples"]) < 3 and obs.get("title"):
-                    s["samples"].append({"title": obs["title"][:140], "url": obs.get("url", "")})
+                if len(s["samples"]) < 12 and obs.get("title"):
+                    s["samples"].append({"title": obs["title"][:1000], "url": obs.get("url", "")})
             else:
                 s["hist_count"] += 1
 
