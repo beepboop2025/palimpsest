@@ -1,18 +1,29 @@
 {
   "schema": "palimpsest-common-crawl-index-plan/v1",
-  "mode": "index_only",
-  "purpose": "Plan prior-month Common Crawl CDX/index queries against the existing host allowlist. Does not download WARCs or raw bodies.",
+  "mode": "index_only_jsonl",
+  "purpose": "Next ingest, if added, is an allowlisted-host index export as JSONL for one prior crawl. Disk cannot hold another 169G parquet mirror. Do not download WARCs.",
   "allowlist_source": "config/common_crawl_targets.json",
   "index_collinfo_url": "https://index.commoncrawl.org/collinfo.json",
   "planned_crawls": [
-    "CC-MAIN-2026-25",
-    "CC-MAIN-2026-21",
-    "CC-MAIN-2026-17",
-    "CC-MAIN-2026-12",
-    "CC-MAIN-2026-08"
+    "CC-MAIN-2026-25"
   ],
   "current_in_lake": "CC-MAIN-2026-30",
+  "ingest_format": "index_only_jsonl",
+  "expected_volume": "tens of MB, like the existing 18MB inbox",
+  "inbox": "existing Common Crawl URL Index JSONL inbox",
   "minimum_prior_crawls_for_scores": 6,
+  "disk": {
+    "root_free": "57G",
+    "volume_free": "506G",
+    "current_mirror": "168.8 GiB parquet CC-MAIN-2026-30 only",
+    "five_more_169g_mirrors": "do_not_fit"
+  },
+  "mad_schedule": {
+    "minimum_prior_rates": 6,
+    "month_2": "mutation_rate and archive_gap features unlock, still unlabeled",
+    "month_7": "error_rate MAD can fire",
+    "month_8": "first mutation MAD; rates start at month 2"
+  },
   "rights": {
     "training_use": "derived_only",
     "raw_text_policy": "excluded",
@@ -20,7 +31,8 @@
   },
   "forbidden": [
     "download_warc",
-    "second_mirror",
+    "second_parquet_mirror",
+    "169g_copy",
     "commit_url_dumps",
     "publish_url_list",
     "train_on_raw_bodies"

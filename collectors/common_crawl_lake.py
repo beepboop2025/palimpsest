@@ -2043,17 +2043,18 @@ def plan_index_ingest(
     plan_path: Path | str = DEFAULT_INDEX_PLAN,
     dry_run: bool = True,
 ) -> dict[str, Any]:
-    """Emit an index-only plan for prior public crawls.
+    """Emit an index-only JSONL plan for one prior public crawl.
 
-    This never downloads WARCs, never contacts the URL Index, and never writes a
-    URL dump. Operators still have to run the existing local DuckDB export
-    against a mirror they already hold.
+    This never downloads WARCs, never copies a second parquet mirror, never
+    contacts the URL Index, and never writes a URL dump. The next ingest, if
+    operators run it, is a tens-of-MB allowlisted-host JSONL like the existing
+    18MB inbox — not another 169G table.
     """
 
     if not dry_run:
         raise CommonCrawlLakeError(
-            "plan-index-ingest is index-only; pass --dry-run. "
-            "WARC download and a second mirror are forbidden"
+            "plan-index-ingest is index-only JSONL; pass --dry-run. "
+            "WARC download and a second parquet mirror are forbidden"
         )
     raw = json.loads(Path(plan_path).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -2070,22 +2071,25 @@ def plan_index_ingest(
         queries.append(
             {
                 "crawl": crawl_id,
-                "mode": "index_only",
+                "mode": "index_only_jsonl",
                 "index_url": f"{config.index_base_url}{crawl_id}-index",
                 "n_targets": len(config.targets),
+                "expected_volume": raw.get("expected_volume")
+                or "tens of MB, like the existing 18MB inbox",
                 "download_warc": False,
+                "parquet_mirror": False,
                 "emit_url_dump": False,
-                "sql_command": "sql",
             }
         )
     return {
         "schema": raw.get("schema") or "palimpsest-common-crawl-index-plan/v1",
         "collector": "common-crawl-lake",
         "command": "plan-index-ingest",
-        "mode": "index_only",
+        "mode": "index_only_jsonl",
         "dry_run": True,
         "status": "planned",
         "download_warc": False,
+        "parquet_mirror": False,
         "commit_url_dumps": False,
         "n_targets": len(config.targets),
         "n_crawls": len(queries),

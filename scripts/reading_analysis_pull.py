@@ -49,6 +49,7 @@ def _history_fingerprint(snapshot: dict) -> dict:
         "n_instruments_scored": snapshot.get("n_instruments_scored"),
         "n_instruments_warming_up": snapshot.get("n_instruments_warming_up"),
         "n_instruments_missing": snapshot.get("n_instruments_missing"),
+        "n_instruments_abstained": snapshot.get("n_instruments_abstained"),
         "n_story_ranks": snapshot.get("n_story_ranks"),
         "unusual": unusual,
     }
@@ -84,6 +85,7 @@ def write_outputs(snapshot: dict, *, root: Path | None = None) -> None:
         "n_instruments_scored": snapshot.get("n_instruments_scored"),
         "n_instruments_warming_up": snapshot.get("n_instruments_warming_up"),
         "n_instruments_missing": snapshot.get("n_instruments_missing"),
+        "n_instruments_abstained": snapshot.get("n_instruments_abstained"),
         "n_story_ranks": snapshot.get("n_story_ranks"),
         "unusual": _history_fingerprint(snapshot)["unusual"],
     }
@@ -117,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         "n_instruments_scored": snapshot.get("n_instruments_scored"),
         "n_instruments_warming_up": snapshot.get("n_instruments_warming_up"),
         "n_instruments_missing": snapshot.get("n_instruments_missing"),
+        "n_instruments_abstained": snapshot.get("n_instruments_abstained"),
         "n_story_ranks": snapshot.get("n_story_ranks"),
     }
     print(
@@ -124,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         f"scored={summary['n_instruments_scored']} "
         f"warming_up={summary['n_instruments_warming_up']} "
         f"missing={summary['n_instruments_missing']} "
+        f"abstained={summary['n_instruments_abstained']} "
         f"story_ranks={summary['n_story_ranks']}",
         file=sys.stderr,
     )

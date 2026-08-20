@@ -13,6 +13,7 @@ from processors.reading_analysis import (
     FORBIDDEN_COPY,
     INSTRUMENTS,
     JOB,
+    LIVE_INVENTORY,
     SCHEMA,
     attach_scores,
     build_reading_analysis,
@@ -44,9 +45,23 @@ def _write_history(path: Path, values: list[float], field: str) -> None:
 def test_every_committed_public_history_is_registered():
     names = set(list_public_history_files(READINGS))
     registered = {spec["history"] for spec in INSTRUMENTS.values()}
-    assert names == registered
+    assert names <= registered
+    node_only = {
+        spec["history"] for spec in INSTRUMENTS.values() if spec.get("node_only")
+    }
+    assert {"ooni-bulk-history.jsonl", "official-first-seen-history.jsonl"} <= node_only
+    assert names.isdisjoint(node_only)
     assert "history.jsonl" not in names
     assert "reading-analysis-history.jsonl" not in names
+    assert LIVE_INVENTORY["common_crawl_lake"]["observations"] == 270664
+    assert LIVE_INVENTORY["common_crawl_lake"]["unique_urls"] == 268254
+    assert LIVE_INVENTORY["common_crawl_lake"]["mutated_urls"] == 0
+    assert LIVE_INVENTORY["common_crawl_lake"]["feature_rows"] == 37
+    assert LIVE_INVENTORY["story_ranking_features"]["rows"] == 192
+    assert LIVE_INVENTORY["story_ranking_features"]["archive_anomalies"] == 0
+    assert LIVE_INVENTORY["history_file_lines"]["ooni-bulk"] == 208
+    assert LIVE_INVENTORY["history_file_lines"]["official-first-seen"] == 1
+    assert LIVE_INVENTORY["history_file_lines"]["cross-layer"] == 1
 
 
 def test_missing_history_abstains(tmp_path):
@@ -90,6 +105,31 @@ def test_common_crawl_host_model_stays_warming_up_without_a_score():
     assert row["model"]["score"] is None
     assert row["model"]["minimum_prior_crawls"] == 6
     assert row["rights"]["training_use"] == "derived_only"
+    assert row["lake"]["crawls"] == ["CC-MAIN-2026-30"]
+    assert row["lake"]["observations"] == 270664
+    assert row["lake"]["feature_rows"] == 37
+    assert row["lake"]["targets"] == 45
+    assert row["lake"]["no_data"] == 8
+    assert row["mad_schedule"]["minimum_prior_rates"] == 6
+
+
+def test_singleton_snapshot_abstains(tmp_path):
+    _write_history(tmp_path / "cross-layer-history.jsonl", [8], "n_pairs_tested")
+    row = fit_instrument("cross-layer", tmp_path)
+    assert row["state"] == "abstain"
+    assert row["n_file_lines"] == 1
+    assert row["n_history"] == 0
+    assert row["unusualness"] is None
+    assert row["public_copy"] == "this instrument abstains; its history is a single snapshot"
+    official = fit_instrument("official-first-seen", tmp_path)
+    assert official["state"] == "missing"
+
+
+def test_ooni_bulk_missing_history_abstains(tmp_path):
+    row = fit_instrument("ooni-bulk", tmp_path)
+    assert row["state"] == "missing"
+    assert row["node_only"] is True
+    assert row["field"] == "measurements"
 
 
 def test_story_ranks_stay_unlabeled(tmp_path):
@@ -152,6 +192,7 @@ def test_lookup_and_attach_are_a_join_hook_not_a_new_event_field():
 def test_generated_copy_stays_context_only():
     copies = [
         public_copy_for_row({"state": "missing", "n_history": 0}),
+        public_copy_for_row({"state": "abstain", "n_history": 0}),
         public_copy_for_row({"state": "warming_up", "n_history": 2, "minimum_prior": 6}),
         public_copy_for_row({"state": "scored", "n_history": 9, "unusual": True}),
         public_copy_for_row({"state": "scored", "n_history": 9, "unusual": False}),
@@ -194,22 +235,19 @@ def test_index_plan_dry_run_does_not_download(monkeypatch):
     assert plan["download_warc"] is False
     assert plan["commit_url_dumps"] is False
     assert plan["n_targets"] == 45
-    assert plan["planned_crawls"] == [
-        "CC-MAIN-2026-25",
-        "CC-MAIN-2026-21",
-        "CC-MAIN-2026-17",
-        "CC-MAIN-2026-12",
-        "CC-MAIN-2026-08",
-    ]
+    assert plan["planned_crawls"] == ["CC-MAIN-2026-25"]
+    assert plan["mode"] == "index_only_jsonl"
+    assert plan["parquet_mirror"] is False
     assert plan["minimum_prior_crawls_for_scores"] == 6
     assert all(row["download_warc"] is False for row in plan["queries"])
+    assert all(row["parquet_mirror"] is False for row in plan["queries"])
     with pytest.raises(lake.CommonCrawlLakeError, match="dry-run"):
         lake.plan_index_ingest(dry_run=False)
     parsed = lake_cli.build_parser().parse_args(["plan-index-ingest", "--dry-run"])
     assert parsed.dry_run is True
     result = lake_cli.run(parsed)
     assert result["status"] == "planned"
-    assert result["n_crawls"] == 5
+    assert result["n_crawls"] == 1
 
 
 def test_osint_china_page_consumes_analysis_as_text():

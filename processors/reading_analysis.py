@@ -415,7 +415,103 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
         "trainer": "prequential-robust-mad/v1",
         "side": "high",
     },
+    "ooni-bulk": {
+        "history": "ooni-bulk-history.jsonl",
+        "extract": _field("measurements"),
+        "field": "measurements",
+        "meaning": "hourly allowlisted OONI measurement count vs this 9-day history, not the object store",
+        "min_history": MAD_MIN_HISTORY,
+        "trainer": "prequential-robust-mad/v1",
+        "side": "high",
+        "node_only": True,
+    },
+    "official-first-seen": {
+        "history": "official-first-seen-history.jsonl",
+        "extract": _field("n_observations"),
+        "field": "n_observations",
+        "meaning": "official landing-page observations vs this instrument's own past",
+        "min_history": MAD_MIN_HISTORY,
+        "trainer": "prequential-robust-mad/v1",
+        "side": "high",
+        "node_only": True,
+    },
 }
+
+
+# Operator-stated live inventory, 20 Aug 2026. Not computed from this checkout.
+# n_file_lines are history.jsonl rows. n_history for scoring is prior points only.
+LIVE_INVENTORY = {
+    "as_of": "2026-08-20",
+    "source": "operator-inventory-2026-08-20",
+    "history_file_lines": {
+        "circumvention-demand": 416,
+        "weibo-hotsearch": 300,
+        "ddti": 323,
+        "ooni-gfw": 240,
+        "gdelt": 215,
+        "ooni-bulk": 208,
+        "ioda-outages": 197,
+        "stock-connect": 157,
+        "erasure-observatory": 122,
+        "in-path-interference": 111,
+        "refusal-drift": 109,
+        "github-refuge": 106,
+        "wayback": 93,
+        "forecast-ledger": 63,
+        "china-econ": 48,
+        "silence-index": 42,
+        "research-corpus": 36,
+        "censored-planet": 28,
+        "event-flags": 26,
+        "apple-censorship": 23,
+        "net4people": 23,
+        "inside-view": 23,
+        "data-darkness": 20,
+        "board-alarm": 17,
+        "coverage-guard": 13,
+        "cny-fix-gap": 12,
+        "bleedthrough": 8,
+        "baike-redaction": 5,
+        "blocklist": 5,
+        "vantage-fusion": 3,
+        "app-storefront": 2,
+        "believability": 2,
+        "official-first-seen": 1,
+        "cross-layer": 1,
+    },
+    "common_crawl_lake": {
+        "crawls": ["CC-MAIN-2026-30"],
+        "observations": 270664,
+        "unique_urls": 268254,
+        "mutated_urls": 0,
+        "retained_warc": 0,
+        "feature_rows": 37,
+        "targets": 45,
+        "no_data": 8,
+        "model": "prequential-robust-mad/v1",
+        "state": "warming_up",
+        "minimum_prior_crawls": 6,
+        "score": None,
+        "mirror": "CC-MAIN-2026-30 parquet only; no older month on disk",
+    },
+    "story_ranking_features": {
+        "rows": 192,
+        "archive_anomalies": 0,
+        "labels": None,
+        "label_source": "human-editorial-review-required",
+        "editorial_priority_gate": "archive_anomaly>=4.5",
+        "status": "unlabeled",
+    },
+}
+
+
+def _history_line_count(path: Path) -> int:
+    count = 0
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                count += 1
+    return count
 
 
 def robust_unusualness(
@@ -446,6 +542,8 @@ def public_copy_for_row(row: Mapping[str, Any]) -> str:
     state = row.get("state")
     if state == "missing":
         copy = "this instrument abstains; its history file is missing"
+    elif state == "abstain":
+        copy = "this instrument abstains; its history is a single snapshot"
     elif state == "warming_up":
         required = int(row.get("minimum_prior") or MAD_MIN_HISTORY)
         copy = (
@@ -541,10 +639,28 @@ def fit_instrument(
     }
     if spec.get("closed"):
         base["closed"] = True
+    if spec.get("node_only"):
+        base["node_only"] = True
     if not path.is_file():
         row = {
             **base,
             "state": "missing",
+            "n_file_lines": 0,
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+            "unusual": None,
+            "review_rank": _review_rank_from_unusualness(None, None),
+        }
+        row["public_copy"] = public_copy_for_row(row)
+        return row
+
+    n_file_lines = _history_line_count(path)
+    base["n_file_lines"] = n_file_lines
+    if n_file_lines < 2:
+        row = {
+            **base,
+            "state": "abstain",
             "n_history": 0,
             "current_value": None,
             "unusualness": None,
@@ -619,6 +735,7 @@ def fit_instrument(
 def common_crawl_host_model_row() -> dict[str, Any]:
     """Pass through the host-model gate. Do not invent anomaly scores."""
 
+    lake = dict(LIVE_INVENTORY["common_crawl_lake"])
     row = {
         "instrument_id": "common-crawl-hosts",
         "history": None,
@@ -631,6 +748,7 @@ def common_crawl_host_model_row() -> dict[str, Any]:
         "minimum_prior": MAD_MIN_HISTORY,
         "state": "warming_up",
         "n_history": 1,
+        "n_file_lines": None,
         "current_value": None,
         "unusualness": None,
         "unusual": None,
@@ -641,6 +759,13 @@ def common_crawl_host_model_row() -> dict[str, Any]:
         },
         "label_source": "human-editorial-review-required",
         "rights": {"training_use": "derived_only"},
+        "lake": lake,
+        "mad_schedule": {
+            "minimum_prior_rates": 6,
+            "month_2": "mutation_rate and archive_gap features unlock, still unlabeled",
+            "month_7": "error_rate MAD can fire",
+            "month_8": "first mutation MAD; rates start at month 2",
+        },
         "model": {
             "id": CC_MODEL_ID,
             "minimum_prior_crawls": 6,
@@ -881,6 +1006,7 @@ def build_reading_analysis(
     scored = [row for row in instruments if row["state"] == "scored"]
     warming = [row for row in instruments if row["state"] == "warming_up"]
     missing = [row for row in instruments if row["state"] == "missing"]
+    abstained = [row for row in instruments if row["state"] == "abstain"]
     document: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "job": JOB_NAME,
@@ -899,8 +1025,10 @@ def build_reading_analysis(
         "n_instruments_scored": len(scored),
         "n_instruments_warming_up": len(warming),
         "n_instruments_missing": len(missing),
+        "n_instruments_abstained": len(abstained),
         "n_story_ranks": len(story_ranks),
         "story_ranks_label_source": "human-editorial-review-required",
+        "live_inventory": LIVE_INVENTORY,
         "instruments": instruments,
         "story_ranks": story_ranks,
         "publication_policy": {

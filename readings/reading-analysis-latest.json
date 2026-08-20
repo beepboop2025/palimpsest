@@ -1,16 +1,82 @@
 {
   "schema_version": "palimpsest-reading-analysis/v1",
   "job": "reading-analysis",
-  "generated_at": "2026-08-20T07:30:00Z",
+  "generated_at": "2026-08-20T07:50:00Z",
   "source": "Committed public instrument histories, live newswire and newsroom stories, and archive-news-context when present",
   "method": "per-instrument robust MAD (prequential-robust-mad/v1) or the instrument's existing board/believability gate against that instrument's own history; story rows are review rank only; no generative model, causal attribution, or cross-instrument censorship rate",
   "scope": "Per-instrument unusualness vs that instrument's own history, plus review rank for news rows. No causal attribution. No cross-instrument censorship rate. Common Crawl host scores stay null until six crawls.",
-  "n_instruments_considered": 35,
+  "n_instruments_considered": 37,
   "n_instruments_scored": 24,
   "n_instruments_warming_up": 11,
-  "n_instruments_missing": 0,
+  "n_instruments_missing": 2,
+  "n_instruments_abstained": 0,
   "n_story_ranks": 560,
   "story_ranks_label_source": "human-editorial-review-required",
+  "live_inventory": {
+    "as_of": "2026-08-20",
+    "source": "operator-inventory-2026-08-20",
+    "history_file_lines": {
+      "circumvention-demand": 416,
+      "weibo-hotsearch": 300,
+      "ddti": 323,
+      "ooni-gfw": 240,
+      "gdelt": 215,
+      "ooni-bulk": 208,
+      "ioda-outages": 197,
+      "stock-connect": 157,
+      "erasure-observatory": 122,
+      "in-path-interference": 111,
+      "refusal-drift": 109,
+      "github-refuge": 106,
+      "wayback": 93,
+      "forecast-ledger": 63,
+      "china-econ": 48,
+      "silence-index": 42,
+      "research-corpus": 36,
+      "censored-planet": 28,
+      "event-flags": 26,
+      "apple-censorship": 23,
+      "net4people": 23,
+      "inside-view": 23,
+      "data-darkness": 20,
+      "board-alarm": 17,
+      "coverage-guard": 13,
+      "cny-fix-gap": 12,
+      "bleedthrough": 8,
+      "baike-redaction": 5,
+      "blocklist": 5,
+      "vantage-fusion": 3,
+      "app-storefront": 2,
+      "believability": 2,
+      "official-first-seen": 1,
+      "cross-layer": 1
+    },
+    "common_crawl_lake": {
+      "crawls": [
+        "CC-MAIN-2026-30"
+      ],
+      "observations": 270664,
+      "unique_urls": 268254,
+      "mutated_urls": 0,
+      "retained_warc": 0,
+      "feature_rows": 37,
+      "targets": 45,
+      "no_data": 8,
+      "model": "prequential-robust-mad/v1",
+      "state": "warming_up",
+      "minimum_prior_crawls": 6,
+      "score": null,
+      "mirror": "CC-MAIN-2026-30 parquet only; no older month on disk"
+    },
+    "story_ranking_features": {
+      "rows": 192,
+      "archive_anomalies": 0,
+      "labels": null,
+      "label_source": "human-editorial-review-required",
+      "editorial_priority_gate": "archive_anomaly>=4.5",
+      "status": "unlabeled"
+    }
+  },
   "instruments": [
     {
       "instrument_id": "ooni-gfw",
@@ -24,6 +90,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 171,
       "state": "scored",
       "n_history": 170,
       "current_value": 59.2,
@@ -50,6 +117,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 322,
       "state": "scored",
       "n_history": 321,
       "current_value": 1.6885,
@@ -76,6 +144,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 125,
       "state": "scored",
       "n_history": 124,
       "current_value": 0.0,
@@ -102,6 +171,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 29,
       "state": "scored",
       "n_history": 28,
       "current_value": 4.27,
@@ -128,6 +198,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 177,
       "state": "scored",
       "n_history": 176,
       "current_value": 6.0,
@@ -154,6 +225,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 88,
       "state": "scored",
       "n_history": 87,
       "current_value": 2.0,
@@ -180,6 +252,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 8,
       "state": "warming_up",
       "n_history": 0,
       "current_value": 3.0,
@@ -204,6 +277,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 416,
       "state": "scored",
       "n_history": 405,
       "current_value": 2603.0,
@@ -230,6 +304,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 128,
       "state": "scored",
       "n_history": 127,
       "current_value": 0.0,
@@ -256,6 +331,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 15,
       "state": "scored",
       "n_history": 14,
       "current_value": 0.5968,
@@ -282,6 +358,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 69,
       "state": "warming_up",
       "n_history": 0,
       "current_value": null,
@@ -307,6 +384,7 @@
         "training_use": "derived_only"
       },
       "closed": true,
+      "n_file_lines": 116,
       "state": "scored",
       "n_history": 80,
       "current_value": 6.25,
@@ -333,6 +411,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 26,
       "state": "scored",
       "n_history": 25,
       "current_value": 87.735,
@@ -357,6 +436,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 2,
       "state": "warming_up",
       "n_history": 0,
       "current_value": 1.92,
@@ -381,6 +461,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 77,
       "state": "scored",
       "n_history": 76,
       "current_value": 0.0,
@@ -405,6 +486,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 3,
       "state": "warming_up",
       "n_history": 2,
       "current_value": 28.7,
@@ -429,6 +511,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 157,
       "state": "scored",
       "n_history": 156,
       "current_value": -10.621,
@@ -453,6 +536,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 156,
       "state": "scored",
       "n_history": 155,
       "current_value": 41.1,
@@ -477,6 +561,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 33,
       "state": "scored",
       "n_history": 30,
       "current_value": 1.0,
@@ -501,6 +586,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 76,
       "state": "scored",
       "n_history": 75,
       "current_value": 1.3,
@@ -525,6 +611,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 25,
       "state": "scored",
       "n_history": 24,
       "current_value": 8.0,
@@ -549,6 +636,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 97,
       "state": "scored",
       "n_history": 96,
       "current_value": 0.842,
@@ -573,6 +661,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 5,
       "state": "warming_up",
       "n_history": 4,
       "current_value": 19.0,
@@ -597,6 +686,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 4,
       "state": "warming_up",
       "n_history": 3,
       "current_value": 8.0,
@@ -621,6 +711,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 10,
       "state": "scored",
       "n_history": 9,
       "current_value": -0.6846,
@@ -645,6 +736,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 44,
       "state": "scored",
       "n_history": 43,
       "current_value": 1.363,
@@ -669,6 +761,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 4,
       "state": "warming_up",
       "n_history": 3,
       "current_value": 503.0,
@@ -693,6 +786,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 5,
       "state": "warming_up",
       "n_history": 3,
       "current_value": 0.0,
@@ -717,6 +811,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 23,
       "state": "scored",
       "n_history": 22,
       "current_value": 28.14,
@@ -741,6 +836,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 2,
       "state": "warming_up",
       "n_history": 1,
       "current_value": 0.6,
@@ -765,6 +861,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 36,
       "state": "scored",
       "n_history": 35,
       "current_value": 5.0,
@@ -789,6 +886,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 3,
       "state": "warming_up",
       "n_history": 2,
       "current_value": 18.0,
@@ -813,6 +911,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 38,
       "state": "scored",
       "n_history": 37,
       "current_value": 1.0,
@@ -839,6 +938,7 @@
       "rights": {
         "training_use": "derived_only"
       },
+      "n_file_lines": 15,
       "state": "scored",
       "n_history": 14,
       "current_value": 1.0,
@@ -852,6 +952,58 @@
       "public_copy": "this instrument is unusual vs its own 14 prior points"
     },
     {
+      "instrument_id": "ooni-bulk",
+      "history": "ooni-bulk-history.jsonl",
+      "field": "measurements",
+      "meaning": "hourly allowlisted OONI measurement count vs this 9-day history, not the object store",
+      "trainer": "prequential-robust-mad/v1",
+      "minimum_prior": 6,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "node_only": true,
+      "state": "missing",
+      "n_file_lines": 0,
+      "n_history": 0,
+      "current_value": null,
+      "unusualness": null,
+      "unusual": null,
+      "review_rank": {
+        "status": "warming_up",
+        "score": null,
+        "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "public_copy": "this instrument abstains; its history file is missing"
+    },
+    {
+      "instrument_id": "official-first-seen",
+      "history": "official-first-seen-history.jsonl",
+      "field": "n_observations",
+      "meaning": "official landing-page observations vs this instrument's own past",
+      "trainer": "prequential-robust-mad/v1",
+      "minimum_prior": 6,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "node_only": true,
+      "state": "missing",
+      "n_file_lines": 0,
+      "n_history": 0,
+      "current_value": null,
+      "unusualness": null,
+      "unusual": null,
+      "review_rank": {
+        "status": "warming_up",
+        "score": null,
+        "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "public_copy": "this instrument abstains; its history file is missing"
+    },
+    {
       "instrument_id": "common-crawl-hosts",
       "history": null,
       "field": "host_feature_rows",
@@ -860,6 +1012,7 @@
       "minimum_prior": 6,
       "state": "warming_up",
       "n_history": 1,
+      "n_file_lines": null,
       "current_value": null,
       "unusualness": null,
       "unusual": null,
@@ -875,6 +1028,29 @@
       "label_source": "human-editorial-review-required",
       "rights": {
         "training_use": "derived_only"
+      },
+      "lake": {
+        "crawls": [
+          "CC-MAIN-2026-30"
+        ],
+        "observations": 270664,
+        "unique_urls": 268254,
+        "mutated_urls": 0,
+        "retained_warc": 0,
+        "feature_rows": 37,
+        "targets": 45,
+        "no_data": 8,
+        "model": "prequential-robust-mad/v1",
+        "state": "warming_up",
+        "minimum_prior_crawls": 6,
+        "score": null,
+        "mirror": "CC-MAIN-2026-30 parquet only; no older month on disk"
+      },
+      "mad_schedule": {
+        "minimum_prior_rates": 6,
+        "month_2": "mutation_rate and archive_gap features unlock, still unlabeled",
+        "month_7": "error_rate MAD can fire",
+        "month_8": "first mutation MAD; rates start at month 2"
       },
       "model": {
         "id": "prequential-robust-mad/v1",
@@ -16050,5 +16226,5 @@
     "person_level_analysis": "prohibited",
     "generative_model": "prohibited"
   },
-  "analysis_sha256": "befbf30c1c689f87a3894931254babdada3d23051a6958b2f454b9d5ea9d5f20"
+  "analysis_sha256": "ef3302e8bdd21bd11a57a25b7e066a18f8c5647950821d290ed9f38a76820275"
 }
