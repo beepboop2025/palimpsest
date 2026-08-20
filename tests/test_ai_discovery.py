@@ -102,7 +102,7 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
         dynamic_event_analysis = path == "/news/wire/{event_id}/analysis.json"
         assert dynamic_event_analysis or (
             path.startswith("/readings/")
-            and path.endswith((".json", ".jsonld", ".jsonl"))
+            and path.endswith((".json", ".jsonld", ".jsonl", ".csv"))
         ) or path == "/datapackage.json"
         assert set(operations) == {"get"}
         if dynamic_event_analysis:

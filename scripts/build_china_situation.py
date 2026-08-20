@@ -185,13 +185,33 @@ def _social_layer(row: Mapping[str, Any]) -> str:
 </section>"""
 
 
+def _osint_evidence(item: Mapping[str, Any]) -> str:
+    """Show the citeable trail already on the OSINT row. Never invent a snapshot."""
+
+    parts: list[str] = []
+    url = item.get("url") or ""
+    if isinstance(url, str) and url.startswith("https://"):
+        parts.append(f'<a href="{_h(url)}">source URL</a>')
+    digest = item.get("content_sha256")
+    if isinstance(digest, str) and digest:
+        parts.append(f"SHA-256 {_h(digest)}")
+    archive = item.get("archive") if isinstance(item.get("archive"), dict) else {}
+    snapshot = archive.get("wayback_snapshot")
+    lookup = archive.get("wayback_lookup")
+    if isinstance(snapshot, str) and snapshot.startswith("https://"):
+        parts.append(f'<a href="{_h(snapshot)}">Wayback snapshot</a>')
+    elif isinstance(lookup, str) and lookup.startswith("https://"):
+        parts.append(f'<a href="{_h(lookup)}">Wayback lookup</a>')
+    return " · ".join(parts) if parts else "no public URL or snapshot on this row"
+
+
 def _osint_layer(row: Mapping[str, Any]) -> str:
     observations = row.get("osint_context") or []
     if not observations:
         body = """<div class="situation-empty"><strong>No linked public OSINT observation.</strong><p>Join is exact publisher URL or an exact gazetteer/topic term. Absence is a coverage gap, not a finding.</p></div>"""
     else:
         body = "<ul>" + "".join(
-            f"""<li><strong>{_h(item['source'])}</strong><span>{_h(item['title'])}</span><small>first {_h(item.get('first_seen') or 'unknown')} · last {_h(item.get('last_seen') or 'unknown')} · {_h(item['relation'])}</small></li>"""
+            f"""<li><strong>{_h(item['source'])}</strong><span>{_h(item['title'])}</span><small>first {_h(item.get('first_seen') or 'unknown')} · last {_h(item.get('last_seen') or 'unknown')} · {_osint_evidence(item)} · {_h(item['relation'])}</small></li>"""
             for item in observations
         ) + "</ul>"
     return f"""<section class="situation-layer situation-layer--osint" aria-labelledby="osint-{_h(row['situation_id'])}">
@@ -293,7 +313,7 @@ def render_page(document: Mapping[str, Any], *, page: int = 1) -> str:
     body = f"""<body class="ps newsroom-page situation-page">
 {site_nav.render('/news/')}
 <main id="main">
-  <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear.</p><nav><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
+  <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear. This desk captures public posts, deletions, archives and GFW injector telemetry. It does not capture private WeChat, classified systems, or in-country accounts.</p><nav><a href="/news/china/erasure/">Find a deleted post</a><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
   <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage.get('osint_context_rows', 0)}</strong> public OSINT links</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(document['generated_at']))}</strong> rebuilt</span></section>
   <div class="situation-shell">
     {_status_panel(document)}

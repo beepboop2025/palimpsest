@@ -331,6 +331,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "refusal-drift-latest.json",
     "source-workflow-latest.json",
     "social-observations-latest.json",
+    "erasure-trail-latest.json",
 })
 
 

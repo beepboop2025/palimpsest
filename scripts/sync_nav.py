@@ -39,6 +39,7 @@ PAGES = {
     "evals/index.html": "/evals/",
     "data.html": "/data.html",
     "osint-china.html": "/osint-china.html",
+    "news/china/erasure/index.html": "/news/china/erasure/",
     "china-brief.html": "/china-brief.html",
     "readings/generative-firewall-index.html": "/readings/generative-firewall-index.html",
     "for-researchers.html": "/for-researchers.html",

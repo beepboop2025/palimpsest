@@ -46,11 +46,18 @@ the join `topic-or-url-context-not-corroboration`.
 2. `scripts/build_osint_china.py` embeds every configured payload, including
    `undertext` (required once published) and `public-deletion-ledgers` (optional
    until a live file exists).
-3. `osint-china.html` `signalFacts()` surfaces observation-record counts,
-   first/last seen, and gazetteer hits from the embedded payload.
-4. `scripts/build_china_situation.py` joins those records onto in-scope wire
+3. `scripts/build_erasure_trail.py` flattens those observations into a
+   journalist desk at `/news/china/erasure/` with first-seen, last-seen,
+   snapshots, hashes, source URLs, CSV/JSON export, and a citation line.
+   The clock is the newest input `generated_at`. A missing ledger is skipped,
+   not invented.
+4. `osint-china.html` links that desk and states what is captured (public
+   posts, deletions, archives, GFW injector telemetry) and what is not
+   (private WeChat, classified systems, in-country accounts).
+5. `scripts/build_china_situation.py` joins those records onto in-scope wire
    events by **exact publisher URL** or **topic/term overlap** (headline match
-   requires a term of four or more characters). Absence is a coverage gap.
+   requires a term of four or more characters). The OSINT layer now shows
+   source URL, SHA-256, and Wayback snapshot/lookup. Absence is a coverage gap.
 
 ## What this repository will not do
 

@@ -483,7 +483,7 @@
       "identifier": "undertext",
       "name": "UNDERTEXT differential fusion",
       "description": "Fuses already-published Wayback reconstructions, Weibo-board joins, and DDTI public records into shared China observation rows. Optional Wikipedia-only live surfaces stay gated; live Weibo, Baidu, and Baike are never enabled from this runner.",
-      "url": "https://palimpsest.info/osint-china.html",
+      "url": "https://palimpsest.info/news/china/erasure/",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
         "CN",
@@ -504,6 +504,35 @@
           "name": "UNDERTEXT differential fusion — history",
           "encodingFormat": "application/x-ndjson",
           "contentUrl": "https://palimpsest.info/readings/undertext-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "erasure-trail",
+      "name": "Journalist erasure trail",
+      "description": "Deterministic journalist projection of already-published China observations: first-seen, last-seen, snapshots, hashes, source URLs, CSV export and a citation line. Clock is the newest input timestamp. Does not invent a live ledger or a private-message feed.",
+      "url": "https://palimpsest.info/news/china/erasure/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-20T03:58:30Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Journalist erasure trail — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/erasure-trail-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Journalist erasure trail — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/erasure-trail-history.jsonl"
         }
       ]
     },

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Find a deleted post · evidence trail · Palimpsest</title>
+<meta name="description" content="Journalist desk for public China deletions and reconstructions: first-seen, last-seen, snapshots, hashes, source URLs, CSV export and a citation line. Public data only.">
+<link rel="canonical" href="https://palimpsest.info/news/china/erasure/">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Palimpsest">
+<meta property="og:title" content="Find a deleted post · evidence trail">
+<meta property="og:description" content="First-seen, last-seen, snapshots, hashes and source URLs for already-public China posts the state later hid.">
+<meta property="og:url" content="https://palimpsest.info/news/china/erasure/">
+<meta property="og:image" content="https://palimpsest.info/brand/og-site.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+.et-hero{padding:clamp(36px,7vw,72px) 0 24px}
+.et-title{font-size:clamp(40px,7vw,84px);font-weight:800;line-height:.9;letter-spacing:-.04em;margin:0;max-width:900px}
+.et-deck{font-size:clamp(16px,2vw,21px);line-height:1.5;color:var(--tk-text-2);max-width:760px;margin:18px 0 0}
+.et-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.et-honesty{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 28px}
+.et-honesty article{padding:16px 18px}
+.et-honesty h2{margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.et-honesty p{margin:0;color:var(--tk-text-2);font-size:14px;line-height:1.55}
+.et-meta{font:600 11px/1.4 var(--tk-font-mono);color:var(--tk-text-3);margin:0 0 14px}
+.et-table{width:100%;border-collapse:collapse;font-size:13px}
+.et-table th{text-align:left;font:600 10px/1.3 var(--tk-font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tk-text-4);padding:10px 8px;border-bottom:1px solid var(--tk-line-2)}
+.et-table td{padding:12px 8px;border-bottom:1px solid var(--tk-line-1);vertical-align:top}
+.et-excerpt{color:var(--tk-text-3);font-size:12px;margin-top:6px;max-width:36ch}
+.et-table code{font-size:11px}
+.et-cite{min-height:36px;padding:6px 10px;border:1px solid var(--tk-line-2);background:transparent;color:var(--tk-text-2);font:600 10px/1 var(--tk-font-mono);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.et-cite:hover{color:var(--tk-text-0);border-color:var(--tk-line-3)}
+.et-how{margin:28px 0;max-width:760px}
+.et-how ol{margin:8px 0 0;padding-left:1.2em;color:var(--tk-text-2);line-height:1.6}
+@media(max-width:900px){.et-honesty{grid-template-columns:1fr}.et-wrap{overflow-x:auto}}
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/journal/">Findings</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Source index</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2" data-within="">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">Open a current measurement. Each page shows the result, source receipt, freshness and limit.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Current results</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>See reporting status and current evidence</span></a>
+            <a href="/news/china/situation/"><b>China situation desk<span class="ps-tag">new</span></b><span>Combine publisher reports, social context and measurements</span></a>
+            <a href="/osint-china.html"><b>Signal board</b><span>Inspect every signal and its freshness</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>Read the current six-hour measurement brief</span></a>
+            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the latest cross-instrument result</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Inspect the record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Check access, rights, readiness and limits</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Check publication clocks and revisions</span></a>
+            <a href="/news/china/erasure/" aria-current="page"><b>Find a deleted post<span class="ps-tag">new</span></b><span>Open the evidence trail, export and cite</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live deletion monitor</b><span>Open the deletion tracker</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Tools + feeds<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">Go directly to something usable. These links open a tool, data file, feed or verification surface.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use a tool</p>
+            <a href="/guides/telegram-scam-message-checker/"><b>Check a scam message</b><span>Open the Telegram checker and privacy guide</span></a>
+            <a href="/readings/eval-registry.html"><b>Verify an AI eval</b><span>Inspect preregistrations, run seals and chain roots</span></a>
+            <a href="/evidence-capsules.html"><b>Verify a claim offline</b><span>Download a claim with its exact supporting bytes</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Subscribe or build</p>
+            <a href="/feeds/"><b>Feeds directory<span class="ps-tag">new</span></b><span>Choose the RSS or JSON feed for your task</span></a>
+            <a href="/evals/"><b>Eval methods journal</b><span>Read method changes, failures and falsifiers</span></a>
+            <a href="/data.html"><b>Download data</b><span>Open every public dataset and licence</span></a>
+            <a href="/developers.html"><b>API + MCP</b><span>Call the read-only tools and inspect the contracts</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Method</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-5">
+        <p class="ps-flyout__lede">See what changed after feedback, inspect the source, or support the public work.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Project</p>
+            <a href="/updates/2026-08-17-listening-pass/"><b>What changed after feedback<span class="ps-tag">new</span></b><span>Read the criticism-to-change ledger</span></a>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall and no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main" class="ps-wrap ps-wrap--wide">
+  <header class="et-hero">
+    <p class="ps-kicker">Journalist desk · public record only</p>
+    <h1 class="et-title">Find a deleted post.<br>See the trail. Export it.</h1>
+    <p class="et-deck">Each row is an already-public China post, deletion ledger item, or archive reconstruction. The trail is first-seen, last-seen, snapshots, hashes and source URLs — not a private-message feed and not a live claim about anyone inside China.</p>
+    <div class="et-actions">
+      <a class="ps-btn" href="/readings/erasure-trail.csv">Download CSV</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/erasure-trail-latest.json">Download JSON</a>
+      <a class="ps-btn ps-btn--ghost" href="/docs/FOR-JOURNALISTS.md">How to cite</a>
+      <a class="ps-btn ps-btn--ghost" href="/osint-china.html">Signal board</a>
+    </div>
+  </header>
+
+  <section class="et-honesty" aria-label="What this desk captures">
+    <article class="ps-p2">
+      <h2>Captured</h2>
+      <p>Public posts that were already published, public deletion and blocking ledgers, Wayback reconstructions of those public URLs, and GFW injector telemetry from separate instruments (OONI, Censored Planet, Inside View, Bleedthrough).</p>
+    </article>
+    <article class="ps-p2">
+      <h2>Not captured</h2>
+      <p>Private WeChat, classified systems, in-country accounts, follower graphs, comments, locations, media binaries, or consumer profiles.</p>
+    </article>
+    <article class="ps-p2">
+      <h2>Live readings</h2>
+      <p>This desk never fabricates a live reading. A missing ledger or silent collector is a coverage gap, not proof of calm and not a zero.</p>
+    </article>
+  </section>
+
+  <p class="et-meta">11 public rows · clock 2026-08-20T03:58:30Z from committed inputs · method v1</p>
+  <div class="et-wrap ps-p1" tabindex="0" role="region" aria-label="Public deletion and reconstruction trail, scrolls horizontally">
+    <table class="et-table">
+      <thead>
+        <tr>
+          <th>Record</th>
+          <th>Signal</th>
+          <th>Source URL</th>
+          <th>First seen</th>
+          <th>Last seen</th>
+          <th>Snapshot</th>
+          <th>SHA-256</th>
+          <th>Cite</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr id="c6d37eb227904a64cdfddcdb43900578"><td><strong>[undertext:no_baseline] 青年失业率</strong><div class="et-excerpt">no_baseline</div></td><td>no_baseline</td><td>undertext:fusion:wayback</td><td><time>2026-08-20T01:56:45Z</time></td><td><time>2026-08-20T01:56:45Z</time></td><td>lookup</td><td><code>eafe3d13a343f759…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (c6d37eb227904a64cdfddcdb43900578), “[undertext:no_baseline] 青年失业率”, first seen 2026-08-20T01:56:45Z, last seen 2026-08-20T01:56:45Z, SHA-256 eafe3d13a343f75972500faa6e0323d8c70fec40998c5dfc5601b7ad2b842c0f. Public source: https://palimpsest.info/news/china/erasure/#c6d37eb227904a64cdfddcdb43900578. Desk: https://palimpsest.info/news/china/erasure/#c6d37eb227904a64cdfddcdb43900578">Copy cite</button></td></tr>
+<tr id="56a041f9861c30546b5680e4d46b4844"><td><strong>[undertext:unreachable] 国家统计局 最新发布</strong><div class="et-excerpt">unreachable</div></td><td>unreachable</td><td><a href="https://www.stats.gov.cn/sj/zxfb/">undertext:fusion:wayback</a></td><td><time>2026-08-20T01:56:45Z</time></td><td><time>2026-08-20T01:56:45Z</time></td><td><a href="https://web.archive.org/web/*/https://www.stats.gov.cn/sj/zxfb/">lookup</a></td><td><code>446a219b3d41337b…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (56a041f9861c30546b5680e4d46b4844), “[undertext:unreachable] 国家统计局 最新发布”, first seen 2026-08-20T01:56:45Z, last seen 2026-08-20T01:56:45Z, SHA-256 446a219b3d41337bace4ef9be331510c5844a91ffdf1a972ef573b594ec4f669. Public source: https://www.stats.gov.cn/sj/zxfb/. Desk: https://palimpsest.info/news/china/erasure/#56a041f9861c30546b5680e4d46b4844">Copy cite</button></td></tr>
+<tr id="2f19080131b29b8fda9cbda2e824f746"><td><strong>[undertext:unreachable] 白纸运动</strong><div class="et-excerpt">unreachable</div></td><td>unreachable</td><td><a href="https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8">undertext:fusion:wayback</a></td><td><time>2026-08-20T01:56:45Z</time></td><td><time>2026-08-20T01:56:45Z</time></td><td><a href="https://web.archive.org/web/*/https://baike.baidu.com/item/%25E7%2599%25BD%25E7%25BA%25B8%25E8%25BF%2590%25E5%258A%25A8">lookup</a></td><td><code>682068d60c3243aa…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (2f19080131b29b8fda9cbda2e824f746), “[undertext:unreachable] 白纸运动”, first seen 2026-08-20T01:56:45Z, last seen 2026-08-20T01:56:45Z, SHA-256 682068d60c3243aa7fc2e927989f09b28d67d7cde50c6624101d5aed9c72d769. Public source: https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8. Desk: https://palimpsest.info/news/china/erasure/#2f19080131b29b8fda9cbda2e824f746">Copy cite</button></td></tr>
+<tr id="63fd95750bbe0d4f41dc9324448bc8be"><td><strong>Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”</strong><div class="et-excerpt">foreign universities</div></td><td>—</td><td><a href="https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/">undertext:fusion:ddti</a></td><td><time>2026-08-14T23:04:56Z</time></td><td><time>2026-08-14T23:04:56Z</time></td><td><a href="https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/">lookup</a></td><td><code>62333a64d08de3b6…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (63fd95750bbe0d4f41dc9324448bc8be), “Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged””, first seen 2026-08-14T23:04:56Z, last seen 2026-08-14T23:04:56Z, SHA-256 62333a64d08de3b63f6df1459584360b20d490dbfdd9bdc4106c921d6ade58d3. Public source: https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/. Desk: https://palimpsest.info/news/china/erasure/#63fd95750bbe0d4f41dc9324448bc8be">Copy cite</button></td></tr>
+<tr id="7d4cc70bec4c7a151fce75d175bda051"><td><strong>Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”</strong><div class="et-excerpt">Cannot Speak Openly</div></td><td>—</td><td><a href="https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/">undertext:fusion:ddti</a></td><td><time>2026-08-14T00:51:23Z</time></td><td><time>2026-08-14T00:51:23Z</time></td><td><a href="https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/">lookup</a></td><td><code>f042e0c900f70318…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (7d4cc70bec4c7a151fce75d175bda051), “Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly””, first seen 2026-08-14T00:51:23Z, last seen 2026-08-14T00:51:23Z, SHA-256 f042e0c900f70318b5ea4ec67bb27dba50e01921c7cecde5b615a559afbb37b4. Public source: https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/. Desk: https://palimpsest.info/news/china/erasure/#7d4cc70bec4c7a151fce75d175bda051">Copy cite</button></td></tr>
+<tr id="14160cde8de4c1e95129fe36aa7ccac4"><td><strong>Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat</strong><div class="et-excerpt">social media censorship</div></td><td>—</td><td><a href="https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/">undertext:fusion:ddti</a></td><td><time>2026-02-23T02:11:05Z</time></td><td><time>2026-02-23T02:11:05Z</time></td><td><a href="https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/">lookup</a></td><td><code>33675a2465044467…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (14160cde8de4c1e95129fe36aa7ccac4), “Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat”, first seen 2026-02-23T02:11:05Z, last seen 2026-02-23T02:11:05Z, SHA-256 33675a246504446716e69ccc653228b491afa620e53f997c467902bdbef3f7dd. Public source: https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/. Desk: https://palimpsest.info/news/china/erasure/#14160cde8de4c1e95129fe36aa7ccac4">Copy cite</button></td></tr>
+<tr id="712c83385e039512c7a63f6c731a2663"><td><strong>[wayback:no_baseline] 烂尾楼</strong><div class="et-excerpt">no_baseline</div></td><td>no_baseline</td><td><a href="https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC">wayback:reconstruction</a></td><td><time>2020-10-14T05:28:15Z</time></td><td><time>2020-10-14T05:28:15Z</time></td><td><a href="https://web.archive.org/web/*/https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC">lookup</a></td><td><code>a2f0d0c8423cf188…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (712c83385e039512c7a63f6c731a2663), “[wayback:no_baseline] 烂尾楼”, first seen 2020-10-14T05:28:15Z, last seen 2020-10-14T05:28:15Z, SHA-256 a2f0d0c8423cf188433bf8c2579747c1bae17f95e6af55d48c3d1663c620e75f. Public source: https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC. Desk: https://palimpsest.info/news/china/erasure/#712c83385e039512c7a63f6c731a2663">Copy cite</button></td></tr>
+<tr id="0277a1d13fe8fa8c7e59b00817e64732"><td><strong>[undertext:no_baseline] 烂尾楼</strong><div class="et-excerpt">no_baseline</div></td><td>no_baseline</td><td><a href="https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC">undertext:fusion:wayback</a></td><td><time>2020-10-14T05:28:15Z</time></td><td><time>2020-10-14T05:28:15Z</time></td><td><a href="https://web.archive.org/web/*/https://baike.baidu.com/item/%25E7%2583%2582%25E5%25B0%25BE%25E6%25A5%25BC">lookup</a></td><td><code>e435cce5dd6535bd…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (0277a1d13fe8fa8c7e59b00817e64732), “[undertext:no_baseline] 烂尾楼”, first seen 2020-10-14T05:28:15Z, last seen 2020-10-14T05:28:15Z, SHA-256 e435cce5dd6535bd943401d33ef5b72cf25a560e63ab4dbae2ed27aa41b30aaa. Public source: https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC. Desk: https://palimpsest.info/news/china/erasure/#0277a1d13fe8fa8c7e59b00817e64732">Copy cite</button></td></tr>
+<tr id="fdf5b34eb62536c6ddb5d3fcf8453909"><td><strong>[wayback:no_baseline] 青年失业率</strong><div class="et-excerpt">no_baseline</div></td><td>no_baseline</td><td>wayback:reconstruction</td><td><time>unknown</time></td><td><time>unknown</time></td><td>lookup</td><td><code>085aaa846a438d0e…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (fdf5b34eb62536c6ddb5d3fcf8453909), “[wayback:no_baseline] 青年失业率”, first seen unknown, last seen unknown, SHA-256 085aaa846a438d0edbde6c908bb712b69da2e8784311b3ad7d52eccc435167c8. Public source: https://palimpsest.info/news/china/erasure/#fdf5b34eb62536c6ddb5d3fcf8453909. Desk: https://palimpsest.info/news/china/erasure/#fdf5b34eb62536c6ddb5d3fcf8453909">Copy cite</button></td></tr>
+<tr id="9c335745278c77ca73262bc039ff9174"><td><strong>[wayback:unreachable] 白纸运动</strong><div class="et-excerpt">unreachable</div></td><td>unreachable</td><td><a href="https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8">wayback:reconstruction</a></td><td><time>unknown</time></td><td><time>unknown</time></td><td><a href="https://web.archive.org/web/*/https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8">lookup</a></td><td><code>5f7ae600dca37cec…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (9c335745278c77ca73262bc039ff9174), “[wayback:unreachable] 白纸运动”, first seen unknown, last seen unknown, SHA-256 5f7ae600dca37cecdc65c26a8db549289f9c24d19085e52ae38845ec2fa063be. Public source: https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8. Desk: https://palimpsest.info/news/china/erasure/#9c335745278c77ca73262bc039ff9174">Copy cite</button></td></tr>
+<tr id="5d4f1b214bc437e1a2c07480e9b56386"><td><strong>[wayback:unreachable] 国家统计局 最新发布</strong><div class="et-excerpt">unreachable</div></td><td>unreachable</td><td><a href="https://www.stats.gov.cn/sj/zxfb/">wayback:reconstruction</a></td><td><time>unknown</time></td><td><time>unknown</time></td><td><a href="https://web.archive.org/web/*/https://www.stats.gov.cn/sj/zxfb/">lookup</a></td><td><code>1f726edfb4294820…</code></td><td><button type="button" class="et-cite" data-cite="Palimpsest erasure trail (5d4f1b214bc437e1a2c07480e9b56386), “[wayback:unreachable] 国家统计局 最新发布”, first seen unknown, last seen unknown, SHA-256 1f726edfb4294820ea85d8aed0ef4bf1f7b5a5e63c762e8b41335dc15214c478. Public source: https://www.stats.gov.cn/sj/zxfb/. Desk: https://palimpsest.info/news/china/erasure/#5d4f1b214bc437e1a2c07480e9b56386">Copy cite</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <section class="et-how" id="cite">
+    <p class="ps-kicker">How to cite</p>
+    <h2 class="ps-section-head">Export the row. Quote the trail. Do not upgrade the claim.</h2>
+    <ol>
+      <li>Find the row by title, gazetteer term, or source URL.</li>
+      <li>Copy first-seen, last-seen, the snapshot or lookup URL, and the SHA-256.</li>
+      <li>Download the <a href="/readings/erasure-trail.csv">CSV</a> or <a href="/readings/erasure-trail-latest.json">JSON</a> if you need the full table.</li>
+      <li>Cite Palimpsest as the observatory that recorded a public disappearance, not as a witness inside China and not as proof of motive.</li>
+    </ol>
+    <p>Method: <a href="/docs/CHINA-CAPTURE.md">China capture</a> · <a href="/docs/FOR-JOURNALISTS.md">Journalist guide</a> · <a href="/protocol/china-observation-v1.schema.json">Observation schema</a>.</p>
+  </section>
+</main>
+<script src="/assets/shell.js" defer></script>
+<script>
+document.querySelectorAll(".et-cite").forEach(function (button) {
+  button.addEventListener("click", function () {
+    var text = button.getAttribute("data-cite") || "";
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        button.textContent = "Copied";
+      }).catch(function () {
+        button.textContent = "Copy failed";
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>

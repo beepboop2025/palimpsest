@@ -58,6 +58,8 @@ NAV = [
                      "Check access, rights, readiness and limits"),
                     ("/china/releases/", "Release monitors",
                      "Check publication clocks and revisions"),
+                    ("/news/china/erasure/", "Find a deleted post",
+                     "Open the evidence trail, export and cite", "new"),
                     ("/dashboards/ddti_dashboard.html", "Live deletion monitor",
                      "Open the deletion tracker"),
                 ],

@@ -516,6 +516,31 @@
       "summary": "Read the composite erasure observatory state",
       "responses": {"200": {"$ref": "#/components/responses/Reading"}}
     }},
+    "/readings/undertext-latest.json": {"get": {
+      "operationId": "getUndertextFusion",
+      "summary": "Read fused public Wayback, Weibo-board and DDTI observation records",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/wayback-latest.json": {"get": {
+      "operationId": "getWaybackReconstructions",
+      "summary": "Read Internet Archive reconstructions of public Chinese URLs",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/weibo-hotsearch-latest.json": {"get": {
+      "operationId": "getWeiboHotsearch",
+      "summary": "Read the public Weibo hot-search archive used as an allowed-attention denominator",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/erasure-trail-latest.json": {"get": {
+      "operationId": "getErasureTrail",
+      "summary": "Read the journalist evidence trail: first-seen, last-seen, snapshots, hashes and source URLs",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
+    "/readings/erasure-trail.csv": {"get": {
+      "operationId": "getErasureTrailCsv",
+      "summary": "Download the journalist evidence trail as UTF-8 CSV for citation and export",
+      "responses": {"200": {"description": "CSV evidence trail", "content": {"text/csv": {"schema": {"type": "string"}}}}}
+    }},
     "/readings/eval-registry-latest.json": {"get": {
       "operationId": "getVerifiableEvalRegistry",
       "summary": "Read the latest verified evaluation-registry head and Merkle root",

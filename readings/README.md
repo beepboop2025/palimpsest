@@ -65,6 +65,7 @@ contract is [`social-observations-import-state-v1.schema.json`](../protocol/soci
 | Evidence Wire | Every 30m | [`newswire-latest.json`](newswire-latest.json) | [source dossiers](../news/wire/) |
 | China Article Stream | Every 30m | [`china-article-stream-latest.json`](china-article-stream-latest.json) | [publisher chronology](../news/china/) |
 | China Situation synthesis | Hourly | [`china-situation-latest.json`](china-situation-latest.json) | [reports + social context + measurements](../news/china/situation/) |
+| Journalist erasure trail | After UNDERTEXT fusion | [`erasure-trail-latest.json`](erasure-trail-latest.json) · [`erasure-trail.csv`](erasure-trail.csv) | [find / trail / export / cite](../news/china/erasure/) |
 
 The Situation document preserves the distinct proof roles of its inputs. Social
 observations and reviewed Telegram context cannot increase an event's independent-source

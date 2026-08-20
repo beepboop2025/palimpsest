@@ -77,6 +77,7 @@ CONTRACT = {
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "undertext":            _d("generated_at", ["source", "method", "scope"], "n_observations"),
+    "erasure-trail":        _d("generated_at", ["source", "method", "scope"], "n_rows"),
     "public-deletion-ledgers": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),

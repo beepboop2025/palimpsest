@@ -124,6 +124,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "refusal-drift-latest.json",
         "source-workflow-latest.json",
         "social-observations-latest.json",
+        "erasure-trail-latest.json",
     }
 
 
@@ -661,6 +662,8 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     assert "group: osint-china-refresh" in text
     assert "cancel-in-progress: false" in text
     economic_pulse = text.index("python -m scripts.build_economic_pulse")
+    undertext = text.index("python -m scripts.undertext_pull")
+    trail = text.index("python -m scripts.build_erasure_trail")
     build = text.index("python -m scripts.build_osint_china")
     investigations = text.index("python -m scripts.build_investigations")
     network_rounds = text.index("python -m scripts.build_network_rounds")
@@ -679,6 +682,8 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     commit = text.index("git commit")
     assert (
         economic_pulse
+        < undertext
+        < trail
         < build
         < investigations
         < network_rounds
@@ -700,6 +705,7 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
 
 def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
     text = WORKFLOW.read_text(encoding="utf-8")
+    assert text.count("python -m scripts.build_erasure_trail") == 3
     assert text.count("python -m scripts.build_newsroom") == 6
     assert text.count("python -m scripts.build_investigations") == 3
     assert text.count("python -m scripts.build_economic_pulse") == 3

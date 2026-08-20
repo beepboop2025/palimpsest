@@ -78,6 +78,9 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert "Social context." in page
     assert "Measurements." in page
     assert "Public OSINT context" in page
+    assert "Find a deleted post" in page
+    assert "private WeChat" in page
+    assert "classified systems" in page
     assert "More context does not automatically mean more proof." in page
     assert "topic-surface-only · not article verification" in page
     assert "publisher-link-context-not-corroboration" in page
@@ -143,6 +146,30 @@ def test_archive_pages_are_bounded_linked_and_canonical() -> None:
         in last
     )
     assert 'rel="prev"' in last
+
+
+def test_osint_layer_shows_url_hash_and_snapshots():
+    html = builder._osint_layer({
+        "situation_id": "sit-test",
+        "osint_context": [{
+            "source": "undertext:fusion:wayback",
+            "title": "deleted public post",
+            "url": "https://example.com/post",
+            "first_seen": "2026-01-01T00:00:00Z",
+            "last_seen": "2026-01-02T00:00:00Z",
+            "content_sha256": "ab" * 32,
+            "relation": "topic-or-url-context-not-corroboration",
+            "archive": {
+                "wayback_snapshot": "https://web.archive.org/web/20260101000000/https://example.com/post",
+                "wayback_lookup": "https://web.archive.org/web/*/https://example.com/post",
+            },
+        }],
+    })
+    assert "https://example.com/post" in html
+    assert "source URL" in html
+    assert "SHA-256 " + ("ab" * 32) in html
+    assert "Wayback snapshot" in html
+    assert "web.archive.org/web/20260101000000" in html
 
 
 def test_checked_in_situation_outputs_are_current():
