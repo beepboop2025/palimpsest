@@ -557,43 +557,28 @@ def _span_is_substantial(span: str) -> bool:
     return len(compact) >= 12
 
 
-def _longest_common_substring(left: str, right: str) -> str:
-    a = _normalize_span(left)[:240]
-    b = _normalize_span(right)[:240]
-    if not a or not b:
-        return ""
-    best = ""
-    lengths = [0] * (len(b) + 1)
-    for i, char_a in enumerate(a):
-        next_lengths = [0] * (len(b) + 1)
-        for j, char_b in enumerate(b, start=1):
-            if char_a != char_b:
-                continue
-            next_lengths[j] = lengths[j - 1] + 1
-            if next_lengths[j] > len(best):
-                best = a[i - next_lengths[j] + 1 : i + 1]
-        lengths = next_lengths
-    return _normalize_span(best)
-
-
 def _title_overlaps_event(title: str, headline: str, dek: str) -> bool:
-    """True when a substantial exact span is shared with headline or dek.
+    """True when a substantial exact title or headline string is contained.
 
     Generic taxonomy words and person-status language never count. Event
-    topics are ignored so ``politics`` cannot become a join key.
+    topics are ignored so ``politics`` cannot become a join key. Unconstrained
+    longest-common-substring matching is not used: shared diplomatic phrases
+    would otherwise join one observation to many events.
     """
 
     title = _normalize_span(title)
-    haystack = _normalize_span(f"{headline}\n{dek}")
+    headline = _normalize_span(headline)
+    dek = _normalize_span(dek)
+    haystack = f"{headline}\n{dek}".strip()
     if not title or not haystack:
         return False
     if _PERSON_STATUS_RE.search(title):
         return False
-    if _span_is_substantial(title) and title in haystack:
-        return True
-    if _span_is_substantial(headline) and headline in title:
-        return True
-    return _span_is_substantial(_longest_common_substring(title, haystack))
+    first = title.split("。")[0].split(". ")[0].strip()
+    for span in (title, first):
+        if _span_is_substantial(span) and span in haystack:
+            return True
+    return _span_is_substantial(headline) and headline in title
 
 
 def _first_https_url(event: Mapping[str, Any]) -> str | None:

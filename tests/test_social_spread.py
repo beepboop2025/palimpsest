@@ -248,16 +248,22 @@ def test_no_named_missing_claim_in_module_fixtures_or_sample_row():
     assert SAMPLE_ROW["term"] == "杭州暴雨"
     assert SAMPLE_ROW["disposition"] == "matched-to-wire"
     assert SAMPLE_ROW["names_a_person"] is False
-    assert "missing" not in json.dumps(SAMPLE_ROW).casefold()
-    assert "失联" not in json.dumps(SAMPLE_ROW)
-    assert "失踪" not in json.dumps(SAMPLE_ROW)
+    claim_fields = {
+        key: value
+        for key, value in SAMPLE_ROW.items()
+        if key not in {"disclaimer"}
+    }
+    assert "missing" not in json.dumps(claim_fields, ensure_ascii=False).casefold()
+    assert "失联" not in json.dumps(claim_fields, ensure_ascii=False)
+    assert "失踪" not in json.dumps(claim_fields, ensure_ascii=False)
+    assert SAMPLE_ROW["disclaimer"] == DISCLAIMER
     src = (ROOT / "core" / "social_spread.py").read_text(encoding="utf-8")
     assert "SAMPLE_ROW" in src
     assert DISCLAIMER in src
     test_src = Path(__file__).read_text(encoding="utf-8")
     assert "does not emit a person package" in test_src
     # Fixtures may mention the refusal example, but must not assert a finding.
-    assert "Palimpsest confirms" not in test_src
+    assert "Palimpsest " + "confirms" not in test_src
     assert "finding that" not in test_src.casefold() or "prohibited" in test_src
 
 
@@ -326,9 +332,11 @@ def test_pull_does_not_commit_a_repo_latest_file():
 def test_no_wechat_and_no_new_telegram_handles_in_desk():
     src = (ROOT / "core" / "social_spread.py").read_text(encoding="utf-8")
     pull_src = (ROOT / "scripts" / "social_spread_pull.py").read_text(encoding="utf-8")
-    assert "WeChat" not in src
     assert "weixin" not in src
+    assert "weixin" not in pull_src
     assert "WeChat" not in pull_src
+    assert src.count("WeChat") == 1
+    assert "No WeChat" in src
     for handle in ("DragonDenWhispers", "DragonDenCyber", "DragonDenBorderlands"):
         assert handle in src
     assert "DragonDenWhispersBot" not in src
